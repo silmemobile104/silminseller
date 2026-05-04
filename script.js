@@ -1,6 +1,54 @@
 const API_BASE_URL = 'http://localhost:5000/api';
 
 document.addEventListener('DOMContentLoaded', () => {
+
+    // ==========================================
+    // Auth Fetch Helper (ส่ง Token อัตโนมัติ)
+    // ==========================================
+    const getAuthHeaders = () => {
+        const token = localStorage.getItem('silmin_token');
+        return token ? { 'Authorization': `Bearer ${token}` } : {};
+    };
+
+    const authFetch = async (url, options = {}) => {
+        const headers = {
+            ...getAuthHeaders(),
+            ...(options.headers || {})
+        };
+        const response = await fetch(url, { ...options, headers });
+
+        // ตรวจสอบ 401/403 → เซสชั่นหมดอายุ
+        if (response.status === 401 || response.status === 403) {
+            forceLogout();
+            throw new Error('เซสชั่นหมดอายุ');
+        }
+        return response;
+    };
+
+    const forceLogout = () => {
+        localStorage.removeItem('silmin_token');
+        localStorage.removeItem('silmin_user');
+
+        const mainLayout = document.getElementById('main-layout');
+        const loginScreen = document.getElementById('login-screen');
+
+        if (mainLayout) {
+            mainLayout.classList.remove('opacity-100');
+            mainLayout.classList.add('opacity-0', 'hidden');
+        }
+        if (loginScreen) {
+            loginScreen.classList.remove('hidden', 'opacity-0');
+            loginScreen.classList.add('flex', 'opacity-100');
+        }
+
+        // แสดง Toast แจ้งเตือน (ถ้ามี showToast)
+        setTimeout(() => {
+            if (typeof showToast === 'function') {
+                showToast('เซสชั่นหมดอายุ กรุณาเข้าสู่ระบบใหม่', 'error');
+            }
+        }, 600);
+    };
+
     // ==========================================
     // DOM Elements
     // ==========================================
@@ -44,6 +92,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const navPersonnel = document.getElementById('nav-personnel');
     const navBranches = document.getElementById('nav-branches');
     const navSettings = document.getElementById('nav-settings');
+    const navRoles = document.getElementById('nav-roles');
 
     const viewDashboard = document.getElementById('view-dashboard');
     const viewStock = document.getElementById('view-stock');
@@ -51,6 +100,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const viewPersonnel = document.getElementById('view-personnel');
     const viewBranches = document.getElementById('view-branches');
     const viewSettings = document.getElementById('view-settings');
+    const viewRoles = document.getElementById('view-roles');
 
     const settingsTabBtns = document.querySelectorAll('.settings-tab-btn');
     const masterDataInput = document.getElementById('master-data-input');
@@ -149,7 +199,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Fetch Master Data
     const fetchMasterData = async () => {
         try {
-            const response = await fetch(`${API_BASE_URL}/master-data`);
+            const response = await authFetch(`${API_BASE_URL}/master-data`);
             const json = await response.json();
 
             if (json.success) {
@@ -192,7 +242,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const loadBranchesForProductForm = async () => {
         if (!productBranch) return;
         try {
-            const response = await fetch(`${API_BASE_URL}/branches`);
+            const response = await authFetch(`${API_BASE_URL}/branches`);
             const json = await response.json();
             if (json.success) {
                 productBranch.innerHTML = '<option value="" disabled selected>เลือกสาขาที่จัดเก็บ</option>';
@@ -295,6 +345,28 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
+    // ==========================================
+    // Dynamic Permissions (RBAC ตามสิทธิ์จาก Role)
+    // ==========================================
+    const applyPermissions = (permissions) => {
+        if (!permissions) return;
+
+        // ซ่อน/แสดง เมนู Sidebar ตาม permissions
+        if (navDashboard) navDashboard.style.display = permissions.view_dashboard ? '' : 'none';
+        if (navTransactions) navTransactions.style.display = permissions.do_pos ? '' : 'none';
+        if (navPersonnel) navPersonnel.style.display = permissions.manage_personnel ? '' : 'none';
+        if (navBranches) navBranches.style.display = permissions.manage_branches ? '' : 'none';
+        if (navSettings) navSettings.style.display = permissions.manage_settings ? '' : 'none';
+        if (navRoles) navRoles.style.display = permissions.manage_roles ? '' : 'none';
+
+        // ซ่อน/แสดง ปุ่มเพิ่มสินค้า + ลบสินค้า
+        const btnAdd = document.getElementById('btn-add-product');
+        if (btnAdd) btnAdd.style.display = permissions.manage_stock ? '' : 'none';
+
+        // เก็บ permissions ไว้ใน window สำหรับใช้ตรวจสอบใน renderProductTable
+        window.__userPermissions = permissions;
+    };
+
     // Auto-login check (JWT Token)
     const savedToken = localStorage.getItem('silmin_token');
     const savedUser = localStorage.getItem('silmin_user');
@@ -307,6 +379,7 @@ document.addEventListener('DOMContentLoaded', () => {
             mainLayout.classList.add('opacity-100');
             switchView('stock');
             updateTopBar(user);
+            applyPermissions(user.permissions);
         } catch (e) {
             localStorage.removeItem('silmin_token');
             localStorage.removeItem('silmin_user');
@@ -316,7 +389,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Fetch All Products
     const fetchProducts = async () => {
         try {
-            const response = await fetch(`${API_BASE_URL}/products`);
+            const response = await authFetch(`${API_BASE_URL}/products`);
             const json = await response.json();
             if (json.success) {
                 renderProductTable(json.data);
@@ -389,7 +462,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <td class="px-6 py-4 text-right">
                     <div class="flex items-center justify-end gap-1">
                         <button class="edit-product-btn text-slate-400 hover:text-cyan-400 transition-colors p-2" data-id="${product._id}"><i class="fa-solid fa-pen"></i></button>
-                        <button class="delete-product-btn text-slate-400 hover:text-red-400 transition-colors p-2" data-id="${product._id}"><i class="fa-solid fa-trash"></i></button>
+                        ${window.__userPermissions && window.__userPermissions.delete_stock ? `<button class="delete-product-btn text-slate-400 hover:text-red-400 transition-colors p-2" data-id="${product._id}"><i class="fa-solid fa-trash"></i></button>` : ''}
                     </div>
                 </td>
             `;
@@ -397,14 +470,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // Attach listeners to buttons
             row.querySelector('.edit-product-btn').addEventListener('click', () => editProduct(product));
-            row.querySelector('.delete-product-btn').addEventListener('click', () => deleteProduct(product._id));
+            const delBtn = row.querySelector('.delete-product-btn');
+            if (delBtn) delBtn.addEventListener('click', () => deleteProduct(product._id));
         });
     };
 
     const deleteProduct = (id) => {
         showConfirm('ยืนยันการลบสินค้า', 'คุณแน่ใจหรือไม่ว่าต้องการลบสินค้านี้? ข้อมูลนี้ไม่สามารถกู้คืนได้', async () => {
             try {
-                const response = await fetch(`${API_BASE_URL}/products/${id}`, {
+                const response = await authFetch(`${API_BASE_URL}/products/${id}`, {
                     method: 'DELETE'
                 });
                 const result = await response.json();
@@ -519,6 +593,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                     // Update top bar
                     updateTopBar(result.data);
+                    applyPermissions(result.data.permissions);
                 }, 500);
             } else {
                 showLoginError(result.message || 'รหัสพนักงานหรือรหัสผ่านไม่ถูกต้อง');
@@ -702,7 +777,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const url = isEditing ? `${API_BASE_URL}/products/${editIdInput.value}` : `${API_BASE_URL}/products`;
                 const method = isEditing ? 'PUT' : 'POST';
 
-                const response = await fetch(url, {
+                const response = await authFetch(url, {
                     method: method,
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
@@ -740,7 +815,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         // Hide all views and remove animation
-        const views = [viewDashboard, viewStock, viewTransactions, viewPersonnel, viewBranches, viewSettings];
+        const views = [viewDashboard, viewStock, viewTransactions, viewPersonnel, viewBranches, viewSettings, viewRoles];
         views.forEach(view => {
             if (view) {
                 view.classList.add('hidden');
@@ -783,6 +858,10 @@ document.addEventListener('DOMContentLoaded', () => {
             activateView(viewSettings, navSettings);
             if (typeof renderSettingsList === 'function') renderSettingsList();
         }
+        else if (viewName === 'roles') {
+            activateView(viewRoles, navRoles);
+            loadRoles();
+        }
     };
 
     if (navDashboard) navDashboard.addEventListener('click', (e) => { e.preventDefault(); switchView('dashboard'); });
@@ -791,6 +870,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (navPersonnel) navPersonnel.addEventListener('click', (e) => { e.preventDefault(); switchView('personnel'); });
     if (navBranches) navBranches.addEventListener('click', (e) => { e.preventDefault(); switchView('branches'); });
     if (navSettings) navSettings.addEventListener('click', (e) => { e.preventDefault(); switchView('settings'); });
+    if (navRoles) navRoles.addEventListener('click', (e) => { e.preventDefault(); switchView('roles'); });
 
     // ==========================================
     // Branch Management Logic
@@ -800,7 +880,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!branchGrid) return;
 
         try {
-            const response = await fetch(`${API_BASE_URL}/branches`);
+            const response = await authFetch(`${API_BASE_URL}/branches`);
             const json = await response.json();
 
             branchGrid.innerHTML = '';
@@ -846,7 +926,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         const id = e.currentTarget.getAttribute('data-id');
                         showConfirm('ยืนยันการลบสาขา', 'คุณแน่ใจหรือไม่ที่จะลบสาขานี้? ข้อมูลนี้ไม่สามารถกู้คืนได้', async () => {
                             try {
-                                const response = await fetch(`${API_BASE_URL}/branches/${id}`, { method: 'DELETE' });
+                                const response = await authFetch(`${API_BASE_URL}/branches/${id}`, { method: 'DELETE' });
                                 const result = await response.json();
                                 if (result.success) {
                                     showToast('ลบสาขาสำเร็จ');
@@ -916,7 +996,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const url = id ? `${API_BASE_URL}/branches/${id}` : `${API_BASE_URL}/branches`;
                 const method = id ? 'PUT' : 'POST';
 
-                const response = await fetch(url, {
+                const response = await authFetch(url, {
                     method: method,
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ name, address })
@@ -1036,7 +1116,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!name) return showToast('กรุณาระบุชื่อข้อมูลที่ต้องการเพิ่ม', 'error');
 
             try {
-                const response = await fetch(`${API_BASE_URL}/master/${currentSettingsTab}`, {
+                const response = await authFetch(`${API_BASE_URL}/master/${currentSettingsTab}`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ name })
@@ -1059,7 +1139,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const editMasterData = async (id, name) => {
         try {
-            const response = await fetch(`${API_BASE_URL}/master/${currentSettingsTab}/${id}`, {
+            const response = await authFetch(`${API_BASE_URL}/master/${currentSettingsTab}/${id}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ name })
@@ -1080,7 +1160,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const deleteMasterData = async (id) => {
         try {
-            const response = await fetch(`${API_BASE_URL}/master/${currentSettingsTab}/${id}`, {
+            const response = await authFetch(`${API_BASE_URL}/master/${currentSettingsTab}/${id}`, {
                 method: 'DELETE'
             });
             const result = await response.json();
@@ -1125,7 +1205,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!employeeTableBody) return;
 
         try {
-            const response = await fetch(`${API_BASE_URL}/employees`);
+            const response = await authFetch(`${API_BASE_URL}/employees`);
             const json = await response.json();
 
             if (json.success) {
@@ -1214,7 +1294,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const loadBranchesForEmployeeModal = async () => {
         if (!empBranchSelect) return;
         try {
-            const response = await fetch(`${API_BASE_URL}/branches`);
+            const response = await authFetch(`${API_BASE_URL}/branches`);
             const json = await response.json();
             if (json.success) {
                 empBranchSelect.innerHTML = '<option value="">-- ไม่ระบุสาขา --</option>';
@@ -1227,11 +1307,29 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
+    // โหลดตำแหน่ง (Role) สำหรับ dropdown พนักงาน
+    const loadRolesForEmployeeModal = async () => {
+        if (!empRoleSelect) return;
+        try {
+            const response = await authFetch(`${API_BASE_URL}/roles`);
+            const json = await response.json();
+            if (json.success) {
+                empRoleSelect.innerHTML = '<option value="" disabled selected>เลือกตำแหน่ง</option>';
+                json.data.forEach(role => {
+                    empRoleSelect.innerHTML += `<option value="${role.name}">${role.name}</option>`;
+                });
+            }
+        } catch (error) {
+            console.error('ดึงข้อมูลตำแหน่งไม่สำเร็จ:', error);
+        }
+    };
+
     // Open Employee Modal
     const openEmployeeModal = (emp = null) => {
         if (!employeeModal) return;
 
         loadBranchesForEmployeeModal().then(() => {
+            loadRolesForEmployeeModal().then(() => {
             if (emp) {
                 // Edit mode
                 employeeModalTitle.innerHTML = `<i class="fa-solid fa-pen-to-square text-cyan-400"></i> แก้ไขข้อมูลพนักงาน`;
@@ -1258,6 +1356,7 @@ document.addEventListener('DOMContentLoaded', () => {
             void employeeModal.offsetWidth;
             employeeModal.firstElementChild.classList.remove('scale-95');
             employeeModal.firstElementChild.classList.add('scale-100');
+            });
         });
     };
 
@@ -1307,7 +1406,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const body = { name, emp_id, role, branch_id };
                 if (password) body.password = password;
 
-                const response = await fetch(url, {
+                const response = await authFetch(url, {
                     method,
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(body)
@@ -1336,7 +1435,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const deleteEmployee = (id, name) => {
         showConfirm('ยืนยันการลบพนักงาน', `คุณแน่ใจหรือไม่ที่จะลบ "${name}"? ข้อมูลนี้ไม่สามารถกู้คืนได้`, async () => {
             try {
-                const response = await fetch(`${API_BASE_URL}/employees/${id}`, { method: 'DELETE' });
+                const response = await authFetch(`${API_BASE_URL}/employees/${id}`, { method: 'DELETE' });
                 const result = await response.json();
 
                 if (result.success) {
@@ -1382,7 +1481,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Fetch products for POS
     const fetchPosProducts = async () => {
         try {
-            const response = await fetch(`${API_BASE_URL}/products`);
+            const response = await authFetch(`${API_BASE_URL}/products`);
             const json = await response.json();
             if (json.success) {
                 posProductsCache = json.data;
@@ -1754,7 +1853,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             branch_id
                         };
 
-                        const response = await fetch(`${API_BASE_URL}/transactions`, {
+                        const response = await authFetch(`${API_BASE_URL}/transactions`, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify(payload)
@@ -1812,7 +1911,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const loadDashboardData = async () => {
         try {
-            const response = await fetch(`${API_BASE_URL}/dashboard-stats`);
+            const response = await authFetch(`${API_BASE_URL}/dashboard-stats`);
             const json = await response.json();
 
             if (!json.success) {
@@ -1904,6 +2003,196 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error('เกิดข้อผิดพลาดในการดึงข้อมูลแดชบอร์ด:', error);
         }
     };
+
+    // ==========================================
+    // Role Management Logic (จัดการสิทธิ์)
+    // ==========================================
+    const roleModal = document.getElementById('role-modal');
+    const roleForm = document.getElementById('role-form');
+    const roleNameInput = document.getElementById('role-name');
+    const editRoleId = document.getElementById('edit-role-id');
+    const roleModalTitle = document.getElementById('role-modal-title');
+    const rolesGrid = document.getElementById('roles-grid');
+    const rolesEmpty = document.getElementById('roles-empty');
+    const btnAddRole = document.getElementById('btn-add-role');
+    const closeRoleModalBtn = document.getElementById('close-role-modal-btn');
+    const cancelRoleModalBtn = document.getElementById('cancel-role-modal-btn');
+
+    const permKeys = ['view_dashboard', 'manage_stock', 'delete_stock', 'do_pos', 'manage_personnel', 'manage_branches', 'manage_settings', 'manage_roles'];
+    const permLabels = {
+        view_dashboard: 'ดูแดชบอร์ด',
+        manage_stock: 'จัดการสต็อก',
+        delete_stock: 'ลบสินค้า',
+        do_pos: 'ขายสินค้า (POS)',
+        manage_personnel: 'จัดการพนักงาน',
+        manage_branches: 'จัดการสาขา',
+        manage_settings: 'ตั้งค่าระบบ',
+        manage_roles: 'จัดการสิทธิ์'
+    };
+    const permIcons = {
+        view_dashboard: 'fa-chart-pie text-blue-400',
+        manage_stock: 'fa-box-open text-cyan-400',
+        delete_stock: 'fa-trash text-red-400',
+        do_pos: 'fa-money-bill-transfer text-green-400',
+        manage_personnel: 'fa-users text-purple-400',
+        manage_branches: 'fa-store text-orange-400',
+        manage_settings: 'fa-gear text-slate-400',
+        manage_roles: 'fa-shield-halved text-amber-400'
+    };
+
+    const openRoleModal = () => {
+        if (roleModal) roleModal.classList.remove('opacity-0', 'pointer-events-none');
+    };
+    const closeRoleModal = () => {
+        if (roleModal) {
+            roleModal.classList.add('opacity-0', 'pointer-events-none');
+            if (roleForm) roleForm.reset();
+            if (editRoleId) editRoleId.value = '';
+        }
+    };
+
+    if (btnAddRole) btnAddRole.addEventListener('click', () => {
+        if (editRoleId) editRoleId.value = '';
+        if (roleModalTitle) roleModalTitle.innerHTML = '<i class="fa-solid fa-shield-halved text-amber-400"></i> เพิ่มบทบาทใหม่';
+        if (roleForm) roleForm.reset();
+        openRoleModal();
+    });
+    if (closeRoleModalBtn) closeRoleModalBtn.addEventListener('click', closeRoleModal);
+    if (cancelRoleModalBtn) cancelRoleModalBtn.addEventListener('click', closeRoleModal);
+
+    // Load Roles
+    const loadRoles = async () => {
+        if (!rolesGrid) return;
+        try {
+            const response = await authFetch(`${API_BASE_URL}/roles`);
+            const json = await response.json();
+
+            rolesGrid.innerHTML = '';
+            if (json.success && json.data.length > 0) {
+                if (rolesEmpty) rolesEmpty.classList.add('hidden');
+                json.data.forEach(role => renderRoleCard(role));
+            } else {
+                if (rolesEmpty) rolesEmpty.classList.remove('hidden');
+            }
+        } catch (error) {
+            console.error('ดึงข้อมูลสิทธิ์ไม่สำเร็จ:', error);
+        }
+    };
+
+    const renderRoleCard = (role) => {
+        const p = role.permissions || {};
+        const enabledCount = permKeys.filter(k => p[k]).length;
+
+        const permBadges = permKeys.map(key => {
+            const active = p[key];
+            return `<span class="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs ${
+                active ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20' : 'bg-slate-700/50 text-slate-500 border border-slate-700 line-through'
+            }">
+                <i class="fa-solid ${permIcons[key].split(' ')[0]} text-[10px]"></i> ${permLabels[key]}
+            </span>`;
+        }).join('');
+
+        const card = document.createElement('div');
+        card.className = 'bg-slate-800 rounded-2xl border border-slate-700 p-6 hover:border-amber-500/30 transition-all group';
+        card.innerHTML = `
+            <div class="flex items-center justify-between mb-4">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center border border-amber-500/20 group-hover:bg-amber-500/20 transition-all">
+                        <i class="fa-solid fa-shield-halved text-amber-400"></i>
+                    </div>
+                    <div>
+                        <h4 class="text-white font-bold">${role.name}</h4>
+                        <p class="text-xs text-slate-400">${enabledCount}/${permKeys.length} สิทธิ์เปิดใช้งาน</p>
+                    </div>
+                </div>
+                <div class="flex gap-1">
+                    <button class="edit-role-btn text-slate-400 hover:text-amber-400 transition-colors p-2" data-id="${role._id}"><i class="fa-solid fa-pen-to-square"></i></button>
+                    <button class="delete-role-btn text-slate-400 hover:text-red-400 transition-colors p-2" data-id="${role._id}" data-name="${role.name}"><i class="fa-solid fa-trash"></i></button>
+                </div>
+            </div>
+            <div class="flex flex-wrap gap-1.5">
+                ${permBadges}
+            </div>
+        `;
+        rolesGrid.appendChild(card);
+
+        // Event: Edit
+        card.querySelector('.edit-role-btn').addEventListener('click', () => {
+            editRoleId.value = role._id;
+            roleModalTitle.innerHTML = '<i class="fa-solid fa-pen-to-square text-amber-400"></i> แก้ไขบทบาท';
+            roleNameInput.value = role.name;
+            permKeys.forEach(key => {
+                const el = document.getElementById(`perm-${key}`);
+                if (el) el.checked = !!(role.permissions && role.permissions[key]);
+            });
+            openRoleModal();
+        });
+
+        // Event: Delete
+        card.querySelector('.delete-role-btn').addEventListener('click', () => {
+            const name = role.name;
+            showConfirm('ยืนยันการลบตำแหน่ง', `คุณแน่ใจหรือไม่ที่จะลบ "${name}"? พนักงานที่ใช้ตำแหน่งนี้อาจได้รับผลกระทบ`, async () => {
+                try {
+                    const response = await authFetch(`${API_BASE_URL}/roles/${role._id}`, { method: 'DELETE' });
+                    const result = await response.json();
+                    if (result.success) {
+                        showToast(`ลบตำแหน่ง "${name}" สำเร็จ`);
+                        loadRoles();
+                    } else {
+                        showToast(result.message, 'error');
+                    }
+                } catch (err) {
+                    showToast('เกิดข้อผิดพลาดในการลบตำแหน่ง', 'error');
+                }
+            });
+        });
+    };
+
+    // Role Form Submit
+    if (roleForm) {
+        roleForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const name = roleNameInput.value.trim();
+            if (!name) return showToast('กรุณาระบุชื่อตำแหน่ง', 'error');
+
+            const permissions = {};
+            permKeys.forEach(key => {
+                const el = document.getElementById(`perm-${key}`);
+                permissions[key] = el ? el.checked : false;
+            });
+
+            const submitBtn = document.getElementById('submit-role-btn');
+            const originalText = submitBtn.innerHTML;
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> กำลังบันทึก...';
+
+            try {
+                const id = editRoleId.value;
+                const url = id ? `${API_BASE_URL}/roles/${id}` : `${API_BASE_URL}/roles`;
+                const method = id ? 'PUT' : 'POST';
+
+                const response = await authFetch(url, {
+                    method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, permissions })
+                });
+                const result = await response.json();
+
+                if (result.success) {
+                    showToast(id ? 'แก้ไขตำแหน่งสำเร็จ' : 'เพิ่มตำแหน่งสำเร็จ');
+                    closeRoleModal();
+                    loadRoles();
+                } else {
+                    showToast(result.message || 'เกิดข้อผิดพลาด', 'error');
+                }
+            } catch (err) {
+                showToast('ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้', 'error');
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalText;
+            }
+        });
+    }
 
 });
 

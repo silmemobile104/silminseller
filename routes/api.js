@@ -6,6 +6,7 @@ const bcrypt = require('bcryptjs');
 const JWT_SECRET = process.env.JWT_SECRET || 'silmin-default-secret-key';
 const {
     Branch,
+    Role,
     Employee,
     ProductType,
     ProductUnit,
@@ -15,12 +16,49 @@ const {
     ProductName,
     Supplier,
     Product,
-    Transaction
+    Transaction,
+    seedDefaultRoles
 } = require('../models');
+
+// ==========================================
+// JWT Verification Middleware (ตรวจสอบ Token)
+// ==========================================
+const verifyToken = (req, res, next) => {
+    // ข้าม middleware สำหรับ route login
+    if (req.path === '/auth/login') {
+        return next();
+    }
+
+    const authHeader = req.headers['authorization'];
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return res.status(401).json({
+            success: false,
+            message: 'กรุณาเข้าสู่ระบบใหม่อีกครั้ง (ไม่พบ Token)'
+        });
+    }
+
+    const token = authHeader.split(' ')[1];
+
+    try {
+        const decoded = jwt.verify(token, JWT_SECRET);
+        req.user = decoded; // { employee_id, role, branch_id }
+        next();
+    } catch (error) {
+        console.error('JWT verification failed:', error.message);
+        return res.status(403).json({
+            success: false,
+            message: 'เซสชั่นหมดอายุ กรุณาเข้าสู่ระบบใหม่'
+        });
+    }
+};
+
+// ใช้ middleware กับทุก route
+router.use(verifyToken);
 
 // 1. GET /api/master-data
 // หน้าที่: ดึงข้อมูลจากทุก Master Data collections พร้อมกัน เพื่อไปแสดงผลที่หน้าเว็บ
 router.get('/master-data', async (req, res) => {
+
     try {
         const [
             branches,
@@ -244,12 +282,21 @@ router.post('/auth/login', async (req, res) => {
             });
         }
 
-        // สร้าง JWT Token
+        // ค้นหา Role เพื่อดึง permissions
+        const roleDoc = await Role.findOne({ name: employee.role });
+        const permissions = roleDoc ? roleDoc.permissions.toObject() : {
+            view_dashboard: true, manage_stock: true, delete_stock: true,
+            do_pos: true, manage_personnel: true, manage_branches: true,
+            manage_settings: true, manage_roles: true
+        };
+
+        // สร้าง JWT Token (รวม permissions)
         const tokenPayload = {
             employee_id: employee._id,
             emp_id: employee.emp_id,
             name: employee.name,
             role: employee.role,
+            permissions,
             branch_id: employee.branch_id ? employee.branch_id._id : null
         };
 
@@ -266,6 +313,7 @@ router.post('/auth/login', async (req, res) => {
                 name: employee.name,
                 emp_id: employee.emp_id,
                 role: employee.role,
+                permissions,
                 branch: employee.branch_id
             }
         });
@@ -778,6 +826,74 @@ router.get('/dashboard-stats', async (req, res) => {
             success: false,
             message: 'เกิดข้อผิดพลาดในการดึงข้อมูลสถิติแดชบอร์ด'
         });
+    }
+});
+
+// ==========================================
+// Role Management APIs (จัดการระดับสิทธิ์)
+// ==========================================
+
+// GET /api/roles - ดึงรายการ Role ทั้งหมด
+router.get('/roles', async (req, res) => {
+    try {
+        const roles = await Role.find().sort({ createdAt: 1 });
+        res.status(200).json({ success: true, data: roles });
+    } catch (error) {
+        console.error('API Error GET /api/roles:', error);
+        res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการดึงข้อมูลสิทธิ์' });
+    }
+});
+
+// POST /api/roles - สร้าง Role ใหม่
+router.post('/roles', async (req, res) => {
+    try {
+        const { name, permissions } = req.body;
+        if (!name) return res.status(400).json({ success: false, message: 'กรุณาระบุชื่อตำแหน่ง' });
+
+        const exists = await Role.findOne({ name });
+        if (exists) return res.status(400).json({ success: false, message: 'ชื่อตำแหน่งนี้มีอยู่แล้ว' });
+
+        const role = new Role({ name, permissions: permissions || {} });
+        await role.save();
+
+        console.log(`[ROLE] สร้างตำแหน่งใหม่: ${name}`);
+        res.status(201).json({ success: true, data: role, message: 'สร้างตำแหน่งสำเร็จ' });
+    } catch (error) {
+        console.error('API Error POST /api/roles:', error);
+        res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการสร้างตำแหน่ง' });
+    }
+});
+
+// PUT /api/roles/:id - แก้ไข Role
+router.put('/roles/:id', async (req, res) => {
+    try {
+        const { name, permissions } = req.body;
+        const updateData = {};
+        if (name) updateData.name = name;
+        if (permissions) updateData.permissions = permissions;
+
+        const role = await Role.findByIdAndUpdate(req.params.id, updateData, { new: true });
+        if (!role) return res.status(404).json({ success: false, message: 'ไม่พบตำแหน่งที่ต้องการแก้ไข' });
+
+        console.log(`[ROLE] แก้ไขตำแหน่ง: ${role.name}`);
+        res.status(200).json({ success: true, data: role, message: 'แก้ไขตำแหน่งสำเร็จ' });
+    } catch (error) {
+        console.error('API Error PUT /api/roles/:id:', error);
+        res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการแก้ไขตำแหน่ง' });
+    }
+});
+
+// DELETE /api/roles/:id - ลบ Role
+router.delete('/roles/:id', async (req, res) => {
+    try {
+        const role = await Role.findByIdAndDelete(req.params.id);
+        if (!role) return res.status(404).json({ success: false, message: 'ไม่พบตำแหน่งที่ต้องการลบ' });
+
+        console.log(`[ROLE] ลบตำแหน่ง: ${role.name}`);
+        res.status(200).json({ success: true, message: `ลบตำแหน่ง "${role.name}" สำเร็จ` });
+    } catch (error) {
+        console.error('API Error DELETE /api/roles/:id:', error);
+        res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการลบตำแหน่ง' });
     }
 });
 

@@ -318,6 +318,15 @@
                         class="fa-solid fa-gear sidebar-icon text-lg w-6 text-center text-slate-400 group-hover:text-slate-300"></i>
                     <span class="sidebar-text ml-3 font-medium">การตั้งค่าระบบ</span>
                 </a>
+
+                <a href="#" id="nav-roles"
+                    class="flex items-center px-3 py-3 rounded-xl text-slate-300 hover:bg-slate-700/50 hover:text-white transition-all group nav-menu-item">
+                    <i
+                        class="fa-solid fa-shield-halved sidebar-icon text-lg w-6 text-center text-amber-400 group-hover:text-amber-300"></i>
+                    <span class="sidebar-text ml-3 font-medium">จัดการสิทธิ์ใช้งาน</span>
+                    <span
+                        class="sidebar-text ml-auto bg-slate-700 text-slate-300 text-xs font-bold px-2 py-0.5 rounded-full group-hover:bg-amber-500/20 group-hover:text-amber-400">R</span>
+                </a>
             </nav>
 
             <!-- Sidebar Footer / Logout -->
@@ -802,6 +811,38 @@
                 </div>
 
             </div>
+
+                <!-- VIEW: ROLES (จัดการสิทธิ์) -->
+                <div id="view-roles" class="hidden space-y-8 animate-fade-in">
+                    <!-- Header -->
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h3 class="text-2xl font-bold text-white flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center border border-amber-500/20">
+                                    <i class="fa-solid fa-shield-halved text-amber-400"></i>
+                                </div>
+                                ระดับสิทธิ์และนโยบาย
+                            </h3>
+                            <p class="text-sm text-slate-400 mt-1">กำหนดสิทธิ์การเข้าถึงระบบสำหรับแต่ละตำแหน่ง</p>
+                        </div>
+                        <button id="btn-add-role"
+                            class="px-5 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-900 font-bold rounded-xl flex items-center gap-2 transition-all shadow-lg shadow-amber-500/25 hover:shadow-amber-400/40">
+                            <i class="fa-solid fa-plus"></i> เพิ่มบทบาท
+                        </button>
+                    </div>
+                    <!-- Roles Grid -->
+                    <div id="roles-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        <!-- Rendered dynamically by JS -->
+                    </div>
+                    <div id="roles-empty" class="hidden text-center py-12">
+                        <div class="w-16 h-16 rounded-full bg-slate-700/50 flex items-center justify-center text-slate-500 mx-auto mb-4">
+                            <i class="fa-solid fa-shield-halved text-2xl"></i>
+                        </div>
+                        <h4 class="text-white font-medium">ยังไม่มีข้อมูลสิทธิ์</h4>
+                        <p class="text-sm text-slate-400 mt-1">กรุณาเพิ่มบทบาทใหม่</p>
+                    </div>
+                </div>
+
         </main>
     </div>
 
@@ -1136,9 +1177,8 @@
                             class="text-red-400">*</span></label>
                     <select id="emp-role" required
                         class="w-full px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all appearance-none">
-                        <option value="พนักงานขาย">🛒 พนักงานขาย</option>
-                        <option value="ผู้จัดการ">👔 ผู้จัดการ</option>
-                        <option value="แอดมิน">🔑 แอดมิน</option>
+                        <option value="" disabled selected>เลือกตำแหน่ง</option>
+                        <!-- โหลดจาก /api/roles อัตโนมัติ -->
                     </select>
                 </div>
 
@@ -1148,6 +1188,166 @@
                     <button type="submit" id="submit-employee-btn"
                         class="px-6 py-2.5 bg-cyan-500 hover:bg-cyan-400 text-slate-900 font-bold rounded-xl glow-button flex items-center gap-2">
                         <i class="fa-solid fa-floppy-disk"></i> บันทึกข้อมูล
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ROLE EDIT MODAL (จัดการสิทธิ์) -->
+    <div id="role-modal"
+        class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 backdrop-blur-sm opacity-0 pointer-events-none transition-opacity duration-300 p-4">
+        <div
+            class="relative w-full max-w-lg max-h-[90vh] overflow-y-auto p-6 md:p-8 bg-slate-800 rounded-2xl shadow-2xl border border-slate-700">
+            <!-- Modal Header -->
+            <div class="flex items-center justify-between mb-6 pb-4 border-b border-slate-700">
+                <h3 id="role-modal-title" class="text-xl font-bold text-white flex items-center gap-2">
+                    <i class="fa-solid fa-shield-halved text-amber-400"></i> เพิ่มบทบาทใหม่
+                </h3>
+                <button id="close-role-modal-btn" type="button"
+                    class="text-slate-400 hover:text-white transition-colors">
+                    <i class="fa-solid fa-xmark text-xl"></i>
+                </button>
+            </div>
+
+            <form id="role-form" class="space-y-6">
+                <input type="hidden" id="edit-role-id">
+
+                <!-- Role Name -->
+                <div class="space-y-2">
+                    <label class="text-sm font-medium text-slate-300">ชื่อตำแหน่ง <span
+                            class="text-red-400">*</span></label>
+                    <input type="text" id="role-name" required
+                        class="w-full px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white focus:border-amber-500 focus:ring-1 focus:ring-amber-500 focus:outline-none transition-all"
+                        placeholder="เช่น แอดมิน, ผู้จัดการ, พนักงานขาย">
+                </div>
+
+                <!-- Permission Toggles -->
+                <div class="space-y-1">
+                    <label class="text-sm font-medium text-slate-300 mb-3 block">สิทธิ์การใช้งาน</label>
+
+                    <div class="space-y-3 bg-slate-900/50 rounded-xl p-4 border border-slate-700">
+                        <!-- Toggle: view_dashboard -->
+                        <div class="flex items-center justify-between py-2">
+                            <div class="flex items-center gap-3">
+                                <i class="fa-solid fa-chart-pie text-blue-400 w-5 text-center"></i>
+                                <span class="text-sm text-slate-300">อนุญาตให้ดูแดชบอร์ด</span>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" id="perm-view_dashboard" class="sr-only peer">
+                                <div
+                                    class="w-11 h-6 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-slate-400 after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-cyan-500 peer-checked:after:bg-white peer-checked:shadow-[0_0_10px_rgba(6,182,212,0.5)]">
+                                </div>
+                            </label>
+                        </div>
+
+                        <!-- Toggle: manage_stock -->
+                        <div class="flex items-center justify-between py-2 border-t border-slate-700/50">
+                            <div class="flex items-center gap-3">
+                                <i class="fa-solid fa-box-open text-cyan-400 w-5 text-center"></i>
+                                <span class="text-sm text-slate-300">อนุญาตให้จัดการสต็อก</span>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" id="perm-manage_stock" class="sr-only peer">
+                                <div
+                                    class="w-11 h-6 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-slate-400 after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-cyan-500 peer-checked:after:bg-white peer-checked:shadow-[0_0_10px_rgba(6,182,212,0.5)]">
+                                </div>
+                            </label>
+                        </div>
+
+                        <!-- Toggle: delete_stock -->
+                        <div class="flex items-center justify-between py-2 border-t border-slate-700/50">
+                            <div class="flex items-center gap-3">
+                                <i class="fa-solid fa-trash text-red-400 w-5 text-center"></i>
+                                <span class="text-sm text-slate-300">อนุญาตให้ลบสินค้า</span>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" id="perm-delete_stock" class="sr-only peer">
+                                <div
+                                    class="w-11 h-6 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-slate-400 after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-cyan-500 peer-checked:after:bg-white peer-checked:shadow-[0_0_10px_rgba(6,182,212,0.5)]">
+                                </div>
+                            </label>
+                        </div>
+
+                        <!-- Toggle: do_pos -->
+                        <div class="flex items-center justify-between py-2 border-t border-slate-700/50">
+                            <div class="flex items-center gap-3">
+                                <i class="fa-solid fa-money-bill-transfer text-green-400 w-5 text-center"></i>
+                                <span class="text-sm text-slate-300">อนุญาตให้ขายสินค้า (POS)</span>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" id="perm-do_pos" class="sr-only peer">
+                                <div
+                                    class="w-11 h-6 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-slate-400 after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-cyan-500 peer-checked:after:bg-white peer-checked:shadow-[0_0_10px_rgba(6,182,212,0.5)]">
+                                </div>
+                            </label>
+                        </div>
+
+                        <!-- Toggle: manage_personnel -->
+                        <div class="flex items-center justify-between py-2 border-t border-slate-700/50">
+                            <div class="flex items-center gap-3">
+                                <i class="fa-solid fa-users text-purple-400 w-5 text-center"></i>
+                                <span class="text-sm text-slate-300">อนุญาตให้จัดการพนักงาน</span>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" id="perm-manage_personnel" class="sr-only peer">
+                                <div
+                                    class="w-11 h-6 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-slate-400 after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-cyan-500 peer-checked:after:bg-white peer-checked:shadow-[0_0_10px_rgba(6,182,212,0.5)]">
+                                </div>
+                            </label>
+                        </div>
+
+                        <!-- Toggle: manage_branches -->
+                        <div class="flex items-center justify-between py-2 border-t border-slate-700/50">
+                            <div class="flex items-center gap-3">
+                                <i class="fa-solid fa-store text-orange-400 w-5 text-center"></i>
+                                <span class="text-sm text-slate-300">อนุญาตให้จัดการสาขา</span>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" id="perm-manage_branches" class="sr-only peer">
+                                <div
+                                    class="w-11 h-6 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-slate-400 after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-cyan-500 peer-checked:after:bg-white peer-checked:shadow-[0_0_10px_rgba(6,182,212,0.5)]">
+                                </div>
+                            </label>
+                        </div>
+
+                        <!-- Toggle: manage_settings -->
+                        <div class="flex items-center justify-between py-2 border-t border-slate-700/50">
+                            <div class="flex items-center gap-3">
+                                <i class="fa-solid fa-gear text-slate-400 w-5 text-center"></i>
+                                <span class="text-sm text-slate-300">อนุญาตให้ตั้งค่าระบบ</span>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" id="perm-manage_settings" class="sr-only peer">
+                                <div
+                                    class="w-11 h-6 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-slate-400 after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-cyan-500 peer-checked:after:bg-white peer-checked:shadow-[0_0_10px_rgba(6,182,212,0.5)]">
+                                </div>
+                            </label>
+                        </div>
+
+                        <!-- Toggle: manage_roles -->
+                        <div class="flex items-center justify-between py-2 border-t border-slate-700/50">
+                            <div class="flex items-center gap-3">
+                                <i class="fa-solid fa-shield-halved text-amber-400 w-5 text-center"></i>
+                                <span class="text-sm text-slate-300">อนุญาตให้จัดการสิทธิ์</span>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" id="perm-manage_roles" class="sr-only peer">
+                                <div
+                                    class="w-11 h-6 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-slate-400 after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-cyan-500 peer-checked:after:bg-white peer-checked:shadow-[0_0_10px_rgba(6,182,212,0.5)]">
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Actions -->
+                <div class="pt-4 flex justify-end gap-3 border-t border-slate-700 mt-6">
+                    <button type="button" id="cancel-role-modal-btn"
+                        class="px-5 py-2.5 rounded-xl font-medium text-slate-300 hover:text-white hover:bg-slate-700 transition-colors">ยกเลิก</button>
+                    <button type="submit" id="submit-role-btn"
+                        class="px-6 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-900 font-bold rounded-xl flex items-center gap-2 transition-all shadow-lg shadow-amber-500/25">
+                        <i class="fa-solid fa-floppy-disk"></i> บันทึกสิทธิ์
                     </button>
                 </div>
             </form>

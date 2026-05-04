@@ -25,7 +25,12 @@ if (!MONGODB_URI) {
 }
 
 mongoose.connect(MONGODB_URI)
-    .then(() => console.log('เชื่อมต่อฐานข้อมูล MongoDB Atlas สำเร็จ'))
+    .then(async () => {
+        console.log('เชื่อมต่อฐานข้อมูล MongoDB Atlas สำเร็จ');
+        // Seed default roles ถ้ายังไม่มีข้อมูล
+        const { seedDefaultRoles } = require('./models');
+        await seedDefaultRoles();
+    })
     .catch((err) => {
         console.error('เกิดข้อผิดพลาดในการเชื่อมต่อฐานข้อมูล:', err);
         process.exit(1);
