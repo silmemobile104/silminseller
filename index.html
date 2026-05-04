@@ -365,14 +365,14 @@
                     <!-- User Profile -->
                     <div class="flex items-center gap-3 pl-4 border-l border-slate-700 cursor-pointer group">
                         <div class="flex flex-col text-right hidden sm:flex">
-                            <span class="text-sm font-semibold text-white">แอดมินระบบ</span>
-                            <span class="text-xs text-cyan-400">ผู้ดูแลระบบ</span>
+                            <span id="topbar-user-name" class="text-sm font-semibold text-white">กำลังโหลด...</span>
+                            <span id="topbar-user-role" class="text-xs text-cyan-400">-</span>
                         </div>
                         <div class="w-10 h-10 rounded-full bg-gradient-to-tr from-cyan-500 to-blue-600 p-[2px]">
                             <div
                                 class="w-full h-full rounded-full border-2 border-slate-800 bg-slate-800 flex items-center justify-center overflow-hidden">
-                                <img src="https://ui-avatars.com/api/?name=Admin+User&background=0D8ABC&color=fff"
-                                    alt="Admin" class="w-full h-full object-cover">
+                                <img id="topbar-user-avatar" src="https://ui-avatars.com/api/?name=User&background=0D8ABC&color=fff"
+                                    alt="User" class="w-full h-full object-cover">
                             </div>
                         </div>
                     </div>
@@ -383,74 +383,112 @@
             <div class="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
 
                 <!-- VIEW: Dashboard -->
-                <div id="view-dashboard" class="hidden space-y-8">
+                <div id="view-dashboard" class="hidden space-y-8 animate-fade-in">
                     <div>
                         <h3 class="text-2xl font-bold text-white">แดชบอร์ด</h3>
-                        <p class="text-slate-400 mt-1">ภาพรวมยอดขายและสถานะคลังสินค้า</p>
+                        <p class="text-slate-400 mt-1">ภาพรวมยอดขายและสถานะคลังสินค้า — อัพเดตอัตโนมัติ</p>
                     </div>
 
                     <!-- Stat Cards -->
                     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                        <!-- Card 1: ยอดขายวันนี้ (Cyan) -->
                         <div
-                            class="bg-slate-800 rounded-2xl p-6 border border-slate-700 shadow-[0_0_15px_rgba(59,130,246,0.1)] hover:border-blue-500/50 transition-colors">
+                            class="bg-slate-800 rounded-2xl p-6 border border-slate-700 shadow-[0_0_15px_rgba(6,182,212,0.15)] hover:border-cyan-500/50 hover:shadow-[0_0_25px_rgba(6,182,212,0.25)] transition-all duration-300">
                             <div class="flex items-center justify-between mb-4">
                                 <h4 class="text-slate-400 font-medium text-sm">ยอดขายวันนี้</h4>
                                 <div
-                                    class="w-10 h-10 rounded-full bg-blue-500/10 flex items-center justify-center text-blue-400">
+                                    class="w-10 h-10 rounded-full bg-cyan-500/10 flex items-center justify-center text-cyan-400">
                                     <i class="fa-solid fa-baht-sign text-lg"></i>
                                 </div>
                             </div>
-                            <p class="text-3xl font-bold text-white font-mono">0.00</p>
-                            <p class="text-xs text-emerald-400 mt-2"><i class="fa-solid fa-arrow-trend-up"></i> +0%
-                                จากเมื่อวาน</p>
+                            <p id="stat-today-sales" class="text-3xl font-bold text-white font-mono">฿0</p>
+                            <p class="text-xs text-cyan-400/80 mt-2 flex items-center gap-1">
+                                <i class="fa-solid fa-receipt"></i>
+                                <span id="stat-today-txn-count">0</span> รายการวันนี้
+                            </p>
                         </div>
 
+                        <!-- Card 2: กำไรสุทธิวันนี้ (Green) -->
                         <div
-                            class="bg-slate-800 rounded-2xl p-6 border border-slate-700 shadow-[0_0_15px_rgba(16,185,129,0.1)] hover:border-emerald-500/50 transition-colors">
+                            class="bg-slate-800 rounded-2xl p-6 border border-slate-700 shadow-[0_0_15px_rgba(16,185,129,0.15)] hover:border-emerald-500/50 hover:shadow-[0_0_25px_rgba(16,185,129,0.25)] transition-all duration-300">
                             <div class="flex items-center justify-between mb-4">
-                                <h4 class="text-slate-400 font-medium text-sm">สินค้าในสต็อกทั้งหมด</h4>
+                                <h4 class="text-slate-400 font-medium text-sm">กำไรสุทธิวันนี้</h4>
                                 <div
                                     class="w-10 h-10 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-400">
-                                    <i class="fa-solid fa-boxes-stacked text-lg"></i>
-                                </div>
-                            </div>
-                            <p class="text-3xl font-bold text-white font-mono">0</p>
-                            <p class="text-xs text-slate-500 mt-2">รวมทุกหมวดหมู่</p>
-                        </div>
-
-                        <div
-                            class="bg-slate-800 rounded-2xl p-6 border border-slate-700 shadow-[0_0_15px_rgba(245,158,11,0.1)] hover:border-yellow-500/50 transition-colors">
-                            <div class="flex items-center justify-between mb-4">
-                                <h4 class="text-slate-400 font-medium text-sm">รายการค้างสต็อก</h4>
-                                <div
-                                    class="w-10 h-10 rounded-full bg-yellow-500/10 flex items-center justify-center text-yellow-400">
-                                    <i class="fa-solid fa-triangle-exclamation text-lg"></i>
-                                </div>
-                            </div>
-                            <p class="text-3xl font-bold text-white font-mono">0</p>
-                            <p class="text-xs text-slate-500 mt-2">สินค้าที่ยังไม่ได้ขาย</p>
-                        </div>
-
-                        <div
-                            class="bg-slate-800 rounded-2xl p-6 border border-slate-700 shadow-[0_0_15px_rgba(168,85,247,0.1)] hover:border-purple-500/50 transition-colors">
-                            <div class="flex items-center justify-between mb-4">
-                                <h4 class="text-slate-400 font-medium text-sm">กำไรสุทธิ</h4>
-                                <div
-                                    class="w-10 h-10 rounded-full bg-purple-500/10 flex items-center justify-center text-purple-400">
                                     <i class="fa-solid fa-chart-line text-lg"></i>
                                 </div>
                             </div>
-                            <p class="text-3xl font-bold text-white font-mono">0.00</p>
-                            <p class="text-xs text-slate-500 mt-2">คำนวณจากต้นทุน</p>
+                            <p id="stat-today-profit" class="text-3xl font-bold text-white font-mono">฿0</p>
+                            <p class="text-xs text-emerald-400/80 mt-2 flex items-center gap-1">
+                                <i class="fa-solid fa-arrow-trend-up"></i>
+                                คำนวณจากต้นทุนสินค้า
+                            </p>
+                        </div>
+
+                        <!-- Card 3: สินค้าในสต็อกทั้งหมด (Purple) -->
+                        <div
+                            class="bg-slate-800 rounded-2xl p-6 border border-slate-700 shadow-[0_0_15px_rgba(168,85,247,0.15)] hover:border-purple-500/50 hover:shadow-[0_0_25px_rgba(168,85,247,0.25)] transition-all duration-300">
+                            <div class="flex items-center justify-between mb-4">
+                                <h4 class="text-slate-400 font-medium text-sm">สินค้าในสต็อกทั้งหมด</h4>
+                                <div
+                                    class="w-10 h-10 rounded-full bg-purple-500/10 flex items-center justify-center text-purple-400">
+                                    <i class="fa-solid fa-boxes-stacked text-lg"></i>
+                                </div>
+                            </div>
+                            <p id="stat-total-stock" class="text-3xl font-bold text-white font-mono">0</p>
+                            <p class="text-xs text-purple-400/80 mt-2 flex items-center gap-1">
+                                <i class="fa-solid fa-cube"></i>
+                                <span id="stat-total-products">0</span> รายการ รวมทุกหมวดหมู่
+                            </p>
+                        </div>
+
+                        <!-- Card 4: สินค้าใกล้หมด (Red/Amber) -->
+                        <div
+                            class="bg-slate-800 rounded-2xl p-6 border border-slate-700 shadow-[0_0_15px_rgba(245,158,11,0.15)] hover:border-amber-500/50 hover:shadow-[0_0_25px_rgba(245,158,11,0.25)] transition-all duration-300">
+                            <div class="flex items-center justify-between mb-4">
+                                <h4 class="text-slate-400 font-medium text-sm">สินค้าใกล้หมด</h4>
+                                <div
+                                    class="w-10 h-10 rounded-full bg-amber-500/10 flex items-center justify-center text-amber-400">
+                                    <i class="fa-solid fa-triangle-exclamation text-lg"></i>
+                                </div>
+                            </div>
+                            <p id="stat-low-stock" class="text-3xl font-bold text-white font-mono">0</p>
+                            <p class="text-xs text-amber-400/80 mt-2 flex items-center gap-1">
+                                <i class="fa-solid fa-circle-exclamation"></i>
+                                สินค้าคงเหลือน้อยกว่า 5 ชิ้น
+                            </p>
                         </div>
                     </div>
 
-                    <!-- Chart Placeholder -->
-                    <div
-                        class="bg-slate-800 rounded-2xl border border-slate-700 p-6 h-80 flex flex-col items-center justify-center text-slate-500 border-dashed">
-                        <i class="fa-solid fa-chart-area text-4xl mb-3"></i>
-                        <p class="font-medium">พื้นที่แสดงกราฟยอดขาย</p>
-                        <p class="text-sm mt-1">กำลังพัฒนาในเฟสถัดไป</p>
+                    <!-- Recent Transactions Table -->
+                    <div class="bg-slate-800 rounded-2xl border border-slate-700 shadow-lg overflow-hidden">
+                        <div class="p-6 border-b border-slate-700 flex items-center justify-between">
+                            <h3 class="text-lg font-bold text-white flex items-center gap-2">
+                                <i class="fa-solid fa-clock-rotate-left text-cyan-400"></i>
+                                รายการขายล่าสุด
+                            </h3>
+                            <span id="stat-recent-badge"
+                                class="bg-cyan-500/20 text-cyan-400 text-xs font-bold px-3 py-1 rounded-full border border-cyan-500/30">
+                                10 รายการล่าสุด
+                            </span>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left text-sm whitespace-nowrap">
+                                <thead class="bg-slate-900/50 text-slate-400">
+                                    <tr>
+                                        <th class="px-6 py-4 font-medium">เลขที่ใบเสร็จ</th>
+                                        <th class="px-6 py-4 font-medium">สาขา</th>
+                                        <th class="px-6 py-4 font-medium text-center">จำนวนรายการ</th>
+                                        <th class="px-6 py-4 font-medium">ช่องทางชำระ</th>
+                                        <th class="px-6 py-4 font-medium text-right">ยอดรวม</th>
+                                        <th class="px-6 py-4 font-medium text-right">เวลา</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="recent-txn-table-body" class="divide-y divide-slate-700/50">
+                                    <!-- Data loaded by JS -->
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
 
@@ -505,107 +543,171 @@
                 </div>
 
                 <!-- VIEW: Transactions (POS) -->
-                <div id="view-transactions" class="hidden h-[calc(100vh-8rem)]">
+                <div id="view-transactions" class="hidden h-[calc(100vh-8rem)] animate-fade-in">
                     <div class="flex flex-col lg:flex-row gap-6 h-full">
-                        <!-- Left: Product Search & Grid -->
-                        <div
-                            class="flex-1 flex flex-col h-full bg-slate-800 rounded-2xl border border-slate-700 shadow-lg p-6">
-                            <h3 class="text-xl font-bold text-white mb-4">รายการขาย</h3>
-                            <div class="relative mb-6">
-                                <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                                    <i class="fa-solid fa-barcode text-slate-500"></i>
+                        <!-- Left Column: Search & Product Grid -->
+                        <div class="flex-1 flex flex-col h-full bg-slate-800 rounded-2xl border border-slate-700 shadow-lg overflow-hidden">
+                            <!-- Search Header -->
+                            <div class="p-5 border-b border-slate-700 bg-slate-800/90">
+                                <h3 class="text-xl font-bold text-white mb-4 flex items-center gap-2">
+                                    <i class="fa-solid fa-cash-register text-cyan-400"></i> จุดขายสินค้า (POS)
+                                </h3>
+                                <div class="relative">
+                                    <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                        <i class="fa-solid fa-barcode text-cyan-500 text-lg"></i>
+                                    </div>
+                                    <input type="text" id="pos-search-input"
+                                        placeholder="ค้นหาสินค้า / สแกนบาร์โค้ด / สแกน IMEI..."
+                                        class="w-full bg-slate-900 border-2 border-slate-600 text-base rounded-xl pl-12 pr-4 py-3.5 text-white focus:outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/30 transition-all placeholder-slate-500 font-medium"
+                                        autocomplete="off">
+                                    <div class="absolute inset-y-0 right-0 pr-4 flex items-center">
+                                        <kbd class="px-2 py-1 bg-slate-700 text-slate-400 text-xs rounded-md border border-slate-600 font-mono">Enter</kbd>
+                                    </div>
                                 </div>
-                                <input type="text" placeholder="สแกนบาร์โค้ด / ค้นหาชื่อสินค้า..."
-                                    class="w-full bg-slate-900 border border-slate-700 text-base rounded-xl pl-12 pr-4 py-3 text-white focus:outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-all placeholder-slate-500">
                             </div>
-                            <div
-                                class="flex-1 border-2 border-dashed border-slate-700 rounded-xl flex flex-col items-center justify-center text-slate-500">
-                                <i class="fa-solid fa-cart-arrow-down text-4xl mb-3"></i>
-                                <p class="font-medium text-lg">เริ่มสแกนสินค้าเพื่อทำรายการขาย</p>
+                            <!-- Product Results Grid -->
+                            <div id="pos-product-grid" class="flex-1 overflow-y-auto p-5">
+                                <!-- Empty State -->
+                                <div id="pos-empty-state" class="flex flex-col items-center justify-center h-full text-slate-500">
+                                    <div class="w-24 h-24 rounded-full bg-slate-700/30 flex items-center justify-center mb-5 border border-slate-700">
+                                        <i class="fa-solid fa-magnifying-glass text-4xl text-slate-600"></i>
+                                    </div>
+                                    <p class="font-semibold text-lg text-slate-400">ค้นหาสินค้าเพื่อเริ่มขาย</p>
+                                    <p class="text-sm text-slate-600 mt-1">พิมพ์ชื่อสินค้า, รหัสสินค้า หรือ IMEI</p>
+                                </div>
+                                <!-- Search Results Container -->
+                                <div id="pos-search-results" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 hidden">
+                                    <!-- Product cards injected here -->
+                                </div>
                             </div>
                         </div>
 
-                        <!-- Right: Cart Summary -->
-                        <div
-                            class="w-full lg:w-96 flex flex-col h-full bg-slate-800 rounded-2xl border border-slate-700 shadow-lg p-6">
-                            <h3 class="text-xl font-bold text-white mb-4 flex items-center gap-2">
-                                <i class="fa-solid fa-basket-shopping text-green-400"></i> ตะกร้าสินค้า
-                            </h3>
-                            <div
-                                class="flex-1 border border-slate-700 rounded-xl bg-slate-900/50 mb-6 p-4 flex items-center justify-center text-slate-500">
-                                <p>ไม่มีสินค้าในตะกร้า</p>
+                        <!-- Right Column: Cart -->
+                        <div class="w-full lg:w-[420px] flex flex-col h-full bg-slate-800 rounded-2xl border border-slate-700 shadow-lg overflow-hidden">
+                            <!-- Cart Header -->
+                            <div class="p-5 border-b border-slate-700 bg-slate-800/90">
+                                <h3 class="text-xl font-bold text-white flex items-center gap-2">
+                                    <i class="fa-solid fa-basket-shopping text-cyan-400"></i>
+                                    ตะกร้าสินค้า
+                                    <span id="cart-count-badge" class="ml-auto bg-cyan-500/20 text-cyan-400 text-sm font-bold px-3 py-1 rounded-full border border-cyan-500/30">0 รายการ</span>
+                                </h3>
                             </div>
-                            <div class="space-y-3 mb-6">
-                                <div class="flex justify-between text-slate-400">
-                                    <span>ยอดรวม</span>
-                                    <span class="font-mono text-white">0.00</span>
+
+                            <!-- Cart Items List -->
+                            <div id="cart-items-container" class="flex-1 overflow-y-auto p-4 space-y-3">
+                                <!-- Empty Cart State -->
+                                <div id="cart-empty-state" class="flex flex-col items-center justify-center h-full text-slate-500">
+                                    <div class="w-20 h-20 rounded-full bg-slate-700/30 flex items-center justify-center mb-4 border border-slate-700">
+                                        <i class="fa-solid fa-cart-shopping text-3xl text-slate-600"></i>
+                                    </div>
+                                    <p class="font-medium text-slate-400">ไม่มีสินค้าในตะกร้า</p>
+                                    <p class="text-sm text-slate-600 mt-1">เพิ่มสินค้าจากด้านซ้าย</p>
                                 </div>
-                                <div class="flex justify-between text-slate-400">
-                                    <span>ส่วนลด</span>
-                                    <span class="font-mono text-white">0.00</span>
-                                </div>
-                                <div
-                                    class="flex justify-between text-lg font-bold text-white pt-3 border-t border-slate-700">
-                                    <span>ยอดสุทธิ</span>
-                                    <span class="font-mono text-green-400">0.00 ฿</span>
-                                </div>
+                                <!-- Cart items injected here -->
                             </div>
-                            <button
-                                class="w-full py-4 bg-green-500 hover:bg-green-400 text-slate-900 font-bold text-lg rounded-xl shadow-[0_0_20px_rgba(34,197,94,0.3)] transition-all">
-                                ชำระเงิน
+
+                            <!-- Cart Summary & Checkout -->
+                            <div class="p-5 border-t border-slate-700 bg-slate-900/50 space-y-4">
+                                <!-- Summary -->
+                                <div class="space-y-2">
+                                    <div class="flex justify-between items-center text-slate-400">
+                                        <span class="text-sm">ยอดรวมสินค้า</span>
+                                        <span id="cart-subtotal" class="font-mono text-white font-semibold">฿0.00</span>
+                                    </div>
+                                    <div class="flex justify-between items-center pt-3 border-t border-slate-700">
+                                        <span class="text-lg font-bold text-white">ยอดรวมทั้งหมด</span>
+                                        <span id="cart-total" class="text-2xl font-bold font-mono text-cyan-400">฿0.00</span>
+                                    </div>
+                                </div>
+
+                                <!-- Payment Method -->
+                                <div class="space-y-2">
+                                    <label class="text-sm font-medium text-slate-400">ช่องทางการชำระเงิน</label>
+                                    <select id="payment-method"
+                                        class="w-full px-4 py-3 rounded-xl bg-slate-900 border border-slate-600 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all appearance-none text-sm font-medium">
+                                        <option value="" disabled selected>-- เลือกช่องทาง --</option>
+                                        <option value="เงินสด">💵 เงินสด</option>
+                                        <option value="โอนเงิน">📱 โอนเงิน</option>
+                                        <option value="จัดไฟแนนซ์">🏦 จัดไฟแนนซ์</option>
+                                    </select>
+                                </div>
+
+                                <!-- Checkout Button -->
+                                <button id="btn-checkout"
+                                    class="w-full py-4 bg-gradient-to-r from-cyan-500 to-cyan-400 hover:from-cyan-400 hover:to-cyan-300 text-slate-900 font-bold text-lg rounded-xl shadow-[0_0_25px_rgba(6,182,212,0.4)] hover:shadow-[0_0_35px_rgba(6,182,212,0.6)] transition-all transform hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none disabled:hover:shadow-none">
+                                    <i class="fa-solid fa-receipt text-xl"></i>
+                                    ยืนยันการขาย (Checkout)
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- IMEI Selection Modal -->
+                <div id="imei-select-modal"
+                    class="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/80 backdrop-blur-sm opacity-0 pointer-events-none transition-opacity duration-300 p-4">
+                    <div class="relative w-full max-w-md max-h-[80vh] flex flex-col bg-slate-800 rounded-2xl shadow-2xl border border-slate-700 overflow-hidden">
+                        <div class="p-5 border-b border-slate-700 flex items-center justify-between">
+                            <h4 class="text-lg font-bold text-white flex items-center gap-2">
+                                <i class="fa-solid fa-sim-card text-cyan-400"></i>
+                                เลือก IMEI สำหรับขาย
+                            </h4>
+                            <button id="close-imei-modal" class="text-slate-400 hover:text-white transition-colors p-1">
+                                <i class="fa-solid fa-xmark text-lg"></i>
                             </button>
+                        </div>
+                        <div class="p-4 border-b border-slate-700">
+                            <input type="text" id="imei-search-input" placeholder="ค้นหา IMEI..."
+                                class="w-full px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-600 text-white text-sm focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all placeholder-slate-500">
+                        </div>
+                        <div id="imei-list-container" class="flex-1 overflow-y-auto p-4 space-y-2 max-h-[400px]">
+                            <!-- IMEI items injected here -->
                         </div>
                     </div>
                 </div>
 
                 <!-- VIEW: Personnel -->
-                <div id="view-personnel" class="hidden space-y-8">
+                <div id="view-personnel" class="hidden space-y-8 animate-fade-in">
                     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                         <div>
                             <h3 class="text-2xl font-bold text-white">จัดการพนักงาน</h3>
                             <p class="text-slate-400 mt-1">เพิ่ม ลบ และจัดการสิทธิ์การเข้าใช้งาน</p>
                         </div>
-                        <button
-                            class="px-4 py-2 bg-purple-500 hover:bg-purple-400 text-white font-medium rounded-xl shadow-[0_0_15px_rgba(168,85,247,0.3)] transition-all flex items-center gap-2 w-fit">
+                        <button id="btn-add-employee"
+                            class="px-4 py-2 bg-cyan-500 hover:bg-cyan-400 text-slate-900 font-medium rounded-xl shadow-lg shadow-cyan-500/20 transition-all flex items-center gap-2 w-fit glow-button">
                             <i class="fa-solid fa-user-plus"></i>
                             เพิ่มพนักงาน
                         </button>
                     </div>
 
                     <div class="bg-slate-800 rounded-2xl border border-slate-700 shadow-lg overflow-hidden">
-                        <table class="w-full text-left text-sm whitespace-nowrap">
-                            <thead class="bg-slate-900/50 text-slate-400">
-                                <tr>
-                                    <th class="px-6 py-4 font-medium">ชื่อพนักงาน</th>
-                                    <th class="px-6 py-4 font-medium">รหัสพนักงาน</th>
-                                    <th class="px-6 py-4 font-medium">สาขา</th>
-                                    <th class="px-6 py-4 font-medium">สิทธิ์การใช้งาน</th>
-                                    <th class="px-6 py-4 font-medium text-right">จัดการ</th>
-                                </tr>
-                            </thead>
-                            <tbody class="divide-y divide-slate-700/50">
-                                <tr class="hover:bg-slate-700/20 transition-colors">
-                                    <td class="px-6 py-4">
-                                        <div class="flex items-center gap-3">
-                                            <div class="w-8 h-8 rounded-full bg-slate-700 overflow-hidden">
-                                                <img src="https://ui-avatars.com/api/?name=Admin+User&background=0D8ABC&color=fff"
-                                                    alt="Admin" class="w-full h-full object-cover">
-                                            </div>
-                                            <p class="font-medium text-white">Admin User</p>
-                                        </div>
-                                    </td>
-                                    <td class="px-6 py-4 text-slate-400">ADMIN-001</td>
-                                    <td class="px-6 py-4 text-slate-400">สำนักงานใหญ่</td>
-                                    <td class="px-6 py-4"><span
-                                            class="px-2.5 py-1 bg-purple-500/10 text-purple-400 rounded-md text-xs font-medium border border-purple-500/20">ผู้ดูแลระบบ</span>
-                                    </td>
-                                    <td class="px-6 py-4 text-right">
-                                        <button class="text-slate-400 hover:text-cyan-400 transition-colors p-2"><i
-                                                class="fa-solid fa-pen"></i></button>
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
+                        <div class="p-6 border-b border-slate-700 flex items-center justify-between">
+                            <h3 class="text-lg font-bold text-white">รายชื่อพนักงานทั้งหมด</h3>
+                            <span id="employee-count-badge" class="bg-cyan-500/20 text-cyan-400 text-sm font-bold px-3 py-1 rounded-full border border-cyan-500/30">0 คน</span>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left text-sm whitespace-nowrap">
+                                <thead class="bg-slate-900/50 text-slate-400">
+                                    <tr>
+                                        <th class="px-6 py-4 font-medium">ชื่อ-นามสกุล</th>
+                                        <th class="px-6 py-4 font-medium">รหัสพนักงาน</th>
+                                        <th class="px-6 py-4 font-medium">ระดับสิทธิ์</th>
+                                        <th class="px-6 py-4 font-medium">สาขาที่ประจำการ</th>
+                                        <th class="px-6 py-4 font-medium text-right">จัดการ</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="employee-table-body" class="divide-y divide-slate-700/50">
+                                    <!-- Data will be loaded here -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Empty State -->
+                    <div id="employee-empty-state" class="hidden flex flex-col items-center justify-center p-12 border-2 border-dashed border-slate-700 rounded-2xl">
+                        <i class="fa-solid fa-user-slash text-5xl text-slate-600 mb-4"></i>
+                        <h4 class="text-lg font-medium text-white">ยังไม่มีข้อมูลพนักงาน</h4>
+                        <p class="text-slate-400 mt-1">กรุณาเพิ่มพนักงานใหม่เพื่อเริ่มใช้งาน</p>
                     </div>
                 </div>
 
@@ -742,6 +844,21 @@
                                 <option value="" disabled selected>เลือกผู้จัดจำหน่าย</option>
                             </select>
                         </div>
+                    </div>
+                </div>
+
+                <!-- ที่จัดเก็บ (สาขา) -->
+                <div class="space-y-2">
+                    <label class="text-sm font-medium text-slate-300">ที่จัดเก็บ / สาขา <span class="text-red-400">*</span></label>
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                            <i class="fa-solid fa-store text-slate-500"></i>
+                        </div>
+                        <select id="product-branch" required
+                            class="w-full px-4 py-2.5 pl-10 rounded-xl bg-slate-900 border border-slate-700 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all appearance-none">
+                            <option value="" disabled selected>เลือกสาขาที่จัดเก็บ</option>
+                            <!-- Branches loaded dynamically -->
+                        </select>
                     </div>
                 </div>
 
@@ -942,6 +1059,93 @@
                     <button type="button" id="cancel-branch-modal-btn"
                         class="px-5 py-2.5 rounded-xl font-medium text-slate-300 hover:text-white hover:bg-slate-700 transition-colors">ยกเลิก</button>
                     <button type="submit" id="submit-branch-btn"
+                        class="px-6 py-2.5 bg-cyan-500 hover:bg-cyan-400 text-slate-900 font-bold rounded-xl glow-button flex items-center gap-2">
+                        <i class="fa-solid fa-floppy-disk"></i> บันทึกข้อมูล
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ADD/EDIT EMPLOYEE MODAL -->
+    <div id="employee-modal"
+        class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 backdrop-blur-sm opacity-0 pointer-events-none transition-opacity duration-300 p-4">
+        <div
+            class="relative w-full max-w-md bg-slate-800 rounded-2xl shadow-2xl border border-slate-700 p-6 md:p-8 transform scale-95 transition-transform duration-300">
+            <div class="flex items-center justify-between mb-6 pb-4 border-b border-slate-700">
+                <h3 id="employee-modal-title" class="text-2xl font-bold text-white flex items-center gap-2">
+                    <i class="fa-solid fa-user-plus text-cyan-400"></i> เพิ่มพนักงานใหม่
+                </h3>
+                <button id="close-employee-modal-btn" type="button"
+                    class="text-slate-400 hover:text-white transition-colors">
+                    <i class="fa-solid fa-xmark text-xl"></i>
+                </button>
+            </div>
+
+            <form id="employee-form" class="space-y-4">
+                <input type="hidden" id="employee-edit-id" value="">
+
+                <div class="space-y-2">
+                    <label class="text-sm font-medium text-slate-300">ชื่อ-นามสกุล <span
+                            class="text-red-400">*</span></label>
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                            <i class="fa-solid fa-user text-slate-500"></i>
+                        </div>
+                        <input type="text" id="emp-name" required placeholder="เช่น สมชาย ใจดี"
+                            class="w-full px-4 pl-10 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all">
+                    </div>
+                </div>
+
+                <div class="space-y-2">
+                    <label class="text-sm font-medium text-slate-300">รหัสเข้าใช้งาน / Username <span
+                            class="text-red-400">*</span></label>
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                            <i class="fa-solid fa-id-badge text-slate-500"></i>
+                        </div>
+                        <input type="text" id="emp-id" required placeholder="เช่น EMP-001"
+                            class="w-full px-4 pl-10 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all">
+                    </div>
+                </div>
+
+                <div class="space-y-2">
+                    <label class="text-sm font-medium text-slate-300">รหัสผ่าน <span id="password-required-star"
+                            class="text-red-400">*</span></label>
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                            <i class="fa-solid fa-lock text-slate-500"></i>
+                        </div>
+                        <input type="password" id="emp-password" placeholder="ตั้งรหัสผ่าน"
+                            class="w-full px-4 pl-10 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all">
+                    </div>
+                    <p id="emp-password-hint" class="text-xs text-slate-500 hidden">เว้นว่างไว้หากไม่ต้องการเปลี่ยนรหัสผ่าน</p>
+                </div>
+
+                <div class="space-y-2">
+                    <label class="text-sm font-medium text-slate-300">สาขา</label>
+                    <select id="emp-branch"
+                        class="w-full px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all appearance-none">
+                        <option value="">-- ไม่ระบุสาขา --</option>
+                        <!-- Branches loaded dynamically -->
+                    </select>
+                </div>
+
+                <div class="space-y-2">
+                    <label class="text-sm font-medium text-slate-300">ระดับสิทธิ์ <span
+                            class="text-red-400">*</span></label>
+                    <select id="emp-role" required
+                        class="w-full px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all appearance-none">
+                        <option value="พนักงานขาย">🛒 พนักงานขาย</option>
+                        <option value="ผู้จัดการ">👔 ผู้จัดการ</option>
+                        <option value="แอดมิน">🔑 แอดมิน</option>
+                    </select>
+                </div>
+
+                <div class="pt-4 flex justify-end gap-3 border-t border-slate-700 mt-6">
+                    <button type="button" id="cancel-employee-modal-btn"
+                        class="px-5 py-2.5 rounded-xl font-medium text-slate-300 hover:text-white hover:bg-slate-700 transition-colors">ยกเลิก</button>
+                    <button type="submit" id="submit-employee-btn"
                         class="px-6 py-2.5 bg-cyan-500 hover:bg-cyan-400 text-slate-900 font-bold rounded-xl glow-button flex items-center gap-2">
                         <i class="fa-solid fa-floppy-disk"></i> บันทึกข้อมูล
                     </button>

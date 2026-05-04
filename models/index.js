@@ -9,9 +9,10 @@ const Branch = mongoose.model('Branch', branchSchema, 'branch');
 
 // 2. Employee (พนักงาน)
 const employeeSchema = new mongoose.Schema({
-    name: { type: String, required: true }, // ชื่อพนักงาน
+    name: { type: String, required: true }, // ชื่อ-นามสกุล
     emp_id: { type: String, required: true, unique: true }, // รหัสพนักงาน (ใช้เป็น username)
-    password: { type: String, required: true }, // รหัสผ่าน
+    password: { type: String, required: true }, // รหัสผ่าน (hashed with bcrypt)
+    role: { type: String, enum: ['แอดมิน', 'ผู้จัดการ', 'พนักงานขาย'], default: 'พนักงานขาย' }, // ระดับสิทธิ์
     branch_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Branch' } // สังกัดสาขา
 }, { timestamps: true });
 const Employee = mongoose.model('Employee', employeeSchema, 'employee');
@@ -81,6 +82,23 @@ const productSchema = new mongoose.Schema({
 }, { timestamps: true });
 const Product = mongoose.model('Product', productSchema, 'product');
 
+// 11. Transaction (รายการขาย)
+const transactionSchema = new mongoose.Schema({
+    receipt_number: { type: String, required: true, unique: true }, // เลขที่ใบเสร็จ (Auto-generated: INV-วันที่-สุ่ม)
+    branch_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Branch' }, // สาขาที่ทำรายการ
+    items: [{
+        product_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Product' },
+        product_name: { type: String }, // ชื่อสินค้า
+        imei_sold: { type: String, default: '' }, // IMEI ที่ขาย (ถ้ามี)
+        quantity: { type: Number, default: 1 }, // จำนวน
+        price: { type: Number, default: 0 } // ราคาต่อชิ้น
+    }],
+    total_amount: { type: Number, required: true }, // ยอดรวมทั้งหมด
+    payment_method: { type: String, required: true }, // วิธีชำระเงิน: เงินสด, โอนเงิน, จัดไฟแนนซ์
+    created_at: { type: Date, default: Date.now } // วันที่ทำรายการ
+}, { timestamps: true });
+const Transaction = mongoose.model('Transaction', transactionSchema, 'transaction');
+
 module.exports = {
     Branch,
     Employee,
@@ -91,5 +109,6 @@ module.exports = {
     ProductCondition,
     ProductName,
     Supplier,
-    Product
+    Product,
+    Transaction
 };
