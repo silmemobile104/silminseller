@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ใบเสร็จรับเงิน - SilminMobile</title>
+    <style>
+        @font-face {
+            font-family: 'Sarabun';
+            src: url('https://fonts.googleapis.com/css2?family=Sarabun:wght@100;400;700&display=swap');
+        }
+        body {
+            font-family: 'Sarabun', sans-serif;
+            background-color: white;
+            color: black;
+            margin: 0;
+            padding: 20px;
+            font-size: 14px;
+        }
+        .receipt-container {
+            max-width: 800px;
+            margin: 0 auto;
+            border: 1px solid #eee;
+            padding: 30px;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #333;
+            padding-bottom: 20px;
+        }
+        .store-name {
+            font-size: 28px;
+            font-weight: bold;
+            margin: 0;
+            color: #000;
+        }
+        .branch-info {
+            font-size: 16px;
+            color: #555;
+            margin-top: 5px;
+        }
+        .receipt-info {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 30px;
+        }
+        .receipt-info-item {
+            display: flex;
+            flex-direction: column;
+        }
+        .label {
+            font-weight: bold;
+            color: #666;
+            font-size: 12px;
+            text-transform: uppercase;
+        }
+        .value {
+            font-size: 15px;
+            margin-top: 2px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 30px;
+        }
+        th {
+            text-align: left;
+            border-bottom: 2px solid #333;
+            padding: 12px 5px;
+            font-size: 13px;
+        }
+        td {
+            padding: 12px 5px;
+            border-bottom: 1px solid #eee;
+            vertical-align: top;
+        }
+        .item-details {
+            font-size: 12px;
+            color: #666;
+            margin-top: 4px;
+        }
+        .totals {
+            width: 300px;
+            margin-left: auto;
+        }
+        .total-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+        }
+        .total-row.grand-total {
+            border-top: 2px solid #333;
+            margin-top: 10px;
+            padding-top: 15px;
+            font-size: 20px;
+            font-weight: bold;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 50px;
+            border-top: 1px dashed #ccc;
+            padding-top: 20px;
+            color: #777;
+        }
+        .payment-method {
+            margin-top: 20px;
+            font-size: 12px;
+            font-style: italic;
+        }
+        @media print {
+            body { padding: 0; }
+            .receipt-container { border: none; max-width: 100%; }
+            button { display: none; }
+        }
+    </style>
+</head>
+<body>
+    <div class="receipt-container" id="receipt">
+        <div class="header">
+            <h1 class="store-name">SilminMobile</h1>
+            <div class="branch-info" id="branch-name">สาขาหลัก</div>
+            <div class="branch-info" id="receipt-date">วันที่: --/--/---- --:--</div>
+        </div>
+
+        <div class="receipt-info">
+            <div class="receipt-info-item">
+                <span class="label">เลขที่ใบเสร็จ / Receipt No.</span>
+                <span class="value" id="receipt-number">INV-XXXXXX</span>
+            </div>
+            <div class="receipt-info-item" style="text-align: right;">
+                <span class="label">พนักงานขาย / Seller</span>
+                <span class="value" id="employee-name">Admin</span>
+            </div>
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th style="width: 50%;">รายการสินค้า / Items</th>
+                    <th style="text-align: center; width: 15%;">จำนวน / Qty</th>
+                    <th style="text-align: right; width: 15%;">ราคา / Price</th>
+                    <th style="text-align: right; width: 20%;">รวม / Subtotal</th>
+                </tr>
+            </thead>
+            <tbody id="items-list">
+                <!-- Items will be injected here -->
+            </tbody>
+        </table>
+
+        <div class="totals">
+            <div class="total-row">
+                <span>ยอดรวม / Subtotal:</span>
+                <span id="subtotal">฿0.00</span>
+            </div>
+            <div class="total-row">
+                <span>ส่วนลด / Discount:</span>
+                <span id="discount">฿0.00</span>
+            </div>
+            <div class="total-row grand-total">
+                <span>รวมทั้งสิ้น / Total:</span>
+                <span id="total-amount">฿0.00</span>
+            </div>
+        </div>
+
+        <div class="payment-method">
+            ช่องทางชำระเงิน: <span id="payment-method-text">เงินสด</span>
+        </div>
+
+        <div class="footer">
+            <p>*** ขอบคุณที่ใช้บริการ SilminMobile ***</p>
+            <p>กรุณาเก็บใบเสร็จไว้เพื่อเป็นหลักฐาน</p>
+        </div>
+    </div>
+
+    <script>
+        // This script will be used to populate data when the window is opened
+        window.addEventListener('message', function(event) {
+            const data = event.data;
+            if (data && data.type === 'PRINT_RECEIPT') {
+                populateReceipt(data.payload);
+            }
+        });
+
+        function populateReceipt(txn) {
+            document.getElementById('branch-name').textContent = txn.branch_id ? txn.branch_id.name : 'สาขาหลัก';
+            document.getElementById('receipt-date').textContent = 'วันที่: ' + new Date(txn.created_at).toLocaleString('th-TH');
+            document.getElementById('receipt-number').textContent = txn.receipt_number;
+            document.getElementById('employee-name').textContent = txn.employee_id ? txn.employee_id.name : 'Admin';
+            
+            const itemsList = document.getElementById('items-list');
+            itemsList.innerHTML = '';
+            
+            let subtotal = 0;
+            txn.items.forEach(item => {
+                const itemTotal = item.quantity * item.price;
+                subtotal += itemTotal;
+                
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>
+                        <div style="font-weight: bold;">${item.product_name}</div>
+                        ${item.imei_sold ? `<div class="item-details">IMEI: ${item.imei_sold}</div>` : ''}
+                    </td>
+                    <td style="text-align: center;">${item.quantity}</td>
+                    <td style="text-align: right;">฿${item.price.toLocaleString()}</td>
+                    <td style="text-align: right;">฿${itemTotal.toLocaleString()}</td>
+                `;
+                itemsList.appendChild(row);
+            });
+
+            document.getElementById('subtotal').textContent = '฿' + subtotal.toLocaleString(undefined, {minimumFractionDigits: 2});
+            document.getElementById('total-amount').textContent = '฿' + txn.total_amount.toLocaleString(undefined, {minimumFractionDigits: 2});
+            document.getElementById('payment-method-text').textContent = txn.payment_method;
+
+            // Trigger print after a short delay to ensure rendering
+            setTimeout(() => {
+                window.print();
+                // Optionally close the window after printing
+                // window.close();
+            }, 500);
+        }
+    </script>
+</body>
+</html>

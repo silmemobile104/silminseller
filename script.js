@@ -197,7 +197,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.head.appendChild(style);
 
     // Fetch Master Data
-    const fetchMasterData = async () => {
+    async function fetchMasterData() {
         try {
             const response = await authFetch(`${API_BASE_URL}/master-data`);
             const json = await response.json();
@@ -216,16 +216,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 // โหลดสาขาสำหรับ dropdown ที่จัดเก็บสินค้า
                 loadBranchesForProductForm();
 
-                if (typeof renderSettingsList === 'function') {
-                    renderSettingsList();
-                }
+                renderSettingsList();
             } else {
                 console.error('Failed to load master data:', json.message);
             }
         } catch (error) {
             console.error('Error fetching master data:', error);
         }
-    };
+    }
 
     const populateDropdown = (selectElement, dataArray, defaultText) => {
         if (!selectElement) return;
@@ -367,27 +365,8 @@ document.addEventListener('DOMContentLoaded', () => {
         window.__userPermissions = permissions;
     };
 
-    // Auto-login check (JWT Token)
-    const savedToken = localStorage.getItem('silmin_token');
-    const savedUser = localStorage.getItem('silmin_user');
-    if (savedToken && savedUser) {
-        try {
-            const user = JSON.parse(savedUser);
-            loginScreen.classList.add('hidden');
-            loginScreen.classList.remove('flex');
-            mainLayout.classList.remove('hidden', 'opacity-0');
-            mainLayout.classList.add('opacity-100');
-            switchView('stock');
-            updateTopBar(user);
-            applyPermissions(user.permissions);
-        } catch (e) {
-            localStorage.removeItem('silmin_token');
-            localStorage.removeItem('silmin_user');
-        }
-    }
-
     // Fetch All Products
-    const fetchProducts = async () => {
+    async function fetchProducts() {
         try {
             const response = await authFetch(`${API_BASE_URL}/products`);
             const json = await response.json();
@@ -397,7 +376,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (error) {
             console.error('Error fetching products:', error);
         }
-    };
+    }
 
     const renderProductTable = (products) => {
         if (!productTableBody) return;
@@ -548,10 +527,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
         openModal();
     };
-
-    // Only fetch master data when dashboard is visible or app loads
-    fetchMasterData();
-    fetchProducts();
 
     // ==========================================
     // Login Logic (JWT Authentication)
@@ -806,7 +781,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // ==========================================
     // View Navigation Logic
     // ==========================================
-    const switchView = (viewName) => {
+    const switchView = async (viewName) => {
         // Reset all active states
         document.querySelectorAll('.nav-menu-item').forEach(item => {
             item.classList.remove('bg-cyan-500/10', 'text-cyan-400', 'border', 'border-cyan-500/20', 'active');
@@ -827,7 +802,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const activateView = (view, nav) => {
             if (view) {
                 view.classList.remove('hidden');
-                // trigger reflow for animation
+                // เลื่อนขึ้นบนสุดเมื่อเปลี่ยนหน้า
+                const mainContent = document.getElementById('main-content');
+                if (mainContent) mainContent.scrollTop = 0;
+                
+                void view.offsetWidth; // trigger reflow
                 void view.offsetWidth;
                 view.classList.add('animate-fade-in');
             }
@@ -856,6 +835,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         else if (viewName === 'settings') {
             activateView(viewSettings, navSettings);
+            await fetchMasterData();
             if (typeof renderSettingsList === 'function') renderSettingsList();
         }
         else if (viewName === 'roles') {
@@ -872,11 +852,30 @@ document.addEventListener('DOMContentLoaded', () => {
     if (navSettings) navSettings.addEventListener('click', (e) => { e.preventDefault(); switchView('settings'); });
     if (navRoles) navRoles.addEventListener('click', (e) => { e.preventDefault(); switchView('roles'); });
 
+    // Auto-login check (JWT Token) - moved here after switchView is defined
+    const savedToken = localStorage.getItem('silmin_token');
+    const savedUser = localStorage.getItem('silmin_user');
+    if (savedToken && savedUser) {
+        try {
+            const user = JSON.parse(savedUser);
+            loginScreen.classList.add('hidden');
+            loginScreen.classList.remove('flex');
+            mainLayout.classList.remove('hidden', 'opacity-0');
+            mainLayout.classList.add('opacity-100');
+            switchView('dashboard');
+            updateTopBar(user);
+            applyPermissions(user.permissions);
+        } catch (e) {
+            localStorage.removeItem('silmin_token');
+            localStorage.removeItem('silmin_user');
+        }
+    }
+
     // ==========================================
     // Branch Management Logic
     // ==========================================
 
-    const loadBranches = async () => {
+    async function loadBranches() {
         if (!branchGrid) return;
 
         try {
@@ -949,7 +948,7 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error('Error loading branches:', error);
             showToast('ดึงข้อมูลสาขาไม่สำเร็จ', 'error');
         }
-    };
+    }
 
     const openBranchModal = (id = '', name = '', address = '') => {
         branchIdInput.value = id;
@@ -1024,7 +1023,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // ==========================================
     // Master Data Settings Logic
     // ==========================================
-    window.renderSettingsList = () => {
+    function renderSettingsList() {
         if (!masterDataList) return;
 
         let dataArray = [];
@@ -1089,7 +1088,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
             });
         }
-    };
+    }
+    window.renderSettingsList = renderSettingsList;
 
     if (settingsTabBtns) {
         settingsTabBtns.forEach(btn => {
@@ -1201,7 +1201,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const empPasswordHint = document.getElementById('emp-password-hint');
 
     // Load employees from API
-    const loadEmployees = async () => {
+    async function loadEmployees() {
         if (!employeeTableBody) return;
 
         try {
@@ -1217,7 +1217,7 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error('เกิดข้อผิดพลาดในการดึงข้อมูลพนักงาน:', error);
             showToast('ดึงข้อมูลพนักงานไม่สำเร็จ', 'error');
         }
-    };
+    }
 
     const renderEmployeeTable = (employees) => {
         if (!employeeTableBody) return;
@@ -1479,7 +1479,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const imeiListContainer = document.getElementById('imei-list-container');
 
     // Fetch products for POS
-    const fetchPosProducts = async () => {
+    async function fetchPosProducts() {
         try {
             const response = await authFetch(`${API_BASE_URL}/products`);
             const json = await response.json();
@@ -1489,7 +1489,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (error) {
             console.error('เกิดข้อผิดพลาดในการดึงข้อมูลสินค้าสำหรับ POS:', error);
         }
-    };
+    }
 
     // Search/Filter Logic
     const searchPosProducts = (query) => {
@@ -1864,6 +1864,9 @@ document.addEventListener('DOMContentLoaded', () => {
                         if (result.success) {
                             showToast('ทำรายการขายสำเร็จ');
                             console.log(`[POS] ขายสำเร็จ - ใบเสร็จ: ${result.data.receipt_number}`);
+                            
+                            // แสดง Modal สำเร็จพร้อมปุ่มพิมพ์ใบเสร็จ
+                            openCheckoutSuccessModal(result.data);
 
                             // Clear cart
                             cart = [];
@@ -1909,7 +1912,7 @@ document.addEventListener('DOMContentLoaded', () => {
         maximumFractionDigits: 0
     });
 
-    const loadDashboardData = async () => {
+    async function loadDashboardData() {
         try {
             const response = await authFetch(`${API_BASE_URL}/dashboard-stats`);
             const json = await response.json();
@@ -2002,7 +2005,90 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (error) {
             console.error('เกิดข้อผิดพลาดในการดึงข้อมูลแดชบอร์ด:', error);
         }
+    }
+
+    // ==========================================
+    // Checkout Success & Receipt Printing Logic
+    // ==========================================
+    const checkoutSuccessModal = document.getElementById('checkout-success-modal');
+    const successReceiptNumber = document.getElementById('success-receipt-number');
+    const btnPrintReceiptSeparate = document.getElementById('btn-print-receipt-separate');
+    const btnCloseSuccessModal = document.getElementById('btn-close-success-modal');
+    
+    let lastTransactionId = null;
+
+    const openCheckoutSuccessModal = (txn) => {
+        if (!checkoutSuccessModal) return;
+        lastTransactionId = txn._id;
+        if (successReceiptNumber) successReceiptNumber.textContent = `เลขที่ใบเสร็จ: ${txn.receipt_number}`;
+        
+        checkoutSuccessModal.classList.remove('opacity-0', 'pointer-events-none');
+        checkoutSuccessModal.firstElementChild.classList.remove('scale-95');
+        checkoutSuccessModal.firstElementChild.classList.add('scale-100');
     };
+
+    const closeCheckoutSuccessModal = () => {
+        if (!checkoutSuccessModal) return;
+        checkoutSuccessModal.classList.add('opacity-0', 'pointer-events-none');
+        checkoutSuccessModal.firstElementChild.classList.remove('scale-100');
+        checkoutSuccessModal.firstElementChild.classList.add('scale-95');
+        lastTransactionId = null;
+    };
+
+    const printReceipt = async (txnId) => {
+        try {
+            // ดึงข้อมูล Transaction เต็มรูปแบบ (populated)
+            const response = await authFetch(`${API_BASE_URL}/transactions/${txnId}`);
+            const json = await response.json();
+            
+            if (!json.success) {
+                showToast('ไม่สามารถดึงข้อมูลใบเสร็จได้', 'error');
+                return;
+            }
+
+            const txnData = json.data;
+            
+            // เปิดหน้าต่างใหม่สำหรับใบเสร็จ
+            const printWindow = window.open('receipt-template.html', '_blank');
+            
+            if (!printWindow) {
+                showToast('กรุณาอนุญาตให้เปิด Pop-up เพื่อพิมพ์ใบเสร็จ', 'warning');
+                return;
+            }
+
+            // ส่งข้อมูลไปยังหน้าต่างที่เปิดใหม่เมื่อมันโหลดเสร็จ
+            printWindow.onload = function() {
+                printWindow.postMessage({
+                    type: 'PRINT_RECEIPT',
+                    payload: txnData
+                }, '*');
+            };
+            
+            // Fallback กรณี onload ไม่ทำงาน (บาง browser)
+            setTimeout(() => {
+                printWindow.postMessage({
+                    type: 'PRINT_RECEIPT',
+                    payload: txnData
+                }, '*');
+            }, 1000);
+
+        } catch (error) {
+            console.error('เกิดข้อผิดพลาดในการพิมพ์ใบเสร็จ:', error);
+            showToast('เกิดข้อผิดพลาดในการเชื่อมต่อ', 'error');
+        }
+    };
+
+    if (btnPrintReceiptSeparate) {
+        btnPrintReceiptSeparate.addEventListener('click', () => {
+            if (lastTransactionId) {
+                printReceipt(lastTransactionId);
+            }
+        });
+    }
+
+    if (btnCloseSuccessModal) {
+        btnCloseSuccessModal.addEventListener('click', closeCheckoutSuccessModal);
+    }
 
     // ==========================================
     // Role Management Logic (จัดการสิทธิ์)
@@ -2061,7 +2147,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (cancelRoleModalBtn) cancelRoleModalBtn.addEventListener('click', closeRoleModal);
 
     // Load Roles
-    const loadRoles = async () => {
+    async function loadRoles() {
         if (!rolesGrid) return;
         try {
             const response = await authFetch(`${API_BASE_URL}/roles`);
@@ -2085,32 +2171,46 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const permBadges = permKeys.map(key => {
             const active = p[key];
-            return `<span class="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs ${
-                active ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20' : 'bg-slate-700/50 text-slate-500 border border-slate-700 line-through'
+            return `<div class="flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-medium transition-all ${
+                active 
+                ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' 
+                : 'bg-slate-700/30 text-slate-500 border border-slate-700/50 opacity-60'
             }">
-                <i class="fa-solid ${permIcons[key].split(' ')[0]} text-[10px]"></i> ${permLabels[key]}
-            </span>`;
+                <i class="fa-solid ${permIcons[key].split(' ')[0]} ${active ? '' : 'grayscale'}"></i>
+                <span>${permLabels[key]}</span>
+            </div>`;
         }).join('');
 
         const card = document.createElement('div');
-        card.className = 'bg-slate-800 rounded-2xl border border-slate-700 p-6 hover:border-amber-500/30 transition-all group';
+        card.className = 'bg-slate-800/80 backdrop-blur-sm rounded-3xl border border-slate-700/50 p-6 hover:border-amber-500/40 hover:shadow-2xl hover:shadow-amber-500/10 transition-all duration-300 group relative overflow-hidden';
         card.innerHTML = `
-            <div class="flex items-center justify-between mb-4">
-                <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center border border-amber-500/20 group-hover:bg-amber-500/20 transition-all">
-                        <i class="fa-solid fa-shield-halved text-amber-400"></i>
+            <!-- Decor -->
+            <div class="absolute -right-4 -top-4 w-24 h-24 bg-amber-500/5 rounded-full blur-2xl group-hover:bg-amber-500/10 transition-all"></div>
+            
+            <div class="relative flex items-start justify-between mb-6">
+                <div class="flex items-center gap-4">
+                    <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-500/20 to-orange-600/10 flex items-center justify-center border border-amber-500/20 shadow-inner group-hover:scale-110 transition-transform duration-500">
+                        <i class="fa-solid fa-shield-halved text-amber-400 text-xl"></i>
                     </div>
                     <div>
-                        <h4 class="text-white font-bold">${role.name}</h4>
-                        <p class="text-xs text-slate-400">${enabledCount}/${permKeys.length} สิทธิ์เปิดใช้งาน</p>
+                        <h4 class="text-white text-lg font-bold tracking-tight">${role.name}</h4>
+                        <div class="flex items-center gap-2 mt-0.5">
+                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                            <p class="text-xs text-slate-400 font-medium">${enabledCount}/${permKeys.length} สิทธิ์เปิดใช้งาน</p>
+                        </div>
                     </div>
                 </div>
                 <div class="flex gap-1">
-                    <button class="edit-role-btn text-slate-400 hover:text-amber-400 transition-colors p-2" data-id="${role._id}"><i class="fa-solid fa-pen-to-square"></i></button>
-                    <button class="delete-role-btn text-slate-400 hover:text-red-400 transition-colors p-2" data-id="${role._id}" data-name="${role.name}"><i class="fa-solid fa-trash"></i></button>
+                    <button class="edit-role-btn w-9 h-9 flex items-center justify-center rounded-xl bg-slate-700/50 text-slate-400 hover:bg-amber-500 hover:text-slate-900 transition-all duration-300 shadow-sm" data-id="${role._id}" title="แก้ไข">
+                        <i class="fa-solid fa-pen-to-square text-sm"></i>
+                    </button>
+                    <button class="delete-role-btn w-9 h-9 flex items-center justify-center rounded-xl bg-slate-700/50 text-slate-400 hover:bg-red-500/80 hover:text-white transition-all duration-300 shadow-sm" data-id="${role._id}" data-name="${role.name}" title="ลบ">
+                        <i class="fa-solid fa-trash text-sm"></i>
+                    </button>
                 </div>
             </div>
-            <div class="flex flex-wrap gap-1.5">
+            
+            <div class="grid grid-cols-2 gap-2 relative">
                 ${permBadges}
             </div>
         `;
@@ -2194,5 +2294,17 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-});
+    // ==========================================
+    // INITIAL APP LOAD (เรียกข้อมูลครั้งแรก)
+    // ==========================================
+    // เรียกใช้ฟังก์ชันดึงข้อมูลทั้งหมดที่ส่วนท้ายสุด เพื่อให้มั่นใจว่าฟังก์ชันทั้งหมดถูกประกาศแล้ว
+    fetchMasterData();
+    fetchProducts();
+    loadBranches();
+    loadEmployees();
+    loadDashboardData();
+    fetchPosProducts();
+    loadRoles();
 
+    console.log('[SILMIN] ระบบเริ่มต้นสำเร็จและโหลดข้อมูลครบถ้วน');
+});

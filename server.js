@@ -53,6 +53,10 @@ app.get('/script.js', (req, res) => {
     res.sendFile(path.join(__dirname, 'script.js'));
 });
 
+app.get('/receipt-template.html', (req, res) => {
+    res.sendFile(path.join(__dirname, 'receipt-template.html'));
+});
+
 // ==========================================
 // Start Server
 // ==========================================

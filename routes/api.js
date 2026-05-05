@@ -530,9 +530,11 @@ router.post('/master/:collection', async (req, res) => {
                 return res.status(400).json({ success: false, message: 'ไม่พบประเภทข้อมูลที่ระบุ' });
         }
 
+        console.log(`[MASTER] กำลังเพิ่มข้อมูลใหม่ใน ${collection}: "${name}"`);
         const newItem = new Model({ name });
         const savedItem = await newItem.save();
 
+        console.log(`[MASTER] เพิ่มข้อมูลสำเร็จ: ${collection} -> ${name} (ID: ${savedItem._id})`);
         res.status(201).json({
             success: true,
             message: 'เพิ่มข้อมูลสำเร็จ',
@@ -540,7 +542,13 @@ router.post('/master/:collection', async (req, res) => {
         });
     } catch (error) {
         console.error(`API Error POST /api/master/${req.params.collection}:`, error);
-        res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการเพิ่มข้อมูล' });
+        
+        // Handle duplicate key error
+        if (error.code === 11000) {
+            return res.status(400).json({ success: false, message: 'ข้อมูลนี้มีอยู่ในระบบแล้ว' });
+        }
+        
+        res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการเพิ่มข้อมูล: ' + error.message });
     }
 });
 
@@ -687,6 +695,7 @@ router.post('/transactions', async (req, res) => {
         const newTransaction = new Transaction({
             receipt_number,
             branch_id: branch_id || null,
+            employee_id: req.user.employee_id, // เก็บ ID พนักงานที่ขาย
             items,
             total_amount,
             payment_method,
@@ -731,6 +740,24 @@ router.get('/transactions', async (req, res) => {
             success: false,
             message: 'เกิดข้อผิดพลาดในการดึงข้อมูลรายการขาย'
         });
+    }
+});
+
+// GET /api/transactions/:id - ดึงข้อมูลรายการขายรายใบ
+router.get('/transactions/:id', async (req, res) => {
+    try {
+        const transaction = await Transaction.findById(req.params.id)
+            .populate('branch_id')
+            .populate('employee_id', 'name emp_id');
+
+        if (!transaction) {
+            return res.status(404).json({ success: false, message: 'ไม่พบรายการที่ต้องการ' });
+        }
+
+        res.status(200).json({ success: true, data: transaction });
+    } catch (error) {
+        console.error('API Error GET /api/transactions/:id:', error);
+        res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการดึงข้อมูลรายการขาย' });
     }
 });
 

@@ -138,6 +138,7 @@ const Product = mongoose.model('Product', productSchema, 'product');
 const transactionSchema = new mongoose.Schema({
     receipt_number: { type: String, required: true, unique: true }, // เลขที่ใบเสร็จ (Auto-generated: INV-วันที่-สุ่ม)
     branch_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Branch' }, // สาขาที่ทำรายการ
+    employee_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee' }, // พนักงานที่ทำรายการ
     items: [{
         product_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Product' },
         product_name: { type: String }, // ชื่อสินค้า
