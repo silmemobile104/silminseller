@@ -1617,8 +1617,38 @@ document.addEventListener('DOMContentLoaded', () => {
         const shouldUseImeiFlow = hasImeis || (isDeviceLike && product.product_code);
 
         if (shouldUseImeiFlow) {
-            // Show IMEI selection modal
-            openImeiModal(product);
+            // Filter out IMEIs already in cart
+            const cartImeis = cart.filter(i => i.product_id === product._id).map(i => i.imei_sold);
+            let availableImeis = (product.imeis || []).filter(imei => !cartImeis.includes(imei));
+
+            // Fallback: if product has no IMEIs in stock, use product_code as identifier
+            if (availableImeis.length === 0 && product.product_code) {
+                const codeAsImei = product.product_code.toString().trim();
+                if (codeAsImei && !cartImeis.includes(codeAsImei)) {
+                    availableImeis = [codeAsImei];
+                }
+            }
+
+            // If only 1 available IMEI, add to cart directly without showing modal
+            if (availableImeis.length === 1) {
+                const imei = availableImeis[0].toString().trim();
+                cart.push({
+                    product_id: product._id,
+                    product_name: product.name,
+                    imei_sold: imei,
+                    quantity: 1,
+                    price: product.selling_price,
+                    subtotal: product.selling_price,
+                    _isDevice: true
+                });
+                showToast(`เพิ่ม ${product.name} (IMEI: ...${imei.slice(-4)}) ลงตะกร้าแล้ว`);
+                renderCart();
+            } else if (availableImeis.length > 1) {
+                // Show IMEI selection modal only if multiple IMEIs available
+                openImeiModal(product);
+            } else {
+                showToast(`ไม่มี IMEI ที่ยังไม่ได้เพิ่มในตะกร้า`, 'error');
+            }
         } else {
             // Accessory: check if already in cart
             const existingItem = cart.find(item => item.product_id === product._id && !item.imei_sold);
@@ -1865,6 +1895,129 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // Helper: Find product by exact IMEI match (only available IMEIs)
+    const findProductByImei = (imei) => {
+        const trimmedImei = imei.toString().trim();
+        for (const product of posProductsCache) {
+            // Check if product has imeis array
+            if (Array.isArray(product.imeis) && product.imeis.length > 0) {
+                // Filter out IMEIs already in cart
+                const cartImeis = cart.filter(i => i.product_id === product._id).map(i => i.imei_sold);
+                const availableImeis = product.imeis.filter(i => !cartImeis.includes(i.toString().trim()));
+                
+                if (availableImeis.some(i => i.toString().trim() === trimmedImei)) {
+                    return { product, matchedImei: trimmedImei };
+                }
+            } else {
+                // Fallback: check if it's a device-like product and matches product_code
+                const typeName = product.type_id ? (product.type_id.name || '') : '';
+                const unitName = product.unit_id ? (product.unit_id.name || '') : '';
+                const isDeviceLike = unitName.includes('เครื่อง') || typeName.toLowerCase().includes('iphone') || typeName.toLowerCase().includes('ipad');
+                
+                if (isDeviceLike && product.product_code && product.product_code.toString().trim() === trimmedImei) {
+                    // Check if this product_code is already in cart
+                    const cartImeis = cart.filter(i => i.product_id === product._id).map(i => i.imei_sold);
+                    if (!cartImeis.includes(trimmedImei)) {
+                        return { product, matchedImei: trimmedImei };
+                    }
+                }
+            }
+        }
+        return null;
+    };
+
+    // Helper: Check if IMEI exists in any product but is already sold (in cart)
+    const isSoldOutImei = (imei) => {
+        const trimmedImei = imei.toString().trim();
+        for (const product of posProductsCache) {
+            // Check if IMEI exists in product's imeis array
+            if (Array.isArray(product.imeis) && product.imeis.length > 0) {
+                if (product.imeis.some(i => i.toString().trim() === trimmedImei)) {
+                    // Check if it's already in cart (sold)
+                    const cartImeis = cart.filter(i => i.product_id === product._id).map(i => i.imei_sold);
+                    if (cartImeis.includes(trimmedImei)) {
+                        return true;
+                    }
+                }
+            } else {
+                // Fallback: check if it's a device-like product and matches product_code
+                const typeName = product.type_id ? (product.type_id.name || '') : '';
+                const unitName = product.unit_id ? (product.unit_id.name || '') : '';
+                const isDeviceLike = unitName.includes('เครื่อง') || typeName.toLowerCase().includes('iphone') || typeName.toLowerCase().includes('ipad');
+                
+                if (isDeviceLike && product.product_code && product.product_code.toString().trim() === trimmedImei) {
+                    // Check if this product_code is already in cart
+                    const cartImeis = cart.filter(i => i.product_id === product._id).map(i => i.imei_sold);
+                    if (cartImeis.includes(trimmedImei)) {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
+    };
+
+    // Helper: Find product by exact product_code match (for accessories)
+    const findProductByCode = (code) => {
+        const trimmedCode = code.toString().trim();
+        const product = posProductsCache.find(p => p.product_code && p.product_code.toString().trim() === trimmedCode);
+        return product;
+    };
+
+    // Helper: Add product to cart by IMEI (for barcode scanning)
+    const addProductByImei = (product, imei) => {
+        // Check if this IMEI is already in cart
+        const existingCartItem = cart.find(item => item.product_id === product._id && item.imei_sold === imei);
+        if (existingCartItem) {
+            showToast('IMEI นี้ถูกเพิ่มในตะกร้าแล้ว', 'error');
+            return false;
+        }
+
+        // Check if IMEI is still available (not already in cart for this product)
+        const cartImeis = cart.filter(i => i.product_id === product._id).map(i => i.imei_sold);
+        if (cartImeis.includes(imei)) {
+            showToast('IMEI นี้ถูกเพิ่มในตะกร้าแล้ว', 'error');
+            return false;
+        }
+
+        // Add to cart with specific IMEI and mark as device
+        cart.push({
+            product_id: product._id,
+            product_name: product.name,
+            imei_sold: imei.toString().trim(),
+            quantity: 1,
+            price: product.selling_price,
+            subtotal: product.selling_price,
+            _isDevice: true
+        });
+        return true;
+    };
+
+    // Helper: Add accessory to cart by product_code
+    const addAccessoryByCode = (product) => {
+        // Check if already in cart (accessories without IMEI)
+        const existingItem = cart.find(item => item.product_id === product._id && !item.imei_sold);
+        if (existingItem) {
+            if (existingItem.quantity >= product.quantity) {
+                showToast(`สินค้า ${product.name} มีไม่เพียงพอในสต็อก`, 'error');
+                return false;
+            }
+            existingItem.quantity += 1;
+            existingItem.subtotal = existingItem.quantity * existingItem.price;
+        } else {
+            cart.push({
+                product_id: product._id,
+                product_name: product.name,
+                imei_sold: '',
+                quantity: 1,
+                price: product.selling_price,
+                subtotal: product.selling_price,
+                _isDevice: false
+            });
+        }
+        return true;
+    };
+
     // Search Input Events
     if (posSearchInput) {
         let searchTimeout;
@@ -1879,7 +2032,80 @@ document.addEventListener('DOMContentLoaded', () => {
             if (e.key === 'Enter') {
                 e.preventDefault();
                 clearTimeout(searchTimeout);
-                searchPosProducts(e.target.value);
+                
+                const searchValue = e.target.value.trim();
+                if (!searchValue) {
+                    searchPosProducts('');
+                    return;
+                }
+
+                // Check if IMEI is sold out (exists in product but already in cart)
+                if (isSoldOutImei(searchValue)) {
+                    showToast('สินค้าหมดแล้ว', 'error');
+                    posSearchInput.value = '';
+                    return;
+                }
+
+                // Try exact IMEI match first (barcode scanning)
+                const imeiMatch = findProductByImei(searchValue);
+                if (imeiMatch) {
+                    const { product, matchedImei } = imeiMatch;
+                    
+                    // Strict stock validation before adding
+                    if (product.quantity <= 0) {
+                        showToast('สินค้าหมดแล้ว ไม่สามารถเพิ่มลงตะกร้าได้', 'error');
+                        posSearchInput.value = '';
+                        return;
+                    }
+                    
+                    if (addProductByImei(product, matchedImei)) {
+                        showToast('เพิ่มสินค้าลงตะกร้าแล้ว');
+                        posSearchInput.value = '';
+                        renderCart();
+                        searchPosProducts(''); // Clear search filter
+                    }
+                    return;
+                }
+
+                // Try exact product_code match (for accessories without IMEI)
+                const codeMatch = findProductByCode(searchValue);
+                if (codeMatch) {
+                    const hasImeis = Array.isArray(codeMatch.imeis) && codeMatch.imeis.length > 0;
+                    // Only treat as accessory if it truly has no IMEIs (not device-like)
+                    const typeName = codeMatch.type_id ? (codeMatch.type_id.name || '') : '';
+                    const unitName = codeMatch.unit_id ? (codeMatch.unit_id.name || '') : '';
+                    const isDeviceLike = unitName.includes('เครื่อง') || typeName.toLowerCase().includes('iphone') || typeName.toLowerCase().includes('ipad');
+                    
+                    if (!hasImeis && !isDeviceLike) {
+                        // Strict stock validation before adding
+                        if (codeMatch.quantity <= 0) {
+                            showToast('สินค้าหมดแล้ว ไม่สามารถเพิ่มลงตะกร้าได้', 'error');
+                            posSearchInput.value = '';
+                            return;
+                        }
+                        
+                        // Check if adding would exceed stock
+                        const existingItem = cart.find(item => item.product_id === codeMatch._id && !item.imei_sold);
+                        const currentCartQty = existingItem ? existingItem.quantity : 0;
+                        if (currentCartQty + 1 > codeMatch.quantity) {
+                            showToast('สินค้าหมดแล้ว ไม่สามารถเพิ่มลงตะกร้าได้', 'error');
+                            posSearchInput.value = '';
+                            return;
+                        }
+                        
+                        if (addAccessoryByCode(codeMatch)) {
+                            showToast('เพิ่มสินค้าลงตะกร้าแล้ว');
+                            posSearchInput.value = '';
+                            renderCart();
+                            searchPosProducts(''); // Clear search filter
+                        }
+                        return;
+                    }
+                }
+
+                // No exact match: show error
+                showToast('ไม่พบสินค้านี้ในระบบ', 'error');
+                posSearchInput.value = '';
             }
         });
     }
