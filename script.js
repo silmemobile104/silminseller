@@ -792,7 +792,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         // Hide all views and remove animation
-        const views = [viewDashboard, viewStock, viewTransactions, viewPersonnel, viewBranches, viewSettings, viewRoles];
+        const views = [viewDashboard, viewStock, viewTransactions, viewPersonnel, viewBranches, viewSettings, viewRoles, viewSalesHistory];
         views.forEach(view => {
             if (view) {
                 view.classList.add('hidden');
@@ -1475,8 +1475,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const cartEmptyState = document.getElementById('cart-empty-state');
     const cartCountBadge = document.getElementById('cart-count-badge');
     const cartSubtotal = document.getElementById('cart-subtotal');
+    const cartDiscount = document.getElementById('cart-discount');
     const cartTotal = document.getElementById('cart-total');
-    const paymentMethod = document.getElementById('payment-method');
+    const posDiscount = document.getElementById('pos-discount');
+    const paymentMethod = document.getElementById('pos-payment-method');
     const posDownPaymentSection = document.getElementById('pos-down-payment-section');
     const posDownPayment = document.getElementById('pos-down-payment');
     const btnCheckout = document.getElementById('btn-checkout');
@@ -1487,16 +1489,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const imeiSearchInput = document.getElementById('imei-search-input');
     const imeiListContainer = document.getElementById('imei-list-container');
 
-    // Confirm Price Modal DOM
-    const confirmPriceModal = document.getElementById('confirm-price-modal');
-    const closePriceModalBtn = document.getElementById('close-price-modal-btn');
-    const cancelPriceModalBtn = document.getElementById('cancel-price-modal-btn');
-    const confirmPriceCheckoutBtn = document.getElementById('confirm-price-checkout-btn');
-    const confirmPriceList = document.getElementById('confirm-price-list');
-    const newTotalDisplay = document.getElementById('new-total-display');
-    const modalPaymentMethod = document.getElementById('modal-payment-method');
-    const modalDownPayment = document.getElementById('modal-down-payment');
-    const downPaymentSection = document.getElementById('down-payment-section');
+    // Confirm Price Modal DOM (disabled - inline checkout)
 
     // Sales History DOM Elements
     const salesHistorySearch = document.getElementById('sales-history-search');
@@ -1617,10 +1610,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Add to Cart Handler
     const handleAddToCart = (product) => {
-        const categoryName = product.type_id ? product.type_id.name : '';
-        const isDevice = categoryName.includes('iPhone') || categoryName.includes('iPad');
+        const hasImeis = Array.isArray(product.imeis) && product.imeis.length > 0;
+        const typeName = product.type_id ? (product.type_id.name || '') : '';
+        const unitName = product.unit_id ? (product.unit_id.name || '') : '';
+        const isDeviceLike = unitName.includes('เครื่อง') || typeName.toLowerCase().includes('iphone') || typeName.toLowerCase().includes('ipad');
+        const shouldUseImeiFlow = hasImeis || (isDeviceLike && product.product_code);
 
-        if (isDevice && product.imeis && product.imeis.length > 0) {
+        if (shouldUseImeiFlow) {
             // Show IMEI selection modal
             openImeiModal(product);
         } else {
@@ -1656,7 +1652,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Filter out IMEIs already in cart
         const cartImeis = cart.filter(i => i.product_id === product._id).map(i => i.imei_sold);
-        const availableImeis = (product.imeis || []).filter(imei => !cartImeis.includes(imei));
+        let availableImeis = (product.imeis || []).filter(imei => !cartImeis.includes(imei));
+
+        // Fallback: if product has no IMEIs in stock, use product_code as identifier
+        if (availableImeis.length === 0 && product.product_code) {
+            const codeAsImei = product.product_code.toString().trim();
+            if (codeAsImei && !cartImeis.includes(codeAsImei)) {
+                availableImeis = [codeAsImei];
+            }
+        }
 
         if (availableImeis.length === 0) {
             showToast(`ไม่มี IMEI ที่ยังไม่ได้เพิ่มในตะกร้า`, 'error');
@@ -1742,6 +1746,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (cartEmptyState) cartEmptyState.classList.remove('hidden');
             if (cartCountBadge) cartCountBadge.textContent = '0 รายการ';
             if (cartSubtotal) cartSubtotal.textContent = '฿0.00';
+            if (cartDiscount) cartDiscount.textContent = '฿0.00';
             if (cartTotal) cartTotal.textContent = '฿0.00';
             return;
         }
@@ -1763,7 +1768,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     </p>
                 </div>
                 <div class="text-right flex-shrink-0">
-                    <p class="font-bold text-cyan-400 font-mono text-sm">฿${item.subtotal.toLocaleString()}</p>
+                    <div class="flex items-center justify-end gap-2">
+                        <span class="text-xs text-slate-500">฿</span>
+                        <input type="number" min="0" step="1" value="${item.price}"
+                            class="cart-price-input w-24 px-2 py-1.5 rounded-lg bg-slate-800 border border-slate-600 text-white text-right font-mono text-sm focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all"
+                            data-index="${index}">
+                    </div>
+                    <p class="cart-line-subtotal font-bold text-cyan-400 font-mono text-sm mt-1" data-index="${index}">฿${item.subtotal.toLocaleString()}</p>
                     ${!item._isDevice ? `
                         <div class="flex items-center gap-1 mt-1 justify-end">
                             <button class="cart-qty-minus w-6 h-6 rounded bg-slate-700 text-slate-300 hover:bg-slate-600 text-xs flex items-center justify-center transition-colors" data-index="${index}">
@@ -1781,6 +1792,22 @@ document.addEventListener('DOMContentLoaded', () => {
                 </button>
             `;
             cartItemsContainer.appendChild(cartEl);
+        });
+
+        document.querySelectorAll('.cart-price-input').forEach(input => {
+            input.addEventListener('input', (e) => {
+                const idx = parseInt(e.currentTarget.getAttribute('data-index'));
+                const newPrice = parseFloat(e.currentTarget.value) || 0;
+                if (!cart[idx]) return;
+
+                cart[idx].price = newPrice;
+                cart[idx].subtotal = cart[idx].quantity * cart[idx].price;
+
+                const lineSubtotalEl = cartItemsContainer.querySelector(`.cart-line-subtotal[data-index="${idx}"]`);
+                if (lineSubtotalEl) lineSubtotalEl.textContent = `฿${cart[idx].subtotal.toLocaleString()}`;
+
+                updateCartTotals();
+            });
         });
 
         // Attach cart item listeners
@@ -1823,10 +1850,20 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const updateCartTotals = () => {
-        const total = cart.reduce((sum, item) => sum + item.subtotal, 0);
-        if (cartSubtotal) cartSubtotal.textContent = `฿${total.toLocaleString()}`;
-        if (cartTotal) cartTotal.textContent = `฿${total.toLocaleString()}`;
+        const subtotal = cart.reduce((sum, item) => sum + item.subtotal, 0);
+        const discount = posDiscount ? (parseFloat(posDiscount.value) || 0) : 0;
+        const grandTotal = Math.max(0, subtotal - discount);
+
+        if (cartSubtotal) cartSubtotal.textContent = `฿${subtotal.toLocaleString()}`;
+        if (cartDiscount) cartDiscount.textContent = `฿${discount.toLocaleString()}`;
+        if (cartTotal) cartTotal.textContent = `฿${grandTotal.toLocaleString()}`;
     };
+
+    if (posDiscount) {
+        posDiscount.addEventListener('input', () => {
+            updateCartTotals();
+        });
+    }
 
     // Search Input Events
     if (posSearchInput) {
@@ -1859,247 +1896,100 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Checkout Logic
-    if (btnCheckout) {
-        btnCheckout.addEventListener('click', async () => {
-            console.log('Checkout button clicked');
-            // Validate
-            if (cart.length === 0) {
-                showToast('กรุณาเพิ่มสินค้าลงในตะกร้าก่อนทำรายการ', 'error');
-                return;
-            }
-
-            const selectedPayment = paymentMethod ? paymentMethod.value : '';
-            if (!selectedPayment) {
-                showToast('กรุณาเลือกช่องทางการชำระเงิน', 'error');
-                return;
-            }
-
-            console.log('Validation passed, opening price confirmation modal');
-            // Show price confirmation modal
-            openPriceConfirmationModal();
-        });
-    }
-
-    // Open Price Confirmation Modal
-    const openPriceConfirmationModal = () => {
-        console.log('Opening price confirmation modal');
-        if (!confirmPriceModal || !confirmPriceList || !newTotalDisplay) {
-            console.error('Modal elements not found:', { confirmPriceModal, confirmPriceList, newTotalDisplay });
-            showToast('เกิดข้อผิดพลาดในการเปิดหน้าต่าง', 'error');
+    const checkoutNow = async () => {
+        if (cart.length === 0) {
+            showToast('กรุณาเพิ่มสินค้าลงในตะกร้าก่อนทำรายการ', 'error');
             return;
         }
 
-        // Copy payment method and down payment from POS view
-        const posPaymentValue = paymentMethod ? paymentMethod.value : 'เงินสด';
-        const posDownPaymentValue = posDownPayment ? parseFloat(posDownPayment.value) || 0 : 0;
-
-        if (modalPaymentMethod) modalPaymentMethod.value = posPaymentValue;
-        if (modalDownPayment) modalDownPayment.value = posDownPaymentValue;
-
-        // Show/hide down payment section based on payment method
-        if (posPaymentValue === 'จัดไฟแนนซ์' && downPaymentSection) {
-            downPaymentSection.classList.remove('hidden');
-        } else if (downPaymentSection) {
-            downPaymentSection.classList.add('hidden');
+        const selectedPayment = paymentMethod ? paymentMethod.value : '';
+        if (!selectedPayment) {
+            showToast('กรุณาเลือกวิธีชำระเงิน', 'error');
+            return;
         }
 
-        // Clear previous content
-        confirmPriceList.innerHTML = '';
+        const discount = posDiscount ? (parseFloat(posDiscount.value) || 0) : 0;
+        const downPayment = posDownPayment ? (parseFloat(posDownPayment.value) || 0) : 0;
 
-        // Generate HTML for each cart item
-        cart.forEach((item, index) => {
-            const itemRow = document.createElement('div');
-            itemRow.className = 'bg-slate-900 border border-slate-700 rounded-xl p-4 flex flex-col gap-3';
+        const subtotal = cart.reduce((sum, item) => sum + item.subtotal, 0);
+        const total = Math.max(0, subtotal - discount);
 
-            const detailsHtml = item.imei_sold
-                ? `<p class="text-sm text-slate-400">IMEI: ${item.imei_sold}</p>`
-                : `<p class="text-sm text-slate-400">จำนวน: ${item.quantity} ชิ้น</p>`;
-
-            itemRow.innerHTML = `
-                <div class="flex items-start justify-between gap-4">
-                    <div class="flex-1">
-                        <h4 class="font-semibold text-white">${item.product_name}</h4>
-                        ${detailsHtml}
-                    </div>
-                    <div class="flex items-center gap-2">
-                        <span class="text-slate-400">฿</span>
-                        <input type="number"
-                               class="dynamic-price-input w-32 px-3 py-2 rounded-lg bg-slate-800 border border-slate-600 text-white text-right font-mono focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all"
-                               value="${item.price}"
-                               min="0"
-                               step="1"
-                               data-index="${index}">
-                    </div>
-                </div>
-            `;
-
-            confirmPriceList.appendChild(itemRow);
-        });
-
-        // Calculate and display initial total
-        updatePriceConfirmationTotal();
-
-        // Open modal
-        confirmPriceModal.classList.remove('opacity-0', 'pointer-events-none');
-        const modalContent = confirmPriceModal.querySelector('.modal-content');
-        if (modalContent) {
-            modalContent.classList.remove('scale-95');
-        }
-        console.log('Modal opened successfully');
-    };
-
-    // Update Price Confirmation Total
-    const updatePriceConfirmationTotal = () => {
-        if (!newTotalDisplay) return;
-
-        const inputs = document.querySelectorAll('.dynamic-price-input');
-        let total = 0;
-
-        inputs.forEach(input => {
-            const price = parseFloat(input.value) || 0;
-            const index = parseInt(input.dataset.index);
-            const quantity = cart[index]?.quantity || 1;
-            total += price * quantity;
-        });
-
-        newTotalDisplay.textContent = `฿${total.toLocaleString()}`;
-    };
-
-    // Close Price Confirmation Modal
-    const closePriceConfirmationModal = () => {
-        confirmPriceModal.classList.add('opacity-0', 'pointer-events-none');
-        confirmPriceModal.querySelector('.modal-content').classList.add('scale-95');
-    };
-
-    // Event listeners for price inputs
-    confirmPriceList?.addEventListener('input', (e) => {
-        if (e.target.classList.contains('dynamic-price-input')) {
-            updatePriceConfirmationTotal();
-        }
-    });
-
-    // Close button
-    if (closePriceModalBtn) {
-        closePriceModalBtn.addEventListener('click', closePriceConfirmationModal);
-    }
-
-    // Cancel button
-    if (cancelPriceModalBtn) {
-        cancelPriceModalBtn.addEventListener('click', closePriceConfirmationModal);
-    }
-
-    // Payment method change listener - show/hide down payment section
-    if (modalPaymentMethod) {
-        modalPaymentMethod.addEventListener('change', (e) => {
-            if (e.target.value === 'จัดไฟแนนซ์' && downPaymentSection) {
-                downPaymentSection.classList.remove('hidden');
-            } else if (downPaymentSection) {
-                downPaymentSection.classList.add('hidden');
-                if (modalDownPayment) modalDownPayment.value = '0';
-            }
-        });
-    }
-
-    // Confirm & Pay button
-    if (confirmPriceCheckoutBtn) {
-        confirmPriceCheckoutBtn.addEventListener('click', async () => {
-            console.log('Confirm price checkout button clicked');
-            const modalPayment = modalPaymentMethod ? modalPaymentMethod.value : 'เงินสด';
-            const downPayment = modalDownPayment ? parseFloat(modalDownPayment.value) || 0 : 0;
-
-            // Read all price values and update cart
-            const inputs = document.querySelectorAll('.dynamic-price-input');
-            console.log('Found price inputs:', inputs.length);
-            inputs.forEach(input => {
-                const index = parseInt(input.dataset.index);
-                const newPrice = parseFloat(input.value) || 0;
-                if (cart[index]) {
-                    cart[index].price = newPrice;
-                    cart[index].subtotal = newPrice * cart[index].quantity;
-                }
-            });
-
-            // Calculate new total
-            const total = cart.reduce((sum, item) => sum + item.subtotal, 0);
-            console.log('New total:', total, 'Payment method:', modalPayment, 'Down payment:', downPayment);
-
-            // Close price confirmation modal
-            closePriceConfirmationModal();
-
-            // Show loading state
-            const originalText = btnCheckout.innerHTML;
+        const originalText = btnCheckout ? btnCheckout.innerHTML : '';
+        if (btnCheckout) {
             btnCheckout.disabled = true;
             btnCheckout.innerHTML = `<i class="fa-solid fa-circle-notch fa-spin text-xl"></i> กำลังดำเนินการ...`;
+        }
 
-            try {
-                // Prepare payload
-                let branch_id = null;
-                const savedUserData = localStorage.getItem('silmin_user');
-                if (savedUserData) {
-                    const user = JSON.parse(savedUserData);
-                    branch_id = user.branch ? user.branch._id : null;
+        try {
+            let branch_id = null;
+            const savedUserData = localStorage.getItem('silmin_user');
+            if (savedUserData) {
+                const user = JSON.parse(savedUserData);
+                branch_id = user.branch ? user.branch._id : null;
+            }
+
+            const payload = {
+                items: cart.map(item => ({
+                    product_id: item.product_id,
+                    product_name: item.product_name,
+                    imei_sold: item.imei_sold || '',
+                    quantity: item.quantity,
+                    price: item.price
+                })),
+                total_amount: total,
+                payment_method: selectedPayment,
+                down_payment: downPayment,
+                branch_id
+            };
+
+            const response = await authFetch(`${API_BASE_URL}/transactions`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            const result = await response.json();
+            if (result.success) {
+                showToast('ทำรายการขายสำเร็จ');
+                openCheckoutSuccessModal(result.data);
+
+                cart = [];
+                renderCart();
+
+                if (paymentMethod) paymentMethod.selectedIndex = 0;
+                if (posDiscount) posDiscount.value = '0';
+                if (posDownPayment) posDownPayment.value = '0';
+                if (posDownPaymentSection) posDownPaymentSection.classList.add('hidden');
+                updateCartTotals();
+
+                if (posSearchInput) posSearchInput.value = '';
+                if (posEmptyState) posEmptyState.classList.remove('hidden');
+                if (posSearchResults) {
+                    posSearchResults.classList.add('hidden');
+                    posSearchResults.innerHTML = '';
                 }
-
-                const payload = {
-                    items: cart.map(item => ({
-                        product_id: item.product_id,
-                        product_name: item.product_name,
-                        imei_sold: item.imei_sold || '',
-                        quantity: item.quantity,
-                        price: item.price
-                    })),
-                    total_amount: total,
-                    payment_method: modalPayment,
-                    down_payment: downPayment,
-                    branch_id
-                };
-
-                console.log('Sending payload:', payload);
-                const response = await authFetch(`${API_BASE_URL}/transactions`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
-
-                const result = await response.json();
-                console.log('Transaction response:', result);
-
-                if (result.success) {
-                    showToast('ทำรายการขายสำเร็จ');
-                    console.log(`[POS] ขายสำเร็จ - ใบเสร็จ: ${result.data.receipt_number}`);
-
-                    // แสดง Modal สำเร็จพร้อมปุ่มพิมพ์ใบเสร็จ
-                    openCheckoutSuccessModal(result.data);
-
-                    // Clear cart
-                    cart = [];
-                    renderCart();
-
-                    // Reset payment method
-                    if (paymentMethod) paymentMethod.selectedIndex = 0;
-
-                    // Clear search
-                    if (posSearchInput) posSearchInput.value = '';
-                    if (posEmptyState) posEmptyState.classList.remove('hidden');
-                    if (posSearchResults) {
-                        posSearchResults.classList.add('hidden');
-                        posSearchResults.innerHTML = '';
-                    }
-                } else {
-                    showToast('เกิดข้อผิดพลาด: ' + result.message, 'error');
-                }
-            } catch (error) {
-                console.error('Checkout error:', error);
-                showToast('ไม่สามารถทำรายการได้', 'error');
-            } finally {
+            } else {
+                showToast('เกิดข้อผิดพลาด: ' + result.message, 'error');
+            }
+        } catch (error) {
+            console.error('Checkout error:', error);
+            showToast('ไม่สามารถทำรายการได้', 'error');
+        } finally {
+            if (btnCheckout) {
                 btnCheckout.disabled = false;
                 btnCheckout.innerHTML = originalText;
             }
+        }
+    };
+
+    // Checkout Logic
+    if (btnCheckout) {
+        btnCheckout.addEventListener('click', async () => {
+            await checkoutNow();
         });
-    } else {
-        console.error('confirmPriceCheckoutBtn not found');
     }
+
+    // Confirm Price Modal logic disabled (refactored to inline checkout)
 
     // ==========================================
     // Sales History (ประวัติการขาย)
@@ -2212,11 +2102,13 @@ document.addEventListener('DOMContentLoaded', () => {
         transactionDetailPayment.textContent = txn.payment_method;
         transactionDetailTotal.textContent = `฿${txn.total_amount.toLocaleString()}`;
 
-        // Handle down payment
-        if (txn.down_payment && txn.down_payment > 0) {
+        // Handle down payment (show only for financing)
+        const isFinancing = (txn.payment_method || '').includes('ไฟแนนซ์');
+        if (isFinancing) {
+            const downPaymentValue = Number(txn.down_payment) || 0;
             transactionDetailDownpaymentSection.classList.remove('hidden');
-            transactionDetailDownpayment.textContent = `฿${txn.down_payment.toLocaleString()}`;
-            const balance = txn.total_amount - txn.down_payment;
+            transactionDetailDownpayment.textContent = `฿${downPaymentValue.toLocaleString()}`;
+            const balance = txn.total_amount - downPaymentValue;
             transactionDetailBalance.textContent = `฿${balance.toLocaleString()}`;
         } else {
             transactionDetailDownpaymentSection.classList.add('hidden');
@@ -2225,12 +2117,13 @@ document.addEventListener('DOMContentLoaded', () => {
         // Populate items table
         if (transactionDetailItems) {
             transactionDetailItems.innerHTML = '';
-            txn.items.forEach(item => {
+            (txn.items || []).forEach(item => {
+                const imeiValue = item.imei_sold || item.imei || item.serial || item.serial_number || '';
                 const itemRow = document.createElement('tr');
                 itemRow.className = 'border-b border-slate-700';
                 itemRow.innerHTML = `
                     <td class="px-4 py-3 text-white">${item.product_name}</td>
-                    <td class="px-4 py-3 text-center text-slate-400">${item.imei_sold || '-'}</td>
+                    <td class="px-4 py-3 text-center text-slate-400">${imeiValue ? imeiValue : '-'}</td>
                     <td class="px-4 py-3 text-center text-slate-300">${item.quantity}</td>
                     <td class="px-4 py-3 text-right text-cyan-400 font-mono">฿${item.price.toLocaleString()}</td>
                 `;

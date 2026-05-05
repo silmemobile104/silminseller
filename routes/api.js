@@ -638,7 +638,7 @@ router.put('/master/:collection/:id', async (req, res) => {
 // หน้าที่: บันทึกรายการขายและหักสต็อกอัตโนมัติ
 router.post('/transactions', async (req, res) => {
     try {
-        const { items, total_amount, payment_method, branch_id } = req.body;
+        const { items, total_amount, payment_method, down_payment, branch_id } = req.body;
 
         // ตรวจสอบข้อมูลเบื้องต้น
         if (!items || items.length === 0) {
@@ -654,10 +654,19 @@ router.post('/transactions', async (req, res) => {
         const randomStr = Math.random().toString(36).substring(2, 7).toUpperCase();
         const receipt_number = `INV-${dateStr}-${randomStr}`;
 
+        // Normalize items to ensure imei/downstream fields are persisted
+        const normalizedItems = (items || []).map(it => ({
+            product_id: it.product_id,
+            product_name: it.product_name,
+            imei_sold: (it.imei_sold || it.imei || it.imeiSold || it.serial || it.serial_number || '').toString().trim(),
+            quantity: Number(it.quantity) || 1,
+            price: Number(it.price) || 0
+        }));
+
         // ==========================================
         // CRITICAL: Stock Deduction Logic (หักสต็อก)
         // ==========================================
-        for (const item of items) {
+        for (const item of normalizedItems) {
             const product = await Product.findById(item.product_id);
             if (!product) {
                 return res.status(404).json({
@@ -666,7 +675,8 @@ router.post('/transactions', async (req, res) => {
                 });
             }
 
-            if (item.imei_sold && item.imei_sold.trim() !== '') {
+            const hasImeisInStock = Array.isArray(product.imeis) && product.imeis.length > 0;
+            if (hasImeisInStock && item.imei_sold && item.imei_sold.trim() !== '') {
                 // กรณีมี IMEI (อุปกรณ์มือถือ/แท็บเล็ต): ลบ IMEI ที่ขายออกจาก array
                 const imeiIndex = product.imeis.indexOf(item.imei_sold.trim());
                 if (imeiIndex === -1) {
@@ -696,9 +706,10 @@ router.post('/transactions', async (req, res) => {
             receipt_number,
             branch_id: branch_id || null,
             employee_id: req.user.employee_id, // เก็บ ID พนักงานที่ขาย
-            items,
-            total_amount,
+            items: normalizedItems,
+            total_amount: Number(total_amount) || 0,
             payment_method,
+            down_payment: Number(down_payment) || 0,
             created_at: now
         });
 
@@ -765,6 +776,7 @@ router.get('/transactions', async (req, res) => {
         const transactions = await Transaction.find(filter)
             .populate('branch_id', 'name')
             .populate('employee_id', 'name emp_id')
+            .populate('items.product_id', 'name')
             .sort({ created_at: -1 });
 
         res.status(200).json({
@@ -786,7 +798,8 @@ router.get('/transactions/:id', async (req, res) => {
     try {
         const transaction = await Transaction.findById(req.params.id)
             .populate('branch_id')
-            .populate('employee_id', 'name emp_id');
+            .populate('employee_id', 'name emp_id')
+            .populate('items.product_id', 'name');
 
         if (!transaction) {
             return res.status(404).json({ success: false, message: 'ไม่พบรายการที่ต้องการ' });
