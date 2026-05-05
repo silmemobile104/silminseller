@@ -157,6 +157,14 @@
                 <span>ส่วนลด / Discount:</span>
                 <span id="discount">฿0.00</span>
             </div>
+            <div class="total-row" id="down-payment-row" style="display: none;">
+                <span>ยอดเงินดาวน์ / ชำระแล้ว:</span>
+                <span id="down-payment">฿0.00</span>
+            </div>
+            <div class="total-row" id="balance-row" style="display: none;">
+                <span>ยอดคงเหลือ (Balance):</span>
+                <span id="balance">฿0.00</span>
+            </div>
             <div class="total-row grand-total">
                 <span>รวมทั้งสิ้น / Total:</span>
                 <span id="total-amount">฿0.00</span>
@@ -212,6 +220,19 @@
             document.getElementById('subtotal').textContent = '฿' + subtotal.toLocaleString(undefined, {minimumFractionDigits: 2});
             document.getElementById('total-amount').textContent = '฿' + txn.total_amount.toLocaleString(undefined, {minimumFractionDigits: 2});
             document.getElementById('payment-method-text').textContent = txn.payment_method;
+
+            // Handle down payment and balance
+            const downPayment = txn.down_payment || 0;
+            if (downPayment > 0) {
+                const balance = txn.total_amount - downPayment;
+                document.getElementById('down-payment-row').style.display = 'flex';
+                document.getElementById('down-payment').textContent = '฿' + downPayment.toLocaleString(undefined, {minimumFractionDigits: 2});
+                document.getElementById('balance-row').style.display = 'flex';
+                document.getElementById('balance').textContent = '฿' + balance.toLocaleString(undefined, {minimumFractionDigits: 2});
+            } else {
+                document.getElementById('down-payment-row').style.display = 'none';
+                document.getElementById('balance-row').style.display = 'none';
+            }
 
             // Trigger print after a short delay to ensure rendering
             setTimeout(() => {

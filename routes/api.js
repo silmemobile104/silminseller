@@ -722,11 +722,49 @@ router.post('/transactions', async (req, res) => {
 });
 
 // GET /api/transactions
-// หน้าที่: ดึงประวัติรายการขายทั้งหมด
+// หน้าที่: ดึงประวัติรายการขายทั้งหมด รองรับการกรองข้อมูล
 router.get('/transactions', async (req, res) => {
     try {
-        const transactions = await Transaction.find()
+        const { date, branch_id, search } = req.query;
+        let filter = {};
+
+        // Date filtering
+        if (date) {
+            const now = new Date();
+            const todayStart = new Date(now);
+            todayStart.setHours(0, 0, 0, 0);
+            const todayEnd = new Date(now);
+            todayEnd.setHours(23, 59, 59, 999);
+
+            if (date === 'today') {
+                filter.created_at = { $gte: todayStart, $lte: todayEnd };
+            } else if (date === 'week') {
+                const weekStart = new Date(todayStart);
+                weekStart.setDate(weekStart.getDate() - weekStart.getDay());
+                filter.created_at = { $gte: weekStart, $lte: todayEnd };
+            } else if (date === 'month') {
+                const monthStart = new Date(todayStart);
+                monthStart.setDate(1);
+                filter.created_at = { $gte: monthStart, $lte: todayEnd };
+            }
+        }
+
+        // Branch filtering
+        if (branch_id) {
+            filter.branch_id = branch_id;
+        }
+
+        // Search filtering (receipt_number or items.imei_sold)
+        if (search) {
+            filter.$or = [
+                { receipt_number: { $regex: search, $options: 'i' } },
+                { 'items.imei_sold': { $regex: search, $options: 'i' } }
+            ];
+        }
+
+        const transactions = await Transaction.find(filter)
             .populate('branch_id', 'name')
+            .populate('employee_id', 'name emp_id')
             .sort({ created_at: -1 });
 
         res.status(200).json({

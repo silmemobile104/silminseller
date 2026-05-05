@@ -291,6 +291,12 @@
                         class="sidebar-text ml-auto bg-cyan-500 text-slate-900 text-xs font-bold px-2 py-0.5 rounded-full">L</span>
                 </a>
 
+                <a href="#" id="nav-sales-history"
+                    class="flex items-center px-3 py-3 rounded-xl text-slate-300 hover:bg-slate-700/50 hover:text-white transition-all group nav-menu-item">
+                    <i class="fa-solid fa-clipboard-list sidebar-icon text-lg w-6 text-center text-amber-400 group-hover:text-amber-300"></i>
+                    <span class="sidebar-text ml-3 font-medium">ประวัติการขาย</span>
+                </a>
+
                 <a href="#" id="nav-personnel"
                     class="flex items-center px-3 py-3 rounded-xl text-slate-300 hover:bg-slate-700/50 hover:text-white transition-all group nav-menu-item">
                     <i
@@ -644,6 +650,20 @@
                                     </select>
                                 </div>
 
+                                <!-- Down Payment (hidden by default, shown only for financing) -->
+                                <div id="pos-down-payment-section" class="space-y-2 hidden">
+                                    <label class="text-sm font-medium text-slate-400">จำนวนเงินดาวน์ / รับเงินมา</label>
+                                    <div class="relative">
+                                        <span class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500">฿</span>
+                                        <input type="number" id="pos-down-payment"
+                                            class="w-full px-4 pl-10 py-3 rounded-xl bg-slate-900 border border-slate-600 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all font-mono"
+                                            value="0"
+                                            min="0"
+                                            step="1"
+                                            placeholder="0">
+                                    </div>
+                                </div>
+
                                 <!-- Checkout Button -->
                                 <button id="btn-checkout"
                                     class="w-full py-4 bg-gradient-to-r from-cyan-500 to-cyan-400 hover:from-cyan-400 hover:to-cyan-300 text-slate-900 font-bold text-lg rounded-xl shadow-[0_0_25px_rgba(6,182,212,0.4)] hover:shadow-[0_0_35px_rgba(6,182,212,0.6)] transition-all transform hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none disabled:hover:shadow-none">
@@ -846,6 +866,92 @@
                     </div>
                 </div>
 
+                <!-- VIEW: SALES HISTORY (ประวัติการขาย) -->
+                <div id="view-sales-history" class="hidden space-y-6 animate-fade-in">
+                    <!-- Header & Filters -->
+                    <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                        <div>
+                            <h3 class="text-2xl font-bold text-white flex items-center gap-3">
+                                <div class="w-12 h-12 rounded-2xl bg-amber-500/10 flex items-center justify-center border border-amber-500/20 shadow-lg shadow-amber-500/5">
+                                    <i class="fa-solid fa-clipboard-list text-amber-400 text-xl"></i>
+                                </div>
+                                ประวัติการขาย
+                            </h3>
+                            <p class="text-sm text-slate-400 mt-2">ดูประวัติรายการขายทั้งหมด</p>
+                        </div>
+                    </div>
+
+                    <!-- Filters Bar -->
+                    <div class="bg-slate-800 rounded-2xl border border-slate-700 p-5">
+                        <div class="flex flex-col lg:flex-row gap-4">
+                            <!-- Search Input -->
+                            <div class="flex-1">
+                                <label class="text-sm font-medium text-slate-300 mb-2 block">ค้นหา เลขที่บิล / IMEI</label>
+                                <div class="relative">
+                                    <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                        <i class="fa-solid fa-search text-slate-500"></i>
+                                    </div>
+                                    <input type="text" id="sales-history-search"
+                                        class="w-full px-4 pl-10 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all"
+                                        placeholder="พิมพ์เลขที่บิล หรือ IMEI...">
+                                </div>
+                            </div>
+
+                            <!-- Date Filter -->
+                            <div class="w-full lg:w-48">
+                                <label class="text-sm font-medium text-slate-300 mb-2 block">ช่วงเวลา</label>
+                                <select id="sales-history-date"
+                                    class="w-full px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all">
+                                    <option value="">ทั้งหมด</option>
+                                    <option value="today">วันนี้</option>
+                                    <option value="week">สัปดาห์นี้</option>
+                                    <option value="month">เดือนนี้</option>
+                                </select>
+                            </div>
+
+                            <!-- Branch Filter (only visible if manage_branches permission) -->
+                            <div class="w-full lg:w-48" id="sales-history-branch-filter">
+                                <label class="text-sm font-medium text-slate-300 mb-2 block">สาขา</label>
+                                <select id="sales-history-branch"
+                                    class="w-full px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all">
+                                    <option value="">ทุกสาขา</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Data Table -->
+                    <div class="bg-slate-800 rounded-2xl border border-slate-700 overflow-hidden">
+                        <div class="overflow-x-auto">
+                            <table class="w-full">
+                                <thead>
+                                    <tr class="bg-slate-900/50 border-b border-slate-700">
+                                        <th class="px-6 py-4 text-left text-sm font-semibold text-slate-300">วันที่-เวลา</th>
+                                        <th class="px-6 py-4 text-left text-sm font-semibold text-slate-300">เลขที่บิล</th>
+                                        <th class="px-6 py-4 text-left text-sm font-semibold text-slate-300">สาขา</th>
+                                        <th class="px-6 py-4 text-left text-sm font-semibold text-slate-300">พนักงานขาย</th>
+                                        <th class="px-6 py-4 text-right text-sm font-semibold text-slate-300">ยอดรวม</th>
+                                        <th class="px-6 py-4 text-left text-sm font-semibold text-slate-300">วิธีชำระเงิน</th>
+                                        <th class="px-6 py-4 text-center text-sm font-semibold text-slate-300">จัดการ</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="sales-history-table-body">
+                                    <!-- Data will be populated by JS -->
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Empty State -->
+                        <div id="sales-history-empty" class="hidden text-center py-20">
+                            <div class="w-20 h-20 rounded-full bg-slate-700/30 flex items-center justify-center text-slate-600 mx-auto mb-6">
+                                <i class="fa-solid fa-clipboard-list text-3xl"></i>
+                            </div>
+                            <h4 class="text-white text-lg font-semibold">ไม่พบประวัติการขาย</h4>
+                            <p class="text-slate-400 mt-2">ลองปรับตัวกรองข้อมูลหรือค้นหาด้วยคำอื่น</p>
+                        </div>
+                    </div>
+                </div>
+
             </div>
 
         </main>
@@ -991,19 +1097,6 @@
                     <textarea id="product-imeis" rows="3"
                         class="w-full px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all"
                         placeholder="กรอก 1 หมายเลขต่อ 1 บรรทัด..."></textarea>
-                </div>
-
-                <!-- Image Upload Field -->
-                <div class="space-y-2">
-                    <label class="text-sm font-medium text-slate-300">รูปภาพสินค้า (เตรียมไว้สำหรับ Cloudinary)</label>
-                    <div class="flex items-center gap-4">
-                        <div class="w-20 h-20 rounded-xl bg-slate-900 border border-slate-700 border-dashed flex items-center justify-center text-slate-500 overflow-hidden"
-                            id="image-preview">
-                            <i class="fa-solid fa-image text-2xl"></i>
-                        </div>
-                        <input type="file" id="product-image" accept="image/*"
-                            class="text-sm text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-cyan-500/10 file:text-cyan-400 hover:file:bg-cyan-500/20 transition-all cursor-pointer">
-                    </div>
                 </div>
 
                 <!-- Submit Button -->
@@ -1376,6 +1469,76 @@
     </div>
 
 
+    <!-- CONFIRM PRICE MODAL -->
+    <div id="confirm-price-modal"
+        class="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/90 backdrop-blur-md opacity-0 pointer-events-none transition-all duration-300 p-4">
+        <div class="modal-content relative w-full max-w-2xl max-h-[90vh] bg-slate-800 rounded-3xl shadow-2xl border border-cyan-500/30 flex flex-col transform scale-95 transition-transform duration-300">
+            <!-- Header -->
+            <div class="p-6 border-b border-slate-700 flex items-center justify-between">
+                <h3 class="text-2xl font-bold text-white flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-cyan-500/10 flex items-center justify-center border border-cyan-500/20">
+                        <i class="fa-solid fa-tags text-cyan-400"></i>
+                    </div>
+                    ยืนยันราคาขายสินค้า
+                </h3>
+                <button id="close-price-modal-btn"
+                    class="text-slate-400 hover:text-white transition-colors p-2 rounded-lg hover:bg-slate-700">
+                    <i class="fa-solid fa-xmark text-xl"></i>
+                </button>
+            </div>
+
+            <!-- Body - Cart Items List -->
+            <div class="flex-1 overflow-y-auto p-6">
+                <div id="confirm-price-list" class="space-y-4">
+                    <!-- Items will be dynamically populated here -->
+                </div>
+
+                <!-- Payment Details Section -->
+                <div class="mt-6 pt-6 border-t border-slate-700 space-y-4">
+                    <div>
+                        <label class="text-sm font-medium text-slate-300 mb-2 block">ช่องทางการชำระเงิน</label>
+                        <select id="modal-payment-method"
+                            class="w-full px-4 py-3 rounded-xl bg-slate-900 border border-slate-700 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all">
+                            <option value="เงินสด">เงินสด</option>
+                            <option value="โอนเงิน">โอนเงิน</option>
+                            <option value="จัดไฟแนนซ์">🏦 จัดไฟแนนซ์</option>
+                        </select>
+                    </div>
+                    <div id="down-payment-section" class="hidden">
+                        <label class="text-sm font-medium text-slate-300 mb-2 block">จำนวนเงินดาวน์ / รับเงินมา</label>
+                        <div class="relative">
+                            <span class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">฿</span>
+                            <input type="number" id="modal-down-payment"
+                                class="w-full pl-10 pr-4 py-3 rounded-xl bg-slate-900 border border-slate-700 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all font-mono"
+                                value="0"
+                                min="0"
+                                step="1">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer - Total & Buttons -->
+            <div class="p-6 border-t border-slate-700 bg-slate-800/50 rounded-b-3xl">
+                <div class="flex items-center justify-between mb-6">
+                    <span class="text-lg text-slate-400">ยอดรวมทั้งหมด</span>
+                    <span id="new-total-display" class="text-3xl font-bold text-cyan-400 font-mono">฿0</span>
+                </div>
+                <div class="flex gap-4">
+                    <button id="cancel-price-modal-btn"
+                        class="flex-1 py-4 rounded-2xl bg-slate-700 text-slate-300 font-bold hover:bg-slate-600 transition-all">
+                        ยกเลิก
+                    </button>
+                    <button id="confirm-price-checkout-btn"
+                        class="flex-1 py-4 rounded-2xl bg-cyan-500 text-slate-900 font-bold hover:bg-cyan-400 transition-all shadow-lg shadow-cyan-500/25 flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-check"></i>
+                        ชำระเงิน
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- CHECKOUT SUCCESS MODAL -->
     <div id="checkout-success-modal"
         class="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/90 backdrop-blur-md opacity-0 pointer-events-none transition-all duration-300 p-4">
@@ -1384,20 +1547,105 @@
             <div class="w-20 h-20 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-6 border border-green-500/30">
                 <i class="fa-solid fa-check text-4xl text-green-400"></i>
             </div>
-            
+
             <h3 class="text-2xl font-bold text-white mb-2">ทำรายการสำเร็จ!</h3>
             <p class="text-slate-400 mb-8" id="success-receipt-number">เลขที่ใบเสร็จ: INV-XXXXXXXX</p>
-            
+
             <div class="space-y-3">
                 <button id="btn-print-receipt-separate"
                     class="w-full py-4 bg-cyan-500 hover:bg-cyan-400 text-slate-900 font-bold rounded-2xl flex items-center justify-center gap-3 transition-all shadow-lg shadow-cyan-500/25 active:scale-95">
                     <i class="fa-solid fa-file-invoice text-xl"></i>
                     พิมพ์ใบเสร็จ (ไฟล์แยก)
                 </button>
-                
+
                 <button id="btn-close-success-modal"
                     class="w-full py-3 text-slate-400 hover:text-white font-medium transition-colors">
                     ปิดหน้าต่างนี้
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- TRANSACTION DETAILS MODAL -->
+    <div id="modal-transaction-details"
+        class="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/90 backdrop-blur-md opacity-0 pointer-events-none transition-all duration-300 p-4">
+        <div class="modal-content relative w-full max-w-3xl max-h-[90vh] bg-slate-800 rounded-3xl shadow-2xl border border-slate-700 flex flex-col transform scale-95 transition-transform duration-300">
+            <!-- Header -->
+            <div class="p-6 border-b border-slate-700 flex items-center justify-between">
+                <h3 class="text-2xl font-bold text-white flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center border border-amber-500/20">
+                        <i class="fa-solid fa-clipboard-list text-amber-400"></i>
+                    </div>
+                    รายละเอียดบิล: <span id="transaction-detail-receipt"></span>
+                </h3>
+                <button id="close-transaction-detail-btn"
+                    class="text-slate-400 hover:text-white transition-colors p-2 rounded-lg hover:bg-slate-700">
+                    <i class="fa-solid fa-xmark text-xl"></i>
+                </button>
+            </div>
+
+            <!-- Body -->
+            <div class="flex-1 overflow-y-auto p-6">
+                <!-- Transaction Info -->
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                    <div class="bg-slate-900 rounded-xl p-4 border border-slate-700">
+                        <p class="text-xs text-slate-400 mb-1">สาขา</p>
+                        <p id="transaction-detail-branch" class="text-white font-semibold">-</p>
+                    </div>
+                    <div class="bg-slate-900 rounded-xl p-4 border border-slate-700">
+                        <p class="text-xs text-slate-400 mb-1">พนักงานขาย</p>
+                        <p id="transaction-detail-employee" class="text-white font-semibold">-</p>
+                    </div>
+                    <div class="bg-slate-900 rounded-xl p-4 border border-slate-700">
+                        <p class="text-xs text-slate-400 mb-1">วันที่</p>
+                        <p id="transaction-detail-date" class="text-white font-semibold">-</p>
+                    </div>
+                    <div class="bg-slate-900 rounded-xl p-4 border border-slate-700">
+                        <p class="text-xs text-slate-400 mb-1">ช่องทางชำระเงิน</p>
+                        <p id="transaction-detail-payment" class="text-white font-semibold">-</p>
+                    </div>
+                </div>
+
+                <!-- Down Payment Info -->
+                <div id="transaction-detail-downpayment-section" class="hidden mb-6 bg-slate-900 rounded-xl p-4 border border-slate-700">
+                    <div class="flex justify-between">
+                        <span class="text-slate-400">ยอดเงินดาวน์ / ชำระแล้ว:</span>
+                        <span id="transaction-detail-downpayment" class="text-cyan-400 font-bold">฿0</span>
+                    </div>
+                    <div class="flex justify-between mt-2">
+                        <span class="text-slate-400">ยอดคงเหลือ (Balance):</span>
+                        <span id="transaction-detail-balance" class="text-white font-bold">฿0</span>
+                    </div>
+                </div>
+
+                <!-- Items Table -->
+                <div class="bg-slate-900 rounded-xl border border-slate-700 overflow-hidden">
+                    <table class="w-full">
+                        <thead>
+                            <tr class="bg-slate-800 border-b border-slate-700">
+                                <th class="px-4 py-3 text-left text-sm font-semibold text-slate-300">รายการสินค้า</th>
+                                <th class="px-4 py-3 text-center text-sm font-semibold text-slate-300">IMEI</th>
+                                <th class="px-4 py-3 text-center text-sm font-semibold text-slate-300">จำนวน</th>
+                                <th class="px-4 py-3 text-right text-sm font-semibold text-slate-300">ราคา</th>
+                            </tr>
+                        </thead>
+                        <tbody id="transaction-detail-items">
+                            <!-- Items will be populated by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <div class="p-6 border-t border-slate-700 bg-slate-800/50 rounded-b-3xl">
+                <div class="flex items-center justify-between mb-4">
+                    <span class="text-lg text-slate-400">ยอดรวมทั้งหมด</span>
+                    <span id="transaction-detail-total" class="text-3xl font-bold text-cyan-400 font-mono">฿0</span>
+                </div>
+                <button id="btn-reprint-receipt"
+                    class="w-full py-4 bg-cyan-500 hover:bg-cyan-400 text-slate-900 font-bold rounded-2xl flex items-center justify-center gap-3 transition-all shadow-lg shadow-cyan-500/25 active:scale-95">
+                    <i class="fa-solid fa-print text-xl"></i>
+                    พิมพ์ใบเสร็จซ้ำ (Reprint)
                 </button>
             </div>
         </div>

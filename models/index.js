@@ -148,6 +148,7 @@ const transactionSchema = new mongoose.Schema({
     }],
     total_amount: { type: Number, required: true }, // ยอดรวมทั้งหมด
     payment_method: { type: String, required: true }, // วิธีชำระเงิน: เงินสด, โอนเงิน, จัดไฟแนนซ์
+    down_payment: { type: Number, default: 0 }, // ยอดเงินดาวน์ / รับเงินมา
     created_at: { type: Date, default: Date.now } // วันที่ทำรายการ
 }, { timestamps: true });
 const Transaction = mongoose.model('Transaction', transactionSchema, 'transaction');
