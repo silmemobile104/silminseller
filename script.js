@@ -820,12 +820,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (viewName === 'dashboard') {
             activateView(viewDashboard, navDashboard);
-            loadDashboardData();
         }
-        else if (viewName === 'stock') activateView(viewStock, navStock);
+        else if (viewName === 'stock') {
+            activateView(viewStock, navStock);
+            await fetchProducts();
+        }
         else if (viewName === 'transactions') {
             activateView(viewTransactions, navTransactions);
-            fetchPosProducts();
+            // โหลดสินค้าสำหรับ POS (Backend จะกรองตามสาขาอัตโนมัติสำหรับพนักงานขาย)
+            await fetchPosProducts();
+            updatePosBranchBadge();
         }
         else if (viewName === 'personnel') {
             activateView(viewPersonnel, navPersonnel);
@@ -1474,6 +1478,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const cartItemsContainer = document.getElementById('cart-items-container');
     const cartEmptyState = document.getElementById('cart-empty-state');
     const cartCountBadge = document.getElementById('cart-count-badge');
+    const posCartHeader = document.querySelector('#view-transactions .fa-basket-shopping')
+        ? document.querySelector('#view-transactions .fa-basket-shopping').closest('h3')
+        : null;
     const cartSubtotal = document.getElementById('cart-subtotal');
     const cartDiscount = document.getElementById('cart-discount');
     const cartTotal = document.getElementById('cart-total');
@@ -1526,6 +1533,33 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error('เกิดข้อผิดพลาดในการดึงข้อมูลสินค้าสำหรับ POS:', error);
         }
     }
+
+    const getCurrentUserForPos = () => {
+        try {
+            const savedUserData = localStorage.getItem('silmin_user');
+            if (!savedUserData) return null;
+            return JSON.parse(savedUserData);
+        } catch {
+            return null;
+        }
+    };
+
+    const updatePosBranchBadge = () => {
+        if (!posCartHeader) return;
+
+        const user = getCurrentUserForPos();
+        const branchName = user && user.branch && user.branch.name ? user.branch.name : '';
+
+        let badge = document.getElementById('pos-branch-badge');
+        if (!badge) {
+            badge = document.createElement('span');
+            badge.id = 'pos-branch-badge';
+            badge.className = 'ml-2 text-xs font-bold px-2 py-1 rounded-full border border-slate-600 text-slate-300 bg-slate-900/50';
+            posCartHeader.insertBefore(badge, cartCountBadge);
+        }
+
+        badge.textContent = branchName ? `คลังสินค้า: ${branchName}` : 'คลังสินค้า: -';
+    };
 
     // Search/Filter Logic
     const searchPosProducts = (query) => {
@@ -2050,6 +2084,21 @@ document.addEventListener('DOMContentLoaded', () => {
                 const imeiMatch = findProductByImei(searchValue);
                 if (imeiMatch) {
                     const { product, matchedImei } = imeiMatch;
+
+                    // Branch validation (ยกเว้นแอดมิน/ผู้จัดการ)
+                    const user = getCurrentUserForPos();
+                    const role = user && user.role ? user.role : '';
+                    const isPrivileged = role === 'แอดมิน' || role === 'ผู้จัดการ';
+                    const userBranchId = user && user.branch ? user.branch._id : null;
+                    const productBranchId = product && product.branch_id
+                        ? (typeof product.branch_id === 'object' ? product.branch_id._id : product.branch_id)
+                        : null;
+
+                    if (!isPrivileged && userBranchId && productBranchId && userBranchId.toString() !== productBranchId.toString()) {
+                        showToast('สินค้านี้ไม่ได้อยู่ในคลังของสาขาคุณ!', 'error');
+                        posSearchInput.value = '';
+                        return;
+                    }
                     
                     // Strict stock validation before adding
                     if (product.quantity <= 0) {
@@ -2077,6 +2126,21 @@ document.addEventListener('DOMContentLoaded', () => {
                     const isDeviceLike = unitName.includes('เครื่อง') || typeName.toLowerCase().includes('iphone') || typeName.toLowerCase().includes('ipad');
                     
                     if (!hasImeis && !isDeviceLike) {
+                        // Branch validation (ยกเว้นแอดมิน/ผู้จัดการ)
+                        const user = getCurrentUserForPos();
+                        const role = user && user.role ? user.role : '';
+                        const isPrivileged = role === 'แอดมิน' || role === 'ผู้จัดการ';
+                        const userBranchId = user && user.branch ? user.branch._id : null;
+                        const productBranchId = codeMatch && codeMatch.branch_id
+                            ? (typeof codeMatch.branch_id === 'object' ? codeMatch.branch_id._id : codeMatch.branch_id)
+                            : null;
+
+                        if (!isPrivileged && userBranchId && productBranchId && userBranchId.toString() !== productBranchId.toString()) {
+                            showToast('สินค้านี้ไม่ได้อยู่ในคลังของสาขาคุณ!', 'error');
+                            posSearchInput.value = '';
+                            return;
+                        }
+
                         // Strict stock validation before adding
                         if (codeMatch.quantity <= 0) {
                             showToast('สินค้าหมดแล้ว ไม่สามารถเพิ่มลงตะกร้าได้', 'error');

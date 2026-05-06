@@ -153,7 +153,19 @@ router.post('/products', async (req, res) => {
 // หน้าที่: ดึงข้อมูลสินค้าทั้งหมดพร้อมข้อมูล Master Data ที่เกี่ยวข้อง
 router.get('/products', async (req, res) => {
     try {
-        const products = await Product.find()
+        const query = {};
+
+        // แยกข้อมูลตามสาขา: พนักงานขายเห็นได้เฉพาะสินค้าสาขาตัวเองเท่านั้น
+        if (req.user && req.user.role === 'พนักงานขาย') {
+            query.branch_id = req.user.branch_id;
+        } else {
+            // แอดมิน/ผู้จัดการ: ดูได้ทุกสาขา หรือกรองตาม branch_id ที่ส่งมา
+            if (req.query && req.query.branch_id) {
+                query.branch_id = req.query.branch_id;
+            }
+        }
+
+        const products = await Product.find(query)
             .populate('type_id', 'name')
             .populate('unit_id', 'name')
             .populate('color_id', 'name')
@@ -826,9 +838,15 @@ router.get('/dashboard-stats', async (req, res) => {
         const todayEnd = new Date();
         todayEnd.setHours(23, 59, 59, 999);
 
+        const branchFilter = {};
+        if (req.user && req.user.role === 'พนักงานขาย') {
+            branchFilter.branch_id = req.user.branch_id;
+        }
+
         // 1. ยอดขายวันนี้ (Today's Sales)
         const todayTransactions = await Transaction.find({
-            created_at: { $gte: todayStart, $lte: todayEnd }
+            created_at: { $gte: todayStart, $lte: todayEnd },
+            ...branchFilter
         }).populate('branch_id', 'name');
 
         const todaySales = todayTransactions.reduce((sum, t) => sum + (t.total_amount || 0), 0);
@@ -850,14 +868,22 @@ router.get('/dashboard-stats', async (req, res) => {
         }
 
         // 3. จำนวนสินค้าในคลัง (Total Stock)
+        const stockMatchStage = Object.keys(branchFilter).length > 0
+            ? [{ $match: { branch_id: branchFilter.branch_id } }]
+            : [];
+
         const stockAgg = await Product.aggregate([
+            ...stockMatchStage,
             { $group: { _id: null, totalQuantity: { $sum: '$quantity' }, totalProducts: { $sum: 1 } } }
         ]);
         const totalStock = stockAgg.length > 0 ? stockAgg[0].totalQuantity : 0;
         const totalProducts = stockAgg.length > 0 ? stockAgg[0].totalProducts : 0;
 
         // 4. สินค้าใกล้หมด (Low Stock: quantity < 5)
-        const lowStockCount = await Product.countDocuments({ quantity: { $lt: 5 } });
+        const lowStockCount = await Product.countDocuments({
+            quantity: { $lt: 5 },
+            ...branchFilter
+        });
 
         // 5. ยอดขายแยกตามสาขา (Sales by Branch) - วันนี้
         const salesByBranch = {};
@@ -871,7 +897,7 @@ router.get('/dashboard-stats', async (req, res) => {
         }
 
         // 6. รายการขายล่าสุด (Recent Transactions) - 10 รายการ
-        const recentTransactions = await Transaction.find()
+        const recentTransactions = await Transaction.find(branchFilter)
             .populate('branch_id', 'name')
             .sort({ created_at: -1 })
             .limit(10);
