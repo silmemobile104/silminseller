@@ -900,6 +900,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         else if (viewName === 'sales-history') {
             activateView(viewSalesHistory, navSalesHistory);
+            loadBranchesForSalesHistory();
             loadSalesHistory();
         }
         else if (viewName === 'transfers') {
@@ -2368,6 +2369,35 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
+    // Load Branches for Sales History Filter
+    async function loadBranchesForSalesHistory() {
+        if (!salesHistoryBranch) return;
+        
+        console.log('[SALES-HISTORY] Loading branches for filter');
+
+        try {
+            const response = await authFetch(`${API_BASE_URL}/branches`);
+            const result = await response.json();
+            
+            console.log('[SALES-HISTORY] Branches API response:', result);
+
+            if (result.success && result.data) {
+                salesHistoryBranch.innerHTML = '<option value="">ทุกสาขา</option>';
+                
+                result.data.forEach(branch => {
+                    const option = document.createElement('option');
+                    option.value = branch._id;
+                    option.textContent = branch.name;
+                    salesHistoryBranch.appendChild(option);
+                });
+            } else {
+                console.error('[SALES-HISTORY] Failed to load branches:', result.message);
+            }
+        } catch (err) {
+            console.error('[SALES-HISTORY] Error loading branches:', err);
+        }
+    }
+
     const renderSalesHistoryTable = (transactions) => {
         if (!salesHistoryTableBody) return;
 
@@ -3015,12 +3045,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Open/Close Transfer Modal
-    function openTransferModal() {
+    async function openTransferModal() {
         if (!modalCreateTransfer) return;
         modalCreateTransfer.classList.remove('opacity-0', 'pointer-events-none');
         transferCart = [];
         renderTransferCart();
-        loadBranchesForTransfer();
+        await loadBranchesForTransfer();
         if (transferToBranch) transferToBranch.value = '';
         if (transferScanInput) transferScanInput.value = '';
     }
@@ -3040,21 +3070,37 @@ document.addEventListener('DOMContentLoaded', () => {
         const user = JSON.parse(localStorage.getItem('silmin_user') || '{}');
         const currentBranchId = user.branch_id;
 
+        console.log('[TRANSFER] Loading branches for transfer, current branch:', currentBranchId);
+
         try {
             const response = await authFetch(`${API_BASE_URL}/branches`);
             const result = await response.json();
+            
+            console.log('[TRANSFER] Branches API response:', result);
+
             if (result.success && result.data) {
                 transferToBranch.innerHTML = '<option value="" disabled selected>-- เลือกสาขาปลายทาง --</option>';
-                result.data.forEach(branch => {
-                    if (branch._id !== currentBranchId) {
-                        const option = document.createElement('option');
-                        option.value = branch._id;
-                        option.textContent = branch.name;
-                        transferToBranch.appendChild(option);
-                    }
+                
+                const filteredBranches = result.data.filter(branch => branch._id !== currentBranchId);
+                console.log('[TRANSFER] Available destination branches:', filteredBranches);
+
+                if (filteredBranches.length === 0) {
+                    showToast('ไม่มีสาขาปลายทางให้เลือก', 'error');
+                    return;
+                }
+
+                filteredBranches.forEach(branch => {
+                    const option = document.createElement('option');
+                    option.value = branch._id;
+                    option.textContent = branch.name;
+                    transferToBranch.appendChild(option);
                 });
+            } else {
+                console.error('[TRANSFER] Failed to load branches:', result.message);
+                showToast('ไม่สามารถโหลดข้อมูลสาขาได้', 'error');
             }
         } catch (err) {
+            console.error('[TRANSFER] Error loading branches:', err);
             showToast('ไม่สามารถโหลดข้อมูลสาขาได้', 'error');
         }
     }
