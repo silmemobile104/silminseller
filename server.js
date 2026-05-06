@@ -13,6 +13,9 @@ const PORT = process.env.PORT || 5000;
 app.use(cors());
 app.use(express.json()); // Allows parsing of JSON request bodies
 
+// Serve static files (images, etc.)
+app.use(express.static(__dirname));
+
 // ==========================================
 // Database Connection (MongoDB Atlas)
 // ==========================================
@@ -55,6 +58,10 @@ app.get('/script.js', (req, res) => {
 
 app.get('/receipt-template.html', (req, res) => {
     res.sendFile(path.join(__dirname, 'receipt-template.html'));
+});
+
+app.get('/transfer-document.html', (req, res) => {
+    res.sendFile(path.join(__dirname, 'transfer-document.html'));
 });
 
 // ==========================================

@@ -94,6 +94,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const navSettings = document.getElementById('nav-settings');
     const navRoles = document.getElementById('nav-roles');
     const navSalesHistory = document.getElementById('nav-sales-history');
+    const navTransfers = document.getElementById('nav-transfers');
 
     const viewDashboard = document.getElementById('view-dashboard');
     const viewStock = document.getElementById('view-stock');
@@ -103,6 +104,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const viewSettings = document.getElementById('view-settings');
     const viewRoles = document.getElementById('view-roles');
     const viewSalesHistory = document.getElementById('view-sales-history');
+    const viewTransfers = document.getElementById('view-transfers');
 
     const settingsTabBtns = document.querySelectorAll('.settings-tab-btn');
     const masterDataInput = document.getElementById('master-data-input');
@@ -140,8 +142,29 @@ document.addEventListener('DOMContentLoaded', () => {
     const promptOkBtn = document.getElementById('prompt-ok-btn');
     const promptCancelBtn = document.getElementById('prompt-cancel-btn');
 
+    // Transfer DOM Elements
+    const btnOpenCreateTransfer = document.getElementById('btn-open-create-transfer');
+    const modalCreateTransfer = document.getElementById('modal-create-transfer');
+    const btnCloseCreateTransfer = document.getElementById('btn-close-create-transfer');
+    const transferToBranch = document.getElementById('transfer-to-branch');
+    const transferScanInput = document.getElementById('transfer-scan-input');
+    const transferCartItems = document.getElementById('transfer-cart-items');
+    const transferCartEmpty = document.getElementById('transfer-cart-empty');
+    const transferCartCount = document.getElementById('transfer-cart-count');
+    const btnSubmitTransfer = document.getElementById('btn-submit-transfer');
+    const transferTabIncoming = document.getElementById('transfer-tab-incoming');
+    const transferTabHistory = document.getElementById('transfer-tab-history');
+    const transferTableBody = document.getElementById('transfer-table-body');
+    const transferEmpty = document.getElementById('transfer-empty');
+    const transferBranchHint = document.getElementById('transfer-branch-hint');
+
     let currentSettingsTab = 'productname';
     window.masterDataCache = {};
+
+    // Transfer State
+    let transferCart = [];
+    let currentTransferTab = 'incoming'; // 'incoming' or 'history'
+    let transfersData = [];
 
     // ==========================================
     // UI Modal Logic
@@ -792,7 +815,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         // Hide all views and remove animation
-        const views = [viewDashboard, viewStock, viewTransactions, viewPersonnel, viewBranches, viewSettings, viewRoles, viewSalesHistory];
+        const views = [viewDashboard, viewStock, viewTransactions, viewPersonnel, viewBranches, viewSettings, viewRoles, viewSalesHistory, viewTransfers];
         views.forEach(view => {
             if (view) {
                 view.classList.add('hidden');
@@ -852,6 +875,10 @@ document.addEventListener('DOMContentLoaded', () => {
             activateView(viewSalesHistory, navSalesHistory);
             loadSalesHistory();
         }
+        else if (viewName === 'transfers') {
+            activateView(viewTransfers, navTransfers);
+            loadTransfers();
+        }
     };
 
     if (navDashboard) navDashboard.addEventListener('click', (e) => { e.preventDefault(); switchView('dashboard'); });
@@ -862,6 +889,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (navSettings) navSettings.addEventListener('click', (e) => { e.preventDefault(); switchView('settings'); });
     if (navRoles) navRoles.addEventListener('click', (e) => { e.preventDefault(); switchView('roles'); });
     if (navSalesHistory) navSalesHistory.addEventListener('click', (e) => { e.preventDefault(); switchView('sales-history'); });
+    if (navTransfers) navTransfers.addEventListener('click', (e) => { e.preventDefault(); switchView('transfers'); });
 
     // Auto-login check (JWT Token) - moved here after switchView is defined
     const savedToken = localStorage.getItem('silmin_token');
@@ -2861,6 +2889,351 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
+
+    // ==========================================
+    // TRANSFERS MODULE (โอนย้ายสินค้าระหว่างสาขา)
+    // ==========================================
+
+    // Load Transfers
+    async function loadTransfers() {
+        if (!transferTableBody) return;
+        try {
+            const response = await authFetch(`${API_BASE_URL}/transfers`);
+            const result = await response.json();
+            if (result.success) {
+                transfersData = result.data;
+                renderTransfersTable();
+            } else {
+                showToast(result.message || 'ไม่สามารถโหลดรายการโอนย้ายได้', 'error');
+            }
+        } catch (err) {
+            showToast('ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้', 'error');
+        }
+    }
+
+    // Render Transfers Table
+    function renderTransfersTable() {
+        if (!transferTableBody) return;
+        transferTableBody.innerHTML = '';
+
+        const filteredTransfers = transfersData.filter(t => {
+            if (currentTransferTab === 'incoming') {
+                return t.status === 'รอดำเนินการ';
+            } else {
+                return true; // แสดงทั้งหมดในประวัติ
+            }
+        });
+
+        if (filteredTransfers.length === 0) {
+            if (transferEmpty) transferEmpty.classList.remove('hidden');
+            return;
+        }
+
+        if (transferEmpty) transferEmpty.classList.add('hidden');
+
+        filteredTransfers.forEach(transfer => {
+            const row = document.createElement('tr');
+            row.className = 'hover:bg-slate-700/30 transition-colors';
+
+            const dateStr = new Date(transfer.created_at).toLocaleString('th-TH');
+            const fromBranch = transfer.from_branch?.name || '-';
+            const toBranch = transfer.to_branch?.name || '-';
+            const statusClass = transfer.status === 'รอดำเนินการ'
+                ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20';
+
+            const actionButtons = transfer.status === 'รอดำเนินการ'
+                ? `<div class="flex items-center justify-end gap-2">
+                    <button onclick="printTransferDocument('${transfer._id}')" class="px-3 py-1.5 rounded-lg bg-slate-600 hover:bg-slate-500 text-white text-xs font-bold transition-all" title="พิมพ์ใบโอน">
+                        <i class="fa-solid fa-print"></i> พิมพ์
+                    </button>
+                    <button onclick="receiveTransfer('${transfer._id}')" class="px-3 py-1.5 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-slate-900 text-xs font-bold transition-all">
+                        รับเข้า
+                    </button>
+                   </div>`
+                : `<div class="flex items-center justify-end gap-2">
+                    <button onclick="printTransferDocument('${transfer._id}')" class="px-3 py-1.5 rounded-lg bg-slate-600 hover:bg-slate-500 text-white text-xs font-bold transition-all" title="พิมพ์ใบโอน">
+                        <i class="fa-solid fa-print"></i> พิมพ์
+                    </button>
+                    <span class="text-slate-500 text-xs">รับเข้าแล้ว</span>
+                   </div>`;
+
+            row.innerHTML = `
+                <td class="px-6 py-4 text-slate-300">${dateStr}</td>
+                <td class="px-6 py-4 text-cyan-400 font-mono">${transfer.transfer_number}</td>
+                <td class="px-6 py-4 text-slate-300">${fromBranch}</td>
+                <td class="px-6 py-4 text-slate-300">${toBranch}</td>
+                <td class="px-6 py-4">
+                    <span class="px-2.5 py-1 rounded-lg text-xs font-bold ${statusClass}">${transfer.status}</span>
+                </td>
+                <td class="px-6 py-4 text-right">${actionButtons}</td>
+            `;
+            transferTableBody.appendChild(row);
+        });
+    }
+
+    // Switch Transfer Tab
+    function switchTransferTab(tab) {
+        currentTransferTab = tab;
+        if (transferTabIncoming && transferTabHistory) {
+            if (tab === 'incoming') {
+                transferTabIncoming.className = 'px-4 py-2 rounded-xl text-sm font-bold bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 transition-all';
+                transferTabHistory.className = 'px-4 py-2 rounded-xl text-sm font-bold bg-slate-900/40 text-slate-300 border border-slate-700 hover:border-slate-600 transition-all';
+            } else {
+                transferTabHistory.className = 'px-4 py-2 rounded-xl text-sm font-bold bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 transition-all';
+                transferTabIncoming.className = 'px-4 py-2 rounded-xl text-sm font-bold bg-slate-900/40 text-slate-300 border border-slate-700 hover:border-slate-600 transition-all';
+            }
+        }
+        renderTransfersTable();
+    }
+
+    // Open/Close Transfer Modal
+    function openTransferModal() {
+        if (!modalCreateTransfer) return;
+        modalCreateTransfer.classList.remove('opacity-0', 'pointer-events-none');
+        transferCart = [];
+        renderTransferCart();
+        loadBranchesForTransfer();
+        if (transferToBranch) transferToBranch.value = '';
+        if (transferScanInput) transferScanInput.value = '';
+    }
+
+    function closeTransferModal() {
+        if (!modalCreateTransfer) return;
+        modalCreateTransfer.classList.add('opacity-0', 'pointer-events-none');
+        transferCart = [];
+        renderTransferCart();
+        if (transferToBranch) transferToBranch.value = '';
+        if (transferScanInput) transferScanInput.value = '';
+    }
+
+    // Load Branches for Transfer (exclude current branch)
+    async function loadBranchesForTransfer() {
+        if (!transferToBranch) return;
+        const user = JSON.parse(localStorage.getItem('silmin_user') || '{}');
+        const currentBranchId = user.branch_id;
+
+        try {
+            const response = await authFetch(`${API_BASE_URL}/branches`);
+            const result = await response.json();
+            if (result.success && result.data) {
+                transferToBranch.innerHTML = '<option value="" disabled selected>-- เลือกสาขาปลายทาง --</option>';
+                result.data.forEach(branch => {
+                    if (branch._id !== currentBranchId) {
+                        const option = document.createElement('option');
+                        option.value = branch._id;
+                        option.textContent = branch.name;
+                        transferToBranch.appendChild(option);
+                    }
+                });
+            }
+        } catch (err) {
+            showToast('ไม่สามารถโหลดข้อมูลสาขาได้', 'error');
+        }
+    }
+
+    // Add Product to Transfer Cart (by scanning barcode or IMEI)
+    async function addProductToTransferCart(code) {
+        try {
+            const response = await authFetch(`${API_BASE_URL}/products/search?code=${encodeURIComponent(code)}`);
+            const result = await response.json();
+
+            if (result.success && result.product) {
+                const product = result.product;
+                const existingItem = transferCart.find(item => item.product_code === product.product_code);
+
+                if (existingItem) {
+                    if (product.category_name === 'เครื่อง' && product.imeis && product.imeis.length > 0) {
+                        showToast('สินค้าประเภทเครื่องมี IMEI แต่ละตัวต้องสแกนแยกกัน', 'error');
+                        return;
+                    }
+                    existingItem.quantity += 1;
+                } else {
+                    transferCart.push({
+                        product_name: product.name,
+                        product_code: product.product_code,
+                        imeis: [],
+                        quantity: 1
+                    });
+                }
+
+                renderTransferCart();
+                showToast(`เพิ่ม ${product.name} ลงรายการโอนย้ายแล้ว`);
+            } else {
+                showToast('ไม่พบสินค้าที่สแกน', 'error');
+            }
+        } catch (err) {
+            showToast('ไม่สามารถค้นหาสินค้าได้', 'error');
+        }
+
+        if (transferScanInput) {
+            transferScanInput.value = '';
+            transferScanInput.focus();
+        }
+    }
+
+    // Render Transfer Cart
+    function renderTransferCart() {
+        if (!transferCartItems || !transferCartCount) return;
+
+        if (transferCart.length === 0) {
+            if (transferCartEmpty) transferCartEmpty.classList.remove('hidden');
+            transferCartItems.innerHTML = '';
+            transferCartItems.appendChild(transferCartEmpty);
+            transferCartCount.textContent = '0 รายการ';
+            return;
+        }
+
+        if (transferCartEmpty) transferCartEmpty.classList.add('hidden');
+        transferCartCount.textContent = `${transferCart.length} รายการ`;
+
+        transferCartItems.innerHTML = '';
+        transferCart.forEach((item, index) => {
+            const div = document.createElement('div');
+            div.className = 'flex items-center justify-between bg-slate-900/40 rounded-xl p-3 border border-slate-700';
+            div.innerHTML = `
+                <div class="flex-1">
+                    <div class="text-white font-medium">${item.product_name}</div>
+                    <div class="text-slate-500 text-xs">${item.product_code} | จำนวน: ${item.quantity}</div>
+                </div>
+                <button onclick="removeFromTransferCart(${index})" class="text-red-400 hover:text-red-300 p-2">
+                    <i class="fa-solid fa-trash"></i>
+                </button>
+            `;
+            transferCartItems.appendChild(div);
+        });
+    }
+
+    // Remove from Transfer Cart
+    window.removeFromTransferCart = function(index) {
+        transferCart.splice(index, 1);
+        renderTransferCart();
+    };
+
+    // Submit Transfer
+    async function submitTransfer() {
+        if (transferCart.length === 0) {
+            showToast('กรุณาเพิ่มสินค้าในรายการโอนย้าย', 'error');
+            return;
+        }
+
+        if (!transferToBranch || !transferToBranch.value) {
+            showToast('กรุณาเลือกสาขาปลายทาง', 'error');
+            return;
+        }
+
+        const user = JSON.parse(localStorage.getItem('silmin_user') || '{}');
+
+        try {
+            const response = await authFetch(`${API_BASE_URL}/transfers`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    to_branch: transferToBranch.value,
+                    items: transferCart
+                })
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                showToast('สร้างรายการโอนย้ายสำเร็จ');
+                closeTransferModal();
+                loadTransfers();
+
+                // Show print option
+                if (result.data && result.data._id) {
+                    setTimeout(() => {
+                        if (confirm('ต้องการพิมพ์ใบโอนย้ายสินค้าหรือไม่?')) {
+                            printTransferDocument(result.data._id);
+                        }
+                    }, 500);
+                }
+            } else {
+                showToast(result.message || 'เกิดข้อผิดพลาด', 'error');
+            }
+        } catch (err) {
+            showToast('ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้', 'error');
+        }
+    }
+
+    // Receive Transfer
+    window.receiveTransfer = async function(transferId) {
+        if (!confirm('ยืนยันการรับเข้าสินค้า? สินค้าจะถูกเพิ่มเข้าสต็อกสาขาของคุณ')) {
+            return;
+        }
+
+        try {
+            const response = await authFetch(`${API_BASE_URL}/transfers/${transferId}/receive`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' }
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                showToast('รับเข้าสินค้าสำเร็จ');
+                loadTransfers();
+            } else {
+                showToast(result.message || 'เกิดข้อผิดพลาด', 'error');
+            }
+        } catch (err) {
+            showToast('ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้', 'error');
+        }
+    };
+
+    // Print Transfer Document
+    window.printTransferDocument = async function(transferId) {
+        try {
+            const response = await authFetch(`${API_BASE_URL}/transfers/${transferId}`);
+            const result = await response.json();
+
+            if (result.success && result.data) {
+                const transfer = result.data;
+                
+                // Prepare data for document
+                const documentData = {
+                    transfer_number: transfer.transfer_number,
+                    from_branch_name: transfer.from_branch?.name || '',
+                    to_branch_name: transfer.to_branch?.name || '',
+                    created_at: transfer.created_at,
+                    items: transfer.items,
+                    company_name: 'บริษัท ชิลมีน โมบาย จำกัด',
+                    company_address: transfer.from_branch?.address || ''
+                };
+
+                // Open document in new window with data as URL parameter
+                const dataParam = encodeURIComponent(JSON.stringify(documentData));
+                const newWindow = window.open(`transfer-document.html?data=${dataParam}`, '_blank');
+                
+                if (!newWindow) {
+                    showToast('ไม่สามารถเปิดหน้าต่างพิมพ์ได้', 'error');
+                }
+            } else {
+                showToast(result.message || 'ไม่สามารถดึงข้อมูลรายการโอนย้ายได้', 'error');
+            }
+        } catch (err) {
+            showToast('ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้', 'error');
+        }
+    };
+
+    // Transfer Event Listeners
+    if (transferTabIncoming) transferTabIncoming.addEventListener('click', () => switchTransferTab('incoming'));
+    if (transferTabHistory) transferTabHistory.addEventListener('click', () => switchTransferTab('history'));
+    if (btnOpenCreateTransfer) btnOpenCreateTransfer.addEventListener('click', openTransferModal);
+    if (btnCloseCreateTransfer) btnCloseCreateTransfer.addEventListener('click', closeTransferModal);
+    if (transferScanInput) {
+        transferScanInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                const code = transferScanInput.value.trim();
+                if (code) {
+                    addProductToTransferCart(code);
+                }
+            }
+        });
+    }
+    if (btnSubmitTransfer) btnSubmitTransfer.addEventListener('click', submitTransfer);
 
     // ==========================================
     // INITIAL APP LOAD (เรียกข้อมูลครั้งแรก)

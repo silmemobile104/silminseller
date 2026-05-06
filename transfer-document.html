@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>โอนย้ายที่เก็บสินค้า</title>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --primary: #1a2744;
+    --accent: #c8a96e;
+    --light-bg: #f8f6f2;
+    --border: #d0c8bc;
+    --text: #2c2c2c;
+    --muted: #7a7468;
+    --white: #ffffff;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Sarabun', sans-serif;
+    background: #e8e4dc;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    padding: 40px 20px;
+  }
+
+  .page {
+    background: var(--white);
+    width: 794px;
+    min-height: 1123px;
+    padding: 50px 60px;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.18);
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* Decorative corner accent */
+  .page::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0;
+    width: 6px;
+    height: 100%;
+    background: linear-gradient(180deg, var(--primary) 60%, var(--accent) 100%);
+  }
+
+  .page::after {
+    content: '';
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%;
+    height: 4px;
+    background: linear-gradient(90deg, var(--primary) 60%, var(--accent) 100%);
+  }
+
+  /* Header */
+  .header {
+    text-align: center;
+    margin-bottom: 28px;
+    padding-bottom: 20px;
+    border-bottom: 1.5px solid var(--border);
+  }
+
+  .company-name {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--primary);
+    letter-spacing: 0.3px;
+    margin-bottom: 6px;
+  }
+
+  .company-address {
+    font-size: 13px;
+    color: var(--muted);
+    line-height: 1.6;
+  }
+
+  .doc-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--primary);
+    margin-top: 16px;
+    letter-spacing: 1px;
+    position: relative;
+    display: inline-block;
+  }
+
+  .doc-title::after {
+    content: '';
+    display: block;
+    width: 100%;
+    height: 2px;
+    background: var(--accent);
+    margin-top: 4px;
+  }
+
+  /* Meta info */
+  .meta-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px 20px;
+    margin-bottom: 28px;
+    padding: 16px 20px;
+    background: var(--light-bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+  }
+
+  .meta-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13.5px;
+    color: var(--text);
+  }
+
+  .meta-label {
+    color: var(--muted);
+    font-weight: 500;
+    white-space: nowrap;
+  }
+
+  .meta-value {
+    font-weight: 600;
+    color: var(--primary);
+  }
+
+  .meta-item.right {
+    justify-content: flex-end;
+    text-align: right;
+  }
+
+  /* Table */
+  .table-wrapper {
+    width: 100%;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13.5px;
+  }
+
+  thead tr {
+    background: var(--primary);
+    color: var(--white);
+  }
+
+  thead th {
+    padding: 11px 14px;
+    text-align: left;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    font-size: 13px;
+  }
+
+  thead th.center { text-align: center; }
+  thead th.right { text-align: right; }
+
+  tbody tr {
+    border-bottom: 1px solid var(--border);
+    transition: background 0.15s;
+  }
+
+  tbody tr:last-child { border-bottom: none; }
+
+  tbody tr:hover { background: #faf8f5; }
+
+  tbody tr:nth-child(even) { background: #f8f5f0; }
+  tbody tr:nth-child(even):hover { background: #f3ede5; }
+
+  td {
+    padding: 12px 14px;
+    color: var(--text);
+    vertical-align: middle;
+  }
+
+  td.center { text-align: center; }
+  td.right { text-align: right; }
+
+  .serial-num {
+    color: var(--muted);
+    font-weight: 500;
+    font-size: 13px;
+  }
+
+  .product-code {
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+    color: var(--primary);
+    font-weight: 600;
+    background: #eef1f8;
+    padding: 2px 6px;
+    border-radius: 3px;
+  }
+
+  .product-name {
+    color: var(--text);
+    font-weight: 400;
+    margin-top: 3px;
+    font-size: 13px;
+  }
+
+  .badge {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+  }
+
+  .badge-from {
+    background: #fff0dc;
+    color: #a06800;
+    border: 1px solid #f0cc88;
+  }
+
+  .badge-to {
+    background: #e0f0ff;
+    color: #0060a0;
+    border: 1px solid #a0ccee;
+  }
+
+  .qty {
+    font-weight: 700;
+    font-size: 15px;
+    color: var(--primary);
+  }
+
+  .unit {
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 500;
+  }
+
+  /* Summary row */
+  .summary-row td {
+    background: var(--light-bg);
+    border-top: 2px solid var(--primary);
+    font-weight: 700;
+    color: var(--primary);
+    font-size: 13.5px;
+  }
+
+  /* Footer */
+  .footer {
+    margin-top: 50px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 30px;
+  }
+
+  .sign-box {
+    text-align: center;
+  }
+
+  .sign-label {
+    font-size: 13px;
+    color: var(--muted);
+    margin-bottom: 50px;
+    font-weight: 500;
+  }
+
+  .sign-line {
+    border-top: 1.5px solid var(--border);
+    padding-top: 8px;
+    font-size: 12.5px;
+    color: var(--text);
+  }
+
+  .sign-name {
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 3px;
+  }
+
+  /* Stamp area */
+  .stamp-area {
+    position: absolute;
+    bottom: 60px;
+    right: 60px;
+    width: 100px;
+    height: 100px;
+    border: 2.5px dashed var(--border);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--border);
+    font-size: 12px;
+    text-align: center;
+    line-height: 1.4;
+  }
+
+  .stamp-logo {
+    width: 80px;
+    height: 80px;
+    object-fit: contain;
+  }
+
+  .doc-number-tag {
+    position: absolute;
+    top: 12px;
+    right: 60px;
+    background: var(--primary);
+    color: var(--white);
+    font-size: 11px;
+    padding: 3px 10px;
+    border-radius: 0 0 4px 4px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+  }
+
+  @media print {
+    body { background: none; padding: 0; }
+    .page { box-shadow: none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="page">
+
+  <div class="doc-number-tag" id="doc-number-tag"></div>
+
+  <!-- Header -->
+  <div class="header">
+    <div class="company-name" id="doc-company-name"></div>
+    <div class="company-address" id="doc-company-address"></div>
+    <div class="doc-title">โอนย้ายที่เก็บสินค้า</div>
+  </div>
+
+  <!-- Meta -->
+  <div class="meta-grid">
+    <div class="meta-item">
+      <span class="meta-label">โอนย้ายจากคลัง :</span>
+      <span class="meta-value" id="doc-from-branch"></span>
+    </div>
+    <div class="meta-item right">
+      <span class="meta-label">เลขที่ :</span>
+      <span class="meta-value" id="doc-number"></span>
+    </div>
+    <div class="meta-item">
+      <span class="meta-label">โอนย้ายไปคลัง :</span>
+      <span class="meta-value" id="doc-to-branch"></span>
+    </div>
+    <div class="meta-item right">
+      <span class="meta-label">วันที่ :</span>
+      <span class="meta-value" id="doc-date"></span>
+    </div>
+  </div>
+
+  <!-- Table -->
+  <div class="table-wrapper">
+    <table>
+      <thead>
+        <tr>
+          <th style="width:50px" class="center">ลำดับ</th>
+          <th style="width:auto">รายการ</th>
+          <th style="width:110px" class="center">จากที่เก็บ</th>
+          <th style="width:110px" class="center">ไปที่เก็บ</th>
+          <th style="width:80px" class="right">จำนวน</th>
+          <th style="width:60px" class="center">หน่วย</th>
+        </tr>
+      </thead>
+      <tbody id="doc-table-body">
+        <!-- Dynamic rows will be inserted here -->
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Signatures -->
+  <div class="footer">
+    <div class="sign-box">
+      <div class="sign-label">ผู้อนุมัติ / Approved By</div>
+      <div class="sign-line">ลงชื่อ ................................................</div>
+      <div class="sign-name">( &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; )</div>
+    </div>
+    <div class="sign-box">
+      <div class="sign-label">ผู้รับสินค้า / Received By</div>
+      <div class="sign-line">ลงชื่อ ................................................</div>
+      <div class="sign-name">( &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; )</div>
+    </div>
+  </div>
+
+  <div class="stamp-area"><img src="logo_silminmobile.png" alt="Logo" class="stamp-logo"></div>
+
+</div>
+
+<script>
+  // Function to populate the document with data
+  function populateTransferDocument(data) {
+    // Header
+    document.getElementById('doc-company-name').textContent = data.company_name || 'บริษัท ชิลมีน โมบาย จำกัด';
+    document.getElementById('doc-company-address').innerHTML = data.company_address || '';
+
+    // Meta
+    document.getElementById('doc-number-tag').textContent = data.transfer_number || '';
+    document.getElementById('doc-number').textContent = data.transfer_number || '';
+    document.getElementById('doc-from-branch').textContent = data.from_branch_name || '';
+    document.getElementById('doc-to-branch').textContent = data.to_branch_name || '';
+    
+    // Format date
+    if (data.created_at) {
+      const date = new Date(data.created_at);
+      const day = date.getDate().toString().padStart(2, '0');
+      const month = (date.getMonth() + 1).toString().padStart(2, '0');
+      const year = date.getFullYear();
+      document.getElementById('doc-date').textContent = `${day}/${month}/${year}`;
+    }
+
+    // Table
+    const tbody = document.getElementById('doc-table-body');
+    tbody.innerHTML = '';
+    
+    let totalQty = 0;
+    let rowIndex = 1;
+
+    if (data.items && data.items.length > 0) {
+      data.items.forEach(item => {
+        if (item.imeis && item.imeis.length > 0) {
+          // Mobile phones: one row per IMEI
+          item.imeis.forEach(imei => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+              <td class="center serial-num">${rowIndex++}</td>
+              <td>
+                <div><span class="product-code">${imei}</span></div>
+                <div class="product-name">${item.product_name || ''}</div>
+              </td>
+              <td class="center"><span class="badge badge-from">${data.from_branch_name || ''}</span></td>
+              <td class="center"><span class="badge badge-to">${data.to_branch_name || ''}</span></td>
+              <td class="right"><span class="qty">1.00</span></td>
+              <td class="center unit">เครื่อง</td>
+            `;
+            tbody.appendChild(row);
+            totalQty += 1;
+          });
+        } else {
+          // Accessories: one row with total quantity
+          const row = document.createElement('tr');
+          row.innerHTML = `
+            <td class="center serial-num">${rowIndex++}</td>
+            <td>
+              <div><span class="product-code">${item.product_code || ''}</span></div>
+              <div class="product-name">${item.product_name || ''}</div>
+            </td>
+            <td class="center"><span class="badge badge-from">${data.from_branch_name || ''}</span></td>
+            <td class="center"><span class="badge badge-to">${data.to_branch_name || ''}</span></td>
+            <td class="right"><span class="qty">${(item.quantity || 0).toFixed(2)}</span></td>
+            <td class="center unit">ชิ้น</td>
+          `;
+          tbody.appendChild(row);
+          totalQty += (item.quantity || 0);
+        }
+      });
+    }
+
+    // Summary row
+    const summaryRow = document.createElement('tr');
+    summaryRow.className = 'summary-row';
+    summaryRow.innerHTML = `
+      <td colspan="4" class="right" style="padding-right:16px">รวมทั้งหมด</td>
+      <td class="right"><span class="qty">${totalQty.toFixed(2)}</span></td>
+      <td class="center unit">ชิ้น</td>
+    `;
+    tbody.appendChild(summaryRow);
+  }
+
+  // Listen for data from parent window
+  window.addEventListener('message', function(event) {
+    if (event.data && event.data.type === 'transfer-data') {
+      populateTransferDocument(event.data.data);
+    }
+  });
+
+  // Auto print if data is passed via URL param
+  window.onload = function() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const transferData = urlParams.get('data');
+    if (transferData) {
+      try {
+        const data = JSON.parse(decodeURIComponent(transferData));
+        populateTransferDocument(data);
+        setTimeout(() => window.print(), 500);
+      } catch (e) {
+        console.error('Error parsing transfer data:', e);
+      }
+    }
+  };
+</script>
+
+</body>
+</html>

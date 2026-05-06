@@ -153,6 +153,24 @@ const transactionSchema = new mongoose.Schema({
 }, { timestamps: true });
 const Transaction = mongoose.model('Transaction', transactionSchema, 'transaction');
 
+// 13. Transfer (โอนย้ายสินค้าระหว่างสาขา)
+const transferSchema = new mongoose.Schema({
+    transfer_number: { type: String, required: true, unique: true }, // เลขที่โอน (TRF-วันที่-สุ่ม)
+    from_branch: { type: mongoose.Schema.Types.ObjectId, ref: 'Branch', required: true }, // สาขาต้นทาง
+    to_branch: { type: mongoose.Schema.Types.ObjectId, ref: 'Branch', required: true }, // สาขาปลายทาง
+    items: [{
+        product_name: { type: String, required: true },
+        product_code: { type: String, required: true },
+        imeis: [{ type: String }],
+        quantity: { type: Number, default: 1 }
+    }],
+    status: { type: String, default: 'รอดำเนินการ' }, // รอดำเนินการ | รับเข้าแล้ว
+    created_by: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee', required: true },
+    received_by: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee', default: null },
+    created_at: { type: Date, default: Date.now }
+}, { timestamps: true });
+const Transfer = mongoose.model('Transfer', transferSchema, 'transfer');
+
 module.exports = {
     Branch,
     Role,
@@ -166,5 +184,6 @@ module.exports = {
     Supplier,
     Product,
     Transaction,
+    Transfer,
     seedDefaultRoles
 };

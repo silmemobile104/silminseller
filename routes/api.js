@@ -17,6 +17,7 @@ const {
     Supplier,
     Product,
     Transaction,
+    Transfer,
     seedDefaultRoles
 } = require('../models');
 
@@ -185,6 +186,59 @@ router.get('/products', async (req, res) => {
         res.status(500).json({
             success: false,
             message: 'เกิดข้อผิดพลาดในการดึงข้อมูลสินค้า'
+        });
+    }
+});
+
+// GET /api/products/search
+// หน้าที่: ค้นหาสินค้าตาม product_code หรือ IMEI (สำหรับสแกนบาร์โค้ด)
+router.get('/products/search', async (req, res) => {
+    try {
+        const { code } = req.query;
+        if (!code) {
+            return res.status(400).json({ success: false, message: 'กรุณาระบุรหัสสินค้า' });
+        }
+
+        const query = {
+            $or: [
+                { product_code: code },
+                { imeis: code }
+            ]
+        };
+
+        // แยกข้อมูลตามสาขา: พนักงานขายเห็นได้เฉพาะสินค้าสาขาตัวเองเท่านั้น
+        if (req.user && req.user.role === 'พนักงานขาย') {
+            query.branch_id = req.user.branch_id;
+        } else {
+            // แอดมิน/ผู้จัดการ: กรองตาม branch_id ที่ส่งมา
+            if (req.query && req.query.branch_id) {
+                query.branch_id = req.query.branch_id;
+            }
+        }
+
+        const product = await Product.findOne(query)
+            .populate('type_id', 'name')
+            .populate('unit_id', 'name')
+            .populate('color_id', 'name')
+            .populate('capacity_id', 'name')
+            .populate('condition_id', 'name')
+            .populate('branch_id', 'name')
+            .populate('supplier_id', 'name');
+
+        if (!product) {
+            return res.status(404).json({ success: false, message: 'ไม่พบสินค้า' });
+        }
+
+        res.status(200).json({
+            success: true,
+            message: 'ค้นหาสินค้าสำเร็จ',
+            product: product
+        });
+    } catch (error) {
+        console.error('API Error GET /api/products/search:', error);
+        res.status(500).json({
+            success: false,
+            message: 'เกิดข้อผิดพลาดในการค้นหาสินค้า'
         });
     }
 });
@@ -645,6 +699,236 @@ router.put('/master/:collection/:id', async (req, res) => {
 // ==========================================
 // Transaction / POS APIs (รายการขาย)
 // ==========================================
+
+// ==========================================
+// Transfer APIs (โอนย้ายสินค้าระหว่างสาขา)
+// ==========================================
+
+// GET /api/transfers
+// หน้าที่: ดึงรายการโอนย้ายที่เกี่ยวข้องกับสาขาของผู้ใช้งาน (ต้นทาง/ปลายทาง)
+router.get('/transfers', async (req, res) => {
+    try {
+        const branchId = req.user && req.user.branch_id ? req.user.branch_id : null;
+        if (!branchId) {
+            return res.status(400).json({ success: false, message: 'ไม่พบข้อมูลสาขาของผู้ใช้งาน' });
+        }
+
+        const transfers = await Transfer.find({
+            $or: [
+                { from_branch: branchId },
+                { to_branch: branchId }
+            ]
+        })
+            .populate('from_branch', 'name address')
+            .populate('to_branch', 'name')
+            .populate('created_by', 'name emp_id')
+            .populate('received_by', 'name emp_id')
+            .sort({ createdAt: -1 });
+
+        res.status(200).json({
+            success: true,
+            message: 'ดึงข้อมูลรายการโอนย้ายสำเร็จ',
+            data: transfers
+        });
+    } catch (error) {
+        console.error('เกิดข้อผิดพลาดในการดึงรายการโอนย้าย:', error);
+        res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการดึงข้อมูลรายการโอนย้าย' });
+    }
+});
+
+// GET /api/transfers/:id
+// หน้าที่: ดึงรายการโอนย้ายรายการเดียว (สำหรับพิมพ์เอกสาร)
+router.get('/transfers/:id', async (req, res) => {
+    try {
+        const transfer = await Transfer.findById(req.params.id)
+            .populate('from_branch', 'name address')
+            .populate('to_branch', 'name')
+            .populate('created_by', 'name emp_id')
+            .populate('received_by', 'name emp_id');
+
+        if (!transfer) {
+            return res.status(404).json({ success: false, message: 'ไม่พบรายการโอนย้ายที่ระบุ' });
+        }
+
+        res.status(200).json({
+            success: true,
+            message: 'ดึงข้อมูลรายการโอนย้ายสำเร็จ',
+            data: transfer
+        });
+    } catch (error) {
+        console.error('เกิดข้อผิดพลาดในการดึงรายการโอนย้าย:', error);
+        res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการดึงข้อมูลรายการโอนย้าย' });
+    }
+});
+
+// POST /api/transfers
+// หน้าที่: สร้างรายการโอนย้าย และตัดสต็อกจากสาขาต้นทาง
+router.post('/transfers', async (req, res) => {
+    try {
+        const { to_branch, items } = req.body;
+        const fromBranch = req.user && req.user.branch_id ? req.user.branch_id : null;
+        if (!fromBranch) return res.status(400).json({ success: false, message: 'ไม่พบข้อมูลสาขาต้นทางของผู้ใช้งาน' });
+        if (!to_branch) return res.status(400).json({ success: false, message: 'กรุณาเลือกสาขาปลายทาง' });
+        if (!items || !Array.isArray(items) || items.length === 0) {
+            return res.status(400).json({ success: false, message: 'กรุณาเพิ่มสินค้าอย่างน้อย 1 รายการเพื่อทำการโอนย้าย' });
+        }
+
+        if (to_branch.toString() === fromBranch.toString()) {
+            return res.status(400).json({ success: false, message: 'ไม่สามารถโอนย้ายไปสาขาเดียวกันได้' });
+        }
+
+        // สร้างเลขที่โอน: TRF-วันที่-สุ่ม
+        const now = new Date();
+        const dateStr = now.toISOString().slice(0, 10).replace(/-/g, '');
+        const randomStr = Math.random().toString(36).substring(2, 7).toUpperCase();
+        const transfer_number = `TRF-${dateStr}-${randomStr}`;
+
+        const normalizedItems = items.map(it => ({
+            product_name: (it.product_name || '').toString(),
+            product_code: (it.product_code || '').toString(),
+            imeis: Array.isArray(it.imeis) ? it.imeis.map(x => x.toString().trim()).filter(Boolean) : [],
+            quantity: Number(it.quantity) || 1
+        }));
+
+        // ตัดสต็อกจากสาขาต้นทางแบบปลอดภัย
+        for (const item of normalizedItems) {
+            if (!item.product_code) {
+                return res.status(400).json({ success: false, message: 'พบรายการที่ไม่มีรหัสสินค้า' });
+            }
+
+            const product = await Product.findOne({ product_code: item.product_code, branch_id: fromBranch });
+            if (!product) {
+                return res.status(404).json({ success: false, message: `ไม่พบสินค้าในสาขาต้นทาง: ${item.product_name || item.product_code}` });
+            }
+
+            const hasImeisInStock = Array.isArray(product.imeis) && product.imeis.length > 0;
+            if (hasImeisInStock) {
+                // โอนแบบระบุ IMEI
+                if (!item.imeis || item.imeis.length === 0) {
+                    return res.status(400).json({ success: false, message: `กรุณาระบุ IMEI สำหรับสินค้า: ${product.name}` });
+                }
+
+                // กันโอนเกินจำนวน
+                if (item.imeis.length !== item.quantity) {
+                    return res.status(400).json({ success: false, message: `จำนวน IMEI ไม่ตรงกับจำนวนที่โอนสำหรับสินค้า: ${product.name}` });
+                }
+
+                for (const imei of item.imeis) {
+                    const idx = product.imeis.indexOf(imei);
+                    if (idx === -1) {
+                        return res.status(400).json({ success: false, message: `ไม่พบ IMEI: ${imei} ในสต็อกสาขาต้นทาง (${product.name})` });
+                    }
+                    product.imeis.splice(idx, 1);
+                }
+                product.quantity = Math.max(0, product.quantity - item.quantity);
+            } else {
+                // อุปกรณ์เสริม: ตัดตามจำนวน
+                if (product.quantity < item.quantity) {
+                    return res.status(400).json({ success: false, message: `สินค้า ${product.name} มีไม่เพียงพอสำหรับโอนย้าย (คงเหลือ: ${product.quantity})` });
+                }
+                product.quantity = Math.max(0, product.quantity - item.quantity);
+            }
+
+            await product.save();
+        }
+
+        const transfer = new Transfer({
+            transfer_number,
+            from_branch: fromBranch,
+            to_branch,
+            items: normalizedItems,
+            status: 'รอดำเนินการ',
+            created_by: req.user.employee_id,
+            received_by: null,
+            created_at: now
+        });
+
+        const saved = await transfer.save();
+        console.log(`[โอนย้ายสินค้า] สร้างรายการโอนสำเร็จ: ${transfer_number}`);
+
+        res.status(201).json({ success: true, message: 'สร้างรายการโอนย้ายสำเร็จ', data: saved });
+    } catch (error) {
+        console.error('เกิดข้อผิดพลาดในการสร้างรายการโอนย้าย:', error);
+        res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการสร้างรายการโอนย้าย' });
+    }
+});
+
+// PUT /api/transfers/:id/receive
+// หน้าที่: รับเข้าสินค้าจากรายการโอนย้าย และเพิ่มสต็อกเข้าที่สาขาปลายทาง
+router.put('/transfers/:id/receive', async (req, res) => {
+    try {
+        const transfer = await Transfer.findById(req.params.id);
+        if (!transfer) return res.status(404).json({ success: false, message: 'ไม่พบรายการโอนย้ายที่ระบุ' });
+
+        if (transfer.status === 'รับเข้าแล้ว') {
+            return res.status(400).json({ success: false, message: 'รายการนี้ถูกรับเข้าแล้ว' });
+        }
+
+        const userBranchId = req.user && req.user.branch_id ? req.user.branch_id.toString() : '';
+        const toBranchId = transfer.to_branch ? transfer.to_branch.toString() : '';
+        if (!userBranchId || userBranchId !== toBranchId) {
+            return res.status(403).json({ success: false, message: 'คุณไม่มีสิทธิ์รับเข้าสินค้ารายการนี้' });
+        }
+
+        // รับเข้า: เพิ่มสต็อกเข้าปลายทาง (หา product เดิมตาม product_code)
+        for (const item of transfer.items || []) {
+            const productCode = (item.product_code || '').toString();
+            if (!productCode) continue;
+
+            const destProduct = await Product.findOne({ product_code: productCode, branch_id: transfer.to_branch });
+
+            if (destProduct) {
+                // เพิ่มจำนวน + เพิ่ม imeis (ถ้ามี)
+                destProduct.quantity = Number(destProduct.quantity || 0) + Number(item.quantity || 0);
+                if (Array.isArray(item.imeis) && item.imeis.length > 0) {
+                    const incomingImeis = item.imeis.map(x => x.toString().trim()).filter(Boolean);
+                    const existingSet = new Set((destProduct.imeis || []).map(x => x.toString().trim()));
+                    for (const imei of incomingImeis) {
+                        if (!existingSet.has(imei)) {
+                            destProduct.imeis.push(imei);
+                            existingSet.add(imei);
+                        }
+                    }
+                }
+                await destProduct.save();
+            } else {
+                // ไม่พบสินค้าในปลายทาง: โคลนจากต้นทาง (ข้อมูล master) แล้วตั้ง branch_id ใหม่
+                const srcProduct = await Product.findOne({ product_code: productCode, branch_id: transfer.from_branch });
+                if (!srcProduct) {
+                    return res.status(400).json({ success: false, message: `ไม่พบข้อมูลสินค้าเพื่อโคลนในสาขาต้นทาง: ${productCode}` });
+                }
+
+                const cloned = new Product({
+                    product_code: srcProduct.product_code,
+                    supplier_id: srcProduct.supplier_id || null,
+                    name: srcProduct.name,
+                    cost_price: srcProduct.cost_price,
+                    selling_price: srcProduct.selling_price,
+                    type_id: srcProduct.type_id,
+                    unit_id: srcProduct.unit_id || null,
+                    color_id: srcProduct.color_id || null,
+                    capacity_id: srcProduct.capacity_id || null,
+                    condition_id: srcProduct.condition_id || null,
+                    branch_id: transfer.to_branch,
+                    imeis: Array.isArray(item.imeis) ? item.imeis.map(x => x.toString().trim()).filter(Boolean) : [],
+                    quantity: Number(item.quantity) || 1
+                });
+                await cloned.save();
+            }
+        }
+
+        transfer.status = 'รับเข้าแล้ว';
+        transfer.received_by = req.user.employee_id;
+        transfer.updatedAt = new Date();
+        const saved = await transfer.save();
+
+        console.log(`[โอนย้ายสินค้า] รับเข้าสำเร็จ: ${transfer.transfer_number}`);
+        res.status(200).json({ success: true, message: 'รับเข้าสินค้าสำเร็จ', data: saved });
+    } catch (error) {
+        console.error('เกิดข้อผิดพลาดในการรับเข้าสินค้า:', error);
+        res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการรับเข้าสินค้า' });
+    }
+});
 
 // POST /api/transactions
 // หน้าที่: บันทึกรายการขายและหักสต็อกอัตโนมัติ
