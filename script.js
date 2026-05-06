@@ -19,7 +19,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // ตรวจสอบ 401/403 → เซสชั่นหมดอายุ
         if (response.status === 401 || response.status === 403) {
-            forceLogout();
+            // Toast debounce - แสดง error เพียงครั้งเดียว
+            if (!window.__isShowingAuthError) {
+                window.__isShowingAuthError = true;
+                forceLogout();
+                showToast('เซสชั่นหมดอายุ กรุณาเข้าสู่ระบบใหม่', 'error');
+                setTimeout(() => {
+                    window.__isShowingAuthError = false;
+                }, 3000);
+            } else {
+                // ถ้ามีการแสดง error อยู่แล้ว ให้ logout เงียบๆ
+                forceLogout();
+            }
             throw new Error('เซสชั่นหมดอายุ');
         }
         return response;
@@ -193,7 +204,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Modal Events
     if (btnAddProduct) {
-        btnAddProduct.addEventListener('click', () => {
+        btnAddProduct.addEventListener('click', async () => {
             // Reset Edit ID
             const editIdInput = document.getElementById('edit-product-id');
             if (editIdInput) editIdInput.value = '';
@@ -201,6 +212,9 @@ document.addEventListener('DOMContentLoaded', () => {
             // Reset Title
             const modalTitle = document.getElementById('modal-title');
             if (modalTitle) modalTitle.innerHTML = `<i class="fa-solid fa-box-open text-cyan-400"></i> เพิ่มสินค้าใหม่`;
+
+            // โหลดข้อมูล master data ก่อนเปิด modal
+            await fetchMasterData();
 
             openModal();
         });
@@ -453,6 +467,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         </div>
                     </div>
                 </td>
+                <td class="px-6 py-4 text-slate-400 text-sm">${product.branch_id ? product.branch_id.name : '-'}</td>
                 <td class="px-6 py-4 text-slate-400 text-sm">${product.supplier_id ? product.supplier_id.name : '-'}</td>
                 <td class="px-6 py-4"><span class="px-2.5 py-1 bg-slate-700 text-slate-300 rounded-md text-xs font-medium">${categoryName}</span></td>
                 <td class="px-6 py-4 text-right text-slate-300 font-mono">฿${product.selling_price.toLocaleString()}</td>
@@ -594,6 +609,18 @@ document.addEventListener('DOMContentLoaded', () => {
                     // Update top bar
                     updateTopBar(result.data);
                     applyPermissions(result.data.permissions);
+
+                    // แสดง dashboard โดย default
+                    showView('dashboard');
+
+                    // เรียกใช้ฟังก์ชันดึงข้อมูลทั้งหมดหลังจาก login สำเร็จ
+                    fetchMasterData();
+                    fetchProducts();
+                    loadBranches();
+                    loadEmployees();
+                    loadDashboardData();
+                    fetchPosProducts();
+                    loadRoles();
                 }, 500);
             } else {
                 showLoginError(result.message || 'รหัสพนักงานหรือรหัสผ่านไม่ถูกต้อง');
@@ -3238,14 +3265,54 @@ document.addEventListener('DOMContentLoaded', () => {
     // ==========================================
     // INITIAL APP LOAD (เรียกข้อมูลครั้งแรก)
     // ==========================================
-    // เรียกใช้ฟังก์ชันดึงข้อมูลทั้งหมดที่ส่วนท้ายสุด เพื่อให้มั่นใจว่าฟังก์ชันทั้งหมดถูกประกาศแล้ว
-    fetchMasterData();
-    fetchProducts();
-    loadBranches();
-    loadEmployees();
-    loadDashboardData();
-    fetchPosProducts();
-    loadRoles();
+    // ตรวจสอบ authentication ก่อนโหลดข้อมูล
+    const token = localStorage.getItem('silmin_token');
+    const user = JSON.parse(localStorage.getItem('silmin_user') || '{}');
 
-    console.log('[SILMIN] ระบบเริ่มต้นสำเร็จและโหลดข้อมูลครบถ้วน');
+    if (!token) {
+        // ไม่มี token - แสดงหน้า login และไม่โหลดข้อมูลใดๆ
+        console.log('[SILMIN] ไม่พบ token - แสดงหน้า login');
+        const mainLayout = document.getElementById('main-layout');
+        const loginScreen = document.getElementById('login-screen');
+
+        if (mainLayout) {
+            mainLayout.classList.remove('opacity-100');
+            mainLayout.classList.add('opacity-0', 'hidden');
+        }
+        if (loginScreen) {
+            loginScreen.classList.remove('hidden', 'opacity-0');
+        }
+    } else {
+        // มี token - แสดง main layout และโหลดข้อมูล
+        console.log('[SILMIN] พบ token - โหลดข้อมูลแอปพลิเคชัน');
+        
+        const mainLayout = document.getElementById('main-layout');
+        const loginScreen = document.getElementById('login-screen');
+
+        if (mainLayout) {
+            mainLayout.classList.remove('hidden', 'opacity-0');
+            mainLayout.classList.add('opacity-100');
+        }
+        if (loginScreen) {
+            loginScreen.classList.add('hidden', 'opacity-0');
+        }
+
+        // Update top bar และ permissions
+        updateTopBar(user);
+        applyPermissions(user.permissions);
+
+        // แสดง dashboard โดย default
+        showView('dashboard');
+
+        // เรียกใช้ฟังก์ชันดึงข้อมูลทั้งหมด
+        fetchMasterData();
+        fetchProducts();
+        loadBranches();
+        loadEmployees();
+        loadDashboardData();
+        fetchPosProducts();
+        loadRoles();
+
+        console.log('[SILMIN] ระบบเริ่มต้นสำเร็จและโหลดข้อมูลครบถ้วน');
+    }
 });
