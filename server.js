@@ -31,8 +31,9 @@ mongoose.connect(MONGODB_URI)
     .then(async () => {
         console.log('เชื่อมต่อฐานข้อมูล MongoDB Atlas สำเร็จ');
         // Seed default roles ถ้ายังไม่มีข้อมูล
-        const { seedDefaultRoles } = require('./models');
+        const { seedDefaultRoles, migrateProductsToERP } = require('./models');
         await seedDefaultRoles();
+        await migrateProductsToERP();
     })
     .catch((err) => {
         console.error('เกิดข้อผิดพลาดในการเชื่อมต่อฐานข้อมูล:', err);

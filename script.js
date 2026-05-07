@@ -515,7 +515,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     };
 
-    const editProduct = (product) => {
+    const editProduct = async (product) => {
         // Change Modal Title
         const modalTitle = document.getElementById('modal-title');
         if (modalTitle) modalTitle.innerHTML = `<i class="fa-solid fa-pen-to-square text-cyan-400"></i> แก้ไขข้อมูลสินค้า`;
@@ -524,27 +524,46 @@ document.addEventListener('DOMContentLoaded', () => {
         const editIdInput = document.getElementById('edit-product-id');
         if (editIdInput) editIdInput.value = product._id;
 
+        // โหลดข้อมูล Master Data ทั้งหมดให้เสร็จก่อนเริ่มใส่ค่าลงฟอร์ม เพื่อรับประกันว่าข้อมูลตัวเลือกจะขึ้นครบถ้วนโดยไม่ต้องไปหน้าตั้งค่าก่อน
+        await fetchMasterData();
+
+        // Helper to extract ID robustly whether populated or not
+        const getFieldId = (field) => {
+            if (!field) return '';
+            if (typeof field === 'string') return field;
+            if (field._id) return field._id.toString();
+            if (typeof field.toString === 'function') return field.toString();
+            return '';
+        };
+
         // Populate Form Fields
         if (productCode) productCode.value = product.product_code || '';
-        if (productSupplier) productSupplier.value = product.supplier_id ? product.supplier_id._id : '';
+        if (productSupplier) productSupplier.value = getFieldId(product.supplier_id);
         if (productName) {
             // Find option with matching text or ID
+            let matched = false;
             Array.from(productName.options).forEach(opt => {
-                if (opt.textContent === product.name) productName.value = opt.value;
+                if (opt.textContent.trim() === product.name.trim() || opt.value === product.name) {
+                    productName.value = opt.value;
+                    matched = true;
+                }
             });
+            if (!matched && product.name) {
+                // Fallback direct set
+                productName.value = product.name;
+            }
         }
-        if (productCategory) productCategory.value = product.type_id ? product.type_id._id : '';
-        if (productColor) productColor.value = product.color_id ? product.color_id._id : '';
-        if (productCapacity) productCapacity.value = product.capacity_id ? product.capacity_id._id : '';
-        if (productCondition) productCondition.value = product.condition_id ? product.condition_id._id : '';
-        if (productUnit) productUnit.value = product.unit_id ? product.unit_id._id : '';
+        if (productCategory) productCategory.value = getFieldId(product.type_id);
+        if (productColor) productColor.value = getFieldId(product.color_id);
+        if (productCapacity) productCapacity.value = getFieldId(product.capacity_id);
+        if (productCondition) productCondition.value = getFieldId(product.condition_id);
+        if (productUnit) productUnit.value = getFieldId(product.unit_id);
         if (productQuantity) productQuantity.value = product.quantity || 1;
 
         // ตั้งค่าสาขาที่จัดเก็บ
         if (productBranch) {
-            loadBranchesForProductForm().then(() => {
-                productBranch.value = product.branch_id ? product.branch_id._id : '';
-            });
+            await loadBranchesForProductForm();
+            productBranch.value = getFieldId(product.branch_id);
         }
 
         document.getElementById('cost-price').value = product.cost_price || 0;
@@ -556,7 +575,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         // Handle field visibility based on category
-        const categoryName = product.type_id ? product.type_id.name : '';
+        const categoryName = product.type_id && product.type_id.name ? product.type_id.name : '';
         if (categoryName.includes('iPhone') || categoryName.includes('iPad')) {
             deviceFields.classList.remove('hidden');
             imeiField.classList.remove('hidden');
@@ -1407,7 +1426,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 empPasswordInput.removeAttribute('required');
                 if (passwordRequiredStar) passwordRequiredStar.classList.add('hidden');
                 if (empPasswordHint) empPasswordHint.classList.remove('hidden');
-                if (empBranchSelect) empBranchSelect.value = emp.branch_id ? emp.branch_id._id : '';
+                if (empBranchSelect) {
+                    const bId = emp.branch_id ? (emp.branch_id._id || emp.branch_id) : '';
+                    empBranchSelect.value = bId ? bId.toString() : '';
+                }
                 if (empRoleSelect) empRoleSelect.value = emp.role || 'พนักงานขาย';
             } else {
                 // Add mode

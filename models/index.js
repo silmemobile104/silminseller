@@ -125,14 +125,60 @@ const productSchema = new mongoose.Schema({
     color_id: { type: mongoose.Schema.Types.ObjectId, ref: 'ProductColor' },
     capacity_id: { type: mongoose.Schema.Types.ObjectId, ref: 'ProductCapacity' },
     condition_id: { type: mongoose.Schema.Types.ObjectId, ref: 'ProductCondition' },
-    branch_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Branch' }, // สาขาที่มีสต็อก
 
-    // Devices specific (IMEIs array) vs Accessory specific (Quantity)
-    imeis: [{ type: String }], // สแกนเลข IMEI ได้หลายค่า
-    quantity: { type: Number, default: 1 } // จำนวนชิ้นสำหรับอุปกรณ์เสริม
+    // ERP: Stock per branch (คงเหลือแยกตามสาขา)
+    stock_balances: [{
+        branch_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Branch', required: true },
+        quantity: { type: Number, default: 0 },
+        imeis: [{ type: String }]
+    }]
 
 }, { timestamps: true });
 const Product = mongoose.model('Product', productSchema, 'product');
+
+// 11.1 Movement Ledger (บันทึกการเคลื่อนไหวสินค้า)
+const movementSchema = new mongoose.Schema({
+    product_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Product', required: true },
+    imei: { type: String, default: '' },
+    action: { type: String, required: true },
+    from_branch: { type: mongoose.Schema.Types.ObjectId, ref: 'Branch', default: null },
+    to_branch: { type: mongoose.Schema.Types.ObjectId, ref: 'Branch', default: null },
+    reference_no: { type: String, default: '' },
+    transit_hours: { type: Number, default: 0 },
+    quantity: { type: Number, default: 0 },
+    created_by: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee', required: true },
+    created_at: { type: Date, default: Date.now }
+}, { timestamps: true });
+const Movement = mongoose.model('Movement', movementSchema, 'movement');
+
+// Auto-migration helper (จะถูกเรียกตอนเริ่มรันเซิร์ฟเวอร์)
+async function migrateProductsToERP() {
+    const products = await Product.find({ stock_balances: { $exists: false } });
+    if (!products || products.length === 0) return;
+
+    for (const p of products) {
+        const legacyBranchId = p.branch_id;
+        const legacyQty = Number(p.quantity || 0);
+        const legacyImeis = Array.isArray(p.imeis) ? p.imeis.map(x => x.toString().trim()).filter(Boolean) : [];
+
+        p.stock_balances = [];
+        if (legacyBranchId) {
+            p.stock_balances.push({
+                branch_id: legacyBranchId,
+                quantity: legacyQty,
+                imeis: legacyImeis
+            });
+        }
+
+        p.branch_id = undefined;
+        p.quantity = undefined;
+        p.imeis = undefined;
+
+        await p.save();
+    }
+
+    console.log(`[MIGRATE] ย้ายข้อมูลสินค้าเข้าสู่โครงสร้าง ERP สำเร็จ: ${products.length} รายการ`);
+}
 
 // 12. Transaction (รายการขาย)
 const transactionSchema = new mongoose.Schema({
@@ -183,7 +229,9 @@ module.exports = {
     ProductName,
     Supplier,
     Product,
+    Movement,
     Transaction,
     Transfer,
-    seedDefaultRoles
+    seedDefaultRoles,
+    migrateProductsToERP
 };
