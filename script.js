@@ -3121,12 +3121,20 @@ document.addEventListener('DOMContentLoaded', () => {
                         return;
                     }
                     existingItem.quantity += 1;
+                    // Update color, capacity, condition if not set
+                    if (!existingItem.color) existingItem.color = product.color_id?.name || '';
+                    if (!existingItem.capacity) existingItem.capacity = product.capacity_id?.name || '';
+                    if (!existingItem.condition) existingItem.condition = product.condition_id?.name || '';
                 } else {
                     transferCart.push({
                         product_name: product.name,
                         product_code: product.product_code,
                         imeis: [],
-                        quantity: 1
+                        quantity: 1,
+                        unit: product.unit_id?.name || 'ชิ้น',
+                        color: product.color_id?.name || '',
+                        capacity: product.capacity_id?.name || '',
+                        condition: product.condition_id?.name || ''
                     });
                 }
 
@@ -3268,11 +3276,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 const documentData = {
                     transfer_number: transfer.transfer_number,
                     from_branch_name: transfer.from_branch?.name || '',
+                    from_branch_address: transfer.from_branch?.address || '',
                     to_branch_name: transfer.to_branch?.name || '',
                     created_at: transfer.created_at,
                     items: transfer.items,
                     company_name: 'บริษัท ชิลมีน โมบาย จำกัด',
-                    company_address: transfer.from_branch?.address || ''
+                    employee_name: transfer.created_by?.name || ''
                 };
 
                 // Open document in new window with data as URL parameter

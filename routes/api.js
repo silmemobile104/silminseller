@@ -750,10 +750,33 @@ router.get('/transfers/:id', async (req, res) => {
             return res.status(404).json({ success: false, message: 'ไม่พบรายการโอนย้ายที่ระบุ' });
         }
 
+        // Convert to plain object to allow modification
+        const transferObj = transfer.toObject();
+
+        // Populate color, capacity, condition, unit from product data for old transfers
+        if (transferObj.items && transferObj.items.length > 0) {
+            for (let i = 0; i < transferObj.items.length; i++) {
+                const item = transferObj.items[i];
+                if (!item.color || !item.capacity || !item.condition || !item.unit) {
+                    const product = await Product.findOne({ product_code: item.product_code })
+                        .populate('color_id', 'name')
+                        .populate('capacity_id', 'name')
+                        .populate('condition_id', 'name')
+                        .populate('unit_id', 'name');
+                    if (product) {
+                        if (!item.color) transferObj.items[i].color = product.color_id?.name || '';
+                        if (!item.capacity) transferObj.items[i].capacity = product.capacity_id?.name || '';
+                        if (!item.condition) transferObj.items[i].condition = product.condition_id?.name || '';
+                        if (!item.unit) transferObj.items[i].unit = product.unit_id?.name || 'ชิ้น';
+                    }
+                }
+            }
+        }
+
         res.status(200).json({
             success: true,
             message: 'ดึงข้อมูลรายการโอนย้ายสำเร็จ',
-            data: transfer
+            data: transferObj
         });
     } catch (error) {
         console.error('เกิดข้อผิดพลาดในการดึงรายการโอนย้าย:', error);
@@ -787,7 +810,11 @@ router.post('/transfers', async (req, res) => {
             product_name: (it.product_name || '').toString(),
             product_code: (it.product_code || '').toString(),
             imeis: Array.isArray(it.imeis) ? it.imeis.map(x => x.toString().trim()).filter(Boolean) : [],
-            quantity: Number(it.quantity) || 1
+            quantity: Number(it.quantity) || 1,
+            unit: (it.unit || 'ชิ้น').toString(),
+            color: (it.color || '').toString(),
+            capacity: (it.capacity || '').toString(),
+            condition: (it.condition || '').toString()
         }));
 
         // ตัดสต็อกจากสาขาต้นทางแบบปลอดภัย
