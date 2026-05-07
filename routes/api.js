@@ -1165,7 +1165,7 @@ router.post('/transactions', async (req, res) => {
         }));
 
         // ==========================================
-        // CRITICAL: Stock Deduction Logic (หักสต็อก)
+        // CRITICAL: Stock Deduction Logic (หักสต็อกแยกตามสาขา)
         // ==========================================
         for (const item of normalizedItems) {
             const product = await Product.findById(item.product_id);
@@ -1176,29 +1176,42 @@ router.post('/transactions', async (req, res) => {
                 });
             }
 
-            const hasImeisInStock = Array.isArray(product.imeis) && product.imeis.length > 0;
+            const bId = branch_id ? branch_id.toString() : '';
+            if (!product.stock_balances) product.stock_balances = [];
+            let bal = product.stock_balances.find(x => x.branch_id && x.branch_id.toString() === bId);
+
+            if (!bal) {
+                return res.status(400).json({
+                    success: false,
+                    message: `สินค้า ${item.product_name} ไม่มีอยู่ในคลังของสาขานี้`
+                });
+            }
+
+            const hasImeisInStock = Array.isArray(bal.imeis) && bal.imeis.length > 0;
             if (hasImeisInStock && item.imei_sold && item.imei_sold.trim() !== '') {
-                // กรณีมี IMEI (อุปกรณ์มือถือ/แท็บเล็ต): ลบ IMEI ที่ขายออกจาก array
-                const imeiIndex = product.imeis.indexOf(item.imei_sold.trim());
+                // กรณีมี IMEI (อุปกรณ์มือถือ/แท็บเล็ต): ลบ IMEI ที่ขายออกจาก array ของสาขานี้
+                const imeiIndex = bal.imeis.indexOf(item.imei_sold.trim());
                 if (imeiIndex === -1) {
                     return res.status(400).json({
                         success: false,
-                        message: `ไม่พบ IMEI: ${item.imei_sold} ในสต็อกสินค้า ${item.product_name}`
+                        message: `ไม่พบ IMEI: ${item.imei_sold} ในคลังสาขานี้ของสินค้า ${item.product_name}`
                     });
                 }
-                product.imeis.splice(imeiIndex, 1);
-                product.quantity = Math.max(0, product.quantity - 1);
+                bal.imeis.splice(imeiIndex, 1);
+                bal.quantity = Math.max(0, bal.quantity - 1);
             } else {
-                // กรณีไม่มี IMEI (อุปกรณ์เสริม): ลดจำนวนตามที่ซื้อ
-                if (product.quantity < item.quantity) {
+                // กรณีไม่มี IMEI (อุปกรณ์เสริม): ลดจำนวนตามที่ซื้อของสาขานี้
+                if (bal.quantity < item.quantity) {
                     return res.status(400).json({
                         success: false,
-                        message: `สินค้า ${item.product_name} มีไม่เพียงพอ (คงเหลือ: ${product.quantity})`
+                        message: `สินค้า ${item.product_name} ในสาขานี้มีไม่เพียงพอ (คงเหลือ: ${bal.quantity})`
                     });
                 }
-                product.quantity = Math.max(0, product.quantity - item.quantity);
+                bal.quantity = Math.max(0, bal.quantity - item.quantity);
             }
 
+            // แจ้งเตือน Mongoose ว่ามีการแก้ไขในอาเรย์ย่อยเพื่อให้ระบบทำการเซฟข้อมูลอย่างถูกต้อง
+            product.markModified('stock_balances');
             await product.save();
         }
 
