@@ -472,6 +472,95 @@ router.delete('/products/:id', async (req, res) => {
 });
 
 // ==========================================
+// Movement Ledger APIs (ระบบประวัติการเคลื่อนไหว)
+// ==========================================
+
+// GET /api/movements/search
+// หน้าที่: ค้นหาประวัติการเคลื่อนไหวของสินค้า/IMEI
+router.get('/movements/search', async (req, res) => {
+    try {
+        const { query } = req.query;
+        if (!query) {
+            return res.status(400).json({ success: false, message: 'กรุณาระบุรหัสสินค้า หรือ IMEI ที่ต้องการค้นหา' });
+        }
+
+        // ค้นหาว่าเป็น IMEI หรือ Product Code
+        // ลองค้นหาด้วย Product Code ก่อน
+        let product = await Product.findOne({ product_code: query })
+            .populate('type_id', 'name')
+            .populate('color_id', 'name')
+            .populate('capacity_id', 'name')
+            .populate('condition_id', 'name');
+
+        let isImeiSearch = false;
+
+        // ถ้าไม่เจอด้วย Product Code ให้ค้นหาด้วย IMEI (ค้นจากสต็อกทุกสาขา หรือจาก Movement)
+        if (!product) {
+            product = await Product.findOne({ 'stock_balances.imeis': query })
+                .populate('type_id', 'name')
+                .populate('color_id', 'name')
+                .populate('capacity_id', 'name')
+                .populate('condition_id', 'name');
+            if (product) isImeiSearch = true;
+        }
+
+        // ถ้าค้นจาก Product ไม่เจอเลย ลองค้นจากประวัติ Movement โดยตรงเผื่อขายออกไปแล้ว
+        if (!product) {
+            const movementWithImei = await Movement.findOne({ imei: query }).populate('product_id');
+            if (movementWithImei && movementWithImei.product_id) {
+                product = await Product.findById(movementWithImei.product_id._id)
+                    .populate('type_id', 'name')
+                    .populate('color_id', 'name')
+                    .populate('capacity_id', 'name')
+                    .populate('condition_id', 'name');
+                isImeiSearch = true;
+            }
+        }
+
+        if (!product) {
+            return res.status(404).json({ success: false, message: 'ไม่พบประวัติการเคลื่อนไหวของรหัสหรือ IMEI นี้' });
+        }
+
+        // สร้างเงื่อนไขการดึงข้อมูล Movement
+        const movementQuery = { product_id: product._id };
+        if (isImeiSearch) {
+            movementQuery.imei = query;
+        }
+
+        const movements = await Movement.find(movementQuery)
+            .populate('from_branch', 'name')
+            .populate('to_branch', 'name')
+            .populate('created_by', 'name')
+            .sort({ created_at: -1 });
+
+        res.status(200).json({
+            success: true,
+            message: 'ค้นหาประวัติการเคลื่อนไหวสำเร็จ',
+            data: {
+                product: {
+                    _id: product._id,
+                    name: product.name,
+                    product_code: product.product_code,
+                    type: product.type_id ? product.type_id.name : '',
+                    color: product.color_id ? product.color_id.name : '',
+                    capacity: product.capacity_id ? product.capacity_id.name : '',
+                    condition: product.condition_id ? product.condition_id.name : ''
+                },
+                is_imei_search: isImeiSearch,
+                searched_query: query,
+                movements: movements
+            }
+        });
+    } catch (error) {
+        console.error('API Error GET /api/movements/search:', error);
+        res.status(500).json({
+            success: false,
+            message: 'เกิดข้อผิดพลาดในการค้นหาประวัติการเคลื่อนไหว'
+        });
+    }
+});
+
+// ==========================================
 // Authentication APIs (ระบบยืนยันตัวตน JWT)
 // ==========================================
 
@@ -1213,6 +1302,20 @@ router.post('/transactions', async (req, res) => {
             // แจ้งเตือน Mongoose ว่ามีการแก้ไขในอาเรย์ย่อยเพื่อให้ระบบทำการเซฟข้อมูลอย่างถูกต้อง
             product.markModified('stock_balances');
             await product.save();
+
+            // Movement: ขายออก
+            const imeiList = (item.imei_sold && item.imei_sold.trim() !== '') ? [item.imei_sold.trim()] : [];
+            await createMovementsForItem({
+                productId: product._id,
+                action: 'ขายออก',
+                fromBranch: branch_id,
+                toBranch: null,
+                referenceNo: receipt_number,
+                createdBy: req.user.employee_id,
+                transitHours: 0,
+                imeis: imeiList,
+                quantity: imeiList.length > 0 ? imeiList.length : item.quantity
+            });
         }
 
         // บันทึกรายการขาย
