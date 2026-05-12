@@ -61,14 +61,17 @@ const verifyToken = (req, res, next) => {
 const getRequestedBranchId = (req) => {
     const userRole = req.user && req.user.role ? req.user.role : '';
     const userBranchId = req.user && req.user.branch_id ? req.user.branch_id : null;
+    const userPermissions = req.user && req.user.permissions ? req.user.permissions : {};
 
-    // Admin/ผู้จัดการ: เลือกสาขาได้ผ่าน query
-    if (userRole === 'Administrator' || userRole === 'ผู้จัดการ') {
+    // Admin/ผู้จัดการ หรือมีสิทธิ์ filter_stock_branch สามารถเลือกสาขาผ่าน query หรือดูทั้งหมดได้
+    const canFilterBranch = userPermissions.filter_stock_branch || userRole === 'Administrator' || userRole === 'ผู้จัดการ';
+
+    if (canFilterBranch) {
         if (req.query && req.query.branch_id) return req.query.branch_id;
-        return userBranchId; // ถ้าไม่ส่งมา ให้ fallback
+        return 'ALL'; // แทนที่จะบังคับให้ใช้สาขาตัวเอง ให้คืนค่า 'ALL' เพื่อบอกว่าดูได้ทุกสาขา
     }
 
-    // พนักงานขาย: บังคับสาขาตามตัวเอง
+    // พนักงานขาย/คนไม่มีสิทธิ์: บังคับสาขาตามตัวเอง
     return userBranchId;
 };
 
@@ -287,8 +290,45 @@ router.get('/products', async (req, res) => {
             return res.status(400).json({ success: false, message: 'ไม่พบข้อมูลสาขาที่ต้องการใช้งาน' });
         }
 
-        // ดึงสินค้าแบบ Master Catalog และคัดเฉพาะสินค้าที่มีสต็อกในสาขาที่ต้องการ (ถ้ามี)
-        const productsRaw = await Product.find({ 'stock_balances.branch_id': branchId })
+        const allBranches = await Branch.find();
+        const branchMap = {};
+        allBranches.forEach(b => { branchMap[b._id.toString()] = { _id: b._id, name: b.name }; });
+
+        const pendingTransfers = await Transfer.find({ status: 'รอดำเนินการ' });
+        const transferringMap = {}; 
+
+        pendingTransfers.forEach(tr => {
+            const fromId = tr.from_branch ? tr.from_branch.toString() : null;
+            const toId = tr.to_branch ? tr.to_branch.toString() : null;
+            
+            tr.items.forEach(item => {
+                if (item.product_code) {
+                    if (!transferringMap[item.product_code]) transferringMap[item.product_code] = new Set();
+                    if (fromId) transferringMap[item.product_code].add(fromId);
+                    if (toId) transferringMap[item.product_code].add(toId);
+                }
+            });
+        });
+
+        let query = {};
+        if (branchId !== 'ALL') {
+            const transferringProductCodes = new Set();
+            pendingTransfers.forEach(tr => {
+                if ((tr.from_branch && tr.from_branch.toString() === branchId) || (tr.to_branch && tr.to_branch.toString() === branchId)) {
+                    tr.items.forEach(item => {
+                        if (item.product_code) transferringProductCodes.add(item.product_code);
+                    });
+                }
+            });
+
+            query['$or'] = [
+                { 'stock_balances.branch_id': branchId },
+                { 'product_code': { $in: Array.from(transferringProductCodes) } }
+            ];
+        }
+
+        // ดึงสินค้าแบบ Master Catalog
+        const productsRaw = await Product.find(query)
             .populate('type_id', 'name')
             .populate('unit_id', 'name')
             .populate('color_id', 'name')
@@ -298,7 +338,66 @@ router.get('/products', async (req, res) => {
             .populate('stock_balances.branch_id', 'name')
             .sort({ createdAt: -1 });
 
-        const products = productsRaw.map(p => injectBranchStockVirtuals(p, branchId));
+        let products = [];
+        if (branchId === 'ALL') {
+            // กระจาย stock_balances ออกมาเป็นทีละสาขา เพื่อให้หน้าเว็บแสดงสินค้าแต่ละสาขาแยกบรรทัดกันได้และกรองได้
+            productsRaw.forEach(p => {
+                const po = p.toObject();
+                const transferringBranches = transferringMap[po.product_code] || new Set();
+                const branchesWithStock = new Set();
+
+                if (po.stock_balances && po.stock_balances.length > 0) {
+                    po.stock_balances.forEach(b => {
+                        const bId = b.branch_id ? (b.branch_id._id || b.branch_id).toString() : null;
+                        if (bId) branchesWithStock.add(bId);
+
+                        const flattened = { ...po };
+                        flattened.quantity = Number(b.quantity || 0);
+                        flattened.imeis = b.imeis || [];
+                        flattened.branch_id = b.branch_id;
+                        flattened.is_transferring = bId ? transferringBranches.has(bId) : false;
+                        delete flattened.stock_balances; // ไม่ต้องส่งไปซ้ำซ้อน
+                        products.push(flattened);
+                    });
+                } 
+
+                // เพิ่มแถวสำหรับสาขาที่ไม่มีสต็อก (หรือสต็อกเป็น 0 แล้วโดนลบออก) แต่มีการโอนย้าย
+                transferringBranches.forEach(bId => {
+                    if (!branchesWithStock.has(bId)) {
+                        const flattened = { ...po };
+                        flattened.quantity = 0;
+                        flattened.imeis = [];
+                        flattened.branch_id = branchMap[bId] || bId;
+                        flattened.is_transferring = true;
+                        delete flattened.stock_balances;
+                        products.push(flattened);
+                    }
+                });
+
+                if (branchesWithStock.size === 0 && transferringBranches.size === 0) {
+                    // สินค้าที่ยังไม่มีสต็อกเลย
+                    const flattened = { ...po };
+                    flattened.quantity = 0;
+                    flattened.imeis = [];
+                    flattened.branch_id = null;
+                    flattened.is_transferring = false;
+                    delete flattened.stock_balances;
+                    products.push(flattened);
+                }
+            });
+        } else {
+            products = productsRaw.map(p => {
+                const po = injectBranchStockVirtuals(p, branchId);
+                const transferringBranches = transferringMap[po.product_code] || new Set();
+                po.is_transferring = transferringBranches.has(branchId.toString());
+                
+                // หาก branch_id คืนค่ามาเป็น string ให้จับคู่กับ branch object
+                if (po.branch_id && typeof po.branch_id === 'string' && branchMap[po.branch_id]) {
+                    po.branch_id = branchMap[po.branch_id];
+                }
+                return po;
+            });
+        }
 
         res.status(200).json({
             success: true,
@@ -981,6 +1080,40 @@ router.get('/transfers', async (req, res) => {
     } catch (error) {
         console.error('เกิดข้อผิดพลาดในการดึงรายการโอนย้าย:', error);
         res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการดึงข้อมูลรายการโอนย้าย' });
+    }
+});
+
+// GET /api/transfers/pending-count
+// หน้าที่: ดึงจำนวนรายการโอนย้ายที่รอรับเข้าของสาขาปัจจุบัน
+router.get('/transfers/pending-count', async (req, res) => {
+    try {
+        const branchId = req.user && req.user.branch_id ? req.user.branch_id : null;
+        if (!branchId) {
+            return res.status(200).json({ success: true, data: { count: 0, pendingTransfers: [] } });
+        }
+
+        const pendingTransfers = await Transfer.find({
+            to_branch: branchId,
+            status: 'รอดำเนินการ'
+        }).populate('from_branch', 'name').sort({ created_at: -1 });
+
+        const count = pendingTransfers.length;
+
+        res.status(200).json({
+            success: true,
+            data: {
+                count: count,
+                pendingTransfers: pendingTransfers.map(t => ({
+                    _id: t._id,
+                    from_branch_name: t.from_branch ? t.from_branch.name : 'ไม่ทราบสาขา',
+                    item_count: t.items.reduce((sum, item) => sum + (item.quantity || 1), 0),
+                    created_at: t.created_at
+                }))
+            }
+        });
+    } catch (error) {
+        console.error('เกิดข้อผิดพลาดในการดึงข้อมูลรอรับเข้า:', error);
+        res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการดึงข้อมูลรอรับเข้า' });
     }
 });
 

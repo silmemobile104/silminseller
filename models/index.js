@@ -18,7 +18,8 @@ const roleSchema = new mongoose.Schema({
         manage_personnel: { type: Boolean, default: false }, // อนุญาตให้จัดการพนักงาน
         manage_branches: { type: Boolean, default: false },  // อนุญาตให้จัดการสาขา
         manage_settings: { type: Boolean, default: false },  // อนุญาตให้ตั้งค่าระบบ
-        manage_roles: { type: Boolean, default: false }      // อนุญาตให้จัดการสิทธิ์
+        manage_roles: { type: Boolean, default: false },      // อนุญาตให้จัดการสิทธิ์
+        filter_stock_branch: { type: Boolean, default: false } // อนุญาตกรองสาขาในเมนูจัดการสต็อก
     }
 }, { timestamps: true });
 const Role = mongoose.model('Role', roleSchema, 'role');
@@ -34,7 +35,7 @@ const seedDefaultRoles = async () => {
             permissions: {
                 view_dashboard: true, manage_stock: true, delete_stock: true,
                 do_pos: true, manage_personnel: true, manage_branches: true,
-                manage_settings: true, manage_roles: true
+                manage_settings: true, manage_roles: true, filter_stock_branch: true
             }
         },
         {
@@ -42,7 +43,7 @@ const seedDefaultRoles = async () => {
             permissions: {
                 view_dashboard: true, manage_stock: true, delete_stock: true,
                 do_pos: true, manage_personnel: true, manage_branches: true,
-                manage_settings: true, manage_roles: false
+                manage_settings: true, manage_roles: false, filter_stock_branch: true
             }
         },
         {
@@ -50,7 +51,7 @@ const seedDefaultRoles = async () => {
             permissions: {
                 view_dashboard: false, manage_stock: true, delete_stock: false,
                 do_pos: true, manage_personnel: false, manage_branches: false,
-                manage_settings: false, manage_roles: false
+                manage_settings: false, manage_roles: false, filter_stock_branch: false
             }
         }
     ];

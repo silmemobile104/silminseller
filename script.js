@@ -126,6 +126,21 @@ document.addEventListener('DOMContentLoaded', () => {
     const masterDataEmpty = document.getElementById('master-data-empty');
     const productTableBody = document.getElementById('product-table-body');
 
+    const stockSearchInput = document.getElementById('stock-search-input');
+    const btnStockFilter = document.getElementById('btn-stock-filter');
+    const btnStockFilterText = document.getElementById('btn-stock-filter-text');
+    const stockFilterPanel = document.getElementById('stock-filter-panel');
+    const btnStockFilterClose = document.getElementById('btn-stock-filter-close');
+    const btnStockFilterApply = document.getElementById('btn-stock-filter-apply');
+    const btnStockFilterReset = document.getElementById('btn-stock-filter-reset');
+    const stockFilterBranch = document.getElementById('stock-filter-branch');
+    const stockFilterCategory = document.getElementById('stock-filter-category');
+    const stockFilterSupplier = document.getElementById('stock-filter-supplier');
+    const stockFilterPriceMin = document.getElementById('stock-filter-price-min');
+    const stockFilterPriceMax = document.getElementById('stock-filter-price-max');
+    const stockActiveFilters = document.getElementById('stock-active-filters');
+    const stockResultCount = document.getElementById('stock-result-count');
+
     // UI Helper Elements (Custom Modals & Toasts)
     const toastContainer = document.getElementById('toast-container');
     const customConfirmModal = document.getElementById('custom-confirm-modal');
@@ -178,6 +193,242 @@ document.addEventListener('DOMContentLoaded', () => {
     let transferCart = [];
     let currentTransferTab = 'incoming'; // 'incoming' or 'history'
     let transfersData = [];
+
+    // Pending Transfer Polling State
+    let knownPendingTransferIds = new Set();
+    let pendingTransferPollInterval = null;
+    let initialPollDone = false;
+
+    // Stock Search & Filter State
+    let allProductsCache = [];
+    let stockSearchDebounceId = null;
+    let stockSearchQuery = '';
+    let stockFilters = {
+        branchId: '',
+        categoryId: '',
+        supplierId: '',
+        priceMin: '',
+        priceMax: ''
+    };
+
+    const getCurrentUser = () => {
+        const s = localStorage.getItem('silmin_user');
+        if (!s) return null;
+        try { return JSON.parse(s); } catch { return null; }
+    };
+
+    const toStr = (v) => (v === null || v === undefined) ? '' : String(v);
+
+    const getId = (v) => {
+        if (!v) return '';
+        if (typeof v === 'string') return v;
+        if (v._id) return String(v._id);
+        return '';
+    };
+
+    const normalize = (s) => toStr(s).trim().toLowerCase();
+
+    const productMatchesSearch = (product, q) => {
+        const query = normalize(q);
+        if (!query) return true;
+        const name = normalize(product.name);
+        const code = normalize(product.product_code);
+        const imeis = Array.isArray(product.imeis) ? product.imeis : [];
+        const imeiJoined = normalize(imeis.join(' '));
+        return name.includes(query) || code.includes(query) || imeiJoined.includes(query);
+    };
+
+    const productMatchesFilters = (product, filters) => {
+        const productBranchId = getId(product.branch_id);
+        const productCategoryId = getId(product.type_id);
+        const productSupplierId = getId(product.supplier_id);
+
+        if (filters.branchId && productBranchId !== filters.branchId) return false;
+        if (filters.categoryId && productCategoryId !== filters.categoryId) return false;
+        if (filters.supplierId && productSupplierId !== filters.supplierId) return false;
+
+        const price = Number(product.selling_price || 0);
+        const min = filters.priceMin !== '' ? Number(filters.priceMin) : null;
+        const max = filters.priceMax !== '' ? Number(filters.priceMax) : null;
+        if (min !== null && !Number.isNaN(min) && price < min) return false;
+        if (max !== null && !Number.isNaN(max) && price > max) return false;
+        return true;
+    };
+
+    const getFilteredProducts = () => {
+        return allProductsCache.filter(p => productMatchesSearch(p, stockSearchQuery) && productMatchesFilters(p, stockFilters));
+    };
+
+    const countActiveFilters = () => {
+        let n = 0;
+        if (stockSearchQuery) n += 1;
+        if (stockFilters.branchId) n += 1;
+        if (stockFilters.categoryId) n += 1;
+        if (stockFilters.supplierId) n += 1;
+        if (stockFilters.priceMin !== '' || stockFilters.priceMax !== '') n += 1;
+        return n;
+    };
+
+    const updateFilterButtonBadge = () => {
+        if (!btnStockFilterText) return;
+        const n = countActiveFilters();
+        btnStockFilterText.textContent = n > 0 ? `เพิ่มเติม (${n})` : 'เพิ่มเติม';
+    };
+
+    const getSelectedText = (selectEl) => {
+        if (!selectEl) return '';
+        const opt = selectEl.options[selectEl.selectedIndex];
+        return opt ? opt.textContent : '';
+    };
+
+    const renderActiveFilterChips = () => {
+        if (!stockActiveFilters) return;
+        stockActiveFilters.innerHTML = '';
+
+        const addChip = (key, label) => {
+            const chip = document.createElement('button');
+            chip.type = 'button';
+            chip.className = 'px-2.5 py-1 bg-slate-700/60 hover:bg-slate-600 text-slate-200 rounded-full text-xs font-medium border border-slate-600 transition-colors flex items-center gap-2';
+            chip.dataset.key = key;
+            chip.innerHTML = `<span>${label}</span><i class="fa-solid fa-xmark text-[10px] opacity-80"></i>`;
+            chip.addEventListener('click', () => {
+                if (key === 'search') {
+                    stockSearchQuery = '';
+                    if (stockSearchInput) stockSearchInput.value = '';
+                } else if (key === 'branch') {
+                    stockFilters.branchId = '';
+                    if (stockFilterBranch) stockFilterBranch.value = '';
+                } else if (key === 'category') {
+                    stockFilters.categoryId = '';
+                    if (stockFilterCategory) stockFilterCategory.value = '';
+                } else if (key === 'supplier') {
+                    stockFilters.supplierId = '';
+                    if (stockFilterSupplier) stockFilterSupplier.value = '';
+                } else if (key === 'price') {
+                    stockFilters.priceMin = '';
+                    stockFilters.priceMax = '';
+                    if (stockFilterPriceMin) stockFilterPriceMin.value = '';
+                    if (stockFilterPriceMax) stockFilterPriceMax.value = '';
+                }
+                applyStockSearchAndFilters();
+            });
+            stockActiveFilters.appendChild(chip);
+        };
+
+        if (stockSearchQuery) addChip('search', `ค้นหา: ${stockSearchQuery}`);
+
+        if (stockFilters.branchId) {
+            const text = getSelectedText(stockFilterBranch) || 'สาขา';
+            addChip('branch', `สาขา: ${text}`);
+        }
+        if (stockFilters.categoryId) {
+            const text = getSelectedText(stockFilterCategory) || 'หมวดหมู่';
+            addChip('category', `หมวดหมู่: ${text}`);
+        }
+        if (stockFilters.supplierId) {
+            const text = getSelectedText(stockFilterSupplier) || 'Supplier';
+            addChip('supplier', `Supplier: ${text}`);
+        }
+        if (stockFilters.priceMin !== '' || stockFilters.priceMax !== '') {
+            const min = stockFilters.priceMin !== '' ? Number(stockFilters.priceMin).toLocaleString() : '0';
+            const max = stockFilters.priceMax !== '' ? Number(stockFilters.priceMax).toLocaleString() : 'ไม่จำกัด';
+            addChip('price', `ราคา: ${min} - ${max}`);
+        }
+
+        const activeCount = countActiveFilters();
+        if (activeCount > 1) {
+            const clearBtn = document.createElement('button');
+            clearBtn.type = 'button';
+            clearBtn.className = 'px-2.5 py-1 bg-red-500/10 hover:bg-red-500/15 text-red-300 rounded-full text-xs font-medium border border-red-500/30 transition-colors';
+            clearBtn.textContent = 'ล้างทั้งหมด';
+            clearBtn.addEventListener('click', () => {
+                resetStockFiltersToDefault();
+                applyStockSearchAndFilters();
+            });
+            stockActiveFilters.appendChild(clearBtn);
+        }
+    };
+
+    const updateResultCount = (filteredCount, totalCount) => {
+        if (!stockResultCount) return;
+        stockResultCount.textContent = `แสดง ${filteredCount} จาก ${totalCount} รายการ`;
+    };
+
+    const applyStockSearchAndFilters = () => {
+        const filtered = getFilteredProducts();
+        renderProductTable(filtered);
+        renderActiveFilterChips();
+        updateFilterButtonBadge();
+        updateResultCount(filtered.length, allProductsCache.length);
+    };
+
+    const setSelectOptions = (selectEl, options, placeholderText) => {
+        if (!selectEl) return;
+        selectEl.innerHTML = '';
+        const defaultOpt = document.createElement('option');
+        defaultOpt.value = '';
+        defaultOpt.textContent = placeholderText;
+        selectEl.appendChild(defaultOpt);
+
+        options.forEach(({ value, label }) => {
+            const opt = document.createElement('option');
+            opt.value = value;
+            opt.textContent = label;
+            selectEl.appendChild(opt);
+        });
+    };
+
+    const loadFilterOptions = async () => {
+        const master = window.masterDataCache || {};
+        const categories = Array.isArray(master.productTypes) ? master.productTypes : [];
+        const suppliers = Array.isArray(master.suppliers) ? master.suppliers : [];
+
+        setSelectOptions(stockFilterCategory, categories.map(c => ({ value: String(c._id), label: c.name })), 'ทุกหมวดหมู่');
+        setSelectOptions(stockFilterSupplier, suppliers.map(s => ({ value: String(s._id), label: s.name })), 'ทุก Supplier');
+
+        try {
+            const response = await authFetch(`${API_BASE_URL}/branches`);
+            const json = await response.json();
+            if (json.success) {
+                const branches = Array.isArray(json.data) ? json.data : [];
+                setSelectOptions(stockFilterBranch, branches.map(b => ({ value: String(b._id), label: b.name })), 'ทุกสาขา');
+            }
+        } catch (e) {
+            console.error('Error loading branches for stock filter:', e);
+        }
+    };
+
+    const resetStockFiltersToDefault = () => {
+        const user = getCurrentUser();
+        const canFilterBranch = user && user.permissions && user.permissions.filter_stock_branch;
+        const userBranchId = user && user.branch ? String(user.branch._id || user.branch) : '';
+
+        stockSearchQuery = '';
+        stockFilters.categoryId = '';
+        stockFilters.supplierId = '';
+        stockFilters.priceMin = '';
+        stockFilters.priceMax = '';
+        stockFilters.branchId = (!canFilterBranch && userBranchId) ? userBranchId : '';
+
+        if (stockSearchInput) stockSearchInput.value = '';
+        if (stockFilterCategory) stockFilterCategory.value = stockFilters.categoryId;
+        if (stockFilterSupplier) stockFilterSupplier.value = stockFilters.supplierId;
+        if (stockFilterPriceMin) stockFilterPriceMin.value = '';
+        if (stockFilterPriceMax) stockFilterPriceMax.value = '';
+        if (stockFilterBranch) stockFilterBranch.value = stockFilters.branchId;
+
+        updateFilterButtonBadge();
+    };
+
+    const openStockFilterPanel = () => {
+        if (!stockFilterPanel) return;
+        stockFilterPanel.classList.remove('hidden');
+    };
+
+    const closeStockFilterPanel = () => {
+        if (!stockFilterPanel) return;
+        stockFilterPanel.classList.add('hidden');
+    };
 
     // ==========================================
     // UI Modal Logic
@@ -266,6 +517,14 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    const ensureMasterDataLoaded = async () => {
+        const c = window.masterDataCache || {};
+        const hasTypes = Array.isArray(c.productTypes) && c.productTypes.length > 0;
+        const hasSuppliers = Array.isArray(c.suppliers) && c.suppliers.length > 0;
+        if (hasTypes && hasSuppliers) return;
+        await fetchMasterData();
+    };
+
     const populateDropdown = (selectElement, dataArray, defaultText) => {
         if (!selectElement) return;
         selectElement.innerHTML = `<option value="" disabled selected>${defaultText}</option>`;
@@ -297,6 +556,131 @@ document.addEventListener('DOMContentLoaded', () => {
     // ==========================================
     // UI Notification & Dialog Systems
     // ==========================================
+
+    const showTransferToast = (sourceBranch, count) => {
+        const transferToastContainer = document.getElementById('transfer-toast-container');
+        if (!transferToastContainer) return;
+
+        const currentTransferToasts = transferToastContainer.querySelectorAll('.transfer-toast');
+        if (currentTransferToasts.length >= 3) {
+            currentTransferToasts[0].remove();
+        }
+
+        const toast = document.createElement('div');
+        toast.className = 'bg-slate-800 border border-orange-500/50 shadow-[0_0_15px_rgba(249,115,22,0.15)] px-4 py-3 rounded-xl flex items-center justify-between gap-3 toast-animate min-w-[300px] pointer-events-auto transfer-toast';
+        toast.innerHTML = `
+            <div class="flex items-center gap-3">
+                <div class="w-8 h-8 rounded-full bg-orange-500/10 flex items-center justify-center text-orange-400 shrink-0">
+                    <i class="fa-solid fa-box text-sm"></i>
+                </div>
+                <div class="flex flex-col">
+                    <span class="text-white text-sm font-medium">📦 มีสินค้าโอนเข้าใหม่</span>
+                    <span class="text-slate-400 text-xs">จาก ${sourceBranch} จำนวน ${count} รายการ</span>
+                </div>
+            </div>
+            <div class="flex items-center gap-2">
+                <button class="view-transfer-btn text-xs bg-orange-500/20 text-orange-400 px-2 py-1 rounded hover:bg-orange-500/30 transition-colors">ดูรายละเอียด</button>
+                <button class="close-transfer-btn text-slate-400 hover:text-white transition-colors p-1"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+        `;
+
+        transferToastContainer.appendChild(toast);
+
+        const timeoutId = setTimeout(() => toast.remove(), 8000);
+
+        toast.querySelector('.close-transfer-btn').addEventListener('click', () => {
+            clearTimeout(timeoutId);
+            toast.remove();
+        });
+
+        toast.querySelector('.view-transfer-btn').addEventListener('click', () => {
+            clearTimeout(timeoutId);
+            toast.remove();
+            if (navTransfers) {
+                switchView('transfers');
+                if(transferTabIncoming) transferTabIncoming.click();
+            }
+        });
+    };
+
+    const pollPendingTransfers = async () => {
+        try {
+            const userStr = localStorage.getItem('silmin_user');
+            if (!userStr) return;
+            const user = JSON.parse(userStr);
+            if (!user || !user.branch) return;
+
+            const response = await authFetch(`${API_BASE_URL}/transfers/pending-count`);
+            const json = await response.json();
+            
+            if (json.success) {
+                const count = json.data.count;
+                const pendingList = json.data.pendingTransfers;
+                
+                const navBadge = document.getElementById('transfer-nav-badge');
+                if (navBadge) {
+                    if (count > 0) {
+                        navBadge.textContent = count > 9 ? '9+' : count;
+                        navBadge.classList.remove('hidden');
+                    } else {
+                        navBadge.classList.add('hidden');
+                    }
+                }
+
+                const pendingCard = document.getElementById('card-pending-transfer');
+                const statPending = document.getElementById('stat-pending-transfers');
+                if (pendingCard && statPending) {
+                    pendingCard.classList.remove('hidden');
+                    statPending.textContent = count;
+                    if (count > 0) {
+                        statPending.classList.add('text-orange-400');
+                        statPending.classList.remove('text-white');
+                    } else {
+                        statPending.classList.add('text-white');
+                        statPending.classList.remove('text-orange-400');
+                    }
+                }
+
+                const newIds = new Set(pendingList.map(t => t._id));
+                
+                if (knownPendingTransferIds.size === 0 && count > 0 && !initialPollDone) {
+                    pendingList.forEach(t => knownPendingTransferIds.add(t._id));
+                    initialPollDone = true;
+                } else {
+                    initialPollDone = true;
+                    pendingList.forEach(t => {
+                        if (!knownPendingTransferIds.has(t._id)) {
+                            knownPendingTransferIds.add(t._id);
+                            showTransferToast(t.from_branch_name, t.item_count);
+                        }
+                    });
+                    
+                    knownPendingTransferIds.forEach(id => {
+                        if (!newIds.has(id)) {
+                            knownPendingTransferIds.delete(id);
+                        }
+                    });
+                }
+            }
+        } catch (e) {
+            console.error('Error polling pending transfers', e);
+        }
+    };
+
+    const startPendingTransferPolling = () => {
+        if (pendingTransferPollInterval) clearInterval(pendingTransferPollInterval);
+        initialPollDone = false;
+        knownPendingTransferIds.clear();
+        pollPendingTransfers();
+        pendingTransferPollInterval = setInterval(pollPendingTransfers, 30000);
+    };
+
+    const stopPendingTransferPolling = () => {
+        if (pendingTransferPollInterval) {
+            clearInterval(pendingTransferPollInterval);
+            pendingTransferPollInterval = null;
+        }
+    };
 
     const showToast = (message, type = 'success') => {
         const toast = document.createElement('div');
@@ -402,6 +786,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const btnAdd = document.getElementById('btn-add-product');
         if (btnAdd) btnAdd.style.display = permissions.manage_stock ? '' : 'none';
 
+        // ซ่อน/แสดง ฟิลเตอร์สาขาในเมนูจัดการสต็อก
+        const stockFilterBranch = document.getElementById('stock-filter-branch');
+        if (stockFilterBranch) {
+            stockFilterBranch.style.display = permissions.filter_stock_branch ? '' : 'none';
+        }
+
         // เก็บ permissions ไว้ใน window สำหรับใช้ตรวจสอบใน renderProductTable
         window.__userPermissions = permissions;
     };
@@ -409,10 +799,17 @@ document.addEventListener('DOMContentLoaded', () => {
     // Fetch All Products
     async function fetchProducts() {
         try {
+            await ensureMasterDataLoaded();
             const response = await authFetch(`${API_BASE_URL}/products`);
             const json = await response.json();
             if (json.success) {
-                renderProductTable(json.data);
+                allProductsCache = Array.isArray(json.data) ? json.data : [];
+
+                await loadFilterOptions();
+                if (!stockSearchQuery && !stockFilters.categoryId && !stockFilters.supplierId && stockFilters.priceMin === '' && stockFilters.priceMax === '' && !stockFilters.branchId) {
+                    resetStockFiltersToDefault();
+                }
+                applyStockSearchAndFilters();
             }
         } catch (error) {
             console.error('Error fetching products:', error);
@@ -426,8 +823,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (products.length === 0) {
             productTableBody.innerHTML = `
                 <tr>
-                    <td colspan="6" class="px-6 py-8 text-center text-slate-500 italic">
-                        ยังไม่มีข้อมูลสินค้าในคลัง
+                    <td colspan="9" class="px-6 py-8 text-center text-slate-500 italic">
+                        ไม่พบสินค้าที่ค้นหา
                     </td>
                 </tr>
             `;
@@ -449,10 +846,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 ? `${product.quantity || product.imeis.length} <span class="text-xs text-slate-500 font-normal">เครื่อง</span>`
                 : `${product.quantity} <span class="text-xs text-slate-500 font-normal">${unitName}</span>`;
 
-            const statusColor = (product.quantity) > 0 ? 'bg-emerald-400' : 'bg-red-400';
-            const statusText = (product.quantity) > 0 ? 'มีสินค้า' : 'สินค้าหมด';
-            const statusClass = (product.quantity) > 0 ? 'text-emerald-400' : 'text-red-400';
-            const statusShadow = (product.quantity) > 0 ? 'shadow-[0_0_8px_rgba(52,211,153,0.8)]' : 'shadow-[0_0_8px_rgba(248,113,113,0.8)]';
+            let statusColor = (product.quantity) > 0 ? 'bg-emerald-400' : 'bg-red-400';
+            let statusText = (product.quantity) > 0 ? 'มีสินค้า' : 'สินค้าหมด';
+            let statusClass = (product.quantity) > 0 ? 'text-emerald-400' : 'text-red-400';
+            let statusShadow = (product.quantity) > 0 ? 'shadow-[0_0_8px_rgba(52,211,153,0.8)]' : 'shadow-[0_0_8px_rgba(248,113,113,0.8)]';
+
+            if (product.is_transferring) {
+                statusColor = 'bg-amber-400';
+                statusText = 'กำลังโอนย้าย';
+                statusClass = 'text-amber-400';
+                statusShadow = 'shadow-[0_0_8px_rgba(251,191,36,0.8)]';
+            }
 
             row.innerHTML = `
                 <td class="px-6 py-4">
@@ -642,6 +1046,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     loadDashboardData();
                     fetchPosProducts();
                     loadRoles();
+                    startPendingTransferPolling();
                 }, 500);
             } else {
                 showLoginError(result.message || 'รหัสพนักงานหรือรหัสผ่านไม่ถูกต้อง');
@@ -666,6 +1071,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Clear JWT & session
         localStorage.removeItem('silmin_token');
         localStorage.removeItem('silmin_user');
+        stopPendingTransferPolling();
 
         mainLayout.classList.remove('opacity-100');
         mainLayout.classList.add('opacity-0');
@@ -948,6 +1354,17 @@ document.addEventListener('DOMContentLoaded', () => {
     if (navTransfers) navTransfers.addEventListener('click', (e) => { e.preventDefault(); switchView('transfers'); });
     if (navMovements) navMovements.addEventListener('click', (e) => { e.preventDefault(); switchView('movements'); });
 
+    // Dashboard card click to transfers
+    const cardPendingTransfer = document.getElementById('card-pending-transfer');
+    if (cardPendingTransfer) {
+        cardPendingTransfer.addEventListener('click', () => {
+            if (navTransfers) {
+                switchView('transfers');
+                if (transferTabIncoming) transferTabIncoming.click();
+            }
+        });
+    }
+
     // Auto-login check (JWT Token) - moved here after switchView is defined
     const savedToken = localStorage.getItem('silmin_token');
     const savedUser = localStorage.getItem('silmin_user');
@@ -961,11 +1378,82 @@ document.addEventListener('DOMContentLoaded', () => {
             switchView('dashboard');
             updateTopBar(user);
             applyPermissions(user.permissions);
+            fetchMasterData();
+            startPendingTransferPolling();
         } catch (e) {
             localStorage.removeItem('silmin_token');
             localStorage.removeItem('silmin_user');
         }
     }
+
+    // ==========================================
+    // Stock Search & Filter UI Events
+    // ==========================================
+    if (stockSearchInput) {
+        stockSearchInput.addEventListener('input', (e) => {
+            const v = e.target.value;
+            clearTimeout(stockSearchDebounceId);
+            stockSearchDebounceId = setTimeout(() => {
+                stockSearchQuery = v.trim();
+                applyStockSearchAndFilters();
+            }, 300);
+        });
+
+        stockSearchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                e.preventDefault();
+                stockSearchQuery = '';
+                stockSearchInput.value = '';
+                applyStockSearchAndFilters();
+            }
+        });
+    }
+
+    if (btnStockFilter) {
+        btnStockFilter.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (!stockFilterPanel) return;
+            if (stockFilterPanel.classList.contains('hidden')) openStockFilterPanel();
+            else closeStockFilterPanel();
+        });
+    }
+    if (btnStockFilterClose) btnStockFilterClose.addEventListener('click', closeStockFilterPanel);
+    document.addEventListener('click', (e) => {
+        if (!stockFilterPanel || stockFilterPanel.classList.contains('hidden')) return;
+        const t = e.target;
+        if (btnStockFilter && (btnStockFilter === t || btnStockFilter.contains(t))) return;
+        if (stockFilterPanel.contains(t)) return;
+        closeStockFilterPanel();
+    });
+
+    const syncFiltersFromPanel = () => {
+        if (stockFilterBranch) stockFilters.branchId = stockFilterBranch.value || '';
+        if (stockFilterCategory) stockFilters.categoryId = stockFilterCategory.value || '';
+        if (stockFilterSupplier) stockFilters.supplierId = stockFilterSupplier.value || '';
+        stockFilters.priceMin = stockFilterPriceMin ? (stockFilterPriceMin.value === '' ? '' : stockFilterPriceMin.value) : '';
+        stockFilters.priceMax = stockFilterPriceMax ? (stockFilterPriceMax.value === '' ? '' : stockFilterPriceMax.value) : '';
+    };
+
+    if (btnStockFilterApply) {
+        btnStockFilterApply.addEventListener('click', () => {
+            syncFiltersFromPanel();
+            applyStockSearchAndFilters();
+            closeStockFilterPanel();
+        });
+    }
+
+    if (btnStockFilterReset) {
+        btnStockFilterReset.addEventListener('click', () => {
+            resetStockFiltersToDefault();
+            applyStockSearchAndFilters();
+        });
+    }
+
+    if (stockFilterBranch) stockFilterBranch.addEventListener('change', () => { syncFiltersFromPanel(); applyStockSearchAndFilters(); });
+    if (stockFilterCategory) stockFilterCategory.addEventListener('change', () => { syncFiltersFromPanel(); applyStockSearchAndFilters(); });
+    if (stockFilterSupplier) stockFilterSupplier.addEventListener('change', () => { syncFiltersFromPanel(); applyStockSearchAndFilters(); });
+    if (stockFilterPriceMin) stockFilterPriceMin.addEventListener('input', () => { syncFiltersFromPanel(); applyStockSearchAndFilters(); });
+    if (stockFilterPriceMax) stockFilterPriceMax.addEventListener('input', () => { syncFiltersFromPanel(); applyStockSearchAndFilters(); });
 
     // ==========================================
     // Branch Management Logic
@@ -2789,7 +3277,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const closeRoleModalBtn = document.getElementById('close-role-modal-btn');
     const cancelRoleModalBtn = document.getElementById('cancel-role-modal-btn');
 
-    const permKeys = ['view_dashboard', 'manage_stock', 'delete_stock', 'do_pos', 'manage_personnel', 'manage_branches', 'manage_settings', 'manage_roles'];
+    const permKeys = ['view_dashboard', 'manage_stock', 'delete_stock', 'do_pos', 'manage_personnel', 'manage_branches', 'manage_settings', 'manage_roles', 'filter_stock_branch'];
     const permLabels = {
         view_dashboard: 'ดูแดชบอร์ด',
         manage_stock: 'จัดการสต็อก',
@@ -2798,7 +3286,8 @@ document.addEventListener('DOMContentLoaded', () => {
         manage_personnel: 'จัดการพนักงาน',
         manage_branches: 'จัดการสาขา',
         manage_settings: 'ตั้งค่าระบบ',
-        manage_roles: 'จัดการสิทธิ์'
+        manage_roles: 'จัดการสิทธิ์',
+        filter_stock_branch: 'กรองสาขาในเมนู จัดการสต็อก'
     };
     const permIcons = {
         view_dashboard: 'fa-chart-pie text-blue-400',
@@ -2808,7 +3297,8 @@ document.addEventListener('DOMContentLoaded', () => {
         manage_personnel: 'fa-users text-purple-400',
         manage_branches: 'fa-store text-orange-400',
         manage_settings: 'fa-gear text-slate-400',
-        manage_roles: 'fa-shield-halved text-amber-400'
+        manage_roles: 'fa-shield-halved text-amber-400',
+        filter_stock_branch: 'fa-filter text-teal-400'
     };
 
     const openRoleModal = () => {
@@ -3253,6 +3743,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 showToast('สร้างรายการโอนย้ายสำเร็จ');
                 closeTransferModal();
                 loadTransfers();
+                pollPendingTransfers();
 
                 // Show print option
                 if (result.data && result.data._id) {
@@ -3287,6 +3778,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (result.success) {
                 showToast('รับเข้าสินค้าสำเร็จ');
                 loadTransfers();
+                pollPendingTransfers();
             } else {
                 showToast(result.message || 'เกิดข้อผิดพลาด', 'error');
             }
@@ -3585,6 +4077,7 @@ document.addEventListener('DOMContentLoaded', () => {
         loadDashboardData();
         fetchPosProducts();
         loadRoles();
+        startPendingTransferPolling();
 
         console.log('[SILMIN] ระบบเริ่มต้นสำเร็จและโหลดข้อมูลครบถ้วน');
     }
