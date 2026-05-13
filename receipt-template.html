@@ -108,6 +108,11 @@
             font-size: 12px;
             font-style: italic;
         }
+        .border-top-dashed {
+            border-top: 1px dashed #bbb;
+            margin-top: 4px;
+            padding-top: 6px !important;
+        }
         @media print {
             body { padding: 0; }
             .receipt-container { border: none; max-width: 100%; }
@@ -118,8 +123,11 @@
 <body>
     <div class="receipt-container" id="receipt">
         <div class="header">
+            <h1 class="store-name">บริษัท ซิลมิน โมบาย จำกัด</h1>
             <h1 class="store-name">SilminMobile</h1>
-            <div class="branch-info" id="branch-name">สาขาหลัก</div>
+            <div class="branch-info" id="branch-name">-</div>
+            <div class="branch-info" id="branch-address">-</div>
+            <div class="branch-info" id="branch-policy">เลขประจำตัวผู้เสียภาษี : 0955562000701</div>
             <div class="branch-info" id="receipt-date">วันที่: --/--/---- --:--</div>
         </div>
 
@@ -150,24 +158,40 @@
 
         <div class="totals">
             <div class="total-row">
-                <span>ยอดรวม / Subtotal:</span>
+                <span>ยอดรวมสินค้า / Subtotal:</span>
                 <span id="subtotal">฿0.00</span>
             </div>
+            <div class="total-row" id="discount-row" style="display: none; color: #e53935;">
+                <span>ส่วนลดท้ายบิล / Discount:</span>
+                <span id="discount">-฿0.00</span>
+            </div>
+            
+            <!-- ส่วนภาษีมูลค่าเพิ่ม VAT 7% -->
+            <div class="total-row border-top-dashed">
+                <span>มูลค่าก่อนภาษี / Net Taxable:</span>
+                <span id="tax-base">฿0.00</span>
+            </div>
             <div class="total-row">
-                <span>ส่วนลด / Discount:</span>
-                <span id="discount">฿0.00</span>
+                <span>ภาษีมูลค่าเพิ่ม 7% / VAT 7%:</span>
+                <span id="vat-amount">฿0.00</span>
             </div>
-            <div class="total-row" id="down-payment-row" style="display: none;">
-                <span>ยอดเงินดาวน์ / ชำระแล้ว:</span>
-                <span id="down-payment">฿0.00</span>
-            </div>
-            <div class="total-row" id="balance-row" style="display: none;">
-                <span>ยอดคงเหลือ (Balance):</span>
-                <span id="balance">฿0.00</span>
-            </div>
+            
+            <!-- รวมทั้งสิ้น -->
             <div class="total-row grand-total">
-                <span>รวมทั้งสิ้น / Total:</span>
+                <span>ยอดรวมสุทธิ / Grand Total:</span>
                 <span id="total-amount">฿0.00</span>
+            </div>
+
+            <!-- ส่วนข้อมูลเงินดาวน์สำหรับจัดไฟแนนซ์ -->
+            <div id="finance-receipt-section" style="display: none; border-top: 1px dashed #333; margin-top: 10px; padding-top: 8px;">
+                <div class="total-row" style="font-weight: bold; font-size: 13px;">
+                    <span>ยอดเงินดาวน์ชำระแล้ว / Down Paid:</span>
+                    <span id="down-payment">฿0.00</span>
+                </div>
+                <div class="total-row" style="font-size: 13px; font-weight: bold; color: #b71c1c;">
+                    <span>ค้างจัดไฟแนนซ์คงเหลือ / Balance:</span>
+                    <span id="balance">฿0.00</span>
+                </div>
             </div>
         </div>
 
@@ -182,7 +206,6 @@
     </div>
 
     <script>
-        // This script will be used to populate data when the window is opened
         window.addEventListener('message', function(event) {
             const data = event.data;
             if (data && data.type === 'PRINT_RECEIPT') {
@@ -192,6 +215,10 @@
 
         function populateReceipt(txn) {
             document.getElementById('branch-name').textContent = txn.branch_id ? txn.branch_id.name : 'สาขาหลัก';
+            const addrEl = document.getElementById('branch-address');
+            addrEl.textContent = (txn.branch_id && txn.branch_id.address) ? txn.branch_id.address : '';
+            addrEl.style.display = addrEl.textContent ? 'block' : 'none';
+            
             document.getElementById('receipt-date').textContent = 'วันที่: ' + new Date(txn.created_at).toLocaleString('th-TH');
             document.getElementById('receipt-number').textContent = txn.receipt_number;
             document.getElementById('employee-name').textContent = txn.employee_id ? txn.employee_id.name : 'Admin';
@@ -199,10 +226,10 @@
             const itemsList = document.getElementById('items-list');
             itemsList.innerHTML = '';
             
-            let subtotal = 0;
+            let itemsSubtotal = 0;
             txn.items.forEach(item => {
                 const itemTotal = item.quantity * item.price;
-                subtotal += itemTotal;
+                itemsSubtotal += itemTotal;
                 
                 const row = document.createElement('tr');
                 row.innerHTML = `
@@ -217,21 +244,57 @@
                 itemsList.appendChild(row);
             });
 
-            document.getElementById('subtotal').textContent = '฿' + subtotal.toLocaleString(undefined, {minimumFractionDigits: 2});
-            document.getElementById('total-amount').textContent = '฿' + txn.total_amount.toLocaleString(undefined, {minimumFractionDigits: 2});
-            document.getElementById('payment-method-text').textContent = txn.payment_method;
+            // คำนวณหักราคารวมภาษี
+            const finalTotal = txn.total_amount || 0;
+            const discount = Math.max(0, itemsSubtotal - finalTotal);
+            
+            // สูตรถอด Vat 7%: ยอดรวม * 7 / 107
+            const vatRate = 7;
+            const vatAmount = (finalTotal * vatRate) / (100 + vatRate);
+            const beforeVat = finalTotal - vatAmount;
 
-            // Handle down payment and balance
+            // กรอกข้อมูลสรุปยอดต่างๆ
+            document.getElementById('subtotal').textContent = '฿' + itemsSubtotal.toLocaleString(undefined, {minimumFractionDigits: 2});
+            
+            const discountRow = document.getElementById('discount-row');
+            if (discount > 0.01) { // ยอมรับ Floating math offset เล็กน้อย
+                discountRow.style.display = 'flex';
+                document.getElementById('discount').textContent = '-฿' + discount.toLocaleString(undefined, {minimumFractionDigits: 2});
+            } else {
+                discountRow.style.display = 'none';
+            }
+
+            // หักและป้อนค่าภาษี 7%
+            document.getElementById('tax-base').textContent = '฿' + beforeVat.toLocaleString(undefined, {minimumFractionDigits: 2});
+            document.getElementById('vat-amount').textContent = '฿' + vatAmount.toLocaleString(undefined, {minimumFractionDigits: 2});
+            
+            // ยอดสุทธิ
+            document.getElementById('total-amount').textContent = '฿' + finalTotal.toLocaleString(undefined, {minimumFractionDigits: 2});
+
+            // เสริมสร้างรายละเอียดข้อมูลวิธีชำระเงิน (Payment details representation)
+            let paymentStr = txn.payment_method || 'เงินสด';
+            if (txn.payment_type === 'ซื้อสด') {
+                const payments = [];
+                if (txn.cash_amount > 0) payments.push(`เงินสด: ฿${txn.cash_amount.toLocaleString(undefined, {minimumFractionDigits: 2})}`);
+                if (txn.transfer_amount > 0) payments.push(`โอนผ่านธนาคาร: ฿${txn.transfer_amount.toLocaleString(undefined, {minimumFractionDigits: 2})}`);
+                if (payments.length > 0) {
+                    paymentStr = `ซื้อสด (${payments.join(' / ')})`;
+                }
+            } else if (txn.payment_type === 'จัดไฟแนนซ์') {
+                paymentStr = `จัดไฟแนนซ์ (${txn.finance_company || 'ไม่ระบุ'}) | ผ่อนชำระ ${txn.finance_months || 0} งวด`;
+            }
+            document.getElementById('payment-method-text').textContent = paymentStr;
+
+            // ส่วนข้อมูลไฟแนนซ์ (Down Payment)
+            const financeSection = document.getElementById('finance-receipt-section');
             const downPayment = txn.down_payment || 0;
-            if (downPayment > 0) {
-                const balance = txn.total_amount - downPayment;
-                document.getElementById('down-payment-row').style.display = 'flex';
+            if (txn.payment_type === 'จัดไฟแนนซ์' || downPayment > 0) {
+                const balance = finalTotal - downPayment;
+                financeSection.style.display = 'block';
                 document.getElementById('down-payment').textContent = '฿' + downPayment.toLocaleString(undefined, {minimumFractionDigits: 2});
-                document.getElementById('balance-row').style.display = 'flex';
                 document.getElementById('balance').textContent = '฿' + balance.toLocaleString(undefined, {minimumFractionDigits: 2});
             } else {
-                document.getElementById('down-payment-row').style.display = 'none';
-                document.getElementById('balance-row').style.display = 'none';
+                financeSection.style.display = 'none';
             }
 
             // Trigger print after a short delay to ensure rendering

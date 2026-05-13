@@ -20,8 +20,11 @@ const {
     ProductName, 
     Transaction, 
     Transfer, 
-    Role 
+    Role,
+    Member 
 } = require('../models');
+
+const { uploadBufferToDriveInFolder } = require('../utils/googleDrive');
 
 // ==========================================
 // JWT Verification Middleware (ตรวจสอบ Token)
@@ -294,36 +297,37 @@ router.get('/products', async (req, res) => {
         const branchMap = {};
         allBranches.forEach(b => { branchMap[b._id.toString()] = { _id: b._id, name: b.name }; });
 
-        const pendingTransfers = await Transfer.find({ status: 'รอดำเนินการ' });
-        const transferringMap = {}; 
+        // Step A: Build In-Transit Map
+        const pendingTransfers = await Transfer.find({ status: 'รอดำเนินการ' }).populate('from_branch to_branch');
+        const inTransitItems = {};
+        const transitCodes = new Set();
 
         pendingTransfers.forEach(tr => {
-            const fromId = tr.from_branch ? tr.from_branch.toString() : null;
-            const toId = tr.to_branch ? tr.to_branch.toString() : null;
-            
+            const fromName = tr.from_branch ? tr.from_branch.name : 'ต้นทาง';
+            const toName = tr.to_branch ? tr.to_branch.name : 'ปลายทาง';
+            const toId = tr.to_branch ? tr.to_branch._id.toString() : null;
+            const direction = `${fromName} > ${toName}`;
+
             tr.items.forEach(item => {
                 if (item.product_code) {
-                    if (!transferringMap[item.product_code]) transferringMap[item.product_code] = new Set();
-                    if (fromId) transferringMap[item.product_code].add(fromId);
-                    if (toId) transferringMap[item.product_code].add(toId);
+                    transitCodes.add(item.product_code);
+                    if (!inTransitItems[item.product_code]) inTransitItems[item.product_code] = [];
+                    inTransitItems[item.product_code].push({
+                        to_id: toId,
+                        direction,
+                        quantity: Number(item.quantity || 0),
+                        imeis: item.imeis || []
+                    });
                 }
             });
         });
 
+        // Step B: Query Filter
         let query = {};
         if (branchId !== 'ALL') {
-            const transferringProductCodes = new Set();
-            pendingTransfers.forEach(tr => {
-                if ((tr.from_branch && tr.from_branch.toString() === branchId) || (tr.to_branch && tr.to_branch.toString() === branchId)) {
-                    tr.items.forEach(item => {
-                        if (item.product_code) transferringProductCodes.add(item.product_code);
-                    });
-                }
-            });
-
             query['$or'] = [
                 { 'stock_balances.branch_id': branchId },
-                { 'product_code': { $in: Array.from(transferringProductCodes) } }
+                { 'product_code': { $in: Array.from(transitCodes) } }
             ];
         }
 
@@ -338,66 +342,64 @@ router.get('/products', async (req, res) => {
             .populate('stock_balances.branch_id', 'name')
             .sort({ createdAt: -1 });
 
+        // Step C & D: Map Products (The Core Fix + Clean Admin View)
         let products = [];
-        if (branchId === 'ALL') {
-            // กระจาย stock_balances ออกมาเป็นทีละสาขา เพื่อให้หน้าเว็บแสดงสินค้าแต่ละสาขาแยกบรรทัดกันได้และกรองได้
-            productsRaw.forEach(p => {
-                const po = p.toObject();
-                const transferringBranches = transferringMap[po.product_code] || new Set();
-                const branchesWithStock = new Set();
+        
+        productsRaw.forEach(p => {
+            const po = p.toObject();
+            const transits = inTransitItems[po.product_code] || [];
+            let pushedAnyRow = false;
+            
+            // 1. Normal Stock
+            if (po.stock_balances && po.stock_balances.length > 0) {
+                po.stock_balances.forEach(b => {
+                    const bId = b.branch_id ? (b.branch_id._id || b.branch_id).toString() : null;
+                    
+                    // Filter normal stock if specific branch is requested
+                    if (branchId !== 'ALL' && bId !== branchId) return;
+                    
+                    const qty = Number(b.quantity || 0);
 
-                if (po.stock_balances && po.stock_balances.length > 0) {
-                    po.stock_balances.forEach(b => {
-                        const bId = b.branch_id ? (b.branch_id._id || b.branch_id).toString() : null;
-                        if (bId) branchesWithStock.add(bId);
-
-                        const flattened = { ...po };
-                        flattened.quantity = Number(b.quantity || 0);
-                        flattened.imeis = b.imeis || [];
-                        flattened.branch_id = b.branch_id;
-                        flattened.is_transferring = bId ? transferringBranches.has(bId) : false;
-                        delete flattened.stock_balances; // ไม่ต้องส่งไปซ้ำซ้อน
-                        products.push(flattened);
-                    });
-                } 
-
-                // เพิ่มแถวสำหรับสาขาที่ไม่มีสต็อก (หรือสต็อกเป็น 0 แล้วโดนลบออก) แต่มีการโอนย้าย
-                transferringBranches.forEach(bId => {
-                    if (!branchesWithStock.has(bId)) {
-                        const flattened = { ...po };
-                        flattened.quantity = 0;
-                        flattened.imeis = [];
-                        flattened.branch_id = branchMap[bId] || bId;
-                        flattened.is_transferring = true;
-                        delete flattened.stock_balances;
-                        products.push(flattened);
+                    // Logic: In Admin view ('ALL'), hide 0-stock branches. For specific branch, show it.
+                    if (branchId !== 'ALL' || qty > 0) {
+                        const normalRow = { ...po };
+                        normalRow.quantity = qty;
+                        normalRow.imeis = b.imeis || [];
+                        normalRow.branch_id = b.branch_id;
+                        normalRow.is_transferring = false;
+                        delete normalRow.stock_balances;
+                        products.push(normalRow);
+                        pushedAnyRow = true;
                     }
                 });
+            }
 
-                if (branchesWithStock.size === 0 && transferringBranches.size === 0) {
-                    // สินค้าที่ยังไม่มีสต็อกเลย
-                    const flattened = { ...po };
-                    flattened.quantity = 0;
-                    flattened.imeis = [];
-                    flattened.branch_id = null;
-                    flattened.is_transferring = false;
-                    delete flattened.stock_balances;
-                    products.push(flattened);
-                }
+            // 2. In-Transit Stock (Synthetic Row)
+            transits.forEach(transit => {
+                // If specific branch, only append if the branch is the destination
+                if (branchId !== 'ALL' && transit.to_id !== branchId) return;
+
+                const syntheticRow = { ...po };
+                syntheticRow.quantity = transit.quantity;
+                syntheticRow.imeis = transit.imeis;
+                syntheticRow.branch_id = { name: transit.direction };
+                syntheticRow.is_transferring = true;
+                delete syntheticRow.stock_balances;
+                products.push(syntheticRow);
+                pushedAnyRow = true;
             });
-        } else {
-            products = productsRaw.map(p => {
-                const po = injectBranchStockVirtuals(p, branchId);
-                const transferringBranches = transferringMap[po.product_code] || new Set();
-                po.is_transferring = transferringBranches.has(branchId.toString());
-                
-                // หาก branch_id คืนค่ามาเป็น string ให้จับคู่กับ branch object
-                if (po.branch_id && typeof po.branch_id === 'string' && branchMap[po.branch_id]) {
-                    po.branch_id = branchMap[po.branch_id];
-                }
-                return po;
-            });
-        }
+
+            // 3. Failsafe: If the product is out of stock EVERYWHERE and not transferring
+            if (!pushedAnyRow) {
+                 const failsafeRow = { ...po };
+                 failsafeRow.quantity = 0;
+                 failsafeRow.imeis = [];
+                 failsafeRow.branch_id = null; // Unassigned
+                 failsafeRow.is_transferring = false;
+                 delete failsafeRow.stock_balances;
+                 products.push(failsafeRow);
+            }
+        });
 
         res.status(200).json({
             success: true,
@@ -1361,7 +1363,11 @@ router.put('/transfers/:id/receive', async (req, res) => {
 // หน้าที่: บันทึกรายการขายและหักสต็อกอัตโนมัติ
 router.post('/transactions', async (req, res) => {
     try {
-        const { items, total_amount, payment_method, down_payment, branch_id } = req.body;
+        const { 
+            items, total_amount, payment_method, down_payment, branch_id,
+            payment_type, cash_amount, transfer_amount, finance_company,
+            finance_payment_day, finance_months, finance_down_payment_cash, finance_down_payment_transfer 
+        } = req.body;
 
         // ตรวจสอบข้อมูลเบื้องต้น
         if (!items || items.length === 0) {
@@ -1460,6 +1466,14 @@ router.post('/transactions', async (req, res) => {
             total_amount: Number(total_amount) || 0,
             payment_method,
             down_payment: Number(down_payment) || 0,
+            payment_type: payment_type || payment_method,
+            cash_amount: Number(cash_amount) || 0,
+            transfer_amount: Number(transfer_amount) || 0,
+            finance_company: finance_company || '',
+            finance_payment_day: Number(finance_payment_day) || 0,
+            finance_months: Number(finance_months) || 0,
+            finance_down_payment_cash: Number(finance_down_payment_cash) || 0,
+            finance_down_payment_transfer: Number(finance_down_payment_transfer) || 0,
             created_at: now
         });
 
@@ -1736,6 +1750,208 @@ router.delete('/roles/:id', async (req, res) => {
     } catch (error) {
         console.error('API Error DELETE /api/roles/:id:', error);
         res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการลบตำแหน่ง' });
+    }
+});
+// ==========================================
+// Member Management APIs (จัดการสมาชิก)
+// ==========================================
+
+// GET /api/members - ดึงข้อมูลสมาชิกทั้งหมด
+router.get('/members', async (req, res) => {
+    try {
+        const members = await Member.find().sort({ createdAt: -1 });
+        res.status(200).json({ success: true, data: members });
+    } catch (error) {
+        console.error('API Error GET /api/members:', error);
+        res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการดึงข้อมูลสมาชิก' });
+    }
+});
+
+// POST /api/members - เพิ่มสมาชิกใหม่
+router.post('/members', async (req, res) => {
+    try {
+        const data = req.body;
+
+        const requiredFields = [
+            'citizen_id', 'prefix', 'first_name', 'last_name', 'first_name_en', 'last_name_en',
+            'birthdate', 'card_expiry', 'gender', 'address', 'zipcode', 'phone',
+            'facebook_name', 'facebook_link', 'line_id', 'referral_source', 'photo'
+        ];
+        for (const field of requiredFields) {
+            if (!data[field] || (typeof data[field] === 'string' && data[field].trim() === '')) {
+                return res.status(400).json({ success: false, message: 'กรุณากรอกข้อมูลให้ครบถ้วนทุกช่องรวมทั้งอ่านบัตรประชาชนด้วย' });
+            }
+        }
+        if (!data.card_front_photo_base64 || data.card_front_photo_base64.trim() === '') {
+            return res.status(400).json({ success: false, message: 'กรุณาแนบรูปถ่ายหน้าบัตรประชาชนด้วยทุกครั้ง' });
+        }
+
+        // ตรวจสอบเลขบัตรประชาชนซ้ำ (ถ้ามี)
+        if (data.citizen_id && data.citizen_id.trim() !== '') {
+            const existing = await Member.findOne({ citizen_id: data.citizen_id.trim() });
+            if (existing) {
+                return res.status(400).json({ success: false, message: 'เลขบัตรประชาชนนี้มีอยู่ในระบบแล้ว' });
+            }
+        }
+
+        let cardFrontPhotoUrl = '';
+        if (data.card_front_photo_base64) {
+            try {
+                const matches = data.card_front_photo_base64.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
+                let buffer, mimeType;
+                if (matches && matches.length === 3) {
+                    mimeType = matches[1];
+                    buffer = Buffer.from(matches[2], 'base64');
+                } else {
+                    mimeType = 'image/jpeg';
+                    buffer = Buffer.from(data.card_front_photo_base64, 'base64');
+                }
+                const fileName = `ID_CARD_${(data.citizen_id || '').trim() || Date.now()}_FRONT_${Date.now()}.jpg`;
+                const folderName = 'รูปหน้าบัตร';
+                cardFrontPhotoUrl = await uploadBufferToDriveInFolder(buffer, mimeType, fileName, folderName);
+            } catch (err) {
+                console.error('Error uploading front card to Drive:', err);
+            }
+        }
+
+        // Auto Generate Member Number: SMXXXXX (เช่น SM00001)
+        const lastMember = await Member.findOne({ member_number: { $regex: /^SM\d+$/ } }).sort({ member_number: -1 });
+        let nextSeq = 1;
+        if (lastMember && lastMember.member_number) {
+            const currentSeq = parseInt(lastMember.member_number.replace('SM', ''), 10);
+            if (!isNaN(currentSeq)) {
+                nextSeq = currentSeq + 1;
+            }
+        }
+        const member_number = `SM${String(nextSeq).padStart(5, '0')}`;
+
+        const newMember = new Member({
+            member_number: member_number,
+            citizen_id: (data.citizen_id || '').trim(),
+            prefix: data.prefix || '',
+            first_name: data.first_name || '',
+            last_name: data.last_name || '',
+            first_name_en: data.first_name_en || '',
+            last_name_en: data.last_name_en || '',
+            birthdate: data.birthdate || '',
+            card_expiry: data.card_expiry || '',
+            gender: data.gender || '',
+            address: data.address || '',
+            photo: data.photo || '',
+            card_front_photo: cardFrontPhotoUrl,
+            zipcode: data.zipcode || '',
+            phone: data.phone || '',
+            facebook_name: data.facebook_name || '',
+            facebook_link: data.facebook_link || '',
+            line_id: data.line_id || '',
+            referral_source: data.referral_source || ''
+        });
+
+        const saved = await newMember.save();
+        console.log(`[MEMBER] เพิ่มสมาชิกใหม่: ${data.first_name} ${data.last_name}`);
+        res.status(201).json({ success: true, message: 'เพิ่มสมาชิกใหม่สำเร็จ', data: saved });
+    } catch (error) {
+        console.error('API Error POST /api/members:', error);
+        if (error.code === 11000) {
+            return res.status(400).json({ success: false, message: 'เลขบัตรประชาชนนี้มีอยู่ในระบบแล้ว' });
+        }
+        res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการเพิ่มสมาชิก' });
+    }
+});
+
+// PUT /api/members/:id - แก้ไขข้อมูลสมาชิก
+router.put('/members/:id', async (req, res) => {
+    try {
+        const data = req.body;
+
+        const requiredFields = [
+            'citizen_id', 'prefix', 'first_name', 'last_name', 'first_name_en', 'last_name_en',
+            'birthdate', 'card_expiry', 'gender', 'address', 'zipcode', 'phone',
+            'facebook_name', 'facebook_link', 'line_id', 'referral_source', 'photo'
+        ];
+        for (const field of requiredFields) {
+            if (!data[field] || (typeof data[field] === 'string' && data[field].trim() === '')) {
+                return res.status(400).json({ success: false, message: 'กรุณากรอกข้อมูลให้ครบถ้วนทุกช่องรวมทั้งอ่านบัตรประชาชนด้วย' });
+            }
+        }
+        if (!data.card_front_photo && !data.card_front_photo_base64) {
+            return res.status(400).json({ success: false, message: 'กรุณาแนบรูปถ่ายหน้าบัตรประชาชนด้วยทุกครั้ง' });
+        }
+
+        // ตรวจสอบเลขบัตรประชาชนซ้ำ (ยกเว้นตัวเอง)
+        if (data.citizen_id && data.citizen_id.trim() !== '') {
+            const existing = await Member.findOne({ citizen_id: data.citizen_id.trim(), _id: { $ne: req.params.id } });
+            if (existing) {
+                return res.status(400).json({ success: false, message: 'เลขบัตรประชาชนนี้มีอยู่ในระบบแล้ว' });
+            }
+        }
+
+        let cardFrontPhotoUrl = data.card_front_photo || '';
+        if (data.card_front_photo_base64) {
+            try {
+                const matches = data.card_front_photo_base64.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
+                let buffer, mimeType;
+                if (matches && matches.length === 3) {
+                    mimeType = matches[1];
+                    buffer = Buffer.from(matches[2], 'base64');
+                } else {
+                    mimeType = 'image/jpeg';
+                    buffer = Buffer.from(data.card_front_photo_base64, 'base64');
+                }
+                const fileName = `ID_CARD_${(data.citizen_id || '').trim() || Date.now()}_FRONT_${Date.now()}.jpg`;
+                const folderName = 'รูปหน้าบัตร';
+                cardFrontPhotoUrl = await uploadBufferToDriveInFolder(buffer, mimeType, fileName, folderName);
+            } catch (err) {
+                console.error('Error uploading front card to Drive:', err);
+            }
+        }
+
+        const updateData = {
+            citizen_id: (data.citizen_id || '').trim(),
+            prefix: data.prefix || '',
+            first_name: data.first_name || '',
+            last_name: data.last_name || '',
+            first_name_en: data.first_name_en || '',
+            last_name_en: data.last_name_en || '',
+            birthdate: data.birthdate || '',
+            card_expiry: data.card_expiry || '',
+            gender: data.gender || '',
+            address: data.address || '',
+            photo: data.photo || '',
+            card_front_photo: cardFrontPhotoUrl,
+            zipcode: data.zipcode || '',
+            phone: data.phone || '',
+            facebook_name: data.facebook_name || '',
+            facebook_link: data.facebook_link || '',
+            line_id: data.line_id || '',
+            referral_source: data.referral_source || ''
+        };
+
+        const updated = await Member.findByIdAndUpdate(req.params.id, updateData, { new: true });
+        if (!updated) return res.status(404).json({ success: false, message: 'ไม่พบสมาชิกที่ระบุ' });
+
+        console.log(`[MEMBER] แก้ไขข้อมูลสมาชิก: ${data.first_name} ${data.last_name}`);
+        res.status(200).json({ success: true, message: 'แก้ไขข้อมูลสมาชิกสำเร็จ', data: updated });
+    } catch (error) {
+        console.error('API Error PUT /api/members/:id:', error);
+        if (error.code === 11000) {
+            return res.status(400).json({ success: false, message: 'เลขบัตรประชาชนนี้มีอยู่ในระบบแล้ว' });
+        }
+        res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการแก้ไขข้อมูลสมาชิก' });
+    }
+});
+
+// DELETE /api/members/:id - ลบสมาชิก
+router.delete('/members/:id', async (req, res) => {
+    try {
+        const deleted = await Member.findByIdAndDelete(req.params.id);
+        if (!deleted) return res.status(404).json({ success: false, message: 'ไม่พบสมาชิกที่ระบุ' });
+
+        console.log(`[MEMBER] ลบสมาชิก: ${deleted.first_name} ${deleted.last_name}`);
+        res.status(200).json({ success: true, message: 'ลบสมาชิกสำเร็จ' });
+    } catch (error) {
+        console.error('API Error DELETE /api/members/:id:', error);
+        res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการลบสมาชิก' });
     }
 });
 

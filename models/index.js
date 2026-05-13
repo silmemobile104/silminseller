@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const Member = require('./member');
 
 // 1. Branch (สาขา)
 const branchSchema = new mongoose.Schema({
@@ -194,8 +195,17 @@ const transactionSchema = new mongoose.Schema({
         price: { type: Number, default: 0 } // ราคาต่อชิ้น
     }],
     total_amount: { type: Number, required: true }, // ยอดรวมทั้งหมด
-    payment_method: { type: String, required: true }, // วิธีชำระเงิน: เงินสด, โอนเงิน, จัดไฟแนนซ์
+    payment_method: { type: String, required: true }, // วิธีชำระเงิน: ซื้อสด, จัดไฟแนนซ์ (และ legacy: เงินสด, โอนเงิน)
     down_payment: { type: Number, default: 0 }, // ยอดเงินดาวน์ / รับเงินมา
+    // ข้อมูลการชำระเงินแบบละเอียด
+    payment_type: { type: String, enum: ['ซื้อสด', 'จัดไฟแนนซ์'], default: 'ซื้อสด' },
+    cash_amount: { type: Number, default: 0 }, // เงินสดที่รับมา (กรณีซื้อสด)
+    transfer_amount: { type: Number, default: 0 }, // เงินโอนที่รับมา (กรณีซื้อสด)
+    finance_company: { type: String, default: '' }, // ชื่อบริษัทไฟแนนซ์
+    finance_payment_day: { type: Number, default: 0 }, // ชำระเงินทุกวันที่เท่าไหร่
+    finance_months: { type: Number, default: 0 }, // ผ่อนชำระกี่เดือน
+    finance_down_payment_cash: { type: Number, default: 0 }, // เงินดาวน์ที่เป็นเงินสด
+    finance_down_payment_transfer: { type: Number, default: 0 }, // เงินดาวน์ที่เป็นเงินโอน
     created_at: { type: Date, default: Date.now } // วันที่ทำรายการ
 }, { timestamps: true });
 const Transaction = mongoose.model('Transaction', transactionSchema, 'transaction');
@@ -233,6 +243,7 @@ module.exports = {
     Movement,
     Transaction,
     Transfer,
+    Member,
     seedDefaultRoles,
     migrateProductsToERP
 };
