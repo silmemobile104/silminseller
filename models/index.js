@@ -20,7 +20,8 @@ const roleSchema = new mongoose.Schema({
         manage_branches: { type: Boolean, default: false },  // อนุญาตให้จัดการสาขา
         manage_settings: { type: Boolean, default: false },  // อนุญาตให้ตั้งค่าระบบ
         manage_roles: { type: Boolean, default: false },      // อนุญาตให้จัดการสิทธิ์
-        filter_stock_branch: { type: Boolean, default: false } // อนุญาตกรองสาขาในเมนูจัดการสต็อก
+        filter_stock_branch: { type: Boolean, default: false }, // อนุญาตกรองสาขาในเมนูจัดการสต็อก
+        cancel_sale: { type: Boolean, default: false }       // อนุญาตให้ยกเลิกบิลขาย
     }
 }, { timestamps: true });
 const Role = mongoose.model('Role', roleSchema, 'role');
@@ -36,7 +37,7 @@ const seedDefaultRoles = async () => {
             permissions: {
                 view_dashboard: true, manage_stock: true, delete_stock: true,
                 do_pos: true, manage_personnel: true, manage_branches: true,
-                manage_settings: true, manage_roles: true, filter_stock_branch: true
+                manage_settings: true, manage_roles: true, filter_stock_branch: true, cancel_sale: true
             }
         },
         {
@@ -44,7 +45,7 @@ const seedDefaultRoles = async () => {
             permissions: {
                 view_dashboard: true, manage_stock: true, delete_stock: true,
                 do_pos: true, manage_personnel: true, manage_branches: true,
-                manage_settings: true, manage_roles: false, filter_stock_branch: true
+                manage_settings: true, manage_roles: false, filter_stock_branch: true, cancel_sale: true
             }
         },
         {
@@ -52,7 +53,7 @@ const seedDefaultRoles = async () => {
             permissions: {
                 view_dashboard: false, manage_stock: true, delete_stock: false,
                 do_pos: true, manage_personnel: false, manage_branches: false,
-                manage_settings: false, manage_roles: false, filter_stock_branch: false
+                manage_settings: false, manage_roles: false, filter_stock_branch: false, cancel_sale: false
             }
         }
     ];
@@ -186,6 +187,7 @@ async function migrateProductsToERP() {
 const transactionSchema = new mongoose.Schema({
     receipt_number: { type: String, required: true, unique: true }, // เลขที่ใบเสร็จ (Auto-generated: INV-วันที่-สุ่ม)
     branch_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Branch' }, // สาขาที่ทำรายการ
+    member_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Member', default: null }, // สมาชิกที่ซื้อสินค้า
     employee_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee' }, // พนักงานที่ทำรายการ
     items: [{
         product_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Product' },
@@ -206,6 +208,10 @@ const transactionSchema = new mongoose.Schema({
     finance_months: { type: Number, default: 0 }, // ผ่อนชำระกี่เดือน
     finance_down_payment_cash: { type: Number, default: 0 }, // เงินดาวน์ที่เป็นเงินสด
     finance_down_payment_transfer: { type: Number, default: 0 }, // เงินดาวน์ที่เป็นเงินโอน
+    status: { type: String, default: 'เสร็จสิ้น', enum: ['เสร็จสิ้น', 'ยกเลิกแล้ว'] }, // สถานะรายการ
+    cancel_reason: { type: String }, // เหตุผลที่ยกเลิก
+    cancelled_by: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee' }, // ผู้ที่กดยกเลิก
+    cancelled_at: { type: Date }, // วันที่ยกเลิก
     created_at: { type: Date, default: Date.now } // วันที่ทำรายการ
 }, { timestamps: true });
 const Transaction = mongoose.model('Transaction', transactionSchema, 'transaction');

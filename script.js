@@ -949,7 +949,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Set Edit ID
         const editIdInput = document.getElementById('edit-product-id');
-        if (editIdInput) editIdInput.value = product._id;
+        if (editIdInput) {
+            editIdInput.value = (product._id && product._id.$oid) ? product._id.$oid : (product._id ? product._id.toString() : '');
+        }
+
+        // เก็บสาขาเดิมไว้ตรวจสอบกรณีมีการเปลี่ยนสาขาตอนกดเซฟ
+        window.__editingProductOriginalBranchId = product.branch_id ? (product.branch_id._id || product.branch_id).toString() : null;
 
         // โหลดข้อมูล Master Data ทั้งหมดให้เสร็จก่อนเริ่มใส่ค่าลงฟอร์ม เพื่อรับประกันว่าข้อมูลตัวเลือกจะขึ้นครบถ้วนโดยไม่ต้องไปหน้าตั้งค่าก่อน
         await fetchMasterData();
@@ -976,7 +981,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             });
             if (!matched && product.name) {
-                // Fallback direct set
+                // Fallback: Add as temporary option if not in master data
+                const opt = document.createElement('option');
+                opt.value = product.name;
+                opt.textContent = product.name;
+                productName.appendChild(opt);
                 productName.value = product.name;
             }
         }
@@ -1219,10 +1228,13 @@ document.addEventListener('DOMContentLoaded', () => {
             const branch_id = productBranch ? productBranch.value : null;
 
             // Build payload
+            const selectedNameOption = productName.options[productName.selectedIndex];
+            const nameValue = (selectedNameOption && !selectedNameOption.disabled) ? selectedNameOption.textContent : '';
+
             const payload = {
                 product_code: productCode ? productCode.value.trim() : '',
                 supplier_id: productSupplier ? productSupplier.value : null,
-                name: productName.options[productName.selectedIndex].textContent,
+                name: nameValue,
                 type_id: productCategory.value,
                 color_id: productColor.value || null,
                 cost_price: Number(document.getElementById('cost-price').value),
@@ -1231,7 +1243,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 capacity_id: productCapacity.value || null,
                 condition_id: productCondition.value || null,
                 branch_id: branch_id || null,
-                quantity: Number(productQuantity.value) || 1
+                quantity: Number(productQuantity.value) || 1,
+                old_branch_id: window.__editingProductOriginalBranchId || null
             };
 
             const selectedOption = productCategory.options[productCategory.selectedIndex];
@@ -1248,8 +1261,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 submitBtn.innerHTML = `<i class="fa-solid fa-circle-notch fa-spin mr-2"></i> กำลังบันทึก...`;
 
                 const editIdInput = document.getElementById('edit-product-id');
-                const isEditing = editIdInput && editIdInput.value;
-                const url = isEditing ? `${API_BASE_URL}/products/${editIdInput.value}` : `${API_BASE_URL}/products`;
+                const editIdValue = editIdInput ? editIdInput.value : '';
+                const isEditing = editIdValue && editIdValue.trim() !== '';
+                
+                const url = isEditing ? `${API_BASE_URL}/products/${editIdValue}` : `${API_BASE_URL}/products`;
                 const method = isEditing ? 'PUT' : 'POST';
 
                 const response = await authFetch(url, {
@@ -2129,6 +2144,16 @@ document.addEventListener('DOMContentLoaded', () => {
     const imeiSearchInput = document.getElementById('imei-search-input');
     const imeiListContainer = document.getElementById('imei-list-container');
 
+    // Member Selection DOM
+    const posMemberSearch = document.getElementById('pos-member-search');
+    const posMemberResults = document.getElementById('pos-member-results');
+    const selectedMemberDisplay = document.getElementById('selected-member-display');
+    const selectedMemberName = document.getElementById('selected-member-name');
+    const selectedMemberPhone = document.getElementById('selected-member-phone');
+    const selectedMemberId = document.getElementById('selected-member-id');
+    const btnRemoveMember = document.getElementById('btn-remove-member');
+    const btnPosAddMember = document.getElementById('btn-pos-add-member');
+
     // Sales History DOM Elements
     const salesHistorySearch = document.getElementById('sales-history-search');
     const salesHistoryDate = document.getElementById('sales-history-date');
@@ -2150,7 +2175,18 @@ document.addEventListener('DOMContentLoaded', () => {
     const transactionDetailBalance = document.getElementById('transaction-detail-balance');
     const transactionDetailItems = document.getElementById('transaction-detail-items');
     const transactionDetailTotal = document.getElementById('transaction-detail-total');
+    const transactionDetailMember = document.getElementById('transaction-detail-member');
+    const transactionDetailPaymentBreakdown = document.getElementById('transaction-detail-payment-breakdown');
+    const transactionDetailFinanceInfo = document.getElementById('transaction-detail-finance-info');
+    const transactionDetailFinanceCompany = document.getElementById('transaction-detail-finance-company');
+    const transactionDetailFinanceMonths = document.getElementById('transaction-detail-finance-months');
+    const transactionDetailFinanceDay = document.getElementById('transaction-detail-finance-day');
     const btnReprintReceipt = document.getElementById('btn-reprint-receipt');
+    const btnCancelTransaction = document.getElementById('btn-cancel-transaction');
+    const transactionCancelledAlert = document.getElementById('transaction-cancelled-alert');
+    const transactionCancelledReason = document.getElementById('transaction-cancelled-reason');
+    const transactionCancelledBy = document.getElementById('transaction-cancelled-by');
+    const transactionCancelledAt = document.getElementById('transaction-cancelled-at');
 
     // Fetch products for POS
     async function fetchPosProducts() {
@@ -2845,6 +2881,12 @@ document.addEventListener('DOMContentLoaded', () => {
         // Reset block visibilities
         if (blockBuyCashDetails) blockBuyCashDetails.classList.add('hidden');
         if (blockFinanceDetails) blockFinanceDetails.classList.add('hidden');
+        
+        // Member Selection reset
+        if (selectedMemberId) selectedMemberId.value = '';
+        if (posMemberSearch) posMemberSearch.value = '';
+        if (selectedMemberDisplay) selectedMemberDisplay.classList.add('hidden');
+        if (posMemberSearch && posMemberSearch.parentElement) posMemberSearch.parentElement.classList.remove('hidden');
 
         // Render cart summary items with editable unit prices
         if (confirmPriceList) {
@@ -3000,6 +3042,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             const payload = {
+                member_id: selectedMemberId ? (selectedMemberId.value || null) : null,
                 items: cart.map(item => ({
                     product_id: item.product_id,
                     product_name: item.product_name,
@@ -3060,6 +3103,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     posSearchResults.classList.add('hidden');
                     posSearchResults.innerHTML = '';
                 }
+
+                // Reset Member
+                if (selectedMemberId) selectedMemberId.value = '';
+                if (posMemberSearch) posMemberSearch.value = '';
+                if (selectedMemberDisplay) selectedMemberDisplay.classList.add('hidden');
+                if (posMemberSearch && posMemberSearch.parentElement) posMemberSearch.parentElement.classList.remove('hidden');
             } else {
                 showToast('เกิดข้อผิดพลาด: ' + result.message, 'error');
             }
@@ -3078,6 +3127,99 @@ document.addEventListener('DOMContentLoaded', () => {
     if (btnCheckout) {
         btnCheckout.addEventListener('click', () => {
             openCheckoutModal();
+        });
+    }
+
+    // ==========================================
+    // Member Selection Logic (POS)
+    // ==========================================
+    let memberSearchTimeout;
+    if (posMemberSearch) {
+        posMemberSearch.addEventListener('input', (e) => {
+            const query = e.target.value.trim();
+            clearTimeout(memberSearchTimeout);
+            
+            if (query.length < 2) {
+                if (posMemberResults) posMemberResults.classList.add('hidden');
+                return;
+            }
+
+            memberSearchTimeout = setTimeout(async () => {
+                try {
+                    const response = await authFetch(`${API_BASE_URL}/members/search?q=${encodeURIComponent(query)}`);
+                    const result = await response.json();
+                    
+                    if (result.success && result.data.length > 0) {
+                        renderMemberSearchResults(result.data);
+                    } else {
+                        if (posMemberResults) posMemberResults.classList.add('hidden');
+                    }
+                } catch (error) {
+                    console.error('Member search error:', error);
+                }
+            }, 300);
+        });
+
+        // Close results when clicking outside
+        document.addEventListener('click', (e) => {
+            if (posMemberResults && !posMemberSearch.contains(e.target) && !posMemberResults.contains(e.target)) {
+                posMemberResults.classList.add('hidden');
+            }
+        });
+    }
+
+    const renderMemberSearchResults = (members) => {
+        if (!posMemberResults) return;
+        
+        posMemberResults.innerHTML = '';
+        members.forEach(member => {
+            const div = document.createElement('div');
+            div.className = 'p-3 hover:bg-slate-700 cursor-pointer transition-colors flex items-center gap-3';
+            div.innerHTML = `
+                <div class="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center text-slate-400">
+                    <i class="fa-solid fa-user text-sm"></i>
+                </div>
+                <div class="flex-1 overflow-hidden">
+                    <p class="text-sm font-bold text-white truncate">${member.prefix}${member.first_name} ${member.last_name}</p>
+                    <p class="text-xs text-slate-400 truncate">${member.phone || 'ไม่มีเบอร์โทร'} | ${member.member_number || '-'}</p>
+                </div>
+            `;
+            div.addEventListener('click', () => selectMember(member));
+            posMemberResults.appendChild(div);
+        });
+        posMemberResults.classList.remove('hidden');
+    };
+
+    const selectMember = (member) => {
+        if (selectedMemberId) selectedMemberId.value = member._id;
+        if (selectedMemberName) selectedMemberName.textContent = `${member.prefix}${member.first_name} ${member.last_name}`;
+        if (selectedMemberPhone) selectedMemberPhone.textContent = member.phone || member.member_number || 'ไม่ทราบเบอร์โทร';
+        
+        if (selectedMemberDisplay) selectedMemberDisplay.classList.remove('hidden');
+        if (posMemberSearch && posMemberSearch.parentElement) posMemberSearch.parentElement.classList.add('hidden');
+        if (posMemberResults) posMemberResults.classList.add('hidden');
+    };
+
+    if (btnRemoveMember) {
+        btnRemoveMember.addEventListener('click', () => {
+            if (selectedMemberId) selectedMemberId.value = '';
+            if (selectedMemberDisplay) selectedMemberDisplay.classList.add('hidden');
+            if (posMemberSearch && posMemberSearch.parentElement) {
+                posMemberSearch.parentElement.classList.remove('hidden');
+                posMemberSearch.value = '';
+                posMemberSearch.focus();
+            }
+        });
+    }
+
+    if (btnPosAddMember) {
+        btnPosAddMember.addEventListener('click', () => {
+            switchView('members');
+            // Option: auto-click add member button in members view
+            setTimeout(() => {
+                const btnAddMember = document.getElementById('btn-add-member');
+                if (btnAddMember) btnAddMember.click();
+            }, 100);
         });
     }
 
@@ -3174,7 +3316,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
         transactions.forEach(txn => {
             const row = document.createElement('tr');
-            row.className = 'border-b border-slate-700 hover:bg-slate-700/30 transition-colors';
+            const isCancelled = txn.status === 'ยกเลิกแล้ว';
+            
+            row.className = `border-b border-slate-700 hover:bg-slate-700/30 transition-colors ${isCancelled ? 'opacity-70 bg-red-900/10' : ''}`;
 
             const dateStr = new Date(txn.created_at).toLocaleString('th-TH', {
                 day: '2-digit',
@@ -3185,16 +3329,26 @@ document.addEventListener('DOMContentLoaded', () => {
             });
 
             row.innerHTML = `
-                <td class="px-6 py-4 text-slate-300">${dateStr}</td>
-                <td class="px-6 py-4 text-white font-mono">${txn.receipt_number}</td>
-                <td class="px-6 py-4 text-slate-300">${txn.branch_id ? txn.branch_id.name : '-'}</td>
-                <td class="px-6 py-4 text-slate-300">${txn.employee_id ? txn.employee_id.name : '-'}</td>
-                <td class="px-6 py-4 text-right text-cyan-400 font-bold font-mono">฿${txn.total_amount.toLocaleString()}</td>
-                <td class="px-6 py-4 text-slate-300">${txn.payment_method}</td>
+                <td class="px-6 py-4 text-slate-300 ${isCancelled ? 'line-through text-red-400/70' : ''}">${dateStr}</td>
+                <td class="px-6 py-4 text-white font-mono flex items-center gap-2">
+                    <span class="${isCancelled ? 'line-through text-red-400' : ''}">${txn.receipt_number}</span>
+                    ${isCancelled ? '<span class="px-2 py-0.5 text-[10px] font-bold bg-red-500 text-white rounded-full">ยกเลิกแล้ว</span>' : ''}
+                </td>
+                <td class="px-6 py-4 text-slate-300 ${isCancelled ? 'line-through text-red-400/70' : ''}">${txn.branch_id ? txn.branch_id.name : '-'}</td>
+                <td class="px-6 py-4 text-slate-300 ${isCancelled ? 'line-through text-red-400/70' : ''}">${txn.employee_id ? txn.employee_id.name : '-'}</td>
+                <td class="px-6 py-4 text-slate-300 ${isCancelled ? 'line-through text-red-400/70' : ''}">
+                    ${txn.member_id ? `<span class="font-bold text-white">${txn.member_id.first_name} ${txn.member_id.last_name}</span><br><span class="text-xs text-slate-500">${txn.member_id.phone || ''}</span>` : '<span class="text-slate-500">-</span>'}
+                </td>
+                <td class="px-6 py-4 text-right ${isCancelled ? 'text-red-400/70 line-through' : 'text-cyan-400 font-bold'} font-mono">฿${txn.total_amount.toLocaleString()}</td>
+                <td class="px-6 py-4 text-slate-300 ${isCancelled ? 'line-through text-red-400/70' : ''}">
+                    <span class="px-2 py-1 rounded-md text-[11px] font-bold ${txn.payment_type === 'จัดไฟแนนซ์' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'}">
+                        ${txn.payment_type || txn.payment_method}
+                    </span>
+                </td>
                 <td class="px-6 py-4 text-center">
-                    <button class="view-transaction-btn px-4 py-2 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 hover:text-amber-300 rounded-lg transition-all font-medium"
+                    <button class="view-transaction-btn px-4 py-2 ${isCancelled ? 'bg-red-500/10 text-red-400 hover:bg-red-500/20' : 'bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 hover:text-amber-300'} rounded-lg transition-all font-medium"
                             data-id="${txn._id}">
-                        <i class="fa-solid fa-eye mr-2"></i>ดูรายละเอียด
+                        <i class="fa-solid fa-eye mr-2"></i>รายละเอียด
                     </button>
                 </td>
             `;
@@ -3236,19 +3390,61 @@ document.addEventListener('DOMContentLoaded', () => {
         transactionDetailBranch.textContent = txn.branch_id ? txn.branch_id.name : '-';
         transactionDetailEmployee.textContent = txn.employee_id ? txn.employee_id.name : '-';
         transactionDetailDate.textContent = new Date(txn.created_at).toLocaleString('th-TH');
-        transactionDetailPayment.textContent = txn.payment_method;
+        transactionDetailPayment.textContent = txn.payment_type || txn.payment_method;
         transactionDetailTotal.textContent = `฿${txn.total_amount.toLocaleString()}`;
 
-        // Handle down payment (show only for financing)
-        const isFinancing = (txn.payment_method || '').includes('ไฟแนนซ์');
-        if (isFinancing) {
-            const downPaymentValue = Number(txn.down_payment) || 0;
+        // Member Details
+        if (transactionDetailMember) {
+            if (txn.member_id) {
+                const m = txn.member_id;
+                transactionDetailMember.innerHTML = `
+                    <div class="flex flex-col">
+                        <span class="text-white text-base">${m.prefix || ''}${m.first_name} ${m.last_name}</span>
+                        <span class="text-slate-400 text-xs font-mono">${m.phone || 'ไม่ทราบเบอร์'} | ${m.member_number || 'ไม่มีเลขสมาชิก'}</span>
+                    </div>
+                `;
+            } else {
+                transactionDetailMember.textContent = 'ไม่ระบุสมาชิก (ขายเงินสด)';
+            }
+        }
+
+        // Handle payment breakdown and downpayment
+        const isFinancing = (txn.payment_type === 'จัดไฟแนนซ์');
+        if (transactionDetailDownpaymentSection) {
             transactionDetailDownpaymentSection.classList.remove('hidden');
-            transactionDetailDownpayment.textContent = `฿${downPaymentValue.toLocaleString()}`;
-            const balance = txn.total_amount - downPaymentValue;
-            transactionDetailBalance.textContent = `฿${balance.toLocaleString()}`;
-        } else {
-            transactionDetailDownpaymentSection.classList.add('hidden');
+            
+            const paidTotal = isFinancing ? (Number(txn.down_payment) || 0) : txn.total_amount;
+            transactionDetailDownpayment.textContent = `฿${paidTotal.toLocaleString()}`;
+            
+            if (transactionDetailPaymentBreakdown) {
+                let breakdownHTML = '';
+                const cash = isFinancing ? (txn.finance_down_payment_cash || 0) : (txn.cash_amount || 0);
+                const transfer = isFinancing ? (txn.finance_down_payment_transfer || 0) : (txn.transfer_amount || 0);
+
+                if (cash > 0) breakdownHTML += `<div class="flex justify-between text-xs text-slate-500 italic"><span>- เงินสด:</span><span>฿${cash.toLocaleString()}</span></div>`;
+                if (transfer > 0) breakdownHTML += `<div class="flex justify-between text-xs text-slate-500 italic"><span>- เงินโอน:</span><span>฿${transfer.toLocaleString()}</span></div>`;
+                
+                transactionDetailPaymentBreakdown.innerHTML = breakdownHTML;
+                transactionDetailPaymentBreakdown.classList.toggle('hidden', breakdownHTML === '');
+            }
+
+            if (isFinancing) {
+                const balance = txn.total_amount - (Number(txn.down_payment) || 0);
+                transactionDetailBalance.textContent = `฿${balance.toLocaleString()}`;
+                transactionDetailBalance.parentElement.classList.remove('hidden');
+
+                // Populate Finance Details
+                if (transactionDetailFinanceInfo) {
+                    transactionDetailFinanceInfo.classList.remove('hidden');
+                    if (transactionDetailFinanceCompany) transactionDetailFinanceCompany.textContent = txn.finance_company || '-';
+                    if (transactionDetailFinanceMonths) transactionDetailFinanceMonths.textContent = `${txn.finance_months || 0} เดือน`;
+                    if (transactionDetailFinanceDay) transactionDetailFinanceDay.textContent = `วันที่ ${txn.finance_payment_day || 0} ของเดือน`;
+                }
+            } else {
+                transactionDetailBalance.textContent = `฿0`;
+                transactionDetailBalance.parentElement.classList.add('hidden');
+                if (transactionDetailFinanceInfo) transactionDetailFinanceInfo.classList.add('hidden');
+            }
         }
 
         // Populate items table
@@ -3267,6 +3463,31 @@ document.addEventListener('DOMContentLoaded', () => {
                 transactionDetailItems.appendChild(itemRow);
             });
         }
+
+        // Handle Cancel Button and Alert Box visibility
+        const isCancelled = txn.status === 'ยกเลิกแล้ว';
+        const userStr = localStorage.getItem('silmin_user');
+        const user = userStr ? JSON.parse(userStr) : null;
+        const hasCancelPerm = user && (user.role === 'Administrator' || user.role === 'ผู้จัดการ' || user.role === 'แอดมิน' || (user.permissions && user.permissions.cancel_sale));
+        
+        if (isCancelled) {
+            if (transactionCancelledAlert) transactionCancelledAlert.classList.remove('hidden');
+            if (transactionCancelledReason) transactionCancelledReason.textContent = txn.cancel_reason || '-';
+            if (transactionCancelledBy) transactionCancelledBy.textContent = txn.cancelled_by ? txn.cancelled_by.name || 'Admin' : 'Admin';
+            if (transactionCancelledAt) transactionCancelledAt.textContent = new Date(txn.cancelled_at || txn.updated_at).toLocaleString('th-TH');
+            
+            if (btnCancelTransaction) btnCancelTransaction.classList.add('hidden');
+        } else {
+            if (transactionCancelledAlert) transactionCancelledAlert.classList.add('hidden');
+            
+            if (btnCancelTransaction) {
+                if (hasCancelPerm) {
+                    btnCancelTransaction.classList.remove('hidden');
+                } else {
+                    btnCancelTransaction.classList.add('hidden');
+                }
+            }
+        }
     };
 
     const openTransactionDetailModal = () => {
@@ -3281,7 +3502,7 @@ document.addEventListener('DOMContentLoaded', () => {
         transactionDetailModal.classList.add('opacity-0', 'pointer-events-none');
         const modalContent = transactionDetailModal.querySelector('.modal-content');
         if (modalContent) modalContent.classList.add('scale-95');
-        currentTransaction = null;
+        // Do not set currentTransaction = null here, as it might be needed for Reprint
     };
 
     // Event listeners for filters
@@ -3312,8 +3533,46 @@ document.addEventListener('DOMContentLoaded', () => {
     if (btnReprintReceipt) {
         btnReprintReceipt.addEventListener('click', () => {
             if (currentTransaction) {
+                const txnToPrint = currentTransaction;
                 closeTransactionDetailModal();
-                openCheckoutSuccessModal(currentTransaction);
+                setTimeout(() => {
+                    openCheckoutSuccessModal(txnToPrint);
+                }, 300);
+            } else {
+                showToast('ไม่พบข้อมูลรายการที่จะพิมพ์', 'error');
+            }
+        });
+    }
+
+    // Cancel transaction button
+    if (btnCancelTransaction) {
+        btnCancelTransaction.addEventListener('click', () => {
+            if (currentTransaction) {
+                showPrompt('ระบุเหตุผลที่ต้องการยกเลิกบิลนี้:', '', async (reason) => {
+                    if (!reason || reason.trim() === '') {
+                        showToast('กรุณาระบุเหตุผล', 'warning');
+                        return;
+                    }
+                    try {
+                        const response = await authFetch(`${API_BASE_URL}/transactions/${currentTransaction._id}/cancel`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ reason: reason.trim() })
+                        });
+                        const result = await response.json();
+                        if (result.success) {
+                            showToast('ยกเลิกบิลขายสำเร็จ', 'success');
+                            closeTransactionDetailModal();
+                            loadSalesHistory();
+                            if (typeof fetchProducts === 'function') fetchProducts();
+                        } else {
+                            showToast(result.message || 'เกิดข้อผิดพลาดในการยกเลิก', 'error');
+                        }
+                    } catch (err) {
+                        console.error(err);
+                        showToast('เกิดข้อผิดพลาดในการเชื่อมต่อ', 'error');
+                    }
+                });
             }
         });
     }
@@ -3519,7 +3778,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const closeRoleModalBtn = document.getElementById('close-role-modal-btn');
     const cancelRoleModalBtn = document.getElementById('cancel-role-modal-btn');
 
-    const permKeys = ['view_dashboard', 'manage_stock', 'delete_stock', 'do_pos', 'manage_personnel', 'manage_branches', 'manage_settings', 'manage_roles', 'filter_stock_branch'];
+    const permKeys = ['view_dashboard', 'manage_stock', 'delete_stock', 'do_pos', 'manage_personnel', 'manage_branches', 'manage_settings', 'manage_roles', 'filter_stock_branch', 'cancel_sale'];
     const permLabels = {
         view_dashboard: 'ดูแดชบอร์ด',
         manage_stock: 'จัดการสต็อก',
@@ -3529,7 +3788,8 @@ document.addEventListener('DOMContentLoaded', () => {
         manage_branches: 'จัดการสาขา',
         manage_settings: 'ตั้งค่าระบบ',
         manage_roles: 'จัดการสิทธิ์',
-        filter_stock_branch: 'กรองสาขาในเมนู จัดการสต็อก'
+        filter_stock_branch: 'กรองสาขาในเมนู จัดการสต็อก',
+        cancel_sale: 'ยกเลิกบิลขาย'
     };
     const permIcons = {
         view_dashboard: 'fa-chart-pie text-blue-400',
@@ -3540,7 +3800,8 @@ document.addEventListener('DOMContentLoaded', () => {
         manage_branches: 'fa-store text-orange-400',
         manage_settings: 'fa-gear text-slate-400',
         manage_roles: 'fa-shield-halved text-amber-400',
-        filter_stock_branch: 'fa-filter text-teal-400'
+        filter_stock_branch: 'fa-filter text-teal-400',
+        cancel_sale: 'fa-ban text-red-500'
     };
 
     const openRoleModal = () => {

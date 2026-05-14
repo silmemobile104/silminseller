@@ -436,8 +436,10 @@ router.get('/products/search', async (req, res) => {
             ]
         };
 
-        // กรองให้เจอเฉพาะสต็อกของสาขาที่ต้องการ
-        query['stock_balances.branch_id'] = branchId;
+        // กรองให้เจอเฉพาะสต็อกของสาขาที่ต้องการ (ยกเว้นกรณีดูทั้งหมด)
+        if (branchId !== 'ALL') {
+            query['stock_balances.branch_id'] = branchId;
+        }
 
         const product = await Product.findOne(query)
             .populate('type_id', 'name')
@@ -490,42 +492,67 @@ router.put('/products/:id', async (req, res) => {
 
         // Update stock for a branch (optional)
         const branchId = productData.branch_id || null;
+        const oldBranchId = productData.old_branch_id || null;
         let stockDeltaQty = 0;
         let incomingImeis = [];
-        if (branchId) {
-            const bal = ensureBranchBalance(product, branchId);
-            const prevQty = Number(bal.quantity || 0);
 
-            incomingImeis = Array.isArray(productData.imeis) ? productData.imeis.map(x => x.toString().trim()).filter(Boolean) : [];
-            if (incomingImeis.length > 0) {
-                const set = new Set((bal.imeis || []).map(x => x.toString().trim()));
-                const added = [];
-                for (const imei of incomingImeis) {
-                    if (!set.has(imei)) {
-                        bal.imeis.push(imei);
-                        set.add(imei);
-                        added.push(imei);
-                    }
+        if (branchId) {
+            // กรณีมีการเปลี่ยนสาขา (Move Stock)
+            if (oldBranchId && oldBranchId !== branchId) {
+                const oldBal = product.stock_balances.find(x => x.branch_id && x.branch_id.toString() === oldBranchId.toString());
+                if (oldBal) {
+                    // เก็บ IMEIs ที่จะย้ายไปไว้ก่อน (ถ้าไม่ได้ส่งมาใหม่ใน payload)
+                    const imeisToMove = (productData.imeis && productData.imeis.length > 0) 
+                        ? productData.imeis 
+                        : (oldBal.imeis || []);
+                    
+                    // เคลียร์ค่าที่สาขาเดิม
+                    oldBal.quantity = 0;
+                    oldBal.imeis = [];
+                    
+                    // ตั้งค่าสาขาใหม่
+                    const newBal = ensureBranchBalance(product, branchId);
+                    newBal.quantity = Number(productData.quantity || 0);
+                    newBal.imeis = imeisToMove.map(x => x.toString().trim()).filter(Boolean);
+                    
+                    incomingImeis = newBal.imeis;
+                    stockDeltaQty = newBal.quantity;
                 }
-                bal.quantity = (bal.imeis || []).length;
-                stockDeltaQty = added.length;
-                incomingImeis = added;
-            } else if (typeof productData.quantity !== 'undefined') {
-                // quantity ที่ส่งมาถือเป็น "จำนวนรวมของสาขานั้น" (เพื่อให้ backward compatible)
-                const nextQty = Number(productData.quantity || 0);
-                stockDeltaQty = nextQty - prevQty;
-                bal.quantity = nextQty;
+            } else {
+                // กรณีไม่ได้เปลี่ยนสาขา หรือเป็นการเพิ่มสต็อกปกติ
+                const bal = ensureBranchBalance(product, branchId);
+                const prevQty = Number(bal.quantity || 0);
+
+                incomingImeis = Array.isArray(productData.imeis) ? productData.imeis.map(x => x.toString().trim()).filter(Boolean) : [];
+                if (incomingImeis.length > 0) {
+                    const set = new Set((bal.imeis || []).map(x => x.toString().trim()));
+                    const added = [];
+                    for (const imei of incomingImeis) {
+                        if (!set.has(imei)) {
+                            bal.imeis.push(imei);
+                            set.add(imei);
+                            added.push(imei);
+                        }
+                    }
+                    bal.quantity = (bal.imeis || []).length;
+                    stockDeltaQty = added.length;
+                    incomingImeis = added;
+                } else if (typeof productData.quantity !== 'undefined') {
+                    const nextQty = Number(productData.quantity || 0);
+                    stockDeltaQty = nextQty - prevQty;
+                    bal.quantity = nextQty;
+                }
             }
         }
 
         const updatedProduct = await product.save();
 
-        // Movement: รับเข้าสต็อก (เฉพาะกรณี stock เพิ่ม)
+        // Movement: บันทึกประวัติการเคลื่อนไหว
         if (branchId && stockDeltaQty > 0) {
             await createMovementsForItem({
                 productId: updatedProduct._id,
-                action: 'รับเข้าสต็อก',
-                fromBranch: null,
+                action: (oldBranchId && oldBranchId !== branchId) ? 'ย้ายสาขา (แก้ไข)' : 'รับเข้าสต็อก',
+                fromBranch: (oldBranchId && oldBranchId !== branchId) ? oldBranchId : null,
                 toBranch: branchId,
                 referenceNo: '',
                 createdBy: req.user.employee_id,
@@ -1364,7 +1391,7 @@ router.put('/transfers/:id/receive', async (req, res) => {
 router.post('/transactions', async (req, res) => {
     try {
         const { 
-            items, total_amount, payment_method, down_payment, branch_id,
+            items, total_amount, payment_method, down_payment, branch_id, member_id,
             payment_type, cash_amount, transfer_amount, finance_company,
             finance_payment_day, finance_months, finance_down_payment_cash, finance_down_payment_transfer 
         } = req.body;
@@ -1474,6 +1501,7 @@ router.post('/transactions', async (req, res) => {
             finance_months: Number(finance_months) || 0,
             finance_down_payment_cash: Number(finance_down_payment_cash) || 0,
             finance_down_payment_transfer: Number(finance_down_payment_transfer) || 0,
+            member_id: member_id || null,
             created_at: now
         });
 
@@ -1541,6 +1569,7 @@ router.get('/transactions', async (req, res) => {
             .populate('branch_id', 'name')
             .populate('employee_id', 'name emp_id')
             .populate('items.product_id', 'name')
+            .populate('member_id', 'first_name last_name phone')
             .sort({ created_at: -1 });
 
         res.status(200).json({
@@ -1563,7 +1592,9 @@ router.get('/transactions/:id', async (req, res) => {
         const transaction = await Transaction.findById(req.params.id)
             .populate('branch_id')
             .populate('employee_id', 'name emp_id')
-            .populate('items.product_id', 'name');
+            .populate('items.product_id', 'name')
+            .populate('member_id', 'prefix first_name last_name first_name_en last_name_en phone address citizen_id member_number')
+            .populate('cancelled_by', 'name');
 
         if (!transaction) {
             return res.status(404).json({ success: false, message: 'ไม่พบรายการที่ต้องการ' });
@@ -1573,6 +1604,88 @@ router.get('/transactions/:id', async (req, res) => {
     } catch (error) {
         console.error('API Error GET /api/transactions/:id:', error);
         res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการดึงข้อมูลรายการขาย' });
+    }
+});
+
+// POST /api/transactions/:id/cancel - ยกเลิกการขาย
+router.post('/transactions/:id/cancel', async (req, res) => {
+    try {
+        const userPerms = req.user && req.user.permissions ? req.user.permissions : {};
+        const userRole = req.user ? req.user.role : '';
+        const isAdminOrManager = userRole === 'Administrator' || userRole === 'ผู้จัดการ' || userRole === 'แอดมิน';
+        
+        if (!isAdminOrManager && !userPerms.cancel_sale) {
+            return res.status(403).json({ success: false, message: 'คุณไม่มีสิทธิ์ยกเลิกบิลขาย' });
+        }
+
+        const transaction = await Transaction.findById(req.params.id);
+        if (!transaction) {
+            return res.status(404).json({ success: false, message: 'ไม่พบรายการที่ต้องการ' });
+        }
+
+        if (transaction.status === 'ยกเลิกแล้ว') {
+            return res.status(400).json({ success: false, message: 'บิลนี้ถูกยกเลิกไปแล้ว' });
+        }
+
+        const { reason } = req.body;
+        if (!reason || reason.trim() === '') {
+            return res.status(400).json({ success: false, message: 'กรุณาระบุเหตุผลที่ยกเลิก' });
+        }
+
+        // คืนสต็อก
+        for (const item of transaction.items) {
+            if (!item.product_id) continue;
+            const product = await Product.findById(item.product_id);
+            if (!product) continue;
+
+            const bId = transaction.branch_id ? transaction.branch_id.toString() : '';
+            if (!product.stock_balances) product.stock_balances = [];
+            let bal = product.stock_balances.find(x => x.branch_id && x.branch_id.toString() === bId);
+            
+            if (!bal) {
+                bal = { branch_id: transaction.branch_id, quantity: 0, imeis: [] };
+                product.stock_balances.push(bal);
+            }
+
+            const imeiList = (item.imei_sold && item.imei_sold.trim() !== '') ? [item.imei_sold.trim()] : [];
+            
+            if (imeiList.length > 0) {
+                if (!bal.imeis.includes(imeiList[0])) {
+                    bal.imeis.push(imeiList[0]);
+                }
+                bal.quantity += 1;
+            } else {
+                bal.quantity += item.quantity;
+            }
+
+            product.markModified('stock_balances');
+            await product.save();
+
+            // Movement: ยกเลิกการขาย
+            await createMovementsForItem({
+                productId: product._id,
+                action: 'ยกเลิกการขาย',
+                fromBranch: null,
+                toBranch: transaction.branch_id,
+                referenceNo: transaction.receipt_number,
+                createdBy: req.user.employee_id,
+                transitHours: 0,
+                imeis: imeiList,
+                quantity: imeiList.length > 0 ? imeiList.length : item.quantity
+            });
+        }
+
+        transaction.status = 'ยกเลิกแล้ว';
+        transaction.cancel_reason = reason.trim();
+        transaction.cancelled_by = req.user.employee_id;
+        transaction.cancelled_at = new Date();
+        
+        await transaction.save();
+
+        res.status(200).json({ success: true, message: 'ยกเลิกบิลขายและคืนสต็อกสำเร็จ' });
+    } catch (error) {
+        console.error('API Error POST /api/transactions/:id/cancel:', error);
+        res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการยกเลิกบิลขาย' });
     }
 });
 
@@ -1755,6 +1868,29 @@ router.delete('/roles/:id', async (req, res) => {
 // ==========================================
 // Member Management APIs (จัดการสมาชิก)
 // ==========================================
+
+// GET /api/members/search - ค้นหาสมาชิก
+router.get('/members/search', async (req, res) => {
+    try {
+        const query = req.query.q || '';
+        if (!query || query.length < 2) return res.json({ success: true, data: [] });
+
+        const members = await Member.find({
+            $or: [
+                { first_name: { $regex: query, $options: 'i' } },
+                { last_name: { $regex: query, $options: 'i' } },
+                { phone: { $regex: query, $options: 'i' } },
+                { citizen_id: { $regex: query, $options: 'i' } },
+                { member_number: { $regex: query, $options: 'i' } }
+            ]
+        }).limit(10);
+
+        res.json({ success: true, data: members });
+    } catch (error) {
+        console.error('API Error GET /api/members/search:', error);
+        res.status(500).json({ success: false, message: 'Internal Server Error' });
+    }
+});
 
 // GET /api/members - ดึงข้อมูลสมาชิกทั้งหมด
 router.get('/members', async (req, res) => {
