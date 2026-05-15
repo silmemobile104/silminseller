@@ -21,23 +21,23 @@ const roleSchema = new mongoose.Schema({
         manage_settings: { type: Boolean, default: false },  // อนุญาตให้ตั้งค่าระบบ
         manage_roles: { type: Boolean, default: false },      // อนุญาตให้จัดการสิทธิ์
         filter_stock_branch: { type: Boolean, default: false }, // อนุญาตกรองสาขาในเมนูจัดการสต็อก
-        cancel_sale: { type: Boolean, default: false }       // อนุญาตให้ยกเลิกบิลขาย
+        cancel_sale: { type: Boolean, default: false },      // อนุญาตให้ยกเลิกบิลขาย
+        report_arrival: { type: Boolean, default: false },   // แจ้งของถึงสาขา
+        approve_import: { type: Boolean, default: false }    // อนุมัตินำเข้าสต็อก
     }
 }, { timestamps: true });
 const Role = mongoose.model('Role', roleSchema, 'role');
 
 // Seed Default Roles (สร้างข้อมูลสิทธิ์เริ่มต้น)
 const seedDefaultRoles = async () => {
-    const count = await Role.countDocuments();
-    if (count > 0) return; // มีข้อมูลแล้ว ไม่ต้อง seed
-
     const defaults = [
         {
             name: 'แอดมิน',
             permissions: {
                 view_dashboard: true, manage_stock: true, delete_stock: true,
                 do_pos: true, manage_personnel: true, manage_branches: true,
-                manage_settings: true, manage_roles: true, filter_stock_branch: true, cancel_sale: true
+                manage_settings: true, manage_roles: true, filter_stock_branch: true, cancel_sale: true,
+                report_arrival: true, approve_import: true
             }
         },
         {
@@ -45,7 +45,8 @@ const seedDefaultRoles = async () => {
             permissions: {
                 view_dashboard: true, manage_stock: true, delete_stock: true,
                 do_pos: true, manage_personnel: true, manage_branches: true,
-                manage_settings: true, manage_roles: false, filter_stock_branch: true, cancel_sale: true
+                manage_settings: true, manage_roles: false, filter_stock_branch: true, cancel_sale: true,
+                report_arrival: true, approve_import: false
             }
         },
         {
@@ -53,13 +54,42 @@ const seedDefaultRoles = async () => {
             permissions: {
                 view_dashboard: false, manage_stock: true, delete_stock: false,
                 do_pos: true, manage_personnel: false, manage_branches: false,
-                manage_settings: false, manage_roles: false, filter_stock_branch: false, cancel_sale: false
+                manage_settings: false, manage_roles: false, filter_stock_branch: false, cancel_sale: false,
+                report_arrival: true, approve_import: false
             }
         }
     ];
 
-    await Role.insertMany(defaults);
-    console.log('[SEED] สร้างข้อมูลระดับสิทธิ์เริ่มต้นสำเร็จ (3 roles)');
+    let inserted = 0;
+    let updated = 0;
+    for (const r of defaults) {
+        const existing = await Role.findOne({ name: r.name });
+        if (!existing) {
+            await Role.create(r);
+            inserted++;
+        } else {
+            let changed = false;
+            for (const key of Object.keys(r.permissions)) {
+                if (existing.permissions[key] === undefined || existing.permissions[key] === null) {
+                    existing.permissions[key] = r.permissions[key];
+                    changed = true;
+                }
+            }
+            // Always ensure Admin has all true just in case
+            if (r.name === 'แอดมิน') {
+                existing.permissions.report_arrival = true;
+                existing.permissions.approve_import = true;
+                changed = true;
+            }
+            if (changed) {
+                await existing.save();
+                updated++;
+            }
+        }
+    }
+    if (inserted > 0 || updated > 0) {
+        console.log(`[SEED] จัดการข้อมูลระดับสิทธิ์เริ่มต้นสำเร็จ (เพิ่ม: ${inserted}, อัพเดท: ${updated})`);
+    }
 };
 
 // 3. Employee (พนักงาน)
@@ -194,7 +224,9 @@ const transactionSchema = new mongoose.Schema({
         product_name: { type: String }, // ชื่อสินค้า
         imei_sold: { type: String, default: '' }, // IMEI ที่ขาย (ถ้ามี)
         quantity: { type: Number, default: 1 }, // จำนวน
-        price: { type: Number, default: 0 } // ราคาต่อชิ้น
+        price: { type: Number, default: 0 }, // ราคาต่อชิ้น
+        warranty_period: { type: String }, // ระยะเวลาประกัน (เช่น "1 เดือน", "1 ปี")
+        warranty_expiry: { type: Date } // วันหมดอายุประกัน
     }],
     total_amount: { type: Number, required: true }, // ยอดรวมทั้งหมด
     payment_method: { type: String, required: true }, // วิธีชำระเงิน: ซื้อสด, จัดไฟแนนซ์ (และ legacy: เงินสด, โอนเงิน)
@@ -234,6 +266,32 @@ const transferSchema = new mongoose.Schema({
 }, { timestamps: true });
 const Transfer = mongoose.model('Transfer', transferSchema, 'transfer');
 
+// 14. Finance Company (บริษัทจัดไฟแนนซ์)
+const financeCompanySchema = new mongoose.Schema({
+    name: { type: String, required: true, unique: true },
+    status: { type: String, default: 'ปกติ' }
+}, { timestamps: true });
+const FinanceCompany = mongoose.model('FinanceCompany', financeCompanySchema, 'financecompany');
+
+// 15. Import Notification (แจ้งสินค้าเข้า)
+const importNotificationSchema = new mongoose.Schema({
+    product_name: { type: String, required: true },
+    imeis: [{ type: String }],
+    color_name: { type: String },
+    capacity_name: { type: String },
+    type_name: { type: String },
+    condition_name: { type: String },
+    supplier_name: { type: String },
+    unit_name: { type: String },
+    notes: { type: String },
+    branch_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Branch', required: true },
+    reported_by: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee', required: true },
+    status: { type: String, enum: ['รอดำเนินการ', 'อนุมัติแล้ว', 'ปฏิเสธ'], default: 'รอดำเนินการ' },
+    approved_by: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee' },
+    approved_at: { type: Date }
+}, { timestamps: true });
+const ImportNotification = mongoose.model('ImportNotification', importNotificationSchema, 'importnotification');
+
 module.exports = {
     Branch,
     Role,
@@ -250,6 +308,8 @@ module.exports = {
     Transaction,
     Transfer,
     Member,
+    FinanceCompany,
+    ImportNotification,
     seedDefaultRoles,
     migrateProductsToERP
 };

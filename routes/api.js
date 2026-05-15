@@ -6,22 +6,24 @@ const jwt = require('jsonwebtoken');
 const JWT_SECRET = process.env.JWT_SECRET || 'silminseller_jwt_secret_key';
 
 // Import Models
-const { 
-    Employee, 
-    Product, 
-    Movement, 
-    Branch, 
-    Supplier, 
-    ProductType, 
-    ProductUnit, 
-    ProductColor, 
-    ProductCapacity, 
-    ProductCondition, 
-    ProductName, 
-    Transaction, 
-    Transfer, 
+const {
+    Employee,
+    Product,
+    Movement,
+    Branch,
+    Supplier,
+    FinanceCompany,
+    ProductType,
+    ProductUnit,
+    ProductColor,
+    ProductCapacity,
+    ProductCondition,
+    ProductName,
+    Transaction,
+    Transfer,
     Role,
-    Member 
+    ImportNotification,
+    Member
 } = require('../models');
 
 const { uploadBufferToDriveInFolder } = require('../utils/googleDrive');
@@ -162,7 +164,8 @@ router.get('/master-data', async (req, res) => {
             productCapacities,
             productConditions,
             productNames,
-            suppliers
+            suppliers,
+            financeCompanies
         ] = await Promise.all([
             Branch.find(),
             ProductType.find(),
@@ -171,7 +174,8 @@ router.get('/master-data', async (req, res) => {
             ProductCapacity.find(),
             ProductCondition.find(),
             ProductName.find(),
-            Supplier.find()
+            Supplier.find(),
+            FinanceCompany.find()
         ]);
 
         res.status(200).json({
@@ -185,7 +189,8 @@ router.get('/master-data', async (req, res) => {
                 productCapacities,
                 productConditions,
                 productNames,
-                suppliers
+                suppliers,
+                financeCompanies
             }
         });
     } catch (error) {
@@ -344,20 +349,20 @@ router.get('/products', async (req, res) => {
 
         // Step C & D: Map Products (The Core Fix + Clean Admin View)
         let products = [];
-        
+
         productsRaw.forEach(p => {
             const po = p.toObject();
             const transits = inTransitItems[po.product_code] || [];
             let pushedAnyRow = false;
-            
+
             // 1. Normal Stock
             if (po.stock_balances && po.stock_balances.length > 0) {
                 po.stock_balances.forEach(b => {
                     const bId = b.branch_id ? (b.branch_id._id || b.branch_id).toString() : null;
-                    
+
                     // Filter normal stock if specific branch is requested
                     if (branchId !== 'ALL' && bId !== branchId) return;
-                    
+
                     const qty = Number(b.quantity || 0);
 
                     // Logic: In Admin view ('ALL'), hide 0-stock branches. For specific branch, show it.
@@ -391,13 +396,13 @@ router.get('/products', async (req, res) => {
 
             // 3. Failsafe: If the product is out of stock EVERYWHERE and not transferring
             if (!pushedAnyRow) {
-                 const failsafeRow = { ...po };
-                 failsafeRow.quantity = 0;
-                 failsafeRow.imeis = [];
-                 failsafeRow.branch_id = null; // Unassigned
-                 failsafeRow.is_transferring = false;
-                 delete failsafeRow.stock_balances;
-                 products.push(failsafeRow);
+                const failsafeRow = { ...po };
+                failsafeRow.quantity = 0;
+                failsafeRow.imeis = [];
+                failsafeRow.branch_id = null; // Unassigned
+                failsafeRow.is_transferring = false;
+                delete failsafeRow.stock_balances;
+                products.push(failsafeRow);
             }
         });
 
@@ -502,19 +507,19 @@ router.put('/products/:id', async (req, res) => {
                 const oldBal = product.stock_balances.find(x => x.branch_id && x.branch_id.toString() === oldBranchId.toString());
                 if (oldBal) {
                     // เก็บ IMEIs ที่จะย้ายไปไว้ก่อน (ถ้าไม่ได้ส่งมาใหม่ใน payload)
-                    const imeisToMove = (productData.imeis && productData.imeis.length > 0) 
-                        ? productData.imeis 
+                    const imeisToMove = (productData.imeis && productData.imeis.length > 0)
+                        ? productData.imeis
                         : (oldBal.imeis || []);
-                    
+
                     // เคลียร์ค่าที่สาขาเดิม
                     oldBal.quantity = 0;
                     oldBal.imeis = [];
-                    
+
                     // ตั้งค่าสาขาใหม่
                     const newBal = ensureBranchBalance(product, branchId);
                     newBal.quantity = Number(productData.quantity || 0);
                     newBal.imeis = imeisToMove.map(x => x.toString().trim()).filter(Boolean);
-                    
+
                     incomingImeis = newBal.imeis;
                     stockDeltaQty = newBal.quantity;
                 }
@@ -581,7 +586,7 @@ router.put('/products/:id', async (req, res) => {
 router.delete('/products/:id', async (req, res) => {
     try {
         const deletedProduct = await Product.findByIdAndDelete(req.params.id);
-        
+
         if (!deletedProduct) {
             return res.status(404).json({ success: false, message: 'ไม่พบสินค้าที่ระบุ' });
         }
@@ -726,10 +731,26 @@ router.post('/auth/login', async (req, res) => {
 
         // ค้นหา Role เพื่อดึง permissions
         const roleDoc = await Role.findOne({ name: employee.role });
-        const permissions = roleDoc ? roleDoc.permissions.toObject() : {
+        const defaultPermissions = {
+            view_dashboard: false, manage_stock: false, delete_stock: false,
+            do_pos: false, manage_personnel: false, manage_branches: false,
+            manage_settings: false, manage_roles: false, filter_stock_branch: false,
+            cancel_sale: false, report_arrival: false, approve_import: false
+        };
+        const dbPerms = roleDoc ? roleDoc.permissions.toObject() : {
             view_dashboard: true, manage_stock: true, delete_stock: true,
             do_pos: true, manage_personnel: true, manage_branches: true,
-            manage_settings: true, manage_roles: true
+            manage_settings: true, manage_roles: true,
+            filter_stock_branch: true, cancel_sale: true,
+            report_arrival: true, approve_import: true
+        };
+        // Merge: DB values override defaults. For old roles missing new fields,
+        // fall back to related existing permissions (do_pos → report_arrival, manage_stock → approve_import)
+        const permissions = {
+            ...defaultPermissions,
+            ...dbPerms,
+            report_arrival: dbPerms.report_arrival !== undefined ? dbPerms.report_arrival : (dbPerms.do_pos || false),
+            approve_import: dbPerms.approve_import !== undefined ? dbPerms.approve_import : (dbPerms.manage_stock || false),
         };
 
         // สร้าง JWT Token (รวม permissions)
@@ -968,6 +989,7 @@ router.post('/master/:collection', async (req, res) => {
             case 'productcondition': Model = ProductCondition; break;
             case 'productname': Model = ProductName; break;
             case 'supplier': Model = Supplier; break;
+            case 'financecompany': Model = FinanceCompany; break;
             default:
                 return res.status(400).json({ success: false, message: 'ไม่พบประเภทข้อมูลที่ระบุ' });
         }
@@ -984,12 +1006,12 @@ router.post('/master/:collection', async (req, res) => {
         });
     } catch (error) {
         console.error(`API Error POST /api/master/${req.params.collection}:`, error);
-        
+
         // Handle duplicate key error
         if (error.code === 11000) {
             return res.status(400).json({ success: false, message: 'ข้อมูลนี้มีอยู่ในระบบแล้ว' });
         }
-        
+
         res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการเพิ่มข้อมูล: ' + error.message });
     }
 });
@@ -1010,6 +1032,7 @@ router.delete('/master/:collection/:id', async (req, res) => {
             case 'productcondition': Model = ProductCondition; break;
             case 'productname': Model = ProductName; break;
             case 'supplier': Model = Supplier; break;
+            case 'financecompany': Model = FinanceCompany; break;
             default:
                 return res.status(400).json({ success: false, message: 'ไม่พบประเภทข้อมูลที่ระบุ' });
         }
@@ -1051,6 +1074,7 @@ router.put('/master/:collection/:id', async (req, res) => {
             case 'productcondition': Model = ProductCondition; break;
             case 'productname': Model = ProductName; break;
             case 'supplier': Model = Supplier; break;
+            case 'financecompany': Model = FinanceCompany; break;
             default:
                 return res.status(400).json({ success: false, message: 'ไม่พบประเภทข้อมูลที่ระบุ' });
         }
@@ -1390,10 +1414,10 @@ router.put('/transfers/:id/receive', async (req, res) => {
 // หน้าที่: บันทึกรายการขายและหักสต็อกอัตโนมัติ
 router.post('/transactions', async (req, res) => {
     try {
-        const { 
+        const {
             items, total_amount, payment_method, down_payment, branch_id, member_id,
             payment_type, cash_amount, transfer_amount, finance_company,
-            finance_payment_day, finance_months, finance_down_payment_cash, finance_down_payment_transfer 
+            finance_payment_day, finance_months, finance_down_payment_cash, finance_down_payment_transfer
         } = req.body;
 
         // ตรวจสอบข้อมูลเบื้องต้น
@@ -1411,13 +1435,26 @@ router.post('/transactions', async (req, res) => {
         const receipt_number = `INV-${dateStr}-${randomStr}`;
 
         // Normalize items to ensure imei/downstream fields are persisted
-        const normalizedItems = (items || []).map(it => ({
-            product_id: it.product_id,
-            product_name: it.product_name,
-            imei_sold: (it.imei_sold || it.imei || it.imeiSold || it.serial || it.serial_number || '').toString().trim(),
-            quantity: Number(it.quantity) || 1,
-            price: Number(it.price) || 0
-        }));
+        const normalizedItems = (items || []).map(it => {
+            const period = it.warranty_period || '1 เดือน';
+            let expiry = null;
+            if (period) {
+                expiry = new Date(now);
+                if (period === '1 เดือน') expiry.setMonth(expiry.getMonth() + 1);
+                else if (period === '2 เดือน') expiry.setMonth(expiry.getMonth() + 2);
+                else if (period === '3 เดือน') expiry.setMonth(expiry.getMonth() + 3);
+                else if (period === '1 ปี') expiry.setFullYear(expiry.getFullYear() + 1);
+            }
+            return {
+                product_id: it.product_id,
+                product_name: it.product_name,
+                imei_sold: (it.imei_sold || it.imei || it.imeiSold || it.serial || it.serial_number || '').toString().trim(),
+                quantity: Number(it.quantity) || 1,
+                price: Number(it.price) || 0,
+                warranty_period: period,
+                warranty_expiry: expiry
+            };
+        });
 
         // ==========================================
         // CRITICAL: Stock Deduction Logic (หักสต็อกแยกตามสาขา)
@@ -1613,7 +1650,7 @@ router.post('/transactions/:id/cancel', async (req, res) => {
         const userPerms = req.user && req.user.permissions ? req.user.permissions : {};
         const userRole = req.user ? req.user.role : '';
         const isAdminOrManager = userRole === 'Administrator' || userRole === 'ผู้จัดการ' || userRole === 'แอดมิน';
-        
+
         if (!isAdminOrManager && !userPerms.cancel_sale) {
             return res.status(403).json({ success: false, message: 'คุณไม่มีสิทธิ์ยกเลิกบิลขาย' });
         }
@@ -1641,14 +1678,14 @@ router.post('/transactions/:id/cancel', async (req, res) => {
             const bId = transaction.branch_id ? transaction.branch_id.toString() : '';
             if (!product.stock_balances) product.stock_balances = [];
             let bal = product.stock_balances.find(x => x.branch_id && x.branch_id.toString() === bId);
-            
+
             if (!bal) {
                 bal = { branch_id: transaction.branch_id, quantity: 0, imeis: [] };
                 product.stock_balances.push(bal);
             }
 
             const imeiList = (item.imei_sold && item.imei_sold.trim() !== '') ? [item.imei_sold.trim()] : [];
-            
+
             if (imeiList.length > 0) {
                 if (!bal.imeis.includes(imeiList[0])) {
                     bal.imeis.push(imeiList[0]);
@@ -1679,7 +1716,7 @@ router.post('/transactions/:id/cancel', async (req, res) => {
         transaction.cancel_reason = reason.trim();
         transaction.cancelled_by = req.user.employee_id;
         transaction.cancelled_at = new Date();
-        
+
         await transaction.save();
 
         res.status(200).json({ success: true, message: 'ยกเลิกบิลขายและคืนสต็อกสำเร็จ' });
@@ -2091,4 +2128,285 @@ router.delete('/members/:id', async (req, res) => {
     }
 });
 
+
+// ==========================================
+// Import Notifications (แจ้งสินค้าถึงสาขา / ตรวจสอบนำเข้า)
+// ==========================================
+
+// POST /api/import-notifications - พนักงานขายแจ้งของถึงสาขา
+router.post('/import-notifications', async (req, res) => {
+    try {
+        const {
+            product_name, imeis, color_name, capacity_name,
+            type_name, condition_name, supplier_name, unit_name, notes, branch_id
+        } = req.body;
+
+        if (!product_name) {
+            return res.status(400).json({ success: false, message: 'กรุณากรอกชื่อสินค้า' });
+        }
+
+        const targetBranchId = branch_id || req.user.branch_id;
+        if (!targetBranchId) {
+            return res.status(400).json({ success: false, message: 'ไม่พบข้อมูลสาขา กรุณาระบุสาขา' });
+        }
+
+        const cleanImeis = Array.isArray(imeis)
+            ? imeis.map(x => x.toString().trim()).filter(Boolean)
+            : (typeof imeis === 'string' ? imeis.split('\n').map(x => x.trim()).filter(Boolean) : []);
+
+        const notification = new ImportNotification({
+            product_name: product_name.trim(),
+            imeis: cleanImeis,
+            color_name: color_name || '',
+            capacity_name: capacity_name || '',
+            type_name: type_name || '',
+            condition_name: condition_name || '',
+            supplier_name: supplier_name || '',
+            unit_name: unit_name || '',
+            notes: notes || '',
+            branch_id: targetBranchId,
+            reported_by: req.user.employee_id,
+            status: 'รอดำเนินการ'
+        });
+
+        await notification.save();
+
+        console.log(`[นำเข้า] แจ้งสินค้าถึงสาขาสำเร็จ: ${product_name} (${cleanImeis.length} IMEI) โดย ${req.user.employee_id}`);
+        res.status(201).json({ success: true, message: 'แจ้งสินค้าถึงสาขาสำเร็จ', data: notification });
+    } catch (error) {
+        console.error('API Error POST /api/import-notifications:', error);
+        res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการแจ้งสินค้า' });
+    }
+});
+
+// GET /api/import-notifications - ดึงรายการแจ้งสินค้า
+router.get('/import-notifications', async (req, res) => {
+    try {
+        const { status, branch_id } = req.query;
+        const filter = {};
+        if (status) filter.status = status;
+
+        // กรองสาขา: Admin/ผู้จัดการ ดูได้ทุกสาขา พนักงานขายดูได้เฉพาะสาขาตัวเอง
+        const userPermissions = req.user.permissions || {};
+        if (userPermissions.approve_import) {
+            if (branch_id) filter.branch_id = branch_id;
+        } else {
+            filter.branch_id = req.user.branch_id;
+        }
+
+        const notifications = await ImportNotification.find(filter)
+            .populate('branch_id', 'name')
+            .populate('reported_by', 'name emp_id')
+            .populate('approved_by', 'name')
+            .sort({ createdAt: -1 });
+
+        res.status(200).json({ success: true, message: 'ดึงข้อมูลสำเร็จ', data: notifications });
+    } catch (error) {
+        console.error('API Error GET /api/import-notifications:', error);
+        res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการดึงข้อมูล' });
+    }
+});
+
+// POST /api/import-notifications/:id/approve - อนุมัตินำเข้าสต็อก
+router.post('/import-notifications/:id/approve', async (req, res) => {
+    try {
+        const { cost_price, selling_price, type_id, color_id, capacity_id, condition_id, supplier_id, unit_id, product_code } = req.body;
+
+        if (!cost_price || !selling_price) {
+            return res.status(400).json({ success: false, message: 'กรุณากรอกราคาทุนและราคาขาย' });
+        }
+        if (!type_id) {
+            return res.status(400).json({ success: false, message: 'กรุณาเลือกหมวดหมู่สินค้า' });
+        }
+
+        const notification = await ImportNotification.findById(req.params.id);
+        if (!notification) return res.status(404).json({ success: false, message: 'ไม่พบรายการที่ระบุ' });
+        if (notification.status === 'นำเข้าสำเร็จ') {
+            return res.status(400).json({ success: false, message: 'รายการนี้ถูกอนุมัติไปแล้ว' });
+        }
+
+        const branchId = notification.branch_id;
+        const incomingImeis = notification.imeis || [];
+
+        // Find or create Product(s)
+        const savedProducts = [];
+        if (incomingImeis.length > 0) {
+            // Create a separate product for each IMEI
+            for (const imei of incomingImeis) {
+                let product = await Product.findOne({ product_code: imei });
+                if (!product) {
+                    product = new Product({
+                        product_code: imei,
+                        name: notification.product_name,
+                        cost_price: Number(cost_price),
+                        selling_price: Number(selling_price),
+                        type_id,
+                        color_id: color_id || null,
+                        capacity_id: capacity_id || null,
+                        condition_id: condition_id || null,
+                        unit_id: unit_id || null,
+                        supplier_id: supplier_id || null,
+                        stock_balances: []
+                    });
+                } else {
+                    product.cost_price = Number(cost_price);
+                    product.selling_price = Number(selling_price);
+                }
+
+                const bal = ensureBranchBalance(product, branchId);
+                const set = new Set((bal.imeis || []).map(x => x.toString().trim()));
+                if (!set.has(imei)) {
+                    bal.imeis.push(imei);
+                }
+                bal.quantity = bal.imeis.length > 0 ? bal.imeis.length : 1;
+
+                const savedProduct = await product.save();
+                savedProducts.push(savedProduct);
+
+                // Log Movement for this single IMEI
+                await createMovementsForItem({
+                    productId: savedProduct._id,
+                    action: 'นำเข้าสินค้า',
+                    fromBranch: null,
+                    toBranch: branchId,
+                    referenceNo: `IMP-${notification._id.toString().slice(-6).toUpperCase()}`,
+                    createdBy: req.user.employee_id,
+                    transitHours: 0,
+                    imeis: [imei],
+                    quantity: 1
+                });
+            }
+        } else {
+            // No IMEIs, just one product
+            let product = null;
+            if (product_code) {
+                product = await Product.findOne({ product_code });
+            }
+            if (!product) {
+                const matchQuery = { name: notification.product_name, type_id };
+                if (color_id) matchQuery.color_id = color_id;
+                if (capacity_id) matchQuery.capacity_id = capacity_id;
+                if (condition_id) matchQuery.condition_id = condition_id;
+                product = await Product.findOne(matchQuery);
+            }
+
+            if (!product) {
+                product = new Product({
+                    product_code: product_code || '',
+                    name: notification.product_name,
+                    cost_price: Number(cost_price),
+                    selling_price: Number(selling_price),
+                    type_id,
+                    color_id: color_id || null,
+                    capacity_id: capacity_id || null,
+                    condition_id: condition_id || null,
+                    unit_id: unit_id || null,
+                    supplier_id: supplier_id || null,
+                    stock_balances: []
+                });
+            } else {
+                product.cost_price = Number(cost_price);
+                product.selling_price = Number(selling_price);
+            }
+
+            const bal = ensureBranchBalance(product, branchId);
+            bal.quantity = Number(bal.quantity || 0) + 1;
+
+            const savedProduct = await product.save();
+            savedProducts.push(savedProduct);
+
+            await createMovementsForItem({
+                productId: savedProduct._id,
+                action: 'นำเข้าสินค้า',
+                fromBranch: null,
+                toBranch: branchId,
+                referenceNo: `IMP-${notification._id.toString().slice(-6).toUpperCase()}`,
+                createdBy: req.user.employee_id,
+                transitHours: 0,
+                imeis: [],
+                quantity: 1
+            });
+        }
+
+        // Mark notification approved
+        notification.status = 'นำเข้าสำเร็จ';
+        notification.approved_by = req.user.employee_id;
+        notification.approved_at = new Date();
+        if (savedProducts.length > 0) {
+            notification.product_id = savedProducts[0]._id; // Store first product ref
+        }
+        await notification.save();
+
+        console.log(`[นำเข้า] อนุมัตินำเข้าสต็อกสำเร็จ: ${notification.product_name} → สาขา ${branchId} (${savedProducts.length} รายการ)`);
+        res.status(200).json({ success: true, message: 'นำเข้าสต็อกสำเร็จ', data: { notification, products: savedProducts } });
+    } catch (error) {
+        console.error('API Error POST /api/import-notifications/:id/approve:', error);
+        res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการอนุมัตินำเข้า' });
+    }
+});
+
+// GET /api/warranty/check - ตรวจสอบประกัน
+router.get('/warranty/check', async (req, res) => {
+    try {
+        const { q } = req.query;
+        if (!q) {
+            return res.status(400).json({ success: false, message: 'กรุณาระบุคำค้นหา' });
+        }
+
+        const qRegex = new RegExp(q, 'i');
+
+        // Find members that match the query
+        const members = await Member.find({
+            $or: [
+                { first_name: qRegex },
+                { last_name: qRegex },
+                { phone: qRegex }
+            ]
+        });
+        const memberIds = members.map(m => m._id);
+
+        // Find transactions matching member OR IMEI
+        const transactions = await Transaction.find({
+            status: 'เสร็จสิ้น',
+            $or: [
+                { member_id: { $in: memberIds } },
+                { 'items.imei_sold': qRegex }
+            ]
+        })
+            .populate('branch_id', 'name')
+            .populate('member_id', 'first_name last_name phone')
+            .sort({ created_at: -1 });
+
+        const results = [];
+        transactions.forEach(txn => {
+            txn.items.forEach(item => {
+                const matchesImei = item.imei_sold && item.imei_sold.match(qRegex);
+                const matchesMember = txn.member_id && memberIds.some(id => id.equals(txn.member_id._id));
+
+                if (matchesImei || matchesMember) {
+                    if (item.imei_sold && item.warranty_expiry) {
+                        results.push({
+                            receipt_number: txn.receipt_number,
+                            txn_id: txn._id,
+                            created_at: txn.created_at,
+                            product_name: item.product_name,
+                            imei_sold: item.imei_sold,
+                            warranty_period: item.warranty_period,
+                            warranty_expiry: item.warranty_expiry,
+                            member: txn.member_id,
+                            branch: txn.branch_id
+                        });
+                    }
+                }
+            });
+        });
+
+        res.status(200).json({ success: true, message: 'ค้นหาข้อมูลสำเร็จ', data: results });
+    } catch (error) {
+        console.error('API Error GET /api/warranty/check:', error);
+        res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการตรวจสอบประกัน' });
+    }
+});
+
 module.exports = router;
+

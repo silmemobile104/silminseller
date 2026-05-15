@@ -108,6 +108,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const navTransfers = document.getElementById('nav-transfers');
     const navMovements = document.getElementById('nav-movements');
     const navMembers = document.getElementById('nav-members');
+    const navReportArrival = document.getElementById('nav-report-arrival');
+    const navApproveImport = document.getElementById('nav-approve-import');
+    const navWarrantyCheck = document.getElementById('nav-warranty-check');
 
     const viewDashboard = document.getElementById('view-dashboard');
     const viewStock = document.getElementById('view-stock');
@@ -120,6 +123,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const viewTransfers = document.getElementById('view-transfers');
     const viewMovements = document.getElementById('view-movements');
     const viewMembers = document.getElementById('view-members');
+    const viewReportArrival = document.getElementById('view-report-arrival');
+    const viewApproveImport = document.getElementById('view-approve-import');
+    const viewWarrantyCheck = document.getElementById('view-warranty-check');
 
     const settingsTabBtns = document.querySelectorAll('.settings-tab-btn');
     const masterDataInput = document.getElementById('master-data-input');
@@ -797,11 +803,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // ซ่อน/แสดง เมนู Sidebar ตาม permissions
         if (navDashboard) navDashboard.style.display = permissions.view_dashboard ? '' : 'none';
+        if (navStock) navStock.style.display = permissions.manage_stock ? '' : 'none';
         if (navTransactions) navTransactions.style.display = permissions.do_pos ? '' : 'none';
+        if (navSalesHistory) navSalesHistory.style.display = permissions.do_pos ? '' : 'none';
+        if (navTransfers) navTransfers.style.display = permissions.manage_stock ? '' : 'none';
+        if (navMovements) navMovements.style.display = permissions.manage_stock ? '' : 'none';
+        if (navMembers) navMembers.style.display = permissions.do_pos ? '' : 'none';
         if (navPersonnel) navPersonnel.style.display = permissions.manage_personnel ? '' : 'none';
-        if (navBranches) navBranches.style.display = '';
+        if (navBranches) navBranches.style.display = permissions.manage_branches ? '' : 'none';
         if (navSettings) navSettings.style.display = permissions.manage_settings ? '' : 'none';
         if (navRoles) navRoles.style.display = permissions.manage_roles ? '' : 'none';
+        
+        // เมนูใหม่
+        if (typeof navReportArrival !== 'undefined' && navReportArrival) navReportArrival.style.display = permissions.report_arrival ? '' : 'none';
+        if (typeof navApproveImport !== 'undefined' && navApproveImport) navApproveImport.style.display = permissions.approve_import ? '' : 'none';
+        if (typeof navWarrantyCheck !== 'undefined' && navWarrantyCheck) navWarrantyCheck.style.display = permissions.do_pos ? '' : 'none';
 
         // ซ่อน/แสดง ปุ่มเพิ่มสินค้า + ลบสินค้า
         const btnAdd = document.getElementById('btn-add-product');
@@ -1305,7 +1321,12 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         // Hide all views and remove animation
-        const views = [viewDashboard, viewStock, viewTransactions, viewPersonnel, viewBranches, viewSettings, viewRoles, viewSalesHistory, viewTransfers, viewMovements, viewMembers];
+        const views = [
+            viewDashboard, viewStock, viewTransactions, viewPersonnel, 
+            viewBranches, viewSettings, viewRoles, viewSalesHistory, 
+            viewTransfers, viewMovements, viewMembers,
+            viewReportArrival, viewApproveImport, viewWarrantyCheck
+        ];
         views.forEach(view => {
             if (view) {
                 view.classList.add('hidden');
@@ -1382,6 +1403,18 @@ document.addEventListener('DOMContentLoaded', () => {
             activateView(viewMembers, navMembers);
             loadMembers();
         }
+        else if (viewName === 'report-arrival') {
+            activateView(viewReportArrival, navReportArrival);
+        }
+        else if (viewName === 'approve-import') {
+            activateView(viewApproveImport, navApproveImport);
+            if (typeof loadImportNotifications === 'function') {
+                loadImportNotifications();
+            }
+        }
+        else if (viewName === 'warranty-check') {
+            activateView(viewWarrantyCheck, navWarrantyCheck);
+        }
     };
 
     if (navDashboard) navDashboard.addEventListener('click', (e) => { e.preventDefault(); switchView('dashboard'); });
@@ -1395,6 +1428,9 @@ document.addEventListener('DOMContentLoaded', () => {
     if (navTransfers) navTransfers.addEventListener('click', (e) => { e.preventDefault(); switchView('transfers'); });
     if (navMovements) navMovements.addEventListener('click', (e) => { e.preventDefault(); switchView('movements'); });
     if (navMembers) navMembers.addEventListener('click', (e) => { e.preventDefault(); switchView('members'); });
+    if (navReportArrival) navReportArrival.addEventListener('click', (e) => { e.preventDefault(); switchView('report-arrival'); });
+    if (navApproveImport) navApproveImport.addEventListener('click', (e) => { e.preventDefault(); switchView('approve-import'); });
+    if (navWarrantyCheck) navWarrantyCheck.addEventListener('click', (e) => { e.preventDefault(); switchView('warranty-check'); });
 
     // Dashboard card click to transfers
     const cardPendingTransfer = document.getElementById('card-pending-transfer');
@@ -2897,12 +2933,23 @@ document.addEventListener('DOMContentLoaded', () => {
                 div.innerHTML = `
                     <div>
                         <p class="font-bold text-white">${item.product_name}</p>
-                        <p class="text-slate-400 text-xs mt-0.5 flex items-center gap-1.5">
+                        <div class="mt-1 flex flex-col gap-1.5">
                             ${item.imei_sold ?
-                        `<span class="bg-slate-800 text-slate-300 border border-slate-700 px-1.5 py-0.5 rounded text-[10px] font-mono">IMEI: ${item.imei_sold}</span>`
-                        : `<span class="bg-slate-800/60 px-1.5 py-0.5 rounded text-slate-400 text-[10px]">จำนวน: ${item.quantity} ชิ้น</span>`
+                        `<span class="w-fit bg-slate-800 text-slate-300 border border-slate-700 px-1.5 py-0.5 rounded text-[10px] font-mono">IMEI: ${item.imei_sold}</span>`
+                        : `<span class="w-fit bg-slate-800/60 px-1.5 py-0.5 rounded text-slate-400 text-[10px]">จำนวน: ${item.quantity} ชิ้น</span>`
                     }
-                        </p>
+                            ${(item._isDevice || item.imei_sold) ? `
+                                <div class="flex items-center gap-2 mt-1">
+                                    <span class="text-[10px] text-slate-400">ระยะประกัน:</span>
+                                    <select class="modal-warranty-select bg-slate-800 border border-slate-700 text-cyan-400 text-[10px] font-bold rounded px-2 py-0.5 focus:outline-none focus:border-cyan-500" data-index="${index}">
+                                        <option value="1 เดือน" ${(!item.warranty_period || item.warranty_period === '1 เดือน') ? 'selected' : ''}>1 เดือน</option>
+                                        <option value="2 เดือน" ${(item.warranty_period === '2 เดือน') ? 'selected' : ''}>2 เดือน</option>
+                                        <option value="3 เดือน" ${(item.warranty_period === '3 เดือน') ? 'selected' : ''}>3 เดือน</option>
+                                        <option value="1 ปี" ${(item.warranty_period === '1 ปี') ? 'selected' : ''}>1 ปี</option>
+                                    </select>
+                                </div>
+                            ` : ''}
+                        </div>
                     </div>
                     <div class="flex items-center gap-3 text-right">
                         <div class="flex flex-col items-end">
@@ -2944,6 +2991,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
                     // Synchronize state seamlessly with sidebar background cart view
                     renderCart();
+                });
+            });
+
+            // Attach dynamic listener for warranty changes
+            const modalWarrantySelects = confirmPriceList.querySelectorAll('.modal-warranty-select');
+            modalWarrantySelects.forEach(select => {
+                select.addEventListener('change', (e) => {
+                    const idx = parseInt(e.target.dataset.index);
+                    cart[idx].warranty_period = e.target.value;
+                    renderCart(); // Synchronize with background cart
                 });
             });
         }
@@ -3048,7 +3105,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     product_name: item.product_name,
                     imei_sold: item.imei_sold || '',
                     quantity: item.quantity,
-                    price: item.price
+                    price: item.price,
+                    warranty_period: item.warranty_period || '1 เดือน'
                 })),
                 total_amount: total,
                 payment_method: selectedPayment, // Keep legacy
@@ -5013,6 +5071,356 @@ document.addEventListener('DOMContentLoaded', () => {
         startPendingTransferPolling();
 
         console.log('[SILMIN] ระบบเริ่มต้นสำเร็จและโหลดข้อมูลครบถ้วน');
+    }
+
+// ==========================================
+// WARRANTY CHECK LOGIC
+// ==========================================
+
+    const warrantySearchForm = document.getElementById('warranty-search-form');
+    const warrantySearchInput = document.getElementById('warranty-search-input');
+    const warrantyResultsContainer = document.getElementById('warranty-results-container');
+    const warrantyEmptyState = document.getElementById('warranty-empty-state');
+
+    const calculateRemainingDays = (expiryDate) => {
+        const now = new Date();
+        const exp = new Date(expiryDate);
+        const diffTime = exp.getTime() - now.getTime();
+        return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    };
+
+    const renderWarrantyResults = (results) => {
+        if (!warrantyResultsContainer) return;
+
+        warrantyResultsContainer.innerHTML = '';
+        
+        if (!results || results.length === 0) {
+            warrantyResultsContainer.innerHTML = `
+                <div class="flex flex-col items-center justify-center py-12 text-slate-500">
+                    <i class="fa-solid fa-box-open text-5xl mb-4 text-slate-600 opacity-50"></i>
+                    <p class="font-medium text-lg">ไม่พบข้อมูลการรับประกัน</p>
+                    <p class="text-sm mt-1">กรุณาตรวจสอบ IMEI หรือชื่อลูกค้าอีกครั้ง</p>
+                </div>
+            `;
+            return;
+        }
+
+        results.forEach(item => {
+            const expDate = new Date(item.warranty_expiry);
+            const remainingDays = calculateRemainingDays(item.warranty_expiry);
+            const isExpired = remainingDays < 0;
+
+            const card = document.createElement('div');
+            card.className = `bg-slate-800 border ${isExpired ? 'border-red-500/30' : 'border-cyan-500/30'} rounded-2xl p-6 shadow-lg relative overflow-hidden`;
+
+            card.innerHTML = `
+                <div class="absolute top-0 right-0 w-32 h-32 ${isExpired ? 'bg-red-500/5' : 'bg-cyan-500/5'} rounded-bl-full -mr-10 -mt-10 pointer-events-none"></div>
+                <div class="flex flex-col md:flex-row justify-between gap-6 relative z-10">
+                    <div class="space-y-4">
+                        <div>
+                            <h4 class="text-xl font-bold text-white leading-tight">${item.product_name}</h4>
+                            <div class="flex items-center gap-2 mt-1">
+                                <span class="text-slate-400 font-mono text-sm bg-slate-800 px-2 py-0.5 rounded border border-slate-700">IMEI: ${item.imei_sold}</span>
+                                <span class="text-slate-500 text-xs">เลขที่ใบเสร็จ: <a href="#" class="warranty-receipt-link text-cyan-400 hover:underline" data-id="${item.txn_id}">${item.receipt_number}</a></span>
+                            </div>
+                        </div>
+                        <div class="flex flex-col items-start gap-1">
+                            <p class="text-sm text-slate-300"><i class="fa-solid fa-user text-slate-500 mr-2"></i> ${item.member ? (item.member.first_name + ' ' + item.member.last_name) : 'ลูกค้าทั่วไป'}</p>
+                            ${item.member && item.member.phone ? `<p class="text-sm text-slate-300"><i class="fa-solid fa-phone text-slate-500 mr-2"></i> ${item.member.phone}</p>` : ''}
+                        </div>
+                    </div>
+                    <div class="flex flex-col items-end justify-center min-w-[200px]">
+                        ${isExpired ? `
+                            <div class="bg-red-500/20 text-red-400 px-4 py-2 rounded-xl border border-red-500/30 flex items-center gap-2 mb-3">
+                                <i class="fa-solid fa-circle-xmark"></i> <span class="font-bold">หมดประกันแล้ว</span>
+                            </div>
+                        ` : `
+                            <div class="bg-emerald-500/20 text-emerald-400 px-4 py-2 rounded-xl border border-emerald-500/30 flex items-center gap-2 mb-3">
+                                <i class="fa-solid fa-shield-check"></i> <span class="font-bold">อยู่ในประกัน</span>
+                            </div>
+                        `}
+                        <div class="text-right w-full bg-slate-900/50 p-3 rounded-xl border border-slate-700/50">
+                            <div class="flex justify-between text-xs mb-1">
+                                <span class="text-slate-400">วันที่ซื้อ:</span>
+                                <span class="text-slate-200">${new Date(item.created_at).toLocaleDateString('th-TH')}</span>
+                            </div>
+                            <div class="flex justify-between text-xs mb-1">
+                                <span class="text-slate-400">ระยะประกัน:</span>
+                                <span class="text-slate-200">${item.warranty_period}</span>
+                            </div>
+                            <div class="flex justify-between text-xs font-bold mt-2 pt-2 border-t border-slate-700">
+                                <span class="text-slate-400">วันหมดอายุ:</span>
+                                <span class="${isExpired ? 'text-red-400' : 'text-cyan-400'}">${expDate.toLocaleDateString('th-TH')}</span>
+                            </div>
+                            ${!isExpired ? `<div class="text-right text-[10px] text-emerald-500 mt-1">เหลืออีก ${remainingDays} วัน</div>` : ''}
+                        </div>
+                    </div>
+                </div>
+            `;
+            warrantyResultsContainer.appendChild(card);
+        });
+
+        // Attach receipt link listeners
+        document.querySelectorAll('.warranty-receipt-link').forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                const txnId = e.currentTarget.getAttribute('data-id');
+                if (txnId && typeof viewTransactionDetails === 'function') {
+                    viewTransactionDetails(txnId);
+                }
+            });
+        });
+    };
+
+    const checkWarranty = async (query) => {
+        if (!query) return;
+        try {
+            const response = await authFetch(`${API_BASE_URL}/warranty/check?q=${encodeURIComponent(query)}`);
+            const result = await response.json();
+            if (result.success) {
+                renderWarrantyResults(result.data);
+            } else {
+                showToast('เกิดข้อผิดพลาดในการตรวจสอบประกัน: ' + result.message, 'error');
+                renderWarrantyResults([]);
+            }
+        } catch (error) {
+            console.error('Error checking warranty:', error);
+            showToast('เชื่อมต่อเซิร์ฟเวอร์ไม่ได้', 'error');
+            renderWarrantyResults([]);
+        }
+    };
+
+    if (warrantySearchForm) {
+        warrantySearchForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const query = warrantySearchInput.value.trim();
+            if (query) {
+                checkWarranty(query);
+            } else {
+                renderWarrantyResults([]);
+            }
+        });
+    }
+
+// ==========================================
+// IMPORT WORKFLOW LOGIC (Report Arrival & Approve Import)
+// ==========================================
+    const btnSubmitArrival = document.getElementById('btn-submit-arrival');
+    const arrivalProductName = document.getElementById('arrival-product-name');
+    const arrivalTypeName = document.getElementById('arrival-type-name');
+    const arrivalConditionName = document.getElementById('arrival-condition-name');
+    const arrivalColorName = document.getElementById('arrival-color-name');
+    const arrivalCapacityName = document.getElementById('arrival-capacity-name');
+    const arrivalSupplierName = document.getElementById('arrival-supplier-name');
+    const arrivalUnitName = document.getElementById('arrival-unit-name');
+    const arrivalImeis = document.getElementById('arrival-imeis');
+    const arrivalImeiCount = document.getElementById('arrival-imei-count');
+    const arrivalNotes = document.getElementById('arrival-notes');
+    const myArrivalReports = document.getElementById('my-arrival-reports');
+    const importArrivalBadge = document.getElementById('import-arrival-badge');
+    const approveImportBadge = document.getElementById('approve-import-badge');
+    
+    // Auto populate dropdowns when master data is loaded
+    // This is handled by renderSettingsList/fetchMasterData implicitly or we can just populate here if needed
+    // Assuming master data is in window.masterDataCache
+    const populateArrivalDropdown = (selectId, dataArray) => {
+        const select = document.getElementById(selectId);
+        if (!select || !dataArray) return;
+        select.innerHTML = '<option value="">-- ไม่ระบุ --</option>';
+        dataArray.forEach(item => {
+            select.innerHTML += `<option value="${item.name}">${item.name}</option>`;
+        });
+    };
+
+    window.populateArrivalDropdowns = () => {
+        if (!window.masterDataCache) return;
+        populateArrivalDropdown('arrival-product-name', window.masterDataCache.productNames);
+        populateArrivalDropdown('arrival-type-name', window.masterDataCache.productTypes);
+        populateArrivalDropdown('arrival-condition-name', window.masterDataCache.productConditions);
+        populateArrivalDropdown('arrival-color-name', window.masterDataCache.productColors);
+        populateArrivalDropdown('arrival-capacity-name', window.masterDataCache.productCapacities);
+        populateArrivalDropdown('arrival-supplier-name', window.masterDataCache.suppliers);
+        populateArrivalDropdown('arrival-unit-name', window.masterDataCache.productUnits);
+    };
+
+    if (arrivalImeis && arrivalImeiCount) {
+        arrivalImeis.addEventListener('input', () => {
+            const lines = arrivalImeis.value.split('\n').filter(l => l.trim() !== '');
+            arrivalImeiCount.textContent = `จำนวน: ${lines.length} IMEI`;
+        });
+    }
+
+    if (btnSubmitArrival) {
+        btnSubmitArrival.addEventListener('click', async () => {
+            if (!arrivalProductName.value) {
+                showToast('กรุณาระบุชื่อสินค้า', 'error');
+                return;
+            }
+            try {
+                btnSubmitArrival.disabled = true;
+                btnSubmitArrival.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> กำลังส่ง...';
+                
+                const payload = {
+                    product_name: arrivalProductName.value,
+                    type_name: arrivalTypeName.value,
+                    condition_name: arrivalConditionName.value,
+                    color_name: arrivalColorName.value,
+                    capacity_name: arrivalCapacityName.value,
+                    supplier_name: arrivalSupplierName.value,
+                    unit_name: arrivalUnitName.value,
+                    notes: arrivalNotes.value,
+                    imeis: arrivalImeis.value
+                };
+
+                const res = await authFetch(`${API_BASE_URL}/import-notifications`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                
+                const data = await res.json();
+                if (data.success) {
+                    showToast('ส่งแจ้งของถึงสาขาเรียบร้อยแล้ว รอการอนุมัติ', 'success');
+                    // Reset form
+                    arrivalProductName.value = '';
+                    arrivalImeis.value = '';
+                    arrivalNotes.value = '';
+                    if (arrivalImeiCount) arrivalImeiCount.textContent = 'จำนวน: 0 IMEI';
+                    loadMyArrivalReports();
+                } else {
+                    showToast(data.message, 'error');
+                }
+            } catch (err) {
+                console.error(err);
+                showToast('เกิดข้อผิดพลาดในการเชื่อมต่อ', 'error');
+            } finally {
+                btnSubmitArrival.disabled = false;
+                btnSubmitArrival.innerHTML = '<i class="fa-solid fa-paper-plane mr-2"></i> ส่งแจ้งของถึงสาขา';
+            }
+        });
+    }
+
+    const loadMyArrivalReports = async () => {
+        if (!myArrivalReports) return;
+        try {
+            const user = JSON.parse(localStorage.getItem('silmin_user') || '{}');
+            const res = await authFetch(`${API_BASE_URL}/import-notifications?reported_by=${user.id || user.employee_id}`);
+            const data = await res.json();
+            if (data.success) {
+                myArrivalReports.innerHTML = '';
+                if (data.data.length === 0) {
+                    myArrivalReports.innerHTML = '<div class="text-center py-8 text-slate-500">ไม่มีประวัติการแจ้ง</div>';
+                    return;
+                }
+                data.data.forEach(item => {
+                    const statusColor = item.status === 'รอดำเนินการ' ? 'text-amber-400' : (item.status === 'อนุมัติแล้ว' ? 'text-emerald-400' : 'text-red-400');
+                    const html = `
+                        <div class="bg-slate-900/50 p-3 rounded-xl border border-slate-700/50 text-sm">
+                            <div class="flex justify-between items-start mb-1">
+                                <span class="font-bold text-white">${item.product_name}</span>
+                                <span class="${statusColor} text-xs font-bold">${item.status}</span>
+                            </div>
+                            <div class="text-xs text-slate-400">IMEI: ${item.imeis.length} รายการ</div>
+                            <div class="text-[10px] text-slate-500 mt-1">${new Date(item.created_at).toLocaleString('th-TH')}</div>
+                        </div>
+                    `;
+                    myArrivalReports.innerHTML += html;
+                });
+            }
+        } catch (err) {
+            console.error(err);
+        }
+    };
+
+    window.loadImportNotifications = async () => {
+        const tbody = document.getElementById('approve-import-table-body');
+        const filterBranch = document.getElementById('approve-import-filter-branch');
+        if (!tbody) return;
+
+        try {
+            tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-slate-400"><i class="fa-solid fa-spinner fa-spin mr-2"></i>กำลังโหลด...</td></tr>';
+            let url = `${API_BASE_URL}/import-notifications?status=รอดำเนินการ`;
+            if (filterBranch && filterBranch.value) {
+                url += `&branch_id=${filterBranch.value}`;
+            }
+
+            const res = await authFetch(url);
+            const data = await res.json();
+            
+            if (data.success) {
+                tbody.innerHTML = '';
+                if (data.data.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="7" class="text-center py-8 text-slate-500">ไม่มีรายการรออนุมัติ</td></tr>';
+                    if (approveImportBadge) approveImportBadge.classList.add('hidden');
+                    return;
+                }
+
+                if (approveImportBadge) {
+                    approveImportBadge.textContent = data.data.length;
+                    approveImportBadge.classList.remove('hidden');
+                }
+
+                data.data.forEach(item => {
+                    const tr = document.createElement('tr');
+                    tr.className = 'border-b border-slate-700/50 hover:bg-slate-700/20 transition-colors';
+                    tr.innerHTML = `
+                        <td class="px-6 py-4 text-sm text-slate-300">${new Date(item.created_at).toLocaleString('th-TH')}</td>
+                        <td class="px-6 py-4 text-sm text-slate-300">${item.branch_id ? item.branch_id.name : '-'}</td>
+                        <td class="px-6 py-4 text-sm text-slate-300">${item.reported_by ? item.reported_by.name : '-'}</td>
+                        <td class="px-6 py-4 text-sm font-medium text-white">${item.product_name}</td>
+                        <td class="px-6 py-4 text-sm text-cyan-400 font-mono">${item.imeis.length}</td>
+                        <td class="px-6 py-4 text-sm text-slate-400">${item.notes || '-'}</td>
+                        <td class="px-6 py-4 text-sm text-right">
+                            <button onclick="approveImport('${item._id}')" class="px-3 py-1.5 bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 rounded-lg text-xs font-medium transition-colors">
+                                <i class="fa-solid fa-check mr-1"></i> อนุมัติ
+                            </button>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            }
+        } catch (err) {
+            console.error(err);
+            tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-red-400">เกิดข้อผิดพลาดในการโหลดข้อมูล</td></tr>';
+        }
+    };
+
+    window.approveImport = async (id) => {
+        if (!confirm('ยืนยันการนำเข้าสต็อกและอนุมัติรายการนี้?')) return;
+        try {
+            const res = await authFetch(`${API_BASE_URL}/import-notifications/${id}/approve`, {
+                method: 'POST'
+            });
+            const data = await res.json();
+            if (data.success) {
+                showToast('อนุมัตินำเข้าสต็อกสำเร็จ', 'success');
+                window.loadImportNotifications();
+                if (typeof loadDashboardData === 'function') loadDashboardData();
+            } else {
+                showToast(data.message, 'error');
+            }
+        } catch (err) {
+            console.error(err);
+            showToast('เกิดข้อผิดพลาด', 'error');
+        }
+    };
+
+    // Initialize triggers
+    const navReportBtn = document.getElementById('nav-report-arrival');
+    if (navReportBtn) {
+        navReportBtn.addEventListener('click', () => {
+            window.populateArrivalDropdowns();
+            loadMyArrivalReports();
+        });
+    }
+
+    const filterBranch = document.getElementById('approve-import-filter-branch');
+    if (filterBranch) {
+        filterBranch.addEventListener('change', () => {
+            if (typeof window.loadImportNotifications === 'function') {
+                window.loadImportNotifications();
+            }
+        });
     }
 });
 
