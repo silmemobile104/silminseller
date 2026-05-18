@@ -1213,6 +1213,21 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // ซ่อน Error Message เมื่อผู้ใช้เริ่มพิมพ์ใหม่
+    const hideLoginError = () => {
+        if (loginError) {
+            loginError.classList.add('hidden');
+            loginError.textContent = '';
+        }
+    };
+
+    if (usernameInput) {
+        usernameInput.addEventListener('input', hideLoginError);
+    }
+    if (passwordInput) {
+        passwordInput.addEventListener('input', hideLoginError);
+    }
+
     // ==========================================
     // Login Logic (JWT Authentication)
     // ==========================================
@@ -1269,7 +1284,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     startPendingTransferPolling();
                 }, 500);
             } else {
-                showLoginError(result.message || 'รหัสพนักงานหรือรหัสผ่านไม่ถูกต้อง');
+                showLoginError(result.message || 'ชื่อผู้ใช้งานหรือรหัสผ่านไม่ถูกต้อง กรุณาลองใหม่อีกครั้ง');
             }
         } catch (error) {
             console.error('Login error:', error);

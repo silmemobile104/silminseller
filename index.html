@@ -194,6 +194,10 @@
                 opacity: 0;
             }
         }
+
+        .hidden {
+            display: none !important;
+        }
     </style>
 </head>
 
@@ -221,9 +225,7 @@
             <form id="login-form" class="space-y-6">
                 <!-- Error Message Container -->
                 <div id="login-error"
-                    class="hidden bg-red-500/10 border border-red-500/50 text-red-400 px-4 py-3 rounded-lg text-sm text-center">
-                    ชื่อผู้ใช้งานหรือรหัสผ่านไม่ถูกต้อง กรุณาลองใหม่อีกครั้ง
-                </div>
+                    class="hidden bg-red-500/10 border border-red-500/50 text-red-400 px-4 py-3 rounded-lg text-sm text-center"></div>
 
                 <div class="input-floating-label">
                     <input type="text" id="username" placeholder=" " required
