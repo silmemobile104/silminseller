@@ -25,7 +25,8 @@ const roleSchema = new mongoose.Schema({
         report_arrival: { type: Boolean, default: false },   // แจ้งของถึงสาขา
         approve_import: { type: Boolean, default: false },   // อนุมัตินำเข้าสต็อก
         manage_po: { type: Boolean, default: false },        // จัดการ PO (สร้าง/ดูทั้งหมด)
-        receive_po: { type: Boolean, default: false }        // ตรวจรับ PO (ที่สาขา)
+        receive_po: { type: Boolean, default: false },       // ตรวจรับ PO (ที่สาขา)
+        manage_transfers: { type: Boolean, default: false }  // โอนย้ายสินค้า
     }
 }, { timestamps: true });
 const Role = mongoose.model('Role', roleSchema, 'role');
@@ -39,7 +40,8 @@ const seedDefaultRoles = async () => {
                 view_dashboard: true, manage_stock: true, delete_stock: true,
                 do_pos: true, manage_personnel: true, manage_branches: true,
                 manage_settings: true, manage_roles: true, filter_stock_branch: true, cancel_sale: true,
-                report_arrival: true, approve_import: true, manage_po: true, receive_po: true
+                report_arrival: true, approve_import: true, manage_po: true, receive_po: true,
+                manage_transfers: true
             }
         },
         {
@@ -48,7 +50,8 @@ const seedDefaultRoles = async () => {
                 view_dashboard: true, manage_stock: true, delete_stock: true,
                 do_pos: true, manage_personnel: true, manage_branches: true,
                 manage_settings: true, manage_roles: false, filter_stock_branch: true, cancel_sale: true,
-                report_arrival: true, approve_import: false, manage_po: true, receive_po: true
+                report_arrival: true, approve_import: false, manage_po: true, receive_po: true,
+                manage_transfers: true
             }
         },
         {
@@ -57,7 +60,8 @@ const seedDefaultRoles = async () => {
                 view_dashboard: false, manage_stock: true, delete_stock: false,
                 do_pos: true, manage_personnel: false, manage_branches: false,
                 manage_settings: false, manage_roles: false, filter_stock_branch: false, cancel_sale: false,
-                report_arrival: true, approve_import: false, manage_po: false, receive_po: true
+                report_arrival: true, approve_import: false, manage_po: false, receive_po: true,
+                manage_transfers: false
             }
         }
     ];
@@ -83,6 +87,7 @@ const seedDefaultRoles = async () => {
                 existing.permissions.approve_import = true;
                 existing.permissions.manage_po = true;
                 existing.permissions.receive_po = true;
+                existing.permissions.manage_transfers = true;
                 changed = true;
             }
             if (changed) {
@@ -301,7 +306,7 @@ const purchaseOrderSchema = new mongoose.Schema({
     po_number: { type: String, required: true, unique: true }, // Auto-generated: PO-YYYYMMDD-XXXX
     supplier_name: { type: String, required: true },
     branch_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Branch', required: true },
-    status: { type: String, default: 'รอจัดส่ง', enum: ['รอจัดส่ง', 'กำลังตรวจรับ', 'รับของครบแล้ว', 'ยกเลิก'] },
+    status: { type: String, default: 'รอจัดส่ง', enum: ['รอจัดส่ง', 'ของถึงสาขาแล้ว', 'กำลังตรวจรับ', 'นำเข้าสำเร็จ', 'ยกเลิก'] },
     items: [{
         product_name: { type: String, required: true },
         product_code: { type: String, required: true },
@@ -313,8 +318,10 @@ const purchaseOrderSchema = new mongoose.Schema({
         received_qty: { type: Number, default: 0 },
         cost_price: { type: Number, required: true },
         selling_price: { type: Number, required: true },
-        imeis_received: [{ type: String }]
+        imeis_scanned: [{ type: String }]
     }],
+    arrival_reported_at: { type: Date },
+    arrival_reported_by: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee' },
     created_by: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee', required: true },
     received_by: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee' }
 }, { timestamps: true });
