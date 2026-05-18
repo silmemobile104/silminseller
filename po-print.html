@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ใบสั่งซื้อสินค้า (Purchase Order)</title>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --border-color: #000;
+        }
+
+        body {
+            font-family: 'Sarabun', sans-serif;
+            background: #f0f0f0;
+            margin: 0;
+            padding: 20px;
+            color: #000;
+            font-size: 14px;
+        }
+
+        .page {
+            background: #fff;
+            max-width: 210mm; /* A4 width */
+            min-height: 297mm; /* A4 height */
+            margin: 0 auto;
+            padding: 15mm;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .content-area {
+            flex: 1;
+        }
+
+        /* Header Section */
+        .header-container {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 30px;
+            border-bottom: 2px solid var(--border-color);
+            padding-bottom: 15px;
+        }
+
+        .company-info {
+            flex: 1.2;
+        }
+
+        .company-name {
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+
+        .company-address {
+            font-size: 12px;
+            line-height: 1.5;
+            color: #333;
+        }
+
+        .document-info {
+            flex: 0.8;
+            text-align: right;
+        }
+
+        .doc-title {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 10px;
+            letter-spacing: 1px;
+        }
+
+        .meta-grid {
+            display: grid;
+            grid-template-columns: auto 1fr;
+            gap: 5px 15px;
+            font-size: 14px;
+            text-align: left;
+            margin-left: auto;
+            width: fit-content;
+        }
+
+        .meta-label {
+            font-weight: 600;
+            text-align: right;
+        }
+
+        /* Details Section */
+        .details-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 25px;
+            background-color: #fcfcfc;
+            border: 1px solid #ddd;
+            padding: 15px;
+            border-radius: 6px;
+        }
+
+        .details-box h4 {
+            margin: 0 0 8px 0;
+            font-size: 15px;
+            font-weight: 700;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 5px;
+            color: #111;
+        }
+
+        .details-box div {
+            line-height: 1.7;
+        }
+
+        /* Table Section */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 30px;
+            font-size: 13px;
+        }
+
+        th, td {
+            border: 1px solid var(--border-color);
+            padding: 10px 8px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #f5f5f5;
+            font-weight: 600;
+            text-align: center;
+        }
+
+        td.center { text-align: center; }
+        td.right { text-align: right; }
+
+        .summary-row td {
+            font-weight: 700;
+            background-color: #f5f5f5;
+        }
+
+        /* Signatures Section */
+        .signatures {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 50px;
+            padding: 0 10px;
+        }
+
+        .sign-box {
+            text-align: center;
+            width: 30%;
+        }
+
+        .sign-line {
+            margin-top: 50px;
+            border-bottom: 1px dotted var(--border-color);
+            margin-bottom: 8px;
+        }
+
+        .sign-name {
+            margin-bottom: 5px;
+            font-weight: 500;
+        }
+
+        .sign-title {
+            font-size: 12px;
+            color: #555;
+        }
+
+        /* Print adjustments */
+        @media print {
+            body { background: #fff; padding: 0; }
+            .page { box-shadow: none; margin: 0; padding: 10mm; max-width: none; min-height: 297mm; }
+            .content-area { flex: 1; }
+            @page { size: A4; margin: 0; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="page">
+    <div class="content-area">
+        <!-- Header -->
+        <div class="header-container">
+            <div class="company-info">
+                <div class="company-name">บริษัท ซิลมีน โมบาย จำกัด</div>
+                <div class="company-address">
+                    สำนักงานใหญ่:<br>
+                    เลขประจำตัวผู้เสียภาษี : <br>
+                    โทรศัพท์: | อีเมล: 
+                </div>
+            </div>
+            <div class="document-info">
+                <div class="doc-title">ใบสั่งซื้อสินค้า</div>
+                <div class="doc-title-en" style="font-size: 14px; font-weight: 600; color: #555; margin-top: -8px; margin-bottom: 15px;">PURCHASE ORDER</div>
+                <div class="meta-grid">
+                    <div class="meta-label">เลขที่ PO :</div>
+                    <div id="doc-po-number" style="font-family: monospace; font-weight: bold;">-</div>
+                    <div class="meta-label">วันที่สั่งซื้อ :</div>
+                    <div id="doc-po-date">-</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Details -->
+        <div class="details-container">
+            <div class="details-box">
+                <h4>ผู้จำหน่าย (Supplier)</h4>
+                <div><strong>ชื่อซัพพลายเออร์:</strong> <span id="doc-supplier-name">-</span></div>
+                <div><strong>ติดต่อ:</strong> ฝ่ายขาย / ประสานงานขาย</div>
+            </div>
+            <div class="details-box">
+                <h4>จัดส่งไปยังสาขาปลายทาง (Ship To)</h4>
+                <div><strong>ชื่อสาขา:</strong> <span id="doc-branch-name">-</span></div>
+                <div><strong>ที่อยู่จัดส่ง:</strong> <span id="doc-branch-address">ที่อยู่ของสาขาปลายทาง</span></div>
+            </div>
+        </div>
+
+        <!-- Data Table -->
+        <table>
+            <thead>
+                <tr>
+                    <th style="width: 50px;">ลำดับ</th>
+                    <th style="width: 120px;">รหัสสินค้า</th>
+                    <th>ชื่อสินค้า / รายละเอียดสินค้า</th>
+                    <th style="width: 90px;">จำนวนสั่ง</th>
+                    <th style="width: 100px;">ราคาทุน/ชิ้น</th>
+                    <th style="width: 120px;">ยอดรวมเงิน</th>
+                </tr>
+            </thead>
+            <tbody id="doc-table-body">
+                <!-- Dynamic rows will be inserted here -->
+            </tbody>
+            <tfoot>
+                <tr class="summary-row">
+                    <td colspan="3" class="right" style="padding-right: 15px;">รวมยอดสั่งซื้อสินค้าทั้งสิ้น</td>
+                    <td class="center" id="doc-total-qty">-</td>
+                    <td class="right" style="font-size: 11px; font-weight: normal; color: #555;">(ราคารวมสุทธิ)</td>
+                    <td class="right" id="doc-grand-total" style="font-family: monospace; font-size: 15px;">฿0</td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+
+    <!-- Signatures -->
+    <div class="signatures">
+        <div class="sign-box">
+            <div style="font-weight: 600;">ผู้จัดทำ / Prepared By</div>
+            <div class="sign-line"></div>
+            <div class="sign-name">(...................................................)</div>
+            <div class="sign-title">เจ้าหน้าที่จัดซื้อ</div>
+            <div style="font-size: 11px; margin-top: 5px;">วันที่ ......../......../........</div>
+        </div>
+        <div class="sign-box">
+            <div style="font-weight: 600;">ผู้อนุมัติสั่งซื้อ</div>
+            <div class="sign-line"></div>
+            <div class="sign-name">(...................................................)</div>
+            <div class="sign-title">ผู้จัดการฝ่ายจัดซื้อ</div>
+            <div style="font-size: 11px; margin-top: 5px;">วันที่ ......../......../........</div>
+        </div>
+        <div class="sign-box">
+            <div style="font-weight: 600;">ผู้จำหน่ายยินยอม</div>
+            <div class="sign-line"></div>
+            <div class="sign-name">(...................................................)</div>
+            <div class="sign-title">ตัวแทนผู้แทนจำหน่าย</div>
+            <div style="font-size: 11px; margin-top: 5px;">วันที่ ......../......../........</div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function populatePoDocument(data) {
+        // Doc Info
+        document.getElementById('doc-po-number').textContent = data.po_number || '';
+        
+        // Date formatting
+        if (data.createdAt) {
+            const date = new Date(data.createdAt);
+            const day = date.getDate().toString().padStart(2, '0');
+            const month = (date.getMonth() + 1).toString().padStart(2, '0');
+            const year = date.getFullYear() + 543; // Buddhist Era
+            document.getElementById('doc-po-date').textContent = `${day}/${month}/${year}`;
+        }
+
+        // Supplier & Destination
+        document.getElementById('doc-supplier-name').textContent = data.supplier_name || '';
+        document.getElementById('doc-branch-name').textContent = (data.branch_id && data.branch_id.name) ? data.branch_id.name : '-';
+        document.getElementById('doc-branch-address').textContent = (data.branch_id && data.branch_id.address) ? data.branch_id.address : 'จัดส่งเข้าคลังสินค้าหลักของสาขา';
+
+        // Table Rows
+        const tbody = document.getElementById('doc-table-body');
+        tbody.innerHTML = '';
+
+        let totalQty = 0;
+        let grandTotal = 0;
+        let rowIndex = 1;
+
+        if (data.items && data.items.length > 0) {
+            data.items.forEach(item => {
+                const qty = item.ordered_qty || 0;
+                const cost = item.cost_price || 0;
+                const rowTotal = qty * cost;
+
+                totalQty += qty;
+                grandTotal += rowTotal;
+
+                // Build name display with specifications
+                let displayName = item.product_name || '';
+                const specs = [];
+                if (item.color) specs.push(`สี: ${item.color}`);
+                if (item.capacity) specs.push(`ความจุ: ${item.capacity}`);
+                if (item.category) specs.push(`หมวดหมู่: ${item.category}`);
+                if (item.track_imei) specs.push(`<span style="color:#0066cc;">[เก็บบันทึก IMEI]</span>`);
+                
+                if (specs.length > 0) {
+                    displayName += ` (${specs.join(', ')})`;
+                }
+
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td class="center">${rowIndex++}</td>
+                    <td class="center" style="font-family: monospace;">${item.product_code || '-'}</td>
+                    <td>${displayName}</td>
+                    <td class="center" style="font-weight: bold;">${qty.toLocaleString()}</td>
+                    <td class="right" style="font-family: monospace;">฿${cost.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                    <td class="right" style="font-family: monospace; font-weight: bold;">฿${rowTotal.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        document.getElementById('doc-total-qty').textContent = totalQty.toLocaleString() + ' ชิ้น';
+        document.getElementById('doc-grand-total').textContent = '฿' + grandTotal.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+    }
+
+    window.onload = function() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const poDataStr = urlParams.get('data');
+        if (poDataStr) {
+            try {
+                const data = JSON.parse(decodeURIComponent(poDataStr));
+                populatePoDocument(data);
+                setTimeout(() => window.print(), 500);
+            } catch (e) {
+                console.error('Error parsing PO data:', e);
+            }
+        }
+    };
+</script>
+</body>
+</html>

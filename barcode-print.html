@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>พิมพ์สติ๊กเกอร์บาร์โค้ด - SilminMobile</title>
+    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+    <style>
+        /* ตั้งค่าสำหรับ Thermal Printer (40x30mm) */
+        @page {
+            size: 40mm 30mm;
+            margin: 0;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #fff;
+            color: #000;
+            font-family: sans-serif;
+        }
+
+        .sticker {
+            width: 40mm;
+            height: 30mm;
+            box-sizing: border-box;
+            page-break-after: always;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 1mm;
+            text-align: center;
+            overflow: hidden;
+        }
+
+        .product-name {
+            font-size: 8px;
+            font-weight: bold;
+            margin-bottom: 2px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 100%;
+        }
+
+        .barcode-svg {
+            max-width: 100%;
+            height: auto;
+        }
+    </style>
+</head>
+<body>
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            const dataStr = localStorage.getItem('print_barcodes');
+            if (!dataStr) {
+                document.body.innerHTML = '<p style="padding:10px;">ไม่พบข้อมูลสำหรับพิมพ์บาร์โค้ด</p>';
+                return;
+            }
+
+            try {
+                const barcodes = JSON.parse(dataStr);
+                
+                if (!Array.isArray(barcodes) || barcodes.length === 0) {
+                    document.body.innerHTML = '<p style="padding:10px;">ไม่มีข้อมูลบาร์โค้ดที่เลือก</p>';
+                    return;
+                }
+
+                barcodes.forEach(item => {
+                    const stickerDiv = document.createElement('div');
+                    stickerDiv.className = 'sticker';
+
+                    const nameP = document.createElement('div');
+                    nameP.className = 'product-name';
+                    nameP.textContent = item.name || '';
+                    stickerDiv.appendChild(nameP);
+
+                    const svgElement = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+                    svgElement.className = 'barcode-svg';
+                    stickerDiv.appendChild(svgElement);
+
+                    document.body.appendChild(stickerDiv);
+
+                    JsBarcode(svgElement, item.barcode, {
+                        width: 1.5,
+                        height: 30,
+                        fontSize: 10,
+                        margin: 2,
+                        displayValue: true
+                    });
+                });
+
+                // สั่งพิมพ์อัตโนมัติ
+                setTimeout(() => {
+                    window.print();
+                }, 500);
+
+            } catch (error) {
+                document.body.innerHTML = '<p style="padding:10px;">เกิดข้อผิดพลาดในการอ่านข้อมูล</p>';
+                console.error("Barcode Print Error:", error);
+            }
+        });
+    </script>
+</body>
+</html>

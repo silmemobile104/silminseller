@@ -23,7 +23,9 @@ const roleSchema = new mongoose.Schema({
         filter_stock_branch: { type: Boolean, default: false }, // อนุญาตกรองสาขาในเมนูจัดการสต็อก
         cancel_sale: { type: Boolean, default: false },      // อนุญาตให้ยกเลิกบิลขาย
         report_arrival: { type: Boolean, default: false },   // แจ้งของถึงสาขา
-        approve_import: { type: Boolean, default: false }    // อนุมัตินำเข้าสต็อก
+        approve_import: { type: Boolean, default: false },   // อนุมัตินำเข้าสต็อก
+        manage_po: { type: Boolean, default: false },        // จัดการ PO (สร้าง/ดูทั้งหมด)
+        receive_po: { type: Boolean, default: false }        // ตรวจรับ PO (ที่สาขา)
     }
 }, { timestamps: true });
 const Role = mongoose.model('Role', roleSchema, 'role');
@@ -37,7 +39,7 @@ const seedDefaultRoles = async () => {
                 view_dashboard: true, manage_stock: true, delete_stock: true,
                 do_pos: true, manage_personnel: true, manage_branches: true,
                 manage_settings: true, manage_roles: true, filter_stock_branch: true, cancel_sale: true,
-                report_arrival: true, approve_import: true
+                report_arrival: true, approve_import: true, manage_po: true, receive_po: true
             }
         },
         {
@@ -46,7 +48,7 @@ const seedDefaultRoles = async () => {
                 view_dashboard: true, manage_stock: true, delete_stock: true,
                 do_pos: true, manage_personnel: true, manage_branches: true,
                 manage_settings: true, manage_roles: false, filter_stock_branch: true, cancel_sale: true,
-                report_arrival: true, approve_import: false
+                report_arrival: true, approve_import: false, manage_po: true, receive_po: true
             }
         },
         {
@@ -55,7 +57,7 @@ const seedDefaultRoles = async () => {
                 view_dashboard: false, manage_stock: true, delete_stock: false,
                 do_pos: true, manage_personnel: false, manage_branches: false,
                 manage_settings: false, manage_roles: false, filter_stock_branch: false, cancel_sale: false,
-                report_arrival: true, approve_import: false
+                report_arrival: true, approve_import: false, manage_po: false, receive_po: true
             }
         }
     ];
@@ -79,6 +81,8 @@ const seedDefaultRoles = async () => {
             if (r.name === 'แอดมิน') {
                 existing.permissions.report_arrival = true;
                 existing.permissions.approve_import = true;
+                existing.permissions.manage_po = true;
+                existing.permissions.receive_po = true;
                 changed = true;
             }
             if (changed) {
@@ -292,6 +296,30 @@ const importNotificationSchema = new mongoose.Schema({
 }, { timestamps: true });
 const ImportNotification = mongoose.model('ImportNotification', importNotificationSchema, 'importnotification');
 
+// 16. Purchase Order (ใบสั่งซื้อ)
+const purchaseOrderSchema = new mongoose.Schema({
+    po_number: { type: String, required: true, unique: true }, // Auto-generated: PO-YYYYMMDD-XXXX
+    supplier_name: { type: String, required: true },
+    branch_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Branch', required: true },
+    status: { type: String, default: 'รอจัดส่ง', enum: ['รอจัดส่ง', 'กำลังตรวจรับ', 'รับของครบแล้ว', 'ยกเลิก'] },
+    items: [{
+        product_name: { type: String, required: true },
+        product_code: { type: String, required: true },
+        category: { type: String },
+        color: { type: String },
+        capacity: { type: String },
+        track_imei: { type: Boolean, default: false },
+        ordered_qty: { type: Number, required: true },
+        received_qty: { type: Number, default: 0 },
+        cost_price: { type: Number, required: true },
+        selling_price: { type: Number, required: true },
+        imeis_received: [{ type: String }]
+    }],
+    created_by: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee', required: true },
+    received_by: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee' }
+}, { timestamps: true });
+const PurchaseOrder = mongoose.model('PurchaseOrder', purchaseOrderSchema, 'purchaseorder');
+
 module.exports = {
     Branch,
     Role,
@@ -310,6 +338,7 @@ module.exports = {
     Member,
     FinanceCompany,
     ImportNotification,
+    PurchaseOrder,
     seedDefaultRoles,
     migrateProductsToERP
 };
