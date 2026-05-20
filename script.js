@@ -5953,7 +5953,25 @@ document.addEventListener('DOMContentLoaded', () => {
             // Bind Refresh Buttons
             document.getElementById('btn-refresh-mystock')?.addEventListener('click', loadBranchInventoryMyStock);
             document.getElementById('btn-refresh-globalstock')?.addEventListener('click', loadBranchInventoryGlobalStock);
- 
+
+            // Populate Type Filters from master data
+            const md = window.masterDataCache || {};
+            const populateTypeFilter = (filterId) => {
+                const filter = document.getElementById(filterId);
+                if (filter && md.productTypes) {
+                    filter.innerHTML = '<option value="ALL">ประเภททั้งหมด</option>';
+                    md.productTypes.forEach(type => {
+                        filter.innerHTML += `<option value="${type.name}">${type.name}</option>`;
+                    });
+                }
+            };
+            populateTypeFilter('filter-branch-mystock-type');
+            populateTypeFilter('filter-branch-globalstock-type');
+
+            // Bind Type Filters
+            document.getElementById('filter-branch-mystock-type')?.addEventListener('change', loadBranchInventoryMyStock);
+            document.getElementById('filter-branch-globalstock-type')?.addEventListener('change', loadBranchInventoryGlobalStock);
+
             // Bind Condition Filters
             document.getElementById('filter-branch-mystock-condition')?.addEventListener('change', loadBranchInventoryMyStock);
             document.getElementById('filter-branch-globalstock-condition')?.addEventListener('change', loadBranchInventoryGlobalStock);
@@ -6097,6 +6115,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Filter only items with > 0 quantity
                 let items = data.data.filter(p => Number(p.quantity || 0) > 0);
 
+                // Apply type filter (ประเภทสินค้า)
+                const typeFilter = document.getElementById('filter-branch-mystock-type')?.value || 'ALL';
+                if (typeFilter !== 'ALL') {
+                    items = items.filter(p => {
+                        const typeName = p.type_id ? p.type_id.name : '';
+                        return typeName === typeFilter;
+                    });
+                }
+
                 // Apply condition filter (สภาพเครื่อง)
                 const condFilter = document.getElementById('filter-branch-mystock-condition')?.value || 'ALL';
                 if (condFilter !== 'ALL') {
@@ -6121,16 +6148,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
                     const name = p.name || 'ไม่ระบุชื่อ';
                     const color = (p.color_id && p.color_id.name) ? p.color_id.name : 'ไม่ระบุสี';
+                    const unit = (p.unit_id && p.unit_id.name) ? p.unit_id.name : 'ชิ้น';
 
-                    if (!groupedData[name]) groupedData[name] = { total: 0, colors: {} };
+                    if (!groupedData[name]) groupedData[name] = { total: 0, colors: {}, unit: unit };
                     groupedData[name].total += qty;
+                    groupedData[name].unit = unit;
 
-                    if (!groupedData[name].colors[color]) groupedData[name].colors[color] = { total: 0, items: [] };
+                    if (!groupedData[name].colors[color]) groupedData[name].colors[color] = { total: 0, items: [], unit: unit };
                     groupedData[name].colors[color].total += qty;
+                    groupedData[name].colors[color].unit = unit;
 
                     groupedData[name].colors[color].items.push({
                         ...p,
-                        qtyToDisplay: qty
+                        qtyToDisplay: qty,
+                        unit: unit
                     });
                 });
 
@@ -6170,7 +6201,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         </td>
                         <td class="px-6 py-4 text-center">
                             <span class="bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-3 py-1 rounded-full font-bold text-sm">
-                                ${nameGroup.total} เครื่อง
+                                ${nameGroup.total} ${nameGroup.unit || 'ชิ้น'}
                             </span>
                         </td>
                         <td class="px-6 py-4 text-right"></td>
@@ -6208,7 +6239,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                 </div>
                             </td>
                             <td class="px-6 py-3 text-center">
-                                <span class="text-slate-300 font-bold text-sm">${colorGroup.total} เครื่อง</span>
+                                <span class="text-slate-300 font-bold text-sm">${colorGroup.total} ${colorGroup.unit || 'ชิ้น'}</span>
                             </td>
                             <td class="px-6 py-3"></td>
                         `;
@@ -6227,7 +6258,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                     </div>
                                 </td>
                                 <td class="px-6 py-3 text-center">
-                                    <span class="text-sm text-emerald-400 font-bold">${p.qtyToDisplay} เครื่อง</span>
+                                    <span class="text-sm text-emerald-400 font-bold">${p.qtyToDisplay} ${p.unit || 'ชิ้น'}</span>
                                     ${p.is_transferring ? '<span class="text-[10px] bg-amber-500/20 text-amber-400 px-1 rounded ml-1 mt-1 block">กำลังโอน</span>' : ''}
                                 </td>
                                 <td class="px-6 py-3 text-right">
@@ -6257,6 +6288,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 tbody.innerHTML = '';
                 let items = data.data.filter(p => Number(p.global_total_quantity || 0) > 0);
 
+                // Apply type filter (ประเภทสินค้า)
+                const typeFilter = document.getElementById('filter-branch-globalstock-type')?.value || 'ALL';
+                if (typeFilter !== 'ALL') {
+                    items = items.filter(p => {
+                        const typeName = p.type_id ? p.type_id.name : '';
+                        return typeName === typeFilter;
+                    });
+                }
+
                 // Apply condition filter (สภาพเครื่อง)
                 const condFilter = document.getElementById('filter-branch-globalstock-condition')?.value || 'ALL';
                 if (condFilter !== 'ALL') {
@@ -6275,7 +6315,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 items.forEach(p => {
                     const name = p.name || 'ไม่ระบุชื่อ';
-                    if (!groupedData[name]) groupedData[name] = { total: 0, branches: {} };
+                    const unit = (p.unit_id && p.unit_id.name) ? p.unit_id.name : 'ชิ้น';
+                    if (!groupedData[name]) groupedData[name] = { total: 0, branches: {}, unit: unit };
+                    groupedData[name].unit = unit;
 
                     if (p.stock_balances && p.stock_balances.length > 0) {
                         p.stock_balances.forEach(b => {
@@ -6283,12 +6325,14 @@ document.addEventListener('DOMContentLoaded', () => {
                             if (bQty > 0) {
                                 groupedData[name].total += bQty;
                                 const bName = b.branch_id ? (b.branch_id.name || 'ไม่ทราบสาขา') : 'ไม่ทราบสาขา';
-                                if (!groupedData[name].branches[bName]) groupedData[name].branches[bName] = { total: 0, items: [] };
+                                if (!groupedData[name].branches[bName]) groupedData[name].branches[bName] = { total: 0, items: [], unit: unit };
                                 groupedData[name].branches[bName].total += bQty;
+                                groupedData[name].branches[bName].unit = unit;
                                 groupedData[name].branches[bName].items.push({
                                     ...p,
                                     qtyToDisplay: bQty,
-                                    branchImeis: b.imeis || []
+                                    branchImeis: b.imeis || [],
+                                    unit: unit
                                 });
                             }
                         });
@@ -6332,7 +6376,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         </td>
                         <td class="px-6 py-4 text-center">
                             <span class="bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 px-3 py-1 rounded-full font-bold text-sm">
-                                ${nameGroup.total} เครื่อง
+                                ${nameGroup.total} ${nameGroup.unit || 'ชิ้น'}
                             </span>
                         </td>
                         <td class="px-6 py-4 text-right"></td>
@@ -6370,7 +6414,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                 </div>
                             </td>
                             <td class="px-6 py-3 text-center">
-                                <span class="text-slate-300 font-bold text-sm">${branchGroup.total} เครื่อง</span>
+                                <span class="text-slate-300 font-bold text-sm">${branchGroup.total} ${branchGroup.unit || 'ชิ้น'}</span>
                             </td>
                             <td class="px-6 py-3"></td>
                         `;
@@ -6397,7 +6441,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                     </div>
                                 </td>
                                 <td class="px-6 py-3 text-center">
-                                    <span class="text-sm text-cyan-400 font-bold">${p.qtyToDisplay} เครื่อง</span>
+                                    <span class="text-sm text-cyan-400 font-bold">${p.qtyToDisplay} ${p.unit || 'ชิ้น'}</span>
                                 </td>
                                 <td class="px-6 py-3 text-right">
                                     <span class="text-sm text-cyan-400 font-mono font-bold">฿${(p.selling_price || 0).toLocaleString()}</span>
@@ -7068,8 +7112,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             input.focus();
 
                             if (data.success && data.exists) {
-                                alert(`รหัสสินค้า/IMEI (${val}) นี้มีอยู่ในระบบแล้ว ไม่อนุญาตให้ดำเนินการตรวจรับต่อ`);
-                                showToast(`รหัสสินค้า/IMEI (${val}) มีอยู่ในระบบแล้ว`, 'error');
+                                showToast(`⚠️ รหัสสินค้า/IMEI (${val}) มีอยู่ในระบบแล้ว ไม่สามารถนำเข้าซ้ำได้`, 'error');
                                 input.value = '';
                                 return;
                             }
@@ -7442,30 +7485,30 @@ document.addEventListener('DOMContentLoaded', () => {
 
                     tr.querySelector('.btn-finalize-import').addEventListener('click', async (e) => {
                         const poId = e.currentTarget.dataset.id;
-                        if (!confirm('ยืนยันการตรวจสอบและอนุมัตินำเข้าสินค้าใบสั่งซื้อนี้เข้าสู่สต็อกสาขาจริงอย่างเป็นทางการ? (ข้อมูลจะอัปเดตยอดคงคลังทันที)')) return;
-                        
-                        try {
-                            const btnFinalize = e.currentTarget;
-                            btnFinalize.disabled = true;
-                            btnFinalize.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> อนุมัติ...';
-                            
-                            const finalRes = await authFetch(`${API_BASE_URL}/po/${poId}/finalize-import`, {
-                                method: 'POST'
-                            });
-                            const finalJson = await finalRes.json();
-                            
-                            if (finalJson.success) {
-                                showToast('อนุมัตินำเข้าสต็อกสำเร็จ! เพิ่มยอดสินค้าสั่งซื้อเข้าคลังสาขาเรียบร้อยแล้ว', 'success');
-                                loadApprovePOs();
-                                if (typeof fetchProducts === 'function') fetchProducts();
-                                if (typeof loadDashboardData === 'function') loadDashboardData();
-                            } else {
-                                showToast(finalJson.message, 'error');
+                        showConfirm('ยืนยันนำเข้าสินค้า', 'ยืนยันนำเข้าสินค้าใบสั่งซื้อนี้เข้าสต็อกสาขา?', async () => {
+                            try {
+                                const btnFinalize = e.currentTarget;
+                                btnFinalize.disabled = true;
+                                btnFinalize.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> อนุมัติ...';
+
+                                const finalRes = await authFetch(`${API_BASE_URL}/po/${poId}/finalize-import`, {
+                                    method: 'POST'
+                                });
+                                const finalJson = await finalRes.json();
+
+                                if (finalJson.success) {
+                                    showToast('อนุมัตินำเข้าสต็อกสำเร็จ! เพิ่มยอดสินค้าสั่งซื้อเข้าคลังสาขาเรียบร้อยแล้ว', 'success');
+                                    loadApprovePOs();
+                                    if (typeof fetchProducts === 'function') fetchProducts();
+                                    if (typeof loadDashboardData === 'function') loadDashboardData();
+                                } else {
+                                    showToast(finalJson.message, 'error');
+                                }
+                            } catch (err) {
+                                console.error(err);
+                                showToast('เกิดข้อผิดพลาดในการทำรายการอนุมัติ', 'error');
                             }
-                        } catch (err) {
-                            console.error(err);
-                            showToast('เกิดข้อผิดพลาดในการทำรายการอนุมัติ', 'error');
-                        }
+                        });
                     });
                 });
             }
