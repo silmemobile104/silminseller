@@ -143,7 +143,8 @@ const ProductCondition = mongoose.model('ProductCondition', productConditionSche
 
 // 9. ProductName (ชื่อสินค้า)
 const productNameSchema = new mongoose.Schema({
-    name: { type: String, required: true, unique: true }
+    name: { type: String, required: true, unique: true },
+    code: { type: String }
 });
 const ProductName = mongoose.model('ProductName', productNameSchema, 'productname');
 
@@ -313,6 +314,7 @@ const purchaseOrderSchema = new mongoose.Schema({
         category: { type: String },
         color: { type: String },
         capacity: { type: String },
+        unit: { type: String },
         track_imei: { type: Boolean, default: false },
         ordered_qty: { type: Number, required: true },
         received_qty: { type: Number, default: 0 },

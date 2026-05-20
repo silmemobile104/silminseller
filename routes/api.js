@@ -290,6 +290,32 @@ router.post('/products', async (req, res) => {
     }
 });
 
+// GET /api/products/check-existence
+router.get('/products/check-existence', async (req, res) => {
+    try {
+        const { code } = req.query;
+        if (!code) {
+            return res.status(400).json({ success: false, message: 'กรุณาระบุรหัสสินค้า' });
+        }
+
+        const trimmedCode = code.trim();
+        const exists = await Product.exists({
+            $or: [
+                { product_code: trimmedCode },
+                { 'stock_balances.imeis': trimmedCode }
+            ]
+        });
+
+        res.status(200).json({
+            success: true,
+            exists: !!exists
+        });
+    } catch (error) {
+        console.error('API Error GET /api/products/check-existence:', error);
+        res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการตรวจสอบรหัสสินค้า' });
+    }
+});
+
 // 4. GET /api/products
 // หน้าที่: ดึงข้อมูลสินค้าทั้งหมดพร้อมข้อมูล Master Data ที่เกี่ยวข้อง
 router.get('/products', async (req, res) => {
@@ -1018,7 +1044,7 @@ router.delete('/branches/:id', async (req, res) => {
 router.post('/master/:collection', async (req, res) => {
     try {
         const collection = req.params.collection.toLowerCase();
-        const { name } = req.body;
+        const { name, code } = req.body;
 
         if (!name) {
             return res.status(400).json({ success: false, message: 'กรุณาระบุชื่อ' });
@@ -1039,7 +1065,11 @@ router.post('/master/:collection', async (req, res) => {
         }
 
         console.log(`[MASTER] กำลังเพิ่มข้อมูลใหม่ใน ${collection}: "${name}"`);
-        const newItem = new Model({ name });
+        const payload = { name };
+        if (collection === 'productname' && code !== undefined) {
+            payload.code = code;
+        }
+        const newItem = new Model(payload);
         const savedItem = await newItem.save();
 
         console.log(`[MASTER] เพิ่มข้อมูลสำเร็จ: ${collection} -> ${name} (ID: ${savedItem._id})`);
@@ -1103,7 +1133,7 @@ router.put('/master/:collection/:id', async (req, res) => {
     try {
         const collection = req.params.collection.toLowerCase();
         const id = req.params.id;
-        const { name } = req.body;
+        const { name, code } = req.body;
 
         if (!name) {
             return res.status(400).json({ success: false, message: 'กรุณาระบุชื่อ' });
@@ -1123,7 +1153,12 @@ router.put('/master/:collection/:id', async (req, res) => {
                 return res.status(400).json({ success: false, message: 'ไม่พบประเภทข้อมูลที่ระบุ' });
         }
 
-        const updatedItem = await Model.findByIdAndUpdate(id, { name }, { returnDocument: 'after' });
+        const updateFields = { name };
+        if (collection === 'productname') {
+            updateFields.code = code || '';
+        }
+
+        const updatedItem = await Model.findByIdAndUpdate(id, updateFields, { returnDocument: 'after' });
 
         if (!updatedItem) {
             return res.status(404).json({ success: false, message: 'ไม่พบข้อมูลที่ต้องการแก้ไข' });
@@ -2275,6 +2310,12 @@ router.post('/import-notifications/:id/approve', async (req, res) => {
             return res.status(400).json({ success: false, message: 'รายการนี้ถูกอนุมัติไปแล้ว' });
         }
 
+        let finalUnitId = unit_id;
+        if (!finalUnitId && notification.unit_name) {
+            const u = await ProductUnit.findOne({ name: notification.unit_name });
+            finalUnitId = u ? u._id : null;
+        }
+
         const branchId = notification.branch_id;
         const incomingImeis = notification.imeis || [];
 
@@ -2294,7 +2335,7 @@ router.post('/import-notifications/:id/approve', async (req, res) => {
                         color_id: color_id || null,
                         capacity_id: capacity_id || null,
                         condition_id: condition_id || null,
-                        unit_id: unit_id || null,
+                        unit_id: finalUnitId || null,
                         supplier_id: supplier_id || null,
                         stock_balances: []
                     });
@@ -2350,7 +2391,7 @@ router.post('/import-notifications/:id/approve', async (req, res) => {
                     color_id: color_id || null,
                     capacity_id: capacity_id || null,
                     condition_id: condition_id || null,
-                    unit_id: unit_id || null,
+                    unit_id: finalUnitId || null,
                     supplier_id: supplier_id || null,
                     stock_balances: []
                 });
@@ -2594,8 +2635,8 @@ router.get('/purchase-orders', async (req, res) => {
         }
 
         const pos = await PurchaseOrder.find(query)
-            .populate('branch_id', 'name')
-            .populate('created_by', 'name')
+            .populate('branch_id', 'name address')
+            .populate('created_by', 'name role')
             .populate('received_by', 'name')
             .populate('arrival_reported_by', 'name')
             .sort({ createdAt: -1 });
@@ -2721,6 +2762,23 @@ router.post('/po/:id/scan-item', async (req, res) => {
             if (data) {
                 if (item.track_imei) {
                     const newImeis = Array.isArray(data.imeis) ? data.imeis.map(x => x.toString().trim()).filter(Boolean) : [];
+                    
+                    // Validate each IMEI against existing products in database
+                    for (const imei of newImeis) {
+                        const exists = await Product.exists({
+                            $or: [
+                                { product_code: imei },
+                                { 'stock_balances.imeis': imei }
+                            ]
+                        });
+                        if (exists) {
+                            return res.status(400).json({
+                                success: false,
+                                message: `รหัสสินค้า/IMEI (${imei}) นี้มีอยู่ในระบบแล้ว ไม่อนุญาตให้ดำเนินการตรวจรับต่อ`
+                            });
+                        }
+                    }
+                    
                     item.imeis_scanned = newImeis;
                     item.received_qty = item.imeis_scanned.length;
                 } else {
@@ -2800,28 +2858,41 @@ router.post('/po/:id/finalize-import', async (req, res) => {
                 supplierId = supp ? supp._id : null;
             }
 
+            let unitId = null;
+            if (item.unit) {
+                const u = await ProductUnit.findOne({ name: item.unit });
+                unitId = u ? u._id : null;
+            }
+            if (!unitId) {
+                const defaultUnitName = item.track_imei ? 'เครื่อง' : 'ชิ้น';
+                const u = await ProductUnit.findOne({ name: defaultUnitName });
+                unitId = u ? u._id : null;
+            }
+
             if (item.track_imei) {
                 // For devices tracked by IMEI, create/update a SEPARATE product per IMEI
                 const incomingImeis = item.imeis_scanned.map(x => x.toString().trim()).filter(Boolean);
                 for (const imei of incomingImeis) {
                     let product = await Product.findOne({ product_code: imei });
-                    if (!product) {
-                        product = new Product({
-                            product_code: imei,
-                            name: item.product_name,
-                            cost_price: item.cost_price,
-                            selling_price: item.selling_price,
-                            type_id: typeId,
-                            color_id: colorId,
-                            capacity_id: capacityId,
-                            condition_id: conditionId,
-                            supplier_id: supplierId,
-                            stock_balances: []
+                    if (product) {
+                        return res.status(400).json({
+                            success: false,
+                            message: `รหัสสินค้า/IMEI (${imei}) มีอยู่ในระบบแล้ว ไม่สามารถนำเข้าซ้ำได้`
                         });
-                    } else {
-                        product.cost_price = item.cost_price;
-                        product.selling_price = item.selling_price;
                     }
+                    product = new Product({
+                        product_code: imei,
+                        name: item.product_name,
+                        cost_price: item.cost_price,
+                        selling_price: item.selling_price,
+                        type_id: typeId,
+                        color_id: colorId,
+                        capacity_id: capacityId,
+                        condition_id: conditionId,
+                        unit_id: unitId,
+                        supplier_id: supplierId,
+                        stock_balances: []
+                    });
 
                     const bal = ensureBranchBalance(product, po.branch_id);
                     if (!bal.imeis.includes(imei)) {
@@ -2857,6 +2928,7 @@ router.post('/po/:id/finalize-import', async (req, res) => {
                         color_id: colorId,
                         capacity_id: capacityId,
                         condition_id: conditionId,
+                        unit_id: unitId,
                         supplier_id: supplierId,
                         stock_balances: []
                     });

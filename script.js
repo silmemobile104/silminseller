@@ -135,6 +135,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const settingsTabBtns = document.querySelectorAll('.settings-tab-btn');
     const masterDataInput = document.getElementById('master-data-input');
+    const masterDataCodeInput = document.getElementById('master-data-code-input');
     const btnAddMasterData = document.getElementById('btn-add-master-data');
     const masterDataList = document.getElementById('master-data-list');
     const masterDataEmpty = document.getElementById('master-data-empty');
@@ -576,7 +577,7 @@ document.addEventListener('DOMContentLoaded', () => {
         dataArray.forEach(item => {
             const option = document.createElement('option');
             option.value = item._id;
-            option.textContent = item.name;
+            option.textContent = item.code ? `${item.name} (${item.code})` : item.name;
             selectElement.appendChild(option);
         });
     };
@@ -803,15 +804,183 @@ document.addEventListener('DOMContentLoaded', () => {
     const topbarUserRole = document.getElementById('topbar-user-role');
     const topbarUserAvatar = document.getElementById('topbar-user-avatar');
 
-    // Update Top App Bar with user data
-    const updateTopBar = (userData) => {
-        if (topbarUserName) topbarUserName.textContent = userData.name || 'ผู้ใช้งาน';
-        if (topbarUserRole) topbarUserRole.textContent = userData.role || '-';
-        if (topbarUserAvatar) {
-            const nameForAvatar = encodeURIComponent(userData.name || 'User');
-            topbarUserAvatar.src = `https://ui-avatars.com/api/?name=${nameForAvatar}&background=0D8ABC&color=fff`;
+    // Helper to decode JWT token in frontend safely
+    const parseJwt = (token) => {
+        try {
+            const base64Url = token.split('.')[1];
+            const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+            const jsonPayload = decodeURIComponent(window.atob(base64).split('').map(function(c) {
+                return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+            }).join(''));
+            return JSON.parse(jsonPayload);
+        } catch (error) {
+            console.error('[SILMIN] Failed to parse JWT token:', error);
+            return null;
         }
     };
+
+    // Update Top App Bar with user data
+    const updateTopBar = (userData) => {
+        try {
+            // Retrieve user data if not passed explicitly
+            let user = userData;
+            if (!user) {
+                user = getCurrentUser();
+            }
+            if (!user) {
+                const token = localStorage.getItem('silmin_token');
+                if (token) {
+                    const decoded = parseJwt(token);
+                    if (decoded) {
+                        user = {
+                            name: decoded.name,
+                            role: decoded.role,
+                            emp_id: decoded.emp_id,
+                            branch: decoded.branch_id ? { _id: decoded.branch_id, name: 'กำลังตรวจสอบ...' } : null
+                        };
+                    }
+                }
+            }
+
+            // Throw error if user data cannot be retrieved to trigger fallback block
+            if (!user) {
+                throw new Error('No user data or session available');
+            }
+
+            const userName = user.name || 'ผู้ใช้งาน';
+            const userRole = user.role || '-';
+            const branchName = (user.branch && user.branch.name) ? user.branch.name : 'ไม่ระบุสาขา';
+            const empId = user.emp_id || '-';
+
+            // 1. Update Header Elements
+            // Desktop topbar elements
+            const topbarBranch = document.getElementById('topbar-user-branch');
+            if (topbarUserName) topbarUserName.textContent = userName;
+            if (topbarUserRole) topbarUserRole.textContent = userRole;
+            if (topbarBranch) topbarBranch.textContent = branchName;
+
+            // Tablet topbar elements
+            const topbarUserNameTablet = document.getElementById('topbar-user-name-tablet');
+            const topbarUserRoleTablet = document.getElementById('topbar-user-role-tablet');
+            if (topbarUserNameTablet) topbarUserNameTablet.textContent = userName;
+            if (topbarUserRoleTablet) topbarUserRoleTablet.textContent = userRole;
+
+            // Mobile topbar elements
+            const topbarUserNameMobile = document.getElementById('topbar-user-name-mobile');
+            const topbarUserBranchMobile = document.getElementById('topbar-user-branch-mobile');
+            if (topbarUserNameMobile) topbarUserNameMobile.textContent = userName;
+            if (topbarUserBranchMobile) {
+                topbarUserBranchMobile.innerHTML = `<i class="fa-solid fa-store text-[9px]"></i> <span>${branchName}</span>`;
+            }
+
+            // Set Avatar images
+            const nameForAvatar = encodeURIComponent(userName);
+            const avatarUrl = `https://ui-avatars.com/api/?name=${nameForAvatar}&background=0D8ABC&color=fff`;
+            if (topbarUserAvatar) topbarUserAvatar.src = avatarUrl;
+            
+            // 2. Update Popup Elements
+            const popupUserAvatar = document.getElementById('popup-user-avatar');
+            const popupUserName = document.getElementById('popup-user-name');
+            const popupUserUsername = document.getElementById('popup-user-username');
+            const popupUserBranch = document.getElementById('popup-user-branch');
+            const popupUserRole = document.getElementById('popup-user-role');
+
+            if (popupUserAvatar) popupUserAvatar.src = avatarUrl;
+            if (popupUserName) popupUserName.textContent = userName;
+            if (popupUserUsername) popupUserUsername.textContent = `${empId}@silmin.com`;
+            if (popupUserBranch) popupUserBranch.textContent = branchName;
+            if (popupUserRole) popupUserRole.textContent = userRole;
+
+        } catch (error) {
+            console.error('[SILMIN] Error updating top bar with session info:', error);
+            
+            // Fallback display
+            const userNameFallback = 'ผู้ใช้งาน';
+            const userRoleFallback = '-';
+            const branchNameFallback = 'ไม่ระบุสาขา';
+            const empIdFallback = '-';
+            const avatarUrlFallback = `https://ui-avatars.com/api/?name=User&background=0D8ABC&color=fff`;
+
+            if (topbarUserName) topbarUserName.textContent = userNameFallback;
+            if (topbarUserRole) topbarUserRole.textContent = userRoleFallback;
+            
+            const topbarBranch = document.getElementById('topbar-user-branch');
+            if (topbarBranch) topbarBranch.textContent = branchNameFallback;
+
+            const topbarUserNameTablet = document.getElementById('topbar-user-name-tablet');
+            const topbarUserRoleTablet = document.getElementById('topbar-user-role-tablet');
+            if (topbarUserNameTablet) topbarUserNameTablet.textContent = userNameFallback;
+            if (topbarUserRoleTablet) topbarUserRoleTablet.textContent = userRoleFallback;
+
+            const topbarUserNameMobile = document.getElementById('topbar-user-name-mobile');
+            const topbarUserBranchMobile = document.getElementById('topbar-user-branch-mobile');
+            if (topbarUserNameMobile) topbarUserNameMobile.textContent = userNameFallback;
+            if (topbarUserBranchMobile) {
+                topbarUserBranchMobile.innerHTML = `<i class="fa-solid fa-store text-[9px]"></i> <span>${branchNameFallback}</span>`;
+            }
+
+            if (topbarUserAvatar) topbarUserAvatar.src = avatarUrlFallback;
+
+            const popupUserAvatar = document.getElementById('popup-user-avatar');
+            const popupUserName = document.getElementById('popup-user-name');
+            const popupUserUsername = document.getElementById('popup-user-username');
+            const popupUserBranch = document.getElementById('popup-user-branch');
+            const popupUserRole = document.getElementById('popup-user-role');
+
+            if (popupUserAvatar) popupUserAvatar.src = avatarUrlFallback;
+            if (popupUserName) popupUserName.textContent = userNameFallback;
+            if (popupUserUsername) popupUserUsername.textContent = `${empIdFallback}@silmin.com`;
+            if (popupUserBranch) popupUserBranch.textContent = branchNameFallback;
+            if (popupUserRole) popupUserRole.textContent = userRoleFallback;
+        }
+    };
+
+    // User Profile Dropdown Popup behavior
+    const userProfileTrigger = document.getElementById('user-profile-trigger');
+    const userInfoPopup = document.getElementById('user-info-popup');
+    const popupLogoutBtn = document.getElementById('popup-logout-btn');
+
+    if (userProfileTrigger && userInfoPopup) {
+        userProfileTrigger.addEventListener('click', (e) => {
+            e.stopPropagation();
+            userInfoPopup.classList.toggle('hidden');
+        });
+
+        // Close popup when clicking anywhere outside
+        document.addEventListener('click', (e) => {
+            if (!userInfoPopup.classList.contains('hidden')) {
+                if (!userInfoPopup.contains(e.target) && !userProfileTrigger.contains(e.target)) {
+                    userInfoPopup.classList.add('hidden');
+                }
+            }
+        });
+    }
+
+    if (popupLogoutBtn) {
+        popupLogoutBtn.addEventListener('click', () => {
+            // Trigger logout flow
+            if (logoutBtn) {
+                logoutBtn.click();
+            } else {
+                // Fallback manual logout
+                localStorage.removeItem('silmin_token');
+                localStorage.removeItem('silmin_user');
+                stopPendingTransferPolling();
+                
+                mainLayout.classList.add('opacity-0');
+                setTimeout(() => {
+                    mainLayout.classList.add('hidden');
+                    loginForm.reset();
+                    loginError.classList.add('hidden');
+                    loginScreen.classList.remove('hidden');
+                    loginScreen.classList.add('flex');
+                    void loginScreen.offsetWidth;
+                    loginScreen.classList.remove('opacity-0');
+                    loginScreen.classList.add('opacity-100');
+                }, 500);
+            }
+        });
+    }
 
     // ==========================================
     // Dynamic Permissions (RBAC ตามสิทธิ์จาก Role)
@@ -1124,7 +1293,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         <label class="block text-slate-300 text-sm font-medium">จำนวนที่ต้องการพิมพ์</label>
                         <div class="flex items-center gap-3">
                             <button type="button" id="barcode-qty-minus" class="w-10 h-10 rounded-xl bg-slate-700 text-white flex items-center justify-center hover:bg-slate-600 transition-colors"><i class="fa-solid fa-minus"></i></button>
-                            <input type="number" id="barcode-qty-input" value="1" min="1" max="${maxQty > 0 ? maxQty : 1}" class="flex-1 h-10 bg-slate-900 border border-slate-700 rounded-xl text-center text-white focus:outline-none focus:border-cyan-500 font-mono text-lg" readonly>
+                            <input type="number" id="barcode-qty-input" value="1" min="1" max="${maxQty > 0 ? maxQty : 1}" class="flex-1 h-10 bg-slate-900 border border-slate-700 rounded-xl text-center text-white focus:outline-none focus:border-cyan-500 font-mono text-lg">
                             <button type="button" id="barcode-qty-plus" class="w-10 h-10 rounded-xl bg-slate-700 text-white flex items-center justify-center hover:bg-slate-600 transition-colors"><i class="fa-solid fa-plus"></i></button>
                         </div>
                         <p class="text-xs text-slate-500 text-right mt-1">สูงสุด: ${maxQty} ดวง</p>
@@ -1134,6 +1303,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 const qtyInput = document.getElementById('barcode-qty-input');
                 const btnMinus = document.getElementById('barcode-qty-minus');
                 const btnPlus = document.getElementById('barcode-qty-plus');
+
+                if (qtyInput) {
+                    qtyInput.addEventListener('blur', () => {
+                        let val = parseInt(qtyInput.value);
+                        let limit = Math.max(1, maxQty);
+                        if (isNaN(val) || val < 1) {
+                            qtyInput.value = 1;
+                        } else if (val > limit) {
+                            qtyInput.value = limit;
+                        } else {
+                            qtyInput.value = val;
+                        }
+                    });
+                }
 
                 if (btnMinus) {
                     btnMinus.addEventListener('click', () => {
@@ -1891,9 +2074,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // ==========================================
     // Master Data Settings Logic
-    // ==========================================
     function renderSettingsList() {
         if (!masterDataList) return;
+
+        if (masterDataCodeInput) {
+            if (currentSettingsTab === 'productname') {
+                masterDataCodeInput.classList.remove('hidden');
+            } else {
+                masterDataCodeInput.classList.add('hidden');
+            }
+        }
 
         let dataArray = [];
         if (window.masterDataCache) {
@@ -1919,10 +2109,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 const card = document.createElement('div');
                 card.className = 'bg-slate-900 border border-slate-700 rounded-xl p-4 flex items-center justify-between group hover:border-cyan-500/50 transition-colors';
 
+                let displayName = item.name;
+                let dataCodeAttr = '';
+                if (currentSettingsTab === 'productname') {
+                    dataCodeAttr = `data-code="${item.code || ''}"`;
+                    if (item.code) {
+                        displayName = `${item.name} <span class="text-xs text-slate-400 font-mono ml-1 bg-slate-800 px-1.5 py-0.5 rounded border border-slate-700/50">[${item.code}]</span>`;
+                    }
+                }
+
                 card.innerHTML = `
-                    <span class="text-white font-medium truncate pr-2">${item.name}</span>
+                    <span class="text-white font-medium truncate pr-2">${displayName}</span>
                     <div class="flex items-center gap-1">
-                        <button class="btn-edit-master text-slate-500 hover:text-cyan-400 transition-colors opacity-50 group-hover:opacity-100 p-2 rounded-lg hover:bg-cyan-500/10" data-id="${item._id}" data-name="${item.name}">
+                        <button class="btn-edit-master text-slate-500 hover:text-cyan-400 transition-colors opacity-50 group-hover:opacity-100 p-2 rounded-lg hover:bg-cyan-500/10" data-id="${item._id}" data-name="${item.name}" ${dataCodeAttr}>
                             <i class="fa-solid fa-pen"></i>
                         </button>
                         <button class="btn-delete-master text-slate-500 hover:text-red-400 transition-colors opacity-50 group-hover:opacity-100 p-2 rounded-lg hover:bg-red-500/10" data-id="${item._id}">
@@ -1938,12 +2137,27 @@ document.addEventListener('DOMContentLoaded', () => {
                 btn.addEventListener('click', (e) => {
                     const id = e.currentTarget.getAttribute('data-id');
                     const oldName = e.currentTarget.getAttribute('data-name');
+                    const oldCode = e.currentTarget.getAttribute('data-code') || '';
 
-                    showPrompt('แก้ไขข้อมูล', oldName, (newName) => {
-                        if (newName && newName.trim() !== '' && newName !== oldName) {
-                            editMasterData(id, newName.trim());
-                        }
-                    });
+                    if (currentSettingsTab === 'productname') {
+                        showPrompt('แก้ไขชื่อสินค้า', oldName, (newName) => {
+                            if (newName && newName.trim() !== '') {
+                                showPrompt('แก้ไขรหัสชื่อสินค้า (ปล่อยว่างไว้ได้)', oldCode, (newCode) => {
+                                    const finalName = newName.trim();
+                                    const finalCode = (newCode || '').trim();
+                                    if (finalName !== oldName || finalCode !== oldCode) {
+                                        editMasterData(id, finalName, finalCode);
+                                    }
+                                });
+                            }
+                        });
+                    } else {
+                        showPrompt('แก้ไขข้อมูล', oldName, (newName) => {
+                            if (newName && newName.trim() !== '' && newName !== oldName) {
+                                editMasterData(id, newName.trim());
+                            }
+                        });
+                    }
                 });
             });
 
@@ -1974,6 +2188,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 currentSettingsTab = e.currentTarget.getAttribute('data-tab');
                 if (masterDataInput) masterDataInput.value = ''; // clear input
+                if (masterDataCodeInput) {
+                    masterDataCodeInput.value = '';
+                    if (currentSettingsTab === 'productname') {
+                        masterDataCodeInput.classList.remove('hidden');
+                    } else {
+                        masterDataCodeInput.classList.add('hidden');
+                    }
+                }
                 renderSettingsList();
             });
         });
@@ -1984,16 +2206,22 @@ document.addEventListener('DOMContentLoaded', () => {
             const name = masterDataInput.value.trim();
             if (!name) return showToast('กรุณาระบุชื่อข้อมูลที่ต้องการเพิ่ม', 'error');
 
+            const payload = { name };
+            if (currentSettingsTab === 'productname' && masterDataCodeInput) {
+                payload.code = masterDataCodeInput.value.trim();
+            }
+
             try {
                 const response = await authFetch(`${API_BASE_URL}/master/${currentSettingsTab}`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ name })
+                    body: JSON.stringify(payload)
                 });
                 const result = await response.json();
 
                 if (result.success) {
                     masterDataInput.value = '';
+                    if (masterDataCodeInput) masterDataCodeInput.value = '';
                     showToast('เพิ่มข้อมูลสำเร็จ');
                     await fetchMasterData(); // reload data & re-render
                 } else {
@@ -2006,12 +2234,16 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    const editMasterData = async (id, name) => {
+    const editMasterData = async (id, name, code) => {
         try {
+            const payload = { name };
+            if (currentSettingsTab === 'productname') {
+                payload.code = code || '';
+            }
             const response = await authFetch(`${API_BASE_URL}/master/${currentSettingsTab}/${id}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name })
+                body: JSON.stringify(payload)
             });
             const result = await response.json();
 
@@ -5721,6 +5953,10 @@ document.addEventListener('DOMContentLoaded', () => {
             // Bind Refresh Buttons
             document.getElementById('btn-refresh-mystock')?.addEventListener('click', loadBranchInventoryMyStock);
             document.getElementById('btn-refresh-globalstock')?.addEventListener('click', loadBranchInventoryGlobalStock);
+ 
+            // Bind Condition Filters
+            document.getElementById('filter-branch-mystock-condition')?.addEventListener('change', loadBranchInventoryMyStock);
+            document.getElementById('filter-branch-globalstock-condition')?.addEventListener('change', loadBranchInventoryGlobalStock);
 
             // Bind Search
             document.getElementById('search-branch-mystock')?.addEventListener('input', (e) => {
@@ -5859,7 +6095,16 @@ document.addEventListener('DOMContentLoaded', () => {
             if (data.success) {
                 tbody.innerHTML = '';
                 // Filter only items with > 0 quantity
-                const items = data.data.filter(p => Number(p.quantity || 0) > 0);
+                let items = data.data.filter(p => Number(p.quantity || 0) > 0);
+
+                // Apply condition filter (สภาพเครื่อง)
+                const condFilter = document.getElementById('filter-branch-mystock-condition')?.value || 'ALL';
+                if (condFilter !== 'ALL') {
+                    items = items.filter(p => {
+                        const condName = p.condition_id ? p.condition_id.name : '';
+                        return condName.replace(/\s+/g, '') === condFilter.replace(/\s+/g, '');
+                    });
+                }
 
                 if (items.length === 0) {
                     tbody.innerHTML = '<tr><td colspan="5" class="text-center py-6 text-slate-400">ไม่พบสินค้าคงเหลือในสาขาของคุณ</td></tr>';
@@ -5971,12 +6216,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
                         colorGroup.items.forEach(p => {
                             const capacity = (p.capacity_id && p.capacity_id.name) ? p.capacity_id.name : 'ไม่ระบุความจุ';
+                            const condition = (p.condition_id && p.condition_id.name) ? p.condition_id.name : '';
                             const trItem = document.createElement('tr');
                             trItem.className = `item-row hidden child-of-${nameRowId} child-of-${colorRowId} hover:bg-slate-700/20 transition-colors border-l-4 border-slate-700`;
                             trItem.innerHTML = `
                                 <td class="px-6 py-3 pl-20">
                                     <div class="flex flex-col">
-                                        <span class="text-sm text-slate-300">ความจุ: <span class="font-bold text-white">${capacity}</span></span>
+                                        <span class="text-sm text-slate-300">ความจุ: <span class="font-bold text-white">${capacity}</span> ${condition ? `/ ${condition}` : ''}</span>
                                         <span class="text-xs text-slate-500 font-mono mt-0.5">รหัส: ${p.product_code || '-'}</span>
                                     </div>
                                 </td>
@@ -6009,7 +6255,16 @@ document.addEventListener('DOMContentLoaded', () => {
             const data = await res.json();
             if (data.success) {
                 tbody.innerHTML = '';
-                const items = data.data.filter(p => Number(p.global_total_quantity || 0) > 0);
+                let items = data.data.filter(p => Number(p.global_total_quantity || 0) > 0);
+
+                // Apply condition filter (สภาพเครื่อง)
+                const condFilter = document.getElementById('filter-branch-globalstock-condition')?.value || 'ALL';
+                if (condFilter !== 'ALL') {
+                    items = items.filter(p => {
+                        const condName = p.condition_id ? p.condition_id.name : '';
+                        return condName.replace(/\s+/g, '') === condFilter.replace(/\s+/g, '');
+                    });
+                }
 
                 if (items.length === 0) {
                     tbody.innerHTML = '<tr><td colspan="4" class="text-center py-6 text-slate-400">ไม่พบข้อมูลสินค้าในระบบ</td></tr>';
@@ -6187,51 +6442,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (elGrandTotal) elGrandTotal.textContent = '฿' + grandTotal.toLocaleString();
     };
 
-    window.initAccountingPO = async () => {
-        // Load Branches
-        const poBranch = document.getElementById('po-branch');
-        if (poBranch) {
-            try {
-                const res = await authFetch(`${API_BASE_URL}/branches`);
-                const json = await res.json();
-                if (json.success) {
-                    poBranch.innerHTML = '<option value="">-- เลือกสาขา --</option>';
-                    json.data.forEach(b => {
-                        poBranch.innerHTML += `<option value="${b._id}">${b.name}</option>`;
-                    });
-                }
-            } catch (e) {
-                console.error(e);
-            }
-        }
-
-        // Populate Datalists
-        const md = window.masterDataCache || {};
-        const populateDL = (id, arr) => {
-            const dl = document.getElementById(id);
-            if (dl && arr) {
-                dl.innerHTML = arr.map(x => `<option value="${x.name || x.product_code || x}"></option>`).join('');
-            }
-        };
-
-        populateDL('dl-suppliers', md.suppliers);
-        populateDL('dl-product-names', md.productNames);
-        populateDL('dl-product-colors', md.productColors);
-        populateDL('dl-product-capacities', md.productCapacities);
-
-        // Fetch products for code autocompletion (since masterDataCache might not have all product_codes easily)
-        if (allProductsCache && allProductsCache.length > 0) {
-            const dlCodes = document.getElementById('dl-product-codes');
-            if (dlCodes) {
-                dlCodes.innerHTML = allProductsCache.map(p => `<option value="${p.product_code}"></option>`).join('');
-            }
-        }
-
-        document.getElementById('po-items-container').innerHTML = '';
-        poItemCount = 0;
-        addPoItemRow();
-        calculatePOTotal();
-    };
+    // Note: window.initAccountingPO has been consolidated below to prevent duplicate declarations and overwriting issues.
 
     const addPoItemRow = () => {
         poItemCount++;
@@ -6248,8 +6459,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     <input type="text" name="po_item_name" list="dl-product-names" required placeholder="ค้นหาชื่อสินค้า..." class="w-full px-3 py-2.5 text-sm rounded-lg bg-[#2a2a2a] border border-gray-700 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none placeholder-slate-500 transition-all">
                 </div>
                 <div>
-                    <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wide">รหัส/SKU <span class="text-red-400">*</span></label>
-                    <input type="text" name="po_item_code" list="dl-product-codes" required placeholder="เช่น P001" class="w-full px-3 py-2.5 text-sm rounded-lg bg-[#2a2a2a] border border-gray-700 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none placeholder-slate-500 transition-all font-mono">
+                    <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wide">รหัส/SKU</label>
+                    <input type="text" name="po_item_code" list="dl-product-codes" placeholder="ว่างไว้เพื่อสุ่มรหัส" class="w-full px-3 py-2.5 text-sm rounded-lg bg-[#2a2a2a] border border-gray-700 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none placeholder-slate-500 transition-all font-mono">
                 </div>
                 <div>
                     <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wide">หมวดหมู่</label>
@@ -6259,7 +6470,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     </select>
                 </div>
             </div>
-            <div class="grid grid-cols-2 md:grid-cols-5 gap-4 items-end">
+            <div class="grid grid-cols-2 md:grid-cols-6 gap-4 items-end">
                 <div>
                     <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wide">สี</label>
                     <input type="text" name="po_item_color" list="dl-product-colors" placeholder="สี" class="w-full px-3 py-2.5 text-sm rounded-lg bg-[#2a2a2a] border border-gray-700 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none placeholder-slate-500 transition-all">
@@ -6269,16 +6480,23 @@ document.addEventListener('DOMContentLoaded', () => {
                     <input type="text" name="po_item_capacity" list="dl-product-capacities" placeholder="ความจุ" class="w-full px-3 py-2.5 text-sm rounded-lg bg-[#2a2a2a] border border-gray-700 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none placeholder-slate-500 transition-all">
                 </div>
                 <div>
+                    <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wide">หน่วยนับ <span class="text-red-400">*</span></label>
+                    <select name="po_item_unit" required class="w-full px-3 py-2.5 text-sm rounded-lg bg-[#2a2a2a] border border-gray-700 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all">
+                        <option value="">-- เลือก --</option>
+                        ${(window.masterDataCache?.productUnits || []).map(u => `<option value="${u.name}">${u.name}</option>`).join('')}
+                    </select>
+                </div>
+                <div>
                     <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wide">จำนวน <span class="text-red-400">*</span></label>
                     <input type="number" name="po_item_qty" required min="1" value="1" class="w-full px-3 py-2.5 text-sm rounded-lg bg-[#2a2a2a] border border-gray-700 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none font-bold text-center transition-all">
                 </div>
                 <div>
                     <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wide">ราคาทุน <span class="text-red-400">*</span></label>
-                    <input type="number" name="po_item_cost" required min="0" placeholder="0" class="w-full px-3 py-2.5 text-sm rounded-lg bg-[#2a2a2a] border border-gray-700 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none font-mono placeholder-slate-500 transition-all">
+                    <input type="number" name="po_item_cost" required min="0" placeholder="0" step="any" class="w-full px-3 py-2.5 text-sm rounded-lg bg-[#2a2a2a] border border-gray-700 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none font-mono placeholder-slate-500 transition-all">
                 </div>
                 <div>
                     <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wide">ราคาขาย <span class="text-red-400">*</span></label>
-                    <input type="number" name="po_item_sell" required min="0" placeholder="0" class="w-full px-3 py-2.5 text-sm rounded-lg bg-[#2a2a2a] border border-gray-700 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none font-mono placeholder-slate-500 transition-all">
+                    <input type="number" name="po_item_sell" required min="0" placeholder="0" step="any" class="w-full px-3 py-2.5 text-sm rounded-lg bg-[#2a2a2a] border border-gray-700 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none font-mono placeholder-slate-500 transition-all">
                 </div>
             </div>
             <div class="mt-4 pt-3 border-t border-slate-700/50 flex items-center justify-between">
@@ -6298,6 +6516,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const inputCost = row.querySelector('[name="po_item_cost"]');
         const labelTotal = row.querySelector('.po-row-total');
         const inputCode = row.querySelector('[name="po_item_code"]');
+        const inputName = row.querySelector('[name="po_item_name"]');
 
         const updateRowTotal = () => {
             const q = Number(inputQty.value) || 0;
@@ -6317,7 +6536,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (product) {
                 const setVal = (name, val) => {
                     const el = row.querySelector(`[name="${name}"]`);
-                    if (el && val) el.value = val;
+                    if (el && val !== undefined && val !== null) el.value = val;
                 };
                 setVal('po_item_name', product.name);
                 setVal('po_item_category', product.category);
@@ -6330,6 +6549,43 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (checkImei) checkImei.checked = !!product.track_imei;
 
                 updateRowTotal();
+            }
+        });
+
+        // Auto-fill logic when Name changes
+        inputName.addEventListener('change', (e) => {
+            const val = e.target.value.trim();
+            if (!val) return;
+
+            // Check if name has a code in Master Data
+            if (window.masterDataCache && window.masterDataCache.productNames) {
+                const matchedName = window.masterDataCache.productNames.find(x => x.name === val);
+                if (matchedName && matchedName.code) {
+                    const el = row.querySelector('[name="po_item_code"]');
+                    if (el) el.value = matchedName.code;
+                }
+            }
+
+            // Check if name matches an existing product in cache for auto-fill
+            if (typeof allProductsCache !== 'undefined') {
+                const product = allProductsCache.find(p => p.name === val);
+                if (product) {
+                    const setVal = (name, val) => {
+                        const el = row.querySelector(`[name="${name}"]`);
+                        if (el && val !== undefined && val !== null) el.value = val;
+                    };
+                    setVal('po_item_code', product.product_code);
+                    setVal('po_item_category', product.category);
+                    setVal('po_item_color', product.color || '');
+                    setVal('po_item_capacity', product.capacity || '');
+                    setVal('po_item_cost', product.cost_price);
+                    setVal('po_item_sell', product.selling_price);
+
+                    const checkImei = row.querySelector(`[name="po_item_track_imei"]`);
+                    if (checkImei) checkImei.checked = !!product.track_imei;
+
+                    updateRowTotal();
+                }
             }
         });
 
@@ -6353,12 +6609,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const items = [];
             for (let row of rows) {
+                let product_code = row.querySelector('[name="po_item_code"]').value.trim();
+                if (!product_code) {
+                    // หากไม่ได้กรอก SKU ระบบจะสุ่มรหัสให้อัตโนมัติ เพื่อนำไปใช้ติดตามสต็อกสินค้าอย่างถูกต้อง
+                    product_code = 'SKU-' + Date.now().toString().slice(-6) + Math.floor(100 + Math.random() * 900);
+                }
                 items.push({
                     product_name: row.querySelector('[name="po_item_name"]').value,
-                    product_code: row.querySelector('[name="po_item_code"]').value,
+                    product_code: product_code,
                     category: row.querySelector('[name="po_item_category"]').value,
                     color: row.querySelector('[name="po_item_color"]').value,
                     capacity: row.querySelector('[name="po_item_capacity"]').value,
+                    unit: row.querySelector('[name="po_item_unit"]').value,
                     ordered_qty: Number(row.querySelector('[name="po_item_qty"]').value),
                     cost_price: Number(row.querySelector('[name="po_item_cost"]').value),
                     selling_price: Number(row.querySelector('[name="po_item_sell"]').value),
@@ -6555,6 +6817,50 @@ document.addEventListener('DOMContentLoaded', () => {
                 console.error('Error loading branches in PO initialization:', e);
             }
         }
+
+        // Fetch master data if not loaded yet
+        await ensureMasterDataLoaded();
+
+        const md = window.masterDataCache || {};
+
+        // Populate Suppliers Dropdown
+        const poSupplier = document.getElementById('po-supplier');
+        if (poSupplier && md.suppliers) {
+            poSupplier.innerHTML = '<option value="" disabled selected>-- เลือกผู้จัดจำหน่าย --</option>' +
+                md.suppliers.map(x => `<option value="${x.name}">${x.name}</option>`).join('');
+        }
+
+        // Populate Datalists
+        const populateDL = (id, arr) => {
+            const dl = document.getElementById(id);
+            if (dl && arr) {
+                dl.innerHTML = arr.map(x => {
+                    const val = x.name || x.product_code || x;
+                    const label = (id === 'dl-product-names' && x.code) ? `(${x.code})` : '';
+                    return `<option value="${val}">${label}</option>`;
+                }).join('');
+            }
+        };
+
+        populateDL('dl-product-names', md.productNames);
+        populateDL('dl-product-colors', md.productColors);
+        populateDL('dl-product-capacities', md.productCapacities);
+
+        // Fetch products for code autocompletion (since masterDataCache might not have all product_codes easily)
+        if (allProductsCache && allProductsCache.length > 0) {
+            const dlCodes = document.getElementById('dl-product-codes');
+            if (dlCodes) {
+                dlCodes.innerHTML = allProductsCache.map(p => `<option value="${p.product_code}"></option>`).join('');
+            }
+        }
+
+        const itemsContainer = document.getElementById('po-items-container');
+        if (itemsContainer) {
+            itemsContainer.innerHTML = '';
+            poItemCount = 0;
+            addPoItemRow();
+            calculatePOTotal();
+        }
     };
 
     window.initBranchReceive = async () => {
@@ -6732,7 +7038,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     updateScannedCount();
                 }
 
-                input.addEventListener('keydown', (e) => {
+                input.addEventListener('keydown', async (e) => {
                     if (e.key === 'Enter') {
                         e.preventDefault();
                         const val = input.value.trim();
@@ -6751,6 +7057,26 @@ document.addEventListener('DOMContentLoaded', () => {
                             showToast(`สแกนครบตามจำนวนค้างรับ (${pendingQty} เครื่อง) แล้ว`, 'warning');
                             input.value = '';
                             return;
+                        }
+
+                        // Check global database existence
+                        try {
+                            input.disabled = true;
+                            const res = await authFetch(`${API_BASE_URL}/products/check-existence?code=${encodeURIComponent(val)}`);
+                            const data = await res.json();
+                            input.disabled = false;
+                            input.focus();
+
+                            if (data.success && data.exists) {
+                                alert(`รหัสสินค้า/IMEI (${val}) นี้มีอยู่ในระบบแล้ว ไม่อนุญาตให้ดำเนินการตรวจรับต่อ`);
+                                showToast(`รหัสสินค้า/IMEI (${val}) มีอยู่ในระบบแล้ว`, 'error');
+                                input.value = '';
+                                return;
+                            }
+                        } catch (err) {
+                            console.error('Error checking code existence:', err);
+                            input.disabled = false;
+                            input.focus();
                         }
 
                         // Add tag

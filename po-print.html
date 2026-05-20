@@ -185,21 +185,31 @@
         <!-- Header -->
         <div class="header-container">
             <div class="company-info">
-                <div class="company-name">บริษัท ซิลมีน โมบาย จำกัด</div>
-                <div class="company-address">
-                    สำนักงานใหญ่:<br>
-                    เลขประจำตัวผู้เสียภาษี : 0955562000701 
-                </div>
+                <img src="icon_silminmobile.png" alt="Logo" style="width:150px; height:auto;"><br><br>
+                <div class="company-name">บริษัท ซิลมีน โมบาย จำกัด (สาขา <span id="doc-branch-name"></span>)</div>
+                <div class="company-address">เลขประจำตัวผู้เสียภาษี : 0955562000701 </div>
             </div>
             <div class="document-info">
-                <div class="doc-title">ใบสั่งซื้อสินค้า</div>
-                <div class="doc-title-en" style="font-size: 14px; font-weight: 600; color: #555; margin-top: -8px; margin-bottom: 15px;">PURCHASE ORDER</div>
-                <div class="meta-grid">
-                    <div class="meta-label">เลขที่ PO :</div>
-                    <div id="doc-po-number" style="font-family: monospace; font-weight: bold;">-</div>
-                    <div class="meta-label">วันที่สั่งซื้อ :</div>
-                    <div id="doc-po-date">-</div>
-                </div>
+                <table style="width: 100%; border-collapse: collapse; border: 1px solid #000; text-align: left; table-layout: fixed;">
+                    <tr>
+                        <td colspan="2" style="border: 1px solid #000; padding: 8px; font-weight: 700; font-size: 18px; text-align: center; background-color: #f5f5f5; color: #000; letter-spacing: 0.5px;">
+                            ใบสั่งซื้อ
+                        </td>
+                    </tr>
+                    <tr>
+                        <td colspan="2" style="border: 1px solid #000; padding: 5px; font-weight: 600; font-size: 12px; text-align: center; color: #444; letter-spacing: 0.5px;">
+                            PURCHASE ORDER
+                        </td>
+                    </tr>
+                    <tr>
+                        <th style="width: 45%; background-color: #f5f5f5; border: 1px solid #000; padding: 6px 8px; font-weight: 600; font-size: 11px; text-align: left; line-height: 1.2;">เลขที่ PO / PO No.</th>
+                        <td id="doc-po-number" style="border: 1px solid #000; padding: 6px 8px; font-family: monospace; font-weight: bold; font-size: 12px; text-align: left; line-height: 1.2;">-</td>
+                    </tr>
+                    <tr>
+                        <th style="width: 45%; background-color: #f5f5f5; border: 1px solid #000; padding: 6px 8px; font-weight: 600; font-size: 11px; text-align: left; line-height: 1.2;">วันที่ / Date</th>
+                        <td id="doc-po-date" style="border: 1px solid #000; padding: 6px 8px; font-size: 11.5px; text-align: left; line-height: 1.2;">-</td>
+                    </tr>
+                </table>
             </div>
         </div>
 
@@ -208,11 +218,13 @@
             <div class="details-box">
                 <h4>ผู้จำหน่าย (Supplier)</h4>
                 <div><strong>ชื่อซัพพลายเออร์:</strong> <span id="doc-supplier-name">-</span></div>
-                <div><strong>ติดต่อ:</strong> ฝ่ายขาย / ประสานงานขาย</div>
+                <div><strong>ที่อยู่:</strong> <span id="doc-supplier-address">ที่อยู่ของซัพพลายเออร์</span></div>
             </div>
             <div class="details-box">
-                <h4>จัดส่งไปยังสาขาปลายทาง (Ship To)</h4>
-                <div><strong>ชื่อสาขา:</strong> <span id="doc-branch-name">-</span></div>
+                <h4>ผู้จัดซื้อ (Purchaser)</h4>
+                <div><strong>ชื่อผู้จัดซื้อ:</strong> <span id="doc-purchaser-name">-</span></div>
+                <div><strong>ตำแหน่ง:</strong> <span id="doc-position">-</span></div>
+                <div><strong>เบอร์โทรศัพท์:</strong> <span id="doc-phone">-</span></div>
                 <div><strong>ที่อยู่จัดส่ง:</strong> <span id="doc-branch-address">ที่อยู่ของสาขาปลายทาง</span></div>
             </div>
         </div>
@@ -222,11 +234,10 @@
             <thead>
                 <tr>
                     <th style="width: 50px;">ลำดับ</th>
-                    <th style="width: 120px;">รหัสสินค้า</th>
                     <th>ชื่อสินค้า / รายละเอียดสินค้า</th>
-                    <th style="width: 90px;">จำนวนสั่ง</th>
-                    <th style="width: 100px;">ราคาทุน/ชิ้น</th>
-                    <th style="width: 120px;">ยอดรวมเงิน</th>
+                    <th style="width: 100px;">จำนวนสั่ง</th>
+                    <th style="width: 110px;">ราคาทุน/ชิ้น</th>
+                    <th style="width: 130px;">ยอดรวมเงิน</th>
                 </tr>
             </thead>
             <tbody id="doc-table-body">
@@ -234,9 +245,9 @@
             </tbody>
             <tfoot>
                 <tr class="summary-row">
-                    <td colspan="3" class="right" style="padding-right: 15px;">รวมยอดสั่งซื้อสินค้าทั้งสิ้น</td>
+                    <td colspan="2" id="doc-grand-total-text" style="font-size: 12.5px; font-weight: 500; text-align: center; color: #111;">(-)</td>
                     <td class="center" id="doc-total-qty">-</td>
-                    <td class="right" style="font-size: 11px; font-weight: normal; color: #555;">(ราคารวมสุทธิ)</td>
+                    <td class="right" style="font-size: 12px; font-weight: bold; width: 110px;">ราคารวมสุทธิ</td>
                     <td class="right" id="doc-grand-total" style="font-family: monospace; font-size: 15px;">฿0</td>
                 </tr>
             </tfoot>
@@ -246,30 +257,100 @@
     <!-- Signatures -->
     <div class="signatures">
         <div class="sign-box">
-            <div style="font-weight: 600;">ผู้จัดทำ / Prepared By</div>
+            <div style="font-weight: 600;">ผู้สั่งซื้อ</div>
             <div class="sign-line"></div>
-            <div class="sign-name">(...................................................)</div>
-            <div class="sign-title">เจ้าหน้าที่จัดซื้อ</div>
+            <div class="sign-name">(<span id="doc-sign-purchaser-name">...................................................</span>)</div>
             <div style="font-size: 11px; margin-top: 5px;">วันที่ ......../......../........</div>
         </div>
         <div class="sign-box">
-            <div style="font-weight: 600;">ผู้อนุมัติสั่งซื้อ</div>
+            <div style="font-weight: 600;">ฝ่ายจัดซื้อ/การเงิน</div>
             <div class="sign-line"></div>
-            <div class="sign-name">(...................................................)</div>
-            <div class="sign-title">ผู้จัดการฝ่ายจัดซื้อ</div>
+            <div class="sign-name">(นางสาวมารีแย ดีอเระ)</div>
             <div style="font-size: 11px; margin-top: 5px;">วันที่ ......../......../........</div>
         </div>
         <div class="sign-box">
-            <div style="font-weight: 600;">ผู้จำหน่ายยินยอม</div>
+            <div style="font-weight: 600;">ผู้อนุมัติ</div>
             <div class="sign-line"></div>
-            <div class="sign-name">(...................................................)</div>
-            <div class="sign-title">ตัวแทนผู้แทนจำหน่าย</div>
+            <div class="sign-name">(นางสาวซาฟาวาตี อาบูวะ)</div>
             <div style="font-size: 11px; margin-top: 5px;">วันที่ ......../......../........</div>
         </div>
     </div>
 </div>
 
 <script>
+    function arabicToThaiBaht(num) {
+        if (num === null || num === undefined || isNaN(num)) return '';
+        num = Math.round(num * 100) / 100;
+        if (num === 0) return 'ศูนย์บาทถ้วน';
+        
+        const numbers = ['ศูนย์', 'หนึ่ง', 'สอง', 'สาม', 'สี่', 'ห้า', 'หก', 'เจ็ด', 'แปด', 'เก้า'];
+        const positions = ['', 'สิบ', 'ร้อย', 'พัน', 'หมื่น', 'แสน', 'ล้าน'];
+        
+        const parts = num.toString().split('.');
+        let bahtStr = '';
+        let satangStr = '';
+        
+        const bahtVal = parts[0];
+        if (bahtVal !== '0') {
+            const len = bahtVal.length;
+            for (let i = 0; i < len; i++) {
+                const digit = parseInt(bahtVal.charAt(i));
+                const pos = len - i - 1;
+                
+                if (digit !== 0) {
+                    let word = numbers[digit];
+                    let unit = positions[pos % 6];
+                    
+                    if (pos % 6 === 1) {
+                        if (digit === 1) word = '';
+                        else if (digit === 2) word = 'ยี่';
+                    }
+                    
+                    if (pos % 6 === 0 && len > 1 && digit === 1) {
+                        if (i > 0 && bahtVal.charAt(i - 1) !== '0') {
+                            word = 'เอ็ด';
+                        }
+                    }
+                    
+                    bahtStr += word + unit;
+                }
+                
+                if (pos > 0 && pos % 6 === 0) {
+                    bahtStr += 'ล้าน';
+                }
+            }
+            bahtStr += 'บาท';
+        }
+        
+        const satangVal = parts[1];
+        if (satangVal && satangVal !== '00') {
+            let satangNum = parseInt(satangVal);
+            if (satangVal.length === 1) satangNum *= 10;
+            
+            const digit1 = Math.floor(satangNum / 10);
+            const digit2 = satangNum % 10;
+            
+            let word1 = numbers[digit1];
+            let word2 = numbers[digit2];
+            
+            if (digit1 !== 0) {
+                if (digit1 === 1) word1 = '';
+                else if (digit1 === 2) word1 = 'ยี่';
+                satangStr += word1 + 'สิบ';
+            }
+            
+            if (digit2 !== 0) {
+                if (digit2 === 1 && digit1 !== 0) word2 = 'เอ็ด';
+                satangStr += word2;
+            }
+            satangStr += 'สตางค์';
+        } else {
+            satangStr = 'ถ้วน';
+        }
+        
+        return bahtStr + satangStr;
+    }
+
     function populatePoDocument(data) {
         // Doc Info
         document.getElementById('doc-po-number').textContent = data.po_number || '';
@@ -285,8 +366,16 @@
 
         // Supplier & Destination
         document.getElementById('doc-supplier-name').textContent = data.supplier_name || '';
+        document.getElementById('doc-supplier-address').textContent = data.supplier_address || 'สำนักงานใหญ่ ผู้จัดจำหน่ายสินค้าไอที';
         document.getElementById('doc-branch-name').textContent = (data.branch_id && data.branch_id.name) ? data.branch_id.name : '-';
         document.getElementById('doc-branch-address').textContent = (data.branch_id && data.branch_id.address) ? data.branch_id.address : 'จัดส่งเข้าคลังสินค้าหลักของสาขา';
+
+        // Purchaser Info
+        const purchaserName = (data.created_by && data.created_by.name) ? data.created_by.name : 'เจ้าหน้าที่จัดซื้อกลาง';
+        document.getElementById('doc-purchaser-name').textContent = purchaserName;
+        document.getElementById('doc-position').textContent = (data.created_by && data.created_by.role) ? data.created_by.role : 'เจ้าหน้าที่จัดซื้อ';
+        document.getElementById('doc-phone').textContent = (data.created_by && data.created_by.phone) ? data.created_by.phone : '-';
+        document.getElementById('doc-sign-purchaser-name').textContent = purchaserName;
 
         // Table Rows
         const tbody = document.getElementById('doc-table-body');
@@ -311,18 +400,17 @@
                 if (item.color) specs.push(`สี: ${item.color}`);
                 if (item.capacity) specs.push(`ความจุ: ${item.capacity}`);
                 if (item.category) specs.push(`หมวดหมู่: ${item.category}`);
-                if (item.track_imei) specs.push(`<span style="color:#0066cc;">[เก็บบันทึก IMEI]</span>`);
                 
                 if (specs.length > 0) {
                     displayName += ` (${specs.join(', ')})`;
                 }
 
+                const unitName = item.unit ? item.unit : (item.track_imei ? 'เครื่อง' : 'ชิ้น');
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td class="center">${rowIndex++}</td>
-                    <td class="center" style="font-family: monospace;">${item.product_code || '-'}</td>
                     <td>${displayName}</td>
-                    <td class="center" style="font-weight: bold;">${qty.toLocaleString()}</td>
+                    <td class="center" style="font-weight: bold;">${qty.toLocaleString()} ${unitName}</td>
                     <td class="right" style="font-family: monospace;">฿${cost.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
                     <td class="right" style="font-family: monospace; font-weight: bold;">฿${rowTotal.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
                 `;
@@ -330,8 +418,9 @@
             });
         }
 
-        document.getElementById('doc-total-qty').textContent = totalQty.toLocaleString() + ' ชิ้น';
+        document.getElementById('doc-total-qty').textContent = totalQty.toLocaleString() + ' รายการ';
         document.getElementById('doc-grand-total').textContent = '฿' + grandTotal.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+        document.getElementById('doc-grand-total-text').textContent = '(' + arabicToThaiBaht(grandTotal) + ')';
     }
 
     window.onload = function() {

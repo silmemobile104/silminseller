@@ -472,18 +472,91 @@
                             class="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-slate-800 animate-pulse"></span>
                     </button>
 
-                    <!-- User Profile -->
-                    <div class="flex items-center gap-3 pl-4 border-l border-slate-700 cursor-pointer group">
-                        <div class="flex flex-col text-right hidden sm:flex">
-                            <span id="topbar-user-name" class="text-sm font-semibold text-white">กำลังโหลด...</span>
-                            <span id="topbar-user-role" class="text-xs text-cyan-400">-</span>
+                    <!-- User Profile Container -->
+                    <div id="user-profile-container" class="relative pl-4 border-l border-slate-700">
+                        <div id="user-profile-trigger" class="flex items-center gap-3 cursor-pointer group select-none">
+                            <!-- Avatar -->
+                            <div class="w-10 h-10 rounded-full bg-gradient-to-tr from-cyan-500 to-blue-600 p-[2px] transition-transform duration-300 group-hover:scale-105">
+                                <div class="w-full h-full rounded-full border-2 border-slate-800 bg-slate-800 flex items-center justify-center overflow-hidden">
+                                    <img id="topbar-user-avatar"
+                                        src="https://ui-avatars.com/api/?name=User&background=0D8ABC&color=fff" alt="User"
+                                        class="w-full h-full object-cover">
+                                </div>
+                            </div>
+                            <!-- User Details -->
+                            <div class="flex items-center gap-2 text-sm">
+                                <!-- Desktop view: Name | Branch: BranchName | Role: RoleName -->
+                                <div class="hidden lg:flex items-center gap-2 text-slate-300">
+                                    <span id="topbar-user-name" class="font-semibold text-white">กำลังโหลด...</span>
+                                    <span class="text-slate-600">|</span>
+                                    <span class="flex items-center gap-1.5">
+                                        <i class="fa-solid fa-store text-emerald-400 text-xs"></i>
+                                        <span class="text-slate-400">สาขา:</span>
+                                        <span id="topbar-user-branch" class="text-emerald-400 font-medium">กำลังโหลด...</span>
+                                    </span>
+                                    <span class="text-slate-600">|</span>
+                                    <span class="flex items-center gap-1.5">
+                                        <i class="fa-solid fa-shield text-cyan-400 text-xs"></i>
+                                        <span class="text-slate-400">สิทธิ์:</span>
+                                        <span id="topbar-user-role" class="text-cyan-400 font-semibold">กำลังโหลด...</span>
+                                    </span>
+                                </div>
+                                <!-- Tablet view: Name | RoleName (sm to lg screens) -->
+                                <div class="hidden sm:flex lg:hidden flex-col text-right">
+                                    <span id="topbar-user-name-tablet" class="font-semibold text-white text-sm">กำลังโหลด...</span>
+                                    <span class="text-[11px] text-cyan-400 font-medium" id="topbar-user-role-tablet">กำลังโหลด...</span>
+                                </div>
+                                <!-- Mobile view (narrow screens): Just name + branch icon -->
+                                <div class="flex sm:hidden flex-col text-right">
+                                    <span id="topbar-user-name-mobile" class="font-semibold text-white text-sm">กำลังโหลด...</span>
+                                    <span id="topbar-user-branch-mobile" class="text-[11px] text-emerald-400 font-medium flex items-center gap-1 justify-end">
+                                        <i class="fa-solid fa-store text-[9px]"></i>
+                                        <span>กำลังโหลด...</span>
+                                    </span>
+                                </div>
+                            </div>
                         </div>
-                        <div class="w-10 h-10 rounded-full bg-gradient-to-tr from-cyan-500 to-blue-600 p-[2px]">
-                            <div
-                                class="w-full h-full rounded-full border-2 border-slate-800 bg-slate-800 flex items-center justify-center overflow-hidden">
-                                <img id="topbar-user-avatar"
-                                    src="https://ui-avatars.com/api/?name=User&background=0D8ABC&color=fff" alt="User"
-                                    class="w-full h-full object-cover">
+
+                        <!-- Dropdown Popup -->
+                        <div id="user-info-popup" class="hidden absolute right-0 top-full mt-3 w-80 bg-slate-800/95 backdrop-blur-md border border-slate-700 rounded-2xl shadow-2xl p-5 z-50 transition-all duration-300">
+                            <!-- Arrow pointer for popup -->
+                            <div class="absolute -top-2 right-4 w-4 h-4 bg-slate-800 border-l border-t border-slate-700 transform rotate-45"></div>
+                            
+                            <div class="flex flex-col items-center pb-4 border-b border-slate-700/60 relative">
+                                <!-- Avatar inside popup -->
+                                <div class="w-16 h-16 rounded-full bg-gradient-to-tr from-cyan-500 to-blue-600 p-[2px] mb-3">
+                                    <div class="w-full h-full rounded-full border-4 border-slate-800 bg-slate-800 flex items-center justify-center overflow-hidden">
+                                        <img id="popup-user-avatar"
+                                            src="https://ui-avatars.com/api/?name=User&background=0D8ABC&color=fff" alt="User"
+                                            class="w-full h-full object-cover">
+                                    </div>
+                                </div>
+                                <span id="popup-user-name" class="text-base font-bold text-white">กำลังโหลด...</span>
+                                <span id="popup-user-username" class="text-xs text-slate-400 mt-0.5 font-mono">กำลังโหลด...</span>
+                            </div>
+                            
+                            <div class="py-4 space-y-3.5 border-b border-slate-700/60 text-sm">
+                                <div class="flex items-center justify-between">
+                                    <span class="flex items-center gap-2 text-slate-400">
+                                        <i class="fa-solid fa-store w-5 text-center text-emerald-400"></i>
+                                        สาขา
+                                    </span>
+                                    <span id="popup-user-branch" class="font-medium text-emerald-400">กำลังโหลด...</span>
+                                </div>
+                                <div class="flex items-center justify-between">
+                                    <span class="flex items-center gap-2 text-slate-400">
+                                        <i class="fa-solid fa-shield w-5 text-center text-cyan-400"></i>
+                                        สิทธิ์การใช้งาน
+                                    </span>
+                                    <span id="popup-user-role" class="font-medium text-cyan-400">กำลังโหลด...</span>
+                                </div>
+                            </div>
+                            
+                            <div class="pt-4">
+                                <button id="popup-logout-btn" class="w-full flex items-center justify-center gap-2 py-2.5 px-4 bg-red-500/10 hover:bg-red-500 hover:text-white text-red-400 font-semibold rounded-xl border border-red-500/20 hover:border-red-500 transition-all duration-300">
+                                    <i class="fa-solid fa-arrow-right-from-bracket"></i>
+                                    <span>ออกจากระบบ</span>
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -652,16 +725,24 @@
                     <!-- TAB CONTENT: My Branch Stock -->
                     <div id="content-branch-mystock" class="space-y-4">
                         <div
-                            class="flex justify-between items-center bg-slate-800 p-4 rounded-xl border border-slate-700 shadow-sm">
-                            <div class="relative w-full max-w-md group">
-                                <i
-                                    class="fa-solid fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-emerald-400 transition-colors"></i>
-                                <input type="text" id="search-branch-mystock"
-                                    placeholder="ค้นหาสินค้าในสาขา (ชื่อ, รหัส, IMEI)..."
-                                    class="w-full bg-slate-900 border border-slate-600 rounded-xl pl-11 pr-4 py-2.5 text-white focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all">
+                            class="flex flex-col md:flex-row gap-4 justify-between items-start md:items-center bg-slate-800 p-4 rounded-xl border border-slate-700 shadow-sm">
+                            <div class="flex flex-col sm:flex-row gap-3 w-full md:max-w-2xl">
+                                <div class="relative flex-1 group">
+                                    <i
+                                        class="fa-solid fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-emerald-400 transition-colors"></i>
+                                    <input type="text" id="search-branch-mystock"
+                                        placeholder="ค้นหาสินค้าในสาขา (ชื่อ, รหัส, IMEI)..."
+                                        class="w-full bg-slate-900 border border-slate-600 rounded-xl pl-11 pr-4 py-2.5 text-white focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all text-sm">
+                                </div>
+                                <select id="filter-branch-mystock-condition"
+                                    class="w-full sm:w-44 bg-slate-900 border border-slate-600 rounded-xl px-3 py-2.5 text-white focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all text-sm font-semibold cursor-pointer">
+                                    <option value="ALL">สภาพทั้งหมด</option>
+                                    <option value="มือ1">มือ 1</option>
+                                    <option value="มือ2">มือ 2</option>
+                                </select>
                             </div>
                             <button id="btn-refresh-mystock"
-                                class="px-4 py-2.5 bg-slate-700 hover:bg-slate-600 text-white rounded-xl transition-all shadow shadow-black/20 flex items-center gap-2">
+                                class="w-full md:w-auto px-4 py-2.5 bg-slate-700 hover:bg-slate-600 text-white rounded-xl transition-all shadow shadow-black/20 flex items-center justify-center gap-2">
                                 <i class="fa-solid fa-rotate"></i> รีเฟรช
                             </button>
                         </div>
@@ -688,16 +769,24 @@
                     <!-- TAB CONTENT: Global Stock -->
                     <div id="content-branch-globalstock" class="hidden space-y-4">
                         <div
-                            class="flex justify-between items-center bg-slate-800 p-4 rounded-xl border border-slate-700 shadow-sm">
-                            <div class="relative w-full max-w-md group">
-                                <i
-                                    class="fa-solid fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-cyan-400 transition-colors"></i>
-                                <input type="text" id="search-branch-globalstock"
-                                    placeholder="ค้นหาราคาหรือสต็อกสาขาอื่น..."
-                                    class="w-full bg-slate-900 border border-slate-600 rounded-xl pl-11 pr-4 py-2.5 text-white focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition-all">
+                            class="flex flex-col md:flex-row gap-4 justify-between items-start md:items-center bg-slate-800 p-4 rounded-xl border border-slate-700 shadow-sm">
+                            <div class="flex flex-col sm:flex-row gap-3 w-full md:max-w-2xl">
+                                <div class="relative flex-1 group">
+                                    <i
+                                        class="fa-solid fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-cyan-400 transition-colors"></i>
+                                    <input type="text" id="search-branch-globalstock"
+                                        placeholder="ค้นหาราคาหรือสต็อกสาขาอื่น..."
+                                        class="w-full bg-slate-900 border border-slate-600 rounded-xl pl-11 pr-4 py-2.5 text-white focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition-all text-sm">
+                                </div>
+                                <select id="filter-branch-globalstock-condition"
+                                    class="w-full sm:w-44 bg-slate-900 border border-slate-600 rounded-xl px-3 py-2.5 text-white focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition-all text-sm font-semibold cursor-pointer">
+                                    <option value="ALL">สภาพทั้งหมด</option>
+                                    <option value="มือ1">มือ 1</option>
+                                    <option value="มือ2">มือ 2</option>
+                                </select>
                             </div>
                             <button id="btn-refresh-globalstock"
-                                class="px-4 py-2.5 bg-slate-700 hover:bg-slate-600 text-white rounded-xl transition-all shadow shadow-black/20 flex items-center gap-2">
+                                class="w-full md:w-auto px-4 py-2.5 bg-slate-700 hover:bg-slate-600 text-white rounded-xl transition-all shadow shadow-black/20 flex items-center justify-center gap-2">
                                 <i class="fa-solid fa-rotate"></i> รีเฟรช
                             </button>
                         </div>
@@ -1077,6 +1166,8 @@
                         <div class="flex flex-col sm:flex-row gap-4 mb-8">
                             <input type="text" id="master-data-input" placeholder="พิมพ์ข้อมูลใหม่..."
                                 class="flex-1 px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all">
+                            <input type="text" id="master-data-code-input" placeholder="รหัสชื่อสินค้า (ไม่จำเป็นต้องระบุก็ได้)..."
+                                class="hidden px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all sm:w-64">
                             <button id="btn-add-master-data"
                                 class="px-6 py-2.5 bg-cyan-500 hover:bg-cyan-400 text-slate-900 font-bold rounded-xl glow-button flex items-center justify-center gap-2 whitespace-nowrap">
                                 <i class="fa-solid fa-plus"></i> เพิ่ม
@@ -1811,10 +1902,10 @@
                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div>
                                         <label class="text-xs font-semibold text-slate-400 mb-1.5 block">ผู้จัดจำหน่าย (Supplier) <span class="text-red-400">*</span></label>
-                                        <input type="text" id="po-supplier" list="dl-suppliers" required
-                                            placeholder="เลือกหรือพิมพ์ชื่อซัพพลายเออร์..."
-                                            class="w-full px-4 py-3 rounded-lg bg-[#2a2a2a] border border-gray-700 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none placeholder-slate-500 transition-all text-sm">
-                                        <datalist id="dl-suppliers"></datalist>
+                                        <select id="po-supplier" required
+                                            class="w-full px-4 py-3 rounded-lg bg-[#2a2a2a] border border-gray-700 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all text-sm">
+                                            <option value="" disabled selected>-- เลือกผู้จัดจำหน่าย --</option>
+                                        </select>
                                     </div>
                                     <div>
                                         <label class="text-xs font-semibold text-slate-400 mb-1.5 block">สาขาปลายทาง <span class="text-red-400">*</span></label>
@@ -2409,13 +2500,13 @@
                 <div class="space-y-2">
                     <label class="text-sm font-medium text-slate-300">ราคาต้นทุน (฿) <span
                             class="text-red-400">*</span></label>
-                    <input type="number" id="cost-price" required
+                    <input type="number" id="cost-price" required step="any"
                         class="w-full px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all">
                 </div>
                 <div class="space-y-2">
                     <label class="text-sm font-medium text-slate-300">ราคาขาย (฿) <span
                             class="text-red-400">*</span></label>
-                    <input type="number" id="selling-price" required
+                    <input type="number" id="selling-price" required step="any"
                         class="w-full px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all">
                 </div>
 
@@ -3357,7 +3448,7 @@
                             <div class="relative">
                                 <span
                                     class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm font-bold">฿</span>
-                                <input type="number" id="approve-cost-price" placeholder="0"
+                                <input type="number" id="approve-cost-price" placeholder="0" step="any"
                                     class="w-full pl-8 pr-4 py-3 rounded-xl bg-slate-900 border border-slate-700 text-white focus:border-amber-500 focus:ring-1 focus:ring-amber-500 focus:outline-none text-sm placeholder-slate-600">
                             </div>
                         </div>
@@ -3367,7 +3458,7 @@
                             <div class="relative">
                                 <span
                                     class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm font-bold">฿</span>
-                                <input type="number" id="approve-selling-price" placeholder="0"
+                                <input type="number" id="approve-selling-price" placeholder="0" step="any"
                                     class="w-full pl-8 pr-4 py-3 rounded-xl bg-slate-900 border border-slate-700 text-white focus:border-amber-500 focus:ring-1 focus:ring-amber-500 focus:outline-none text-sm placeholder-slate-600">
                             </div>
                         </div>
@@ -3474,7 +3565,7 @@
             <div class="space-y-3">
                 <button id="btn-print-receipt-separate"
                     class="w-full py-4 bg-cyan-500 hover:bg-cyan-400 text-slate-900 font-bold rounded-2xl flex items-center justify-center gap-3 transition-all shadow-lg shadow-cyan-500/25 active:scale-95">
-                    <i class="fa-solid fa-file-invoice text-xl"></i>
+                    <i class="fa-solid fa-file-invoice text-xl"></i>    
                     พิมพ์ใบเสร็จ (ไฟล์แยก)
                 </button>
 
