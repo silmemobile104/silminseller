@@ -98,6 +98,9 @@ const injectBranchStockVirtuals = (product, branchId) => {
 
 const ensureBranchBalance = (productDoc, branchId) => {
     if (!productDoc.stock_balances) productDoc.stock_balances = [];
+    if (!branchId) {
+        throw new Error('ไม่พบข้อมูลรหัสสาขาสำหรับการบันทึกยอดสินค้าในคลัง');
+    }
     const bId = branchId.toString();
     let bal = productDoc.stock_balances.find(x => x.branch_id && x.branch_id.toString() === bId);
     if (!bal) {
@@ -105,6 +108,170 @@ const ensureBranchBalance = (productDoc, branchId) => {
         bal = productDoc.stock_balances.find(x => x.branch_id && x.branch_id.toString() === bId);
     }
     return bal;
+};
+
+// ฟังก์ชันกลางในการประมวลผลอนุมัตินำเข้าสต็อกสำเร็จ (Finalize PO Import)
+const executeFinalizeImport = async (poId, employeeId) => {
+    const po = await PurchaseOrder.findById(poId);
+    if (!po) {
+        const err = new Error('ไม่พบใบสั่งซื้อ');
+        err.status = 404;
+        throw err;
+    }
+
+    if (po.status === 'นำเข้าสำเร็จ' || po.status === 'ยกเลิก') {
+        const err = new Error('ใบสั่งซื้อนี้ได้ทำการนำเข้าสต็อกเสร็จสมบูรณ์หรือถูกยกเลิกแล้ว');
+        err.status = 400;
+        throw err;
+    }
+
+    if (!po.branch_id) {
+        const err = new Error('ใบสั่งซื้อนี้ไม่มีการระบุรหัสสาขาปลายทาง');
+        err.status = 400;
+        throw err;
+    }
+
+    // === Inventory Integration ===
+    for (let item of po.items) {
+        const imeisScanned = Array.isArray(item.imeis_scanned) ? item.imeis_scanned : [];
+        const qtyToProcess = item.track_imei ? imeisScanned.length : Number(item.received_qty);
+        if (qtyToProcess <= 0) continue;
+
+        // Resolve master data IDs
+        let typeId = null;
+        let colorId = null;
+        let capacityId = null;
+        let conditionId = null;
+        let supplierId = null;
+
+        if (item.category) {
+            const type = await ProductType.findOne({ name: item.category });
+            typeId = type ? type._id : null;
+        }
+        if (!typeId) {
+            const firstType = await ProductType.findOne();
+            typeId = firstType ? firstType._id : null;
+        }
+
+        if (item.color) {
+            const col = await ProductColor.findOne({ name: item.color });
+            colorId = col ? col._id : null;
+        }
+
+        if (item.capacity) {
+            const cap = await ProductCapacity.findOne({ name: item.capacity });
+            capacityId = cap ? cap._id : null;
+        }
+
+        const cond = await ProductCondition.findOne({ name: 'มือ1' }) || await ProductCondition.findOne();
+        conditionId = cond ? cond._id : null;
+
+        if (po.supplier_name) {
+            const supp = await Supplier.findOne({ name: po.supplier_name });
+            supplierId = supp ? supp._id : null;
+        }
+
+        let unitId = null;
+        if (item.unit) {
+            const u = await ProductUnit.findOne({ name: item.unit });
+            unitId = u ? u._id : null;
+        }
+        if (!unitId) {
+            const defaultUnitName = item.track_imei ? 'เครื่อง' : 'ชิ้น';
+            const u = await ProductUnit.findOne({ name: defaultUnitName });
+            unitId = u ? u._id : null;
+        }
+
+        if (item.track_imei) {
+            // For devices tracked by IMEI, create/update a SEPARATE product per IMEI
+            const incomingImeis = imeisScanned.map(x => x.toString().trim()).filter(Boolean);
+            for (const imei of incomingImeis) {
+                let product = await Product.findOne({ product_code: imei });
+                if (product) {
+                    const err = new Error(`รหัสสินค้า/IMEI (${imei}) มีอยู่ในระบบแล้ว ไม่สามารถนำเข้าซ้ำได้`);
+                    err.status = 400;
+                    throw err;
+                }
+                product = new Product({
+                    product_code: imei,
+                    name: item.product_name,
+                    cost_price: item.cost_price,
+                    selling_price: item.selling_price,
+                    type_id: typeId,
+                    color_id: colorId,
+                    capacity_id: capacityId,
+                    condition_id: conditionId,
+                    unit_id: unitId,
+                    supplier_id: supplierId,
+                    stock_balances: []
+                });
+
+                const bal = ensureBranchBalance(product, po.branch_id);
+                if (!bal.imeis.includes(imei)) {
+                    bal.imeis.push(imei);
+                }
+                bal.quantity = bal.imeis.length > 0 ? bal.imeis.length : 1;
+
+                const savedProduct = await product.save();
+
+                // Log Movement for this separate IMEI product
+                await createMovementsForItem({
+                    productId: savedProduct._id,
+                    action: 'นำเข้าสินค้า (PO)',
+                    fromBranch: null,
+                    toBranch: po.branch_id,
+                    referenceNo: po.po_number,
+                    createdBy: employeeId,
+                    transitHours: 0,
+                    imeis: [imei],
+                    quantity: 1
+                });
+            }
+        } else {
+            // For accessories (quantity-tracked), keep a single Product document with general product_code
+            let product = await Product.findOne({ product_code: item.product_code });
+            if (!product) {
+                product = new Product({
+                    product_code: item.product_code,
+                    name: item.product_name,
+                    cost_price: item.cost_price,
+                    selling_price: item.selling_price,
+                    type_id: typeId,
+                    color_id: colorId,
+                    capacity_id: capacityId,
+                    condition_id: conditionId,
+                    unit_id: unitId,
+                    supplier_id: supplierId,
+                    stock_balances: []
+                });
+            }
+
+            const bal = ensureBranchBalance(product, po.branch_id);
+            bal.quantity = Number(bal.quantity || 0) + qtyToProcess;
+
+            const savedProduct = await product.save();
+
+            // Log Movement for this accessory product
+            await createMovementsForItem({
+                productId: savedProduct._id,
+                action: 'นำเข้าสินค้า (PO)',
+                fromBranch: null,
+                toBranch: po.branch_id,
+                referenceNo: po.po_number,
+                createdBy: employeeId,
+                transitHours: 0,
+                imeis: [],
+                quantity: qtyToProcess
+            });
+        }
+    }
+
+    po.status = 'นำเข้าสำเร็จ';
+    po.received_by = employeeId;
+    await po.save();
+
+    console.log(`[PO] นำเข้าสำเร็จเสร็จสิ้น: PO ${po.po_number} บันทึกคลังสาขาเรียบร้อย`);
+    return po;
 };
 
 const createMovementsForItem = async ({
@@ -2652,6 +2819,90 @@ router.get('/purchase-orders', async (req, res) => {
     }
 });
 
+// POST /api/purchase-orders/:id/update
+// หน้าที่: แก้ไขใบสั่งซื้อ
+router.post('/purchase-orders/:id/update', async (req, res) => {
+    try {
+        if (!req.user.permissions.manage_po) {
+            return res.status(403).json({ success: false, message: 'ไม่มีสิทธิ์ในการแก้ไขใบสั่งซื้อ' });
+        }
+
+        const po = await PurchaseOrder.findById(req.params.id);
+        if (!po) {
+            return res.status(404).json({ success: false, message: 'ไม่พบใบสั่งซื้อ' });
+        }
+
+        if (po.status !== 'รอจัดส่ง' && po.status !== 'สั่งซื้อแล้ว') {
+            return res.status(400).json({ success: false, message: 'ไม่สามารถแก้ไขใบสั่งซื้อที่ถูกจัดส่งหรือนำเข้าคลังแล้วได้' });
+        }
+
+        const { supplier_name, branch_id, items } = req.body;
+        if (!supplier_name || !branch_id || !items || items.length === 0) {
+            return res.status(400).json({ success: false, message: 'กรุณากรอกข้อมูลให้ครบถ้วน' });
+        }
+
+        const poItems = items.map(item => ({
+            product_name: item.product_name,
+            product_code: item.product_code,
+            category: item.category,
+            color: item.color,
+            capacity: item.capacity,
+            unit: item.unit,
+            track_imei: !!item.track_imei,
+            ordered_qty: Number(item.ordered_qty),
+            cost_price: Number(item.cost_price),
+            selling_price: Number(item.selling_price),
+            imeis_scanned: []
+        }));
+
+        po.supplier_name = supplier_name;
+        po.branch_id = branch_id;
+        po.items = poItems;
+
+        await po.save();
+
+        res.status(200).json({
+            success: true,
+            message: 'แก้ไขใบสั่งซื้อสำเร็จ',
+            data: po
+        });
+    } catch (error) {
+        console.error('API Error POST /api/purchase-orders/:id/update:', error);
+        res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการแก้ไขใบสั่งซื้อ' });
+    }
+});
+
+// POST /api/purchase-orders/:id/cancel
+// หน้าที่: ยกเลิกใบสั่งซื้อ
+router.post('/purchase-orders/:id/cancel', async (req, res) => {
+    try {
+        if (!req.user.permissions.manage_po) {
+            return res.status(403).json({ success: false, message: 'ไม่มีสิทธิ์ในการยกเลิกใบสั่งซื้อ' });
+        }
+
+        const po = await PurchaseOrder.findById(req.params.id);
+        if (!po) {
+            return res.status(404).json({ success: false, message: 'ไม่พบใบสั่งซื้อ' });
+        }
+
+        if (po.status !== 'รอจัดส่ง' && po.status !== 'สั่งซื้อแล้ว') {
+            return res.status(400).json({ success: false, message: 'ไม่สามารถยกเลิกใบสั่งซื้อที่ถูกจัดส่งหรือนำเข้าคลังแล้วได้' });
+        }
+
+        po.status = 'ยกเลิก';
+        await po.save();
+
+        res.status(200).json({
+            success: true,
+            message: 'ยกเลิกใบสั่งซื้อสำเร็จ',
+            data: po
+        });
+    } catch (error) {
+        console.error('API Error POST /api/purchase-orders/:id/cancel:', error);
+        res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการยกเลิกใบสั่งซื้อ' });
+    }
+});
+
 // POST /api/po/:id/report-arrival
 // หน้าที่: แจ้งของถึงสาขาแล้ว พร้อมสแกน/ระบุ IMEI ครบถ้วน (Sales / Front Store)
 router.post('/po/:id/report-arrival', async (req, res) => {
@@ -2810,155 +3061,8 @@ router.post('/po/:id/finalize-import', async (req, res) => {
             return res.status(403).json({ success: false, message: 'ไม่มีสิทธิ์ในการตรวจรับสินค้า' });
         }
 
-        const po = await PurchaseOrder.findById(req.params.id);
-        if (!po) {
-            return res.status(404).json({ success: false, message: 'ไม่พบใบสั่งซื้อ' });
-        }
+        const po = await executeFinalizeImport(req.params.id, req.user.employee_id);
 
-        if (po.status === 'นำเข้าสำเร็จ' || po.status === 'ยกเลิก') {
-            return res.status(400).json({ success: false, message: 'ใบสั่งซื้อนี้ได้ทำการนำเข้าสต็อกเสร็จสมบูรณ์หรือถูกยกเลิกแล้ว' });
-        }
-
-        // === Inventory Integration ===
-        for (let item of po.items) {
-            const qtyToProcess = item.track_imei ? item.imeis_scanned.length : Number(item.received_qty);
-            if (qtyToProcess <= 0) continue;
-
-            // Resolve master data IDs
-            let typeId = null;
-            let colorId = null;
-            let capacityId = null;
-            let conditionId = null;
-            let supplierId = null;
-
-            if (item.category) {
-                const type = await ProductType.findOne({ name: item.category });
-                typeId = type ? type._id : null;
-            }
-            if (!typeId) {
-                const firstType = await ProductType.findOne();
-                typeId = firstType ? firstType._id : null;
-            }
-
-            if (item.color) {
-                const col = await ProductColor.findOne({ name: item.color });
-                colorId = col ? col._id : null;
-            }
-
-            if (item.capacity) {
-                const cap = await ProductCapacity.findOne({ name: item.capacity });
-                capacityId = cap ? cap._id : null;
-            }
-
-            const cond = await ProductCondition.findOne({ name: 'มือ1' }) || await ProductCondition.findOne();
-            conditionId = cond ? cond._id : null;
-
-            if (po.supplier_name) {
-                const supp = await Supplier.findOne({ name: po.supplier_name });
-                supplierId = supp ? supp._id : null;
-            }
-
-            let unitId = null;
-            if (item.unit) {
-                const u = await ProductUnit.findOne({ name: item.unit });
-                unitId = u ? u._id : null;
-            }
-            if (!unitId) {
-                const defaultUnitName = item.track_imei ? 'เครื่อง' : 'ชิ้น';
-                const u = await ProductUnit.findOne({ name: defaultUnitName });
-                unitId = u ? u._id : null;
-            }
-
-            if (item.track_imei) {
-                // For devices tracked by IMEI, create/update a SEPARATE product per IMEI
-                const incomingImeis = item.imeis_scanned.map(x => x.toString().trim()).filter(Boolean);
-                for (const imei of incomingImeis) {
-                    let product = await Product.findOne({ product_code: imei });
-                    if (product) {
-                        return res.status(400).json({
-                            success: false,
-                            message: `รหัสสินค้า/IMEI (${imei}) มีอยู่ในระบบแล้ว ไม่สามารถนำเข้าซ้ำได้`
-                        });
-                    }
-                    product = new Product({
-                        product_code: imei,
-                        name: item.product_name,
-                        cost_price: item.cost_price,
-                        selling_price: item.selling_price,
-                        type_id: typeId,
-                        color_id: colorId,
-                        capacity_id: capacityId,
-                        condition_id: conditionId,
-                        unit_id: unitId,
-                        supplier_id: supplierId,
-                        stock_balances: []
-                    });
-
-                    const bal = ensureBranchBalance(product, po.branch_id);
-                    if (!bal.imeis.includes(imei)) {
-                        bal.imeis.push(imei);
-                    }
-                    bal.quantity = bal.imeis.length > 0 ? bal.imeis.length : 1;
-
-                    const savedProduct = await product.save();
-
-                    // Log Movement for this separate IMEI product
-                    await createMovementsForItem({
-                        productId: savedProduct._id,
-                        action: 'นำเข้าสินค้า (PO)',
-                        fromBranch: null,
-                        toBranch: po.branch_id,
-                        referenceNo: po.po_number,
-                        createdBy: req.user.employee_id,
-                        transitHours: 0,
-                        imeis: [imei],
-                        quantity: 1
-                    });
-                }
-            } else {
-                // For accessories (quantity-tracked), keep a single Product document with general product_code
-                let product = await Product.findOne({ product_code: item.product_code });
-                if (!product) {
-                    product = new Product({
-                        product_code: item.product_code,
-                        name: item.product_name,
-                        cost_price: item.cost_price,
-                        selling_price: item.selling_price,
-                        type_id: typeId,
-                        color_id: colorId,
-                        capacity_id: capacityId,
-                        condition_id: conditionId,
-                        unit_id: unitId,
-                        supplier_id: supplierId,
-                        stock_balances: []
-                    });
-                }
-
-                const bal = ensureBranchBalance(product, po.branch_id);
-                bal.quantity = Number(bal.quantity || 0) + qtyToProcess;
-
-                const savedProduct = await product.save();
-
-                // Log Movement for this accessory product
-                await createMovementsForItem({
-                    productId: savedProduct._id,
-                    action: 'นำเข้าสินค้า (PO)',
-                    fromBranch: null,
-                    toBranch: po.branch_id,
-                    referenceNo: po.po_number,
-                    createdBy: req.user.employee_id,
-                    transitHours: 0,
-                    imeis: [],
-                    quantity: qtyToProcess
-                });
-            }
-        }
-
-        po.status = 'นำเข้าสำเร็จ';
-        po.received_by = req.user.employee_id;
-        await po.save();
-
-        console.log(`[PO] นำเข้าสำเร็จเสร็จสิ้น: PO ${po.po_number} บันทึกคลังสาขาเรียบร้อย`);
         res.status(200).json({
             success: true,
             message: 'ตรวจรับและนำเข้าสต็อกสำเร็จเรียบร้อย',
@@ -2966,7 +3070,7 @@ router.post('/po/:id/finalize-import', async (req, res) => {
         });
     } catch (error) {
         console.error('API Error POST /api/po/:id/finalize-import:', error);
-        res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการนำเข้าสต็อกสินค้า' });
+        res.status(error.status || 500).json({ success: false, message: error.message || 'เกิดข้อผิดพลาดในการนำเข้าสต็อกสินค้า' });
     }
 });
 
@@ -3007,12 +3111,16 @@ router.post('/purchase-orders/:id/receive', async (req, res) => {
         await po.save();
 
         // ทริกเกอร์ Finalize Import ทันทีเพื่อให้ระบบเก่ายังทำงานแบบขั้นตอนเดียวจบได้ไร้รอยต่อ!
-        req.params.id = po._id.toString();
-        // เรียกโดยตรง
-        return router.handle({ method: 'POST', url: `/po/${po._id}/finalize-import`, body: { received_items } }, res);
+        const finalizedPo = await executeFinalizeImport(po._id, req.user.employee_id);
+
+        res.status(200).json({
+            success: true,
+            message: 'ตรวจรับและนำเข้าสต็อกสำเร็จเรียบร้อย',
+            data: finalizedPo
+        });
     } catch (error) {
         console.error('API Error POST /api/purchase-orders/:id/receive:', error);
-        res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการตรวจรับสินค้า' });
+        res.status(error.status || 500).json({ success: false, message: error.message || 'เกิดข้อผิดพลาดในการตรวจรับสินค้า' });
     }
 });
 

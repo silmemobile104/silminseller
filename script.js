@@ -730,29 +730,104 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const showToast = (message, type = 'success') => {
         const toast = document.createElement('div');
-        const bgColor = type === 'success' ? 'bg-slate-800' : 'bg-slate-800';
-        const borderColor = type === 'success' ? 'border-cyan-500/50' : 'border-red-500/50';
-        const iconColor = type === 'success' ? 'text-cyan-400' : 'text-red-400';
-        const icon = type === 'success' ? 'fa-circle-check' : 'fa-circle-xmark';
-        const shadow = type === 'success' ? 'shadow-[0_0_15px_rgba(6,182,212,0.15)]' : 'shadow-[0_0_15px_rgba(239,68,68,0.15)]';
+        
+        let bgColor = 'bg-slate-950/85 backdrop-blur-md';
+        let borderColor = 'border-slate-800';
+        let iconColor = 'text-white';
+        let icon = 'fa-circle-info';
+        let shadow = 'shadow-[0_4px_20px_-2px_rgba(0,0,0,0.3)]';
 
-        toast.className = `${bgColor} border ${borderColor} ${shadow} px-4 py-3 rounded-xl flex items-center gap-3 toast-animate min-w-[200px] pointer-events-auto`;
+        if (type === 'success' || type === 'confirm') {
+            borderColor = 'border-emerald-500/30';
+            iconColor = 'text-emerald-400';
+            icon = 'fa-circle-check';
+            shadow = 'shadow-[0_4px_20px_-2px_rgba(16,185,129,0.2)]';
+        } else if (type === 'error' || type === 'danger') {
+            borderColor = 'border-rose-500/30';
+            iconColor = 'text-rose-400';
+            icon = 'fa-circle-xmark';
+            shadow = 'shadow-[0_4px_20px_-2px_rgba(244,63,94,0.2)]';
+        } else if (type === 'warning') {
+            borderColor = 'border-amber-500/30';
+            iconColor = 'text-amber-400';
+            icon = 'fa-triangle-exclamation';
+            shadow = 'shadow-[0_4px_20px_-2px_rgba(245,158,11,0.2)]';
+        } else { // info
+            borderColor = 'border-cyan-500/30';
+            iconColor = 'text-cyan-400';
+            icon = 'fa-circle-info';
+            shadow = 'shadow-[0_4px_20px_-2px_rgba(6,182,212,0.2)]';
+        }
+
+        toast.className = `${bgColor} border ${borderColor} ${shadow} px-4 py-3 rounded-2xl flex items-center gap-3 toast-animate min-w-[240px] pointer-events-auto transition-all duration-300`;
         toast.innerHTML = `
-            <i class="fa-solid ${icon} ${iconColor} text-lg"></i>
-            <span class="text-white text-sm font-medium">${message}</span>
+            <div class="flex items-center justify-center w-8 h-8 rounded-xl bg-slate-900/50 border border-white/5 flex-shrink-0">
+                <i class="fa-solid ${icon} ${iconColor} text-base"></i>
+            </div>
+            <span class="text-slate-100 text-sm font-medium pr-2 leading-tight">${message}</span>
         `;
 
         toastContainer.appendChild(toast);
         setTimeout(() => toast.remove(), 3000);
     };
 
-    const showConfirm = (title, message, onConfirm) => {
+    const showConfirm = (title, message, onConfirm, okText = 'ยืนยัน', type = null) => {
         const modal = document.getElementById('custom-confirm-modal');
+        const card = document.getElementById('confirm-card');
+        const iconContainer = document.getElementById('confirm-icon-container');
+        const iconEl = document.getElementById('confirm-icon');
         const okBtn = document.getElementById('confirm-ok-btn');
         const cancelBtn = document.getElementById('confirm-cancel-btn');
 
+        if (cancelBtn) cancelBtn.style.display = 'block';
+
+        // Auto-detect type if not provided
+        let detectedType = type;
+        if (!detectedType) {
+            const t = title.toLowerCase();
+            if (t.includes('ลบ') || t.includes('delete') || t.includes('remove') || t.includes('ยกเลิก') || t.includes('cancel')) {
+                detectedType = 'danger';
+            } else if (t.includes('อนุมัติ') || t.includes('สำเร็จ') || t.includes('รับ') || t.includes('นำเข้า') || t.includes('save') || t.includes('บันทึก') || t.includes('เสร็จสิ้น')) {
+                detectedType = 'success';
+            } else if (t.includes('พิมพ์') || t.includes('print') || t.includes('โอน')) {
+                detectedType = 'info';
+            } else {
+                detectedType = 'warning';
+            }
+        }
+
+        // Apply styles based on detectedType
+        // Reset old dynamic classes first
+        card.className = "modal-content bg-slate-900/95 border rounded-3xl w-full max-w-md p-6 text-center modal-animate-in shadow-2xl transition-all duration-300";
+        iconContainer.className = "w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 border transition-all duration-300";
+        iconEl.className = "text-2xl transition-transform duration-300 hover:scale-110";
+        okBtn.className = "flex-1 py-2.5 rounded-xl text-sm font-bold text-white transition-all active:scale-[0.98]";
+
+        if (detectedType === 'danger') {
+            card.classList.add('border-rose-500/30', 'shadow-[0_0_50px_rgba(244,63,94,0.15)]');
+            iconContainer.classList.add('bg-rose-500/10', 'text-rose-400', 'border-rose-500/20');
+            iconEl.classList.add('fa-solid', 'fa-trash-can');
+            okBtn.classList.add('bg-gradient-to-r', 'from-rose-600', 'to-red-500', 'hover:from-rose-500', 'hover:to-red-400', 'shadow-lg', 'shadow-red-500/20');
+        } else if (detectedType === 'success') {
+            card.classList.add('border-emerald-500/30', 'shadow-[0_0_50px_rgba(16,185,129,0.15)]');
+            iconContainer.classList.add('bg-emerald-500/10', 'text-emerald-400', 'border-emerald-500/20');
+            iconEl.classList.add('fa-solid', 'fa-circle-check');
+            okBtn.classList.add('bg-gradient-to-r', 'from-emerald-600', 'to-teal-500', 'hover:from-emerald-500', 'hover:to-teal-400', 'shadow-lg', 'shadow-emerald-500/20');
+        } else if (detectedType === 'warning') {
+            card.classList.add('border-amber-500/30', 'shadow-[0_0_50px_rgba(245,158,11,0.15)]');
+            iconContainer.classList.add('bg-amber-500/10', 'text-amber-400', 'border-amber-500/20');
+            iconEl.classList.add('fa-solid', 'fa-triangle-exclamation');
+            okBtn.classList.add('bg-gradient-to-r', 'from-amber-600', 'to-orange-500', 'hover:from-amber-500', 'hover:to-orange-400', 'shadow-lg', 'shadow-amber-500/20');
+        } else { // info
+            card.classList.add('border-cyan-500/30', 'shadow-[0_0_50px_rgba(6,182,212,0.15)]');
+            iconContainer.classList.add('bg-cyan-500/10', 'text-cyan-400', 'border-cyan-500/20');
+            iconEl.classList.add('fa-solid', 'fa-circle-info');
+            okBtn.classList.add('bg-gradient-to-r', 'from-cyan-600', 'to-blue-500', 'hover:from-cyan-500', 'hover:to-blue-400', 'shadow-lg', 'shadow-cyan-500/20');
+        }
+
         document.getElementById('confirm-title').textContent = title;
-        document.getElementById('confirm-message').textContent = message;
+        document.getElementById('confirm-message').innerHTML = message;
+        okBtn.textContent = okText;
 
         modal.classList.remove('hidden');
         void modal.offsetWidth;
@@ -4800,9 +4875,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Show print option
                 if (result.data && result.data._id) {
                     setTimeout(() => {
-                        if (confirm('ต้องการพิมพ์ใบโอนย้ายสินค้าหรือไม่?')) {
+                        showConfirm('พิมพ์ใบโอนย้ายสินค้า', 'ต้องการพิมพ์ใบโอนย้ายสินค้าหรือไม่?', () => {
                             printTransferDocument(result.data._id);
-                        }
+                        }, 'พิมพ์ใบโอน');
                     }, 500);
                 }
             } else {
@@ -4815,28 +4890,26 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Receive Transfer
     window.receiveTransfer = async function (transferId) {
-        if (!confirm('ยืนยันการรับเข้าสินค้า? สินค้าจะถูกเพิ่มเข้าสต็อกสาขาของคุณ')) {
-            return;
-        }
+        showConfirm('ยืนยันการรับสินค้า', 'ยืนยันการรับเข้าสินค้า? สินค้าจะถูกเพิ่มเข้าสต็อกสาขาของคุณ', async () => {
+            try {
+                const response = await authFetch(`${API_BASE_URL}/transfers/${transferId}/receive`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' }
+                });
 
-        try {
-            const response = await authFetch(`${API_BASE_URL}/transfers/${transferId}/receive`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' }
-            });
+                const result = await response.json();
 
-            const result = await response.json();
-
-            if (result.success) {
-                showToast('รับเข้าสินค้าสำเร็จ');
-                loadTransfers();
-                pollPendingTransfers();
-            } else {
-                showToast(result.message || 'เกิดข้อผิดพลาด', 'error');
+                if (result.success) {
+                    showToast('รับเข้าสินค้าสำเร็จ');
+                    loadTransfers();
+                    pollPendingTransfers();
+                } else {
+                    showToast(result.message || 'เกิดข้อผิดพลาด', 'error');
+                }
+            } catch (err) {
+                showToast('ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้', 'error');
             }
-        } catch (err) {
-            showToast('ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้', 'error');
-        }
+        }, 'รับเข้าสต็อก');
     };
 
     // Print Transfer Document
@@ -5877,24 +5950,31 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    window.approveImport = async (id) => {
-        if (!confirm('ยืนยันการนำเข้าสต็อกและอนุมัติรายการนี้?')) return;
-        try {
-            const res = await authFetch(`${API_BASE_URL}/import-notifications/${id}/approve`, {
-                method: 'POST'
-            });
-            const data = await res.json();
-            if (data.success) {
-                showToast('อนุมัตินำเข้าสต็อกสำเร็จ', 'success');
-                window.loadImportNotifications();
-                if (typeof loadDashboardData === 'function') loadDashboardData();
-            } else {
-                showToast(data.message, 'error');
-            }
-        } catch (err) {
-            console.error(err);
-            showToast('เกิดข้อผิดพลาด', 'error');
-        }
+    window.approveImport = (id) => {
+        showConfirm(
+            'อนุมัตินำเข้าสต็อก',
+            'ยืนยันการนำเข้าสต็อกและอนุมัติรายการนี้? สินค้าจะถูกเพิ่มเข้าสู่คลังของสาขาคุณและบันทึกข้อมูลเรียบร้อย',
+            async () => {
+                try {
+                    const res = await authFetch(`${API_BASE_URL}/import-notifications/${id}/approve`, {
+                        method: 'POST'
+                    });
+                    const data = await res.json();
+                    if (data.success) {
+                        showToast('อนุมัตินำเข้าสต็อกสำเร็จ', 'success');
+                        window.loadImportNotifications();
+                        if (typeof loadDashboardData === 'function') loadDashboardData();
+                    } else {
+                        showToast(data.message, 'error');
+                    }
+                } catch (err) {
+                    console.error(err);
+                    showToast('เกิดข้อผิดพลาด', 'error');
+                }
+            },
+            'อนุมัติรับของ',
+            'success'
+        );
     };
 
     // Initialize triggers
@@ -6496,7 +6576,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const row = document.createElement('div');
         row.className = 'p-5 bg-[#151515] border border-gray-800 rounded-xl relative po-item-row shadow-sm hover:border-cyan-500/30 transition-colors group';
         row.innerHTML = `
-            <button type="button" class="absolute -top-3 -right-3 w-8 h-8 rounded-full bg-slate-800 border border-slate-700 text-slate-400 hover:text-white hover:bg-red-500 flex items-center justify-center shadow-lg transition-all opacity-0 group-hover:opacity-100 z-10" onclick="this.closest('.po-item-row').remove(); calculatePOTotal();"><i class="fa-solid fa-trash text-xs"></i></button>
+            <button type="button" class="btn-delete-row absolute -top-3 -right-3 w-8 h-8 rounded-full bg-slate-800 border border-slate-700 text-slate-400 hover:text-white hover:bg-red-500 flex items-center justify-center shadow-lg transition-all opacity-0 group-hover:opacity-100 z-10"><i class="fa-solid fa-trash text-xs"></i></button>
             <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
                 <div class="md:col-span-2">
                     <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wide">ชื่อสินค้า <span class="text-red-400">*</span></label>
@@ -6549,11 +6629,20 @@ document.addEventListener('DOMContentLoaded', () => {
                     <label for="track_imei_${id}" class="text-xs text-slate-300 cursor-pointer hover:text-white transition-colors">สินค้านี้ต้องบันทึก IMEI (เช่น โทรศัพท์/แท็บเล็ต)</label>
                 </div>
                 <div class="text-right text-xs text-slate-400">
-                    รวม: <span class="po-row-total text-cyan-400 font-bold font-mono">฿0</span>
+                     รวม: <span class="po-row-total text-cyan-400 font-bold font-mono">฿0</span>
                 </div>
             </div>
         `;
         container.appendChild(row);
+
+        // Attach event listener for delete row
+        const deleteBtn = row.querySelector('.btn-delete-row');
+        if (deleteBtn) {
+            deleteBtn.addEventListener('click', () => {
+                row.remove();
+                calculatePOTotal();
+            });
+        }
 
         // Attach events for calculation
         const inputQty = row.querySelector('[name="po_item_qty"]');
@@ -6673,18 +6762,21 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             try {
-                const res = await authFetch(`${API_BASE_URL}/purchase-orders`, {
+                const url = editingPOId 
+                    ? `${API_BASE_URL}/purchase-orders/${editingPOId}/update` 
+                    : `${API_BASE_URL}/purchase-orders`;
+
+                const res = await authFetch(url, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ supplier_name, branch_id, items })
                 });
                 const json = await res.json();
                 if (json.success) {
-                    showToast('สร้างใบสั่งซื้อสำเร็จ');
-                    document.getElementById('form-create-po').reset();
-                    document.getElementById('po-items-container').innerHTML = '';
-                    addPoItemRow();
+                    showToast(editingPOId ? 'แก้ไขใบสั่งซื้อสำเร็จ' : 'สร้างใบสั่งซื้อสำเร็จ');
+                    stopEditingPO();
                     loadPOHistory(); // Refresh history cache
+                    switchPoTab('history');
                 } else {
                     showToast(json.message, 'error');
                 }
@@ -6699,6 +6791,83 @@ document.addEventListener('DOMContentLoaded', () => {
     // PO History & Printing System
     // ==========================================
     let poHistoryCache = [];
+    let editingPOId = null;
+
+    const startEditingPO = (po) => {
+        editingPOId = po._id;
+
+        // Switch to create tab
+        switchPoTab('create');
+
+        // Update Title/Submit Button text
+        const btnCreate = document.getElementById('tab-btn-create-po');
+        if (btnCreate) {
+            btnCreate.innerHTML = `<i class="fa-solid fa-pen-to-square mr-1.5"></i>แก้ไขใบสั่งซื้อ`;
+        }
+
+        const textSubmit = document.getElementById('text-submit-po');
+        if (textSubmit) textSubmit.textContent = 'บันทึกการแก้ไขใบสั่งซื้อ';
+
+        const cancelEditBtn = document.getElementById('btn-cancel-edit-po');
+        if (cancelEditBtn) cancelEditBtn.classList.remove('hidden');
+
+        // Populate Supplier and Branch
+        document.getElementById('po-supplier').value = po.supplier_name;
+        document.getElementById('po-branch').value = po.branch_id?._id || po.branch_id || '';
+
+        // Clear items container
+        const container = document.getElementById('po-items-container');
+        container.innerHTML = '';
+
+        // Populate Items
+        if (po.items && po.items.length > 0) {
+            po.items.forEach(item => {
+                addPoItemRow();
+                const rows = container.querySelectorAll('.po-item-row');
+                const row = rows[rows.length - 1];
+
+                // Populate fields in this row
+                row.querySelector('[name="po_item_name"]').value = item.product_name || '';
+                row.querySelector('[name="po_item_code"]').value = item.product_code || '';
+                row.querySelector('[name="po_item_category"]').value = item.category || '';
+                row.querySelector('[name="po_item_color"]').value = item.color || '';
+                row.querySelector('[name="po_item_capacity"]').value = item.capacity || '';
+                row.querySelector('[name="po_item_unit"]').value = item.unit || '';
+                row.querySelector('[name="po_item_qty"]').value = item.ordered_qty || 1;
+                row.querySelector('[name="po_item_cost"]').value = item.cost_price || 0;
+                row.querySelector('[name="po_item_sell"]').value = item.selling_price || 0;
+                row.querySelector('[name="po_item_track_imei"]').checked = !!item.track_imei;
+
+                // Trigger calculation
+                const event = new Event('input');
+                row.querySelector('[name="po_item_qty"]').dispatchEvent(event);
+            });
+        }
+    };
+
+    const stopEditingPO = () => {
+        editingPOId = null;
+
+        const btnCreate = document.getElementById('tab-btn-create-po');
+        if (btnCreate) {
+            btnCreate.innerHTML = `<i class="fa-solid fa-plus mr-1.5"></i>สร้างใบสั่งซื้อ`;
+        }
+
+        const textSubmit = document.getElementById('text-submit-po');
+        if (textSubmit) textSubmit.textContent = 'สร้างใบสั่งซื้อ';
+
+        const cancelEditBtn = document.getElementById('btn-cancel-edit-po');
+        if (cancelEditBtn) cancelEditBtn.classList.add('hidden');
+
+        document.getElementById('form-create-po').reset();
+        document.getElementById('po-items-container').innerHTML = '';
+        addPoItemRow();
+        calculatePOTotal();
+    };
+
+    if (document.getElementById('btn-cancel-edit-po')) {
+        document.getElementById('btn-cancel-edit-po').addEventListener('click', stopEditingPO);
+    }
 
     // Switch between PO tabs
     const switchPoTab = (tabName) => {
@@ -6829,9 +6998,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 </td>
                 <td class="px-6 py-4 text-right font-mono font-bold text-cyan-400">฿${totalAmount.toLocaleString()}</td>
                 <td class="px-6 py-4 text-right">
-                    <button class="btn-print-po px-3.5 py-1.5 bg-slate-800 hover:bg-cyan-950/80 text-slate-300 hover:text-cyan-400 rounded-lg border border-slate-700 hover:border-cyan-800/60 transition-all flex items-center gap-1 ml-auto text-xs font-bold" title="พิมพ์ใบ PO">
-                        <i class="fa-solid fa-print"></i> พิมพ์ PO
-                    </button>
+                    <div class="flex items-center justify-end gap-1.5">
+                        ${po.status === 'รอจัดส่ง' || po.status === 'สั่งซื้อแล้ว' ? `
+                            <button class="btn-edit-po px-2.5 py-1.5 bg-cyan-500/10 text-cyan-400 hover:bg-cyan-500/25 border border-cyan-500/30 rounded-lg transition-all text-[11px] font-bold" title="แก้ไขใบ PO">
+                                <i class="fa-solid fa-pen-to-square"></i> แก้ไข
+                            </button>
+                            <button class="btn-cancel-po px-2.5 py-1.5 bg-red-500/10 text-red-400 hover:bg-red-500/25 border border-red-500/30 rounded-lg transition-all text-[11px] font-bold" title="ยกเลิกใบ PO">
+                                <i class="fa-solid fa-trash-can"></i> ยกเลิก
+                            </button>
+                        ` : ''}
+                        <button class="btn-print-po px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg border border-slate-700 transition-all text-[11px] font-bold" title="พิมพ์ใบ PO">
+                            <i class="fa-solid fa-print"></i> พิมพ์
+                        </button>
+                    </div>
                 </td>
             `;
 
@@ -6839,6 +7018,40 @@ document.addEventListener('DOMContentLoaded', () => {
                 const encodedData = encodeURIComponent(JSON.stringify(po));
                 window.open(`po-print.html?data=${encodedData}`, '_blank');
             });
+
+            const editBtn = tr.querySelector('.btn-edit-po');
+            if (editBtn) {
+                editBtn.addEventListener('click', () => startEditingPO(po));
+            }
+
+            const cancelBtn = tr.querySelector('.btn-cancel-po');
+            if (cancelBtn) {
+                cancelBtn.addEventListener('click', () => {
+                    showConfirm(
+                        'ยืนยันการยกเลิกใบสั่งซื้อ',
+                        `คุณแน่ใจหรือไม่ว่าต้องการยกเลิกใบสั่งซื้อ <strong class="text-white font-mono">${po.po_number}</strong>?<br><span class="text-slate-400 text-xs">การดำเนินการนี้จะไม่สามารถแก้ไขกลับมาใช้งานได้อีก</span>`,
+                        async () => {
+                            try {
+                                const res = await authFetch(`${API_BASE_URL}/purchase-orders/${po._id}/cancel`, {
+                                    method: 'POST'
+                                });
+                                const json = await res.json();
+                                if (json.success) {
+                                    showToast('ยกเลิกใบสั่งซื้อเรียบร้อยแล้ว');
+                                    loadPOHistory();
+                                } else {
+                                    showToast(json.message, 'error');
+                                }
+                            } catch (e) {
+                                console.error(e);
+                                showToast('เกิดข้อผิดพลาดในการยกเลิกใบสั่งซื้อ', 'error');
+                            }
+                        },
+                        'ยืนยันการยกเลิก',
+                        'danger'
+                    );
+                });
+            }
 
             tbody.appendChild(tr);
         });
@@ -6907,7 +7120,55 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
+    // State variables for tabbed PO receiving view
+    let currentReceiveTab = 'all';
+    let receiveSearchQuery = '';
+    let cachedPOsData = [];
+
     window.initBranchReceive = async () => {
+        // Setup Search Input Event Listener
+        const searchInput = document.getElementById('search-receive-po');
+        if (searchInput) {
+            searchInput.value = '';
+            receiveSearchQuery = '';
+            searchInput.addEventListener('input', (e) => {
+                receiveSearchQuery = e.target.value.trim();
+                renderFilteredPOs();
+            });
+        }
+
+        // Setup Tabs Click Handlers
+        document.querySelectorAll('.tab-receive-po').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                // Remove active class from all tabs
+                document.querySelectorAll('.tab-receive-po').forEach(t => {
+                    t.className = 'tab-receive-po px-4 py-2 text-xs font-bold rounded-xl transition-all flex items-center gap-2 text-slate-400 hover:text-white';
+                });
+                // Add active class to clicked tab
+                const target = e.currentTarget;
+                target.className = 'tab-receive-po px-4 py-2 text-xs font-bold rounded-xl transition-all flex items-center gap-2 text-white bg-indigo-600 shadow-lg shadow-indigo-500/25';
+                
+                currentReceiveTab = target.dataset.status;
+                renderFilteredPOs();
+            });
+        });
+
+        // Setup close handlers for modal-po-view
+        if (document.getElementById('btn-close-po-view')) {
+            document.getElementById('btn-close-po-view').addEventListener('click', () => {
+                const modal = document.getElementById('modal-po-view');
+                modal.classList.add('opacity-0', 'pointer-events-none');
+                setTimeout(() => modal.classList.add('hidden'), 300);
+            });
+        }
+        if (document.getElementById('btn-close-po-view-bottom')) {
+            document.getElementById('btn-close-po-view-bottom').addEventListener('click', () => {
+                const modal = document.getElementById('modal-po-view');
+                modal.classList.add('opacity-0', 'pointer-events-none');
+                setTimeout(() => modal.classList.add('hidden'), 300);
+            });
+        }
+
         loadPOs();
     };
 
@@ -6915,62 +7176,404 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('btn-refresh-po-receive').addEventListener('click', () => loadPOs());
     }
 
+    const openViewPOModal = (po) => {
+        const modal = document.getElementById('modal-po-view');
+        if (!modal) return;
+
+        document.getElementById('view-po-number').textContent = po.po_number;
+        document.getElementById('view-po-supplier').innerHTML = `<i class="fa-solid fa-building text-slate-400 text-xs"></i> ${po.supplier_name}`;
+        
+        const branchName = po.branch_id ? po.branch_id.name : '-';
+        document.getElementById('view-po-branch').innerHTML = `<i class="fa-solid fa-location-dot text-slate-400 text-xs"></i> ${branchName}`;
+
+        const statusColors = {
+            'รอจัดส่ง': 'bg-amber-500/10 text-amber-400 border-amber-500/20 shadow-[0_0_10px_rgba(245,158,11,0.05)]',
+            'ของถึงสาขาแล้ว': 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20 shadow-[0_0_10px_rgba(16,185,129,0.05)]',
+            'กำลังตรวจรับ': 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20 shadow-[0_0_10px_rgba(6,182,212,0.05)]',
+            'นำเข้าสำเร็จ': 'bg-violet-500/10 text-violet-400 border-violet-500/20 shadow-[0_0_10px_rgba(139,92,246,0.05)]',
+            'รับของครบแล้ว': 'bg-violet-500/10 text-violet-400 border-violet-500/20 shadow-[0_0_10px_rgba(139,92,246,0.05)]',
+            'ยกเลิก': 'bg-red-500/10 text-red-400 border-red-500/20'
+        };
+        const statusClass = statusColors[po.status] || 'bg-slate-800 text-slate-400 border-slate-700';
+        const displayStatus = po.status === 'นำเข้าสำเร็จ' || po.status === 'รับของครบแล้ว' ? 'นำเข้าสำเร็จ' : po.status;
+        
+        const statusBadge = document.getElementById('view-po-status');
+        statusBadge.className = `inline-flex px-3 py-1 rounded-full text-xs font-bold border ${statusClass}`;
+        statusBadge.textContent = displayStatus;
+
+        const itemsContainer = document.getElementById('view-po-items');
+        itemsContainer.innerHTML = '';
+
+        if (!po.items || po.items.length === 0) {
+            itemsContainer.innerHTML = '<div class="text-center py-6 text-slate-500 text-xs">ไม่มีรายการสินค้าในใบสั่งซื้อนี้</div>';
+        } else {
+            po.items.forEach(item => {
+                const el = document.createElement('div');
+                el.className = 'p-5 bg-slate-950/80 border border-slate-850 rounded-2xl space-y-4 hover:border-slate-800 transition-all';
+                
+                const received = item.received_qty || 0;
+                const ordered = item.ordered_qty || 0;
+                let itemPercent = 0;
+                if (ordered > 0) {
+                    itemPercent = Math.round((received / ordered) * 100);
+                }
+
+                let imeisHtml = '';
+                if (item.track_imei && item.imeis_scanned && item.imeis_scanned.length > 0) {
+                    const chips = item.imeis_scanned.map(imei => `
+                        <span class="px-2.5 py-1 bg-slate-900 border border-slate-800 text-cyan-400 font-mono text-[10px] rounded-lg flex items-center gap-1 shadow-sm">
+                            <i class="fa-solid fa-barcode text-[8px] text-cyan-500/70"></i> ${imei}
+                        </span>
+                    `).join('');
+                    imeisHtml = `
+                        <div class="pt-3 border-t border-slate-800/80 space-y-2">
+                            <span class="text-xs text-slate-500 font-bold flex items-center gap-1"><i class="fa-solid fa-qrcode text-[10px]"></i> หมายเลข IMEI ที่สแกนนำเข้าคลังแล้ว (${item.imeis_scanned.length}):</span>
+                            <div class="flex flex-wrap gap-1.5 max-h-[120px] overflow-y-auto p-1 bg-slate-900/30 border border-slate-900 rounded-lg modal-scrollable-content">${chips}</div>
+                        </div>
+                    `;
+                }
+
+                el.innerHTML = `
+                    <div class="flex justify-between items-start gap-4">
+                        <div>
+                            <span class="text-white font-bold text-sm md:text-base flex items-center gap-2">
+                                ${item.product_name}
+                                <span class="text-xs text-slate-500 font-mono font-normal">(${item.product_code})</span>
+                            </span>
+                            <p class="text-xs text-slate-400 mt-1">
+                                ยอดสั่งซื้อ: <span class="text-white font-bold">${ordered}</span> | 
+                                ยอดรับจริง: <span class="text-emerald-400 font-bold">${received}</span> ชิ้น
+                            </p>
+                        </div>
+                        <div class="text-right shrink-0">
+                            <span class="text-[10px] font-semibold px-2 py-0.5 rounded-lg ${item.track_imei ? 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20' : 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20'} border">
+                                ${item.track_imei ? 'เก็บซีเรียล IMEI' : 'นับจำนวนชิ้น'}
+                            </span>
+                        </div>
+                    </div>
+                    
+                    <div class="space-y-1">
+                        <div class="w-full bg-slate-900 rounded-full h-2 overflow-hidden border border-slate-850 progress-bar-glow">
+                            <div class="bg-gradient-to-r from-emerald-500 to-teal-400 h-full rounded-full transition-all duration-500" style="width: ${itemPercent}%"></div>
+                        </div>
+                        <div class="flex justify-between text-[10px] font-bold text-slate-500">
+                            <span>สถานะตรวจรับเข้า</span>
+                            <span class="font-mono text-emerald-400">${itemPercent}%</span>
+                        </div>
+                    </div>
+
+                    ${imeisHtml}
+                `;
+                itemsContainer.appendChild(el);
+            });
+        }
+
+        modal.classList.remove('hidden');
+        void modal.offsetWidth;
+        modal.classList.remove('opacity-0', 'pointer-events-none');
+    };
+
+    const renderFilteredPOs = () => {
+        const tbody = document.getElementById('table-body-receive-po');
+        if (!tbody) return;
+
+        const filtered = cachedPOsData.filter(po => {
+            // 1. Tab filtering
+            if (currentReceiveTab !== 'all') {
+                if (currentReceiveTab === 'นำเข้าสำเร็จ') {
+                    if (po.status !== 'นำเข้าสำเร็จ' && po.status !== 'รับของครบแล้ว') return false;
+                } else {
+                    if (po.status !== currentReceiveTab) return false;
+                }
+            }
+            // 2. Search query filtering
+            if (receiveSearchQuery) {
+                const q = receiveSearchQuery.toLowerCase();
+                const poNum = (po.po_number || '').toLowerCase();
+                const sup = (po.supplier_name || '').toLowerCase();
+                return poNum.includes(q) || sup.includes(q);
+            }
+            return true;
+        });
+
+        tbody.innerHTML = '';
+        if (filtered.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="6" class="text-center py-10 text-slate-500 text-sm font-medium">
+                <i class="fa-solid fa-folder-open text-slate-600 text-2xl block mb-2"></i>
+                ไม่พบข้อมูลใบสั่งซื้อตามที่ค้นหา
+            </td></tr>`;
+            return;
+        }
+
+        filtered.forEach(po => {
+            const statusColors = {
+                'รอจัดส่ง': 'bg-amber-500/10 text-amber-400 border-amber-500/20 shadow-[0_0_10px_rgba(245,158,11,0.03)]',
+                'ของถึงสาขาแล้ว': 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20 shadow-[0_0_10px_rgba(16,185,129,0.03)]',
+                'กำลังตรวจรับ': 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20 shadow-[0_0_10px_rgba(6,182,212,0.03)]',
+                'นำเข้าสำเร็จ': 'bg-violet-500/10 text-violet-400 border-violet-500/20 shadow-[0_0_10px_rgba(139,92,246,0.03)]',
+                'รับของครบแล้ว': 'bg-violet-500/10 text-violet-400 border-violet-500/20 shadow-[0_0_10px_rgba(139,92,246,0.03)]',
+                'ยกเลิก': 'bg-red-500/10 text-red-400 border-red-500/20'
+            };
+            const badgeClass = statusColors[po.status] || 'bg-slate-500/10 text-slate-400 border-slate-500/20';
+            const displayStatus = po.status === 'นำเข้าสำเร็จ' || po.status === 'รับของครบแล้ว' ? 'นำเข้าสำเร็จ' : po.status;
+            const branchName = po.branch_id ? po.branch_id.name : '-';
+
+            // Calculate progress bar percent
+            let percent = 0;
+            let totalOrdered = 0;
+            let totalReceived = 0;
+            if (po.items && po.items.length > 0) {
+                totalOrdered = po.items.reduce((sum, i) => sum + i.ordered_qty, 0);
+                totalReceived = po.items.reduce((sum, i) => sum + (i.received_qty || 0), 0);
+                if (po.status === 'นำเข้าสำเร็จ' || po.status === 'รับของครบแล้ว') {
+                    percent = 100;
+                    totalReceived = totalOrdered; // For display aesthetics
+                } else if (totalOrdered > 0) {
+                    percent = Math.round((totalReceived / totalOrdered) * 100);
+                }
+            }
+
+            const tr = document.createElement('tr');
+            tr.className = 'border-b border-slate-800/80 hover:bg-slate-800/40 transition-all group duration-200';
+            tr.innerHTML = `
+                <td class="px-6 py-4 font-normal">
+                    <span class="text-white font-mono font-bold group-hover:text-indigo-400 transition-colors">${po.po_number}</span>
+                    <div class="text-[11px] text-slate-500 mt-1 flex items-center gap-1"><i class="fa-regular fa-clock"></i> ${new Date(po.createdAt).toLocaleDateString('th-TH')}</div>
+                </td>
+                <td class="px-6 py-4 text-sm text-slate-300 font-medium">${po.supplier_name}</td>
+                <td class="px-6 py-4 text-sm text-slate-400 font-normal">
+                    <div class="flex items-center gap-1.5"><i class="fa-solid fa-location-dot text-slate-500 text-xs"></i> ${branchName}</div>
+                </td>
+                <td class="px-6 py-4 text-center">
+                    <div class="inline-flex flex-col items-center gap-1.5 w-max">
+                        <div class="w-24 bg-slate-900 rounded-full h-1.5 overflow-hidden border border-slate-800 progress-bar-glow">
+                            <div class="bg-gradient-to-r from-indigo-500 to-cyan-500 h-full rounded-full transition-all duration-500" style="width: ${percent}%"></div>
+                        </div>
+                        <span class="text-[10px] font-bold text-slate-400 font-mono">${totalReceived} / ${totalOrdered} ชิ้น (${percent}%)</span>
+                    </div>
+                </td>
+                <td class="px-6 py-4 text-center">
+                    <span class="inline-flex px-3 py-1 rounded-full text-xs font-bold border ${badgeClass}">${displayStatus}</span>
+                </td>
+                <td class="px-6 py-4 text-right shrink-0">
+                    ${po.status === 'รอจัดส่ง' ? `
+                        <button class="btn-action-arrival text-xs px-3.5 py-2 bg-gradient-to-r from-green-600 to-green-500 hover:from-green-500 hover:to-green-400 text-white rounded-xl shadow-lg shadow-green-500/10 font-bold transition-all" data-id="${po._id}">
+                            <i class="fa-solid fa-truck-circle-check text-xs"></i> ของถึงสาขา
+                        </button>
+                    ` : (po.status === 'ของถึงสาขาแล้ว' || po.status === 'กำลังตรวจรับ') ? `
+                        <button class="btn-open-receive text-xs px-3.5 py-2 bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 text-white rounded-xl shadow-lg shadow-indigo-500/10 font-bold transition-all" data-id="${po._id}">
+                            <i class="fa-solid fa-barcode text-xs"></i> ตรวจรับของ
+                        </button>
+                    ` : `
+                        <button class="btn-view-po text-xs px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-bold transition-all flex items-center gap-1 ml-auto" data-id="${po._id}">
+                            <i class="fa-solid fa-eye text-slate-400 text-xs"></i> ดูข้อมูล
+                        </button>
+                    `}
+                </td>
+            `;
+            tbody.appendChild(tr);
+
+            // Bind click event handlers
+            const btnArrival = tr.querySelector('.btn-action-arrival');
+            if (btnArrival) {
+                btnArrival.addEventListener('click', () => openArrivalModal(po));
+            }
+
+            const btnReceive = tr.querySelector('.btn-open-receive');
+            if (btnReceive) {
+                btnReceive.addEventListener('click', () => openReceiveModal(po));
+            }
+
+            const btnView = tr.querySelector('.btn-view-po');
+            if (btnView) {
+                btnView.addEventListener('click', () => openViewPOModal(po));
+            }
+        });
+    };
+
     const loadPOs = async () => {
         const tbody = document.getElementById('table-body-receive-po');
         if (!tbody) return;
-        tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4"><i class="fa-solid fa-circle-notch fa-spin text-slate-500"></i></td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center py-10"><i class="fa-solid fa-circle-notch fa-spin text-slate-500 text-xl"></i><span class="text-xs text-slate-500 block mt-2">กำลังดึงข้อมูลใบสั่งซื้อ...</span></td></tr>';
 
         try {
             const res = await authFetch(`${API_BASE_URL}/purchase-orders`);
             const json = await res.json();
             if (json.success) {
-                tbody.innerHTML = '';
-                if (json.data.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="5" class="text-center py-6 text-slate-500">ไม่มีใบสั่งซื้อที่รอรับ</td></tr>';
-                    return;
-                }
+                cachedPOsData = json.data || [];
+                
+                // Update live status counts in tabs
+                const allCount = cachedPOsData.length;
+                const pendingCount = cachedPOsData.filter(po => po.status === 'รอจัดส่ง').length;
+                const arrivedCount = cachedPOsData.filter(po => po.status === 'ของถึงสาขาแล้ว').length;
+                const checkingCount = cachedPOsData.filter(po => po.status === 'กำลังตรวจรับ').length;
+                const importedCount = cachedPOsData.filter(po => po.status === 'นำเข้าสำเร็จ' || po.status === 'รับของครบแล้ว').length;
+                const cancelledCount = cachedPOsData.filter(po => po.status === 'ยกเลิก').length;
 
-                json.data.forEach(po => {
-                    const statusColors = {
-                        'รอจัดส่ง': 'bg-amber-500/20 text-amber-400 border-amber-500/30',
-                        'กำลังตรวจรับ': 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30',
-                        'รับของครบแล้ว': 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
-                        'ยกเลิก': 'bg-red-500/20 text-red-400 border-red-500/30'
-                    };
-                    const badgeClass = statusColors[po.status] || 'bg-slate-500/20 text-slate-400 border-slate-500/30';
-                    const branchName = po.branch_id ? po.branch_id.name : '-';
+                const badgeAll = document.getElementById('badge-receive-all');
+                const badgePending = document.getElementById('badge-receive-pending');
+                const badgeArrived = document.getElementById('badge-receive-arrived');
+                const badgeChecking = document.getElementById('badge-receive-checking');
+                const badgeImported = document.getElementById('badge-receive-imported');
+                const badgeCancelled = document.getElementById('badge-receive-cancelled');
 
-                    const tr = document.createElement('tr');
-                    tr.className = 'border-b border-gray-800 hover:bg-gray-800/50 transition-colors';
-                    tr.innerHTML = `
-                        <td class="px-6 py-4">
-                            <span class="text-white font-mono font-bold">${po.po_number}</span>
-                            <div class="text-xs text-slate-500 mt-1">${new Date(po.createdAt).toLocaleDateString('th-TH')}</div>
-                        </td>
-                        <td class="px-6 py-4 text-slate-300">${po.supplier_name}</td>
-                        <td class="px-6 py-4 text-slate-300">${branchName}</td>
-                        <td class="px-6 py-4 text-center">
-                            <span class="px-3 py-1 rounded-full text-xs font-medium border ${badgeClass}">${po.status}</span>
-                        </td>
-                        <td class="px-6 py-4 text-right">
-                            ${po.status !== 'รับของครบแล้ว' && po.status !== 'ยกเลิก' ?
-                            `<button class="btn-open-receive text-sm px-4 py-2 bg-indigo-500 hover:bg-indigo-400 text-white rounded-lg shadow-lg shadow-indigo-500/20 transition-all" data-id="${po._id}">ตรวจรับของ</button>` :
-                            `<button class="btn-view-po text-sm px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-all" data-id="${po._id}">ดูข้อมูล</button>`
-                        }
-                        </td>
-                    `;
-                    tbody.appendChild(tr);
+                if (badgeAll) badgeAll.textContent = allCount;
+                if (badgePending) badgePending.textContent = pendingCount;
+                if (badgeArrived) badgeArrived.textContent = arrivedCount;
+                if (badgeChecking) badgeChecking.textContent = checkingCount;
+                if (badgeImported) badgeImported.textContent = importedCount;
+                if (badgeCancelled) badgeCancelled.textContent = cancelledCount;
 
-                    const btnReceive = tr.querySelector('.btn-open-receive');
-                    if (btnReceive) {
-                        btnReceive.addEventListener('click', () => openReceiveModal(po));
-                    }
-                });
+                renderFilteredPOs();
+            } else {
+                tbody.innerHTML = `<tr><td colspan="6" class="text-center py-6 text-red-400">เกิดข้อผิดพลาด: ${json.message}</td></tr>`;
             }
         } catch (e) {
             console.error(e);
-            tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-red-400">โหลดข้อมูลล้มเหลว</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="6" class="text-center py-6 text-red-400">เชื่อมต่อบริการล้มเหลว</td></tr>';
         }
+    };
+
+    const openArrivalModal = (po) => {
+        // ตั้งค่าหัวข้อ PO Number ใน Modal
+        document.getElementById('arrival-po-number').textContent = po.po_number;
+
+        // เคลียร์และสร้างรายการสินค้าใน Modal
+        const container = document.getElementById('arrival-po-items');
+        container.innerHTML = '';
+
+        po.items.forEach(item => {
+            const card = document.createElement('div');
+            card.className = 'bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3 po-arrival-row';
+            card.dataset.itemId = item._id;
+            card.dataset.trackImei = item.track_imei ? 'true' : 'false';
+            card.dataset.productName = item.product_name;
+            card.dataset.orderedQty = item.ordered_qty;
+
+            if (item.track_imei) {
+                card.innerHTML = `
+                    <div class="flex justify-between items-center border-b border-slate-800 pb-2">
+                        <span class="font-bold text-white text-base flex items-center gap-2">
+                            <i class="fa-solid fa-mobile-screen text-cyan-400"></i> ${item.product_name}
+                        </span>
+                        <span id="badge-count-${item._id}" class="text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                            สแกนแล้ว 0 / ${item.ordered_qty} เครื่อง
+                        </span>
+                    </div>
+                    <div class="space-y-1.5">
+                        <label class="text-xs font-medium text-slate-400 flex items-center gap-1">
+                            <i class="fa-solid fa-barcode text-green-400 text-xs"></i> สแกนหรือระบุหมายเลข IMEI (1 รายการต่อบรรทัด)
+                        </label>
+                        <textarea id="textarea-imei-${item._id}" 
+                                  rows="4" 
+                                  class="w-full px-4 py-3 rounded-xl bg-slate-950 border border-slate-800 text-white focus:border-green-500 focus:ring-1 focus:ring-green-500 focus:outline-none transition-all font-mono placeholder-slate-700 text-sm"
+                                  placeholder="วางหรือสแกน IMEI ที่นี่...&#10;ตัวอย่าง:&#10;358901234567891&#10;358901234567892"></textarea>
+                    </div>
+                `;
+
+                const textarea = card.querySelector(`textarea`);
+                textarea.addEventListener('input', () => {
+                    const lines = textarea.value.split('\n').map(x => x.trim()).filter(Boolean);
+                    const count = lines.length;
+                    const badge = card.querySelector(`#badge-count-${item._id}`);
+                    if (badge) {
+                        badge.textContent = `สแกนแล้ว ${count} / ${item.ordered_qty} เครื่อง`;
+                        if (count === item.ordered_qty) {
+                            badge.className = 'text-xs font-semibold px-2 py-0.5 rounded-full bg-green-500/10 text-green-400 border border-green-500/20';
+                        } else {
+                            badge.className = 'text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20';
+                        }
+                    }
+                });
+
+                if (Array.isArray(item.imeis_scanned) && item.imeis_scanned.length > 0) {
+                    textarea.value = item.imeis_scanned.join('\n');
+                    textarea.dispatchEvent(new Event('input'));
+                }
+            } else {
+                card.innerHTML = `
+                    <div class="flex justify-between items-center">
+                        <span class="font-bold text-white text-base flex items-center gap-2">
+                            <i class="fa-solid fa-plug text-violet-400"></i> ${item.product_name}
+                        </span>
+                        <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-green-500/10 text-green-400 border border-green-500/20">
+                            จำนวนครบ ${item.ordered_qty} ชิ้น
+                        </span>
+                    </div>
+                    <div class="text-xs text-slate-500">
+                        สินค้าชิ้นนี้เป็นอุปกรณ์เสริม/ทั่วไป ไม่ต้องการบันทึกหมายเลข IMEI
+                    </div>
+                `;
+            }
+            container.appendChild(card);
+        });
+
+        // เปิดใช้งาน Modal
+        const modal = document.getElementById('modal-po-arrival');
+        modal.classList.remove('hidden');
+        void modal.offsetWidth; // Force reflow
+        modal.classList.remove('opacity-0', 'pointer-events-none');
+
+        // ตั้งค่าปุ่มตกลงแจ้งของถึงร้าน
+        const btnSubmit = document.getElementById('btn-submit-po-arrival');
+        btnSubmit.onclick = async () => {
+            const rows = document.querySelectorAll('.po-arrival-row');
+            const received_items = {};
+
+            for (let row of rows) {
+                const itemId = row.dataset.itemId;
+                const trackImei = row.dataset.trackImei === 'true';
+                const productName = row.dataset.productName;
+                const orderedQty = Number(row.dataset.orderedQty);
+
+                if (trackImei) {
+                    const textarea = row.querySelector('textarea');
+                    const imeis = textarea.value.split('\n').map(x => x.trim()).filter(Boolean);
+
+                    if (imeis.length !== orderedQty) {
+                        showToast(`กรุณากรอก IMEI สำหรับ ${productName} ให้ครบ ${orderedQty} เครื่อง (ปัจจุบันกรอก ${imeis.length})`, 'error');
+                        return;
+                    }
+
+                    const uniqueImeis = [...new Set(imeis)];
+                    if (uniqueImeis.length !== imeis.length) {
+                        showToast(`มีหมายเลข IMEI ซ้ำกันในรายการสินค้า ${productName}`, 'error');
+                        return;
+                    }
+
+                    received_items[itemId] = { imeis };
+                } else {
+                    received_items[itemId] = { qty: orderedQty };
+                }
+            }
+
+            try {
+                btnSubmit.disabled = true;
+                btnSubmit.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i>กำลังบันทึกข้อมูล...';
+
+                const res = await authFetch(`${API_BASE_URL}/po/${po._id}/report-arrival`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ received_items })
+                });
+
+                const json = await res.json();
+                if (json.success) {
+                    showToast('แจ้งสถานะสินค้าถึงสาขาและบันทึก IMEI สำเร็จเรียบร้อยแล้ว!', 'success');
+                    document.getElementById('btn-close-po-arrival').click();
+                    if (typeof loadArrivalPOs === 'function') loadArrivalPOs();
+                    if (typeof loadPOs === 'function') loadPOs();
+                } else {
+                    showToast(json.message, 'error');
+                }
+            } catch (err) {
+                console.error(err);
+                showToast('เกิดข้อผิดพลาดในการบันทึกรายการ', 'error');
+            } finally {
+                btnSubmit.disabled = false;
+                btnSubmit.innerHTML = 'ยืนยันรายการและแจ้งของถึงสาขา';
+            }
+        };
     };
 
     const openReceiveModal = (po) => {
@@ -7062,6 +7665,37 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 };
 
+                const handleRemoveImei = (tagEl, imeiVal) => {
+                    showConfirm('ยืนยันการลบ IMEI', `คุณต้องการลบ IMEI: ${imeiVal} ใช่หรือไม่?`, async () => {
+                        tagEl.remove();
+                        updateScannedCount();
+
+                        // Get all remaining IMEIs in the UI container for this row to save immediately to DB
+                        const remainingImeis = Array.from(tagsContainer.querySelectorAll('.imei-tag-text')).map(t => t.textContent.trim());
+
+                        try {
+                            const received_items = {};
+                            received_items[item._id] = { imeis: remainingImeis };
+
+                            const res = await authFetch(`${API_BASE_URL}/po/${window.__currentReceivePO}/scan-item`, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ received_items })
+                            });
+                            const json = await res.json();
+                            if (json.success) {
+                                showToast(`ลบ IMEI ${imeiVal} สำเร็จ`, 'success');
+                                if (typeof loadPOs === 'function') loadPOs();
+                            } else {
+                                showToast(json.message || 'ไม่สามารถลบ IMEI ในฐานข้อมูลได้', 'error');
+                            }
+                        } catch (err) {
+                            console.error('Error auto-saving IMEI deletion:', err);
+                            showToast('เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์เพื่อบันทึกการลบ IMEI', 'error');
+                        }
+                    }, 'ยืนยันการลบ');
+                };
+
                 // ถ้ามี IMEI ที่สแกนไว้จากหน้าร้าน ให้แสดงขึ้นมาเป็น Tag อัตโนมัติเพื่อให้พนักงานสต็อกตรวจสอบ
                 if (Array.isArray(item.imeis_scanned) && item.imeis_scanned.length > 0) {
                     item.imeis_scanned.forEach(val => {
@@ -7073,8 +7707,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         `;
 
                         tag.querySelector('.btn-remove-imei').addEventListener('click', () => {
-                            tag.remove();
-                            updateScannedCount();
+                            handleRemoveImei(tag, val);
                         });
 
                         tagsContainer.appendChild(tag);
@@ -7131,8 +7764,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         `;
 
                         tag.querySelector('.btn-remove-imei').addEventListener('click', () => {
-                            tag.remove();
-                            updateScannedCount();
+                            handleRemoveImei(tag, val);
                         });
 
                         tagsContainer.appendChild(tag);
@@ -7186,10 +7818,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 if (trackImei) {
                     const imeis = Array.from(row.querySelectorAll('.imei-tag-text')).map(t => t.textContent.trim());
-                    if (imeis.length > 0) {
-                        received_items[itemId] = { imeis };
-                        hasInput = true;
-                    }
+                    received_items[itemId] = { imeis };
+                    hasInput = true;
                 } else {
                     const qty = Number(row.querySelector('.receive-qty').value);
                     if (qty > 0) {
@@ -7236,189 +7866,237 @@ document.addEventListener('DOMContentLoaded', () => {
     // ==========================================
     // Connected PO Workflow: แจ้งของถึงสาขา (Sales/Front Store)
     // ==========================================
+    let isArrivalTabsInitialized = false;
+
     const loadArrivalPOs = async () => {
         const tbody = document.getElementById('table-body-arrival-po');
+        const tbodyCompleted = document.getElementById('table-body-arrival-completed-po');
+        const badgePending = document.getElementById('badge-arrival-pending-count');
+        const badgeCompleted = document.getElementById('badge-arrival-completed-count');
+
+        // Tab click listeners initialization
+        const tabArrivalPending = document.getElementById('tab-arrival-pending');
+        const tabArrivalCompleted = document.getElementById('tab-arrival-completed');
+        const sectionArrivalPending = document.getElementById('section-arrival-pending');
+        const sectionArrivalCompleted = document.getElementById('section-arrival-completed');
+
+        if (!isArrivalTabsInitialized && tabArrivalPending && tabArrivalCompleted) {
+            tabArrivalPending.addEventListener('click', () => {
+                tabArrivalPending.className = "px-6 py-3.5 border-b-2 border-green-500 text-green-400 text-sm font-bold flex items-center gap-2 transition-all duration-200 focus:outline-none";
+                tabArrivalCompleted.className = "px-6 py-3.5 border-b-2 border-transparent text-slate-400 hover:text-slate-200 text-sm font-semibold flex items-center gap-2 transition-all duration-200 focus:outline-none";
+                if (sectionArrivalPending) sectionArrivalPending.classList.remove('hidden');
+                if (sectionArrivalCompleted) sectionArrivalCompleted.classList.add('hidden');
+            });
+
+            tabArrivalCompleted.addEventListener('click', () => {
+                tabArrivalCompleted.className = "px-6 py-3.5 border-b-2 border-green-500 text-green-400 text-sm font-bold flex items-center gap-2 transition-all duration-200 focus:outline-none";
+                tabArrivalPending.className = "px-6 py-3.5 border-b-2 border-transparent text-slate-400 hover:text-slate-200 text-sm font-semibold flex items-center gap-2 transition-all duration-200 focus:outline-none";
+                if (sectionArrivalCompleted) sectionArrivalCompleted.classList.remove('hidden');
+                if (sectionArrivalPending) sectionArrivalPending.classList.add('hidden');
+            });
+            isArrivalTabsInitialized = true;
+        }
+        
         if (!tbody) return;
         tbody.innerHTML = '<tr><td colspan="6" class="text-center py-6 text-slate-400"><i class="fa-solid fa-spinner fa-spin mr-2 text-green-400"></i>กำลังโหลดข้อมูลใบสั่งซื้อ...</td></tr>';
+        if (tbodyCompleted) {
+            tbodyCompleted.innerHTML = '<tr><td colspan="6" class="text-center py-6 text-slate-400"><i class="fa-solid fa-spinner fa-spin mr-2 text-green-400"></i>กำลังโหลดข้อมูลใบสั่งซื้อ...</td></tr>';
+        }
 
         try {
             const res = await authFetch(`${API_BASE_URL}/purchase-orders`);
             const json = await res.json();
             if (json.success) {
                 tbody.innerHTML = '';
-                // Filter POs heading to branch (status: 'รอจัดส่ง')
-                const pendingPOs = json.data.filter(po => po.status === 'รอจัดส่ง');
+                if (tbodyCompleted) tbodyCompleted.innerHTML = '';
+
+                // Filter POs heading to branch (status: 'รอจัดส่ง' หรือที่มีการลบ IMEI/สแกนไม่ครบในภายหลัง)
+                const pendingPOs = json.data.filter(po => {
+                    if (po.status === 'รอจัดส่ง') return true;
+                    
+                    if (po.status === 'ของถึงสาขาแล้ว' || po.status === 'กำลังตรวจรับ') {
+                        // เช็คว่ามีสินค้าตัวใดสแกนไม่ครบหรือไม่
+                        return po.items.some(item => {
+                            if (item.track_imei) {
+                                const currentImeisCount = Array.isArray(item.imeis_scanned) ? item.imeis_scanned.length : 0;
+                                return currentImeisCount < item.ordered_qty;
+                            } else {
+                                return (item.received_qty || 0) < item.ordered_qty;
+                            }
+                        });
+                    }
+                    return false;
+                });
+
+                // Filter POs completed (status: 'ของถึงสาขาแล้ว'/'กำลังตรวจรับ' ที่สแกนครบถ้วน หรือ 'นำเข้าสำเร็จ'/'รับของครบแล้ว')
+                const completedPOs = json.data.filter(po => {
+                    if (po.status === 'นำเข้าสำเร็จ' || po.status === 'รับของครบแล้ว') return true;
+                    if (po.status === 'ของถึงสาขาแล้ว' || po.status === 'กำลังตรวจรับ') {
+                        const isIncomplete = po.items.some(item => {
+                            if (item.track_imei) {
+                                const currentImeisCount = Array.isArray(item.imeis_scanned) ? item.imeis_scanned.length : 0;
+                                return currentImeisCount < item.ordered_qty;
+                            } else {
+                                return (item.received_qty || 0) < item.ordered_qty;
+                            }
+                        });
+                        return !isIncomplete;
+                    }
+                    return false;
+                });
+
+                // Update Badges
+                if (badgePending) badgePending.textContent = pendingPOs.length;
+                if (badgeCompleted) badgeCompleted.textContent = completedPOs.length;
                 
+                // 1. Render Pending POs
                 if (pendingPOs.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="6" class="text-center py-8 text-slate-500 text-sm">ไม่มีใบสั่งซื้อที่อยู่ระหว่างจัดส่งถึงสาขานี้</td></tr>';
-                    return;
+                    tbody.innerHTML = '<tr><td colspan="6" class="text-center py-8 text-slate-500 text-sm"><i class="fa-solid fa-inbox text-slate-650 text-xl block mb-2"></i>ไม่มีใบสั่งซื้อที่อยู่ระหว่างจัดส่งถึงสาขานี้</td></tr>';
+                } else {
+                    pendingPOs.forEach(po => {
+                        const tr = document.createElement('tr');
+                        tr.className = 'border-b border-slate-800/40 hover:bg-slate-700/10 transition-all duration-150';
+                        const itemsDesc = po.items.map(item => `${item.product_name} (${item.ordered_qty} ชิ้น)`).join(', ');
+                        
+                        tr.innerHTML = `
+                            <td class="px-6 py-4 font-mono font-bold text-white">${po.po_number}</td>
+                            <td class="px-6 py-4 text-sm text-slate-350">${new Date(po.createdAt).toLocaleDateString('th-TH')}</td>
+                            <td class="px-6 py-4 text-sm text-slate-300">${po.supplier_name}</td>
+                            <td class="px-6 py-4 text-sm text-slate-400 max-w-[250px] truncate font-medium" title="${itemsDesc}">${itemsDesc}</td>
+                            <td class="px-6 py-4 text-center">
+                                <span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20">${po.status}</span>
+                            </td>
+                            <td class="px-6 py-4 text-right">
+                                <button class="btn-confirm-arrival px-3 py-1.5 bg-green-500/10 text-green-400 hover:bg-green-500/20 border border-green-500/35 hover:border-green-500/60 rounded-xl text-xs font-bold transition-all inline-flex items-center gap-1.5 shadow-sm active:scale-95" data-id="${po._id}">
+                                    <i class="fa-solid fa-truck-circle-check"></i> ยืนยันของถึงร้าน
+                                </button>
+                            </td>
+                        `;
+                        tbody.appendChild(tr);
+
+                        tr.querySelector('.btn-confirm-arrival').addEventListener('click', () => {
+                            openArrivalModal(po);
+                        });
+                    });
                 }
 
-                pendingPOs.forEach(po => {
-                    const tr = document.createElement('tr');
-                    tr.className = 'border-b border-slate-700/50 hover:bg-slate-700/20 transition-colors';
-                    const itemsDesc = po.items.map(item => `${item.product_name} (${item.ordered_qty} ชิ้น)`).join(', ');
-                    
-                    tr.innerHTML = `
-                        <td class="px-6 py-4 font-mono font-bold text-white">${po.po_number}</td>
-                        <td class="px-6 py-4 text-sm text-slate-350">${new Date(po.createdAt).toLocaleDateString('th-TH')}</td>
-                        <td class="px-6 py-4 text-sm text-slate-300">${po.supplier_name}</td>
-                        <td class="px-6 py-4 text-sm text-slate-400 max-w-[250px] truncate" title="${itemsDesc}">${itemsDesc}</td>
-                        <td class="px-6 py-4 text-center">
-                            <span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20">${po.status}</span>
-                        </td>
-                        <td class="px-6 py-4 text-right">
-                            <button class="btn-confirm-arrival px-3 py-1.5 bg-green-500/20 text-green-400 hover:bg-green-500/30 rounded-lg text-xs font-bold transition-all inline-flex items-center gap-1" data-id="${po._id}">
-                                <i class="fa-solid fa-truck-circle-check"></i> ยืนยันของถึงร้าน
-                            </button>
-                        </td>
-                    `;
-                    tbody.appendChild(tr);
-
-                    tr.querySelector('.btn-confirm-arrival').addEventListener('click', async (e) => {
-                        const poId = e.currentTarget.dataset.id;
-                        const po = pendingPOs.find(p => p._id === poId);
-                        if (!po) return;
-
-                        // ตั้งค่าหัวข้อ PO Number ใน Modal
-                        document.getElementById('arrival-po-number').textContent = po.po_number;
-
-                        // เคลียร์และสร้างรายการสินค้าใน Modal
-                        const container = document.getElementById('arrival-po-items');
-                        container.innerHTML = '';
-
-                        po.items.forEach(item => {
-                            const card = document.createElement('div');
-                            card.className = 'bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3 po-arrival-row';
-                            card.dataset.itemId = item._id;
-                            card.dataset.trackImei = item.track_imei ? 'true' : 'false';
-                            card.dataset.productName = item.product_name;
-                            card.dataset.orderedQty = item.ordered_qty;
-
-                            if (item.track_imei) {
-                                card.innerHTML = `
-                                    <div class="flex justify-between items-center border-b border-slate-800 pb-2">
-                                        <span class="font-bold text-white text-base flex items-center gap-2">
-                                            <i class="fa-solid fa-mobile-screen text-cyan-400"></i> ${item.product_name}
-                                        </span>
-                                        <span id="badge-count-${item._id}" class="text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20">
-                                            สแกนแล้ว 0 / ${item.ordered_qty} เครื่อง
-                                        </span>
-                                    </div>
-                                    <div class="space-y-1.5">
-                                        <label class="text-xs font-medium text-slate-400 flex items-center gap-1">
-                                            <i class="fa-solid fa-barcode text-green-400 text-xs"></i> สแกนหรือระบุหมายเลข IMEI (1 รายการต่อบรรทัด)
-                                        </label>
-                                        <textarea id="textarea-imei-${item._id}" 
-                                                  rows="4" 
-                                                  class="w-full px-4 py-3 rounded-xl bg-slate-950 border border-slate-800 text-white focus:border-green-500 focus:ring-1 focus:ring-green-500 focus:outline-none transition-all font-mono placeholder-slate-700 text-sm"
-                                                  placeholder="วางหรือสแกน IMEI ที่นี่...&#10;ตัวอย่าง:&#10;358901234567891&#10;358901234567892"></textarea>
-                                    </div>
-                                `;
-
-                                const textarea = card.querySelector(`textarea`);
-                                textarea.addEventListener('input', () => {
-                                    const lines = textarea.value.split('\n').map(x => x.trim()).filter(Boolean);
-                                    const count = lines.length;
-                                    const badge = card.querySelector(`#badge-count-${item._id}`);
-                                    if (badge) {
-                                        badge.textContent = `สแกนแล้ว ${count} / ${item.ordered_qty} เครื่อง`;
-                                        if (count === item.ordered_qty) {
-                                            badge.className = 'text-xs font-semibold px-2 py-0.5 rounded-full bg-green-500/10 text-green-400 border border-green-500/20';
-                                        } else {
-                                            badge.className = 'text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20';
-                                        }
-                                    }
-                                });
+                // 2. Render Completed POs
+                if (tbodyCompleted) {
+                    if (completedPOs.length === 0) {
+                        tbodyCompleted.innerHTML = '<tr><td colspan="6" class="text-center py-8 text-slate-500 text-sm"><i class="fa-solid fa-clipboard-check text-slate-650 text-xl block mb-2"></i>ไม่มีใบสั่งซื้อที่ดำเนินการเสร็จสมบูรณ์</td></tr>';
+                    } else {
+                        completedPOs.forEach(po => {
+                            const tr = document.createElement('tr');
+                            tr.className = 'border-b border-slate-800/40 hover:bg-slate-700/5 transition-all duration-150 opacity-90 hover:opacity-100';
+                            const itemsDesc = po.items.map(item => `${item.product_name} (${item.ordered_qty} ชิ้น)`).join(', ');
+                            
+                            let statusBadge = '';
+                            if (po.status === 'นำเข้าสำเร็จ' || po.status === 'รับของครบแล้ว') {
+                                statusBadge = `<span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-green-500/10 text-green-400 border border-green-500/20"><i class="fa-solid fa-circle-check text-[10px] mr-1"></i>นำเข้าสต็อกแล้ว</span>`;
                             } else {
-                                card.innerHTML = `
-                                    <div class="flex justify-between items-center">
-                                        <span class="font-bold text-white text-base flex items-center gap-2">
-                                            <i class="fa-solid fa-plug text-violet-400"></i> ${item.product_name}
-                                        </span>
-                                        <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-green-500/10 text-green-400 border border-green-500/20">
-                                            จำนวนครบ ${item.ordered_qty} ชิ้น
-                                        </span>
-                                    </div>
-                                    <div class="text-xs text-slate-500">
-                                        สินค้าชิ้นนี้เป็นอุปกรณ์เสริม/ทั่วไป ไม่ต้องการบันทึกหมายเลข IMEI
-                                    </div>
-                                `;
+                                statusBadge = `<span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"><i class="fa-solid fa-check text-[10px] mr-1"></i>แจ้งของถึงร้านแล้ว</span>`;
                             }
-                            container.appendChild(card);
+
+                            tr.innerHTML = `
+                                <td class="px-6 py-4 font-mono font-bold text-slate-300">${po.po_number}</td>
+                                <td class="px-6 py-4 text-sm text-slate-400">${new Date(po.updatedAt || po.createdAt).toLocaleDateString('th-TH')}</td>
+                                <td class="px-6 py-4 text-sm text-slate-400">${po.supplier_name}</td>
+                                <td class="px-6 py-4 text-sm text-slate-500 max-w-[250px] truncate" title="${itemsDesc}">${itemsDesc}</td>
+                                <td class="px-6 py-4 text-center">
+                                    ${statusBadge}
+                                </td>
+                                <td class="px-6 py-4 text-right">
+                                    <button class="btn-view-arrival-details px-3 py-1.5 bg-slate-900/60 text-slate-400 hover:bg-slate-800 hover:text-slate-200 border border-slate-800 hover:border-slate-700 rounded-xl text-xs font-semibold transition-all inline-flex items-center gap-1.5 shadow-sm active:scale-95" data-id="${po._id}">
+                                        <i class="fa-solid fa-eye"></i> ดูรายละเอียด
+                                    </button>
+                                </td>
+                            `;
+                            tbodyCompleted.appendChild(tr);
+
+                            tr.querySelector('.btn-view-arrival-details').addEventListener('click', () => {
+                                showCompletedPODetails(po);
+                            });
                         });
-
-                        // เปิดใช้งาน Modal
-                        const modal = document.getElementById('modal-po-arrival');
-                        modal.classList.remove('hidden');
-                        void modal.offsetWidth; // Force reflow
-                        modal.classList.remove('opacity-0', 'pointer-events-none');
-
-                        // ตั้งค่าปุ่มตกลงแจ้งของถึงร้าน
-                        const btnSubmit = document.getElementById('btn-submit-po-arrival');
-                        btnSubmit.onclick = async () => {
-                            const rows = document.querySelectorAll('.po-arrival-row');
-                            const received_items = {};
-
-                            for (let row of rows) {
-                                const itemId = row.dataset.itemId;
-                                const trackImei = row.dataset.trackImei === 'true';
-                                const productName = row.dataset.productName;
-                                const orderedQty = Number(row.dataset.orderedQty);
-
-                                if (trackImei) {
-                                    const textarea = row.querySelector('textarea');
-                                    const imeis = textarea.value.split('\n').map(x => x.trim()).filter(Boolean);
-
-                                    if (imeis.length !== orderedQty) {
-                                        showToast(`กรุณากรอก IMEI สำหรับ ${productName} ให้ครบ ${orderedQty} เครื่อง (ปัจจุบันกรอก ${imeis.length})`, 'error');
-                                        return;
-                                    }
-
-                                    const uniqueImeis = [...new Set(imeis)];
-                                    if (uniqueImeis.length !== imeis.length) {
-                                        showToast(`มีหมายเลข IMEI ซ้ำกันในรายการสินค้า ${productName}`, 'error');
-                                        return;
-                                    }
-
-                                    received_items[itemId] = { imeis };
-                                } else {
-                                    received_items[itemId] = { qty: orderedQty };
-                                }
-                            }
-
-                            try {
-                                btnSubmit.disabled = true;
-                                btnSubmit.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i>กำลังบันทึกข้อมูล...';
-
-                                const res = await authFetch(`${API_BASE_URL}/po/${po._id}/report-arrival`, {
-                                    method: 'POST',
-                                    headers: { 'Content-Type': 'application/json' },
-                                    body: JSON.stringify({ received_items })
-                                });
-
-                                const json = await res.json();
-                                if (json.success) {
-                                    showToast('แจ้งสถานะสินค้าถึงสาขาและบันทึก IMEI สำเร็จเรียบร้อยแล้ว!', 'success');
-                                    document.getElementById('btn-close-po-arrival').click();
-                                    loadArrivalPOs();
-                                } else {
-                                    showToast(json.message, 'error');
-                                }
-                            } catch (err) {
-                                console.error(err);
-                                showToast('เกิดข้อผิดพลาดในการบันทึกรายการ', 'error');
-                            } finally {
-                                btnSubmit.disabled = false;
-                                btnSubmit.innerHTML = 'ยืนยันรายการและแจ้งของถึงสาขา';
-                            }
-                        };
-                    });
-                });
+                    }
+                }
             }
         } catch (e) {
             console.error(e);
             tbody.innerHTML = '<tr><td colspan="6" class="text-center py-6 text-red-400">เกิดข้อผิดพลาดในการโหลดข้อมูล</td></tr>';
+            if (tbodyCompleted) tbodyCompleted.innerHTML = '<tr><td colspan="6" class="text-center py-6 text-red-400">เกิดข้อผิดพลาดในการโหลดข้อมูล</td></tr>';
+        }
+    };
+
+    // Helper to render PO details inside custom confirm modal
+    const showCompletedPODetails = (po) => {
+        let itemsHtml = `
+            <div class="text-left space-y-3 font-sans max-h-[350px] overflow-y-auto pr-1">
+                <div class="flex justify-between items-center border-b border-slate-800 pb-2 mb-2">
+                    <span class="text-slate-400 text-xs">เลขที่สั่งซื้อ: <strong class="text-white font-mono text-sm">${po.po_number}</strong></span>
+                    <span class="text-slate-400 text-xs">ซัพพลายเออร์: <strong class="text-slate-200">${po.supplier_name}</strong></span>
+                </div>
+        `;
+
+        po.items.forEach(item => {
+            const hasImeis = item.track_imei && Array.isArray(item.imeis_scanned) && item.imeis_scanned.length > 0;
+            itemsHtml += `
+                <div class="bg-slate-950/60 border border-slate-850/80 rounded-xl p-3 space-y-2">
+                    <div class="flex justify-between items-center">
+                        <span class="text-sm font-bold text-slate-200 flex items-center gap-1.5 font-sans">
+                            <i class="${item.track_imei ? 'fa-solid fa-mobile-screen text-cyan-400' : 'fa-solid fa-plug text-violet-400'} text-xs"></i>
+                            ${item.product_name}
+                        </span>
+                        <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-slate-900 text-emerald-400 border border-slate-800">
+                            ครบ ${item.ordered_qty} ชิ้น
+                        </span>
+                    </div>
+            `;
+
+            if (hasImeis) {
+                itemsHtml += `
+                    <div class="flex flex-wrap gap-1.5 pt-1">
+                `;
+                item.imeis_scanned.forEach(imei => {
+                    itemsHtml += `
+                        <span class="bg-slate-900 border border-slate-800 text-slate-350 px-2 py-0.5 rounded text-[10px] font-mono select-all tracking-tight hover:text-white transition-colors">${imei}</span>
+                    `;
+                });
+                itemsHtml += `
+                    </div>
+                `;
+            } else if (item.track_imei) {
+                itemsHtml += `
+                    <div class="text-xs text-rose-400 italic font-sans">ไม่มีหมายเลข IMEI ที่ถูกบันทึก</div>
+                `;
+            } else {
+                itemsHtml += `
+                    <div class="text-[11px] text-slate-500 italic font-sans">สินค้าอุปกรณ์เสริม/ทั่วไป ไม่ต้องสแกน IMEI</div>
+                `;
+            }
+
+            itemsHtml += `</div>`;
+        });
+
+        itemsHtml += `</div>`;
+
+        showConfirm(
+            `รายละเอียดการรับสินค้า`,
+            itemsHtml,
+            () => {},
+            'ปิดหน้าต่าง',
+            'info'
+        );
+
+        const cancelBtn = document.getElementById('confirm-cancel-btn');
+        if (cancelBtn) cancelBtn.style.display = 'none';
+
+        const okBtn = document.getElementById('confirm-ok-btn');
+        if (okBtn) {
+            const origClick = okBtn.onclick;
+            okBtn.onclick = (e) => {
+                if (origClick) origClick(e);
+                if (cancelBtn) cancelBtn.style.display = 'block';
+            };
         }
     };
 
@@ -7484,10 +8162,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     tbody.appendChild(tr);
 
                     tr.querySelector('.btn-finalize-import').addEventListener('click', async (e) => {
-                        const poId = e.currentTarget.dataset.id;
+                        const btnFinalize = e.currentTarget;
+                        const poId = btnFinalize.dataset.id;
                         showConfirm('ยืนยันนำเข้าสินค้า', 'ยืนยันนำเข้าสินค้าใบสั่งซื้อนี้เข้าสต็อกสาขา?', async () => {
                             try {
-                                const btnFinalize = e.currentTarget;
                                 btnFinalize.disabled = true;
                                 btnFinalize.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> อนุมัติ...';
 
@@ -7502,11 +8180,15 @@ document.addEventListener('DOMContentLoaded', () => {
                                     if (typeof fetchProducts === 'function') fetchProducts();
                                     if (typeof loadDashboardData === 'function') loadDashboardData();
                                 } else {
-                                    showToast(finalJson.message, 'error');
+                                    showToast(finalJson.message || 'เกิดข้อผิดพลาดในการอนุมัติ', 'error');
+                                    btnFinalize.disabled = false;
+                                    btnFinalize.innerHTML = '<i class="fa-solid fa-clipboard-check"></i> อนุมัตินำเข้าสต็อก';
                                 }
                             } catch (err) {
                                 console.error(err);
-                                showToast('เกิดข้อผิดพลาดในการทำรายการอนุมัติ', 'error');
+                                showToast(err.message || 'เกิดข้อผิดพลาดในการทำรายการอนุมัติ', 'error');
+                                btnFinalize.disabled = false;
+                                btnFinalize.innerHTML = '<i class="fa-solid fa-clipboard-check"></i> อนุมัตินำเข้าสต็อก';
                             }
                         });
                     });
