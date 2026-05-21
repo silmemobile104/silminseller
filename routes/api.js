@@ -24,7 +24,8 @@ const {
     Role,
     ImportNotification,
     Member,
-    PurchaseOrder
+    PurchaseOrder,
+    AuditLog
 } = require('../models');
 
 const { uploadBufferToDriveInFolder } = require('../utils/googleDrive');
@@ -60,6 +61,40 @@ const verifyToken = (req, res, next) => {
         });
     }
 };
+
+// ==========================================
+// Helper to log user activities in Audit Trail
+// ==========================================
+async function logActivity(req, action, module, description, referenceNo = null, targetId = null, details = null) {
+    try {
+        const userId = req.user ? req.user.employee_id : null;
+        if (!userId) {
+            console.warn('[AUDIT] No user found in request to log action:', action);
+            return;
+        }
+
+        // Get employee name
+        const emp = await Employee.findById(userId);
+        const userName = emp ? emp.name : 'Unknown User';
+
+        const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+
+        await AuditLog.create({
+            action,
+            module,
+            description,
+            target_id: targetId ? targetId.toString() : null,
+            reference_no: referenceNo,
+            details,
+            ip_address: ip,
+            user_id: userId,
+            user_name: userName
+        });
+        console.log(`[AUDIT] Action logged: ${description}`);
+    } catch (err) {
+        console.error('[AUDIT] Failed to log activity:', err);
+    }
+}
 
 // ==========================================
 // ERP Helpers (Stock Balances + Movement)
@@ -270,6 +305,23 @@ const executeFinalizeImport = async (poId, employeeId) => {
     po.received_by = employeeId;
     await po.save();
 
+    // Log successful finalize PO import to Audit Trail
+    try {
+        const emp = await Employee.findById(employeeId);
+        const userName = emp ? emp.name : 'Unknown User';
+        await AuditLog.create({
+            action: 'APPROVE',
+            module: 'PO',
+            description: `อนุมัตินำเข้าและตรวจรับสต็อกสินค้าสำเร็จ ใบสั่งซื้อ เลขที่ ${po.po_number}`,
+            target_id: po._id.toString(),
+            reference_no: po.po_number,
+            user_id: employeeId,
+            user_name: userName
+        });
+    } catch (auditErr) {
+        console.error('[AUDIT] Failed to log finalize po import:', auditErr);
+    }
+
     console.log(`[PO] นำเข้าสำเร็จเสร็จสิ้น: PO ${po.po_number} บันทึกคลังสาขาเรียบร้อย`);
     return po;
 };
@@ -429,6 +481,9 @@ router.post('/products', async (req, res) => {
         }
 
         const savedProduct = await product.save();
+
+        // Log product creation
+        await logActivity(req, 'CREATE', 'STOCK', `รับเข้าสต็อกสินค้าใหม่: ${product.name} (รหัสสินค้า: ${product.product_code || '-'}) จำนวน ${incomingQty}`, product.product_code, savedProduct._id);
 
         // Movement: รับเข้าสต็อก
         await createMovementsForItem({
@@ -789,6 +844,9 @@ router.put('/products/:id', async (req, res) => {
 
         const updatedProduct = await product.save();
 
+        // Log stock/product adjustment
+        await logActivity(req, 'UPDATE', 'STOCK', `แก้ไขข้อมูล/ปรับสต็อกสินค้า: ${product.name} (รหัสสินค้า: ${product.product_code || '-'})`, product.product_code, updatedProduct._id);
+
         // Movement: บันทึกประวัติการเคลื่อนไหว
         if (branchId && stockDeltaQty > 0) {
             await createMovementsForItem({
@@ -827,6 +885,9 @@ router.delete('/products/:id', async (req, res) => {
         if (!deletedProduct) {
             return res.status(404).json({ success: false, message: 'ไม่พบสินค้าที่ระบุ' });
         }
+
+        // Log product deletion
+        await logActivity(req, 'DELETE', 'STOCK', `ลบสินค้าออกจากระบบ: ${deletedProduct.name} (รหัสสินค้า: ${deletedProduct.product_code || '-'})`, deletedProduct.product_code, deletedProduct._id);
 
         res.status(200).json({
             success: true,
@@ -972,14 +1033,16 @@ router.post('/auth/login', async (req, res) => {
             view_dashboard: false, manage_stock: false, delete_stock: false,
             do_pos: false, manage_personnel: false, manage_branches: false,
             manage_settings: false, manage_roles: false, filter_stock_branch: false,
-            cancel_sale: false, report_arrival: false, approve_import: false
+            cancel_sale: false, report_arrival: false, approve_import: false,
+            view_audit_logs: false
         };
         const dbPerms = roleDoc ? roleDoc.permissions.toObject() : {
             view_dashboard: true, manage_stock: true, delete_stock: true,
             do_pos: true, manage_personnel: true, manage_branches: true,
             manage_settings: true, manage_roles: true,
             filter_stock_branch: true, cancel_sale: true,
-            report_arrival: true, approve_import: true
+            report_arrival: true, approve_import: true,
+            view_audit_logs: true
         };
         // Merge: DB values override defaults. For old roles missing new fields,
         // fall back to related existing permissions (do_pos → report_arrival, manage_stock → approve_import)
@@ -988,6 +1051,7 @@ router.post('/auth/login', async (req, res) => {
             ...dbPerms,
             report_arrival: dbPerms.report_arrival !== undefined ? dbPerms.report_arrival : (dbPerms.do_pos || false),
             approve_import: dbPerms.approve_import !== undefined ? dbPerms.approve_import : (dbPerms.manage_stock || false),
+            view_audit_logs: dbPerms.view_audit_logs !== undefined ? dbPerms.view_audit_logs : (dbPerms.manage_settings || false)
         };
 
         // สร้าง JWT Token (รวม permissions)
@@ -1003,6 +1067,18 @@ router.post('/auth/login', async (req, res) => {
         const token = jwt.sign(tokenPayload, JWT_SECRET, { expiresIn: '24h' });
 
         console.log(`[AUTH] เข้าสู่ระบบสำเร็จ: ${employee.name} (${employee.role})`);
+
+        // Log successful login to Audit Trail
+        const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+        await AuditLog.create({
+            action: 'LOGIN',
+            module: 'AUTH',
+            description: `เข้าสู่ระบบสำเร็จ: พนักงาน ${employee.name} (${employee.role})`,
+            target_id: employee._id.toString(),
+            ip_address: ip,
+            user_id: employee._id,
+            user_name: employee.name
+        }).catch(err => console.error('[AUDIT] Failed to log login activity:', err));
 
         res.status(200).json({
             success: true,
@@ -1023,6 +1099,69 @@ router.post('/auth/login', async (req, res) => {
         res.status(500).json({
             success: false,
             message: 'เกิดข้อผิดพลาดในการเข้าสู่ระบบ กรุณาลองใหม่อีกครั้ง'
+        });
+    }
+});
+
+// GET /api/auth/me
+router.get('/auth/me', async (req, res) => {
+    try {
+        if (!req.user || !req.user.employee_id) {
+            return res.status(401).json({
+                success: false,
+                message: 'ไม่พบข้อมูลผู้เข้าใช้ระบบ'
+            });
+        }
+
+        const employee = await Employee.findById(req.user.employee_id).populate('branch_id', 'name');
+        if (!employee) {
+            return res.status(404).json({
+                success: false,
+                message: 'ไม่พบพนักงานในระบบ'
+            });
+        }
+
+        // ค้นหา Role เพื่อดึง permissions
+        const roleDoc = await Role.findOne({ name: employee.role });
+        const defaultPermissions = {
+            view_dashboard: false, manage_stock: false, delete_stock: false,
+            do_pos: false, manage_personnel: false, manage_branches: false,
+            manage_settings: false, manage_roles: false, filter_stock_branch: false,
+            cancel_sale: false, report_arrival: false, approve_import: false,
+            view_audit_logs: false
+        };
+        const dbPerms = roleDoc ? roleDoc.permissions.toObject() : {
+            view_dashboard: true, manage_stock: true, delete_stock: true,
+            do_pos: true, manage_personnel: true, manage_branches: true,
+            manage_settings: true, manage_roles: true,
+            filter_stock_branch: true, cancel_sale: true,
+            report_arrival: true, approve_import: true,
+            view_audit_logs: true
+        };
+        const permissions = {
+            ...defaultPermissions,
+            ...dbPerms,
+            report_arrival: dbPerms.report_arrival !== undefined ? dbPerms.report_arrival : (dbPerms.do_pos || false),
+            approve_import: dbPerms.approve_import !== undefined ? dbPerms.approve_import : (dbPerms.manage_stock || false),
+            view_audit_logs: dbPerms.view_audit_logs !== undefined ? dbPerms.view_audit_logs : (dbPerms.manage_settings || false)
+        };
+
+        res.status(200).json({
+            success: true,
+            data: {
+                id: employee._id,
+                name: employee.name,
+                emp_id: employee.emp_id,
+                role: employee.role,
+                permissions,
+                branch: employee.branch_id
+            }
+        });
+    } catch (error) {
+        console.error('API Error GET /api/auth/me:', error);
+        res.status(500).json({
+            success: false,
+            message: 'เกิดข้อผิดพลาดในการดึงข้อมูลผู้ใช้งาน'
         });
     }
 });
@@ -1074,6 +1213,10 @@ router.post('/employees', async (req, res) => {
         });
 
         const saved = await newEmployee.save();
+        
+        // Log employee creation
+        await logActivity(req, 'CREATE', 'PERSONNEL', `เพิ่มพนักงานใหม่: ${name} (รหัสพนักงาน: ${emp_id}, บทบาท: ${role || 'พนักงานขาย'})`, emp_id, saved._id);
+        
         const populatedEmp = await Employee.findById(saved._id).select('-password').populate('branch_id', 'name');
 
         console.log(`[EMPLOYEE] เพิ่มพนักงานใหม่: ${name} (${emp_id})`);
@@ -1114,6 +1257,9 @@ router.put('/employees/:id', async (req, res) => {
 
         if (!updated) return res.status(404).json({ success: false, message: 'ไม่พบพนักงานที่ระบุ' });
 
+        // Log employee update
+        await logActivity(req, 'UPDATE', 'PERSONNEL', `แก้ไขข้อมูลพนักงาน: ${name} (รหัสพนักงาน: ${emp_id}, บทบาท: ${role || 'พนักงานขาย'})`, emp_id, updated._id);
+
         console.log(`[EMPLOYEE] แก้ไขข้อมูลพนักงาน: ${name} (${emp_id})`);
 
         res.status(200).json({ success: true, message: 'แก้ไขข้อมูลพนักงานสำเร็จ', data: updated });
@@ -1128,6 +1274,9 @@ router.delete('/employees/:id', async (req, res) => {
     try {
         const deleted = await Employee.findByIdAndDelete(req.params.id);
         if (!deleted) return res.status(404).json({ success: false, message: 'ไม่พบพนักงานที่ระบุ' });
+
+        // Log employee deletion
+        await logActivity(req, 'DELETE', 'PERSONNEL', `ลบพนักงานออกจากระบบ: ${deleted.name} (รหัสพนักงาน: ${deleted.emp_id})`, deleted.emp_id, deleted._id);
 
         console.log(`[EMPLOYEE] ลบพนักงาน: ${deleted.name} (${deleted.emp_id})`);
 
@@ -1568,6 +1717,10 @@ router.post('/transfers', async (req, res) => {
         });
 
         const saved = await transfer.save();
+
+        // Log transfer creation
+        await logActivity(req, 'CREATE', 'TRANSFER', `ส่งคำขอโอนย้ายสินค้า เลขที่ ${transfer_number}`, transfer_number, saved._id);
+
         console.log(`[โอนย้ายสินค้า] สร้างรายการโอนสำเร็จ: ${transfer_number}`);
 
         res.status(201).json({ success: true, message: 'สร้างรายการโอนย้ายสำเร็จ', data: saved });
@@ -1653,6 +1806,9 @@ router.put('/transfers/:id/receive', async (req, res) => {
         transfer.received_by = req.user.employee_id;
         transfer.updatedAt = new Date();
         const saved = await transfer.save();
+
+        // Log transfer receipt
+        await logActivity(req, 'APPROVE', 'TRANSFER', `รับเข้าสินค้าจากการโอนย้ายสำเร็จ เลขที่ ${transfer.transfer_number}`, transfer.transfer_number, saved._id);
 
         console.log(`[โอนย้ายสินค้า] รับเข้าสำเร็จ: ${transfer.transfer_number}`);
         res.status(200).json({ success: true, message: 'รับเข้าสินค้าสำเร็จ', data: saved });
@@ -1795,6 +1951,9 @@ router.post('/transactions', async (req, res) => {
         });
 
         const savedTransaction = await newTransaction.save();
+
+        // Log successful transaction
+        await logActivity(req, 'CREATE', 'POS', `ทำรายการขายสำเร็จ เลขที่ใบเสร็จ ${receipt_number} ยอดรวม ฿${total_amount}`, receipt_number, savedTransaction._id);
 
         console.log(`[POS] ทำรายการขายสำเร็จ - ใบเสร็จ: ${receipt_number} | ยอดรวม: ฿${total_amount}`);
 
@@ -1971,6 +2130,9 @@ router.post('/transactions/:id/cancel', async (req, res) => {
 
         await transaction.save();
 
+        // Log cancellation
+        await logActivity(req, 'CANCEL', 'POS', `ยกเลิกบิลขาย เลขที่ใบเสร็จ ${transaction.receipt_number} เนื่องจาก: ${reason}`, transaction.receipt_number, transaction._id);
+
         res.status(200).json({ success: true, message: 'ยกเลิกบิลขายและคืนสต็อกสำเร็จ' });
     } catch (error) {
         console.error('API Error POST /api/transactions/:id/cancel:', error);
@@ -2114,6 +2276,9 @@ router.post('/roles', async (req, res) => {
         const role = new Role({ name, permissions: permissions || {} });
         await role.save();
 
+        // Log role creation
+        await logActivity(req, 'CREATE', 'ROLE', `สร้างระดับสิทธิ์/ตำแหน่งใหม่: ${name}`, null, role._id);
+
         console.log(`[ROLE] สร้างตำแหน่งใหม่: ${name}`);
         res.status(201).json({ success: true, data: role, message: 'สร้างตำแหน่งสำเร็จ' });
     } catch (error) {
@@ -2133,6 +2298,9 @@ router.put('/roles/:id', async (req, res) => {
         const role = await Role.findByIdAndUpdate(req.params.id, updateData, { new: true });
         if (!role) return res.status(404).json({ success: false, message: 'ไม่พบตำแหน่งที่ต้องการแก้ไข' });
 
+        // Log role update
+        await logActivity(req, 'UPDATE', 'ROLE', `แก้ไขระดับสิทธิ์/ตำแหน่ง: ${role.name}`, null, role._id);
+
         console.log(`[ROLE] แก้ไขตำแหน่ง: ${role.name}`);
         res.status(200).json({ success: true, data: role, message: 'แก้ไขตำแหน่งสำเร็จ' });
     } catch (error) {
@@ -2147,6 +2315,9 @@ router.delete('/roles/:id', async (req, res) => {
         const role = await Role.findByIdAndDelete(req.params.id);
         if (!role) return res.status(404).json({ success: false, message: 'ไม่พบตำแหน่งที่ต้องการลบ' });
 
+        // Log role deletion
+        await logActivity(req, 'DELETE', 'ROLE', `ลบระดับสิทธิ์/ตำแหน่ง: ${role.name}`, null, role._id);
+
         console.log(`[ROLE] ลบตำแหน่ง: ${role.name}`);
         res.status(200).json({ success: true, message: `ลบตำแหน่ง "${role.name}" สำเร็จ` });
     } catch (error) {
@@ -2154,6 +2325,81 @@ router.delete('/roles/:id', async (req, res) => {
         res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการลบตำแหน่ง' });
     }
 });
+
+// ==========================================
+// Audit Logs (ประวัติกิจกรรมพนักงานและระบบ)
+// ==========================================
+router.get('/audit-logs', async (req, res) => {
+    try {
+        const userRole = req.user && req.user.role ? req.user.role : '';
+        const userPermissions = req.user && req.user.permissions ? req.user.permissions : {};
+        
+        // จำกัดสิทธิ์เฉพาะผู้มีสิทธิ์ดูประวัติกิจกรรมระบบเท่านั้น
+        const hasAccess = !!userPermissions.view_audit_logs;
+                          
+        if (!hasAccess) {
+            return res.status(403).json({
+                success: false,
+                message: 'คุณไม่มีสิทธิ์เข้าถึงข้อมูลประวัติการทำงานของระบบ'
+            });
+        }
+
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 50;
+        const skip = (page - 1) * limit;
+
+        const filter = {};
+
+        // ค้นหาข้อความ (ครอบคลุม description, reference_no, user_name)
+        if (req.query.search && req.query.search.trim() !== '') {
+            const searchRegex = new RegExp(req.query.search.trim(), 'i');
+            filter.$or = [
+                { description: searchRegex },
+                { reference_no: searchRegex },
+                { user_name: searchRegex }
+            ];
+        }
+
+        // กรองตาม Module
+        if (req.query.module && req.query.module.trim() !== '' && req.query.module !== 'ALL') {
+            filter.module = req.query.module.trim();
+        }
+
+        // กรองตาม Action
+        if (req.query.action && req.query.action.trim() !== '' && req.query.action !== 'ALL') {
+            filter.action = req.query.action.trim();
+        }
+
+        // กรองตามผู้ใช้
+        if (req.query.user_name && req.query.user_name.trim() !== '') {
+            filter.user_name = new RegExp(req.query.user_name.trim(), 'i');
+        }
+
+        const total = await AuditLog.countDocuments(filter);
+        const logs = await AuditLog.find(filter)
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(limit);
+
+        res.status(200).json({
+            success: true,
+            data: logs,
+            pagination: {
+                total,
+                page,
+                limit,
+                pages: Math.ceil(total / limit)
+            }
+        });
+    } catch (error) {
+        console.error('API Error GET /api/audit-logs:', error);
+        res.status(500).json({
+            success: false,
+            message: 'เกิดข้อผิดพลาดในการดึงข้อมูลประวัติกิจกรรม'
+        });
+    }
+});
+
 // ==========================================
 // Member Management APIs (จัดการสมาชิก)
 // ==========================================
@@ -2712,6 +2958,8 @@ router.post('/purchase-orders', async (req, res) => {
 
         await newPO.save();
 
+        await logActivity(req, 'CREATE', 'PO', `สร้างใบสั่งซื้อใหม่ เลขที่ ${po_number} สำหรับซัพพลายเออร์ ${supplier_name}`, po_number, newPO._id);
+
         res.status(201).json({
             success: true,
             message: 'สร้างใบสั่งซื้อสำเร็จ',
@@ -2764,6 +3012,8 @@ router.post('/po/create', async (req, res) => {
         });
 
         await newPO.save();
+
+        await logActivity(req, 'CREATE', 'PO', `สร้างใบสั่งซื้อใหม่ เลขที่ ${po_number} สำหรับซัพพลายเออร์ ${supplier_name}`, po_number, newPO._id);
 
         res.status(201).json({
             success: true,
@@ -2861,6 +3111,8 @@ router.post('/purchase-orders/:id/update', async (req, res) => {
 
         await po.save();
 
+        await logActivity(req, 'UPDATE', 'PO', `แก้ไขใบสั่งซื้อ เลขที่ ${po.po_number} ซัพพลายเออร์ ${supplier_name}`, po.po_number, po._id);
+
         res.status(200).json({
             success: true,
             message: 'แก้ไขใบสั่งซื้อสำเร็จ',
@@ -2891,6 +3143,8 @@ router.post('/purchase-orders/:id/cancel', async (req, res) => {
 
         po.status = 'ยกเลิก';
         await po.save();
+
+        await logActivity(req, 'CANCEL', 'PO', `ยกเลิกใบสั่งซื้อ เลขที่ ${po.po_number}`, po.po_number, po._id);
 
         res.status(200).json({
             success: true,
@@ -2973,6 +3227,9 @@ router.post('/po/:id/report-arrival', async (req, res) => {
         po.arrival_reported_by = req.user.employee_id;
         po.arrival_reported_at = new Date();
         await po.save();
+
+        // Log to Audit Trail
+        await logActivity(req, 'UPDATE', 'PO', `แจ้งของถึงสาขาสำเร็จพร้อมระบุ IMEI ใบสั่งซื้อ เลขที่ ${po.po_number}`, po.po_number, po._id);
 
         console.log(`[PO] แจ้งของถึงสาขาสำเร็จพร้อมสแกน IMEI: PO ${po.po_number} โดย ${req.user.name}`);
         res.status(200).json({

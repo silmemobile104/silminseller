@@ -618,6 +618,15 @@
                     <span
                         class="sidebar-text ml-auto bg-slate-700 text-slate-300 text-xs font-bold px-2 py-0.5 rounded-full group-hover:bg-amber-500/20 group-hover:text-amber-400">R</span>
                 </a>
+
+                <a href="#" id="nav-audit-logs"
+                    class="flex items-center px-3 py-3 rounded-xl text-slate-300 hover:bg-slate-700/50 hover:text-white transition-all group nav-menu-item hidden">
+                    <i
+                        class="fa-solid fa-clock-rotate-left sidebar-icon text-lg w-6 text-center text-indigo-400 group-hover:text-indigo-300"></i>
+                    <span class="sidebar-text ml-3 font-medium">ประวัติกิจกรรมระบบ</span>
+                    <span
+                        class="sidebar-text ml-auto bg-slate-700 text-slate-300 text-xs font-bold px-2 py-0.5 rounded-full group-hover:bg-indigo-500/20 group-hover:text-indigo-400">A</span>
+                </a>
             </nav>
 
             <!-- Sidebar Footer / Logout -->
@@ -1424,6 +1433,202 @@
                         <h4 class="text-white text-lg font-semibold">ยังไม่มีข้อมูลระดับสิทธิ์</h4>
                         <p class="text-slate-400 mt-2 max-w-xs mx-auto">คุณสามารถเพิ่มบทบาทพนักงานใหม่ เช่น "แคชเชียร์"
                             หรือ "พนักงานสต็อก" ได้ที่นี่</p>
+                    </div>
+                </div>
+
+                <!-- VIEW: AUDIT LOGS (ประวัติกิจกรรมพนักงานและระบบ) -->
+                <div id="view-audit-logs" class="hidden space-y-6 animate-fade-in">
+                    <!-- Header -->
+                    <div>
+                        <h3 class="text-2xl font-bold text-white flex items-center gap-3">
+                            <div
+                                class="w-12 h-12 rounded-2xl bg-indigo-500/10 flex items-center justify-center border border-indigo-500/20 shadow-lg shadow-indigo-500/5">
+                                <i class="fa-solid fa-clock-rotate-left text-indigo-400 text-xl"></i>
+                            </div>
+                            ระบบบันทึกประวัติการทำงาน (Audit Trail / Activity Log)
+                        </h3>
+                        <p class="text-sm text-slate-400 mt-2">
+                            ระบบบันทึกประวัติการทำงานทุกความเคลื่อนไหวในระบบอย่างละเอียด เพื่อความโปร่งใส ป้องกันการทุจริต และตรวจสอบย้อนหลัง
+                        </p>
+                    </div>
+
+                    <!-- Filter panel (Premium Glassmorphic Card) -->
+                    <div class="p-6 rounded-3xl bg-slate-800/30 border border-slate-700/50 backdrop-blur-xl relative overflow-hidden group">
+                        <div class="absolute inset-0 bg-gradient-to-br from-indigo-500/5 via-transparent to-transparent opacity-50"></div>
+                        <div class="relative grid grid-cols-1 md:grid-cols-4 gap-4">
+                            <!-- Search -->
+                            <div class="space-y-2">
+                                <label class="text-xs font-semibold text-slate-400 uppercase tracking-wider block">ค้นหากิจกรรม / เอกสาร</label>
+                                <div class="relative">
+                                    <input type="text" id="audit-filter-search" placeholder="ค้นหาข้อความ, เลขเอกสาร..."
+                                        class="w-full bg-slate-900/50 border border-slate-700 rounded-2xl py-3 px-4 pl-11 text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition-all text-sm">
+                                    <i class="fa-solid fa-magnifying-glass absolute left-4 top-3.5 text-slate-500"></i>
+                                </div>
+                            </div>
+
+                            <!-- Module Filter -->
+                            <div class="space-y-2">
+                                <label class="text-xs font-semibold text-slate-400 uppercase tracking-wider block">โมดูลระบบ</label>
+                                <select id="audit-filter-module"
+                                    class="w-full bg-slate-900/50 border border-slate-700 rounded-2xl py-3 px-4 text-white focus:outline-none focus:border-indigo-500 transition-all text-sm">
+                                    <option value="ALL">ทั้งหมด (All Modules)</option>
+                                    <option value="AUTH">ระบบล็อกอิน (Auth)</option>
+                                    <option value="PO">ระบบใบสั่งซื้อ (PO)</option>
+                                    <option value="STOCK">ระบบสินค้า & คลังสต็อก (Stock)</option>
+                                    <option value="POS">ระบบขายหน้าร้าน (POS)</option>
+                                    <option value="TRANSFER">ระบบโอนย้ายสาขา (Transfer)</option>
+                                    <option value="PERSONNEL">ระบบพนักงาน (Personnel)</option>
+                                    <option value="ROLE">ระบบสิทธิ์ (Roles)</option>
+                                </select>
+                            </div>
+
+                            <!-- Action Filter -->
+                            <div class="space-y-2">
+                                <label class="text-xs font-semibold text-slate-400 uppercase tracking-wider block">ประเภทกิจกรรม</label>
+                                <select id="audit-filter-action"
+                                    class="w-full bg-slate-900/50 border border-slate-700 rounded-2xl py-3 px-4 text-white focus:outline-none focus:border-indigo-500 transition-all text-sm">
+                                    <option value="ALL">ทั้งหมด (All Actions)</option>
+                                    <option value="CREATE">สร้างใหม่ (CREATE)</option>
+                                    <option value="UPDATE">แก้ไข/อัปเดต (UPDATE)</option>
+                                    <option value="DELETE">ลบข้อมูล (DELETE)</option>
+                                    <option value="LOGIN">ล็อกอินเข้าระบบ (LOGIN)</option>
+                                    <option value="CANCEL">ยกเลิกรายการ (CANCEL)</option>
+                                    <option value="APPROVE">อนุมัติรายการ (APPROVE)</option>
+                                </select>
+                            </div>
+
+                            <!-- User Filter / Buttons -->
+                            <div class="space-y-2 flex flex-col justify-between">
+                                <label class="text-xs font-semibold text-slate-400 uppercase tracking-wider block">ผู้ปฏิบัติการ</label>
+                                <div class="flex gap-2">
+                                    <div class="relative flex-grow">
+                                        <input type="text" id="audit-filter-user" placeholder="ชื่อพนักงาน..."
+                                            class="w-full bg-slate-900/50 border border-slate-700 rounded-2xl py-3 px-4 pl-11 text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition-all text-sm">
+                                        <i class="fa-solid fa-user absolute left-4 top-3.5 text-slate-500"></i>
+                                    </div>
+                                    <button id="btn-clear-audit-filters" title="ล้างตัวกรอง"
+                                        class="px-4 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 rounded-2xl transition-all active:scale-95">
+                                        <i class="fa-solid fa-filter-circle-xmark text-lg"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Audit Log Table Container -->
+                    <div class="rounded-3xl bg-slate-800/30 border border-slate-700/50 backdrop-blur-xl overflow-hidden animate-slide-up">
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left border-collapse">
+                                <thead>
+                                    <tr class="border-b border-slate-700/70 bg-slate-900/30">
+                                        <th class="py-4 px-6 text-xs font-bold text-slate-400 uppercase tracking-wider">วัน-เวลา</th>
+                                        <th class="py-4 px-6 text-xs font-bold text-slate-400 uppercase tracking-wider">ผู้ทำรายการ</th>
+                                        <th class="py-4 px-6 text-xs font-bold text-slate-400 uppercase tracking-wider">ประเภท</th>
+                                        <th class="py-4 px-6 text-xs font-bold text-slate-400 uppercase tracking-wider">โมดูล</th>
+                                        <th class="py-4 px-6 text-xs font-bold text-slate-400 uppercase tracking-wider">รายละเอียดกิจกรรม</th>
+                                        <th class="py-4 px-6 text-xs font-bold text-slate-400 uppercase tracking-wider">เอกสารอ้างอิง</th>
+                                        <th class="py-4 px-6 text-xs font-bold text-slate-400 uppercase tracking-wider text-right">รายละเอียดเชิงลึก</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="audit-logs-table-body" class="divide-y divide-slate-800/50">
+                                    <!-- Rendered dynamically by JS -->
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Empty State inside Table -->
+                        <div id="audit-logs-empty" class="hidden text-center py-20">
+                            <div class="w-20 h-20 rounded-full bg-slate-700/30 flex items-center justify-center text-slate-600 mx-auto mb-6">
+                                <i class="fa-solid fa-clock-rotate-left text-3xl"></i>
+                            </div>
+                            <h4 class="text-white text-lg font-semibold">ไม่พบข้อมูลประวัติกิจกรรม</h4>
+                            <p class="text-slate-400 mt-2 max-w-xs mx-auto text-sm">ไม่มีประวัติกิจกรรมระบบตามการค้นหาหรือตัวกรองที่เลือก</p>
+                        </div>
+
+                        <!-- Pagination Footer -->
+                        <div class="p-6 border-t border-slate-700/50 flex flex-col sm:flex-row items-center justify-between gap-4 bg-slate-900/10">
+                            <div class="text-sm text-slate-400" id="audit-pagination-info">
+                                กำลังแสดงรายการที่ 0-0 จาก 0 รายการทั้งหมด
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <button id="btn-audit-prev"
+                                    class="px-4 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 rounded-xl transition-all disabled:opacity-30 disabled:pointer-events-none text-sm font-semibold active:scale-95 flex items-center gap-2">
+                                    <i class="fa-solid fa-chevron-left text-xs"></i> ก่อนหน้า
+                                </button>
+                                <div class="px-4 py-2 bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 rounded-xl text-sm font-bold min-w-[3rem] text-center" id="audit-current-page">
+                                    1
+                                </div>
+                                <button id="btn-audit-next"
+                                    class="px-4 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 rounded-xl transition-all disabled:opacity-30 disabled:pointer-events-none text-sm font-semibold active:scale-95 flex items-center gap-2">
+                                    ถัดไป <i class="fa-solid fa-chevron-right text-xs"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- MODAL: AUDIT DETAIL (ดูข้อมูล JSON ละเอียด) -->
+                <div id="modal-audit-detail" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md hidden opacity-0 transition-all duration-300">
+                    <div class="w-full max-w-3xl bg-slate-900/90 border border-slate-700/80 rounded-3xl shadow-2xl relative overflow-hidden flex flex-col max-h-[85vh] transform scale-95 transition-all duration-300">
+                        <div class="absolute inset-0 bg-gradient-to-br from-indigo-500/5 via-transparent to-transparent opacity-50 pointer-events-none text-sm"></div>
+                        
+                        <!-- Modal Header -->
+                        <div class="p-6 border-b border-slate-700/50 flex items-center justify-between relative z-10">
+                            <div>
+                                <h4 class="text-xl font-bold text-white flex items-center gap-3">
+                                    <i class="fa-solid fa-magnifying-glass-chart text-indigo-400"></i>
+                                    รายละเอียดกิจกรรมเชิงลึก (Security Payload)
+                                </h4>
+                                <p class="text-xs text-slate-400 mt-1" id="modal-audit-subtitle">ตรวจสอบข้อมูล Payload ทางเทคนิคและข้อมูลการบันทึกความปลอดภัย</p>
+                            </div>
+                            <button class="modal-close-btn w-10 h-10 rounded-full bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-400 hover:text-white flex items-center justify-center transition-all active:scale-90">
+                                <i class="fa-solid fa-xmark text-lg"></i>
+                            </button>
+                        </div>
+
+                        <!-- Modal Content -->
+                        <div class="p-6 overflow-y-auto space-y-6 relative z-10 flex-grow scrollbar-thin">
+                            <!-- Summary Metadata -->
+                            <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 p-4 rounded-2xl bg-slate-950/40 border border-slate-800">
+                                <div>
+                                    <span class="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">วัน-เวลา</span>
+                                    <span class="text-xs font-semibold text-slate-300" id="detail-audit-time">-</span>
+                                </div>
+                                <div>
+                                    <span class="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">IP Address</span>
+                                    <span class="text-xs font-semibold text-slate-300" id="detail-audit-ip">-</span>
+                                </div>
+                                <div>
+                                    <span class="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">ID เอกสารเป้าหมาย</span>
+                                    <span class="text-xs font-semibold text-slate-300 truncate block" id="detail-audit-target">-</span>
+                                </div>
+                                <div>
+                                    <span class="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">ID ผู้ใช้</span>
+                                    <span class="text-xs font-semibold text-slate-300 truncate block" id="detail-audit-user-id">-</span>
+                                </div>
+                            </div>
+
+                            <!-- Detailed Description -->
+                            <div class="space-y-2">
+                                <h5 class="text-xs font-bold text-slate-400 uppercase tracking-wider">คำอธิบายประวัติกิจกรรม</h5>
+                                <div class="p-4 rounded-2xl bg-indigo-500/5 border border-indigo-500/20 text-sm text-white font-medium" id="detail-audit-desc">
+                                    -
+                                </div>
+                            </div>
+
+                            <!-- Change Details JSON -->
+                            <div class="space-y-2">
+                                <h5 class="text-xs font-bold text-slate-400 uppercase tracking-wider">ข้อมูล Payload เพิ่มเติม (Details Object)</h5>
+                                <pre class="p-5 rounded-2xl bg-slate-950/80 border border-slate-800 text-indigo-300 font-mono text-xs overflow-x-auto max-h-[300px] overflow-y-auto scrollbar-thin" id="detail-audit-payload">-</pre>
+                            </div>
+                        </div>
+
+                        <!-- Modal Footer -->
+                        <div class="p-6 border-t border-slate-700/50 flex justify-end bg-slate-950/10 relative z-10">
+                            <button class="modal-close-btn px-6 py-2.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 font-semibold rounded-xl transition-all active:scale-95">
+                                ปิดหน้าต่าง
+                            </button>
+                        </div>
                     </div>
                 </div>
 
@@ -2794,15 +2999,6 @@
                         class="w-full px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all">
                 </div>
 
-                <!-- IMEI Field (for devices) -->
-                <div id="imei-field" class="space-y-2 hidden">
-                    <label class="text-sm font-medium text-slate-300">สแกนเลข IMEI
-                        (หรือพิมพ์หลายหมายเลขโดยขึ้นบรรทัดใหม่) <span class="text-red-400">*</span></label>
-                    <textarea id="product-imeis" rows="3"
-                        class="w-full px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all"
-                        placeholder="กรอก 1 หมายเลขต่อ 1 บรรทัด..."></textarea>
-                </div>
-
                 <!-- Submit Button -->
                 <div class="pt-4 flex justify-end gap-3 border-t border-slate-700 mt-6 pt-6">
                     <button type="button" id="cancel-modal-btn"
@@ -2815,6 +3011,254 @@
             </form>
         </div>
     </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- VIEW DETAIL MODALS (ดูรายละเอียดข้อมูล) -->
+    <!-- ========================================== -->
+
+    <!-- 1. View Product Details Modal -->
+    <div id="modal-product-view" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 backdrop-blur-sm opacity-0 pointer-events-none transition-opacity duration-300 p-4">
+        <div class="relative w-full max-w-2xl bg-slate-800 rounded-3xl shadow-2xl border border-slate-700 flex flex-col transform scale-95 transition-transform duration-300">
+            <div class="p-6 border-b border-slate-700 flex items-center justify-between bg-[#1a1a1a] rounded-t-3xl">
+                <h3 class="text-2xl font-bold text-white flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-cyan-500/10 flex items-center justify-center border border-cyan-500/20">
+                        <i class="fa-solid fa-box text-cyan-400"></i>
+                    </div>
+                    รายละเอียดสินค้า: <span id="v-product-name" class="text-cyan-400"></span>
+                </h3>
+                <button id="close-product-view-btn" class="text-slate-400 hover:text-white transition-colors p-2 rounded-lg hover:bg-slate-700">
+                    <i class="fa-solid fa-xmark text-xl"></i>
+                </button>
+            </div>
+            <div class="flex-1 overflow-y-auto p-6 space-y-6 modal-scrollable-content max-h-[70vh]">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="bg-slate-900 rounded-xl p-4 border border-slate-800/80">
+                        <p class="text-xs text-slate-500 font-bold mb-1">รหัสสินค้า / SKU</p>
+                        <p id="v-product-code" class="text-white font-mono font-bold">-</p>
+                    </div>
+                    <div class="bg-slate-900 rounded-xl p-4 border border-slate-800/80">
+                        <p class="text-xs text-slate-500 font-bold mb-1">ประเภทสินค้า</p>
+                        <p id="v-product-category" class="text-white font-semibold">-</p>
+                    </div>
+                    <div class="bg-slate-900 rounded-xl p-4 border border-slate-800/80">
+                        <p class="text-xs text-slate-500 font-bold mb-1">สาขา</p>
+                        <p id="v-product-branch" class="text-white font-semibold">-</p>
+                    </div>
+                    <div class="bg-slate-900 rounded-xl p-4 border border-slate-800/80">
+                        <p class="text-xs text-slate-500 font-bold mb-1">ผู้จัดจำหน่าย (Supplier)</p>
+                        <p id="v-product-supplier" class="text-white font-semibold">-</p>
+                    </div>
+                    <div class="bg-slate-900 rounded-xl p-4 border border-slate-800/80">
+                        <p class="text-xs text-slate-500 font-bold mb-1">ราคาทุน</p>
+                        <p id="v-product-cost" class="text-emerald-400 font-mono font-bold">-</p>
+                    </div>
+                    <div class="bg-slate-900 rounded-xl p-4 border border-slate-800/80">
+                        <p class="text-xs text-slate-500 font-bold mb-1">ราคาขาย</p>
+                        <p id="v-product-sell" class="text-cyan-400 font-mono font-bold">-</p>
+                    </div>
+                    <div class="bg-slate-900 rounded-xl p-4 border border-slate-800/80">
+                        <p class="text-xs text-slate-500 font-bold mb-1">สีสินค้า</p>
+                        <p id="v-product-color" class="text-white font-semibold">-</p>
+                    </div>
+                    <div class="bg-slate-900 rounded-xl p-4 border border-slate-800/80">
+                        <p class="text-xs text-slate-500 font-bold mb-1">ความจุ</p>
+                        <p id="v-product-capacity" class="text-white font-semibold">-</p>
+                    </div>
+                    <div class="bg-slate-900 rounded-xl p-4 border border-slate-800/80">
+                        <p class="text-xs text-slate-500 font-bold mb-1">สภาพสินค้า</p>
+                        <p id="v-product-condition" class="text-white font-semibold">-</p>
+                    </div>
+                    <div class="bg-slate-900 rounded-xl p-4 border border-slate-800/80">
+                        <p class="text-xs text-slate-500 font-bold mb-1">จำนวนคงเหลือ</p>
+                        <p id="v-product-qty" class="text-white font-bold">-</p>
+                    </div>
+                </div>
+            </div>
+            <div class="p-6 border-t border-slate-700 bg-slate-850 flex gap-3 rounded-b-3xl">
+                <button id="close-product-view-btn-bottom" class="flex-1 py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-xl transition-all">
+                    ปิดหน้าต่าง
+                </button>
+                <button id="edit-product-from-view-btn" class="flex-1 py-3 bg-gradient-to-r from-cyan-600 to-cyan-500 hover:from-cyan-500 hover:to-cyan-400 text-slate-950 font-bold rounded-xl transition-all shadow-lg shadow-cyan-500/10">
+                    <i class="fa-solid fa-pen-to-square mr-1.5"></i> แก้ไขข้อมูล
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. View Employee Details Modal -->
+    <div id="modal-employee-view" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 backdrop-blur-sm opacity-0 pointer-events-none transition-opacity duration-300 p-4">
+        <div class="relative w-full max-w-md bg-slate-800 rounded-3xl shadow-2xl border border-slate-700 flex flex-col transform scale-95 transition-transform duration-300">
+            <div class="p-6 border-b border-slate-700 flex items-center justify-between bg-[#1a1a1a] rounded-t-3xl">
+                <h3 class="text-2xl font-bold text-white flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-cyan-500/10 flex items-center justify-center border border-cyan-500/20">
+                        <i class="fa-solid fa-user-tie text-cyan-400"></i>
+                    </div>
+                    รายละเอียดพนักงาน
+                </h3>
+                <button id="close-employee-view-btn" class="text-slate-400 hover:text-white transition-colors p-2 rounded-lg hover:bg-slate-700">
+                    <i class="fa-solid fa-xmark text-xl"></i>
+                </button>
+            </div>
+            <div class="p-6 space-y-4 flex-1">
+                <div class="bg-slate-900 rounded-xl p-4 border border-slate-800/80 space-y-1">
+                    <p class="text-xs text-slate-500 font-bold">ชื่อพนักงาน</p>
+                    <p id="v-employee-name" class="text-white text-lg font-bold">-</p>
+                </div>
+                <div class="bg-slate-900 rounded-xl p-4 border border-slate-800/80 space-y-1">
+                    <p class="text-xs text-slate-500 font-bold">รหัสประจำตัวพนักงาน (Username)</p>
+                    <p id="v-employee-username" class="text-cyan-400 font-mono font-bold text-base">-</p>
+                </div>
+                <div class="bg-slate-900 rounded-xl p-4 border border-slate-800/80 space-y-1">
+                    <p class="text-xs text-slate-500 font-bold">สาขาประจำการ</p>
+                    <p id="v-employee-branch" class="text-white font-medium">-</p>
+                </div>
+                <div class="bg-slate-900 rounded-xl p-4 border border-slate-800/80 space-y-1">
+                    <p class="text-xs text-slate-500 font-bold">ตำแหน่งงาน (Role)</p>
+                    <p id="v-employee-role" class="text-white font-medium"><span class="px-2.5 py-1 bg-amber-500/10 text-amber-400 border border-amber-500/20 rounded-lg text-xs font-bold">-</span></p>
+                </div>
+            </div>
+            <div class="p-6 border-t border-slate-700 bg-slate-850 flex gap-3 rounded-b-3xl">
+                <button id="close-employee-view-btn-bottom" class="flex-1 py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-xl transition-all">
+                    ปิดหน้าต่าง
+                </button>
+                <button id="edit-employee-from-view-btn" class="flex-1 py-3 bg-gradient-to-r from-cyan-600 to-cyan-500 hover:from-cyan-500 hover:to-cyan-400 text-slate-950 font-bold rounded-xl transition-all shadow-lg shadow-cyan-500/10">
+                    <i class="fa-solid fa-pen-to-square mr-1.5"></i> แก้ไขข้อมูล
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3. View Member Details Modal -->
+    <div id="modal-member-view" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 backdrop-blur-sm opacity-0 pointer-events-none transition-opacity duration-300 p-4">
+        <div class="relative w-full max-w-2xl bg-slate-800 rounded-3xl shadow-2xl border border-slate-700 flex flex-col transform scale-95 transition-transform duration-300">
+            <div class="p-6 border-b border-slate-700 flex items-center justify-between bg-[#1a1a1a] rounded-t-3xl">
+                <h3 class="text-2xl font-bold text-white flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-cyan-500/10 flex items-center justify-center border border-cyan-500/20">
+                        <i class="fa-solid fa-address-card text-cyan-400"></i>
+                    </div>
+                    รายละเอียดสมาชิก: <span id="v-member-num" class="text-cyan-400 font-mono"></span>
+                </h3>
+                <button id="close-member-view-btn" class="text-slate-400 hover:text-white transition-colors p-2 rounded-lg hover:bg-slate-700">
+                    <i class="fa-solid fa-xmark text-xl"></i>
+                </button>
+            </div>
+            <div class="flex-1 overflow-y-auto p-6 space-y-6 modal-scrollable-content max-h-[70vh]">
+                <div class="flex flex-col md:flex-row gap-6 items-center md:items-start">
+                    <div id="v-member-photo-container" class="shrink-0 w-24 h-24 rounded-2xl overflow-hidden border border-slate-700 flex items-center justify-center bg-slate-900">
+                        <!-- Image or default user icon -->
+                    </div>
+                    <div class="flex-1 w-full grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="bg-slate-900 rounded-xl p-4 border border-slate-800/80">
+                            <p class="text-xs text-slate-500 font-bold mb-1">ชื่อ-นามสกุล (ภาษาไทย)</p>
+                            <p id="v-member-name-th" class="text-white font-bold">-</p>
+                        </div>
+                        <div class="bg-slate-900 rounded-xl p-4 border border-slate-800/80">
+                            <p class="text-xs text-slate-500 font-bold mb-1">ชื่อ-นามสกุล (ภาษาอังกฤษ)</p>
+                            <p id="v-member-name-en" class="text-white font-bold">-</p>
+                        </div>
+                        <div class="bg-slate-900 rounded-xl p-4 border border-slate-800/80">
+                            <p class="text-xs text-slate-500 font-bold mb-1">เลขประจำตัวประชาชน</p>
+                            <p id="v-member-citizen" class="text-white font-mono font-medium">-</p>
+                        </div>
+                        <div class="bg-slate-900 rounded-xl p-4 border border-slate-800/80">
+                            <p class="text-xs text-slate-500 font-bold mb-1">เบอร์โทรศัพท์</p>
+                            <p id="v-member-phone" class="text-white font-mono font-medium">-</p>
+                        </div>
+                        <div class="bg-slate-900 rounded-xl p-4 border border-slate-800/80 col-span-1 md:col-span-2">
+                            <p class="text-xs text-slate-500 font-bold mb-1">อีเมล</p>
+                            <p id="v-member-email" class="text-white font-medium">-</p>
+                        </div>
+                        <div class="bg-slate-900 rounded-xl p-4 border border-slate-800/80 col-span-1 md:col-span-2">
+                            <p class="text-xs text-slate-500 font-bold mb-1">ที่อยู่ตามทะเบียนบ้าน/ที่ติดต่อได้</p>
+                            <p id="v-member-address" class="text-white font-normal text-sm leading-relaxed whitespace-pre-wrap">-</p>
+                        </div>
+                        <div class="bg-slate-900 rounded-xl p-4 border border-slate-800/80">
+                            <p class="text-xs text-slate-500 font-bold mb-1">ช่องทางรู้จักเรา</p>
+                            <p id="v-member-referral" class="text-white font-medium">-</p>
+                        </div>
+                        <div class="bg-slate-900 rounded-xl p-4 border border-slate-800/80">
+                            <p class="text-xs text-slate-500 font-bold mb-1">วันที่สมัครสมาชิก</p>
+                            <p id="v-member-date" class="text-white font-medium">-</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="p-6 border-t border-slate-700 bg-slate-850 flex gap-3 rounded-b-3xl">
+                <button id="close-member-view-btn-bottom" class="flex-1 py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-xl transition-all">
+                    ปิดหน้าต่าง
+                </button>
+                <button id="edit-member-from-view-btn" class="flex-1 py-3 bg-gradient-to-r from-cyan-600 to-cyan-500 hover:from-cyan-500 hover:to-cyan-400 text-slate-950 font-bold rounded-xl transition-all shadow-lg shadow-cyan-500/10">
+                    <i class="fa-solid fa-pen-to-square mr-1.5"></i> แก้ไขข้อมูล
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 4. View Branch Details Modal -->
+    <div id="modal-branch-view" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 backdrop-blur-sm opacity-0 pointer-events-none transition-opacity duration-300 p-4">
+        <div class="relative w-full max-w-md bg-slate-800 rounded-3xl shadow-2xl border border-slate-700 flex flex-col transform scale-95 transition-transform duration-300">
+            <div class="p-6 border-b border-slate-700 flex items-center justify-between bg-[#1a1a1a] rounded-t-3xl">
+                <h3 class="text-2xl font-bold text-white flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-cyan-500/10 flex items-center justify-center border border-cyan-500/20">
+                        <i class="fa-solid fa-store text-cyan-400"></i>
+                    </div>
+                    รายละเอียดสาขา
+                </h3>
+                <button id="close-branch-view-btn" class="text-slate-400 hover:text-white transition-colors p-2 rounded-lg hover:bg-slate-700">
+                    <i class="fa-solid fa-xmark text-xl"></i>
+                </button>
+            </div>
+            <div class="p-6 space-y-4 flex-1">
+                <div class="bg-slate-900 rounded-xl p-4 border border-slate-800/80 space-y-1">
+                    <p class="text-xs text-slate-500 font-bold">ชื่อสาขา</p>
+                    <p id="v-branch-name" class="text-white text-lg font-bold">-</p>
+                </div>
+                <div class="bg-slate-900 rounded-xl p-4 border border-slate-800/80 space-y-1">
+                    <p class="text-xs text-slate-500 font-bold">ที่อยู่ / รายละเอียดเพิ่มเติม</p>
+                    <p id="v-branch-address" class="text-white font-normal text-sm leading-relaxed whitespace-pre-line">-</p>
+                </div>
+            </div>
+            <div class="p-6 border-t border-slate-700 bg-slate-850 flex gap-3 rounded-b-3xl">
+                <button id="close-branch-view-btn-bottom" class="flex-1 py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-xl transition-all">
+                    ปิดหน้าต่าง
+                </button>
+                <button id="edit-branch-from-view-btn" class="flex-1 py-3 bg-gradient-to-r from-cyan-600 to-cyan-500 hover:from-cyan-500 hover:to-cyan-400 text-slate-950 font-bold rounded-xl transition-all shadow-lg shadow-cyan-500/10">
+                    <i class="fa-solid fa-pen-to-square mr-1.5"></i> แก้ไขข้อมูล
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 5. View Role Details Modal -->
+    <div id="modal-role-view" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 backdrop-blur-sm opacity-0 pointer-events-none transition-opacity duration-300 p-4">
+        <div class="relative w-full max-w-2xl bg-slate-800 rounded-3xl shadow-2xl border border-slate-700 flex flex-col transform scale-95 transition-transform duration-300">
+            <div class="p-6 border-b border-slate-700 flex items-center justify-between bg-[#1a1a1a] rounded-t-3xl">
+                <h3 class="text-2xl font-bold text-white flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-cyan-500/10 flex items-center justify-center border border-cyan-500/20">
+                        <i class="fa-solid fa-shield-halved text-cyan-400"></i>
+                    </div>
+                    รายละเอียดบทบาท: <span id="v-role-name" class="text-cyan-400"></span>
+                </h3>
+                <button id="close-role-view-btn" class="text-slate-400 hover:text-white transition-colors p-2 rounded-lg hover:bg-slate-700">
+                    <i class="fa-solid fa-xmark text-xl"></i>
+                </button>
+            </div>
+            <div class="flex-1 overflow-y-auto p-6 space-y-4 modal-scrollable-content max-h-[70vh]">
+                <h4 class="text-sm font-bold text-slate-400 flex items-center gap-1.5"><i class="fa-solid fa-key text-cyan-400"></i> รายการสิทธิ์การเข้าใช้งานระบบ</h4>
+                <div id="v-role-perms-list" class="grid grid-cols-1 md:grid-cols-2 gap-2">
+                    <!-- Dynamic Permissions Badges -->
+                </div>
+            </div>
+            <div class="p-6 border-t border-slate-700 bg-slate-850 flex gap-3 rounded-b-3xl">
+                <button id="close-role-view-btn-bottom" class="flex-1 py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-xl transition-all">
+                    ปิดหน้าต่าง
+                </button>
+                <button id="edit-role-from-view-btn" class="flex-1 py-3 bg-gradient-to-r from-cyan-600 to-cyan-500 hover:from-cyan-500 hover:to-cyan-400 text-slate-950 font-bold rounded-xl transition-all shadow-lg shadow-cyan-500/10">
+                    <i class="fa-solid fa-pen-to-square mr-1.5"></i> แก้ไขข้อมูล
+                </button>
+            </div>
+        </div>
     </div>
 
     <!-- CUSTOM MODALS & TOASTS -->
@@ -3178,6 +3622,23 @@
                             </div>
                             <label class="relative inline-flex items-center cursor-pointer">
                                 <input type="checkbox" id="perm-manage_roles" class="sr-only peer">
+                                <div
+                                    class="w-10 h-5 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-slate-400 after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-cyan-500 peer-checked:after:bg-white">
+                                </div>
+                            </label>
+                        </div>
+
+                        <!-- Toggle: view_audit_logs -->
+                        <div
+                            class="flex items-center justify-between p-3 bg-slate-800/50 rounded-xl border border-slate-700/30 hover:bg-slate-700/30 transition-colors">
+                            <div class="flex items-center gap-3">
+                                <div class="w-8 h-8 rounded-lg bg-indigo-500/10 flex items-center justify-center">
+                                    <i class="fa-solid fa-clock-rotate-left text-indigo-400 text-sm"></i>
+                                </div>
+                                <span class="text-sm font-medium text-slate-200">ประวัติกิจกรรมระบบ</span>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" id="perm-view_audit_logs" class="sr-only peer">
                                 <div
                                     class="w-10 h-5 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-slate-400 after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-cyan-500 peer-checked:after:bg-white">
                                 </div>
@@ -3874,6 +4335,9 @@
                 <button id="btn-close-po-view-bottom" class="flex-1 py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-xl transition-all">
                     ปิดหน้าต่าง
                 </button>
+                <button id="btn-edit-po-from-view" class="flex-1 py-3 bg-gradient-to-r from-cyan-600 to-cyan-500 hover:from-cyan-500 hover:to-cyan-400 text-slate-950 font-bold rounded-xl transition-all shadow-lg shadow-cyan-500/10 hidden">
+                    <i class="fa-solid fa-pen-to-square mr-1.5"></i> แก้ไขใบสั่งซื้อ
+                </button>
             </div>
         </div>
     </div>
@@ -4056,7 +4520,7 @@
     <datalist id="dl-product-colors"></datalist>
     <datalist id="dl-product-capacities"></datalist>
 
-    <script src="script.js"></script>
+    <script src="script.js?v=po_sku_instant_fix"></script>
 </body>
 
 </html>

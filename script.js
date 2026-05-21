@@ -60,6 +60,34 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 600);
     };
 
+    // Helper to determine if a category/product is a device
+    const checkIsDevice = (categoryName, product = null) => {
+        if (product) {
+            const hasCapacity = product.capacity_id && (typeof product.capacity_id === 'object' ? Object.keys(product.capacity_id).length > 0 : String(product.capacity_id).trim() !== '');
+            const hasCondition = product.condition_id && (typeof product.condition_id === 'object' ? Object.keys(product.condition_id).length > 0 : String(product.condition_id).trim() !== '');
+            const hasImeis = product.imeis && Array.isArray(product.imeis) && product.imeis.length > 0;
+            if (hasCapacity || hasCondition || hasImeis) {
+                return true;
+            }
+        }
+
+        if (!categoryName || categoryName === 'เลือกหมวดหมู่') {
+            return false;
+        }
+
+        if (typeof categoryName !== 'string') {
+            categoryName = (categoryName && categoryName.name) ? categoryName.name : '';
+        }
+
+        const deviceKeywords = [
+            'iphone', 'ipad', 'samsung', 'oppo', 'vivo', 'xiaomi', 'realme', 'huawei', 
+            'oneplus', 'google', 'pixel', 'sony', 'nokia', 'asus', 'rog', 'lenovo',
+            'มือถือ', 'โทรศัพท์', 'สมาร์ทโฟน', 'tablet', 'แท็บเล็ต', 'smart watch', 'นาฬิกา', 'เครื่อง'
+        ];
+        const catLower = categoryName.toLowerCase();
+        return deviceKeywords.some(keyword => catLower.includes(keyword));
+    };
+
     // ==========================================
     // DOM Elements
     // ==========================================
@@ -114,6 +142,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const navBranchInventory = document.getElementById('nav-branch-inventory');
     const navAccountingPO = document.getElementById('nav-accounting-po');
     const navBranchReceive = document.getElementById('nav-branch-receive');
+    const navAuditLogs = document.getElementById('nav-audit-logs');
 
     const viewDashboard = document.getElementById('view-dashboard');
     const viewStock = document.getElementById('view-stock');
@@ -132,6 +161,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const viewWarrantyCheck = document.getElementById('view-warranty-check');
     const viewAccountingPO = document.getElementById('view-accounting-po');
     const viewBranchReceive = document.getElementById('view-branch-receive');
+    const viewAuditLogs = document.getElementById('view-audit-logs');
 
     const settingsTabBtns = document.querySelectorAll('.settings-tab-btn');
     const masterDataInput = document.getElementById('master-data-input');
@@ -479,6 +509,72 @@ document.addEventListener('DOMContentLoaded', () => {
     // ==========================================
     // UI Modal Logic
     // ==========================================
+    const handleCategoryFields = (categoryName, forceShowDeviceFields = false) => {
+        if (!categoryName || categoryName === 'เลือกหมวดหมู่') {
+            if (!forceShowDeviceFields) {
+                if (deviceFields) deviceFields.classList.add('hidden');
+                if (imeiField) imeiField.classList.add('hidden');
+                if (quantityField) quantityField.classList.remove('hidden');
+                if (productQuantity) {
+                    productQuantity.required = true;
+                    productQuantity.readOnly = false;
+                }
+                if (productImeis) productImeis.required = false;
+                if (productCapacity) productCapacity.required = false;
+                if (productCondition) productCondition.required = false;
+                return;
+            }
+        }
+
+        const isDevice = forceShowDeviceFields || checkIsDevice(categoryName);
+
+        if (isDevice) {
+            if (deviceFields) deviceFields.classList.remove('hidden');
+            if (imeiField) imeiField.classList.remove('hidden');
+            if (quantityField) quantityField.classList.remove('hidden');
+
+            if (productImeis) productImeis.required = true;
+            if (productQuantity) {
+                productQuantity.required = true;
+                productQuantity.readOnly = true;
+            }
+            if (productCapacity) productCapacity.required = true;
+            if (productCondition) productCondition.required = true;
+
+            // Try to auto-select "เครื่อง" unit if available and not already set
+            if (productUnit && (!productUnit.value || productUnit.value === '')) {
+                Array.from(productUnit.options).forEach(opt => {
+                    if (opt.textContent === 'เครื่อง') productUnit.value = opt.value;
+                });
+            }
+        } else {
+            if (deviceFields) deviceFields.classList.add('hidden');
+            if (imeiField) imeiField.classList.add('hidden');
+            if (quantityField) quantityField.classList.remove('hidden');
+
+            if (productImeis) {
+                productImeis.required = false;
+            }
+            if (productQuantity) {
+                productQuantity.required = true;
+                productQuantity.readOnly = false;
+            }
+            if (productCapacity) {
+                productCapacity.required = false;
+            }
+            if (productCondition) {
+                productCondition.required = false;
+            }
+
+            // Try to auto-select "ชิ้น" unit if available and not already set
+            if (productUnit && (!productUnit.value || productUnit.value === '')) {
+                Array.from(productUnit.options).forEach(opt => {
+                    if (opt.textContent === 'ชิ้น') productUnit.value = opt.value;
+                });
+            }
+        }
+    };
+
     const openModal = () => {
         if (addProductModal) {
             addProductModal.classList.remove('opacity-0', 'pointer-events-none');
@@ -489,9 +585,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if (addProductModal) {
             addProductModal.classList.add('opacity-0', 'pointer-events-none');
             if (addProductForm) addProductForm.reset();
-            if (deviceFields) deviceFields.classList.add('hidden');
-            if (imeiField) imeiField.classList.add('hidden');
-            if (quantityField) quantityField.classList.add('hidden');
+            
+            // Reset dynamic fields to default state
+            handleCategoryFields("");
 
             // Reset Image Preview
             const imagePreview = document.getElementById('image-preview');
@@ -1083,6 +1179,18 @@ document.addEventListener('DOMContentLoaded', () => {
         if (navAccountingPO) navAccountingPO.style.display = permissions.manage_po ? '' : 'none';
         if (navBranchReceive) navBranchReceive.style.display = permissions.receive_po ? '' : 'none';
 
+        // Toggle Audit Logs Sidebar view
+        const hasAuditAccess = !!permissions.view_audit_logs;
+        if (navAuditLogs) {
+            if (hasAuditAccess) {
+                navAuditLogs.classList.remove('hidden');
+                navAuditLogs.style.display = '';
+            } else {
+                navAuditLogs.classList.add('hidden');
+                navAuditLogs.style.display = 'none';
+            }
+        }
+
         // ซ่อน/แสดง ปุ่มเพิ่มสินค้า + ลบสินค้า
         const btnAdd = document.getElementById('btn-add-product');
         if (btnAdd) btnAdd.style.display = permissions.manage_stock ? '' : 'none';
@@ -1142,7 +1250,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const capacityName = product.capacity_id ? product.capacity_id.name : '';
             const conditionName = product.condition_id ? product.condition_id.name : '';
 
-            const isDevice = categoryName.includes('iPhone') || categoryName.includes('iPad');
+            const isDevice = checkIsDevice(categoryName, product);
             const stockDisplay = isDevice
                 ? `${product.quantity || product.imeis.length} <span class="text-xs text-slate-500 font-normal">เครื่อง</span>`
                 : `${product.quantity} <span class="text-xs text-slate-500 font-normal">${unitName}</span>`;
@@ -1188,7 +1296,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <td class="px-6 py-4 text-right">
                     <div class="flex items-center justify-end gap-1">
                         <button class="print-barcode-btn text-slate-400 hover:text-amber-400 transition-colors p-2" data-id="${product._id}" title="พิมพ์บาร์โค้ด"><i class="fa-solid fa-print"></i></button>
-                        <button class="edit-product-btn text-slate-400 hover:text-cyan-400 transition-colors p-2" data-id="${product._id}"><i class="fa-solid fa-pen"></i></button>
+                        <button class="view-product-btn text-slate-400 hover:text-indigo-400 transition-colors p-2" data-id="${product._id}" title="ดูรายละเอียด"><i class="fa-solid fa-eye"></i></button>
                         ${window.__userPermissions && window.__userPermissions.delete_stock ? `<button class="delete-product-btn text-slate-400 hover:text-red-400 transition-colors p-2" data-id="${product._id}"><i class="fa-solid fa-trash"></i></button>` : ''}
                     </div>
                 </td>
@@ -1198,7 +1306,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // Attach listeners to buttons
             const printBtn = row.querySelector('.print-barcode-btn');
             if (printBtn) printBtn.addEventListener('click', () => openBarcodeModal(product));
-            row.querySelector('.edit-product-btn').addEventListener('click', () => editProduct(product));
+            row.querySelector('.view-product-btn').addEventListener('click', () => openViewProductModal(product));
             const delBtn = row.querySelector('.delete-product-btn');
             if (delBtn) delBtn.addEventListener('click', () => deleteProduct(product._id));
         });
@@ -1224,6 +1332,81 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     };
+
+    const closeDetailModal = (modalId) => {
+        const modal = document.getElementById(modalId);
+        if (!modal) return;
+        modal.classList.add('opacity-0', 'pointer-events-none');
+        const card = modal.querySelector('.relative.w-full');
+        if (card) {
+            card.classList.add('scale-95');
+            card.classList.remove('scale-100');
+        }
+        setTimeout(() => modal.classList.add('hidden'), 300);
+    };
+
+    const openViewProductModal = (product) => {
+        document.getElementById('v-product-name').textContent = product.name || '-';
+        document.getElementById('v-product-code').textContent = product.product_code || '-';
+        document.getElementById('v-product-category').textContent = product.type_id ? product.type_id.name : 'ทั่วไป';
+        document.getElementById('v-product-branch').textContent = product.branch_id ? product.branch_id.name : '-';
+        document.getElementById('v-product-supplier').textContent = product.supplier_id ? product.supplier_id.name : '-';
+        document.getElementById('v-product-cost').textContent = `฿${(product.cost_price || 0).toLocaleString()}`;
+        document.getElementById('v-product-sell').textContent = `฿${(product.selling_price || 0).toLocaleString()}`;
+        document.getElementById('v-product-color').textContent = product.color_id ? product.color_id.name : '-';
+        document.getElementById('v-product-capacity').textContent = product.capacity_id ? product.capacity_id.name : '-';
+        document.getElementById('v-product-condition').textContent = product.condition_id ? product.condition_id.name : '-';
+
+        const categoryName = product.type_id ? product.type_id.name : 'ทั่วไป';
+        const unitName = product.unit_id ? product.unit_id.name : '';
+        const isDevice = checkIsDevice(categoryName, product);
+        const stockQty = isDevice ? (product.quantity || (product.imeis ? product.imeis.length : 0)) : product.quantity;
+        const unitText = isDevice ? 'เครื่อง' : (unitName || 'ชิ้น');
+        document.getElementById('v-product-qty').textContent = `${stockQty} ${unitText}`;
+
+        const imeisSection = document.getElementById('v-product-imeis-section');
+        const imeisList = document.getElementById('v-product-imeis-list');
+        if (imeisSection && imeisList) {
+            if (isDevice && product.imeis && product.imeis.length > 0) {
+                imeisSection.classList.remove('hidden');
+                imeisList.innerHTML = product.imeis.map(imei => `
+                    <span class="px-2.5 py-1 bg-slate-900 border border-slate-800 text-cyan-400 font-mono text-[11px] rounded-lg flex items-center gap-1.5 shadow-sm">
+                        <i class="fa-solid fa-barcode text-cyan-500/70"></i> ${imei}
+                    </span>
+                `).join('');
+            } else {
+                imeisSection.classList.add('hidden');
+                imeisList.innerHTML = '';
+            }
+        }
+
+        const modal = document.getElementById('modal-product-view');
+        if (modal) {
+            modal.classList.remove('hidden');
+            void modal.offsetWidth;
+            modal.classList.remove('opacity-0', 'pointer-events-none');
+            const card = modal.querySelector('.relative.w-full');
+            if (card) {
+                card.classList.remove('scale-95');
+                card.classList.add('scale-100');
+            }
+        }
+
+        // Bind Edit button from details modal
+        const editBtn = document.getElementById('edit-product-from-view-btn');
+        if (editBtn) {
+            editBtn.onclick = () => {
+                closeDetailModal('modal-product-view');
+                editProduct(product);
+            };
+        }
+    };
+
+    // Close handlers for Product View Modal
+    const closeProductBtn = document.getElementById('close-product-view-btn');
+    if (closeProductBtn) closeProductBtn.onclick = () => closeDetailModal('modal-product-view');
+    const closeProductBtnBottom = document.getElementById('close-product-view-btn-bottom');
+    if (closeProductBtnBottom) closeProductBtnBottom.onclick = () => closeDetailModal('modal-product-view');
 
     const editProduct = async (product) => {
         // Change Modal Title
@@ -1295,13 +1478,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Handle field visibility based on category
         const categoryName = product.type_id && product.type_id.name ? product.type_id.name : '';
-        if (categoryName.includes('iPhone') || categoryName.includes('iPad')) {
-            deviceFields.classList.remove('hidden');
-            imeiField.classList.remove('hidden');
-        } else {
-            deviceFields.classList.add('hidden');
-            imeiField.classList.add('hidden');
-        }
+        const hasDeviceAttributes = checkIsDevice(categoryName, product);
+        handleCategoryFields(categoryName, hasDeviceAttributes);
 
         openModal();
     };
@@ -1316,7 +1494,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (barcodeModalDynamicContent) barcodeModalDynamicContent.innerHTML = '';
 
         const categoryName = product.type_id && product.type_id.name ? product.type_id.name : '';
-        const isDevice = categoryName.includes('iPhone') || categoryName.includes('iPad');
+        const isDevice = checkIsDevice(categoryName, product);
 
         if (isDevice) {
             // Device: Checkboxes for IMEIs
@@ -1431,7 +1609,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!currentBarcodeProduct) return;
 
             const categoryName = currentBarcodeProduct.type_id && currentBarcodeProduct.type_id.name ? currentBarcodeProduct.type_id.name : '';
-            const isDevice = categoryName.includes('iPhone') || categoryName.includes('iPad');
+            const isDevice = checkIsDevice(categoryName, currentBarcodeProduct);
             let printData = [];
 
             if (isDevice) {
@@ -1616,38 +1794,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // ==========================================
     if (productCategory) {
         productCategory.addEventListener('change', (e) => {
-            // Get the text of the selected option, not the ObjectId value
             const selectedOption = e.target.options[e.target.selectedIndex];
-            const categoryName = selectedOption.textContent;
-
-            // Simple logic: if it contains "อุปกรณ์เสริม", it's an accessory
-            if (categoryName.includes('iPhone') || categoryName.includes('iPad')) {
-                deviceFields.classList.remove('hidden');
-                imeiField.classList.remove('hidden');
-
-                productImeis.required = true;
-                productQuantity.required = true;
-                if (productCapacity) productCapacity.required = true;
-                if (productCondition) productCondition.required = true;
-
-                // Try to auto-select "เครื่อง" unit if available
-                Array.from(productUnit.options).forEach(opt => {
-                    if (opt.textContent === 'เครื่อง') productUnit.value = opt.value;
-                });
-            } else if (categoryName.includes('อุปกรณ์เสริม')) {
-                deviceFields.classList.add('hidden');
-                imeiField.classList.add('hidden');
-
-                productImeis.required = false;
-                productQuantity.required = true;
-                if (productCapacity) productCapacity.required = false;
-                if (productCondition) productCondition.required = false;
-
-                // Try to auto-select "ชิ้น" unit if available
-                Array.from(productUnit.options).forEach(opt => {
-                    if (opt.textContent === 'ชิ้น') productUnit.value = opt.value;
-                });
-            }
+            const categoryName = selectedOption ? selectedOption.textContent : '';
+            handleCategoryFields(categoryName);
         });
     }
 
@@ -1710,10 +1859,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 old_branch_id: window.__editingProductOriginalBranchId || null
             };
 
-            const selectedOption = productCategory.options[productCategory.selectedIndex];
-            const categoryName = selectedOption.textContent;
-
-            if (categoryName.includes('iPhone') || categoryName.includes('iPad')) {
+            const isDeviceVisible = deviceFields && !deviceFields.classList.contains('hidden');
+            if (isDeviceVisible) {
                 payload.imeis = productImeis.value.split('\n').filter(i => i.trim() !== '');
                 if (payload.imeis.length === 0) return showToast('กรุณาระบุ IMEI อย่างน้อย 1 รายการ', 'error');
             }
@@ -1773,7 +1920,8 @@ document.addEventListener('DOMContentLoaded', () => {
             viewBranches, viewSettings, viewRoles, viewSalesHistory,
             viewTransfers, viewMovements, viewMembers,
             viewReportArrival, viewApproveImport, viewWarrantyCheck,
-            viewBranchInventory, viewAccountingPO, viewBranchReceive
+            viewBranchInventory, viewAccountingPO, viewBranchReceive,
+            viewAuditLogs
         ];
         views.forEach(view => {
             if (view) {
@@ -1875,6 +2023,22 @@ document.addEventListener('DOMContentLoaded', () => {
             activateView(viewBranchReceive, navBranchReceive);
             if (typeof initBranchReceive === 'function') initBranchReceive();
         }
+        else if (viewName === 'audit-logs') {
+            const savedUserData = localStorage.getItem('silmin_user');
+            let hasAuditAccess = false;
+            if (savedUserData) {
+                try {
+                    const u = JSON.parse(savedUserData);
+                    hasAuditAccess = !!(u.permissions && u.permissions.view_audit_logs);
+                } catch(e) {}
+            }
+            if (!hasAuditAccess) {
+                switchView('dashboard');
+                return;
+            }
+            activateView(viewAuditLogs, navAuditLogs);
+            await fetchAuditLogs(1);
+        }
     };
 
     if (navDashboard) navDashboard.addEventListener('click', (e) => { e.preventDefault(); switchView('dashboard'); });
@@ -1892,8 +2056,10 @@ document.addEventListener('DOMContentLoaded', () => {
     if (navReportArrival) navReportArrival.addEventListener('click', (e) => { e.preventDefault(); switchView('report-arrival'); });
     if (navApproveImport) navApproveImport.addEventListener('click', (e) => { e.preventDefault(); switchView('approve-import'); });
     if (navWarrantyCheck) navWarrantyCheck.addEventListener('click', (e) => { e.preventDefault(); switchView('warranty-check'); });
+    if (navAccountingPO) navAccountingPO.style.display = 'none'; // Will be managed by applyPermissions
     if (navAccountingPO) navAccountingPO.addEventListener('click', (e) => { e.preventDefault(); switchView('accounting-po'); });
     if (navBranchReceive) navBranchReceive.addEventListener('click', (e) => { e.preventDefault(); switchView('branch-receive'); });
+    if (navAuditLogs) navAuditLogs.addEventListener('click', (e) => { e.preventDefault(); switchView('audit-logs'); });
 
     // Dashboard card click to transfers
     const cardPendingTransfer = document.getElementById('card-pending-transfer');
@@ -1921,6 +2087,18 @@ document.addEventListener('DOMContentLoaded', () => {
             applyPermissions(user.permissions);
             fetchMasterData();
             startPendingTransferPolling();
+
+            // Silently sync the latest permissions & user data from DB to bypass caching
+            authFetch(`${API_BASE_URL}/auth/me`)
+                .then(res => res.json())
+                .then(result => {
+                    if (result.success && result.data) {
+                        localStorage.setItem('silmin_user', JSON.stringify(result.data));
+                        updateTopBar(result.data);
+                        applyPermissions(result.data.permissions);
+                    }
+                })
+                .catch(err => console.error('Failed to sync user session on startup:', err));
         } catch (e) {
             localStorage.removeItem('silmin_token');
             localStorage.removeItem('silmin_user');
@@ -2019,8 +2197,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     card.className = 'bg-slate-800 rounded-2xl border border-slate-700 p-6 shadow-lg hover:border-slate-500 transition-colors group relative overflow-hidden';
                     card.innerHTML = `
                         <div class="absolute top-0 right-0 p-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button class="btn-edit-branch w-8 h-8 rounded-lg bg-slate-700/50 flex items-center justify-center text-slate-400 hover:text-yellow-400 hover:bg-yellow-400/10 transition-colors" data-id="${branch._id}" data-name="${branch.name}" data-address="${branch.address || ''}">
-                                <i class="fa-solid fa-pen text-sm"></i>
+                            <button class="btn-view-branch w-8 h-8 rounded-lg bg-slate-700/50 flex items-center justify-center text-slate-400 hover:text-indigo-400 hover:bg-indigo-400/10 transition-colors" data-id="${branch._id}" title="ดูรายละเอียด">
+                                <i class="fa-solid fa-eye text-sm"></i>
                             </button>
                             <button class="btn-delete-branch w-8 h-8 rounded-lg bg-slate-700/50 flex items-center justify-center text-slate-400 hover:text-red-400 hover:bg-red-400/10 transition-colors" data-id="${branch._id}">
                                 <i class="fa-solid fa-trash-can text-sm"></i>
@@ -2035,15 +2213,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     branchGrid.appendChild(card);
                 });
 
-                // Attach event listeners for Edit/Delete buttons
-                document.querySelectorAll('.btn-edit-branch').forEach(btn => {
+                // Attach event listeners for View/Edit/Delete buttons
+                document.querySelectorAll('.btn-view-branch').forEach(btn => {
                     btn.addEventListener('click', (e) => {
-                        const target = e.currentTarget;
-                        openBranchModal(
-                            target.getAttribute('data-id'),
-                            target.getAttribute('data-name'),
-                            target.getAttribute('data-address')
-                        );
+                        const id = e.currentTarget.getAttribute('data-id');
+                        const branch = json.data.find(b => b._id === id || (b._id && b._id.$oid === id));
+                        if (branch) openViewBranchModal(branch);
                     });
                 });
 
@@ -2076,6 +2251,38 @@ document.addEventListener('DOMContentLoaded', () => {
             showToast('ดึงข้อมูลสาขาไม่สำเร็จ', 'error');
         }
     }
+
+    const openViewBranchModal = (branch) => {
+        document.getElementById('v-branch-name').textContent = branch.name || '-';
+        document.getElementById('v-branch-address').textContent = branch.address || 'ไม่มีรายละเอียดที่อยู่';
+
+        const modal = document.getElementById('modal-branch-view');
+        if (modal) {
+            modal.classList.remove('hidden');
+            void modal.offsetWidth;
+            modal.classList.remove('opacity-0', 'pointer-events-none');
+            const card = modal.querySelector('.relative.w-full');
+            if (card) {
+                card.classList.remove('scale-95');
+                card.classList.add('scale-100');
+            }
+        }
+
+        // Bind Edit button from details modal
+        const editBtn = document.getElementById('edit-branch-from-view-btn');
+        if (editBtn) {
+            editBtn.onclick = () => {
+                closeDetailModal('modal-branch-view');
+                openBranchModal(branch._id, branch.name, branch.address || '');
+            };
+        }
+    };
+
+    // Close handlers for Branch View Modal
+    const closeBranchBtn = document.getElementById('close-branch-view-btn');
+    if (closeBranchBtn) closeBranchBtn.onclick = () => closeDetailModal('modal-branch-view');
+    const closeBranchBtnBottom = document.getElementById('close-branch-view-btn-bottom');
+    if (closeBranchBtnBottom) closeBranchBtnBottom.onclick = () => closeDetailModal('modal-branch-view');
 
     const openBranchModal = (id = '', name = '', address = '') => {
         branchIdInput.value = id;
@@ -2453,7 +2660,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <td class="px-6 py-4 text-slate-400">${branchName}</td>
                 <td class="px-6 py-4 text-right">
                     <div class="flex items-center justify-end gap-1">
-                        <button class="edit-emp-btn text-slate-400 hover:text-cyan-400 transition-colors p-2" data-id="${emp._id}"><i class="fa-solid fa-pen"></i></button>
+                        <button class="view-emp-btn text-slate-400 hover:text-indigo-400 transition-colors p-2" data-id="${emp._id}" title="ดูรายละเอียด"><i class="fa-solid fa-eye"></i></button>
                         <button class="delete-emp-btn text-slate-400 hover:text-red-400 transition-colors p-2" data-id="${emp._id}"><i class="fa-solid fa-trash"></i></button>
                     </div>
                 </td>
@@ -2461,7 +2668,7 @@ document.addEventListener('DOMContentLoaded', () => {
             employeeTableBody.appendChild(row);
 
             // Attach edit listener
-            row.querySelector('.edit-emp-btn').addEventListener('click', () => openEmployeeModal(emp));
+            row.querySelector('.view-emp-btn').addEventListener('click', () => openViewEmployeeModal(emp));
             row.querySelector('.delete-emp-btn').addEventListener('click', () => deleteEmployee(emp._id, emp.name));
         });
     };
@@ -2499,6 +2706,52 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error('ดึงข้อมูลตำแหน่งไม่สำเร็จ:', error);
         }
     };
+
+    const openViewEmployeeModal = (emp) => {
+        document.getElementById('v-employee-name').textContent = emp.name || '-';
+        document.getElementById('v-employee-username').textContent = emp.username || emp.emp_id || '-';
+        
+        const branchName = emp.branch_id ? emp.branch_id.name : '-';
+        document.getElementById('v-employee-branch').textContent = branchName;
+        
+        // Role badge colors
+        let roleClass = 'bg-slate-500/10 text-slate-400 border-slate-500/20';
+        if (emp.role === 'แอดมิน') roleClass = 'bg-red-500/10 text-red-400 border-red-500/20';
+        else if (emp.role === 'ผู้จัดการ') roleClass = 'bg-purple-500/10 text-purple-400 border-purple-500/20';
+        else if (emp.role === 'พนักงานขาย') roleClass = 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
+        
+        const roleContainer = document.getElementById('v-employee-role');
+        if (roleContainer) {
+            roleContainer.innerHTML = `<span class="px-2.5 py-1 ${roleClass} border rounded-lg text-xs font-bold">${emp.role || '-'}</span>`;
+        }
+
+        const modal = document.getElementById('modal-employee-view');
+        if (modal) {
+            modal.classList.remove('hidden');
+            void modal.offsetWidth;
+            modal.classList.remove('opacity-0', 'pointer-events-none');
+            const card = modal.querySelector('.relative.w-full');
+            if (card) {
+                card.classList.remove('scale-95');
+                card.classList.add('scale-100');
+            }
+        }
+
+        // Bind Edit button from details modal
+        const editBtn = document.getElementById('edit-employee-from-view-btn');
+        if (editBtn) {
+            editBtn.onclick = () => {
+                closeDetailModal('modal-employee-view');
+                openEmployeeModal(emp);
+            };
+        }
+    };
+
+    // Close handlers for Employee View Modal
+    const closeEmployeeBtn = document.getElementById('close-employee-view-btn');
+    if (closeEmployeeBtn) closeEmployeeBtn.onclick = () => closeDetailModal('modal-employee-view');
+    const closeEmployeeBtnBottom = document.getElementById('close-employee-view-btn-bottom');
+    if (closeEmployeeBtnBottom) closeEmployeeBtnBottom.onclick = () => closeDetailModal('modal-employee-view');
 
     // Open Employee Modal
     const openEmployeeModal = (emp = null) => {
@@ -2813,7 +3066,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         results.forEach(product => {
             const categoryName = product.type_id ? product.type_id.name : 'ทั่วไป';
-            const isDevice = categoryName.includes('iPhone') || categoryName.includes('iPad');
+            const isDevice = checkIsDevice(categoryName, product);
             const colorName = product.color_id ? product.color_id.name : '';
             const capacityName = product.capacity_id ? product.capacity_id.name : '';
             const stockQty = product.quantity || 0;
@@ -4355,7 +4608,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const closeRoleModalBtn = document.getElementById('close-role-modal-btn');
     const cancelRoleModalBtn = document.getElementById('cancel-role-modal-btn');
 
-    const permKeys = ['view_dashboard', 'manage_stock', 'delete_stock', 'do_pos', 'manage_personnel', 'manage_branches', 'manage_settings', 'manage_roles', 'filter_stock_branch', 'cancel_sale', 'report_arrival', 'approve_import', 'manage_po', 'receive_po', 'manage_transfers'];
+    const permKeys = ['view_dashboard', 'manage_stock', 'delete_stock', 'do_pos', 'manage_personnel', 'manage_branches', 'manage_settings', 'manage_roles', 'view_audit_logs', 'filter_stock_branch', 'cancel_sale', 'report_arrival', 'approve_import', 'manage_po', 'receive_po', 'manage_transfers'];
     const permLabels = {
         view_dashboard: 'ดูแดชบอร์ด',
         manage_stock: 'จัดการสต็อก',
@@ -4365,6 +4618,7 @@ document.addEventListener('DOMContentLoaded', () => {
         manage_branches: 'จัดการสาขา',
         manage_settings: 'ตั้งค่าระบบ',
         manage_roles: 'จัดการสิทธิ์',
+        view_audit_logs: 'ประวัติกิจกรรมระบบ',
         filter_stock_branch: 'กรองสาขาในเมนู จัดการสต็อก',
         cancel_sale: 'ยกเลิกบิลขาย',
         report_arrival: 'แจ้งของถึงสาขา',
@@ -4382,6 +4636,7 @@ document.addEventListener('DOMContentLoaded', () => {
         manage_branches: 'fa-store text-orange-400',
         manage_settings: 'fa-gear text-slate-400',
         manage_roles: 'fa-shield-halved text-amber-400',
+        view_audit_logs: 'fa-clock-rotate-left text-indigo-400',
         filter_stock_branch: 'fa-filter text-teal-400',
         cancel_sale: 'fa-ban text-red-500',
         report_arrival: 'fa-truck-ramp-box text-cyan-400',
@@ -4430,6 +4685,58 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
+    const openViewRoleModal = (role) => {
+        document.getElementById('v-role-name').textContent = role.name || '-';
+        const listContainer = document.getElementById('v-role-perms-list');
+        if (listContainer) {
+            const p = role.permissions || {};
+            listContainer.innerHTML = permKeys.map(key => {
+                const active = p[key];
+                return `<div class="flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-medium transition-all ${active
+                    ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                    : 'bg-slate-700/30 text-slate-500 border border-slate-700/50 opacity-60'
+                    }">
+                    <i class="fa-solid ${permIcons[key].split(' ')[0]} ${active ? '' : 'grayscale'}"></i>
+                    <span>${permLabels[key]}</span>
+                </div>`;
+            }).join('');
+        }
+
+        const modal = document.getElementById('modal-role-view');
+        if (modal) {
+            modal.classList.remove('hidden');
+            void modal.offsetWidth;
+            modal.classList.remove('opacity-0', 'pointer-events-none');
+            const card = modal.querySelector('.relative.w-full');
+            if (card) {
+                card.classList.remove('scale-95');
+                card.classList.add('scale-100');
+            }
+        }
+
+        // Bind Edit button from details modal
+        const editBtn = document.getElementById('edit-role-from-view-btn');
+        if (editBtn) {
+            editBtn.onclick = () => {
+                closeDetailModal('modal-role-view');
+                editRoleId.value = role._id;
+                roleModalTitle.innerHTML = '<i class="fa-solid fa-pen-to-square text-amber-400"></i> แก้ไขบทบาท';
+                roleNameInput.value = role.name;
+                permKeys.forEach(key => {
+                    const el = document.getElementById(`perm-${key}`);
+                    if (el) el.checked = !!(role.permissions && role.permissions[key]);
+                });
+                openRoleModal();
+            };
+        }
+    };
+
+    // Close handlers for Role View Modal
+    const closeRoleBtn = document.getElementById('close-role-view-btn');
+    if (closeRoleBtn) closeRoleBtn.onclick = () => closeDetailModal('modal-role-view');
+    const closeRoleBtnBottom = document.getElementById('close-role-view-btn-bottom');
+    if (closeRoleBtnBottom) closeRoleBtnBottom.onclick = () => closeDetailModal('modal-role-view');
+
     const renderRoleCard = (role) => {
         const p = role.permissions || {};
         const enabledCount = permKeys.filter(k => p[k]).length;
@@ -4465,8 +4772,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>
                 </div>
                 <div class="flex gap-1">
-                    <button class="edit-role-btn w-9 h-9 flex items-center justify-center rounded-xl bg-slate-700/50 text-slate-400 hover:bg-amber-500 hover:text-slate-900 transition-all duration-300 shadow-sm" data-id="${role._id}" title="แก้ไข">
-                        <i class="fa-solid fa-pen-to-square text-sm"></i>
+                    <button class="view-role-btn w-9 h-9 flex items-center justify-center rounded-xl bg-slate-700/50 text-slate-400 hover:bg-indigo-500 hover:text-white transition-all duration-300 shadow-sm" title="ดูรายละเอียด">
+                        <i class="fa-solid fa-eye text-sm"></i>
                     </button>
                     <button class="delete-role-btn w-9 h-9 flex items-center justify-center rounded-xl bg-slate-700/50 text-slate-400 hover:bg-red-500/80 hover:text-white transition-all duration-300 shadow-sm" data-id="${role._id}" data-name="${role.name}" title="ลบ">
                         <i class="fa-solid fa-trash text-sm"></i>
@@ -4480,16 +4787,9 @@ document.addEventListener('DOMContentLoaded', () => {
         `;
         rolesGrid.appendChild(card);
 
-        // Event: Edit
-        card.querySelector('.edit-role-btn').addEventListener('click', () => {
-            editRoleId.value = role._id;
-            roleModalTitle.innerHTML = '<i class="fa-solid fa-pen-to-square text-amber-400"></i> แก้ไขบทบาท';
-            roleNameInput.value = role.name;
-            permKeys.forEach(key => {
-                const el = document.getElementById(`perm-${key}`);
-                if (el) el.checked = !!(role.permissions && role.permissions[key]);
-            });
-            openRoleModal();
+        // Event: View
+        card.querySelector('.view-role-btn').addEventListener('click', () => {
+            openViewRoleModal(role);
         });
 
         // Event: Delete
@@ -5219,14 +5519,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 <td class="px-6 py-4 text-slate-400 text-sm">${dateStr}</td>
                 <td class="px-6 py-4 text-right">
                     <div class="flex items-center justify-end gap-1">
-                        <button class="edit-member-btn text-slate-400 hover:text-cyan-400 transition-colors p-2" data-id="${m._id}"><i class="fa-solid fa-pen"></i></button>
+                        <button class="view-member-btn text-slate-400 hover:text-indigo-400 transition-colors p-2" data-id="${m._id}" title="ดูรายละเอียด"><i class="fa-solid fa-eye"></i></button>
                         <button class="delete-member-btn text-slate-400 hover:text-red-400 transition-colors p-2" data-id="${m._id}"><i class="fa-solid fa-trash"></i></button>
                     </div>
                 </td>
             `;
             tbody.appendChild(row);
 
-            row.querySelector('.edit-member-btn').addEventListener('click', () => openMemberModalForEdit(m));
+            row.querySelector('.view-member-btn').addEventListener('click', () => openViewMemberModal(m));
             row.querySelector('.delete-member-btn').addEventListener('click', () => deleteMember(m._id));
         });
     };
@@ -5308,6 +5608,70 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentMemberPhoto = '';
     let currentCardFrontPhotoBase64 = '';
     let currentCardFrontPhotoUrl = '';
+
+    const openViewMemberModal = (m) => {
+        document.getElementById('v-member-num').textContent = m.member_number || '-';
+        
+        const fullNameTh = `${m.prefix || ''} ${m.first_name || ''} ${m.last_name || ''}`.trim();
+        const fullNameEn = `${m.first_name_en || ''} ${m.last_name_en || ''}`.trim();
+        document.getElementById('v-member-name-th').textContent = fullNameTh || '-';
+        document.getElementById('v-member-name-en').textContent = fullNameEn || '-';
+        
+        const citizenDisplay = m.citizen_id ? m.citizen_id.replace(/(\d{1})(\d{4})(\d{5})(\d{2})(\d{1})/, '$1-$2-$3-$4-$5') : '-';
+        document.getElementById('v-member-citizen').textContent = citizenDisplay;
+        document.getElementById('v-member-phone').textContent = m.phone || '-';
+        document.getElementById('v-member-email').textContent = m.email || '-';
+        
+        const addressText = [
+            m.address,
+            m.sub_district ? `ต. ${m.sub_district}` : '',
+            m.district ? `อ. ${m.district}` : '',
+            m.province ? `จ. ${m.province}` : '',
+            m.postal_code
+        ].filter(Boolean).join(' ');
+        
+        document.getElementById('v-member-address').textContent = addressText.trim() || m.raw_address || '-';
+        document.getElementById('v-member-referral').textContent = m.referral_source || '-';
+        
+        const dateStr = m.createdAt ? new Date(m.createdAt).toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' }) : '-';
+        document.getElementById('v-member-date').textContent = dateStr;
+
+        const photoContainer = document.getElementById('v-member-photo-container');
+        if (photoContainer) {
+            if (m.photo) {
+                photoContainer.innerHTML = `<img src="data:image/jpeg;base64,${m.photo}" class="w-full h-full object-cover">`;
+            } else {
+                photoContainer.innerHTML = `<i class="fa-solid fa-user text-4xl text-slate-600"></i>`;
+            }
+        }
+
+        const modal = document.getElementById('modal-member-view');
+        if (modal) {
+            modal.classList.remove('hidden');
+            void modal.offsetWidth;
+            modal.classList.remove('opacity-0', 'pointer-events-none');
+            const card = modal.querySelector('.relative.w-full');
+            if (card) {
+                card.classList.remove('scale-95');
+                card.classList.add('scale-100');
+            }
+        }
+
+        // Bind Edit button from details modal
+        const editBtn = document.getElementById('edit-member-from-view-btn');
+        if (editBtn) {
+            editBtn.onclick = () => {
+                closeDetailModal('modal-member-view');
+                openMemberModalForEdit(m);
+            };
+        }
+    };
+
+    // Close handlers for Member View Modal
+    const closeMemberBtn = document.getElementById('close-member-view-btn');
+    if (closeMemberBtn) closeMemberBtn.onclick = () => closeDetailModal('modal-member-view');
+    const closeMemberBtnBottom = document.getElementById('close-member-view-btn-bottom');
+    if (closeMemberBtnBottom) closeMemberBtnBottom.onclick = () => closeDetailModal('modal-member-view');
 
     const openMemberModalForEdit = (member) => {
         resetMemberForm();
@@ -6584,7 +6948,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>
                 <div>
                     <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wide">รหัส/SKU</label>
-                    <input type="text" name="po_item_code" list="dl-product-codes" placeholder="ว่างไว้เพื่อสุ่มรหัส" class="w-full px-3 py-2.5 text-sm rounded-lg bg-[#2a2a2a] border border-gray-700 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none placeholder-slate-500 transition-all font-mono">
+                    <input type="text" name="po_item_code" readonly placeholder="ระบบรันให้อัตโนมัติ หากเป็นชื่อที่ไม่มีรหัส" class="w-full px-3 py-2.5 text-sm rounded-lg bg-[#1f1f1f] border border-gray-800 text-slate-400 focus:outline-none placeholder-slate-500 transition-all font-mono cursor-not-allowed opacity-80">
                 </div>
                 <div>
                     <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wide">หมวดหมู่</label>
@@ -6686,9 +7050,17 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         // Auto-fill logic when Name changes
-        inputName.addEventListener('change', (e) => {
+        inputName.addEventListener('input', (e) => {
             const val = e.target.value.trim();
-            if (!val) return;
+            
+            // If the name is completely deleted/empty
+            if (!val) {
+                const elCode = row.querySelector('[name="po_item_code"]');
+                if (elCode) elCode.value = '';
+                return;
+            }
+
+            let foundMatch = false;
 
             // Check if name has a code in Master Data
             if (window.masterDataCache && window.masterDataCache.productNames) {
@@ -6696,6 +7068,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (matchedName && matchedName.code) {
                     const el = row.querySelector('[name="po_item_code"]');
                     if (el) el.value = matchedName.code;
+                    foundMatch = true;
                 }
             }
 
@@ -6718,7 +7091,14 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (checkImei) checkImei.checked = !!product.track_imei;
 
                     updateRowTotal();
+                    foundMatch = true;
                 }
+            }
+
+            // If we changed to a name that does not have an existing SKU code
+            if (!foundMatch) {
+                const elCode = row.querySelector('[name="po_item_code"]');
+                if (elCode) elCode.value = '';
             }
         });
 
@@ -6999,10 +7379,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 <td class="px-6 py-4 text-right font-mono font-bold text-cyan-400">฿${totalAmount.toLocaleString()}</td>
                 <td class="px-6 py-4 text-right">
                     <div class="flex items-center justify-end gap-1.5">
+                        <button class="btn-view-po px-2.5 py-1.5 bg-indigo-500/10 text-indigo-400 hover:bg-indigo-500/25 border border-indigo-500/30 rounded-lg transition-all text-[11px] font-bold" title="รายละเอียดใบ PO">
+                            <i class="fa-solid fa-eye"></i> รายละเอียด
+                        </button>
                         ${po.status === 'รอจัดส่ง' || po.status === 'สั่งซื้อแล้ว' ? `
-                            <button class="btn-edit-po px-2.5 py-1.5 bg-cyan-500/10 text-cyan-400 hover:bg-cyan-500/25 border border-cyan-500/30 rounded-lg transition-all text-[11px] font-bold" title="แก้ไขใบ PO">
-                                <i class="fa-solid fa-pen-to-square"></i> แก้ไข
-                            </button>
                             <button class="btn-cancel-po px-2.5 py-1.5 bg-red-500/10 text-red-400 hover:bg-red-500/25 border border-red-500/30 rounded-lg transition-all text-[11px] font-bold" title="ยกเลิกใบ PO">
                                 <i class="fa-solid fa-trash-can"></i> ยกเลิก
                             </button>
@@ -7014,15 +7394,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 </td>
             `;
 
+            tr.querySelector('.btn-view-po').addEventListener('click', () => {
+                openViewPOModal(po);
+            });
+
             tr.querySelector('.btn-print-po').addEventListener('click', () => {
                 const encodedData = encodeURIComponent(JSON.stringify(po));
                 window.open(`po-print.html?data=${encodedData}`, '_blank');
             });
-
-            const editBtn = tr.querySelector('.btn-edit-po');
-            if (editBtn) {
-                editBtn.addEventListener('click', () => startEditingPO(po));
-            }
 
             const cancelBtn = tr.querySelector('.btn-cancel-po');
             if (cancelBtn) {
@@ -7155,18 +7534,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Setup close handlers for modal-po-view
         if (document.getElementById('btn-close-po-view')) {
-            document.getElementById('btn-close-po-view').addEventListener('click', () => {
-                const modal = document.getElementById('modal-po-view');
-                modal.classList.add('opacity-0', 'pointer-events-none');
-                setTimeout(() => modal.classList.add('hidden'), 300);
-            });
+            document.getElementById('btn-close-po-view').addEventListener('click', () => closeDetailModal('modal-po-view'));
         }
         if (document.getElementById('btn-close-po-view-bottom')) {
-            document.getElementById('btn-close-po-view-bottom').addEventListener('click', () => {
-                const modal = document.getElementById('modal-po-view');
-                modal.classList.add('opacity-0', 'pointer-events-none');
-                setTimeout(() => modal.classList.add('hidden'), 300);
-            });
+            document.getElementById('btn-close-po-view-bottom').addEventListener('click', () => closeDetailModal('modal-po-view'));
         }
 
         loadPOs();
@@ -7271,6 +7642,34 @@ document.addEventListener('DOMContentLoaded', () => {
         modal.classList.remove('hidden');
         void modal.offsetWidth;
         modal.classList.remove('opacity-0', 'pointer-events-none');
+        const card = modal.querySelector('.relative.w-full');
+        if (card) {
+            card.classList.remove('scale-95');
+            card.classList.add('scale-100');
+        }
+
+        // Bind Edit button from details modal
+        const editBtn = document.getElementById('btn-edit-po-from-view');
+        if (editBtn) {
+            if (po.status === 'รอจัดส่ง' || po.status === 'สั่งซื้อแล้ว') {
+                editBtn.classList.remove('hidden');
+                editBtn.onclick = () => {
+                    const viewModal = document.getElementById('modal-po-view');
+                    if (viewModal) {
+                        viewModal.classList.add('opacity-0', 'pointer-events-none');
+                        const card = viewModal.querySelector('.relative.w-full');
+                        if (card) {
+                            card.classList.add('scale-95');
+                            card.classList.remove('scale-100');
+                        }
+                        setTimeout(() => viewModal.classList.add('hidden'), 300);
+                    }
+                    startEditingPO(po);
+                };
+            } else {
+                editBtn.classList.add('hidden');
+            }
+        }
     };
 
     const renderFilteredPOs = () => {
@@ -8251,6 +8650,366 @@ document.addEventListener('DOMContentLoaded', () => {
         navApproveImportBtn.addEventListener('click', () => {
             loadApprovePOs();
             if (typeof window.loadImportNotifications === 'function') window.loadImportNotifications();
+        });
+    }
+
+    // ============================================================================
+    // AUDIT TRAIL / ACTIVITY LOG SYSTEM (ระบบบันทึกประวัติการทำงาน)
+    // ============================================================================
+    let auditCurrentPage = 1;
+    let auditLogsCache = [];
+
+    // Helper to format date cleanly in Thai format
+    const formatThaiDateTime = (dateStr) => {
+        if (!dateStr) return '-';
+        const d = new Date(dateStr);
+        if (isNaN(d.getTime())) return dateStr;
+        return d.toLocaleString('th-TH', {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit'
+        });
+    };
+
+    // Render action badges with beautiful styling and icons
+    const getActionBadgeHtml = (action) => {
+        let bgClass = '', textClass = '', iconClass = '', titleText = action;
+        switch (action) {
+            case 'CREATE':
+                bgClass = 'bg-emerald-500/10 border border-emerald-500/20';
+                textClass = 'text-emerald-400';
+                iconClass = 'fa-solid fa-circle-plus';
+                titleText = 'สร้างใหม่ (CREATE)';
+                break;
+            case 'UPDATE':
+                bgClass = 'bg-amber-500/10 border border-amber-500/20';
+                textClass = 'text-amber-400';
+                iconClass = 'fa-solid fa-pen-to-square';
+                titleText = 'แก้ไข/ปรับปรุง (UPDATE)';
+                break;
+            case 'DELETE':
+                bgClass = 'bg-rose-500/10 border border-rose-500/20';
+                textClass = 'text-rose-400';
+                iconClass = 'fa-solid fa-trash-can';
+                titleText = 'ลบข้อมูล (DELETE)';
+                break;
+            case 'LOGIN':
+                bgClass = 'bg-sky-500/10 border border-sky-500/20';
+                textClass = 'text-sky-400';
+                iconClass = 'fa-solid fa-right-to-bracket';
+                titleText = 'ล็อกอิน (LOGIN)';
+                break;
+            case 'CANCEL':
+                bgClass = 'bg-orange-500/10 border border-orange-500/20';
+                textClass = 'text-orange-400';
+                iconClass = 'fa-solid fa-ban';
+                titleText = 'ยกเลิก (CANCEL)';
+                break;
+            case 'APPROVE':
+                bgClass = 'bg-violet-500/10 border border-violet-500/20';
+                textClass = 'text-violet-400';
+                iconClass = 'fa-solid fa-circle-check';
+                titleText = 'อนุมัติ (APPROVE)';
+                break;
+            default:
+                bgClass = 'bg-slate-500/10 border border-slate-500/20';
+                textClass = 'text-slate-400';
+                iconClass = 'fa-solid fa-gear';
+        }
+        return `
+            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold ${bgClass} ${textClass}" title="${titleText}">
+                <i class="${iconClass} text-[10px]"></i>
+                ${action}
+            </span>
+        `;
+    };
+
+    // Render module badges with custom icons
+    const getModuleBadgeHtml = (module) => {
+        let bgClass = '', textClass = '', iconClass = '', thaiName = module;
+        switch (module) {
+            case 'AUTH':
+                bgClass = 'bg-slate-700/30 text-slate-300 border-slate-700/50';
+                iconClass = 'fa-solid fa-lock';
+                thaiName = 'เข้าสู่ระบบ';
+                break;
+            case 'PO':
+                bgClass = 'bg-amber-500/10 text-amber-400 border-amber-500/20';
+                iconClass = 'fa-solid fa-file-invoice-dollar';
+                thaiName = 'ใบสั่งซื้อ (PO)';
+                break;
+            case 'STOCK':
+                bgClass = 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
+                iconClass = 'fa-solid fa-box';
+                thaiName = 'คลังสินค้า';
+                break;
+            case 'POS':
+                bgClass = 'bg-sky-500/10 text-sky-400 border-sky-500/20';
+                iconClass = 'fa-solid fa-cash-register';
+                thaiName = 'ขายสินค้า (POS)';
+                break;
+            case 'TRANSFER':
+                bgClass = 'bg-violet-500/10 text-violet-400 border-violet-500/20';
+                iconClass = 'fa-solid fa-truck-ramp-box';
+                thaiName = 'โอนย้ายสาขา';
+                break;
+            case 'PERSONNEL':
+                bgClass = 'bg-rose-500/10 text-rose-400 border-rose-500/20';
+                iconClass = 'fa-solid fa-users';
+                thaiName = 'จัดการพนักงาน';
+                break;
+            case 'ROLE':
+                bgClass = 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20';
+                iconClass = 'fa-solid fa-shield-halved';
+                thaiName = 'จัดการสิทธิ์';
+                break;
+            default:
+                bgClass = 'bg-slate-800 text-slate-400 border-slate-700';
+                iconClass = 'fa-solid fa-bars-progress';
+        }
+        return `
+            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-semibold bg-slate-900/40 border ${bgClass}" title="${module}">
+                <i class="${iconClass} text-[10px]"></i>
+                ${thaiName}
+            </span>
+        `;
+    };
+
+    // Fetch and render logs from the API
+    const fetchAuditLogs = async (page = 1) => {
+        auditCurrentPage = page;
+        const tableBody = document.getElementById('audit-logs-table-body');
+        const emptyState = document.getElementById('audit-logs-empty');
+        const pageIndicator = document.getElementById('audit-current-page');
+        const prevBtn = document.getElementById('btn-audit-prev');
+        const nextBtn = document.getElementById('btn-audit-next');
+        const paginationInfo = document.getElementById('audit-pagination-info');
+
+        if (!tableBody) return;
+
+        // Render skeleton loading
+        tableBody.innerHTML = `
+            <tr>
+                <td colspan="7" class="py-12 text-center text-slate-400">
+                    <div class="flex flex-col items-center justify-center gap-3">
+                        <i class="fa-solid fa-circle-notch fa-spin text-3xl text-indigo-500"></i>
+                        <span class="text-sm font-medium tracking-wide">กำลังโหลดข้อมูลประวัติความปลอดภัย...</span>
+                    </div>
+                </td>
+            </tr>
+        `;
+        if (emptyState) emptyState.classList.add('hidden');
+        if (prevBtn) prevBtn.disabled = true;
+        if (nextBtn) nextBtn.disabled = true;
+
+        try {
+            // Compile filters
+            const search = document.getElementById('audit-filter-search')?.value || '';
+            const module = document.getElementById('audit-filter-module')?.value || 'ALL';
+            const action = document.getElementById('audit-filter-action')?.value || 'ALL';
+            const user_name = document.getElementById('audit-filter-user')?.value || '';
+
+            const params = new URLSearchParams({
+                page,
+                limit: 50,
+                search,
+                module,
+                action,
+                user_name
+            });
+
+            const res = await authFetch(`${API_BASE_URL}/audit-logs?${params.toString()}`);
+            const result = await res.json();
+
+            if (result.success) {
+                auditLogsCache = result.data || [];
+                const logs = result.data || [];
+                const pag = result.pagination || { total: 0, pages: 1, page: 1, limit: 50 };
+
+                if (logs.length === 0) {
+                    tableBody.innerHTML = '';
+                    if (emptyState) emptyState.classList.remove('hidden');
+                    if (paginationInfo) paginationInfo.textContent = 'กำลังแสดงรายการที่ 0-0 จาก 0 รายการทั้งหมด';
+                    if (pageIndicator) pageIndicator.textContent = '1';
+                    return;
+                }
+
+                // Render table rows
+                let rowsHtml = '';
+                logs.forEach((log, index) => {
+                    const timeStr = formatThaiDateTime(log.createdAt);
+                    const refBadge = log.reference_no 
+                        ? `<span class="px-2 py-0.5 rounded bg-slate-700/40 border border-slate-700 text-slate-300 font-mono text-[11px]">${log.reference_no}</span>`
+                        : `<span class="text-slate-600">-</span>`;
+
+                    rowsHtml += `
+                        <tr class="hover:bg-slate-800/20 transition-colors">
+                            <td class="py-4 px-6 text-xs text-slate-400 font-mono">${timeStr}</td>
+                            <td class="py-4 px-6">
+                                <div class="flex items-center gap-2">
+                                    <div class="w-7 h-7 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 flex items-center justify-center font-bold text-xs">
+                                        ${(log.user_name || 'U').charAt(0).toUpperCase()}
+                                    </div>
+                                    <span class="text-sm font-bold text-slate-200">${log.user_name || 'ระบบ'}</span>
+                                </div>
+                            </td>
+                            <td class="py-4 px-6">${getActionBadgeHtml(log.action)}</td>
+                            <td class="py-4 px-6">${getModuleBadgeHtml(log.module)}</td>
+                            <td class="py-4 px-6 text-sm text-slate-300 font-medium">${log.description || '-'}</td>
+                            <td class="py-4 px-6">${refBadge}</td>
+                            <td class="py-4 px-6 text-right">
+                                <button onclick="window.viewAuditLogDetail('${log._id}')" class="p-2 bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 hover:bg-indigo-500/20 hover:text-white rounded-xl transition-all active:scale-95 shadow-md shadow-indigo-500/5 hover:shadow-indigo-500/10" title="ตรวจสอบเชิงลึก">
+                                    <i class="fa-solid fa-circle-info text-sm"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    `;
+                });
+
+                tableBody.innerHTML = rowsHtml;
+                if (emptyState) emptyState.classList.add('hidden');
+
+                // Update Pagination Info
+                const startItem = (pag.page - 1) * pag.limit + 1;
+                const endItem = Math.min(pag.page * pag.limit, pag.total);
+                if (paginationInfo) {
+                    paginationInfo.textContent = `กำลังแสดงรายการที่ ${startItem}-${endItem} จาก ${pag.total} รายการทั้งหมด`;
+                }
+
+                if (pageIndicator) pageIndicator.textContent = pag.page;
+                if (prevBtn) prevBtn.disabled = pag.page <= 1;
+                if (nextBtn) nextBtn.disabled = pag.page >= pag.pages;
+            } else {
+                tableBody.innerHTML = `<tr><td colspan="7" class="py-8 text-center text-red-400 font-medium">${result.message || 'เกิดข้อผิดพลาดในการโหลดข้อมูล'}</td></tr>`;
+            }
+        } catch (error) {
+            console.error('fetchAuditLogs error:', error);
+            tableBody.innerHTML = `<tr><td colspan="7" class="py-8 text-center text-red-400 font-medium">ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์เพื่อดึงข้อมูลประวัติกิจกรรมได้</td></tr>`;
+        }
+    };
+
+    // Open detailed security payload view
+    window.viewAuditLogDetail = (logId) => {
+        const log = auditLogsCache.find(l => l._id === logId);
+        if (!log) return;
+
+        const modal = document.getElementById('modal-audit-detail');
+        if (!modal) return;
+
+        // Set content
+        document.getElementById('detail-audit-time').textContent = formatThaiDateTime(log.createdAt);
+        document.getElementById('detail-audit-ip').textContent = log.ip_address || '-';
+        document.getElementById('detail-audit-target').textContent = log.target_id || '-';
+        document.getElementById('detail-audit-user-id').textContent = log.user_id || '-';
+        document.getElementById('detail-audit-desc').textContent = log.description || '-';
+
+        // Prettify details payload
+        const payloadContainer = document.getElementById('detail-audit-payload');
+        if (payloadContainer) {
+            if (log.details) {
+                try {
+                    payloadContainer.textContent = JSON.stringify(log.details, null, 2);
+                    payloadContainer.classList.remove('text-slate-500');
+                    payloadContainer.classList.add('text-indigo-300');
+                } catch (e) {
+                    payloadContainer.textContent = String(log.details);
+                }
+            } else {
+                payloadContainer.textContent = 'ไม่มีข้อมูลเพิ่มเติม (No details payload provided)';
+                payloadContainer.classList.add('text-slate-500');
+                payloadContainer.classList.remove('text-indigo-300');
+            }
+        }
+
+        // Open Modal elegantly
+        modal.classList.remove('hidden');
+        void modal.offsetWidth;
+        modal.classList.remove('opacity-0', 'pointer-events-none');
+        const modalInner = modal.querySelector('.transform');
+        if (modalInner) {
+            modalInner.classList.remove('scale-95');
+            modalInner.classList.add('scale-100');
+        }
+    };
+
+    // Close Modal helper
+    const closeAuditDetailModal = () => {
+        const modal = document.getElementById('modal-audit-detail');
+        if (!modal) return;
+
+        modal.classList.add('opacity-0', 'pointer-events-none');
+        const modalInner = modal.querySelector('.transform');
+        if (modalInner) {
+            modalInner.classList.add('scale-95');
+            modalInner.classList.remove('scale-100');
+        }
+        setTimeout(() => modal.classList.add('hidden'), 300);
+    };
+
+    // Attach filters and pagination listeners
+    const auditSearch = document.getElementById('audit-filter-search');
+    const auditModule = document.getElementById('audit-filter-module');
+    const auditAction = document.getElementById('audit-filter-action');
+    const auditUser = document.getElementById('audit-filter-user');
+    const auditClearBtn = document.getElementById('btn-clear-audit-filters');
+    const auditPrevBtn = document.getElementById('btn-audit-prev');
+    const auditNextBtn = document.getElementById('btn-audit-next');
+
+    // Debounce for text inputs
+    let auditDebounceId = null;
+    const triggerAuditFilterRefresh = () => {
+        clearTimeout(auditDebounceId);
+        auditDebounceId = setTimeout(() => {
+            fetchAuditLogs(1);
+        }, 400);
+    };
+
+    if (auditSearch) auditSearch.addEventListener('input', triggerAuditFilterRefresh);
+    if (auditUser) auditUser.addEventListener('input', triggerAuditFilterRefresh);
+    if (auditModule) auditModule.addEventListener('change', () => fetchAuditLogs(1));
+    if (auditAction) auditAction.addEventListener('change', () => fetchAuditLogs(1));
+
+    if (auditClearBtn) {
+        auditClearBtn.addEventListener('click', () => {
+            if (auditSearch) auditSearch.value = '';
+            if (auditModule) auditModule.value = 'ALL';
+            if (auditAction) auditAction.value = 'ALL';
+            if (auditUser) auditUser.value = '';
+            fetchAuditLogs(1);
+            showToast('ล้างค่าการกรองประวัติกิจกรรมเรียบร้อย', 'success');
+        });
+    }
+
+    if (auditPrevBtn) {
+        auditPrevBtn.addEventListener('click', () => {
+            if (auditCurrentPage > 1) {
+                fetchAuditLogs(auditCurrentPage - 1);
+            }
+        });
+    }
+
+    if (auditNextBtn) {
+        auditNextBtn.addEventListener('click', () => {
+            fetchAuditLogs(auditCurrentPage + 1);
+        });
+    }
+
+    // Modal close triggers bindings
+    const closeBtns = document.querySelectorAll('#modal-audit-detail .modal-close-btn');
+    closeBtns.forEach(btn => {
+        btn.addEventListener('click', closeAuditDetailModal);
+    });
+
+    // Close on clicking backdrop
+    const modalBackdrop = document.getElementById('modal-audit-detail');
+    if (modalBackdrop) {
+        modalBackdrop.addEventListener('click', (e) => {
+            if (e.target === modalBackdrop) {
+                closeAuditDetailModal();
+            }
         });
     }
 });

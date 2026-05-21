@@ -26,7 +26,8 @@ const roleSchema = new mongoose.Schema({
         approve_import: { type: Boolean, default: false },   // อนุมัตินำเข้าสต็อก
         manage_po: { type: Boolean, default: false },        // จัดการ PO (สร้าง/ดูทั้งหมด)
         receive_po: { type: Boolean, default: false },       // ตรวจรับ PO (ที่สาขา)
-        manage_transfers: { type: Boolean, default: false }  // โอนย้ายสินค้า
+        manage_transfers: { type: Boolean, default: false }, // โอนย้ายสินค้า
+        view_audit_logs: { type: Boolean, default: false }   // อนุญาตดูประวัติกิจกรรมระบบ
     }
 }, { timestamps: true });
 const Role = mongoose.model('Role', roleSchema, 'role');
@@ -41,7 +42,7 @@ const seedDefaultRoles = async () => {
                 do_pos: true, manage_personnel: true, manage_branches: true,
                 manage_settings: true, manage_roles: true, filter_stock_branch: true, cancel_sale: true,
                 report_arrival: true, approve_import: true, manage_po: true, receive_po: true,
-                manage_transfers: true
+                manage_transfers: true, view_audit_logs: true
             }
         },
         {
@@ -51,7 +52,7 @@ const seedDefaultRoles = async () => {
                 do_pos: true, manage_personnel: true, manage_branches: true,
                 manage_settings: true, manage_roles: false, filter_stock_branch: true, cancel_sale: true,
                 report_arrival: true, approve_import: false, manage_po: true, receive_po: true,
-                manage_transfers: true
+                manage_transfers: true, view_audit_logs: true
             }
         },
         {
@@ -61,7 +62,7 @@ const seedDefaultRoles = async () => {
                 do_pos: true, manage_personnel: false, manage_branches: false,
                 manage_settings: false, manage_roles: false, filter_stock_branch: false, cancel_sale: false,
                 report_arrival: true, approve_import: false, manage_po: false, receive_po: true,
-                manage_transfers: false
+                manage_transfers: false, view_audit_logs: false
             }
         }
     ];
@@ -88,6 +89,7 @@ const seedDefaultRoles = async () => {
                 existing.permissions.manage_po = true;
                 existing.permissions.receive_po = true;
                 existing.permissions.manage_transfers = true;
+                existing.permissions.view_audit_logs = true;
                 changed = true;
             }
             if (changed) {
@@ -329,6 +331,20 @@ const purchaseOrderSchema = new mongoose.Schema({
 }, { timestamps: true });
 const PurchaseOrder = mongoose.model('PurchaseOrder', purchaseOrderSchema, 'purchaseorder');
 
+// 17. Audit Log (บันทึกกิจกรรมพนักงานและประวัติการทำงานระบบ)
+const auditLogSchema = new mongoose.Schema({
+    action: { type: String, required: true }, // ประเภทการกระทำ e.g., 'CREATE', 'UPDATE', 'DELETE', 'LOGIN', 'CANCEL', 'APPROVE'
+    module: { type: String, required: true }, // โมดูลที่ทำรายการ e.g., 'PO', 'STOCK', 'POS', 'MEMBER', 'BRANCH', 'AUTH'
+    description: { type: String, required: true }, // รายละเอียดกิจกรรมเป็นข้อความเข้าใจง่าย
+    target_id: { type: String, default: null }, // ID ของเอกสารหลักที่เกี่ยวข้อง
+    reference_no: { type: String, default: null }, // เลขที่เอกสารอ้างอิง e.g., PO Number, Receipt Number
+    details: { type: mongoose.Schema.Types.Mixed, default: null }, // รายละเอียดเพิ่มเติมหรือ Change Snapshot
+    ip_address: { type: String, default: null }, // IP Address ผู้ทำรายการ
+    user_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee', required: true }, // รหัสพนักงานผู้ทำรายการ
+    user_name: { type: String, required: true } // ชื่อพนักงานผู้ทำรายการ
+}, { timestamps: true });
+const AuditLog = mongoose.model('AuditLog', auditLogSchema, 'auditlog');
+
 module.exports = {
     Branch,
     Role,
@@ -348,6 +364,7 @@ module.exports = {
     FinanceCompany,
     ImportNotification,
     PurchaseOrder,
+    AuditLog,
     seedDefaultRoles,
     migrateProductsToERP
 };
