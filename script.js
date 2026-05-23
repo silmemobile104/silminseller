@@ -88,6 +88,28 @@ document.addEventListener('DOMContentLoaded', () => {
         return deviceKeywords.some(keyword => catLower.includes(keyword));
     };
 
+    // Helper to safely set PO row values (including SELECT elements)
+    const setPoRowValue = (row, name, val) => {
+        const el = row.querySelector(`[name="${name}"]`);
+        if (!el || val === undefined || val === null) return;
+        if (el.tagName === 'SELECT') {
+            let optionExists = false;
+            for (let i = 0; i < el.options.length; i++) {
+                if (el.options[i].value === val) {
+                    optionExists = true;
+                    break;
+                }
+            }
+            if (!optionExists && val !== '') {
+                const newOpt = document.createElement('option');
+                newOpt.value = val;
+                newOpt.textContent = val;
+                el.appendChild(newOpt);
+            }
+        }
+        el.value = val;
+    };
+
     // ==========================================
     // DOM Elements
     // ==========================================
@@ -6944,7 +6966,14 @@ document.addEventListener('DOMContentLoaded', () => {
             <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
                 <div class="md:col-span-2">
                     <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wide">ชื่อสินค้า <span class="text-red-400">*</span></label>
-                    <input type="text" name="po_item_name" list="dl-product-names" required placeholder="ค้นหาชื่อสินค้า..." class="w-full px-3 py-2.5 text-sm rounded-lg bg-[#2a2a2a] border border-gray-700 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none placeholder-slate-500 transition-all">
+                    <select name="po_item_name" required class="w-full px-3 py-2.5 text-sm rounded-lg bg-[#2a2a2a] border border-gray-700 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all">
+                        <option value="" disabled selected>-- เลือกชื่อสินค้า --</option>
+                        ${(window.masterDataCache?.productNames || []).map(x => {
+                            const val = x.name || x;
+                            const label = x.code ? `${val} (${x.code})` : val;
+                            return `<option value="${val}">${label}</option>`;
+                        }).join('')}
+                    </select>
                 </div>
                 <div>
                     <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wide">รหัส/SKU</label>
@@ -6961,11 +6990,17 @@ document.addEventListener('DOMContentLoaded', () => {
             <div class="grid grid-cols-2 md:grid-cols-6 gap-4 items-end">
                 <div>
                     <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wide">สี</label>
-                    <input type="text" name="po_item_color" list="dl-product-colors" placeholder="สี" class="w-full px-3 py-2.5 text-sm rounded-lg bg-[#2a2a2a] border border-gray-700 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none placeholder-slate-500 transition-all">
+                    <select name="po_item_color" class="w-full px-3 py-2.5 text-sm rounded-lg bg-[#2a2a2a] border border-gray-700 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all">
+                        <option value="">-- เลือกสี --</option>
+                        ${(window.masterDataCache?.productColors || []).map(x => `<option value="${x.name || x}">${x.name || x}</option>`).join('')}
+                    </select>
                 </div>
                 <div>
                     <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wide">ความจุ</label>
-                    <input type="text" name="po_item_capacity" list="dl-product-capacities" placeholder="ความจุ" class="w-full px-3 py-2.5 text-sm rounded-lg bg-[#2a2a2a] border border-gray-700 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none placeholder-slate-500 transition-all">
+                    <select name="po_item_capacity" class="w-full px-3 py-2.5 text-sm rounded-lg bg-[#2a2a2a] border border-gray-700 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all">
+                        <option value="">-- เลือกความจุ --</option>
+                        ${(window.masterDataCache?.productCapacities || []).map(x => `<option value="${x.name || x}">${x.name || x}</option>`).join('')}
+                    </select>
                 </div>
                 <div>
                     <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wide">หน่วยนับ <span class="text-red-400">*</span></label>
@@ -7031,16 +7066,12 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!val || typeof allProductsCache === 'undefined') return;
             const product = allProductsCache.find(p => p.product_code === val);
             if (product) {
-                const setVal = (name, val) => {
-                    const el = row.querySelector(`[name="${name}"]`);
-                    if (el && val !== undefined && val !== null) el.value = val;
-                };
-                setVal('po_item_name', product.name);
-                setVal('po_item_category', product.category);
-                setVal('po_item_color', product.color || '');
-                setVal('po_item_capacity', product.capacity || '');
-                setVal('po_item_cost', product.cost_price);
-                setVal('po_item_sell', product.selling_price);
+                setPoRowValue(row, 'po_item_name', product.name);
+                setPoRowValue(row, 'po_item_category', product.category);
+                setPoRowValue(row, 'po_item_color', product.color || '');
+                setPoRowValue(row, 'po_item_capacity', product.capacity || '');
+                setPoRowValue(row, 'po_item_cost', product.cost_price);
+                setPoRowValue(row, 'po_item_sell', product.selling_price);
 
                 const checkImei = row.querySelector(`[name="po_item_track_imei"]`);
                 if (checkImei) checkImei.checked = !!product.track_imei;
@@ -7050,7 +7081,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         // Auto-fill logic when Name changes
-        inputName.addEventListener('input', (e) => {
+        inputName.addEventListener('change', (e) => {
             const val = e.target.value.trim();
             
             // If the name is completely deleted/empty
@@ -7076,16 +7107,12 @@ document.addEventListener('DOMContentLoaded', () => {
             if (typeof allProductsCache !== 'undefined') {
                 const product = allProductsCache.find(p => p.name === val);
                 if (product) {
-                    const setVal = (name, val) => {
-                        const el = row.querySelector(`[name="${name}"]`);
-                        if (el && val !== undefined && val !== null) el.value = val;
-                    };
-                    setVal('po_item_code', product.product_code);
-                    setVal('po_item_category', product.category);
-                    setVal('po_item_color', product.color || '');
-                    setVal('po_item_capacity', product.capacity || '');
-                    setVal('po_item_cost', product.cost_price);
-                    setVal('po_item_sell', product.selling_price);
+                    setPoRowValue(row, 'po_item_code', product.product_code);
+                    setPoRowValue(row, 'po_item_category', product.category);
+                    setPoRowValue(row, 'po_item_color', product.color || '');
+                    setPoRowValue(row, 'po_item_capacity', product.capacity || '');
+                    setPoRowValue(row, 'po_item_cost', product.cost_price);
+                    setPoRowValue(row, 'po_item_sell', product.selling_price);
 
                     const checkImei = row.querySelector(`[name="po_item_track_imei"]`);
                     if (checkImei) checkImei.checked = !!product.track_imei;
@@ -7207,16 +7234,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 const row = rows[rows.length - 1];
 
                 // Populate fields in this row
-                row.querySelector('[name="po_item_name"]').value = item.product_name || '';
-                row.querySelector('[name="po_item_code"]').value = item.product_code || '';
-                row.querySelector('[name="po_item_category"]').value = item.category || '';
-                row.querySelector('[name="po_item_color"]').value = item.color || '';
-                row.querySelector('[name="po_item_capacity"]').value = item.capacity || '';
-                row.querySelector('[name="po_item_unit"]').value = item.unit || '';
-                row.querySelector('[name="po_item_qty"]').value = item.ordered_qty || 1;
-                row.querySelector('[name="po_item_cost"]').value = item.cost_price || 0;
-                row.querySelector('[name="po_item_sell"]').value = item.selling_price || 0;
-                row.querySelector('[name="po_item_track_imei"]').checked = !!item.track_imei;
+                setPoRowValue(row, 'po_item_name', item.product_name || '');
+                setPoRowValue(row, 'po_item_code', item.product_code || '');
+                setPoRowValue(row, 'po_item_category', item.category || '');
+                setPoRowValue(row, 'po_item_color', item.color || '');
+                setPoRowValue(row, 'po_item_capacity', item.capacity || '');
+                setPoRowValue(row, 'po_item_unit', item.unit || '');
+                setPoRowValue(row, 'po_item_qty', item.ordered_qty || 1);
+                setPoRowValue(row, 'po_item_cost', item.cost_price || 0);
+                setPoRowValue(row, 'po_item_sell', item.selling_price || 0);
+                const checkImei = row.querySelector('[name="po_item_track_imei"]');
+                if (checkImei) checkImei.checked = !!item.track_imei;
 
                 // Trigger calculation
                 const event = new Event('input');
