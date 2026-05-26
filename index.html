@@ -388,6 +388,106 @@
             0% { opacity: 0.35; filter: blur(6px); }
             100% { opacity: 0.65; filter: blur(12px); }
         }
+
+        /* Searchable Select Premium Design */
+        .searchable-select-wrapper select.searchable-hidden {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0 !important;
+            pointer-events: none !important;
+            z-index: -1;
+        }
+
+        .searchable-select-trigger {
+            min-height: 46px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background-color: #0f172a; /* bg-slate-900 */
+            border: 1px solid #334155; /* border-slate-700 */
+            border-radius: 0.75rem; /* rounded-xl */
+            padding: 0.625rem 1rem;
+            color: #ffffff;
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            user-select: none;
+        }
+
+        .searchable-select-trigger:focus-within {
+            border-color: #06b6d4 !important; /* border-cyan-500 */
+            box-shadow: 0 0 0 2px rgba(6, 182, 212, 0.2);
+        }
+
+        .searchable-select-input {
+            background: transparent !important;
+            border: none !important;
+            outline: none !important;
+            color: #ffffff !important;
+            width: 100%;
+            padding: 0 !important;
+            margin: 0 !important;
+            font-size: 0.875rem !important; /* text-sm */
+            cursor: pointer;
+        }
+
+        .searchable-select-input:not([readonly]) {
+            cursor: text;
+        }
+
+        .searchable-select-dropdown {
+            position: absolute;
+            left: 0;
+            right: 0;
+            margin-top: 0.5rem;
+            max-height: 250px;
+            overflow-y: auto;
+            background-color: #1e293b; /* bg-slate-800 */
+            border: 1px solid #334155; /* border-slate-700 */
+            border-radius: 0.75rem; /* rounded-xl */
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 10px 10px -5px rgba(0, 0, 0, 0.4);
+            z-index: 999;
+            transform-origin: top;
+            transform: scaleY(0.95);
+            opacity: 0;
+            pointer-events: none;
+            transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .searchable-select-dropdown.open {
+            transform: scaleY(1);
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .searchable-option-item {
+            padding: 0.75rem 1rem;
+            font-size: 0.875rem;
+            color: #cbd5e1; /* text-slate-300 */
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+
+        .searchable-option-item:hover, .searchable-option-item.highlighted {
+            background-color: rgba(6, 182, 212, 0.15);
+            color: #06b6d4; /* text-cyan-400 */
+        }
+
+        .searchable-option-item.selected {
+            background-color: rgba(6, 182, 212, 0.25);
+            color: #06b6d4;
+            font-weight: 600;
+        }
+
+        .searchable-no-results {
+            padding: 0.75rem 1rem;
+            font-size: 0.875rem;
+            color: #64748b; /* text-slate-500 */
+            text-align: center;
+            font-style: italic;
+        }
     </style>
 </head>
 
@@ -453,7 +553,7 @@
 
         <!-- SIDEBAR -->
         <aside id="sidebar"
-            class="sidebar-expanded bg-slate-800 border-r border-slate-700 flex flex-col h-full z-20 flex-shrink-0">
+            class="sidebar-expanded bg-slate-800 border-r border-slate-700 flex flex-col h-full z-20 flex-shrink-0 fixed md:static inset-y-0 left-0 z-[45] transition-transform duration-300 -translate-x-full md:translate-x-0">
             <!-- Sidebar Header -->
             <div class="h-16 flex items-center px-4 border-b border-slate-700 shrink-0">
                 <div class="flex items-center gap-3 w-full">
@@ -765,7 +865,7 @@
             </header>
 
             <!-- Dashboard Content Scrollable -->
-            <div id="main-content" class="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
+            <div id="main-content" class="flex-1 overflow-y-auto p-4 pb-24 sm:p-6 sm:pb-6 lg:p-8 lg:pb-8">
 
                 <!-- VIEW: Dashboard -->
                 <div id="view-dashboard" class="space-y-8 animate-fade-in">
@@ -775,7 +875,7 @@
                     </div>
 
                     <!-- Stat Cards -->
-                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
+                    <div class="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 md:gap-6">
                         <!-- Card 1: ยอดขายวันนี้ (Cyan) -->
                         <div
                             class="bg-slate-800 rounded-2xl p-6 border border-slate-700 shadow-[0_0_15px_rgba(6,182,212,0.15)] hover:border-cyan-500/50 hover:shadow-[0_0_25px_rgba(6,182,212,0.25)] transition-all duration-300">
@@ -2516,13 +2616,33 @@
             </div> <!-- End of main-content -->
 
         </main>
+
+        <!-- MOBILE BOTTOM NAVIGATION -->
+        <nav class="md:hidden fixed bottom-0 left-0 right-0 z-[40] bg-[#161b22] border-t border-gray-800 px-2 py-2 flex justify-around items-center shadow-lg shadow-black/40">
+            <a href="#" id="mobile-nav-transactions" class="flex flex-col items-center justify-center text-slate-400 hover:text-white transition-all py-1 px-3 rounded-xl gap-0.5">
+                <i class="fa-solid fa-cash-register text-lg"></i>
+                <span class="text-[10px] font-bold">จุดขาย POS</span>
+            </a>
+            <a href="#" id="mobile-nav-stock" class="flex flex-col items-center justify-center text-slate-400 hover:text-white transition-all py-1 px-3 rounded-xl gap-0.5">
+                <i class="fa-solid fa-box-open text-lg"></i>
+                <span class="text-[10px] font-bold">คลังสินค้า</span>
+            </a>
+            <a href="#" id="mobile-nav-accounting-po" class="flex flex-col items-center justify-center text-slate-400 hover:text-white transition-all py-1 px-3 rounded-xl gap-0.5">
+                <i class="fa-solid fa-file-invoice-dollar text-lg"></i>
+                <span class="text-[10px] font-bold">ระบบ PO</span>
+            </a>
+            <a href="#" id="mobile-nav-members" class="flex flex-col items-center justify-center text-slate-400 hover:text-white transition-all py-1 px-3 rounded-xl gap-0.5">
+                <i class="fa-solid fa-address-card text-lg"></i>
+                <span class="text-[10px] font-bold">สมาชิก</span>
+            </a>
+        </nav>
     </div>
 
     <!-- MODAL: MEMBER (เพิ่ม/แก้ไขสมาชิก) -->
     <div id="member-modal"
         class="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/90 backdrop-blur-md opacity-0 pointer-events-none transition-all duration-300 p-4">
         <div
-            class="modal-content relative w-full max-w-4xl max-h-[90vh] bg-slate-800 rounded-3xl shadow-2xl border border-slate-700 flex flex-col transform scale-95 transition-transform duration-300 modal-animate-in">
+            class="modal-content relative w-[95%] md:w-[600px] max-h-[90vh] overflow-y-auto bg-slate-800 rounded-3xl shadow-2xl border border-slate-700 flex flex-col transform scale-95 transition-transform duration-300 modal-animate-in">
             <!-- Header -->
             <div class="p-6 border-b border-slate-700 flex items-center justify-between shrink-0">
                 <h3 id="member-modal-title" class="text-2xl font-bold text-white flex items-center gap-3">
@@ -2761,7 +2881,7 @@
     <div id="modal-create-transfer"
         class="fixed inset-0 z-[70] flex items-center justify-center bg-slate-900/80 backdrop-blur-sm opacity-0 pointer-events-none transition-opacity duration-300 p-4">
         <div
-            class="relative w-full max-w-3xl max-h-[85vh] flex flex-col bg-slate-800 rounded-2xl shadow-2xl border border-slate-700 overflow-hidden">
+            class="modal-content relative w-[95%] md:w-[600px] max-h-[90vh] overflow-y-auto flex flex-col bg-slate-800 rounded-2xl shadow-2xl border border-slate-700">
             <div class="p-5 border-b border-slate-700 flex items-center justify-between">
                 <h4 class="text-lg font-bold text-white flex items-center gap-2">
                     <i class="fa-solid fa-right-left text-cyan-400"></i>
@@ -2858,7 +2978,7 @@
     <div id="add-product-modal"
         class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 backdrop-blur-sm opacity-0 pointer-events-none transition-opacity duration-300 p-4">
         <div
-            class="relative w-full max-w-3xl max-h-[90vh] overflow-y-auto p-6 md:p-8 bg-slate-800 rounded-2xl shadow-2xl border border-slate-700">
+            class="modal-content relative w-[95%] md:w-[600px] max-h-[90vh] overflow-y-auto p-6 md:p-8 bg-slate-800 rounded-2xl shadow-2xl border border-slate-700">
             <!-- Modal Header -->
             <div class="flex items-center justify-between mb-6 pb-4 border-b border-slate-700">
                 <h3 id="modal-title" class="text-2xl font-bold text-white flex items-center gap-2">
@@ -2870,17 +2990,38 @@
             </div>
 
             <!-- Form -->
-            <form id="add-product-form" class="space-y-6">
+            <form id="add-product-form" novalidate class="space-y-6">
                 <input type="hidden" id="edit-product-id">
+
+                <!-- Basic Info Grid -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="space-y-2">
+                        <label class="text-sm font-medium text-slate-300">ชื่อสินค้า <span
+                                class="text-red-400">*</span></label>
+                        <select id="product-name" required
+                            class="w-full px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all appearance-none">
+                            <option value="" disabled selected>เลือกชื่อสินค้า</option>
+                        </select>
+                    </div>
+                    <div class="space-y-2">
+                        <label class="text-sm font-medium text-slate-300">หมวดหมู่ <span
+                                class="text-red-400">*</span></label>
+                        <select id="product-category" required
+                            class="w-full px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all appearance-none">
+                            <option value="" disabled selected>เลือกหมวดหมู่</option>
+                        </select>
+                    </div>
+                </div>
+                
                 <!-- Identifiers Grid -->
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div class="space-y-2">
-                        <label class="text-sm font-medium text-slate-300">รหัสสินค้า (Product Code)</label>
+                        <label class="text-sm font-medium text-slate-300">รหัสสินค้า (Product Code) <span class="text-red-400">*</span></label>
                         <div class="relative">
                             <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                                 <i class="fa-solid fa-barcode text-slate-500"></i>
                             </div>
-                            <input type="text" id="product-code"
+                            <input type="text" id="product-code" required
                                 class="w-full px-4 pl-10 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all"
                                 placeholder="สแกนบาร์โค้ด หรือ ระบุรหัส">
                         </div>
@@ -2912,26 +3053,6 @@
                             class="w-full px-4 py-2.5 pl-10 rounded-xl bg-slate-900 border border-slate-700 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all appearance-none">
                             <option value="" disabled selected>เลือกสาขาที่จัดเก็บ</option>
                             <!-- Branches loaded dynamically -->
-                        </select>
-                    </div>
-                </div>
-
-                <!-- Basic Info Grid -->
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div class="space-y-2">
-                        <label class="text-sm font-medium text-slate-300">ชื่อสินค้า <span
-                                class="text-red-400">*</span></label>
-                        <select id="product-name" required
-                            class="w-full px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all appearance-none">
-                            <option value="" disabled selected>เลือกชื่อสินค้า</option>
-                        </select>
-                    </div>
-                    <div class="space-y-2">
-                        <label class="text-sm font-medium text-slate-300">หมวดหมู่ <span
-                                class="text-red-400">*</span></label>
-                        <select id="product-category" required
-                            class="w-full px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all appearance-none">
-                            <option value="" disabled selected>เลือกหมวดหมู่</option>
                         </select>
                     </div>
                 </div>
@@ -3315,7 +3436,7 @@
     <div id="branch-modal"
         class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 backdrop-blur-sm opacity-0 pointer-events-none transition-opacity duration-300 p-4">
         <div
-            class="relative w-full max-w-md bg-slate-800 rounded-2xl shadow-2xl border border-slate-700 p-6 md:p-8 transform scale-95 transition-transform duration-300">
+            class="modal-content relative w-[95%] md:w-[600px] max-h-[90vh] overflow-y-auto bg-slate-800 rounded-2xl shadow-2xl border border-slate-700 p-6 md:p-8 transform scale-95 transition-transform duration-300">
             <div class="flex items-center justify-between mb-6 pb-4 border-b border-slate-700">
                 <h3 id="branch-modal-title" class="text-2xl font-bold text-white flex items-center gap-2">
                     <i class="fa-solid fa-store text-cyan-400"></i> เพิ่มสาขาใหม่
@@ -3358,7 +3479,7 @@
     <div id="employee-modal"
         class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 backdrop-blur-sm opacity-0 pointer-events-none transition-opacity duration-300 p-4">
         <div
-            class="relative w-full max-w-md bg-slate-800 rounded-2xl shadow-2xl border border-slate-700 p-6 md:p-8 transform scale-95 transition-transform duration-300">
+            class="modal-content relative w-[95%] md:w-[600px] max-h-[90vh] overflow-y-auto bg-slate-800 rounded-2xl shadow-2xl border border-slate-700 p-6 md:p-8 transform scale-95 transition-transform duration-300">
             <div class="flex items-center justify-between mb-6 pb-4 border-b border-slate-700">
                 <h3 id="employee-modal-title" class="text-2xl font-bold text-white flex items-center gap-2">
                     <i class="fa-solid fa-user-plus text-cyan-400"></i> เพิ่มพนักงานใหม่
@@ -3445,7 +3566,7 @@
     <div id="role-modal"
         class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 backdrop-blur-sm opacity-0 pointer-events-none transition-opacity duration-300 p-4">
         <div
-            class="relative w-full max-w-lg max-h-[90vh] overflow-y-auto p-6 md:p-8 bg-slate-800 rounded-2xl shadow-2xl border border-slate-700">
+            class="modal-content relative w-[95%] md:w-[600px] max-h-[90vh] overflow-y-auto p-6 md:p-8 bg-slate-800 rounded-2xl shadow-2xl border border-slate-700">
             <!-- Modal Header -->
             <div class="flex items-center justify-between mb-6 pb-4 border-b border-slate-700">
                 <h3 id="role-modal-title" class="text-xl font-bold text-white flex items-center gap-2">
@@ -3964,37 +4085,29 @@
                                 </select>
                             </div>
 
-                            <!-- Row 2: Terms -->
-                            <div class="grid grid-cols-2 gap-4">
+                            <!-- Row 2: Down Payment Splits -->
+                            <div class="bg-slate-800/40 p-4 border border-slate-700/70 rounded-xl space-y-4">
+                                <!-- ยอดเงินดาวน์ (กรอกก่อน) -->
                                 <div class="space-y-2">
                                     <label class="text-sm font-medium text-slate-300 block flex items-center gap-1.5">
-                                        <i class="fa-solid fa-calendar-day text-cyan-400 text-xs"></i> จ่ายทุกวันที่
-                                        <span class="text-red-400">*</span>
+                                        <i class="fa-solid fa-hand-holding-dollar text-cyan-400 text-xs"></i>
+                                        ยอดเงินดาวน์ (บาท) <span class="text-red-400">*</span>
                                     </label>
-                                    <input type="number" id="modal-finance-payment-day"
-                                        class="w-full px-4 py-3 rounded-xl bg-slate-900 border border-slate-600 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all font-mono"
-                                        value="1" min="1" max="31" placeholder="เช่น 5, 15">
+                                    <div class="relative">
+                                        <span class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 font-mono">฿</span>
+                                        <input type="number" id="modal-finance-down-total"
+                                            class="w-full pl-10 pr-4 py-3 rounded-xl bg-slate-900 border border-slate-600 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all font-mono"
+                                            value="0" min="0" placeholder="ระบุยอดเงินดาวน์">
+                                    </div>
                                 </div>
-                                <div class="space-y-2">
-                                    <label class="text-sm font-medium text-slate-300 block flex items-center gap-1.5">
-                                        <i class="fa-solid fa-clock-rotate-left text-cyan-400 text-xs"></i> ระยะผ่อน
-                                        (เดือน) <span class="text-red-400">*</span>
-                                    </label>
-                                    <input type="number" id="modal-finance-months"
-                                        class="w-full px-4 py-3 rounded-xl bg-slate-900 border border-slate-600 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all font-mono"
-                                        value="12" min="1" placeholder="เช่น 12, 24">
-                                </div>
-                            </div>
 
-                            <!-- Row 3: Down Payment Splits -->
-                            <div class="bg-slate-800/40 p-4 border border-slate-700/70 rounded-xl space-y-3">
-                                <div class="flex justify-between items-center">
-                                    <span
-                                        class="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5"><i
-                                            class="fa-solid fa-hand-holding-dollar text-cyan-400"></i>
-                                        ยอดเงินดาวน์</span>
+                                <div class="flex justify-between items-center pt-2 border-t border-slate-700/50">
+                                    <span class="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                                        <i class="fa-solid fa-calculator text-cyan-400"></i>
+                                        สถานะยอดรับเงิน
+                                    </span>
                                     <span id="modal-finance-total-down-label"
-                                        class="text-sm font-bold text-emerald-400 font-mono">ดาวน์รวม: ฿0.00</span>
+                                        class="text-sm font-bold text-slate-400 font-mono">ดาวน์รวม: ฿0.00</span>
                                 </div>
                                 <div class="grid grid-cols-2 gap-3">
                                     <div class="space-y-1.5">
@@ -4020,6 +4133,40 @@
                                 </div>
                             </div>
                         </div>
+
+                        <!-- C: ADDITIONAL FEES (ค่าใบสัญญา & ค่า iCloud) -->
+                        <div class="space-y-4 pt-4 border-t border-slate-700/50">
+                            <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                                <i class="fa-solid fa-circle-plus text-cyan-400"></i>
+                                ค่าบริการเพิ่มเติม (Additional Fees)
+                            </h4>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div class="space-y-2 bg-slate-900/40 p-3 rounded-xl border border-slate-700/50">
+                                    <label class="text-sm font-semibold text-slate-200 block flex items-center gap-2 select-none cursor-pointer">
+                                        <input type="checkbox" id="checkbox-contract-fee" class="w-4 h-4 rounded border-slate-600 bg-slate-950 text-cyan-500 focus:ring-cyan-500 focus:ring-opacity-25 cursor-pointer">
+                                        <span>ค่าใบสัญญา</span>
+                                    </label>
+                                    <div id="wrapper-contract-fee" class="relative mt-2 hidden animate-fade-in">
+                                        <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-xs font-mono">฿</span>
+                                        <input type="number" id="input-contract-fee"
+                                            class="w-full pl-7 pr-3 py-1.5 rounded-lg bg-slate-900 border border-slate-600 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all font-mono text-sm"
+                                            value="0" min="0" placeholder="0">
+                                    </div>
+                                </div>
+                                <div class="space-y-2 bg-slate-900/40 p-3 rounded-xl border border-slate-700/50">
+                                    <label class="text-sm font-semibold text-slate-200 block flex items-center gap-2 select-none cursor-pointer">
+                                        <input type="checkbox" id="checkbox-icloud-fee" class="w-4 h-4 rounded border-slate-600 bg-slate-950 text-cyan-500 focus:ring-cyan-500 focus:ring-opacity-25 cursor-pointer">
+                                        <span>ค่าบริการ iCloud</span>
+                                    </label>
+                                    <div id="wrapper-icloud-fee" class="relative mt-2 hidden animate-fade-in">
+                                        <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-xs font-mono">฿</span>
+                                        <input type="number" id="input-icloud-fee"
+                                            class="w-full pl-7 pr-3 py-1.5 rounded-lg bg-slate-900 border border-slate-600 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all font-mono text-sm"
+                                            value="0" min="0" placeholder="0">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
                     <!-- Totals & Checkout Actions (Sticky to bottom) -->
@@ -4035,6 +4182,14 @@
                                 <div class="flex justify-between text-sm text-slate-400">
                                     <span>ส่วนลดท้ายบิล</span>
                                     <span id="modal-discount-display" class="text-red-400 font-mono">-฿0.00</span>
+                                </div>
+                                <div id="modal-contract-row" class="hidden justify-between text-sm text-slate-400">
+                                    <span>ค่าใบสัญญา</span>
+                                    <span id="modal-contract-display" class="text-white font-mono">฿0.00</span>
+                                </div>
+                                <div id="modal-icloud-row" class="hidden justify-between text-sm text-slate-400">
+                                    <span>ค่า iCloud</span>
+                                    <span id="modal-icloud-display" class="text-white font-mono">฿0.00</span>
                                 </div>
                                 <div class="flex justify-between items-center pt-3 border-t border-slate-700">
                                     <span class="text-base text-slate-200 font-bold">ยอดชำระสุทธิ</span>
@@ -4262,10 +4417,10 @@
             class="modal-content relative w-full max-w-4xl max-h-[90vh] flex flex-col bg-slate-900 rounded-3xl shadow-2xl border border-gray-800 transform scale-95 transition-transform duration-300">
             <div class="p-6 border-b border-gray-800 flex justify-between items-center bg-[#1a1a1a] rounded-t-3xl">
                 <h3 class="text-xl font-bold text-white flex items-center gap-3">
-                    <div class="w-10 h-10 rounded-xl bg-green-500/10 flex items-center justify-center border border-green-500/20">
-                        <i class="fa-solid fa-truck-ramp-box text-green-400"></i>
+                    <div id="arrival-modal-icon-container" class="w-10 h-10 rounded-xl bg-green-500/10 flex items-center justify-center border border-green-500/20">
+                        <i id="arrival-modal-icon" class="fa-solid fa-truck-ramp-box text-green-400"></i>
                     </div>
-                    ยืนยันสินค้าถึงสาขาและบันทึก IMEI: <span id="arrival-po-number" class="text-green-400 font-mono"></span>
+                    <span id="arrival-title-prefix">ยืนยันสินค้าถึงสาขาและบันทึก IMEI:</span> <span id="arrival-po-number" class="text-green-400 font-mono"></span>
                 </h3>
                 <button id="btn-close-po-arrival" class="text-slate-400 hover:text-white transition-colors p-2 rounded-lg hover:bg-slate-800">
                     <i class="fa-solid fa-xmark text-xl"></i>
@@ -4275,8 +4430,8 @@
                 <div class="bg-amber-500/10 border border-amber-500/20 rounded-2xl p-4 text-amber-400 text-sm flex items-start gap-2.5">
                     <i class="fa-solid fa-circle-info mt-0.5 text-lg"></i>
                     <div>
-                        <span class="font-bold block mb-1">คำแนะนำสำหรับพนักงานขาย</span>
-                        กรุณาตรวจสอบสินค้าที่จัดส่งมาถึงสาขา หากสินค้าประเภทใดต้องมีการบันทึก IMEI (เช่น โทรศัพท์มือถือ/แท็บเล็ต) กรุณาสแกนหรือระบุ IMEI ให้ครบตามจำนวนที่ส่งมาให้เรียบร้อยก่อนทำการบันทึก
+                        <span id="arrival-banner-title" class="font-bold block mb-1">คำแนะนำสำหรับพนักงานขาย</span>
+                        <span id="arrival-banner-desc">กรุณาตรวจสอบสินค้าที่จัดส่งมาถึงสาขา หากสินค้าประเภทใดต้องมีการบันทึก IMEI (เช่น โทรศัพท์มือถือ/แท็บเล็ต) กรุณาสแกนหรือระบุ IMEI ให้ครบตามจำนวนที่ส่งมาให้เรียบร้อยก่อนทำการบันทึก</span>
                     </div>
                 </div>
                 <div id="arrival-po-items" class="space-y-4">
@@ -4460,7 +4615,7 @@
                 </div>
 
                 <!-- Items Table -->
-                <div class="bg-slate-900 rounded-xl border border-slate-700 overflow-hidden">
+                <div class="bg-slate-900 rounded-xl border border-slate-700 w-full overflow-x-auto">
                     <table class="w-full">
                         <thead>
                             <tr class="bg-slate-800 border-b border-slate-700">
@@ -4479,6 +4634,14 @@
 
             <!-- Footer -->
             <div class="p-6 border-t border-slate-700 bg-slate-800/50 rounded-b-3xl">
+                <div id="detail-contract-row" class="hidden justify-between text-sm text-slate-400 mb-2">
+                    <span>ค่าใบสัญญา</span>
+                    <span id="transaction-detail-contract" class="font-mono text-white">฿0.00</span>
+                </div>
+                <div id="detail-icloud-row" class="hidden justify-between text-sm text-slate-400 mb-4">
+                    <span>ค่าบริการ iCloud</span>
+                    <span id="transaction-detail-icloud" class="font-mono text-white">฿0.00</span>
+                </div>
                 <div class="flex items-center justify-between mb-4">
                     <span class="text-lg text-slate-400">ยอดรวมทั้งหมด</span>
                     <span id="transaction-detail-total" class="text-3xl font-bold text-cyan-400 font-mono">฿0</span>
@@ -4510,6 +4673,86 @@
                         ยกเลิกบิลขาย
                     </button>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- PRINT OPTIONS MODAL -->
+    <div id="modal-print-options"
+        class="fixed inset-0 z-[70] flex items-center justify-center bg-slate-900/90 backdrop-blur-md opacity-0 pointer-events-none transition-all duration-300 p-4">
+        <div
+            class="modal-content relative w-full max-w-md bg-slate-800 rounded-3xl shadow-2xl border border-slate-700 p-6 transform scale-95 transition-transform duration-300 flex flex-col gap-5">
+            <!-- Header -->
+            <div class="flex items-center justify-between pb-3 border-b border-slate-700">
+                <h3 class="text-xl font-bold text-white flex items-center gap-2.5">
+                    <div class="w-9 h-9 rounded-xl bg-cyan-500/10 flex items-center justify-center border border-cyan-500/20">
+                        <i class="fa-solid fa-print text-cyan-400"></i>
+                    </div>
+                    ตัวเลือกการพิมพ์ใบเสร็จ
+                </h3>
+                <button id="close-print-options-btn" type="button"
+                    class="text-slate-400 hover:text-white transition-colors p-1.5 rounded-lg hover:bg-slate-700">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <!-- Options Form -->
+            <div class="space-y-4 py-2">
+                <p class="text-xs text-slate-400 uppercase tracking-wider font-semibold">เลือกรายการที่ต้องการให้แสดงบนใบเสร็จ</p>
+                
+                <div class="space-y-3">
+                    <!-- Option 1: Product Items -->
+                    <label class="flex items-center justify-between p-3.5 rounded-2xl bg-slate-900/50 border border-slate-700/50 hover:border-slate-600 transition-all cursor-pointer select-none">
+                        <div class="flex items-center gap-3">
+                            <div class="w-8 h-8 rounded-lg bg-indigo-500/10 flex items-center justify-center border border-indigo-500/20 text-indigo-400">
+                                <i class="fa-solid fa-list-ul"></i>
+                            </div>
+                            <div class="flex flex-col">
+                                <span class="text-sm font-semibold text-white">แสดงรายการสินค้า</span>
+                                <span class="text-[11px] text-slate-400">ชื่อเครื่อง, IMEI, จำนวน และราคาสินค้า</span>
+                            </div>
+                        </div>
+                        <input type="checkbox" id="print-opt-items" checked class="w-5 h-5 rounded border-slate-600 bg-slate-950 text-cyan-500 focus:ring-cyan-500 focus:ring-opacity-25 cursor-pointer">
+                    </label>
+
+                    <!-- Option 2: Contract Fee -->
+                    <label id="print-opt-contract-wrapper" class="flex items-center justify-between p-3.5 rounded-2xl bg-slate-900/50 border border-slate-700/50 hover:border-slate-600 transition-all cursor-pointer select-none">
+                        <div class="flex items-center gap-3">
+                            <div class="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center border border-emerald-500/20 text-emerald-400">
+                                <i class="fa-solid fa-file-signature"></i>
+                            </div>
+                            <div class="flex flex-col">
+                                <span class="text-sm font-semibold text-white">แสดงค่าใบสัญญา</span>
+                                <span class="text-[11px] text-slate-400">แสดงแถวยอดค่าใบสัญญาในส่วนสรุปบิล</span>
+                            </div>
+                        </div>
+                        <input type="checkbox" id="print-opt-contract" checked class="w-5 h-5 rounded border-slate-600 bg-slate-950 text-cyan-500 focus:ring-cyan-500 focus:ring-opacity-25 cursor-pointer">
+                    </label>
+
+                    <!-- Option 3: iCloud Fee -->
+                    <label id="print-opt-icloud-wrapper" class="flex items-center justify-between p-3.5 rounded-2xl bg-slate-900/50 border border-slate-700/50 hover:border-slate-600 transition-all cursor-pointer select-none">
+                        <div class="flex items-center gap-3">
+                            <div class="w-8 h-8 rounded-lg bg-sky-500/10 flex items-center justify-center border border-sky-500/20 text-sky-400">
+                                <i class="fa-solid fa-cloud"></i>
+                            </div>
+                            <div class="flex flex-col">
+                                <span class="text-sm font-semibold text-white">แสดงค่าบริการ iCloud</span>
+                                <span class="text-[11px] text-slate-400">แสดงแถวยอดค่าบริการ iCloud ในส่วนสรุปบิล</span>
+                            </div>
+                        </div>
+                        <input type="checkbox" id="print-opt-icloud" checked class="w-5 h-5 rounded border-slate-600 bg-slate-950 text-cyan-500 focus:ring-cyan-500 focus:ring-opacity-25 cursor-pointer">
+                    </label>
+                </div>
+            </div>
+
+            <!-- Footer Buttons -->
+            <div class="flex gap-3 pt-3 border-t border-slate-700 justify-end">
+                <button type="button" id="cancel-print-options-btn"
+                    class="px-4 py-2.5 rounded-xl font-medium text-slate-300 hover:text-white hover:bg-slate-700 transition-colors text-sm">ยกเลิก</button>
+                <button type="button" id="confirm-print-btn"
+                    class="px-5 py-2.5 bg-cyan-500 hover:bg-cyan-400 text-slate-900 font-bold rounded-xl glow-button flex items-center gap-2 text-sm">
+                    <i class="fa-solid fa-print"></i> พิมพ์ใบเสร็จ
+                </button>
             </div>
         </div>
     </div>

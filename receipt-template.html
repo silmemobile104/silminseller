@@ -142,7 +142,7 @@
             </div>
         </div>
 
-        <table>
+        <table id="items-table">
             <thead>
                 <tr>
                     <th style="width: 50%;">รายการสินค้า / Items</th>
@@ -195,10 +195,6 @@
             </div>
         </div>
 
-        <div class="payment-method">
-            ช่องทางชำระเงิน: <span id="payment-method-text">เงินสด</span>
-        </div>
-
         <div class="footer">
             <p>*** ขอบคุณที่ใช้บริการ SilminMobile ***</p>
             <p>กรุณาเก็บใบเสร็จไว้เพื่อเป็นหลักฐาน</p>
@@ -209,11 +205,12 @@
         window.addEventListener('message', function(event) {
             const data = event.data;
             if (data && data.type === 'PRINT_RECEIPT') {
-                populateReceipt(data.payload);
+                populateReceipt(data.payload, data.options);
             }
         });
 
-        function populateReceipt(txn) {
+        function populateReceipt(txn, options) {
+            options = options || { showItems: true, showContract: true, showIcloud: true };
             document.getElementById('branch-name').textContent = txn.branch_id ? txn.branch_id.name : 'สาขาหลัก';
             const addrEl = document.getElementById('branch-address');
             addrEl.textContent = (txn.branch_id && txn.branch_id.address) ? txn.branch_id.address : '';
@@ -225,13 +222,15 @@
             
             const itemsList = document.getElementById('items-list');
             itemsList.innerHTML = '';
-            
+
             let itemsSubtotal = 0;
+            let printedSubtotal = 0;
             txn.items.forEach(item => {
                 const itemTotal = item.quantity * item.price;
                 itemsSubtotal += itemTotal;
                 
                 const row = document.createElement('tr');
+                row.className = 'product-item-row';
                 row.innerHTML = `
                     <td>
                         <div style="font-weight: bold;">${item.product_name}</div>
@@ -242,34 +241,90 @@
                     <td style="text-align: right;">฿${itemTotal.toLocaleString()}</td>
                 `;
                 itemsList.appendChild(row);
+
+                if (options.showItems) {
+                    printedSubtotal += itemTotal;
+                }
             });
 
-            // คำนวณหักราคารวมภาษี
+            // Toggle visibility of product item rows dynamically
+            const productRows = itemsList.querySelectorAll('.product-item-row');
+            productRows.forEach(row => {
+                row.style.display = options.showItems ? 'table-row' : 'none';
+            });
+
+            // Add Contract Fee as inline item row if enabled
+            if (options.showContract && txn.contract_fee > 0) {
+                itemsSubtotal += txn.contract_fee;
+                printedSubtotal += txn.contract_fee;
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>
+                        <div style="font-weight: bold;">ค่าใบสัญญา / Contract Fee</div>
+                    </td>
+                    <td style="text-align: center;">1</td>
+                    <td style="text-align: right;">฿${txn.contract_fee.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+                    <td style="text-align: right;">฿${txn.contract_fee.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+                `;
+                itemsList.appendChild(row);
+            }
+
+            // Add iCloud Fee as inline item row if enabled
+            if (options.showIcloud && txn.icloud_fee > 0) {
+                itemsSubtotal += txn.icloud_fee;
+                printedSubtotal += txn.icloud_fee;
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>
+                        <div style="font-weight: bold;">ค่าบริการ iCloud / iCloud Fee</div>
+                    </td>
+                    <td style="text-align: center;">1</td>
+                    <td style="text-align: right;">฿${txn.icloud_fee.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+                    <td style="text-align: right;">฿${txn.icloud_fee.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+                `;
+                itemsList.appendChild(row);
+            }
+
+            // Toggle visibility of the entire table based on whether at least one list item is visible
+            const hasVisibleItems = options.showItems || 
+                                    (options.showContract && txn.contract_fee > 0) || 
+                                    (options.showIcloud && txn.icloud_fee > 0);
+
+            const itemsTable = document.getElementById('items-table');
+            if (itemsTable) {
+                itemsTable.style.display = hasVisibleItems ? 'table' : 'none';
+            }
+
+            // คำนวณหักราคารวมภาษีของรายการที่แสดงผลจริง
             const finalTotal = txn.total_amount || 0;
-            const discount = Math.max(0, itemsSubtotal - finalTotal);
+            const originalDiscount = Math.max(0, itemsSubtotal - finalTotal);
             
+            // ใช้ส่วนลดเฉพาะเมื่อแสดงรายการสินค้า
+            const printedDiscount = options.showItems ? originalDiscount : 0;
+            const printedGrandTotal = Math.max(0, printedSubtotal - printedDiscount);
+
             // สูตรถอด Vat 7%: ยอดรวม * 7 / 107
             const vatRate = 7;
-            const vatAmount = (finalTotal * vatRate) / (100 + vatRate);
-            const beforeVat = finalTotal - vatAmount;
+            const vatAmount = (printedGrandTotal * vatRate) / (100 + vatRate);
+            const beforeVat = printedGrandTotal - vatAmount;
 
-            // กรอกข้อมูลสรุปยอดต่างๆ
-            document.getElementById('subtotal').textContent = '฿' + itemsSubtotal.toLocaleString(undefined, {minimumFractionDigits: 2});
+            // กรอกข้อมูลสรุปยอดต่างๆ (ป้อนเป็น printedSubtotal เพื่อสะท้อนเฉพาะที่เปิดแสดง)
+            document.getElementById('subtotal').textContent = '฿' + printedSubtotal.toLocaleString(undefined, {minimumFractionDigits: 2});
             
             const discountRow = document.getElementById('discount-row');
-            if (discount > 0.01) { // ยอมรับ Floating math offset เล็กน้อย
+            if (printedDiscount > 0.01) { // ยอมรับ Floating math offset เล็กน้อย
                 discountRow.style.display = 'flex';
-                document.getElementById('discount').textContent = '-฿' + discount.toLocaleString(undefined, {minimumFractionDigits: 2});
+                document.getElementById('discount').textContent = '-฿' + printedDiscount.toLocaleString(undefined, {minimumFractionDigits: 2});
             } else {
                 discountRow.style.display = 'none';
             }
 
-            // หักและป้อนค่าภาษี 7%
+            // หักและป้อนค่าภาษี 7% (ปัดเศษทศนิยม 2 ตำแหน่งให้ตรงกันเป๊ะ)
             document.getElementById('tax-base').textContent = '฿' + beforeVat.toLocaleString(undefined, {minimumFractionDigits: 2});
             document.getElementById('vat-amount').textContent = '฿' + vatAmount.toLocaleString(undefined, {minimumFractionDigits: 2});
-            
+
             // ยอดสุทธิ
-            document.getElementById('total-amount').textContent = '฿' + finalTotal.toLocaleString(undefined, {minimumFractionDigits: 2});
+            document.getElementById('total-amount').textContent = '฿' + printedGrandTotal.toLocaleString(undefined, {minimumFractionDigits: 2});
 
             // เสริมสร้างรายละเอียดข้อมูลวิธีชำระเงิน (Payment details representation)
             let paymentStr = txn.payment_method || 'เงินสด';
@@ -289,7 +344,7 @@
             const financeSection = document.getElementById('finance-receipt-section');
             const downPayment = txn.down_payment || 0;
             if (txn.payment_type === 'จัดไฟแนนซ์' || downPayment > 0) {
-                const balance = finalTotal - downPayment;
+                const balance = printedGrandTotal - downPayment;
                 financeSection.style.display = 'block';
                 document.getElementById('down-payment').textContent = '฿' + downPayment.toLocaleString(undefined, {minimumFractionDigits: 2});
                 document.getElementById('balance').textContent = '฿' + balance.toLocaleString(undefined, {minimumFractionDigits: 2});

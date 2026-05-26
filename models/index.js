@@ -252,6 +252,8 @@ const transactionSchema = new mongoose.Schema({
     finance_months: { type: Number, default: 0 }, // ผ่อนชำระกี่เดือน
     finance_down_payment_cash: { type: Number, default: 0 }, // เงินดาวน์ที่เป็นเงินสด
     finance_down_payment_transfer: { type: Number, default: 0 }, // เงินดาวน์ที่เป็นเงินโอน
+    contract_fee: { type: Number, default: 0 }, // ค่าใบสัญญา
+    icloud_fee: { type: Number, default: 0 }, // ค่าบริการ iCloud
     status: { type: String, default: 'เสร็จสิ้น', enum: ['เสร็จสิ้น', 'ยกเลิกแล้ว'] }, // สถานะรายการ
     cancel_reason: { type: String }, // เหตุผลที่ยกเลิก
     cancelled_by: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee' }, // ผู้ที่กดยกเลิก

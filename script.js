@@ -166,6 +166,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const navBranchReceive = document.getElementById('nav-branch-receive');
     const navAuditLogs = document.getElementById('nav-audit-logs');
 
+    // Mobile Navigation Buttons
+    const mobileNavTransactions = document.getElementById('mobile-nav-transactions');
+    const mobileNavStock = document.getElementById('mobile-nav-stock');
+    const mobileNavAccountingPO = document.getElementById('mobile-nav-accounting-po');
+    const mobileNavMembers = document.getElementById('mobile-nav-members');
+
     const viewDashboard = document.getElementById('view-dashboard');
     const viewStock = document.getElementById('view-stock');
     const viewTransactions = document.getElementById('view-transactions');
@@ -668,6 +674,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 populateDropdown(productCondition, json.data.productConditions, 'เลือกสภาพเครื่อง');
                 populateDropdown(productUnit, json.data.productUnits, 'เลือกหน่วยนับ');
                 populateDropdown(productSupplier, json.data.suppliers, 'เลือกผู้จัดจำหน่าย');
+                populateDropdown(modalFinanceCompany, json.data.financeCompanies, 'เลือกบริษัทจัดไฟแนนซ์');
 
                 // โหลดสาขาสำหรับ dropdown ที่จัดเก็บสินค้า
                 loadBranchesForProductForm();
@@ -897,7 +904,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const okBtn = document.getElementById('confirm-ok-btn');
         const cancelBtn = document.getElementById('confirm-cancel-btn');
 
-        if (cancelBtn) cancelBtn.style.display = 'block';
+        if (cancelBtn) {
+            cancelBtn.style.display = 'block';
+            cancelBtn.textContent = 'ยกเลิก';
+            cancelBtn.className = "flex-1 py-2.5 rounded-xl text-sm font-bold text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-750 transition-all active:scale-[0.98]";
+        }
 
         // Auto-detect type if not provided
         let detectedType = type;
@@ -1200,6 +1211,12 @@ document.addEventListener('DOMContentLoaded', () => {
         if (typeof navWarrantyCheck !== 'undefined' && navWarrantyCheck) navWarrantyCheck.style.display = permissions.do_pos ? '' : 'none';
         if (navAccountingPO) navAccountingPO.style.display = permissions.manage_po ? '' : 'none';
         if (navBranchReceive) navBranchReceive.style.display = permissions.receive_po ? '' : 'none';
+
+        // Mobile Nav Permissions mapping
+        if (mobileNavTransactions) mobileNavTransactions.style.display = permissions.do_pos ? '' : 'none';
+        if (mobileNavStock) mobileNavStock.style.display = permissions.manage_stock ? '' : 'none';
+        if (mobileNavAccountingPO) mobileNavAccountingPO.style.display = permissions.manage_po ? '' : 'none';
+        if (mobileNavMembers) mobileNavMembers.style.display = permissions.do_pos ? '' : 'none';
 
         // Toggle Audit Logs Sidebar view
         const hasAuditAccess = !!permissions.view_audit_logs;
@@ -1785,13 +1802,63 @@ document.addEventListener('DOMContentLoaded', () => {
     // ==========================================
     // UI Behaviors (Sidebar, Modals)
     // ==========================================
+    // Backdrop helper functions for mobile sidebar drawer
+    const addSidebarBackdrop = () => {
+        let backdrop = document.getElementById('sidebar-backdrop');
+        if (!backdrop) {
+            backdrop = document.createElement('div');
+            backdrop.id = 'sidebar-backdrop';
+            backdrop.className = 'fixed inset-0 z-[43] bg-slate-950/60 backdrop-blur-sm opacity-0 transition-opacity duration-300 md:hidden';
+            document.body.appendChild(backdrop);
+            
+            // Trigger animation
+            void backdrop.offsetWidth;
+            backdrop.classList.remove('opacity-0');
+            backdrop.classList.add('opacity-100');
+            
+            // Close sidebar when clicking backdrop
+            backdrop.addEventListener('click', () => {
+                sidebar.classList.remove('translate-x-0');
+                sidebar.classList.add('-translate-x-full');
+                removeSidebarBackdrop();
+            });
+        }
+    };
+    
+    const removeSidebarBackdrop = () => {
+        const backdrop = document.getElementById('sidebar-backdrop');
+        if (backdrop) {
+            backdrop.classList.remove('opacity-100');
+            backdrop.classList.add('opacity-0');
+            setTimeout(() => {
+                if (backdrop.parentNode) {
+                    backdrop.parentNode.removeChild(backdrop);
+                }
+            }, 300);
+        }
+    };
+
     toggleSidebarBtn.addEventListener('click', () => {
-        if (sidebar.classList.contains('sidebar-expanded')) {
-            sidebar.classList.remove('sidebar-expanded');
-            sidebar.classList.add('sidebar-collapsed');
+        if (window.innerWidth < 768) {
+            // Mobile toggle drawer behavior
+            if (sidebar.classList.contains('translate-x-0')) {
+                sidebar.classList.remove('translate-x-0');
+                sidebar.classList.add('-translate-x-full');
+                removeSidebarBackdrop();
+            } else {
+                sidebar.classList.remove('-translate-x-full');
+                sidebar.classList.add('translate-x-0');
+                addSidebarBackdrop();
+            }
         } else {
-            sidebar.classList.remove('sidebar-collapsed');
-            sidebar.classList.add('sidebar-expanded');
+            // Desktop toggle behavior
+            if (sidebar.classList.contains('sidebar-expanded')) {
+                sidebar.classList.remove('sidebar-expanded');
+                sidebar.classList.add('sidebar-collapsed');
+            } else {
+                sidebar.classList.remove('sidebar-collapsed');
+                sidebar.classList.add('sidebar-expanded');
+            }
         }
     });
 
@@ -1799,9 +1866,14 @@ document.addEventListener('DOMContentLoaded', () => {
         if (window.innerWidth < 768) {
             sidebar.classList.remove('sidebar-expanded');
             sidebar.classList.add('sidebar-collapsed');
+            if (!sidebar.classList.contains('translate-x-0') && !sidebar.classList.contains('-translate-x-full')) {
+                sidebar.classList.add('-translate-x-full');
+            }
         } else {
             sidebar.classList.remove('sidebar-collapsed');
             sidebar.classList.add('sidebar-expanded');
+            sidebar.classList.remove('-translate-x-full', 'translate-x-0');
+            removeSidebarBackdrop();
         }
     };
 
@@ -1819,6 +1891,24 @@ document.addEventListener('DOMContentLoaded', () => {
             const selectedOption = e.target.options[e.target.selectedIndex];
             const categoryName = selectedOption ? selectedOption.textContent : '';
             handleCategoryFields(categoryName);
+        });
+    }
+
+    if (productName) {
+        productName.addEventListener('change', (e) => {
+            const selectedId = e.target.value;
+            if (productCode) {
+                if (window.masterDataCache && Array.isArray(window.masterDataCache.productNames)) {
+                    const matched = window.masterDataCache.productNames.find(x => x._id === selectedId);
+                    if (matched && matched.code) {
+                        productCode.value = matched.code;
+                    } else {
+                        productCode.value = '';
+                    }
+                } else {
+                    productCode.value = '';
+                }
+            }
         });
     }
 
@@ -1856,41 +1946,94 @@ document.addEventListener('DOMContentLoaded', () => {
             e.preventDefault();
 
             const submitBtn = addProductForm.querySelector('button[type="submit"]');
-            const originalBtnText = submitBtn.innerHTML;
-
-            // Collect branch from dropdown
-            const branch_id = productBranch ? productBranch.value : null;
-
-            // Build payload
-            const selectedNameOption = productName.options[productName.selectedIndex];
-            const nameValue = (selectedNameOption && !selectedNameOption.disabled) ? selectedNameOption.textContent : '';
-
-            const payload = {
-                product_code: productCode ? productCode.value.trim() : '',
-                supplier_id: productSupplier ? productSupplier.value : null,
-                name: nameValue,
-                type_id: productCategory.value,
-                color_id: productColor.value || null,
-                cost_price: Number(document.getElementById('cost-price').value),
-                selling_price: Number(document.getElementById('selling-price').value),
-                unit_id: productUnit.value || null,
-                capacity_id: productCapacity.value || null,
-                condition_id: productCondition.value || null,
-                branch_id: branch_id || null,
-                quantity: Number(productQuantity.value) || 1,
-                old_branch_id: window.__editingProductOriginalBranchId || null
-            };
-
-            const isDeviceVisible = deviceFields && !deviceFields.classList.contains('hidden');
-            if (isDeviceVisible) {
-                payload.imeis = productImeis.value.split('\n').filter(i => i.trim() !== '');
-                if (payload.imeis.length === 0) return showToast('กรุณาระบุ IMEI อย่างน้อย 1 รายการ', 'error');
-            }
+            const originalBtnText = submitBtn ? submitBtn.innerHTML : 'บันทึกสินค้า';
 
             try {
+                // Collect branch from dropdown
+                const branch_id = productBranch ? productBranch.value : null;
+
+                // Build payload
+                const selectedIndex = productName ? productName.selectedIndex : -1;
+                const selectedNameOption = (productName && selectedIndex >= 0) ? productName.options[selectedIndex] : null;
+                const nameValue = (selectedNameOption && !selectedNameOption.disabled) ? selectedNameOption.textContent : '';
+
+                // Manual Validation for Searchable Dropdowns & Required inputs
+                if (productCode && !productCode.value.trim()) {
+                    showToast('กรุณาระบุรหัสสินค้า (Product Code)', 'error');
+                    productCode.focus();
+                    return;
+                }
+                if (productSupplier && !productSupplier.value) {
+                    showToast('กรุณาเลือกผู้จัดจำหน่าย (Supplier)', 'error');
+                    return;
+                }
+                if (productBranch && !productBranch.value) {
+                    showToast('กรุณาเลือกสาขาที่จัดเก็บ (Branch)', 'error');
+                    return;
+                }
+                if (productName && (!productName.value || !nameValue)) {
+                    showToast('กรุณาเลือกชื่อสินค้า (Product Name)', 'error');
+                    return;
+                }
+                if (productCategory && !productCategory.value) {
+                    showToast('กรุณาเลือกหมวดหมู่สินค้า (Category)', 'error');
+                    return;
+                }
+                if (productColor && !productColor.value) {
+                    showToast('กรุณาเลือกสีสินค้า (Color)', 'error');
+                    return;
+                }
+
+                const isDeviceVisible = deviceFields && !deviceFields.classList.contains('hidden');
+                if (isDeviceVisible) {
+                    if (productCapacity && !productCapacity.value) {
+                        showToast('กรุณาเลือกความจุอุปกรณ์ (Capacity)', 'error');
+                        return;
+                    }
+                    if (productCondition && !productCondition.value) {
+                        showToast('กรุณาเลือกสภาพเครื่อง (Condition)', 'error');
+                        return;
+                    }
+                }
+
+                if (productUnit && !productUnit.value) {
+                    showToast('กรุณาเลือกหน่วยนับสินค้า (Unit)', 'error');
+                    return;
+                }
+
+                const payload = {
+                    product_code: productCode ? productCode.value.trim() : '',
+                    supplier_id: productSupplier ? productSupplier.value : null,
+                    name: nameValue,
+                    type_id: productCategory ? productCategory.value : '',
+                    color_id: productColor ? productColor.value : null,
+                    cost_price: Number(document.getElementById('cost-price') ? document.getElementById('cost-price').value : 0),
+                    selling_price: Number(document.getElementById('selling-price') ? document.getElementById('selling-price').value : 0),
+                    unit_id: productUnit ? productUnit.value : null,
+                    capacity_id: productCapacity ? productCapacity.value : null,
+                    condition_id: productCondition ? productCondition.value : null,
+                    branch_id: branch_id || null,
+                    quantity: Number(productQuantity ? productQuantity.value : 1) || 1,
+                    old_branch_id: window.__editingProductOriginalBranchId || null
+                };
+
+                if (isDeviceVisible) {
+                    // product-imeis is not used during initial product creation, but checking in case it's in the DOM
+                    const productImeis = document.getElementById('product-imeis');
+                    if (productImeis) {
+                        payload.imeis = productImeis.value.split('\n').filter(i => i.trim() !== '');
+                        if (payload.imeis.length === 0) {
+                            showToast('กรุณาระบุ IMEI อย่างน้อย 1 รายการ', 'error');
+                            return;
+                        }
+                    }
+                }
+
                 // Show Loading State
-                submitBtn.disabled = true;
-                submitBtn.innerHTML = `<i class="fa-solid fa-circle-notch fa-spin mr-2"></i> กำลังบันทึก...`;
+                if (submitBtn) {
+                    submitBtn.disabled = true;
+                    submitBtn.innerHTML = `<i class="fa-solid fa-circle-notch fa-spin mr-2"></i> กำลังบันทึก...`;
+                }
 
                 const editIdInput = document.getElementById('edit-product-id');
                 const editIdValue = editIdInput ? editIdInput.value : '';
@@ -1916,11 +2059,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             } catch (error) {
                 console.error('Error saving product:', error);
-                showToast('ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้', 'error');
+                showToast('เกิดข้อผิดพลาดในการบันทึกข้อมูล: ' + error.message, 'error');
             } finally {
                 // Reset Button
-                submitBtn.disabled = false;
-                submitBtn.innerHTML = originalBtnText;
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = originalBtnText;
+                }
             }
         });
     }
@@ -1935,6 +2080,24 @@ document.addEventListener('DOMContentLoaded', () => {
             item.classList.add('text-slate-300', 'hover:bg-slate-700/50', 'hover:text-white');
             item.style.borderColor = 'transparent';
         });
+
+        // Reset all mobile bottom nav items active states
+        const mobileNavItems = [mobileNavTransactions, mobileNavStock, mobileNavAccountingPO, mobileNavMembers];
+        mobileNavItems.forEach(item => {
+            if (item) {
+                item.classList.remove('text-cyan-400', 'scale-105', 'font-semibold');
+                item.classList.add('text-slate-400');
+            }
+        });
+
+        // Auto-close mobile sidebar when switching views
+        if (window.innerWidth < 768) {
+            if (sidebar && sidebar.classList.contains('translate-x-0')) {
+                sidebar.classList.remove('translate-x-0');
+                sidebar.classList.add('-translate-x-full');
+                removeSidebarBackdrop();
+            }
+        }
 
         // Hide all views and remove animation
         const views = [
@@ -1970,16 +2133,26 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         };
 
+        // Helper to activate mobile nav item
+        const activateMobileNav = (mobileNav) => {
+            if (mobileNav) {
+                mobileNav.classList.remove('text-slate-400');
+                mobileNav.classList.add('text-cyan-400', 'scale-105', 'font-semibold');
+            }
+        };
+
         if (viewName === 'dashboard') {
             activateView(viewDashboard, navDashboard);
         }
         else if (viewName === 'stock') {
             activateView(viewStock, navStock);
+            activateMobileNav(mobileNavStock);
             allProductsCache = []; // Clear cache to ensure fresh data including transferring items
             await fetchProducts();
         }
         else if (viewName === 'transactions') {
             activateView(viewTransactions, navTransactions);
+            activateMobileNav(mobileNavTransactions);
             // โหลดสินค้าสำหรับ POS (Backend จะกรองตามสาขาอัตโนมัติสำหรับพนักงานขาย)
             await fetchPosProducts();
             updatePosBranchBadge();
@@ -2019,6 +2192,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         else if (viewName === 'members') {
             activateView(viewMembers, navMembers);
+            activateMobileNav(mobileNavMembers);
             loadMembers();
         }
         else if (viewName === 'report-arrival') {
@@ -2039,6 +2213,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         else if (viewName === 'accounting-po') {
             activateView(viewAccountingPO, navAccountingPO);
+            activateMobileNav(mobileNavAccountingPO);
             if (typeof initAccountingPO === 'function') initAccountingPO();
         }
         else if (viewName === 'branch-receive') {
@@ -2082,6 +2257,12 @@ document.addEventListener('DOMContentLoaded', () => {
     if (navAccountingPO) navAccountingPO.addEventListener('click', (e) => { e.preventDefault(); switchView('accounting-po'); });
     if (navBranchReceive) navBranchReceive.addEventListener('click', (e) => { e.preventDefault(); switchView('branch-receive'); });
     if (navAuditLogs) navAuditLogs.addEventListener('click', (e) => { e.preventDefault(); switchView('audit-logs'); });
+
+    // Mobile Navigation Click Listeners
+    if (mobileNavTransactions) mobileNavTransactions.addEventListener('click', (e) => { e.preventDefault(); switchView('transactions'); });
+    if (mobileNavStock) mobileNavStock.addEventListener('click', (e) => { e.preventDefault(); switchView('stock'); });
+    if (mobileNavAccountingPO) mobileNavAccountingPO.addEventListener('click', (e) => { e.preventDefault(); switchView('accounting-po'); });
+    if (mobileNavMembers) mobileNavMembers.addEventListener('click', (e) => { e.preventDefault(); switchView('members'); });
 
     // Dashboard card click to transfers
     const cardPendingTransfer = document.getElementById('card-pending-transfer');
@@ -2399,6 +2580,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 case 'productcapacity': dataArray = window.masterDataCache.productCapacities || []; break;
                 case 'productcondition': dataArray = window.masterDataCache.productConditions || []; break;
                 case 'supplier': dataArray = window.masterDataCache.suppliers || []; break;
+                case 'financecompany': dataArray = window.masterDataCache.financeCompanies || []; break;
             }
         }
 
@@ -2945,6 +3127,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const modalFinancePaymentDay = document.getElementById('modal-finance-payment-day');
     const modalFinanceMonths = document.getElementById('modal-finance-months');
 
+    const modalFinanceDownTotal = document.getElementById('modal-finance-down-total');
     const modalFinanceDownCash = document.getElementById('modal-finance-down-cash');
     const modalFinanceDownTransfer = document.getElementById('modal-finance-down-transfer');
     const modalFinanceTotalDownLabel = document.getElementById('modal-finance-total-down-label');
@@ -2954,6 +3137,17 @@ document.addEventListener('DOMContentLoaded', () => {
     const modalSubtotalDisplay = document.getElementById('modal-subtotal-display');
     const modalDiscountDisplay = document.getElementById('modal-discount-display');
     const modalTotalDisplay = document.getElementById('modal-total-display');
+
+    // DOM Elements for manual Contract and iCloud fees
+    const checkboxContractFee = document.getElementById('checkbox-contract-fee');
+    const inputContractFee = document.getElementById('input-contract-fee');
+    const wrapperContractFee = document.getElementById('wrapper-contract-fee');
+    const modalContractDisplay = document.getElementById('modal-contract-display');
+
+    const checkboxIcloudFee = document.getElementById('checkbox-icloud-fee');
+    const inputIcloudFee = document.getElementById('input-icloud-fee');
+    const wrapperIcloudFee = document.getElementById('wrapper-icloud-fee');
+    const modalIcloudDisplay = document.getElementById('modal-icloud-display');
 
     const paymentVerifyPanel = document.getElementById('payment-verify-panel');
     const paymentStatusBadge = document.getElementById('payment-status-badge');
@@ -3006,6 +3200,19 @@ document.addEventListener('DOMContentLoaded', () => {
     const transactionDetailFinanceDay = document.getElementById('transaction-detail-finance-day');
     const btnReprintReceipt = document.getElementById('btn-reprint-receipt');
     const btnCancelTransaction = document.getElementById('btn-cancel-transaction');
+
+    // DOM Elements for Print Options Modal
+    const modalPrintOptions = document.getElementById('modal-print-options');
+    const closePrintOptionsBtn = document.getElementById('close-print-options-btn');
+    const cancelPrintOptionsBtn = document.getElementById('cancel-print-options-btn');
+    const confirmPrintBtn = document.getElementById('confirm-print-btn');
+    const printOptItems = document.getElementById('print-opt-items');
+    const printOptContract = document.getElementById('print-opt-contract');
+    const printOptIcloud = document.getElementById('print-opt-icloud');
+    const printOptContractWrapper = document.getElementById('print-opt-contract-wrapper');
+    const printOptIcloudWrapper = document.getElementById('print-opt-icloud-wrapper');
+    let pendingPrintTxnData = null;
+
     const transactionCancelledAlert = document.getElementById('transaction-cancelled-alert');
     const transactionCancelledReason = document.getElementById('transaction-cancelled-reason');
     const transactionCancelledBy = document.getElementById('transaction-cancelled-by');
@@ -3393,10 +3600,40 @@ document.addEventListener('DOMContentLoaded', () => {
     const updateModalTotals = () => {
         const subtotal = cart.reduce((sum, item) => sum + item.subtotal, 0);
         const discount = posDiscount ? (parseFloat(posDiscount.value) || 0) : 0;
-        const grandTotal = Math.max(0, subtotal - discount);
+
+        // Additional fees inclusion
+        const contractFee = (checkboxContractFee && checkboxContractFee.checked) ? (parseFloat(inputContractFee.value) || 0) : 0;
+        const icloudFee = (checkboxIcloudFee && checkboxIcloudFee.checked) ? (parseFloat(inputIcloudFee.value) || 0) : 0;
+        const grandTotal = Math.max(0, subtotal - discount + contractFee + icloudFee);
 
         if (modalSubtotalDisplay) modalSubtotalDisplay.textContent = `฿${subtotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
         if (modalDiscountDisplay) modalDiscountDisplay.textContent = `-฿${discount.toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
+
+        // Dynamic Additional Fees Ledger Sync
+        const modalContractRow = document.getElementById('modal-contract-row');
+        if (modalContractRow) {
+            if (checkboxContractFee && checkboxContractFee.checked) {
+                modalContractRow.classList.remove('hidden');
+                modalContractRow.classList.add('flex');
+                if (modalContractDisplay) modalContractDisplay.textContent = `฿${contractFee.toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
+            } else {
+                modalContractRow.classList.add('hidden');
+                modalContractRow.classList.remove('flex');
+            }
+        }
+
+        const modalIcloudRow = document.getElementById('modal-icloud-row');
+        if (modalIcloudRow) {
+            if (checkboxIcloudFee && checkboxIcloudFee.checked) {
+                modalIcloudRow.classList.remove('hidden');
+                modalIcloudRow.classList.add('flex');
+                if (modalIcloudDisplay) modalIcloudDisplay.textContent = `฿${icloudFee.toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
+            } else {
+                modalIcloudRow.classList.add('hidden');
+                modalIcloudRow.classList.remove('flex');
+            }
+        }
+
         if (modalTotalDisplay) modalTotalDisplay.textContent = `฿${grandTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
 
         // ===================================================================
@@ -3644,17 +3881,76 @@ document.addEventListener('DOMContentLoaded', () => {
     // Update dynamic Down Payment labels reactive logic
     const updateFinanceDownPaymentLabel = () => {
         if (!modalFinanceTotalDownLabel) return;
+        const totalDown = parseFloat(modalFinanceDownTotal ? modalFinanceDownTotal.value : 0) || 0;
         const cash = parseFloat(modalFinanceDownCash ? modalFinanceDownCash.value : 0) || 0;
         const transfer = parseFloat(modalFinanceDownTransfer ? modalFinanceDownTransfer.value : 0) || 0;
-        const total = cash + transfer;
-        modalFinanceTotalDownLabel.textContent = `ดาวน์รวม: ฿${total.toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
+        const actualPaid = cash + transfer;
+        const remaining = totalDown - actualPaid;
+
+        if (totalDown <= 0) {
+            modalFinanceTotalDownLabel.className = 'text-sm font-bold text-slate-400 font-mono';
+            modalFinanceTotalDownLabel.textContent = 'ดาวน์รวม: ฿0.00';
+        } else if (remaining > 0) {
+            modalFinanceTotalDownLabel.className = 'text-sm font-bold text-amber-400 font-mono';
+            modalFinanceTotalDownLabel.textContent = `เป้าหมายดาวน์: ฿${totalDown.toLocaleString(undefined, { minimumFractionDigits: 2 })} | ขาดอีก: ฿${remaining.toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
+        } else if (remaining < 0) {
+            modalFinanceTotalDownLabel.className = 'text-sm font-bold text-rose-400 font-mono';
+            modalFinanceTotalDownLabel.textContent = `เป้าหมายดาวน์: ฿${totalDown.toLocaleString(undefined, { minimumFractionDigits: 2 })} | ชำระเกิน: ฿${Math.abs(remaining).toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
+        } else {
+            modalFinanceTotalDownLabel.className = 'text-sm font-bold text-emerald-400 font-mono';
+            modalFinanceTotalDownLabel.textContent = `ดาวน์เป้าหมาย: ฿${totalDown.toLocaleString(undefined, { minimumFractionDigits: 2 })} (ชำระครบถ้วน)`;
+        }
     };
 
+    if (modalFinanceDownTotal) {
+        modalFinanceDownTotal.addEventListener('input', updateFinanceDownPaymentLabel);
+    }
     if (modalFinanceDownCash) {
         modalFinanceDownCash.addEventListener('input', updateFinanceDownPaymentLabel);
     }
     if (modalFinanceDownTransfer) {
         modalFinanceDownTransfer.addEventListener('input', updateFinanceDownPaymentLabel);
+    }
+
+    // Additional manual fees listeners
+    if (checkboxContractFee) {
+        checkboxContractFee.addEventListener('change', (e) => {
+            if (e.target.checked) {
+                if (wrapperContractFee) wrapperContractFee.classList.remove('hidden');
+                if (inputContractFee) {
+                    inputContractFee.value = '0';
+                    inputContractFee.focus();
+                    inputContractFee.select();
+                }
+            } else {
+                if (wrapperContractFee) wrapperContractFee.classList.add('hidden');
+                if (inputContractFee) inputContractFee.value = '0';
+            }
+            updateModalTotals();
+        });
+    }
+    if (inputContractFee) {
+        inputContractFee.addEventListener('input', updateModalTotals);
+    }
+
+    if (checkboxIcloudFee) {
+        checkboxIcloudFee.addEventListener('change', (e) => {
+            if (e.target.checked) {
+                if (wrapperIcloudFee) wrapperIcloudFee.classList.remove('hidden');
+                if (inputIcloudFee) {
+                    inputIcloudFee.value = '0';
+                    inputIcloudFee.focus();
+                    inputIcloudFee.select();
+                }
+            } else {
+                if (wrapperIcloudFee) wrapperIcloudFee.classList.add('hidden');
+                if (inputIcloudFee) inputIcloudFee.value = '0';
+            }
+            updateModalTotals();
+        });
+    }
+    if (inputIcloudFee) {
+        inputIcloudFee.addEventListener('input', updateModalTotals);
     }
 
     // POS Payment method change listener - toggling expanded detail blocks
@@ -3695,11 +3991,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Finance detail resets
         if (modalFinanceCompany) modalFinanceCompany.value = '';
-        if (modalFinancePaymentDay) modalFinancePaymentDay.value = '1';
-        if (modalFinanceMonths) modalFinanceMonths.value = '12';
+        if (modalFinancePaymentDay) modalFinancePaymentDay.value = '0';
+        if (modalFinanceMonths) modalFinanceMonths.value = '0';
+        if (modalFinanceDownTotal) modalFinanceDownTotal.value = '0';
         if (modalFinanceDownCash) modalFinanceDownCash.value = '0';
         if (modalFinanceDownTransfer) modalFinanceDownTransfer.value = '0';
         updateFinanceDownPaymentLabel();
+
+        // Reset Additional Fees
+        if (checkboxContractFee) checkboxContractFee.checked = false;
+        if (wrapperContractFee) wrapperContractFee.classList.add('hidden');
+        if (inputContractFee) inputContractFee.value = '0';
+
+        if (checkboxIcloudFee) checkboxIcloudFee.checked = false;
+        if (wrapperIcloudFee) wrapperIcloudFee.classList.add('hidden');
+        if (inputIcloudFee) inputIcloudFee.value = '0';
 
         // Reset block visibilities
         if (blockBuyCashDetails) blockBuyCashDetails.classList.add('hidden');
@@ -3851,32 +4157,32 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         } else if (selectedPayment === 'จัดไฟแนนซ์') {
             compName = modalFinanceCompany ? modalFinanceCompany.value.trim() : '';
-            dueDay = parseInt(modalFinancePaymentDay ? modalFinancePaymentDay.value : 0) || 0;
-            instMonths = parseInt(modalFinanceMonths ? modalFinanceMonths.value : 0) || 0;
+            dueDay = 0;
+            instMonths = 0;
+            const downTotal = parseFloat(modalFinanceDownTotal ? modalFinanceDownTotal.value : 0) || 0;
             downCash = parseFloat(modalFinanceDownCash ? modalFinanceDownCash.value : 0) || 0;
             downTrans = parseFloat(modalFinanceDownTransfer ? modalFinanceDownTransfer.value : 0) || 0;
-            finalDownPayment = downCash + downTrans;
+            finalDownPayment = downTotal;
 
             if (!compName) {
                 showToast('กรุณากรอกชื่อบริษัทไฟแนนซ์', 'error');
                 if (modalFinanceCompany) modalFinanceCompany.focus();
                 return;
             }
-            if (dueDay < 1 || dueDay > 31) {
-                showToast('วันที่ชำระเงินต้องอยู่ระหว่าง 1 ถึง 31', 'error');
-                if (modalFinancePaymentDay) modalFinancePaymentDay.focus();
-                return;
-            }
-            if (instMonths <= 0) {
-                showToast('กรุณาระบุระยะผ่อนชำระที่มากกว่า 0 เดือน', 'error');
-                if (modalFinanceMonths) modalFinanceMonths.focus();
+
+            const actualPaid = downCash + downTrans;
+            if (Math.abs(actualPaid - downTotal) > 0.01) {
+                showToast(`ยอดรับเงินสดและเงินโอนรวมกัน (฿${actualPaid.toLocaleString(undefined, { minimumFractionDigits: 2 })}) ต้องเท่ากับยอดเงินดาวน์ (฿${downTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}) พอดี`, 'error');
+                if (modalFinanceDownCash) modalFinanceDownCash.focus();
                 return;
             }
         }
 
         const discount = posDiscount ? (parseFloat(posDiscount.value) || 0) : 0;
         const subtotal = cart.reduce((sum, item) => sum + item.subtotal, 0);
-        const total = Math.max(0, subtotal - discount);
+        const contractFee = (checkboxContractFee && checkboxContractFee.checked) ? (parseFloat(inputContractFee.value) || 0) : 0;
+        const icloudFee = (checkboxIcloudFee && checkboxIcloudFee.checked) ? (parseFloat(inputIcloudFee.value) || 0) : 0;
+        const total = Math.max(0, subtotal - discount + contractFee + icloudFee);
 
         const originalText = btnConfirmCheckout ? btnConfirmCheckout.innerHTML : '';
         if (btnConfirmCheckout) {
@@ -3915,6 +4221,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 finance_months: instMonths,
                 finance_down_payment_cash: downCash,
                 finance_down_payment_transfer: downTrans,
+                contract_fee: contractFee,
+                icloud_fee: icloudFee,
                 branch_id
             };
 
@@ -3939,10 +4247,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (modalCashAmount) modalCashAmount.value = '0';
                 if (modalTransferAmount) modalTransferAmount.value = '0';
                 if (modalFinanceCompany) modalFinanceCompany.value = '';
-                if (modalFinancePaymentDay) modalFinancePaymentDay.value = '1';
-                if (modalFinanceMonths) modalFinanceMonths.value = '12';
+                if (modalFinancePaymentDay) modalFinancePaymentDay.value = '0';
+                if (modalFinanceMonths) modalFinanceMonths.value = '0';
+                if (modalFinanceDownTotal) modalFinanceDownTotal.value = '0';
                 if (modalFinanceDownCash) modalFinanceDownCash.value = '0';
                 if (modalFinanceDownTransfer) modalFinanceDownTransfer.value = '0';
+
+                // Reset Additional Fees
+                if (checkboxContractFee) checkboxContractFee.checked = false;
+                if (wrapperContractFee) wrapperContractFee.classList.add('hidden');
+                if (inputContractFee) inputContractFee.value = '0';
+
+                if (checkboxIcloudFee) checkboxIcloudFee.checked = false;
+                if (wrapperIcloudFee) wrapperIcloudFee.classList.add('hidden');
+                if (inputIcloudFee) inputIcloudFee.value = '0';
 
                 if (blockBuyCashDetails) blockBuyCashDetails.classList.add('hidden');
                 if (blockFinanceDetails) blockFinanceDetails.classList.add('hidden');
@@ -4243,7 +4561,34 @@ document.addEventListener('DOMContentLoaded', () => {
         transactionDetailEmployee.textContent = txn.employee_id ? txn.employee_id.name : '-';
         transactionDetailDate.textContent = new Date(txn.created_at).toLocaleString('th-TH');
         transactionDetailPayment.textContent = txn.payment_type || txn.payment_method;
-        transactionDetailTotal.textContent = `฿${txn.total_amount.toLocaleString()}`;
+        transactionDetailTotal.textContent = `฿${txn.total_amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
+
+        // Additional Fees Details Rendering
+        const detailContractRow = document.getElementById('detail-contract-row');
+        const transactionDetailContract = document.getElementById('transaction-detail-contract');
+        if (detailContractRow && transactionDetailContract) {
+            if (txn.contract_fee > 0) {
+                detailContractRow.classList.remove('hidden');
+                detailContractRow.classList.add('flex');
+                transactionDetailContract.textContent = `฿${txn.contract_fee.toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
+            } else {
+                detailContractRow.classList.add('hidden');
+                detailContractRow.classList.remove('flex');
+            }
+        }
+
+        const detailIcloudRow = document.getElementById('detail-icloud-row');
+        const transactionDetailIcloud = document.getElementById('transaction-detail-icloud');
+        if (detailIcloudRow && transactionDetailIcloud) {
+            if (txn.icloud_fee > 0) {
+                detailIcloudRow.classList.remove('hidden');
+                detailIcloudRow.classList.add('flex');
+                transactionDetailIcloud.textContent = `฿${txn.icloud_fee.toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
+            } else {
+                detailIcloudRow.classList.add('hidden');
+                detailIcloudRow.classList.remove('flex');
+            }
+        }
 
         // Member Details
         if (transactionDetailMember) {
@@ -4561,6 +4906,56 @@ document.addEventListener('DOMContentLoaded', () => {
         lastTransactionId = null;
     };
 
+    const openPrintOptionsModal = () => {
+        if (!modalPrintOptions || !pendingPrintTxnData) return;
+
+        // Reset check boxes
+        if (printOptItems) printOptItems.checked = true;
+
+        // Check if transaction has contract fee
+        if (pendingPrintTxnData.contract_fee > 0) {
+            if (printOptContractWrapper) {
+                printOptContractWrapper.classList.remove('hidden');
+                printOptContractWrapper.classList.add('flex');
+            }
+            if (printOptContract) printOptContract.checked = true;
+        } else {
+            if (printOptContractWrapper) {
+                printOptContractWrapper.classList.add('hidden');
+                printOptContractWrapper.classList.remove('flex');
+            }
+            if (printOptContract) printOptContract.checked = false;
+        }
+
+        // Check if transaction has iCloud fee
+        if (pendingPrintTxnData.icloud_fee > 0) {
+            if (printOptIcloudWrapper) {
+                printOptIcloudWrapper.classList.remove('hidden');
+                printOptIcloudWrapper.classList.add('flex');
+            }
+            if (printOptIcloud) printOptIcloud.checked = true;
+        } else {
+            if (printOptIcloudWrapper) {
+                printOptIcloudWrapper.classList.add('hidden');
+                printOptIcloudWrapper.classList.remove('flex');
+            }
+            if (printOptIcloud) printOptIcloud.checked = false;
+        }
+
+        // Display modal
+        modalPrintOptions.classList.remove('opacity-0', 'pointer-events-none');
+        modalPrintOptions.firstElementChild.classList.remove('scale-95');
+        modalPrintOptions.firstElementChild.classList.add('scale-100');
+    };
+
+    const closePrintOptionsModal = () => {
+        if (!modalPrintOptions) return;
+        modalPrintOptions.classList.add('opacity-0', 'pointer-events-none');
+        modalPrintOptions.firstElementChild.classList.remove('scale-100');
+        modalPrintOptions.firstElementChild.classList.add('scale-95');
+        pendingPrintTxnData = null;
+    };
+
     const printReceipt = async (txnId) => {
         try {
             // ดึงข้อมูล Transaction เต็มรูปแบบ (populated)
@@ -4572,37 +4967,65 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
-            const txnData = json.data;
-
-            // เปิดหน้าต่างใหม่สำหรับใบเสร็จ
-            const printWindow = window.open('receipt-template.html', '_blank');
-
-            if (!printWindow) {
-                showToast('กรุณาอนุญาตให้เปิด Pop-up เพื่อพิมพ์ใบเสร็จ', 'warning');
-                return;
-            }
-
-            // ส่งข้อมูลไปยังหน้าต่างที่เปิดใหม่เมื่อมันโหลดเสร็จ
-            printWindow.onload = function () {
-                printWindow.postMessage({
-                    type: 'PRINT_RECEIPT',
-                    payload: txnData
-                }, '*');
-            };
-
-            // Fallback กรณี onload ไม่ทำงาน (บาง browser)
-            setTimeout(() => {
-                printWindow.postMessage({
-                    type: 'PRINT_RECEIPT',
-                    payload: txnData
-                }, '*');
-            }, 1000);
+            pendingPrintTxnData = json.data;
+            openPrintOptionsModal();
 
         } catch (error) {
             console.error('เกิดข้อผิดพลาดในการพิมพ์ใบเสร็จ:', error);
             showToast('เกิดข้อผิดพลาดในการเชื่อมต่อ', 'error');
         }
     };
+
+    const executePrintReceipt = () => {
+        if (!pendingPrintTxnData) return;
+
+        const txnData = pendingPrintTxnData; // Capture local reference to avoid asynchronous race condition!
+
+        // เปิดหน้าต่างใหม่สำหรับใบเสร็จ
+        const printWindow = window.open('receipt-template.html', '_blank');
+
+        if (!printWindow) {
+            showToast('กรุณาอนุญาตให้เปิด Pop-up เพื่อพิมพ์ใบเสร็จ', 'warning');
+            return;
+        }
+
+        const printOptions = {
+            showItems: printOptItems ? printOptItems.checked : true,
+            showContract: printOptContract ? printOptContract.checked : true,
+            showIcloud: printOptIcloud ? printOptIcloud.checked : true
+        };
+
+        // ส่งข้อมูลไปยังหน้าต่างที่เปิดใหม่เมื่อมันโหลดเสร็จ
+        printWindow.onload = function () {
+            printWindow.postMessage({
+                type: 'PRINT_RECEIPT',
+                payload: txnData,
+                options: printOptions
+            }, '*');
+        };
+
+        // Fallback กรณี onload ไม่ทำงาน (บาง browser)
+        setTimeout(() => {
+            printWindow.postMessage({
+                type: 'PRINT_RECEIPT',
+                payload: txnData,
+                options: printOptions
+            }, '*');
+        }, 1000);
+
+        closePrintOptionsModal();
+    };
+
+    // Print Options Event Listeners
+    if (closePrintOptionsBtn) {
+        closePrintOptionsBtn.addEventListener('click', closePrintOptionsModal);
+    }
+    if (cancelPrintOptionsBtn) {
+        cancelPrintOptionsBtn.addEventListener('click', closePrintOptionsModal);
+    }
+    if (confirmPrintBtn) {
+        confirmPrintBtn.addEventListener('click', executePrintReceipt);
+    }
 
     if (btnPrintReceiptSeparate) {
         btnPrintReceiptSeparate.addEventListener('click', () => {
@@ -6194,10 +6617,135 @@ document.addEventListener('DOMContentLoaded', () => {
         populateArrivalDropdown('arrival-unit-name', window.masterDataCache.productUnits);
     };
 
+    const checkedImeis = new Set();
+    const duplicateImeisDb = new Set();
+    const pendingChecks = new Set();
+    let isPasting = false;
+
+    const checkDbExistence = async (imei, targetTextarea) => {
+        if (imei.length < 5) return;
+        if (checkedImeis.has(imei) || duplicateImeisDb.has(imei) || pendingChecks.has(imei)) return;
+
+        pendingChecks.add(imei);
+        try {
+            const res = await authFetch(`${API_BASE_URL}/products/check-existence?code=${encodeURIComponent(imei)}`);
+            const data = await res.json();
+            pendingChecks.delete(imei);
+
+            if (data.success && data.exists) {
+                duplicateImeisDb.add(imei);
+                showToast(`⚠️ หมายเลข IMEI (${imei}) มีอยู่ในคลังสินค้าแล้ว`, 'error');
+                removeImeiFromTextarea(imei, targetTextarea);
+            } else if (data.success) {
+                checkedImeis.add(imei);
+            }
+        } catch (err) {
+            console.error('Error checking IMEI existence:', err);
+            pendingChecks.delete(imei);
+        }
+    };
+
+    const removeImeiFromTextarea = (imei, targetTextarea) => {
+        const textarea = targetTextarea || arrivalImeis;
+        if (!textarea) return;
+        const scrollTop = textarea.scrollTop;
+        const lines = textarea.value.split('\n');
+        const filteredLines = lines.filter(l => l.trim() !== imei);
+        textarea.value = filteredLines.join('\n');
+        textarea.scrollTop = scrollTop;
+
+        const event = new Event('input', { bubbles: true });
+        textarea.dispatchEvent(event);
+    };
+
+    const validateImeisInput = (forceAll = false, targetTextarea, badgeElement, orderedQty) => {
+        const textarea = targetTextarea || arrivalImeis;
+        if (!textarea) return;
+
+        const value = textarea.value;
+        const lines = value.split('\n');
+        const cursorPos = textarea.selectionStart;
+        const textBeforeCursor = value.substring(0, cursorPos);
+        const activeLineIndex = textBeforeCursor.split('\n').length - 1;
+
+        let updatedLines = [];
+        let duplicatesFound = [];
+        let hasChanges = false;
+
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i];
+            const trimmed = line.trim();
+
+            if (trimmed === '') {
+                updatedLines.push(line);
+                continue;
+            }
+
+            const isCompleted = forceAll || isPasting || (i !== activeLineIndex);
+
+            if (isCompleted) {
+                // 1. Check internal duplicate
+                const isDuplicate = updatedLines.some(l => l.trim() === trimmed);
+                if (isDuplicate) {
+                    duplicatesFound.push(trimmed);
+                    hasChanges = true;
+                    continue;
+                }
+
+                // 2. Check DB cached duplicates
+                if (duplicateImeisDb.has(trimmed)) {
+                    duplicatesFound.push(trimmed);
+                    hasChanges = true;
+                    continue;
+                }
+
+                // 3. Check DB
+                if (trimmed.length >= 5 && !checkedImeis.has(trimmed) && !pendingChecks.has(trimmed)) {
+                    checkDbExistence(trimmed, textarea);
+                }
+            }
+
+            updatedLines.push(line);
+        }
+
+        isPasting = false;
+
+        if (hasChanges) {
+            duplicatesFound.forEach(imei => {
+                showToast(`หมายเลข IMEI ซ้ำ: ${imei} ถูกนำออกจากรายการแล้ว`, 'warning');
+            });
+            const scrollTop = textarea.scrollTop;
+            textarea.value = updatedLines.join('\n');
+            textarea.scrollTop = scrollTop;
+        }
+
+        // Update count or badge
+        const nonEntries = updatedLines.filter(l => l.trim() !== '');
+        const count = nonEntries.length;
+
+        if (badgeElement && orderedQty) {
+            badgeElement.textContent = `สแกนแล้ว ${count} / ${orderedQty} เครื่อง`;
+            if (count === orderedQty) {
+                badgeElement.className = 'text-xs font-semibold px-2 py-0.5 rounded-full bg-green-500/10 text-green-400 border border-green-500/20';
+            } else {
+                badgeElement.className = 'text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20';
+            }
+        } else if (arrivalImeiCount) {
+            arrivalImeiCount.textContent = `จำนวน: ${count} IMEI`;
+        }
+    };
+
     if (arrivalImeis && arrivalImeiCount) {
+        arrivalImeis.addEventListener('paste', () => {
+            isPasting = true;
+        });
+
         arrivalImeis.addEventListener('input', () => {
-            const lines = arrivalImeis.value.split('\n').filter(l => l.trim() !== '');
-            arrivalImeiCount.textContent = `จำนวน: ${lines.length} IMEI`;
+            validateImeisInput(false);
+        });
+
+        arrivalImeis.addEventListener('blur', () => {
+            validateImeisInput(true);
         });
     }
 
@@ -6987,7 +7535,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     </select>
                 </div>
             </div>
-            <div class="grid grid-cols-2 md:grid-cols-6 gap-4 items-end">
+            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-4 items-end">
                 <div>
                     <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wide">สี</label>
                     <select name="po_item_color" class="w-full px-3 py-2.5 text-sm rounded-lg bg-[#2a2a2a] border border-gray-700 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all">
@@ -7067,16 +7615,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const product = allProductsCache.find(p => p.product_code === val);
             if (product) {
                 setPoRowValue(row, 'po_item_name', product.name);
-                setPoRowValue(row, 'po_item_category', product.category);
-                setPoRowValue(row, 'po_item_color', product.color || '');
-                setPoRowValue(row, 'po_item_capacity', product.capacity || '');
-                setPoRowValue(row, 'po_item_cost', product.cost_price);
-                setPoRowValue(row, 'po_item_sell', product.selling_price);
-
-                const checkImei = row.querySelector(`[name="po_item_track_imei"]`);
-                if (checkImei) checkImei.checked = !!product.track_imei;
-
-                updateRowTotal();
             }
         });
 
@@ -7092,38 +7630,37 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             let foundMatch = false;
+            let hasMasterCode = false;
+            let masterCode = '';
 
             // Check if name has a code in Master Data
             if (window.masterDataCache && window.masterDataCache.productNames) {
                 const matchedName = window.masterDataCache.productNames.find(x => x.name === val);
                 if (matchedName && matchedName.code) {
+                    masterCode = matchedName.code;
+                    hasMasterCode = true;
                     const el = row.querySelector('[name="po_item_code"]');
-                    if (el) el.value = matchedName.code;
+                    if (el) el.value = masterCode;
                     foundMatch = true;
                 }
             }
 
-            // Check if name matches an existing product in cache for auto-fill
+            // Check if name matches an existing product in cache for auto-fill of SKU only
             if (typeof allProductsCache !== 'undefined') {
                 const product = allProductsCache.find(p => p.name === val);
                 if (product) {
-                    setPoRowValue(row, 'po_item_code', product.product_code);
-                    setPoRowValue(row, 'po_item_category', product.category);
-                    setPoRowValue(row, 'po_item_color', product.color || '');
-                    setPoRowValue(row, 'po_item_capacity', product.capacity || '');
-                    setPoRowValue(row, 'po_item_cost', product.cost_price);
-                    setPoRowValue(row, 'po_item_sell', product.selling_price);
-
-                    const checkImei = row.querySelector(`[name="po_item_track_imei"]`);
-                    if (checkImei) checkImei.checked = !!product.track_imei;
-
-                    updateRowTotal();
+                    // Only fill code if this product name actually has a code in Master Data
+                    if (hasMasterCode) {
+                        setPoRowValue(row, 'po_item_code', product.product_code || masterCode);
+                    } else {
+                        setPoRowValue(row, 'po_item_code', '');
+                    }
                     foundMatch = true;
                 }
             }
 
-            // If we changed to a name that does not have an existing SKU code
-            if (!foundMatch) {
+            // If we changed to a name that does not have an existing SKU code or master code
+            if (!foundMatch || !hasMasterCode) {
                 const elCode = row.querySelector('[name="po_item_code"]');
                 if (elCode) elCode.value = '';
             }
@@ -7865,6 +8402,44 @@ document.addEventListener('DOMContentLoaded', () => {
         // ตั้งค่าหัวข้อ PO Number ใน Modal
         document.getElementById('arrival-po-number').textContent = po.po_number;
 
+        const isEditMode = po.status === 'ของถึงสาขาแล้ว' || po.status === 'กำลังตรวจรับ';
+        const titlePrefix = document.getElementById('arrival-title-prefix');
+        const modalIconContainer = document.getElementById('arrival-modal-icon-container');
+        const modalIcon = document.getElementById('arrival-modal-icon');
+        const bannerTitle = document.getElementById('arrival-banner-title');
+        const bannerDesc = document.getElementById('arrival-banner-desc');
+        const btnSubmit = document.getElementById('btn-submit-po-arrival');
+
+        if (isEditMode) {
+            if (titlePrefix) titlePrefix.textContent = 'แก้ไขข้อมูลสินค้าถึงสาขาและ IMEI:';
+            if (modalIconContainer) {
+                modalIconContainer.className = "w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center border border-amber-500/20";
+            }
+            if (modalIcon) {
+                modalIcon.className = "fa-solid fa-pen-to-square text-amber-400";
+            }
+            if (bannerTitle) bannerTitle.textContent = 'โหมดแก้ไขข้อมูลการรับสินค้า';
+            if (bannerDesc) bannerDesc.textContent = 'คุณกำลังแก้ไขข้อมูลหมายเลข IMEI และรายการสินค้าที่ได้รับสำหรับใบสั่งซื้อนี้ กรุณาแก้ไขข้อมูลให้ถูกต้องก่อนบันทึก';
+            if (btnSubmit) {
+                btnSubmit.textContent = 'บันทึกการแก้ไขข้อมูล';
+                btnSubmit.className = "w-full py-4 bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-white font-bold rounded-xl shadow-lg shadow-amber-500/25 active:scale-[0.98] transition-all";
+            }
+        } else {
+            if (titlePrefix) titlePrefix.textContent = 'ยืนยันสินค้าถึงสาขาและบันทึก IMEI:';
+            if (modalIconContainer) {
+                modalIconContainer.className = "w-10 h-10 rounded-xl bg-green-500/10 flex items-center justify-center border border-green-500/20";
+            }
+            if (modalIcon) {
+                modalIcon.className = "fa-solid fa-truck-ramp-box text-green-400";
+            }
+            if (bannerTitle) bannerTitle.textContent = 'คำแนะนำสำหรับพนักงานขาย';
+            if (bannerDesc) bannerDesc.textContent = 'กรุณาตรวจสอบสินค้าที่จัดส่งมาถึงสาขา หากสินค้าประเภทใดต้องมีการบันทึก IMEI (เช่น โทรศัพท์มือถือ/แท็บเล็ต) กรุณาสแกนหรือระบุ IMEI ให้ครบตามจำนวนที่ส่งมาให้เรียบร้อยก่อนทำการบันทึก';
+            if (btnSubmit) {
+                btnSubmit.textContent = 'ยืนยันรายการและแจ้งของถึงสาขา';
+                btnSubmit.className = "w-full py-4 bg-gradient-to-r from-green-600 to-green-500 hover:from-green-500 hover:to-green-400 text-white font-bold rounded-xl shadow-lg shadow-green-500/25 active:scale-[0.98] transition-all";
+            }
+        }
+
         // เคลียร์และสร้างรายการสินค้าใน Modal
         const container = document.getElementById('arrival-po-items');
         container.innerHTML = '';
@@ -7887,22 +8462,35 @@ document.addEventListener('DOMContentLoaded', () => {
                             สแกนแล้ว 0 / ${item.ordered_qty} เครื่อง
                         </span>
                     </div>
-                    <div class="space-y-1.5">
+                    <div class="space-y-2.5">
                         <label class="text-xs font-medium text-slate-400 flex items-center gap-1">
-                            <i class="fa-solid fa-barcode text-green-400 text-xs"></i> สแกนหรือระบุหมายเลข IMEI (1 รายการต่อบรรทัด)
+                            <i class="fa-solid fa-barcode text-green-400 text-xs"></i> ระบุหมายเลข IMEI สำหรับแต่ละเครื่อง (แสดงลำดับเลขด้านหน้า)
                         </label>
-                        <textarea id="textarea-imei-${item._id}" 
-                                  rows="4" 
-                                  class="w-full px-4 py-3 rounded-xl bg-slate-950 border border-slate-800 text-white focus:border-green-500 focus:ring-1 focus:ring-green-500 focus:outline-none transition-all font-mono placeholder-slate-700 text-sm"
-                                  placeholder="วางหรือสแกน IMEI ที่นี่...&#10;ตัวอย่าง:&#10;358901234567891&#10;358901234567892"></textarea>
+                        <div class="grid grid-cols-1 gap-2 max-h-[220px] overflow-y-auto pr-1">
+                            ${Array.from({ length: item.ordered_qty }).map((_, idx) => `
+                                <div class="flex items-center gap-3 bg-slate-950 px-3 py-2.5 rounded-xl border border-slate-850 focus-within:border-cyan-500/50 transition-colors">
+                                    <span class="text-xs font-bold text-slate-500 font-mono w-5 text-right">${idx + 1}.</span>
+                                    <input type="text" 
+                                           data-index="${idx}"
+                                           placeholder="สแกนหรือพิมพ์หมายเลข IMEI เครื่องที่ ${idx + 1}"
+                                           class="imei-indiv-input w-full bg-transparent text-white focus:outline-none placeholder-slate-700 font-mono text-sm uppercase">
+                                </div>
+                            `).join('')}
+                        </div>
+                        <textarea id="textarea-imei-${item._id}" class="hidden"></textarea>
                     </div>
                 `;
 
                 const textarea = card.querySelector(`textarea`);
-                textarea.addEventListener('input', () => {
-                    const lines = textarea.value.split('\n').map(x => x.trim()).filter(Boolean);
-                    const count = lines.length;
-                    const badge = card.querySelector(`#badge-count-${item._id}`);
+                const badge = card.querySelector(`#badge-count-${item._id}`);
+                const inputs = card.querySelectorAll(`.imei-indiv-input`);
+
+                const syncInputsToTextarea = () => {
+                    const vals = Array.from(inputs).map(inp => inp.value.trim().toUpperCase()).filter(Boolean);
+                    textarea.value = vals.join('\n');
+                    
+                    // Update badge count
+                    const count = vals.length;
                     if (badge) {
                         badge.textContent = `สแกนแล้ว ${count} / ${item.ordered_qty} เครื่อง`;
                         if (count === item.ordered_qty) {
@@ -7911,11 +8499,149 @@ document.addEventListener('DOMContentLoaded', () => {
                             badge.className = 'text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20';
                         }
                     }
+                };
+
+                const validateAllRowInputs = () => {
+                    let seen = new Set();
+                    inputs.forEach((input) => {
+                        const val = input.value.trim().toUpperCase();
+                        if (!val) return;
+                        
+                        // Check internal duplicate
+                        if (seen.has(val)) {
+                            showToast(`หมายเลข IMEI ซ้ำ: ${val}`, 'warning');
+                            input.value = '';
+                            return;
+                        }
+                        seen.add(val);
+                        
+                        // Check DB cache
+                        if (duplicateImeisDb.has(val)) {
+                            showToast(`⚠️ หมายเลข IMEI (${val}) มีอยู่ในคลังสินค้าแล้ว`, 'error');
+                            input.value = '';
+                            return;
+                        }
+                        
+                        // Check DB
+                        if (val.length >= 5 && !checkedImeis.has(val) && !pendingChecks.has(val)) {
+                            pendingChecks.add(val);
+                            authFetch(`${API_BASE_URL}/products/check-existence?code=${encodeURIComponent(val)}`)
+                                .then(res => res.json())
+                                .then(data => {
+                                    pendingChecks.delete(val);
+                                    if (data.success && data.exists) {
+                                        duplicateImeisDb.add(val);
+                                        showToast(`⚠️ หมายเลข IMEI (${val}) มีอยู่ในคลังสินค้าแล้ว`, 'error');
+                                        input.value = '';
+                                        syncInputsToTextarea();
+                                    } else if (data.success) {
+                                        checkedImeis.add(val);
+                                    }
+                                })
+                                .catch(err => {
+                                    console.error(err);
+                                    pendingChecks.delete(val);
+                                });
+                        }
+                    });
+                    
+                    syncInputsToTextarea();
+                };
+
+                inputs.forEach((input, idx) => {
+                    // keydown for Enter to jump focus
+                    input.addEventListener('keydown', (e) => {
+                        if (e.key === 'Enter') {
+                            e.preventDefault();
+                            if (inputs[idx + 1]) {
+                                inputs[idx + 1].focus();
+                            } else {
+                                input.blur(); // Remove cursor focus on last item to save/commit immediately
+                            }
+                        }
+                    });
+
+                    // paste listener to distribute lines across inputs
+                    input.addEventListener('paste', (e) => {
+                        e.preventDefault();
+                        const text = (e.clipboardData || window.clipboardData).getData('text');
+                        const pastedLines = text.split('\n').map(x => x.trim().toUpperCase()).filter(Boolean);
+                        
+                        pastedLines.forEach((imei, i) => {
+                            const targetIdx = idx + i;
+                            if (inputs[targetIdx]) {
+                                inputs[targetIdx].value = imei;
+                            }
+                        });
+                        
+                        validateAllRowInputs();
+                    });
+
+                    // change listener for individual validation
+                    input.addEventListener('change', () => {
+                        const val = input.value.trim().toUpperCase();
+                        if (!val) {
+                            syncInputsToTextarea();
+                            return;
+                        }
+
+                        // 1. Check internal duplicates
+                        const isDuplicate = Array.from(inputs).some((inp, i) => i !== idx && inp.value.trim().toUpperCase() === val);
+                        if (isDuplicate) {
+                            showToast(`หมายเลข IMEI ซ้ำ: ${val}`, 'warning');
+                            input.value = '';
+                            input.focus();
+                            syncInputsToTextarea();
+                            return;
+                        }
+
+                        // 2. Check DB cached duplicates
+                        if (duplicateImeisDb.has(val)) {
+                            showToast(`⚠️ หมายเลข IMEI (${val}) มีอยู่ในคลังสินค้าแล้ว`, 'error');
+                            input.value = '';
+                            input.focus();
+                            syncInputsToTextarea();
+                            return;
+                        }
+
+                        // 3. Check DB existence
+                        if (val.length >= 5 && !checkedImeis.has(val) && !pendingChecks.has(val)) {
+                            pendingChecks.add(val);
+                            authFetch(`${API_BASE_URL}/products/check-existence?code=${encodeURIComponent(val)}`)
+                                .then(res => res.json())
+                                .then(data => {
+                                    pendingChecks.delete(val);
+                                    if (data.success && data.exists) {
+                                        duplicateImeisDb.add(val);
+                                        showToast(`⚠️ หมายเลข IMEI (${val}) มีอยู่ในคลังสินค้าแล้ว`, 'error');
+                                        input.value = '';
+                                        input.focus();
+                                        syncInputsToTextarea();
+                                    } else if (data.success) {
+                                        checkedImeis.add(val);
+                                    }
+                                })
+                                .catch(err => {
+                                    console.error(err);
+                                    pendingChecks.delete(val);
+                                });
+                        }
+
+                        syncInputsToTextarea();
+                    });
+
+                    input.addEventListener('blur', () => {
+                        syncInputsToTextarea();
+                    });
                 });
 
                 if (Array.isArray(item.imeis_scanned) && item.imeis_scanned.length > 0) {
-                    textarea.value = item.imeis_scanned.join('\n');
-                    textarea.dispatchEvent(new Event('input'));
+                    item.imeis_scanned.forEach((imei, idx) => {
+                        if (inputs[idx]) {
+                            inputs[idx].value = imei;
+                        }
+                    });
+                    syncInputsToTextarea();
                 }
             } else {
                 card.innerHTML = `
@@ -7942,7 +8668,6 @@ document.addEventListener('DOMContentLoaded', () => {
         modal.classList.remove('opacity-0', 'pointer-events-none');
 
         // ตั้งค่าปุ่มตกลงแจ้งของถึงร้าน
-        const btnSubmit = document.getElementById('btn-submit-po-arrival');
         btnSubmit.onclick = async () => {
             const rows = document.querySelectorAll('.po-arrival-row');
             const received_items = {};
@@ -7986,20 +8711,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 const json = await res.json();
                 if (json.success) {
-                    showToast('แจ้งสถานะสินค้าถึงสาขาและบันทึก IMEI สำเร็จเรียบร้อยแล้ว!', 'success');
-                    document.getElementById('btn-close-po-arrival').click();
-                    if (typeof loadArrivalPOs === 'function') loadArrivalPOs();
-                    if (typeof loadPOs === 'function') loadPOs();
-                } else {
-                    showToast(json.message, 'error');
-                }
-            } catch (err) {
-                console.error(err);
-                showToast('เกิดข้อผิดพลาดในการบันทึกรายการ', 'error');
-            } finally {
-                btnSubmit.disabled = false;
-                btnSubmit.innerHTML = 'ยืนยันรายการและแจ้งของถึงสาขา';
-            }
+                    showToast(isEditMode ? 'แก้ไขข้อมูลการรับสินค้าสำเร็จเรียบร้อยแล้ว!' : 'แจ้งสถานะสินค้าถึงสาขาและบันทึก IMEI สำเร็จเรียบร้อยแล้ว!', 'success');
+                     document.getElementById('btn-close-po-arrival').click();
+                     if (typeof loadArrivalPOs === 'function') loadArrivalPOs();
+                     if (typeof loadPOs === 'function') loadPOs();
+                 } else {
+                     showToast(json.message, 'error');
+                 }
+             } catch (err) {
+                 console.error(err);
+                 showToast('เกิดข้อผิดพลาดในการบันทึกรายการ', 'error');
+             } finally {
+                 btnSubmit.disabled = false;
+                 btnSubmit.innerHTML = isEditMode ? 'บันทึกการแก้ไขข้อมูล' : 'ยืนยันรายการและแจ้งของถึงสาขา';
+             }
         };
     };
 
@@ -8506,6 +9231,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
         itemsHtml += `</div>`;
 
+        // Check if the PO status is NOT fully imported or received
+        const isEditable = po.status !== 'นำเข้าสำเร็จ' && po.status !== 'รับของครบแล้ว';
+
         showConfirm(
             `รายละเอียดการรับสินค้า`,
             itemsHtml,
@@ -8515,14 +9243,36 @@ document.addEventListener('DOMContentLoaded', () => {
         );
 
         const cancelBtn = document.getElementById('confirm-cancel-btn');
-        if (cancelBtn) cancelBtn.style.display = 'none';
-
         const okBtn = document.getElementById('confirm-ok-btn');
+
+        if (isEditable && cancelBtn) {
+            cancelBtn.style.display = 'block';
+            cancelBtn.textContent = 'แก้ไขข้อมูลการรับ';
+            cancelBtn.className = "flex-1 py-2.5 rounded-xl text-sm font-bold text-amber-400 bg-amber-500/10 border border-amber-500/25 hover:bg-amber-500/20 hover:border-amber-500/40 transition-all active:scale-[0.98]";
+            
+            cancelBtn.onclick = () => {
+                // Close confirm modal
+                const modal = document.getElementById('custom-confirm-modal');
+                if (modal) {
+                    modal.classList.add('opacity-0', 'pointer-events-none');
+                    setTimeout(() => modal.classList.add('hidden'), 300);
+                }
+                
+                // Open edit arrival modal
+                openArrivalModal(po);
+            };
+        } else if (cancelBtn) {
+            cancelBtn.style.display = 'none';
+        }
+
         if (okBtn) {
             const origClick = okBtn.onclick;
             okBtn.onclick = (e) => {
                 if (origClick) origClick(e);
-                if (cancelBtn) cancelBtn.style.display = 'block';
+                if (cancelBtn) {
+                    cancelBtn.style.display = 'block';
+                    cancelBtn.textContent = 'ยกเลิก';
+                }
             };
         }
     };
@@ -9040,6 +9790,317 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
+
+    // ============================================================================
+    // SEARCHABLE SELECTS IMPLEMENTATION
+    // ============================================================================
+    function makeSelectSearchable(selectElement, defaultPlaceholder) {
+        if (!selectElement) return;
+
+        // Prevent double initialization
+        if (selectElement.dataset.searchableInitialized === 'true') {
+            return;
+        }
+        selectElement.dataset.searchableInitialized = 'true';
+
+        // Remove required attribute from native select to prevent browser focusing validation bugs on hidden inputs
+        selectElement.removeAttribute('required');
+
+        // Add class to hide select visually but keep it focusable for required validation
+        selectElement.classList.add('searchable-hidden');
+
+        // Create container and wrap the select element
+        const wrapper = document.createElement('div');
+        wrapper.className = 'relative w-full searchable-select-wrapper';
+        selectElement.parentNode.insertBefore(wrapper, selectElement);
+        wrapper.appendChild(selectElement);
+
+        // Create trigger box
+        const trigger = document.createElement('div');
+        trigger.className = 'searchable-select-trigger';
+        
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.className = 'searchable-select-input';
+        input.placeholder = defaultPlaceholder || 'เลือกข้อมูล...';
+        input.readOnly = true;
+
+        const arrow = document.createElement('i');
+        arrow.className = 'fa-solid fa-chevron-down text-slate-400 text-xs ml-2 transition-transform duration-200 searchable-select-arrow';
+
+        trigger.appendChild(input);
+        trigger.appendChild(arrow);
+        wrapper.appendChild(trigger);
+
+        // Create dropdown menu overlay
+        const dropdown = document.createElement('div');
+        dropdown.className = 'searchable-select-dropdown modal-scrollable-content scrollbar-thin';
+        wrapper.appendChild(dropdown);
+
+        // Function to rebuild options in our custom dropdown
+        function rebuildDropdown() {
+            dropdown.innerHTML = '';
+            const options = Array.from(selectElement.options);
+            
+            // Filter out default placeholder option if it's disabled and has empty value
+            const filteredOptions = options.filter(opt => !(opt.disabled && opt.value === ''));
+
+            if (filteredOptions.length === 0) {
+                const noResults = document.createElement('div');
+                noResults.className = 'searchable-no-results';
+                noResults.textContent = 'ไม่มีรายการตัวเลือก';
+                dropdown.appendChild(noResults);
+                return;
+            }
+
+            filteredOptions.forEach((opt) => {
+                const item = document.createElement('div');
+                item.className = 'searchable-option-item';
+                item.textContent = opt.textContent;
+                item.dataset.value = opt.value;
+                
+                // If it is currently selected in native select
+                if (selectElement.value === opt.value) {
+                    item.classList.add('selected');
+                }
+
+                item.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    selectOption(opt.value, opt.textContent);
+                });
+
+                dropdown.appendChild(item);
+            });
+        }
+
+        // Function to select an option programmatically or manually
+        function selectOption(value, text) {
+            selectElement.value = value;
+            input.value = text;
+            
+            // Dispatch change event to trigger existing app logic
+            selectElement.dispatchEvent(new Event('change', { bubbles: true }));
+            
+            closeDropdown();
+        }
+
+        // Synchronize display text from native select
+        function syncUI() {
+            const selectedOpt = selectElement.options[selectElement.selectedIndex];
+            if (selectedOpt && !(selectedOpt.disabled && selectedOpt.value === '')) {
+                input.value = selectedOpt.textContent;
+            } else {
+                input.value = '';
+            }
+
+            // Sync selected class on items
+            const items = dropdown.querySelectorAll('.searchable-option-item');
+            items.forEach(item => {
+                if (item.dataset.value === selectElement.value) {
+                    item.classList.add('selected');
+                } else {
+                    item.classList.remove('selected');
+                }
+            });
+        }
+
+        // Close dropdown
+        function closeDropdown() {
+            dropdown.classList.remove('open');
+            arrow.classList.remove('rotate-180');
+            input.readOnly = true;
+            
+            // If they clicked out without selecting or value is empty, restore selected text or clear
+            syncUI();
+            
+            document.removeEventListener('click', handleOutsideClick);
+            document.removeEventListener('keydown', handleEscAndTab);
+        }
+
+        // Open dropdown
+        function openDropdown() {
+            // Close all other open searchable select dropdowns first
+            document.querySelectorAll('.searchable-select-dropdown.open').forEach(openDrop => {
+                if (openDrop !== dropdown) {
+                    const dropWrapper = openDrop.closest('.searchable-select-wrapper');
+                    const dropSelect = dropWrapper.querySelector('select');
+                    if (dropSelect && typeof dropSelect.closeSearchableDropdown === 'function') {
+                        dropSelect.closeSearchableDropdown();
+                    }
+                }
+            });
+
+            dropdown.classList.add('open');
+            arrow.classList.add('rotate-180');
+            input.readOnly = false;
+            
+            // Save current value
+            input.dataset.oldValue = input.value;
+            
+            // Select all text so they can search immediately
+            input.select();
+            
+            // Rebuild the items first so we always have the freshest options
+            rebuildDropdown();
+            
+            // Sync highlighted and selected states
+            syncUI();
+
+            // Scroll selected item into view
+            const selectedItem = dropdown.querySelector('.searchable-option-item.selected');
+            if (selectedItem) {
+                selectedItem.scrollIntoView({ block: 'nearest' });
+            }
+
+            document.addEventListener('click', handleOutsideClick);
+            document.addEventListener('keydown', handleEscAndTab);
+        }
+
+        // Attaching closeDropdown to the selectElement so other elements can close it programmatically
+        selectElement.closeSearchableDropdown = closeDropdown;
+
+        // Handle click on trigger
+        trigger.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (dropdown.classList.contains('open')) {
+                closeDropdown();
+            } else {
+                openDropdown();
+            }
+        });
+
+        // Filter items on input typing
+        input.addEventListener('input', () => {
+            const query = input.value.toLowerCase().trim();
+            const items = dropdown.querySelectorAll('.searchable-option-item');
+            let matchCount = 0;
+
+            items.forEach(item => {
+                const text = item.textContent.toLowerCase();
+                if (text.includes(query)) {
+                    item.style.display = 'block';
+                    matchCount++;
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+
+            // Handle empty state
+            let noResultsElement = dropdown.querySelector('.searchable-no-results');
+            if (matchCount === 0) {
+                if (!noResultsElement) {
+                    noResultsElement = document.createElement('div');
+                    noResultsElement.className = 'searchable-no-results';
+                    noResultsElement.textContent = 'ไม่พบข้อมูล';
+                    dropdown.appendChild(noResultsElement);
+                }
+                noResultsElement.style.display = 'block';
+            } else {
+                if (noResultsElement) {
+                    noResultsElement.style.display = 'none';
+                }
+            }
+        });
+
+        // Handle outside clicks to close
+        function handleOutsideClick(e) {
+            if (!wrapper.contains(e.target)) {
+                closeDropdown();
+            }
+        }
+
+        // Keyboard navigation (Esc, Tab, Enter)
+        function handleEscAndTab(e) {
+            if (e.key === 'Escape') {
+                closeDropdown();
+            } else if (e.key === 'Tab') {
+                closeDropdown();
+            } else if (e.key === 'Enter') {
+                e.preventDefault();
+                // Select first visible option if there is one
+                const visibleItems = Array.from(dropdown.querySelectorAll('.searchable-option-item')).filter(item => item.style.display !== 'none');
+                if (visibleItems.length > 0) {
+                    const firstItem = visibleItems[0];
+                    selectOption(firstItem.dataset.value, firstItem.textContent);
+                } else {
+                    closeDropdown();
+                }
+            }
+        }
+
+        // MutationObserver to observe when options inside native select are updated
+        const observer = new MutationObserver(() => {
+            rebuildDropdown();
+            syncUI();
+        });
+        observer.observe(selectElement, { childList: true, subtree: true });
+
+        // Hijack select's .value property to catch direct JS assignments (e.g. edit mode)
+        try {
+            const originalValueProp = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value');
+            if (originalValueProp) {
+                Object.defineProperty(selectElement, 'value', {
+                    get: function() {
+                        return originalValueProp.get.call(this);
+                    },
+                    set: function(val) {
+                        originalValueProp.set.call(this, val);
+                        syncUI();
+                    },
+                    configurable: true
+                });
+            }
+        } catch (err) {
+            console.warn('Value property hijacking bypassed:', err);
+        }
+
+        // Hijack select's .selectedIndex property too
+        try {
+            const originalSelectedIndexProp = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'selectedIndex');
+            if (originalSelectedIndexProp) {
+                Object.defineProperty(selectElement, 'selectedIndex', {
+                    get: function() {
+                        return originalSelectedIndexProp.get.call(this);
+                    },
+                    set: function(idx) {
+                        originalSelectedIndexProp.set.call(this, idx);
+                        syncUI();
+                    },
+                    configurable: true
+                });
+            }
+        } catch (err) {
+            console.warn('SelectedIndex property hijacking bypassed:', err);
+        }
+
+        // Sync on native change event
+        selectElement.addEventListener('change', () => {
+            syncUI();
+        });
+
+        // Sync when parent form resets
+        if (selectElement.form) {
+            selectElement.form.addEventListener('reset', () => {
+                setTimeout(() => {
+                    syncUI();
+                }, 0);
+            });
+        }
+
+        // Initial setup
+        rebuildDropdown();
+        syncUI();
+    }
+
+    // Initialize Searchable Dropdowns for Add Product Form
+    makeSelectSearchable(productSupplier, 'เลือกผู้จัดจำหน่าย *');
+    makeSelectSearchable(productBranch, 'เลือกสาขาที่จัดเก็บ *');
+    makeSelectSearchable(productName, 'เลือกชื่อสินค้า *');
+    makeSelectSearchable(productCategory, 'เลือกหมวดหมู่ *');
+    makeSelectSearchable(productColor, 'เลือกสี *');
+    makeSelectSearchable(productCapacity, 'เลือกความจุ *');
+    makeSelectSearchable(productCondition, 'เลือกสภาพเครื่อง *');
+    makeSelectSearchable(productUnit, 'เลือกหน่วยนับ *');
 });
 
 // ============================================================================

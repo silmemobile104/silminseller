@@ -441,10 +441,27 @@ router.post('/products', async (req, res) => {
             return res.status(400).json({ success: false, message: 'กรุณาระบุสาขาที่ต้องการรับเข้าสินค้า' });
         }
 
-        // ป้องกันสินค้าซ้ำ: ใช้ product_code เป็นตัวระบุหลัก ถ้ามี
+        // ป้องกันสินค้าซ้ำ: หากข้อมูลสินค้าที่เพิ่มใหม่เหมือนกับสินค้าที่มีอยู่แล้วทุกอย่าง ให้ใช้รายการเดิม (เพื่อบวกจำนวนเพิ่ม)
+        // แต่หากต่างกันเพียงแม้แต่ช่องเดียว ให้สร้างรายการสินค้าใหม่ทันที
         let product = null;
-        if (productData.product_code) {
-            product = await Product.findOne({ product_code: productData.product_code });
+        const searchCode = productData.product_code ? productData.product_code.trim() : '';
+        const candidates = await Product.find({ product_code: searchCode });
+
+        for (const cand of candidates) {
+            const sameSupplier = (cand.supplier_id ? cand.supplier_id.toString() : '') === (productData.supplier_id ? productData.supplier_id.toString() : '');
+            const sameName = cand.name === productData.name;
+            const sameCost = Number(cand.cost_price) === Number(productData.cost_price);
+            const sameSelling = Number(cand.selling_price) === Number(productData.selling_price);
+            const sameType = (cand.type_id ? cand.type_id.toString() : '') === (productData.type_id ? productData.type_id.toString() : '');
+            const sameColor = (cand.color_id ? cand.color_id.toString() : '') === (productData.color_id ? productData.color_id.toString() : '');
+            const sameCapacity = (cand.capacity_id ? cand.capacity_id.toString() : '') === (productData.capacity_id ? productData.capacity_id.toString() : '');
+            const sameCondition = (cand.condition_id ? cand.condition_id.toString() : '') === (productData.condition_id ? productData.condition_id.toString() : '');
+            const sameUnit = (cand.unit_id ? cand.unit_id.toString() : '') === (productData.unit_id ? productData.unit_id.toString() : '');
+
+            if (sameSupplier && sameName && sameCost && sameSelling && sameType && sameColor && sameCapacity && sameCondition && sameUnit) {
+                product = cand;
+                break;
+            }
         }
 
         if (!product) {
@@ -1825,7 +1842,8 @@ router.post('/transactions', async (req, res) => {
         const {
             items, total_amount, payment_method, down_payment, branch_id, member_id,
             payment_type, cash_amount, transfer_amount, finance_company,
-            finance_payment_day, finance_months, finance_down_payment_cash, finance_down_payment_transfer
+            finance_payment_day, finance_months, finance_down_payment_cash, finance_down_payment_transfer,
+            contract_fee, icloud_fee
         } = req.body;
 
         // ตรวจสอบข้อมูลเบื้องต้น
@@ -1946,6 +1964,8 @@ router.post('/transactions', async (req, res) => {
             finance_months: Number(finance_months) || 0,
             finance_down_payment_cash: Number(finance_down_payment_cash) || 0,
             finance_down_payment_transfer: Number(finance_down_payment_transfer) || 0,
+            contract_fee: Number(contract_fee) || 0,
+            icloud_fee: Number(icloud_fee) || 0,
             member_id: member_id || null,
             created_at: now
         });
