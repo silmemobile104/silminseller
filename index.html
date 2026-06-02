@@ -654,6 +654,13 @@
                     <span class="sidebar-text ml-3 font-medium">ระบบสั่งซื้อ (PO)</span>
                 </a>
 
+                <a href="#" id="nav-accounting"
+                    class="flex items-center px-3 py-3 rounded-xl text-slate-300 hover:bg-slate-700/50 hover:text-white transition-all group nav-menu-item">
+                    <i
+                        class="fa-solid fa-chart-line sidebar-icon text-lg w-6 text-center text-amber-400 group-hover:text-amber-300"></i>
+                    <span class="sidebar-text ml-3 font-medium">ระบบบัญชีและการเงิน</span>
+                </a>
+
                 <a href="#" id="nav-branch-receive"
                     class="flex items-center px-3 py-3 rounded-xl text-slate-300 hover:bg-slate-700/50 hover:text-white transition-all group nav-menu-item relative">
                     <i
@@ -2543,6 +2550,153 @@
                     </div>
                 </div>
 
+                <!-- VIEW: Systems Accounting & Finance -->
+                <div id="view-accounting" class="hidden space-y-6 animate-fade-in">
+                    <!-- Dynamic Header -->
+                    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                        <div>
+                            <h3 class="text-2xl font-bold text-white flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-xl bg-amber-500/20 flex items-center justify-center border border-amber-500/30">
+                                    <i class="fa-solid fa-chart-line text-amber-400"></i>
+                                </div>
+                                ระบบบัญชีและการเงิน (Accounting & Finance)
+                            </h3>
+                            <p class="text-slate-400 mt-1">จัดการหนี้สินเจ้าหนี้ รายงานงบกำไร-ขาดทุน และบันทึกค่าใช้จ่าย</p>
+                        </div>
+                        <!-- Date range filters and actions -->
+                        <div class="flex flex-wrap items-center gap-3 w-full md:w-auto">
+                            <div class="flex items-center gap-2 bg-[#1a1a1a] border border-gray-800 rounded-xl px-3 py-1.5 text-xs text-slate-355">
+                                <span class="font-medium text-slate-400">เริ่ม:</span>
+                                <input type="date" id="accounting-start-date" class="bg-transparent text-white focus:outline-none border-none [color-scheme:dark]">
+                                <span class="font-medium text-slate-400">ถึง:</span>
+                                <input type="date" id="accounting-end-date" class="bg-transparent text-white focus:outline-none border-none [color-scheme:dark]">
+                            </div>
+                            <button id="btn-refresh-accounting"
+                                class="px-4 py-2.5 bg-[#2a2a2a] border border-gray-700 hover:border-gray-600 text-white rounded-xl hover:bg-slate-800 transition-colors flex items-center gap-1.5 text-sm font-medium">
+                                <i class="fa-solid fa-rotate text-amber-400 animate-spin-hover"></i> รีเฟรช
+                            </button>
+                            <button id="btn-open-expense-modal"
+                                class="px-4 py-2.5 bg-amber-500/10 border border-amber-500/30 text-amber-400 rounded-xl hover:bg-amber-500/20 transition-colors flex items-center gap-1.5 text-sm font-bold shadow-md">
+                                <i class="fa-solid fa-plus-circle"></i> บันทึกค่าใช้จ่าย
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Summary KPI Cards -->
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div class="bg-[#151515] border border-slate-800/80 rounded-2xl p-5 shadow-sm relative overflow-hidden group">
+                            <div class="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-emerald-500/5 to-transparent rounded-bl-full pointer-events-none"></div>
+                            <div class="text-xs font-semibold text-slate-400 flex items-center gap-1.5">
+                                <span class="w-2 h-2 rounded-full bg-emerald-500"></span> รายรับรวม
+                            </div>
+                            <div id="kpi-revenue" class="text-xl md:text-2xl font-black text-white mt-2 font-mono">฿0.00</div>
+                            <p class="text-[10px] text-slate-500 mt-1">ยอดรวมขายสินค้าและรายรับอื่น</p>
+                        </div>
+                        <div class="bg-[#151515] border border-slate-800/80 rounded-2xl p-5 shadow-sm relative overflow-hidden group">
+                            <div class="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-rose-500/5 to-transparent rounded-bl-full pointer-events-none"></div>
+                            <div class="text-xs font-semibold text-slate-400 flex items-center gap-1.5">
+                                <span class="w-2 h-2 rounded-full bg-rose-500"></span> รายจ่ายรวม
+                            </div>
+                            <div id="kpi-expense" class="text-xl md:text-2xl font-black text-white mt-2 font-mono">฿0.00</div>
+                            <p class="text-[10px] text-slate-500 mt-1">ค่าสินค้า (PO) และค่าใช้จ่ายทั่วไป</p>
+                        </div>
+                        <div class="bg-[#151515] border border-slate-800/80 rounded-2xl p-5 shadow-sm relative overflow-hidden group">
+                            <div class="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-cyan-500/5 to-transparent rounded-bl-full pointer-events-none"></div>
+                            <div class="text-xs font-semibold text-slate-400 flex items-center gap-1.5">
+                                <span class="w-2 h-2 rounded-full bg-cyan-500"></span> กำไรสุทธิ
+                            </div>
+                            <div id="kpi-profit" class="text-xl md:text-2xl font-black text-cyan-400 mt-2 font-mono">฿0.00</div>
+                            <p class="text-[10px] text-slate-500 mt-1">รายรับรวม หัก รายจ่ายรวม</p>
+                        </div>
+                        <div class="bg-[#151515] border border-slate-800/80 rounded-2xl p-5 shadow-sm relative overflow-hidden group">
+                            <div class="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-purple-500/5 to-transparent rounded-bl-full pointer-events-none"></div>
+                            <div class="text-xs font-semibold text-slate-400 flex items-center gap-1.5">
+                                <span class="w-2 h-2 rounded-full bg-purple-500"></span> ภาษีค้างจ่าย (VAT 7%)
+                            </div>
+                            <div id="kpi-vat" class="text-xl md:text-2xl font-black text-purple-400 mt-2 font-mono">฿0.00</div>
+                            <p class="text-[10px] text-slate-500 mt-1">ภาษีขาย หัก ภาษีซื้อสะสม</p>
+                        </div>
+                    </div>
+
+                    <!-- Tabs Selector -->
+                    <div class="flex border-b border-gray-800">
+                        <button id="tab-accounting-ap" class="px-6 py-3.5 border-b-2 border-amber-500 text-amber-400 text-sm font-bold flex items-center gap-2 transition-all duration-200 focus:outline-none">
+                            <i class="fa-solid fa-hourglass-half"></i> บัญชีเจ้าหนี้ (AP Queue)
+                        </button>
+                        <button id="tab-accounting-pl" class="px-6 py-3.5 border-b-2 border-transparent text-slate-400 hover:text-slate-200 text-sm font-semibold flex items-center gap-2 transition-all duration-200 focus:outline-none">
+                            <i class="fa-solid fa-file-invoice-dollar"></i> รายงานงบกำไร-ขาดทุน
+                        </button>
+                        <button id="tab-accounting-ar" class="px-6 py-3.5 border-b-2 border-transparent text-slate-400 hover:text-slate-200 text-sm font-semibold flex items-center gap-2 transition-all duration-200 focus:outline-none">
+                            <i class="fa-solid fa-hand-holding-dollar"></i> บัญชีลูกหนี้ (AR Finance)
+                        </button>
+                    </div>
+
+                    <!-- TAB 1: บัญชีเจ้าหนี้ (AP Queue) -->
+                    <div id="section-accounting-ap" class="space-y-4">
+                        <div class="overflow-x-auto bg-[#1a1a1a] rounded-2xl border border-gray-800">
+                            <table class="w-full text-left border-collapse">
+                                <thead class="bg-gray-900 text-slate-400 text-sm">
+                                    <tr>
+                                        <th class="px-6 py-4 font-bold">เลขที่ PO</th>
+                                        <th class="px-6 py-4 font-bold">วันที่สร้าง</th>
+                                        <th class="px-6 py-4 font-bold">Supplier</th>
+                                        <th class="px-6 py-4 font-bold">ยอดเงินลงทุน (ทุน)</th>
+                                        <th class="px-6 py-4 font-bold text-center">สถานะชำระเงิน</th>
+                                        <th class="px-6 py-4 font-bold text-right">ดำเนินการ</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="table-body-accounting-ap" class="divide-y divide-gray-800/50">
+                                    <!-- Dynamic AP entries -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- TAB 3: บัญชีลูกหนี้ (AR Finance Queue) -->
+                    <div id="section-accounting-ar" class="hidden space-y-4">
+                        <div class="overflow-x-auto bg-[#1a1a1a] rounded-2xl border border-gray-800">
+                            <table class="w-full text-left border-collapse">
+                                <thead class="bg-gray-900 text-slate-400 text-sm">
+                                    <tr>
+                                        <th class="px-6 py-4 font-bold">เลขที่ใบเสร็จ</th>
+                                        <th class="px-6 py-4 font-bold">วันที่ขาย</th>
+                                        <th class="px-6 py-4 font-bold">บริษัทไฟแนนซ์</th>
+                                        <th class="px-6 py-4 font-bold">ยอดขายรวม</th>
+                                        <th class="px-6 py-4 font-bold">เงินดาวน์ + ค่าบริการ</th>
+                                        <th class="px-6 py-4 font-bold">ยอดจัดค้างโอน</th>
+                                        <th class="px-6 py-4 font-bold text-center">สถานะ</th>
+                                        <th class="px-6 py-4 font-bold text-right">ดำเนินการ</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="table-body-accounting-ar" class="divide-y divide-gray-800/50">
+                                    <!-- Dynamic AR entries -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- TAB 2: รายงานงบกำไร-ขาดทุน & Ledger -->
+                    <div id="section-accounting-pl" class="hidden space-y-4">
+                        <div class="overflow-x-auto bg-[#1a1a1a] rounded-2xl border border-gray-800">
+                            <table class="w-full text-left border-collapse">
+                                <thead class="bg-gray-900 text-slate-400 text-sm">
+                                    <tr>
+                                        <th class="px-6 py-4 font-bold">เลขที่ธุรกรรม</th>
+                                        <th class="px-6 py-4 font-bold">วันที่บันทึก</th>
+                                        <th class="px-6 py-4 font-bold">ประเภท</th>
+                                        <th class="px-6 py-4 font-bold">หมวดหมู่</th>
+                                        <th class="px-6 py-4 font-bold text-right">จำนวนเงิน</th>
+                                        <th class="px-6 py-4 font-bold">ผู้บันทึก</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="table-body-accounting-pl" class="divide-y divide-gray-800/50 font-sans">
+                                    <!-- Dynamic Ledger entries -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- VIEW: Receive PO (Branch) -->
                 <div id="view-branch-receive" class="hidden space-y-6 animate-fade-in">
                     <div class="flex justify-between items-center">
@@ -3892,6 +4046,35 @@
                     </div>
                 </div>
 
+                <!-- Section: ระบบบัญชีและการเงิน -->
+                <div class="space-y-4">
+                    <h5
+                        class="text-xs font-bold text-slate-500 uppercase tracking-wider pl-1 border-l-2 border-amber-500">
+                        ระบบบัญชีและการเงิน (Accounting & Finance)
+                    </h5>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <!-- Toggle: manage_finance -->
+                        <div
+                            class="flex items-center justify-between p-3 bg-slate-800/50 rounded-xl border border-slate-700/30 hover:bg-slate-700/30 transition-colors">
+                            <div class="flex items-center gap-3">
+                                <div class="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center">
+                                    <i class="fa-solid fa-chart-line text-amber-400 text-sm"></i>
+                                </div>
+                                <div>
+                                    <span class="text-sm font-medium text-slate-200">จัดการระบบบัญชีและการเงิน</span>
+                                    <p class="text-[10px] text-slate-500 mt-0.5">ดูรายงานงบ ชำระเงินเจ้าหนี้ และบันทึกค่าใช้จ่าย</p>
+                                </div>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" id="perm-manage_finance" class="sr-only peer">
+                                <div
+                                    class="w-10 h-5 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-slate-400 after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-amber-500 peer-checked:after:bg-white">
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Actions -->
                 <div class="pt-4 flex justify-end gap-3 border-t border-slate-700 mt-6">
                     <button type="button" id="cancel-role-modal-btn"
@@ -4380,6 +4563,47 @@
 
 
 
+    <!-- Accounting Expense Modal -->
+    <div id="modal-accounting-expense"
+        class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm opacity-0 pointer-events-none transition-all duration-300 p-4">
+        <div
+            class="modal-content relative w-full max-w-md bg-slate-900 rounded-3xl shadow-2xl border border-gray-800 transform scale-95 transition-transform duration-300">
+            <div class="p-6 border-b border-gray-800 flex justify-between items-center bg-[#1a1a1a] rounded-t-3xl">
+                <h3 class="text-xl font-bold text-white flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center border border-amber-500/20">
+                        <i class="fa-solid fa-file-invoice-dollar text-amber-400"></i>
+                    </div>
+                    บันทึกค่าใช้จ่ายทั่วไป
+                </h3>
+                <button id="btn-close-accounting-expense" class="text-slate-400 hover:text-white transition-colors p-2 rounded-lg hover:bg-slate-800">
+                    <i class="fa-solid fa-xmark text-xl"></i>
+                </button>
+            </div>
+            <form id="form-accounting-expense" class="p-6 space-y-4">
+                <div>
+                    <label class="text-xs font-bold text-slate-400 block mb-1.5">หมวดหมู่ค่าใช้จ่าย <span class="text-red-400">*</span></label>
+                    <select id="expense-category" class="w-full bg-[#1a1a1a] border border-gray-700 hover:border-gray-600 focus:border-amber-500 text-sm rounded-xl px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-amber-500/20 transition-all font-sans" required>
+                        <option value="" disabled selected>-- เลือกหมวดหมู่ --</option>
+                        <option value="ค่าเช่า">ค่าเช่า</option>
+                        <option value="ค่าไฟ/น้ำ">ค่าไฟ/น้ำ</option>
+                        <option value="เงินเดือน">เงินเดือน</option>
+                        <option value="อื่นๆ">อื่นๆ</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="text-xs font-bold text-slate-400 block mb-1.5">จำนวนเงิน (บาท) <span class="text-red-400">*</span></label>
+                    <input type="number" id="expense-amount" min="0.01" step="0.01" placeholder="ระบุจำนวนเงินที่จ่ายจริง" class="w-full bg-[#1a1a1a] border border-gray-700 hover:border-gray-600 focus:border-amber-500 text-sm rounded-xl px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-amber-500/20 transition-all font-mono" required>
+                </div>
+                <div class="pt-4">
+                    <button type="submit" id="btn-submit-accounting-expense"
+                        class="w-full py-4 bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-white font-bold rounded-xl shadow-lg shadow-amber-500/25 active:scale-[0.98] transition-all flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-save"></i> บันทึกค่าใช้จ่าย
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- PO Receive Modal -->
     <div id="modal-po-receive"
         class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm opacity-0 pointer-events-none transition-all duration-300 p-4">
@@ -4763,7 +4987,7 @@
     <datalist id="dl-product-colors"></datalist>
     <datalist id="dl-product-capacities"></datalist>
 
-    <script src="script.js?v=po_sku_instant_fix"></script>
+    <script src="script.js?v=accounting_perm_fix_v3"></script>
 </body>
 
 </html>

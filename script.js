@@ -165,6 +165,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const navAccountingPO = document.getElementById('nav-accounting-po');
     const navBranchReceive = document.getElementById('nav-branch-receive');
     const navAuditLogs = document.getElementById('nav-audit-logs');
+    const navAccounting = document.getElementById('nav-accounting');
 
     // Mobile Navigation Buttons
     const mobileNavTransactions = document.getElementById('mobile-nav-transactions');
@@ -190,6 +191,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const viewAccountingPO = document.getElementById('view-accounting-po');
     const viewBranchReceive = document.getElementById('view-branch-receive');
     const viewAuditLogs = document.getElementById('view-audit-logs');
+    const viewAccounting = document.getElementById('view-accounting');
 
     const settingsTabBtns = document.querySelectorAll('.settings-tab-btn');
     const masterDataInput = document.getElementById('master-data-input');
@@ -1211,6 +1213,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (typeof navWarrantyCheck !== 'undefined' && navWarrantyCheck) navWarrantyCheck.style.display = permissions.do_pos ? '' : 'none';
         if (navAccountingPO) navAccountingPO.style.display = permissions.manage_po ? '' : 'none';
         if (navBranchReceive) navBranchReceive.style.display = permissions.receive_po ? '' : 'none';
+        if (navAccounting) navAccounting.style.display = permissions.manage_finance ? '' : 'none';
 
         // Mobile Nav Permissions mapping
         if (mobileNavTransactions) mobileNavTransactions.style.display = permissions.do_pos ? '' : 'none';
@@ -2106,7 +2109,7 @@ document.addEventListener('DOMContentLoaded', () => {
             viewTransfers, viewMovements, viewMembers,
             viewReportArrival, viewApproveImport, viewWarrantyCheck,
             viewBranchInventory, viewAccountingPO, viewBranchReceive,
-            viewAuditLogs
+            viewAuditLogs, viewAccounting
         ];
         views.forEach(view => {
             if (view) {
@@ -2220,6 +2223,10 @@ document.addEventListener('DOMContentLoaded', () => {
             activateView(viewBranchReceive, navBranchReceive);
             if (typeof initBranchReceive === 'function') initBranchReceive();
         }
+        else if (viewName === 'accounting') {
+            activateView(viewAccounting, navAccounting);
+            if (typeof initAccounting === 'function') initAccounting();
+        }
         else if (viewName === 'audit-logs') {
             const savedUserData = localStorage.getItem('silmin_user');
             let hasAuditAccess = false;
@@ -2256,6 +2263,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (navAccountingPO) navAccountingPO.style.display = 'none'; // Will be managed by applyPermissions
     if (navAccountingPO) navAccountingPO.addEventListener('click', (e) => { e.preventDefault(); switchView('accounting-po'); });
     if (navBranchReceive) navBranchReceive.addEventListener('click', (e) => { e.preventDefault(); switchView('branch-receive'); });
+    if (navAccounting) navAccounting.style.display = 'none'; // Will be managed by applyPermissions
+    if (navAccounting) navAccounting.addEventListener('click', (e) => { e.preventDefault(); switchView('accounting'); });
     if (navAuditLogs) navAuditLogs.addEventListener('click', (e) => { e.preventDefault(); switchView('audit-logs'); });
 
     // Mobile Navigation Click Listeners
@@ -3507,8 +3516,6 @@ document.addEventListener('DOMContentLoaded', () => {
             if (cartEmptyState) cartEmptyState.classList.remove('hidden');
             if (cartCountBadge) cartCountBadge.textContent = '0 รายการ';
             if (cartSubtotal) cartSubtotal.textContent = '฿0.00';
-            if (cartDiscount) cartDiscount.textContent = '฿0.00';
-            if (cartTotal) cartTotal.textContent = '฿0.00';
             return;
         }
 
@@ -3597,7 +3604,86 @@ document.addEventListener('DOMContentLoaded', () => {
         if (cartSubtotal) cartSubtotal.textContent = `฿${subtotal.toLocaleString()}`;
     };
 
+    const validateFinancePrices = () => {
+        const isFinancing = (paymentMethod && paymentMethod.value === 'จัดไฟแนนซ์');
+        let hasBelowCost = false;
+
+        cart.forEach((item, index) => {
+            const badgeContainer = confirmPriceList ? confirmPriceList.querySelector(`.modal-item-price-badge[data-index="${index}"]`) : null;
+            const input = confirmPriceList ? confirmPriceList.querySelector(`.modal-item-price-input[data-index="${index}"]`) : null;
+
+            if (input) {
+                if (isFinancing) {
+                    input.removeAttribute('disabled');
+                    input.classList.remove('opacity-60', 'bg-slate-800/50');
+                } else {
+                    input.setAttribute('disabled', 'true');
+                    input.classList.add('opacity-60', 'bg-slate-800/50');
+                }
+            }
+
+            if (!badgeContainer) return;
+
+            if (!isFinancing) {
+                badgeContainer.innerHTML = '';
+                // Revert price to default selling price for non-financing payment methods
+                if (item.default_selling_price !== undefined && item.price !== item.default_selling_price) {
+                    item.price = item.default_selling_price;
+                    item.subtotal = item.price * item.quantity;
+                    if (input) input.value = item.price;
+                    const subtotalLabel = confirmPriceList ? confirmPriceList.querySelector(`.modal-item-subtotal[data-index="${index}"]`) : null;
+                    if (subtotalLabel) {
+                        subtotalLabel.textContent = `฿${item.subtotal.toLocaleString()}`;
+                    }
+                }
+                return;
+            }
+
+            const currentPrice = item.price;
+            const costPrice = item.cost_price || 0;
+            const defaultSellingPrice = item.default_selling_price || 0;
+
+            if (currentPrice < costPrice) {
+                hasBelowCost = true;
+                badgeContainer.innerHTML = `
+                    <div class="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-red-500/20 text-red-400 border border-red-500/30 flex items-center gap-1 mt-2.5 animate-pulse">
+                        <i class="fa-solid fa-circle-exclamation"></i>
+                        <span>ผิดพลาด: ราคาขายจัดไฟแนนซ์ต่ำกว่าราคาทุนของสินค้า</span>
+                    </div>
+                `;
+            } else if (currentPrice < defaultSellingPrice) {
+                badgeContainer.innerHTML = `
+                    <div class="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center gap-1 mt-2.5">
+                        <i class="fa-solid fa-triangle-exclamation"></i>
+                        <span>ราคาต่ำกว่าราคาขายสดหน้าร้าน</span>
+                    </div>
+                `;
+            } else {
+                badgeContainer.innerHTML = '';
+            }
+        });
+
+        if (isFinancing) {
+            if (hasBelowCost) {
+                if (btnConfirmCheckout) {
+                    btnConfirmCheckout.disabled = true;
+                    btnConfirmCheckout.classList.add('opacity-40', 'cursor-not-allowed', 'grayscale');
+                    btnConfirmCheckout.classList.remove('hover:shadow-emerald-500/35');
+                    btnConfirmCheckout.title = 'ผิดพลาด: ราคาขายจัดไฟแนนซ์ต่ำกว่าราคาทุนของสินค้า';
+                }
+            } else {
+                if (btnConfirmCheckout) {
+                    btnConfirmCheckout.disabled = false;
+                    btnConfirmCheckout.classList.remove('opacity-40', 'cursor-not-allowed', 'grayscale');
+                    btnConfirmCheckout.classList.add('hover:shadow-emerald-500/35');
+                    btnConfirmCheckout.title = '';
+                }
+            }
+        }
+    };
+
     const updateModalTotals = () => {
+        validateFinancePrices();
         const subtotal = cart.reduce((sum, item) => sum + item.subtotal, 0);
         const discount = posDiscount ? (parseFloat(posDiscount.value) || 0) : 0;
 
@@ -3702,13 +3788,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } else if (selectedPayment === 'จัดไฟแนนซ์') {
             // กรณีจัดไฟแนนซ์ ซ่อนส่วนเงินทอน เนื่องจากยอดเงินคือเงินดาวน์
             if (paymentVerifyPanel) paymentVerifyPanel.classList.add('hidden');
-
-            if (btnConfirmCheckout) {
-                btnConfirmCheckout.disabled = false;
-                btnConfirmCheckout.classList.remove('opacity-40', 'cursor-not-allowed', 'grayscale');
-                btnConfirmCheckout.classList.add('hover:shadow-emerald-500/35');
-                btnConfirmCheckout.title = '';
-            }
+            // สถานะปุ่มชำระเงินถูกจัดการใน validateFinancePrices() ด้านบนแล้ว
         } else {
             // ยังไม่ได้เลือกวิธีชำระเงิน
             if (paymentVerifyPanel) paymentVerifyPanel.classList.add('hidden');
@@ -3974,11 +4054,52 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    const openCheckoutModal = () => {
+    const fetchCartLatestPrices = async () => {
+        if (cart.length === 0) return;
+        const productIds = cart.map(item => item.product_id);
+        try {
+            const response = await authFetch(`${API_BASE_URL}/products/validate-prices`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ product_ids: productIds })
+            });
+            const json = await response.json();
+            if (json.success) {
+                cart.forEach(item => {
+                    if (json.data[item.product_id]) {
+                        item.cost_price = json.data[item.product_id].cost_price;
+                        item.default_selling_price = json.data[item.product_id].selling_price;
+                    }
+                });
+            }
+        } catch (error) {
+            console.error('เกิดข้อผิดพลาดในการดึงราคาล่าสุดจากฐานข้อมูล:', error);
+        }
+    };
+
+    const openCheckoutModal = async () => {
         if (!confirmPriceModal) return;
         if (cart.length === 0) {
             showToast('กรุณาเพิ่มสินค้าลงในตะกร้าก่อนทำรายการ', 'error');
             return;
+        }
+
+        const btnCheckout = document.getElementById('btn-checkout');
+        const originalBtnText = btnCheckout ? btnCheckout.innerHTML : '';
+        if (btnCheckout) {
+            btnCheckout.disabled = true;
+            btnCheckout.innerHTML = `<i class="fa-solid fa-circle-notch fa-spin mr-2"></i>กำลังโหลดราคาสินค้า...`;
+        }
+
+        try {
+            await fetchCartLatestPrices();
+        } catch (err) {
+            console.error(err);
+        } finally {
+            if (btnCheckout) {
+                btnCheckout.disabled = false;
+                btnCheckout.innerHTML = originalBtnText;
+            }
         }
 
         // Reset ALL inputs in modal
@@ -4043,6 +4164,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                 </div>
                             ` : ''}
                         </div>
+                        <div class="modal-item-price-badge" data-index="${index}"></div>
                     </div>
                     <div class="flex items-center gap-3 text-right">
                         <div class="flex flex-col items-end">
@@ -4050,7 +4172,8 @@ document.addEventListener('DOMContentLoaded', () => {
                             <div class="relative">
                                 <span class="absolute left-2 top-1/2 -translate-y-1/2 text-slate-500 text-xs font-mono">฿</span>
                                 <input type="number" value="${item.price}" min="0" step="1" data-index="${index}"
-                                    class="modal-item-price-input w-28 pl-5 pr-2 py-1 rounded bg-slate-900 border border-slate-700 text-white text-right font-mono text-sm focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all">
+                                    class="modal-item-price-input w-28 pl-5 pr-2 py-1 rounded bg-slate-900 border border-slate-700 text-white text-right font-mono text-sm focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all"
+                                    ${(paymentMethod && paymentMethod.value === 'จัดไฟแนนซ์') ? '' : 'disabled'}>
                             </div>
                         </div>
                         <div class="w-24 flex flex-col items-end pt-3.5 font-mono">
@@ -5053,7 +5176,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const closeRoleModalBtn = document.getElementById('close-role-modal-btn');
     const cancelRoleModalBtn = document.getElementById('cancel-role-modal-btn');
 
-    const permKeys = ['view_dashboard', 'manage_stock', 'delete_stock', 'do_pos', 'manage_personnel', 'manage_branches', 'manage_settings', 'manage_roles', 'view_audit_logs', 'filter_stock_branch', 'cancel_sale', 'report_arrival', 'approve_import', 'manage_po', 'receive_po', 'manage_transfers'];
+    const permKeys = ['view_dashboard', 'manage_stock', 'delete_stock', 'do_pos', 'manage_personnel', 'manage_branches', 'manage_settings', 'manage_roles', 'view_audit_logs', 'filter_stock_branch', 'cancel_sale', 'report_arrival', 'approve_import', 'manage_po', 'receive_po', 'manage_transfers', 'manage_finance'];
     const permLabels = {
         view_dashboard: 'ดูแดชบอร์ด',
         manage_stock: 'จัดการสต็อก',
@@ -5070,7 +5193,8 @@ document.addEventListener('DOMContentLoaded', () => {
         approve_import: 'อนุมัตินำเข้าสต็อก',
         manage_po: 'จัดการระบบสั่งซื้อ (PO)',
         receive_po: 'ตรวจรับสินค้าเข้าสาขา',
-        manage_transfers: 'โอนย้ายสินค้า'
+        manage_transfers: 'โอนย้ายสินค้า',
+        manage_finance: 'จัดการระบบบัญชีและการเงิน'
     };
     const permIcons = {
         view_dashboard: 'fa-chart-pie text-blue-400',
@@ -5088,7 +5212,8 @@ document.addEventListener('DOMContentLoaded', () => {
         approve_import: 'fa-clipboard-check text-violet-400',
         manage_po: 'fa-file-invoice-dollar text-pink-400',
         receive_po: 'fa-boxes-packing text-indigo-400',
-        manage_transfers: 'fa-right-left text-cyan-400'
+        manage_transfers: 'fa-right-left text-cyan-400',
+        manage_finance: 'fa-chart-line text-amber-400'
     };
 
     const openRoleModal = () => {
@@ -8111,6 +8236,379 @@ document.addEventListener('DOMContentLoaded', () => {
     if (document.getElementById('btn-refresh-po-receive')) {
         document.getElementById('btn-refresh-po-receive').addEventListener('click', () => loadPOs());
     }
+
+    // ==========================================
+    // Accounting & Finance Module Client Logic
+    // ==========================================
+    const initAccounting = async () => {
+        // Set default dates if empty
+        const startInput = document.getElementById('accounting-start-date');
+        const endInput = document.getElementById('accounting-end-date');
+        
+        const formatDateInput = (d) => {
+            const year = d.getFullYear();
+            const month = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        };
+
+        if (startInput && !startInput.value) {
+            const thirtyDaysAgo = new Date();
+            thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+            startInput.value = formatDateInput(thirtyDaysAgo);
+        }
+        if (endInput && !endInput.value) {
+            endInput.value = formatDateInput(new Date());
+        }
+
+        const tabAp = document.getElementById('tab-accounting-ap');
+        const tabPl = document.getElementById('tab-accounting-pl');
+        const tabAr = document.getElementById('tab-accounting-ar');
+        const secAp = document.getElementById('section-accounting-ap');
+        const secPl = document.getElementById('section-accounting-pl');
+        const secAr = document.getElementById('section-accounting-ar');
+
+        if (tabAp && tabPl && tabAr && secAp && secPl && secAr) {
+            tabAp.onclick = () => {
+                tabAp.className = "px-6 py-3.5 border-b-2 border-amber-500 text-amber-400 text-sm font-bold flex items-center gap-2 transition-all duration-200 focus:outline-none";
+                tabPl.className = "px-6 py-3.5 border-b-2 border-transparent text-slate-400 hover:text-slate-200 text-sm font-semibold flex items-center gap-2 transition-all duration-200 focus:outline-none";
+                tabAr.className = "px-6 py-3.5 border-b-2 border-transparent text-slate-400 hover:text-slate-200 text-sm font-semibold flex items-center gap-2 transition-all duration-200 focus:outline-none";
+                secAp.classList.remove('hidden');
+                secPl.classList.add('hidden');
+                secAr.classList.add('hidden');
+            };
+            tabPl.onclick = () => {
+                tabPl.className = "px-6 py-3.5 border-b-2 border-amber-500 text-amber-400 text-sm font-bold flex items-center gap-2 transition-all duration-200 focus:outline-none";
+                tabAp.className = "px-6 py-3.5 border-b-2 border-transparent text-slate-400 hover:text-slate-200 text-sm font-semibold flex items-center gap-2 transition-all duration-200 focus:outline-none";
+                tabAr.className = "px-6 py-3.5 border-b-2 border-transparent text-slate-400 hover:text-slate-200 text-sm font-semibold flex items-center gap-2 transition-all duration-200 focus:outline-none";
+                secPl.classList.remove('hidden');
+                secAp.classList.add('hidden');
+                secAr.classList.add('hidden');
+            };
+            tabAr.onclick = () => {
+                tabAr.className = "px-6 py-3.5 border-b-2 border-amber-500 text-amber-400 text-sm font-bold flex items-center gap-2 transition-all duration-200 focus:outline-none";
+                tabAp.className = "px-6 py-3.5 border-b-2 border-transparent text-slate-400 hover:text-slate-200 text-sm font-semibold flex items-center gap-2 transition-all duration-200 focus:outline-none";
+                tabPl.className = "px-6 py-3.5 border-b-2 border-transparent text-slate-400 hover:text-slate-200 text-sm font-semibold flex items-center gap-2 transition-all duration-200 focus:outline-none";
+                secAr.classList.remove('hidden');
+                secAp.classList.add('hidden');
+                secPl.classList.add('hidden');
+            };
+        }
+
+        await loadAccountingData();
+    };
+
+    const loadAccountingData = async () => {
+        const startInput = document.getElementById('accounting-start-date');
+        const endInput = document.getElementById('accounting-end-date');
+        const start = startInput ? startInput.value : '';
+        const end = endInput ? endInput.value : '';
+
+        try {
+            // Fetch P&L data
+            const res = await authFetch(`${API_BASE_URL}/accounting/profit-loss?startDate=${start}&endDate=${end}`);
+            const json = await res.json();
+            
+            if (json.success) {
+                const data = json.data;
+                const formatThaiBaht = (num) => '฿' + Number(num || 0).toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+                // Render KPI values
+                document.getElementById('kpi-revenue').textContent = formatThaiBaht(data.totalRevenue);
+                document.getElementById('kpi-expense').textContent = formatThaiBaht(data.totalExpense);
+                
+                const profitEl = document.getElementById('kpi-profit');
+                profitEl.textContent = formatThaiBaht(data.netProfit);
+                if (data.netProfit >= 0) {
+                    profitEl.className = "text-xl md:text-2xl font-black text-emerald-400 mt-2 font-mono";
+                } else {
+                    profitEl.className = "text-xl md:text-2xl font-black text-rose-500 mt-2 font-mono";
+                }
+
+                document.getElementById('kpi-vat').textContent = formatThaiBaht(data.taxPayable);
+
+                // Render Tab 2: P&L Ledger
+                const plTbody = document.getElementById('table-body-accounting-pl');
+                if (plTbody) {
+                    plTbody.innerHTML = '';
+                    if (data.ledger.length === 0) {
+                        plTbody.innerHTML = '<tr><td colspan="6" class="text-center py-8 text-slate-500 text-sm"><i class="fa-solid fa-inbox text-slate-650 text-xl block mb-2"></i>ไม่มีรายการเดินบัญชีในช่วงเวลานี้</td></tr>';
+                    } else {
+                        data.ledger.forEach(item => {
+                            const tr = document.createElement('tr');
+                            tr.className = 'border-b border-slate-800/40 hover:bg-slate-700/5 transition-all duration-150';
+                            
+                            const badgeType = item.type === 'รายรับ'
+                                ? `<span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"><i class="fa-solid fa-arrow-down text-[10px] mr-1"></i>รายรับ</span>`
+                                : `<span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-rose-500/10 text-rose-400 border border-rose-500/20"><i class="fa-solid fa-arrow-up text-[10px] mr-1"></i>รายจ่าย</span>`;
+
+                            const amountVal = item.type === 'รายรับ'
+                                ? `<span class="text-emerald-400 font-bold font-mono">+฿${item.amount.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>`
+                                : `<span class="text-rose-400 font-bold font-mono">-฿${item.amount.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>`;
+
+                            tr.innerHTML = `
+                                <td class="px-6 py-4 font-mono font-bold text-slate-300 text-sm">${item.transaction_id}</td>
+                                <td class="px-6 py-4 text-sm text-slate-400">${new Date(item.created_at).toLocaleString('th-TH')}</td>
+                                <td class="px-6 py-4">${badgeType}</td>
+                                <td class="px-6 py-4 text-sm text-slate-355">${item.category}</td>
+                                <td class="px-6 py-4 text-right">${amountVal}</td>
+                                <td class="px-6 py-4 text-sm text-slate-400">${item.recorded_by || 'Admin'}</td>
+                            `;
+                            plTbody.appendChild(tr);
+                        });
+                    }
+                }
+            } else {
+                showToast(json.message || 'ดึงข้อมูลบัญชีผิดพลาด', 'error');
+            }
+
+            // Fetch POs for AP Queue
+            const poRes = await authFetch(`${API_BASE_URL}/purchase-orders`);
+            const poJson = await poRes.json();
+            if (poJson.success) {
+                const apPOs = poJson.data.filter(po => po.status === 'นำเข้าสำเร็จ');
+                const apTbody = document.getElementById('table-body-accounting-ap');
+                
+                if (apTbody) {
+                    apTbody.innerHTML = '';
+                    if (apPOs.length === 0) {
+                        apTbody.innerHTML = '<tr><td colspan="6" class="text-center py-8 text-slate-500 text-sm"><i class="fa-solid fa-check-double text-slate-650 text-xl block mb-2"></i>ไม่มีหนี้สินใบสั่งซื้อค้างจ่าย</td></tr>';
+                    } else {
+                        apPOs.forEach(po => {
+                            const totalCost = po.items.reduce((sum, item) => sum + (item.cost_price * (item.received_qty || 0)), 0);
+                            const tr = document.createElement('tr');
+                            tr.className = 'border-b border-slate-800/40 hover:bg-slate-700/5 transition-all duration-150';
+
+                            const statusBadge = po.payment_status === 'ชำระเงินแล้ว'
+                                ? `<span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-green-500/10 text-green-400 border border-green-500/20"><i class="fa-solid fa-circle-check text-[10px] mr-1"></i>ชำระเงินแล้ว</span>`
+                                : `<span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20"><i class="fa-solid fa-hourglass text-[10px] mr-1"></i>ยังไม่ได้ชำระ</span>`;
+
+                            const payAction = po.payment_status === 'ยังไม่ได้ชำระ'
+                                ? `<button class="btn-pay-po px-3 py-1.5 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 border border-amber-500/35 hover:border-amber-500/60 rounded-xl text-xs font-bold transition-all inline-flex items-center gap-1.5 shadow-sm active:scale-95" data-id="${po._id}" data-no="${po.po_number}" data-amount="${totalCost}">
+                                     <i class="fa-solid fa-money-bill-wave"></i> กดจ่ายเงิน
+                                   </button>`
+                                : `<span class="text-xs text-slate-500 italic">ดำเนินการจ่ายแล้ว</span>`;
+
+                            tr.innerHTML = `
+                                <td class="px-6 py-4 font-mono font-bold text-slate-300 text-sm">${po.po_number}</td>
+                                <td class="px-6 py-4 text-sm text-slate-400">${new Date(po.createdAt).toLocaleDateString('th-TH')}</td>
+                                <td class="px-6 py-4 text-sm text-slate-355">${po.supplier_name}</td>
+                                <td class="px-6 py-4 font-mono text-sm text-slate-300 font-bold">฿${totalCost.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+                                <td class="px-6 py-4 text-center">${statusBadge}</td>
+                                <td class="px-6 py-4 text-right">${payAction}</td>
+                            `;
+                            apTbody.appendChild(tr);
+
+                            // Bind pay click handler
+                            const payBtn = tr.querySelector('.btn-pay-po');
+                            if (payBtn) {
+                                payBtn.onclick = () => {
+                                    const poId = payBtn.dataset.id;
+                                    const poNo = payBtn.dataset.no;
+                                    const poAmount = Number(payBtn.dataset.amount);
+
+                                    showConfirm(
+                                        `ยืนยันการจ่ายเงิน`,
+                                        `คุณต้องการยืนยันการชำระเงินสำหรับใบสั่งซื้อเลขที่ <strong class="font-mono text-white">${poNo}</strong><br>เป็นจำนวนเงิน <strong class="text-amber-400 font-mono">฿${poAmount.toLocaleString(undefined, {minimumFractionDigits: 2})}</strong> หรือไม่?`,
+                                        async () => {
+                                            try {
+                                                const payRes = await authFetch(`${API_BASE_URL}/accounting/po-pay/${poId}`, {
+                                                    method: 'PUT'
+                                                });
+                                                const payJson = await payRes.json();
+                                                if (payJson.success) {
+                                                    showToast('บันทึกการชำระเงินและจ่ายบัญชีเจ้าหนี้สำเร็จ!', 'success');
+                                                    loadAccountingData();
+                                                } else {
+                                                    showToast(payJson.message || 'ไม่สามารถทำรายการได้', 'error');
+                                                }
+                                            } catch (err) {
+                                                console.error(err);
+                                                showToast('เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์', 'error');
+                                            }
+                                        },
+                                        'ยืนยันจ่ายเงิน',
+                                        'warning'
+                                    );
+                                };
+                            }
+                        });
+                    }
+                }
+            }
+
+            // Fetch Receivables for AR Queue
+            const arRes = await authFetch(`${API_BASE_URL}/accounting/receivables`);
+            const arJson = await arRes.json();
+            if (arJson.success) {
+                const receivables = arJson.data;
+                const arTbody = document.getElementById('table-body-accounting-ar');
+                if (arTbody) {
+                    arTbody.innerHTML = '';
+                    if (receivables.length === 0) {
+                        arTbody.innerHTML = '<tr><td colspan="8" class="text-center py-8 text-slate-500 text-sm"><i class="fa-solid fa-check-double text-slate-650 text-xl block mb-2"></i>ไม่มีรายการค้างโอนจากไฟแนนซ์</td></tr>';
+                    } else {
+                        receivables.forEach(rec => {
+                            const tr = document.createElement('tr');
+                            tr.className = 'border-b border-slate-800/40 hover:bg-slate-700/5 transition-all duration-150';
+
+                            const statusColors = {
+                                'รออนุมัติ': 'bg-amber-500/10 text-amber-400 border border-amber-500/20',
+                                'ค้างโอน': 'bg-blue-500/10 text-blue-400 border border-blue-500/20',
+                                'ชำระแล้ว': 'bg-green-500/10 text-green-400 border border-green-500/20',
+                                'ยกเลิก': 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+                            };
+                            const currentStatusColor = statusColors[rec.status] || 'bg-slate-500/10 text-slate-400 border border-slate-500/20';
+
+                            const statusBadge = `<span class="px-2.5 py-1 rounded-full text-xs font-semibold ${currentStatusColor}">${rec.status}</span>`;
+                            const downAndFees = rec.down_payment + rec.icloud_fee + rec.contract_fee;
+
+                            let payAction = '';
+                            if (rec.status !== 'ชำระแล้ว' && rec.status !== 'ยกเลิก') {
+                                payAction = `
+                                    <button class="btn-settle-ar px-3 py-1.5 bg-green-500/10 text-green-400 hover:bg-green-500/20 border border-green-500/35 hover:border-green-500/60 rounded-xl text-xs font-bold transition-all inline-flex items-center gap-1.5 shadow-sm active:scale-95" data-id="${rec._id}" data-no="${rec.transaction_id ? rec.transaction_id.receipt_number : ''}" data-amount="${rec.financed_amount}">
+                                        <i class="fa-solid fa-circle-check"></i> บันทึกยอดรับเงิน
+                                    </button>
+                                `;
+                            } else if (rec.status === 'ชำระแล้ว') {
+                                payAction = `<span class="text-xs text-slate-500 italic">ผ่านรายการแล้วเมื่อ ${new Date(rec.settled_at).toLocaleDateString('th-TH')}</span>`;
+                            } else {
+                                payAction = `<span class="text-xs text-rose-500 italic">ยกเลิกแล้ว</span>`;
+                            }
+
+                            const receiptNum = rec.transaction_id ? rec.transaction_id.receipt_number : '-';
+                            const createdDate = rec.transaction_id ? new Date(rec.transaction_id.created_at || rec.transaction_id.createdAt).toLocaleDateString('th-TH') : new Date(rec.createdAt).toLocaleDateString('th-TH');
+
+                            tr.innerHTML = `
+                                <td class="px-6 py-4 font-mono font-bold text-slate-300 text-sm">${receiptNum}</td>
+                                <td class="px-6 py-4 text-sm text-slate-400">${createdDate}</td>
+                                <td class="px-6 py-4 text-sm text-slate-355">${rec.finance_company}</td>
+                                <td class="px-6 py-4 font-mono text-sm text-slate-400">฿${rec.total_finance_price.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+                                <td class="px-6 py-4 font-mono text-sm text-slate-400">฿${downAndFees.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+                                <td class="px-6 py-4 font-mono text-sm text-slate-300 font-bold">฿${rec.financed_amount.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+                                <td class="px-6 py-4 text-center">${statusBadge}</td>
+                                <td class="px-6 py-4 text-right">${payAction}</td>
+                            `;
+                            arTbody.appendChild(tr);
+
+                            const settleBtn = tr.querySelector('.btn-settle-ar');
+                            if (settleBtn) {
+                                settleBtn.onclick = () => {
+                                    const arId = settleBtn.dataset.id;
+                                    const recNo = settleBtn.dataset.no;
+                                    const amount = Number(settleBtn.dataset.amount);
+
+                                    showConfirm(
+                                        `ยืนยันการรับเงินโอน`,
+                                        `คุณต้องการยืนยันการได้รับยอดเงินโอนจากบริษัทไฟแนนซ์ สำหรับใบเสร็จเลขที่ <strong class="font-mono text-white">${recNo}</strong><br>เป็นจำนวนเงินค้างโอน <strong class="text-green-400 font-mono">฿${amount.toLocaleString(undefined, {minimumFractionDigits: 2})}</strong> หรือไม่?`,
+                                        async () => {
+                                            try {
+                                                const settleRes = await authFetch(`${API_BASE_URL}/accounting/receivables/${arId}/settle`, {
+                                                    method: 'PUT',
+                                                    headers: { 'Content-Type': 'application/json' },
+                                                    body: JSON.stringify({ status: 'ชำระแล้ว' })
+                                                });
+                                                const settleJson = await settleRes.json();
+                                                if (settleJson.success) {
+                                                    showToast('บันทึกการชำระเงินลูกหนี้จัดไฟแนนซ์สำเร็จ!', 'success');
+                                                    loadAccountingData();
+                                                } else {
+                                                    showToast(settleJson.message || 'ไม่สามารถทำรายการได้', 'error');
+                                                }
+                                            } catch (err) {
+                                                console.error(err);
+                                                showToast('เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์', 'error');
+                                            }
+                                        },
+                                        'ยืนยันรับยอด',
+                                        'success'
+                                    );
+                                };
+                            }
+                        });
+                    }
+                }
+            }
+        } catch (e) {
+            console.error('Error loading accounting data:', e);
+            showToast('เกิดข้อผิดพลาดขณะโหลดข้อมูลบัญชี', 'error');
+        }
+    };
+
+    // Bind filters & refresh click handlers
+    if (document.getElementById('btn-refresh-accounting')) {
+        document.getElementById('btn-refresh-accounting').onclick = () => loadAccountingData();
+    }
+    const startInput = document.getElementById('accounting-start-date');
+    const endInput = document.getElementById('accounting-end-date');
+    if (startInput) startInput.onchange = () => loadAccountingData();
+    if (endInput) endInput.onchange = () => loadAccountingData();
+
+    // Expense Modal setup
+    const openExpenseModal = () => {
+        const modal = document.getElementById('modal-accounting-expense');
+        const form = document.getElementById('form-accounting-expense');
+        if (form) form.reset();
+        
+        if (modal) {
+            modal.classList.remove('hidden');
+            void modal.offsetWidth; // force reflow
+            modal.classList.remove('opacity-0', 'pointer-events-none');
+        }
+    };
+
+    const closeExpenseModal = () => {
+        const modal = document.getElementById('modal-accounting-expense');
+        if (modal) {
+            modal.classList.add('opacity-0', 'pointer-events-none');
+            setTimeout(() => modal.classList.add('hidden'), 300);
+        }
+    };
+
+    const btnOpenExpense = document.getElementById('btn-open-expense-modal');
+    if (btnOpenExpense) btnOpenExpense.onclick = () => openExpenseModal();
+
+    const btnCloseExpense = document.getElementById('btn-close-accounting-expense');
+    if (btnCloseExpense) btnCloseExpense.onclick = () => closeExpenseModal();
+
+    const formExpense = document.getElementById('form-accounting-expense');
+    if (formExpense) {
+        formExpense.onsubmit = async (e) => {
+            e.preventDefault();
+            const category = document.getElementById('expense-category').value;
+            const amount = document.getElementById('expense-amount').value;
+            const btnSubmit = document.getElementById('btn-submit-accounting-expense');
+
+            if (!category || !amount || Number(amount) <= 0) {
+                showToast('กรุณากรอกข้อมูลให้ครบถ้วนถูกต้อง', 'warning');
+                return;
+            }
+
+            try {
+                if (btnSubmit) btnSubmit.disabled = true;
+                const response = await authFetch(`${API_BASE_URL}/accounting/expenses`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ category, amount: Number(amount) })
+                });
+                const json = await response.json();
+                
+                if (json.success) {
+                    showToast('บันทึกค่าใช้จ่ายเสร็จสมบูรณ์!', 'success');
+                    closeExpenseModal();
+                    loadAccountingData();
+                } else {
+                    showToast(json.message || 'บันทึกค่าใช้จ่ายล้มเหลว', 'error');
+                }
+            } catch (err) {
+                console.error(err);
+                showToast('เกิดข้อผิดพลาดในการเชื่อมต่อ', 'error');
+            } finally {
+                if (btnSubmit) btnSubmit.disabled = false;
+            }
+        };
+    }
+
 
     const openViewPOModal = (po) => {
         const modal = document.getElementById('modal-po-view');

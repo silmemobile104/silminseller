@@ -25,7 +25,9 @@ const {
     ImportNotification,
     Member,
     PurchaseOrder,
-    AuditLog
+    AuditLog,
+    CashMovement,
+    FinanceReceivable
 } = require('../models');
 
 const { uploadBufferToDriveInFolder } = require('../utils/googleDrive');
@@ -552,6 +554,34 @@ router.get('/products/check-existence', async (req, res) => {
     } catch (error) {
         console.error('API Error GET /api/products/check-existence:', error);
         res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการตรวจสอบรหัสสินค้า' });
+    }
+});
+
+// POST /api/products/validate-prices
+// หน้าที่: ตรวจสอบราคาต้นทุนและราคาขายแนะนำของสินค้าในตะกร้าจากฐานข้อมูลเพื่อความปลอดภัย
+router.post('/products/validate-prices', async (req, res) => {
+    try {
+        const { product_ids } = req.body;
+        if (!product_ids || !Array.isArray(product_ids)) {
+            return res.status(400).json({ success: false, message: 'กรุณาระบุรายการรหัสสินค้าให้ถูกต้อง' });
+        }
+
+        const products = await Product.find({ _id: { $in: product_ids } }, 'cost_price selling_price');
+        const priceMap = {};
+        products.forEach(p => {
+            priceMap[p._id.toString()] = {
+                cost_price: p.cost_price,
+                selling_price: p.selling_price
+            };
+        });
+
+        res.status(200).json({
+            success: true,
+            data: priceMap
+        });
+    } catch (error) {
+        console.error('API Error POST /api/products/validate-prices:', error);
+        res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการดึงราคาสินค้าจากฐานข้อมูล' });
     }
 });
 
@@ -1971,6 +2001,47 @@ router.post('/transactions', async (req, res) => {
         });
 
         const savedTransaction = await newTransaction.save();
+
+        // ===================================================================
+        // Split-Accounting for Financing (การแยกบัญชีจัดไฟแนนซ์)
+        // ===================================================================
+        if (payment_method === 'จัดไฟแนนซ์' || payment_type === 'จัดไฟแนนซ์') {
+            const immediateCash = (Number(down_payment) || 0) + (Number(icloud_fee) || 0) + (Number(contract_fee) || 0);
+
+            // 1. Immediately create a CashMovement record for immediate cash collected
+            const dateStr = now.getFullYear() + 
+                            String(now.getMonth() + 1).padStart(2, '0') + 
+                            String(now.getDate()).padStart(2, '0');
+            const todayStart = new Date(now); todayStart.setHours(0,0,0,0);
+            const todayEnd = new Date(now); todayEnd.setHours(23,59,59,999);
+            const count = await CashMovement.countDocuments({ created_at: { $gte: todayStart, $lte: todayEnd } });
+            const txn_id = `TXN-${dateStr}-${String(count + 1).padStart(4, '0')}`;
+
+            const cashMove = new CashMovement({
+                transaction_id: txn_id,
+                type: 'รายรับ',
+                category: 'ขายสินค้า',
+                amount: immediateCash,
+                reference_id: savedTransaction._id,
+                recorded_by: req.user.employee_id,
+                created_at: now
+            });
+            await cashMove.save();
+
+            // 2. Create the FinanceReceivable queue tracking entry with remaining balance as financed_amount
+            const financeReceivable = new FinanceReceivable({
+                transaction_id: savedTransaction._id,
+                finance_company: finance_company || '',
+                total_finance_price: Number(total_amount) || 0,
+                down_payment: Number(down_payment) || 0,
+                icloud_fee: Number(icloud_fee) || 0,
+                contract_fee: Number(contract_fee) || 0,
+                financed_amount: (Number(total_amount) || 0) - (Number(down_payment) || 0) - (Number(icloud_fee) || 0) - (Number(contract_fee) || 0),
+                status: 'รออนุมัติ', // stays in รออนุมัติ / ค้างโอน
+                recorded_by: req.user.employee_id
+            });
+            await financeReceivable.save();
+        }
 
         // Log successful transaction
         await logActivity(req, 'CREATE', 'POS', `ทำรายการขายสำเร็จ เลขที่ใบเสร็จ ${receipt_number} ยอดรวม ฿${total_amount}`, receipt_number, savedTransaction._id);
@@ -3398,6 +3469,393 @@ router.post('/purchase-orders/:id/receive', async (req, res) => {
     } catch (error) {
         console.error('API Error POST /api/purchase-orders/:id/receive:', error);
         res.status(error.status || 500).json({ success: false, message: error.message || 'เกิดข้อผิดพลาดในการตรวจรับสินค้า' });
+    }
+});
+
+// ==========================================
+// Accounting & Finance Module (ระบบบัญชีและการเงิน)
+// ==========================================
+
+// GET /api/accounting/profit-loss
+router.get('/accounting/profit-loss', async (req, res) => {
+    try {
+        if (!req.user.permissions.manage_finance) {
+            return res.status(403).json({ success: false, message: 'ไม่มีสิทธิ์เข้าถึงระบบบัญชีและการเงิน' });
+        }
+
+        let { startDate, endDate } = req.query;
+        let start = startDate ? new Date(startDate) : new Date(new Date().setDate(new Date().getDate() - 30));
+        let end = endDate ? new Date(endDate) : new Date();
+
+        start.setHours(0, 0, 0, 0);
+        end.setHours(23, 59, 59, 999);
+
+        // 1. Revenue from POS transactions
+        const posTxns = await Transaction.find({
+            created_at: { $gte: start, $lte: end },
+            status: { $ne: 'ยกเลิกแล้ว' }
+        }).populate('employee_id', 'name emp_id');
+
+        const txnIds = posTxns.map(t => t._id);
+        const receivables = await FinanceReceivable.find({ transaction_id: { $in: txnIds } });
+        const recMap = {};
+        receivables.forEach(r => {
+            recMap[r.transaction_id.toString()] = r;
+        });
+
+        let salesRevenue = 0;
+        let ledger = [];
+
+        posTxns.forEach(t => {
+            const rec = recMap[t._id.toString()];
+            if (t.payment_type === 'จัดไฟแนนซ์' || t.payment_method === 'จัดไฟแนนซ์') {
+                const immediateCash = (t.down_payment || 0) + (t.icloud_fee || 0) + (t.contract_fee || 0);
+                const isSettledInPeriod = rec && rec.status === 'ชำระแล้ว' && rec.settled_at && rec.settled_at <= end;
+
+                if (isSettledInPeriod) {
+                    salesRevenue += (t.total_amount || 0);
+                    ledger.push({
+                        _id: t._id,
+                        transaction_id: t.receipt_number,
+                        created_at: t.created_at || t.createdAt,
+                        type: 'รายรับ',
+                        category: 'ขายสินค้า (จัดไฟแนนซ์ - ชำระเงินครบ)',
+                        amount: t.total_amount,
+                        recorded_by: t.employee_id ? t.employee_id.name : 'พนักงานขาย'
+                    });
+                } else {
+                    salesRevenue += immediateCash;
+                    ledger.push({
+                        _id: t._id,
+                        transaction_id: t.receipt_number,
+                        created_at: t.created_at || t.createdAt,
+                        type: 'รายรับ',
+                        category: 'ขายสินค้า (จัดไฟแนนซ์ - รับเงินดาวน์และค่าธรรมเนียม)',
+                        amount: immediateCash,
+                        recorded_by: t.employee_id ? t.employee_id.name : 'พนักงานขาย'
+                    });
+                }
+            } else {
+                salesRevenue += (t.total_amount || 0);
+                ledger.push({
+                    _id: t._id,
+                    transaction_id: t.receipt_number,
+                    created_at: t.created_at || t.createdAt,
+                    type: 'รายรับ',
+                    category: 'ขายสินค้า',
+                    amount: t.total_amount,
+                    recorded_by: t.employee_id ? t.employee_id.name : 'พนักงานขาย'
+                });
+            }
+        });
+
+        // 1.2 Revenue from Finance receivables settled in this period (but sold in a previous period)
+        const settledReceivablesOutsidePeriod = await FinanceReceivable.find({
+            status: 'ชำระแล้ว',
+            settled_at: { $gte: start, $lte: end }
+        }).populate({
+            path: 'transaction_id',
+            match: { created_at: { $lt: start } }
+        }).populate('recorded_by', 'name emp_id');
+
+        settledReceivablesOutsidePeriod.forEach(r => {
+            if (r.transaction_id) {
+                salesRevenue += (r.financed_amount || 0);
+                ledger.push({
+                    _id: r._id,
+                    transaction_id: r.transaction_id.receipt_number,
+                    created_at: r.settled_at,
+                    type: 'รายรับ',
+                    category: 'ขายสินค้า (รับชำระยอดค้างโอนไฟแนนซ์)',
+                    amount: r.financed_amount,
+                    recorded_by: r.recorded_by ? r.recorded_by.name : 'ผู้ผ่านรายการ'
+                });
+            }
+        });
+
+        // 2. Other revenues from CashMovement
+        const otherRevenuesMovements = await CashMovement.find({
+            created_at: { $gte: start, $lte: end },
+            type: 'รายรับ',
+            category: { $ne: 'ขายสินค้า' }
+        }).populate('recorded_by', 'name emp_id');
+
+        const otherRevenue = otherRevenuesMovements.reduce((sum, c) => sum + (c.amount || 0), 0);
+
+        // 3. Purchase Cost from finalized POs
+        const finalizedPOs = await PurchaseOrder.find({
+            updatedAt: { $gte: start, $lte: end },
+            status: 'นำเข้าสำเร็จ'
+        });
+
+        const poCost = finalizedPOs.reduce((sum, po) => {
+            const poSum = po.items.reduce((itemSum, item) => itemSum + (item.cost_price * (item.received_qty || 0)), 0);
+            return sum + poSum;
+        }, 0);
+
+        // 4. Other expenses from CashMovement
+        const otherExpensesMovements = await CashMovement.find({
+            created_at: { $gte: start, $lte: end },
+            type: 'รายจ่าย',
+            category: { $ne: 'ซื้อสินค้า (PO)' }
+        }).populate('recorded_by', 'name emp_id');
+
+        const otherExpenses = otherExpensesMovements.reduce((sum, c) => sum + (c.amount || 0), 0);
+
+        // 5. Calculate VAT metrics
+        const salesVat = (salesRevenue * 7) / 107;
+        const purchaseVat = (poCost * 7) / 107;
+        const taxPayable = Math.max(0, salesVat - purchaseVat);
+
+        const totalRevenue = salesRevenue + otherRevenue;
+        const totalExpense = poCost + otherExpenses;
+        const netProfit = totalRevenue - totalExpense;
+
+        otherRevenuesMovements.forEach(c => {
+            ledger.push({
+                _id: c._id,
+                transaction_id: c.transaction_id,
+                created_at: c.created_at || c.createdAt,
+                type: c.type,
+                category: c.category,
+                amount: c.amount,
+                recorded_by: c.recorded_by ? c.recorded_by.name : 'ผู้บันทึก'
+            });
+        });
+
+        otherExpensesMovements.forEach(c => {
+            ledger.push({
+                _id: c._id,
+                transaction_id: c.transaction_id,
+                created_at: c.created_at || c.createdAt,
+                type: c.type,
+                category: c.category,
+                amount: c.amount,
+                recorded_by: c.recorded_by ? c.recorded_by.name : 'ผู้บันทึก'
+            });
+        });
+
+        // Also add paid PO cash movements if any (category = 'ซื้อสินค้า (PO)')
+        const poPaidMovements = await CashMovement.find({
+            created_at: { $gte: start, $lte: end },
+            category: 'ซื้อสินค้า (PO)'
+        }).populate('recorded_by', 'name emp_id');
+
+        poPaidMovements.forEach(c => {
+            ledger.push({
+                _id: c._id,
+                transaction_id: c.transaction_id,
+                created_at: c.created_at || c.createdAt,
+                type: c.type,
+                category: c.category,
+                amount: c.amount,
+                recorded_by: c.recorded_by ? c.recorded_by.name : 'ผู้บันทึก'
+            });
+        });
+
+        // Sort by date descending
+        ledger.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+        res.status(200).json({
+            success: true,
+            data: {
+                salesRevenue,
+                otherRevenue,
+                totalRevenue,
+                poCost,
+                otherExpenses,
+                totalExpense,
+                netProfit,
+                outputVat: salesVat,
+                inputVat: purchaseVat,
+                taxPayable,
+                ledger
+            }
+        });
+    } catch (error) {
+        console.error('API Error GET /api/accounting/profit-loss:', error);
+        res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการคำนวณงบกำไรขาดทุน' });
+    }
+});
+
+// POST /api/accounting/expenses
+router.post('/accounting/expenses', async (req, res) => {
+    try {
+        if (!req.user.permissions.manage_finance) {
+            return res.status(403).json({ success: false, message: 'ไม่มีสิทธิ์บันทึกค่าใช้จ่าย' });
+        }
+
+        const { category, amount } = req.body;
+        if (!category || !amount || Number(amount) <= 0) {
+            return res.status(400).json({ success: false, message: 'กรุณากรอกข้อมูลหมวดหมู่และจำนวนเงินให้ถูกต้อง' });
+        }
+
+        const validCategories = ['ค่าเช่า', 'ค่าไฟ/น้ำ', 'เงินเดือน', 'อื่นๆ'];
+        if (!validCategories.includes(category)) {
+            return res.status(400).json({ success: false, message: 'หมวดหมู่ค่าใช้จ่ายไม่ถูกต้อง' });
+        }
+
+        // Generate transaction_id: TXN-YYYYMMDD-XXXX
+        const now = new Date();
+        const dateStr = now.getFullYear() + 
+                        String(now.getMonth() + 1).padStart(2, '0') + 
+                        String(now.getDate()).padStart(2, '0');
+        
+        const todayStart = new Date(); todayStart.setHours(0,0,0,0);
+        const todayEnd = new Date(); todayEnd.setHours(23,59,59,999);
+        const count = await CashMovement.countDocuments({ created_at: { $gte: todayStart, $lte: todayEnd } });
+        const txn_id = `TXN-${dateStr}-${String(count + 1).padStart(4, '0')}`;
+
+        const newMovement = new CashMovement({
+            transaction_id: txn_id,
+            type: 'รายจ่าย',
+            category,
+            amount: Number(amount),
+            recorded_by: req.user.employee_id
+        });
+
+        const saved = await newMovement.save();
+
+        await logActivity(req, 'CREATE', 'ACCOUNTING', `บันทึกค่าใช้จ่ายทั่วไป หมวดหมู่ ${category} จำนวน ฿${amount}`, txn_id, saved._id);
+
+        res.status(201).json({
+            success: true,
+            message: 'บันทึกค่าใช้จ่ายสำเร็จ',
+            data: saved
+        });
+    } catch (error) {
+        console.error('API Error POST /api/accounting/expenses:', error);
+        res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการบันทึกค่าใช้จ่าย' });
+    }
+});
+
+// PUT /api/accounting/po-pay/:id
+router.put('/accounting/po-pay/:id', async (req, res) => {
+    try {
+        if (!req.user.permissions.manage_finance) {
+            return res.status(403).json({ success: false, message: 'ไม่มีสิทธิ์ในการชำระเงินใบสั่งซื้อ' });
+        }
+
+        const po = await PurchaseOrder.findById(req.params.id);
+        if (!po) {
+            return res.status(404).json({ success: false, message: 'ไม่พบใบสั่งซื้อสินค้า' });
+        }
+
+        if (po.payment_status === 'ชำระเงินแล้ว') {
+            return res.status(400).json({ success: false, message: 'ใบสั่งซื้อนี้ชำระเงินเรียบร้อยแล้ว' });
+        }
+
+        // อัปเดตสถานะเป็นชำระเงินแล้ว
+        po.payment_status = 'ชำระเงินแล้ว';
+        await po.save();
+
+        // คำนวณราคาทุนรวมของสินค้าในใบ PO
+        const totalCost = po.items.reduce((sum, item) => sum + (item.cost_price * (item.received_qty || 0)), 0);
+
+        // Generate transaction_id: TXN-YYYYMMDD-XXXX
+        const now = new Date();
+        const dateStr = now.getFullYear() + 
+                        String(now.getMonth() + 1).padStart(2, '0') + 
+                        String(now.getDate()).padStart(2, '0');
+        
+        const todayStart = new Date(); todayStart.setHours(0,0,0,0);
+        const todayEnd = new Date(); todayEnd.setHours(23,59,59,999);
+        const count = await CashMovement.countDocuments({ created_at: { $gte: todayStart, $lte: todayEnd } });
+        const txn_id = `TXN-${dateStr}-${String(count + 1).padStart(4, '0')}`;
+
+        const cashMove = new CashMovement({
+            transaction_id: txn_id,
+            type: 'รายจ่าย',
+            category: 'ซื้อสินค้า (PO)',
+            amount: totalCost,
+            reference_id: po._id,
+            recorded_by: req.user.employee_id
+        });
+
+        await cashMove.save();
+
+        await logActivity(req, 'UPDATE', 'ACCOUNTING', `ชำระเงินค่าสินค้าสำเร็จสำหรับใบสั่งซื้อ เลขที่ ${po.po_number} ยอดรวม ฿${totalCost}`, po.po_number, po._id);
+
+        res.status(200).json({
+            success: true,
+            message: 'ชำระเงินและบันทึกรายจ่ายบัญชีซื้อสินค้าเรียบร้อยแล้ว',
+            data: po
+        });
+    } catch (error) {
+        console.error('API Error PUT /api/accounting/po-pay/:id:', error);
+        res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการชำระเงินใบสั่งซื้อ' });
+    }
+});
+
+// GET /api/accounting/receivables
+// หน้าที่: ดึงข้อมูลรายการลูกหนี้ไฟแนนซ์ทั้งหมด
+router.get('/accounting/receivables', async (req, res) => {
+    try {
+        if (!req.user.permissions.manage_finance) {
+            return res.status(403).json({ success: false, message: 'ไม่มีสิทธิ์เข้าถึงระบบบัญชีและการเงิน' });
+        }
+
+        const receivables = await FinanceReceivable.find()
+            .populate('transaction_id')
+            .populate('recorded_by', 'name emp_id')
+            .sort({ createdAt: -1 });
+
+        res.status(200).json({
+            success: true,
+            data: receivables
+        });
+    } catch (error) {
+        console.error('API Error GET /api/accounting/receivables:', error);
+        res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการดึงข้อมูลบัญชีลูกหนี้' });
+    }
+});
+
+// PUT /api/accounting/receivables/:id/settle
+// หน้าที่: ยืนยันยอดโอนสำเร็จและปรับสถานะเป็นชำระเงินแล้ว
+router.put('/accounting/receivables/:id/settle', async (req, res) => {
+    try {
+        if (!req.user.permissions.manage_finance) {
+            return res.status(403).json({ success: false, message: 'ไม่มีสิทธิ์เข้าถึงระบบบัญชีและการเงิน' });
+        }
+
+        const { status } = req.body;
+        const validStatuses = ['รออนุมัติ', 'ค้างโอน', 'ชำระแล้ว', 'ยกเลิก'];
+        const targetStatus = status || 'ชำระแล้ว';
+
+        if (!validStatuses.includes(targetStatus)) {
+            return res.status(400).json({ success: false, message: 'สถานะไม่ถูกต้อง' });
+        }
+
+        const receivable = await FinanceReceivable.findById(req.params.id).populate('transaction_id');
+        if (!receivable) {
+            return res.status(404).json({ success: false, message: 'ไม่พบรายการลูกหนี้ที่ระบุ' });
+        }
+
+        if (receivable.status === 'ชำระแล้ว' && targetStatus === 'ชำระแล้ว') {
+            return res.status(400).json({ success: false, message: 'รายการนี้ได้รับการชำระเงินเรียบร้อยแล้ว' });
+        }
+
+        receivable.status = targetStatus;
+        if (targetStatus === 'ชำระแล้ว') {
+            receivable.settled_at = new Date();
+        } else {
+            receivable.settled_at = null;
+        }
+
+        const savedReceivable = await receivable.save();
+
+        // บันทึกกิจกรรมสำเร็จ
+        const receiptNo = receivable.transaction_id ? receivable.transaction_id.receipt_number : '';
+        await logActivity(req, 'UPDATE', 'ACCOUNTING', `ปรับสถานะรายการลูกหนี้จัดไฟแนนซ์เป็น ${targetStatus} ยอดเงิน ฿${receivable.financed_amount}`, receiptNo, savedReceivable._id);
+
+        res.status(200).json({
+            success: true,
+            message: 'อัปเดตสถานะลูกหนี้สำเร็จ',
+            data: savedReceivable
+        });
+    } catch (error) {
+        console.error('API Error PUT /api/accounting/receivables/:id/settle:', error);
+        res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการบันทึกข้อมูลลูกหนี้' });
     }
 });
 

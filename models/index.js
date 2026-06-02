@@ -27,6 +27,7 @@ const roleSchema = new mongoose.Schema({
         manage_po: { type: Boolean, default: false },        // จัดการ PO (สร้าง/ดูทั้งหมด)
         receive_po: { type: Boolean, default: false },       // ตรวจรับ PO (ที่สาขา)
         manage_transfers: { type: Boolean, default: false }, // โอนย้ายสินค้า
+        manage_finance: { type: Boolean, default: false },   // อนุญาตให้จัดการระบบบัญชีและการเงิน
         view_audit_logs: { type: Boolean, default: false }   // อนุญาตดูประวัติกิจกรรมระบบ
     }
 }, { timestamps: true });
@@ -42,7 +43,7 @@ const seedDefaultRoles = async () => {
                 do_pos: true, manage_personnel: true, manage_branches: true,
                 manage_settings: true, manage_roles: true, filter_stock_branch: true, cancel_sale: true,
                 report_arrival: true, approve_import: true, manage_po: true, receive_po: true,
-                manage_transfers: true, view_audit_logs: true
+                manage_transfers: true, manage_finance: true, view_audit_logs: true
             }
         },
         {
@@ -52,7 +53,7 @@ const seedDefaultRoles = async () => {
                 do_pos: true, manage_personnel: true, manage_branches: true,
                 manage_settings: true, manage_roles: false, filter_stock_branch: true, cancel_sale: true,
                 report_arrival: true, approve_import: false, manage_po: true, receive_po: true,
-                manage_transfers: true, view_audit_logs: true
+                manage_transfers: true, manage_finance: true, view_audit_logs: true
             }
         },
         {
@@ -62,7 +63,7 @@ const seedDefaultRoles = async () => {
                 do_pos: true, manage_personnel: false, manage_branches: false,
                 manage_settings: false, manage_roles: false, filter_stock_branch: false, cancel_sale: false,
                 report_arrival: true, approve_import: false, manage_po: false, receive_po: true,
-                manage_transfers: false, view_audit_logs: false
+                manage_transfers: false, manage_finance: false, view_audit_logs: false
             }
         }
     ];
@@ -89,6 +90,7 @@ const seedDefaultRoles = async () => {
                 existing.permissions.manage_po = true;
                 existing.permissions.receive_po = true;
                 existing.permissions.manage_transfers = true;
+                existing.permissions.manage_finance = true;
                 existing.permissions.view_audit_logs = true;
                 changed = true;
             }
@@ -329,7 +331,8 @@ const purchaseOrderSchema = new mongoose.Schema({
     arrival_reported_at: { type: Date },
     arrival_reported_by: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee' },
     created_by: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee', required: true },
-    received_by: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee' }
+    received_by: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee' },
+    payment_status: { type: String, default: 'ยังไม่ได้ชำระ', enum: ['ยังไม่ได้ชำระ', 'ชำระเงินแล้ว'] }
 }, { timestamps: true });
 const PurchaseOrder = mongoose.model('PurchaseOrder', purchaseOrderSchema, 'purchaseorder');
 
@@ -346,6 +349,39 @@ const auditLogSchema = new mongoose.Schema({
     user_name: { type: String, required: true } // ชื่อพนักงานผู้ทำรายการ
 }, { timestamps: true });
 const AuditLog = mongoose.model('AuditLog', auditLogSchema, 'auditlog');
+
+// 18. Cash Movement (รายการเงินเคลื่อนไหวในระบบบัญชี)
+const cashMovementSchema = new mongoose.Schema({
+    transaction_id: { type: String, required: true, unique: true }, // TXN-YYYYMMDD-XXXX
+    type: { type: String, required: true, enum: ['รายรับ', 'รายจ่าย'] },
+    category: { type: String, required: true, enum: ['ขายสินค้า', 'ซื้อสินค้า (PO)', 'ค่าเช่า', 'ค่าไฟ/น้ำ', 'เงินเดือน', 'อื่นๆ'] },
+    amount: { type: Number, required: true },
+    reference_id: { type: mongoose.Schema.Types.ObjectId, default: null }, // can refer to PurchaseOrder or Transaction (receipt)
+    recorded_by: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee', required: true },
+    created_at: { type: Date, default: Date.now }
+}, { timestamps: true });
+const CashMovement = mongoose.model('CashMovement', cashMovementSchema, 'cashmovement');
+
+// 19. Finance Receivable (ระบบบัญชีลูกหนี้จัดไฟแนนซ์)
+const financeReceivableSchema = new mongoose.Schema({
+    transaction_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Transaction', required: true },
+    finance_company: { type: String, required: true },
+    total_finance_price: { type: Number, required: true }, // ยอดจัดไฟแนนซ์รวมตั้งต้น
+    down_payment: { type: Number, default: 0 }, // เงินดาวน์
+    icloud_fee: { type: Number, default: 0 }, // ค่า iCloud
+    contract_fee: { type: Number, default: 0 }, // ค่าใบสัญญา
+    financed_amount: { type: Number, required: true }, // ยอดคงเหลือค้างโอน (คำนวณอัตโนมัติ)
+    status: { type: String, default: 'รออนุมัติ', enum: ['รออนุมัติ', 'ค้างโอน', 'ชำระแล้ว', 'ยกเลิก'] },
+    recorded_by: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee', required: true },
+    settled_at: { type: Date, default: null } // วันที่ผ่านรายการ/โอนเงินครบ
+}, { timestamps: true });
+
+// คำนวณยอดค้างโอนอัตโนมัติก่อนตรวจสอบข้อมูล (Validation)
+financeReceivableSchema.pre('validate', function() {
+    this.financed_amount = this.total_finance_price - this.down_payment - this.icloud_fee - this.contract_fee;
+});
+
+const FinanceReceivable = mongoose.model('FinanceReceivable', financeReceivableSchema, 'financereceivable');
 
 module.exports = {
     Branch,
@@ -367,6 +403,8 @@ module.exports = {
     ImportNotification,
     PurchaseOrder,
     AuditLog,
+    CashMovement,
+    FinanceReceivable,
     seedDefaultRoles,
     migrateProductsToERP
 };
