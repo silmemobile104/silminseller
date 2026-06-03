@@ -2633,8 +2633,24 @@
 
                     <!-- TAB 1: บัญชีเจ้าหนี้ (AP Queue) -->
                     <div id="section-accounting-ap" class="space-y-4">
-                        <div class="overflow-x-auto bg-[#1a1a1a] rounded-2xl border border-gray-800">
-                            <table class="w-full text-left border-collapse">
+                        <!-- Supplier Summary Cards -->
+                        <div id="ap-summary-widgets" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <!-- Dynamic summary cards injected here -->
+                        </div>
+
+                        <!-- AP Filter Controls -->
+                        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 bg-[#1a1a1a] rounded-2xl border border-gray-800">
+                            <div class="flex items-center gap-2">
+                                <label class="text-sm font-semibold text-slate-400"><i class="fa-solid fa-filter text-amber-500 text-xs mr-1"></i>กรองคู่ค้า/Supplier:</label>
+                                <select id="filter-ap-supplier" class="px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-700 text-white text-xs font-semibold focus:outline-none focus:border-amber-500 transition-colors">
+                                    <option value="">ทั้งหมด</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- AP Table Container -->
+                        <div class="w-full overflow-x-auto bg-[#1a1a1a] rounded-2xl border border-gray-800">
+                            <table class="w-full text-left border-collapse min-w-[700px]">
                                 <thead class="bg-gray-900 text-slate-400 text-sm">
                                     <tr>
                                         <th class="px-6 py-4 font-bold">เลขที่ PO</th>
@@ -2654,17 +2670,20 @@
 
                     <!-- TAB 3: บัญชีลูกหนี้ (AR Finance Queue) -->
                     <div id="section-accounting-ar" class="hidden space-y-4">
+                        <!-- Finance Partner Summary Cards -->
+                        <div id="finance-summary-widgets" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <!-- Dynamic summary cards injected here -->
+                        </div>
+
                         <div class="overflow-x-auto bg-[#1a1a1a] rounded-2xl border border-gray-800">
                             <table class="w-full text-left border-collapse">
                                 <thead class="bg-gray-900 text-slate-400 text-sm">
                                     <tr>
                                         <th class="px-6 py-4 font-bold">เลขที่ใบเสร็จ</th>
-                                        <th class="px-6 py-4 font-bold">วันที่ขาย</th>
                                         <th class="px-6 py-4 font-bold">บริษัทไฟแนนซ์</th>
-                                        <th class="px-6 py-4 font-bold">ยอดขายรวม</th>
-                                        <th class="px-6 py-4 font-bold">เงินดาวน์ + ค่าบริการ</th>
-                                        <th class="px-6 py-4 font-bold">ยอดจัดค้างโอน</th>
-                                        <th class="px-6 py-4 font-bold text-center">สถานะ</th>
+                                        <th class="px-6 py-4 font-bold">วันที่ขายหน้าร้าน</th>
+                                        <th class="px-6 py-4 font-bold">วันที่รับยอดโอน</th>
+                                        <th class="px-6 py-4 font-bold">ยอดจัดค้างรับ</th>
                                         <th class="px-6 py-4 font-bold text-right">ดำเนินการ</th>
                                     </tr>
                                 </thead>

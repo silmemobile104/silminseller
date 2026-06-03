@@ -4279,7 +4279,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
         } else if (selectedPayment === 'จัดไฟแนนซ์') {
-            compName = modalFinanceCompany ? modalFinanceCompany.value.trim() : '';
+            const selectedCompanyId = modalFinanceCompany ? modalFinanceCompany.value : '';
+            const matchingCompany = (window.masterDataCache && window.masterDataCache.financeCompanies) 
+                ? window.masterDataCache.financeCompanies.find(c => c._id === selectedCompanyId) 
+                : null;
+            compName = matchingCompany ? matchingCompany.name : (modalFinanceCompany ? modalFinanceCompany.value.trim() : '');
             dueDay = 0;
             instMonths = 0;
             const downTotal = parseFloat(modalFinanceDownTotal ? modalFinanceDownTotal.value : 0) || 0;
@@ -8367,14 +8371,42 @@ document.addEventListener('DOMContentLoaded', () => {
             const poJson = await poRes.json();
             if (poJson.success) {
                 const apPOs = poJson.data.filter(po => po.status === 'นำเข้าสำเร็จ');
-                const apTbody = document.getElementById('table-body-accounting-ap');
                 
-                if (apTbody) {
+                // Populate Supplier Dropdown Filter
+                const supplierSelect = document.getElementById('filter-ap-supplier');
+                const selectedSupplier = supplierSelect ? supplierSelect.value : '';
+                const uniqueSuppliers = [...new Set(apPOs.map(po => po.supplier_name))].sort();
+                
+                if (supplierSelect) {
+                    supplierSelect.innerHTML = '<option value="">ทั้งหมด</option>';
+                    uniqueSuppliers.forEach(sup => {
+                        const opt = document.createElement('option');
+                        opt.value = sup;
+                        opt.textContent = sup;
+                        supplierSelect.appendChild(opt);
+                    });
+                    supplierSelect.value = selectedSupplier;
+
+                    if (!supplierSelect.dataset.listenerWired) {
+                        supplierSelect.dataset.listenerWired = 'true';
+                        supplierSelect.addEventListener('change', () => {
+                            renderAPTable(apPOs, supplierSelect.value);
+                        });
+                    }
+                }
+
+                // Helper to render filtered AP table rows
+                const renderAPTable = (poList, filterVal) => {
+                    const apTbody = document.getElementById('table-body-accounting-ap');
+                    if (!apTbody) return;
                     apTbody.innerHTML = '';
-                    if (apPOs.length === 0) {
+                    
+                    const filteredList = filterVal ? poList.filter(po => po.supplier_name === filterVal) : poList;
+                    
+                    if (filteredList.length === 0) {
                         apTbody.innerHTML = '<tr><td colspan="6" class="text-center py-8 text-slate-500 text-sm"><i class="fa-solid fa-check-double text-slate-650 text-xl block mb-2"></i>ไม่มีหนี้สินใบสั่งซื้อค้างจ่าย</td></tr>';
                     } else {
-                        apPOs.forEach(po => {
+                        filteredList.forEach(po => {
                             const totalCost = po.items.reduce((sum, item) => sum + (item.cost_price * (item.received_qty || 0)), 0);
                             const tr = document.createElement('tr');
                             tr.className = 'border-b border-slate-800/40 hover:bg-slate-700/5 transition-all duration-150';
@@ -8392,8 +8424,8 @@ document.addEventListener('DOMContentLoaded', () => {
                             tr.innerHTML = `
                                 <td class="px-6 py-4 font-mono font-bold text-slate-300 text-sm">${po.po_number}</td>
                                 <td class="px-6 py-4 text-sm text-slate-400">${new Date(po.createdAt).toLocaleDateString('th-TH')}</td>
-                                <td class="px-6 py-4 text-sm text-slate-355">${po.supplier_name}</td>
-                                <td class="px-6 py-4 font-mono text-sm text-slate-300 font-bold">฿${totalCost.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+                                <td class="px-6 py-4 text-sm text-slate-300">${po.supplier_name}</td>
+                                <td class="px-6 py-4 font-mono text-sm text-amber-400 font-bold">฿${totalCost.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
                                 <td class="px-6 py-4 text-center">${statusBadge}</td>
                                 <td class="px-6 py-4 text-right">${payAction}</td>
                             `;
@@ -8434,7 +8466,44 @@ document.addEventListener('DOMContentLoaded', () => {
                             }
                         });
                     }
+                };
+
+                // Initial render with current filter value
+                renderAPTable(apPOs, selectedSupplier);
+            }
+
+            // Fetch and Render Supplier Summary widgets
+            try {
+                const summaryRes = await authFetch(`${API_BASE_URL}/accounting/ap-summary`);
+                const summaryJson = await summaryRes.json();
+                if (summaryJson.success) {
+                    const apSummaries = summaryJson.data;
+                    const summaryContainer = document.getElementById('ap-summary-widgets');
+                    if (summaryContainer) {
+                        summaryContainer.innerHTML = '';
+                        if (apSummaries.length === 0) {
+                            summaryContainer.innerHTML = '<div class="col-span-full text-center py-6 text-slate-500 text-sm border border-dashed border-slate-800 rounded-2xl">ไม่มีหนี้สินค้างจ่ายกับ Supplier</div>';
+                        } else {
+                            apSummaries.forEach(sum => {
+                                const card = document.createElement('div');
+                                card.className = 'bg-slate-900/40 border border-slate-800/80 rounded-2xl p-4 flex flex-col justify-between hover:border-slate-750 transition-all duration-200';
+                                card.innerHTML = `
+                                    <div class="flex items-center justify-between mb-2">
+                                        <span class="text-sm font-bold text-slate-200">${sum.supplier_name}</span>
+                                        <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20">${sum.pending_bill_count} ใบ</span>
+                                    </div>
+                                    <div class="flex justify-between text-xs items-center mt-2">
+                                        <span class="text-slate-400">ยอดค้างจ่ายรวมทั้งหมด:</span>
+                                        <span class="font-mono text-amber-400 font-bold">฿${(sum.total_outstanding || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+                                    </div>
+                                `;
+                                summaryContainer.appendChild(card);
+                            });
+                        }
+                    }
                 }
+            } catch (apSumErr) {
+                console.error('Error fetching AP summary:', apSumErr);
             }
 
             // Fetch Receivables for AR Queue
@@ -8446,47 +8515,41 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (arTbody) {
                     arTbody.innerHTML = '';
                     if (receivables.length === 0) {
-                        arTbody.innerHTML = '<tr><td colspan="8" class="text-center py-8 text-slate-500 text-sm"><i class="fa-solid fa-check-double text-slate-650 text-xl block mb-2"></i>ไม่มีรายการค้างโอนจากไฟแนนซ์</td></tr>';
+                        arTbody.innerHTML = '<tr><td colspan="6" class="text-center py-8 text-slate-500 text-sm"><i class="fa-solid fa-check-double text-slate-650 text-xl block mb-2"></i>ไม่มีรายการค้างโอนจากไฟแนนซ์</td></tr>';
                     } else {
                         receivables.forEach(rec => {
                             const tr = document.createElement('tr');
                             tr.className = 'border-b border-slate-800/40 hover:bg-slate-700/5 transition-all duration-150';
 
-                            const statusColors = {
-                                'รออนุมัติ': 'bg-amber-500/10 text-amber-400 border border-amber-500/20',
-                                'ค้างโอน': 'bg-blue-500/10 text-blue-400 border border-blue-500/20',
-                                'ชำระแล้ว': 'bg-green-500/10 text-green-400 border border-green-500/20',
-                                'ยกเลิก': 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
-                            };
-                            const currentStatusColor = statusColors[rec.status] || 'bg-slate-500/10 text-slate-400 border border-slate-500/20';
-
-                            const statusBadge = `<span class="px-2.5 py-1 rounded-full text-xs font-semibold ${currentStatusColor}">${rec.status}</span>`;
-                            const downAndFees = rec.down_payment + rec.icloud_fee + rec.contract_fee;
+                            const isSettled = rec.status === 'ชำระแล้ว' || rec.status === 'ได้รับเงินครบแล้ว';
+                            const settledDateVal = isSettled && rec.settled_at 
+                                ? new Date(rec.settled_at).toLocaleDateString('th-TH') 
+                                : `<span class="px-2 py-0.5 rounded-full text-xs bg-amber-500/10 text-amber-400 border border-amber-500/20 inline-flex items-center gap-1 font-semibold">⏳ รอรับเงิน</span>`;
 
                             let payAction = '';
-                            if (rec.status !== 'ชำระแล้ว' && rec.status !== 'ยกเลิก') {
+                            if (!isSettled && rec.status !== 'ยกเลิก') {
                                 payAction = `
                                     <button class="btn-settle-ar px-3 py-1.5 bg-green-500/10 text-green-400 hover:bg-green-500/20 border border-green-500/35 hover:border-green-500/60 rounded-xl text-xs font-bold transition-all inline-flex items-center gap-1.5 shadow-sm active:scale-95" data-id="${rec._id}" data-no="${rec.transaction_id ? rec.transaction_id.receipt_number : ''}" data-amount="${rec.financed_amount}">
                                         <i class="fa-solid fa-circle-check"></i> บันทึกยอดรับเงิน
                                     </button>
                                 `;
-                            } else if (rec.status === 'ชำระแล้ว') {
-                                payAction = `<span class="text-xs text-slate-500 italic">ผ่านรายการแล้วเมื่อ ${new Date(rec.settled_at).toLocaleDateString('th-TH')}</span>`;
+                            } else if (isSettled) {
+                                payAction = `<span class="text-xs text-slate-500 italic">ผ่านรายการสำเร็จ (${new Date(rec.settled_at).toLocaleDateString('th-TH')})</span>`;
                             } else {
                                 payAction = `<span class="text-xs text-rose-500 italic">ยกเลิกแล้ว</span>`;
                             }
 
                             const receiptNum = rec.transaction_id ? rec.transaction_id.receipt_number : '-';
-                            const createdDate = rec.transaction_id ? new Date(rec.transaction_id.created_at || rec.transaction_id.createdAt).toLocaleDateString('th-TH') : new Date(rec.createdAt).toLocaleDateString('th-TH');
+                            const createdDate = rec.transaction_id 
+                                ? new Date(rec.transaction_id.created_at || rec.transaction_id.createdAt).toLocaleDateString('th-TH', { day: '2-digit', month: '2-digit', year: '2-digit' }) 
+                                : new Date(rec.createdAt).toLocaleDateString('th-TH', { day: '2-digit', month: '2-digit', year: '2-digit' });
 
                             tr.innerHTML = `
                                 <td class="px-6 py-4 font-mono font-bold text-slate-300 text-sm">${receiptNum}</td>
+                                <td class="px-6 py-4 text-sm text-slate-300">${rec.finance_company}</td>
                                 <td class="px-6 py-4 text-sm text-slate-400">${createdDate}</td>
-                                <td class="px-6 py-4 text-sm text-slate-355">${rec.finance_company}</td>
-                                <td class="px-6 py-4 font-mono text-sm text-slate-400">฿${rec.total_finance_price.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
-                                <td class="px-6 py-4 font-mono text-sm text-slate-400">฿${downAndFees.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
-                                <td class="px-6 py-4 font-mono text-sm text-slate-300 font-bold">฿${rec.financed_amount.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
-                                <td class="px-6 py-4 text-center">${statusBadge}</td>
+                                <td class="px-6 py-4 text-sm">${settledDateVal}</td>
+                                <td class="px-6 py-4 font-mono text-sm text-cyan-400 font-bold">฿${rec.financed_amount.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
                                 <td class="px-6 py-4 text-right">${payAction}</td>
                             `;
                             arTbody.appendChild(tr);
@@ -8503,10 +8566,8 @@ document.addEventListener('DOMContentLoaded', () => {
                                         `คุณต้องการยืนยันการได้รับยอดเงินโอนจากบริษัทไฟแนนซ์ สำหรับใบเสร็จเลขที่ <strong class="font-mono text-white">${recNo}</strong><br>เป็นจำนวนเงินค้างโอน <strong class="text-green-400 font-mono">฿${amount.toLocaleString(undefined, {minimumFractionDigits: 2})}</strong> หรือไม่?`,
                                         async () => {
                                             try {
-                                                const settleRes = await authFetch(`${API_BASE_URL}/accounting/receivables/${arId}/settle`, {
-                                                    method: 'PUT',
-                                                    headers: { 'Content-Type': 'application/json' },
-                                                    body: JSON.stringify({ status: 'ชำระแล้ว' })
+                                                const settleRes = await authFetch(`${API_BASE_URL}/finance/payout/${arId}`, {
+                                                    method: 'POST'
                                                 });
                                                 const settleJson = await settleRes.json();
                                                 if (settleJson.success) {
@@ -8522,12 +8583,52 @@ document.addEventListener('DOMContentLoaded', () => {
                                         },
                                         'ยืนยันรับยอด',
                                         'success'
-                                    );
+                                     );
                                 };
                             }
                         });
                     }
                 }
+            }
+
+            // Fetch and Render Finance Partner Summary Cards
+            try {
+                const summaryRes = await authFetch(`${API_BASE_URL}/finance/summary`);
+                const summaryJson = await summaryRes.json();
+                if (summaryJson.success) {
+                    const summaries = summaryJson.data;
+                    const summaryContainer = document.getElementById('finance-summary-widgets');
+                    if (summaryContainer) {
+                        summaryContainer.innerHTML = '';
+                        if (summaries.length === 0) {
+                            summaryContainer.innerHTML = '<div class="col-span-full text-center py-6 text-slate-500 text-sm border border-dashed border-slate-800 rounded-2xl">ไม่มีข้อมูลสรุปสำหรับบริษัทไฟแนนซ์</div>';
+                        } else {
+                            summaries.forEach(sum => {
+                                const card = document.createElement('div');
+                                card.className = 'bg-slate-900/40 border border-slate-800/80 rounded-2xl p-4 flex flex-col justify-between hover:border-slate-750 transition-all duration-200';
+                                card.innerHTML = `
+                                    <div class="flex items-center justify-between mb-2">
+                                        <span class="text-sm font-bold text-slate-200">${sum.finance_partner_name}</span>
+                                        <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">จัดไฟแนนซ์</span>
+                                    </div>
+                                    <div class="space-y-1.5 mt-2">
+                                        <div class="flex justify-between text-xs items-center">
+                                            <span class="text-slate-400">ยอดรวมค้างโอน:</span>
+                                            <span class="font-mono text-amber-400 font-bold">฿${(sum.total_pending || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+                                        </div>
+                                        <div class="flex justify-between text-xs items-center">
+                                            <span class="text-slate-400">ยอดโอนสำเร็จแล้ว:</span>
+                                            <span class="font-mono text-green-400 font-bold">฿${(sum.payout_received || sum.total_settled || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+                                        </div>
+                                    </div>
+                                `;
+                                summaryContainer.appendChild(card);
+                            });
+                        }
+                    }
+                }
+            } catch (sumErr) {
+                console.error('Error loading finance summary widget:', sumErr);
             }
         } catch (e) {
             console.error('Error loading accounting data:', e);

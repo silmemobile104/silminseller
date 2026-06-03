@@ -3510,7 +3510,7 @@ router.get('/accounting/profit-loss', async (req, res) => {
             const rec = recMap[t._id.toString()];
             if (t.payment_type === 'จัดไฟแนนซ์' || t.payment_method === 'จัดไฟแนนซ์') {
                 const immediateCash = (t.down_payment || 0) + (t.icloud_fee || 0) + (t.contract_fee || 0);
-                const isSettledInPeriod = rec && rec.status === 'ชำระแล้ว' && rec.settled_at && rec.settled_at <= end;
+                const isSettledInPeriod = rec && (rec.status === 'ชำระแล้ว' || rec.status === 'ได้รับเงินครบแล้ว') && rec.settled_at && rec.settled_at <= end;
 
                 if (isSettledInPeriod) {
                     salesRevenue += (t.total_amount || 0);
@@ -3551,7 +3551,7 @@ router.get('/accounting/profit-loss', async (req, res) => {
 
         // 1.2 Revenue from Finance receivables settled in this period (but sold in a previous period)
         const settledReceivablesOutsidePeriod = await FinanceReceivable.find({
-            status: 'ชำระแล้ว',
+            status: { $in: ['ชำระแล้ว', 'ได้รับเงินครบแล้ว'] },
             settled_at: { $gte: start, $lte: end }
         }).populate({
             path: 'transaction_id',
@@ -3800,9 +3800,24 @@ router.get('/accounting/receivables', async (req, res) => {
             .populate('recorded_by', 'name emp_id')
             .sort({ createdAt: -1 });
 
+        // Resolve finance company names if stored as ObjectIds
+        const financeCompanies = await FinanceCompany.find({});
+        const companyMap = {};
+        financeCompanies.forEach(c => {
+            companyMap[c._id.toString()] = c.name;
+        });
+
+        const resolvedReceivables = receivables.map(rec => {
+            const doc = rec.toObject();
+            if (companyMap[doc.finance_company]) {
+                doc.finance_company = companyMap[doc.finance_company];
+            }
+            return doc;
+        });
+
         res.status(200).json({
             success: true,
-            data: receivables
+            data: resolvedReceivables
         });
     } catch (error) {
         console.error('API Error GET /api/accounting/receivables:', error);
@@ -3856,6 +3871,176 @@ router.put('/accounting/receivables/:id/settle', async (req, res) => {
     } catch (error) {
         console.error('API Error PUT /api/accounting/receivables/:id/settle:', error);
         res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการบันทึกข้อมูลลูกหนี้' });
+    }
+});
+
+// GET /api/accounting/ap-summary
+// หน้าที่: ดึงข้อมูลสรุปยอดเจ้าหนี้ค้างจ่าย (AP) แยกตาม Supplier
+router.get('/accounting/ap-summary', async (req, res) => {
+    try {
+        if (!req.user.permissions.manage_finance) {
+            return res.status(403).json({ success: false, message: 'ไม่มีสิทธิ์เข้าถึงระบบบัญชีและการเงิน' });
+        }
+
+        const summary = await PurchaseOrder.aggregate([
+            {
+                $match: {
+                    status: 'นำเข้าสำเร็จ',
+                    payment_status: 'ยังไม่ได้ชำระ'
+                }
+            },
+            {
+                $project: {
+                    supplier_name: 1,
+                    po_cost: {
+                        $sum: {
+                            $map: {
+                                input: "$items",
+                                as: "item",
+                                in: { $multiply: ["$$item.cost_price", { $ifNull: ["$$item.received_qty", 0] }] }
+                            }
+                        }
+                    }
+                }
+            },
+            {
+                $group: {
+                    _id: "$supplier_name",
+                    supplier_name: { $first: "$supplier_name" },
+                    pending_bill_count: { $sum: 1 },
+                    total_outstanding: { $sum: "$po_cost" }
+                }
+            },
+            {
+                $sort: { supplier_name: 1 }
+            }
+        ]);
+
+        res.status(200).json({
+            success: true,
+            data: summary
+        });
+    } catch (error) {
+        console.error('API Error GET /api/accounting/ap-summary:', error);
+        res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการคำนวณข้อมูลสรุปบัญชีเจ้าหนี้' });
+    }
+});
+
+// GET /api/finance/summary
+// หน้าที่: ดึงข้อมูลสรุปยอดจัดไฟแนนซ์แยกตามคู่ค้าไฟแนนซ์
+router.get('/finance/summary', async (req, res) => {
+    try {
+        if (!req.user.permissions.manage_finance) {
+            return res.status(403).json({ success: false, message: 'ไม่มีสิทธิ์เข้าถึงระบบบัญชีและการเงิน' });
+        }
+
+        const summary = await FinanceReceivable.aggregate([
+            {
+                $group: {
+                    _id: "$finance_company",
+                    finance_partner_name: { $first: "$finance_company" },
+                    total_pending: {
+                        $sum: {
+                            $cond: [
+                                { $in: ["$status", ["รออนุมัติ", "ค้างโอน"]] },
+                                "$financed_amount",
+                                0
+                            ]
+                        }
+                    },
+                    total_settled: {
+                        $sum: {
+                            $cond: [
+                                { $in: ["$status", ["ชำระแล้ว", "ได้รับเงินครบแล้ว"]] },
+                                "$financed_amount",
+                                0
+                            ]
+                        }
+                    },
+                    payout_received: {
+                        $sum: {
+                            $cond: [
+                                { $in: ["$status", ["ชำระแล้ว", "ได้รับเงินครบแล้ว"]] },
+                                "$financed_amount",
+                                0
+                            ]
+                        }
+                    }
+                }
+            }
+        ]);
+
+        // Resolve finance company names and merge duplicates
+        const financeCompanies = await FinanceCompany.find({});
+        const companyMap = {};
+        financeCompanies.forEach(c => {
+            companyMap[c._id.toString()] = c.name;
+        });
+
+        const mergedSummaryMap = {};
+        summary.forEach(s => {
+            const resolvedName = companyMap[s.finance_partner_name] || s.finance_partner_name;
+            if (!mergedSummaryMap[resolvedName]) {
+                mergedSummaryMap[resolvedName] = {
+                    finance_partner_name: resolvedName,
+                    total_pending: 0,
+                    total_settled: 0,
+                    payout_received: 0
+                };
+            }
+            mergedSummaryMap[resolvedName].total_pending += s.total_pending;
+            mergedSummaryMap[resolvedName].total_settled += s.total_settled;
+            mergedSummaryMap[resolvedName].payout_received += s.payout_received;
+        });
+
+        const finalSummary = Object.values(mergedSummaryMap).sort((a, b) => 
+            a.finance_partner_name.localeCompare(b.finance_partner_name, 'th')
+        );
+
+        res.status(200).json({
+            success: true,
+            data: finalSummary
+        });
+    } catch (error) {
+        console.error('API Error GET /api/finance/summary:', error);
+        res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการดึงข้อมูลสรุปการเงิน' });
+    }
+});
+
+// POST /api/finance/payout/:id
+// หน้าที่: ยืนยันการรับเงินโอนจากคู่ค้าไฟแนนซ์ ปรับสถานะเป็นได้รับเงินครบแล้ว และเก็บวันเวลาที่รับยอดโอน
+router.post('/finance/payout/:id', async (req, res) => {
+    try {
+        if (!req.user.permissions.manage_finance) {
+            return res.status(403).json({ success: false, message: 'ไม่มีสิทธิ์เข้าถึงระบบบัญชีและการเงิน' });
+        }
+
+        const receivable = await FinanceReceivable.findById(req.params.id).populate('transaction_id');
+        if (!receivable) {
+            return res.status(404).json({ success: false, message: 'ไม่พบรายการลูกหนี้ที่ระบุ' });
+        }
+
+        if (receivable.status === 'ได้รับเงินครบแล้ว') {
+            return res.status(400).json({ success: false, message: 'รายการนี้ได้รับการชำระเงินเรียบร้อยแล้ว' });
+        }
+
+        receivable.status = 'ได้รับเงินครบแล้ว';
+        receivable.settled_at = new Date();
+
+        const savedReceivable = await receivable.save();
+
+        // บันทึกกิจกรรมสำเร็จ
+        const receiptNo = receivable.transaction_id ? receivable.transaction_id.receipt_number : '';
+        await logActivity(req, 'UPDATE', 'ACCOUNTING', `เคลียร์ยอดรับเงินโอนจัดไฟแนนซ์สำเร็จ ยอดเงิน ฿${receivable.financed_amount}`, receiptNo, savedReceivable._id);
+
+        res.status(200).json({
+            success: true,
+            message: 'เคลียร์ยอดโอนจัดไฟแนนซ์สำเร็จ',
+            data: savedReceivable
+        });
+    } catch (error) {
+        console.error('API Error POST /api/finance/payout/:id:', error);
+        res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการบันทึกข้อมูลการเคลียร์ยอดโอน' });
     }
 });
 

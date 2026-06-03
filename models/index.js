@@ -371,7 +371,7 @@ const financeReceivableSchema = new mongoose.Schema({
     icloud_fee: { type: Number, default: 0 }, // ค่า iCloud
     contract_fee: { type: Number, default: 0 }, // ค่าใบสัญญา
     financed_amount: { type: Number, required: true }, // ยอดคงเหลือค้างโอน (คำนวณอัตโนมัติ)
-    status: { type: String, default: 'รออนุมัติ', enum: ['รออนุมัติ', 'ค้างโอน', 'ชำระแล้ว', 'ยกเลิก'] },
+    status: { type: String, default: 'รออนุมัติ', enum: ['รออนุมัติ', 'ค้างโอน', 'ชำระแล้ว', 'ได้รับเงินครบแล้ว', 'ยกเลิก'] },
     recorded_by: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee', required: true },
     settled_at: { type: Date, default: null } // วันที่ผ่านรายการ/โอนเงินครบ
 }, { timestamps: true });
