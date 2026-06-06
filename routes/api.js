@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const mongoose = require('mongoose');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'silminseller_jwt_secret_key';
 
@@ -170,64 +171,69 @@ const executeFinalizeImport = async (poId, employeeId) => {
 
     // === Inventory Integration ===
     for (let item of po.items) {
-        const imeisScanned = Array.isArray(item.imeis_scanned) ? item.imeis_scanned : [];
-        const qtyToProcess = item.track_imei ? imeisScanned.length : Number(item.received_qty);
-        if (qtyToProcess <= 0) continue;
-
-        // Resolve master data IDs
-        let typeId = null;
-        let colorId = null;
-        let capacityId = null;
-        let conditionId = null;
-        let supplierId = null;
-
-        if (item.category) {
-            const type = await ProductType.findOne({ name: item.category });
-            typeId = type ? type._id : null;
-        }
-        if (!typeId) {
-            const firstType = await ProductType.findOne();
-            typeId = firstType ? firstType._id : null;
-        }
-
-        if (item.color) {
-            const col = await ProductColor.findOne({ name: item.color });
-            colorId = col ? col._id : null;
-        }
-
-        if (item.capacity) {
-            const cap = await ProductCapacity.findOne({ name: item.capacity });
-            capacityId = cap ? cap._id : null;
-        }
-
-        const cond = await ProductCondition.findOne({ name: 'มือ1' }) || await ProductCondition.findOne();
-        conditionId = cond ? cond._id : null;
-
-        if (po.supplier_name) {
-            const supp = await Supplier.findOne({ name: po.supplier_name });
-            supplierId = supp ? supp._id : null;
-        }
-
-        let unitId = null;
-        if (item.unit) {
-            const u = await ProductUnit.findOne({ name: item.unit });
-            unitId = u ? u._id : null;
-        }
-        if (!unitId) {
-            const defaultUnitName = item.track_imei ? 'เครื่อง' : 'ชิ้น';
-            const u = await ProductUnit.findOne({ name: defaultUnitName });
-            unitId = u ? u._id : null;
-        }
-
         if (item.track_imei) {
+            const imeisScanned = Array.isArray(item.imeis_scanned) ? item.imeis_scanned : [];
+            const importedImeis = Array.isArray(item.imported_imeis) ? item.imported_imeis : [];
+
+            // ดึงเฉพาะ IMEI ใหม่ที่ยังไม่เคยนำเข้าสต็อก
+            const newImeis = imeisScanned.filter(imei => !importedImeis.includes(imei));
+            if (newImeis.length === 0) continue;
+
+            // Resolve master data IDs
+            let typeId = null;
+            let colorId = null;
+            let capacityId = null;
+            let conditionId = null;
+            let supplierId = null;
+
+            if (item.category) {
+                const type = await ProductType.findOne({ name: item.category });
+                typeId = type ? type._id : null;
+            }
+            if (!typeId) {
+                const firstType = await ProductType.findOne();
+                typeId = firstType ? firstType._id : null;
+            }
+
+            if (item.color) {
+                const col = await ProductColor.findOne({ name: item.color });
+                colorId = col ? col._id : null;
+            }
+
+            if (item.capacity) {
+                const cap = await ProductCapacity.findOne({ name: item.capacity });
+                capacityId = cap ? cap._id : null;
+            }
+
+            const cond = await ProductCondition.findOne({ name: 'มือ1' }) || await ProductCondition.findOne();
+            conditionId = cond ? cond._id : null;
+
+            if (po.supplier_name) {
+                const supp = await Supplier.findOne({ name: po.supplier_name });
+                supplierId = supp ? supp._id : null;
+            }
+
+            let unitId = null;
+            if (item.unit) {
+                const u = await ProductUnit.findOne({ name: item.unit });
+                unitId = u ? u._id : null;
+            }
+            if (!unitId) {
+                const defaultUnitName = 'เครื่อง';
+                const u = await ProductUnit.findOne({ name: defaultUnitName });
+                unitId = u ? u._id : null;
+            }
+
             // For devices tracked by IMEI, create/update a SEPARATE product per IMEI
-            const incomingImeis = imeisScanned.map(x => x.toString().trim()).filter(Boolean);
-            for (const imei of incomingImeis) {
+            for (const imei of newImeis) {
                 let product = await Product.findOne({ product_code: imei });
                 if (product) {
-                    const err = new Error(`รหัสสินค้า/IMEI (${imei}) มีอยู่ในระบบแล้ว ไม่สามารถนำเข้าซ้ำได้`);
-                    err.status = 400;
-                    throw err;
+                    // หากมีสินค้าตัวนี้ในสต็อกแล้ว (เช่น ในกรณีที่เคยนำเข้าบิลอื่นหรือเคยบันทึกไปแล้ว)
+                    // ให้บันทึกเข้ารายการ imported_imeis และทำรายการถัดไปโดยไม่โยนข้อผิดพลาด
+                    if (!item.imported_imeis.includes(imei)) {
+                        item.imported_imeis.push(imei);
+                    }
+                    continue;
                 }
                 product = new Product({
                     product_code: imei,
@@ -263,8 +269,64 @@ const executeFinalizeImport = async (poId, employeeId) => {
                     imeis: [imei],
                     quantity: 1
                 });
+
+                if (!item.imported_imeis.includes(imei)) {
+                    item.imported_imeis.push(imei);
+                }
             }
+            item.imported_qty = item.imported_imeis.length;
         } else {
+            // Accessories (General Products)
+            const currentReceived = Number(item.received_qty || 0);
+            const prevImported = Number(item.imported_qty || 0);
+            const qtyToProcess = currentReceived - prevImported;
+            if (qtyToProcess <= 0) continue;
+
+            // Resolve master data IDs
+            let typeId = null;
+            let colorId = null;
+            let capacityId = null;
+            let conditionId = null;
+            let supplierId = null;
+
+            if (item.category) {
+                const type = await ProductType.findOne({ name: item.category });
+                typeId = type ? type._id : null;
+            }
+            if (!typeId) {
+                const firstType = await ProductType.findOne();
+                typeId = firstType ? firstType._id : null;
+            }
+
+            if (item.color) {
+                const col = await ProductColor.findOne({ name: item.color });
+                colorId = col ? col._id : null;
+            }
+
+            if (item.capacity) {
+                const cap = await ProductCapacity.findOne({ name: item.capacity });
+                capacityId = cap ? cap._id : null;
+            }
+
+            const cond = await ProductCondition.findOne({ name: 'มือ1' }) || await ProductCondition.findOne();
+            conditionId = cond ? cond._id : null;
+
+            if (po.supplier_name) {
+                const supp = await Supplier.findOne({ name: po.supplier_name });
+                supplierId = supp ? supp._id : null;
+            }
+
+            let unitId = null;
+            if (item.unit) {
+                const u = await ProductUnit.findOne({ name: item.unit });
+                unitId = u ? u._id : null;
+            }
+            if (!unitId) {
+                const defaultUnitName = 'ชิ้น';
+                const u = await ProductUnit.findOne({ name: defaultUnitName });
+                unitId = u ? u._id : null;
+            }
+
             // For accessories (quantity-tracked), keep a single Product document with general product_code
             let product = await Product.findOne({ product_code: item.product_code });
             if (!product) {
@@ -300,10 +362,25 @@ const executeFinalizeImport = async (poId, employeeId) => {
                 imeis: [],
                 quantity: qtyToProcess
             });
+
+            item.imported_qty = prevImported + qtyToProcess;
         }
     }
 
-    po.status = 'นำเข้าสำเร็จ';
+    // Check if fully imported
+    const isFullyImported = po.items.every(item => {
+        const targetQty = item.ordered_qty;
+        const currentQty = item.track_imei ? (item.imported_imeis ? item.imported_imeis.length : 0) : (item.imported_qty || 0);
+        return currentQty >= targetQty;
+    });
+
+    if (isFullyImported) {
+        po.status = 'นำเข้าสำเร็จ';
+    } else {
+        // หากยังนำเข้าไม่ครบ ให้รีเซ็ตกลับสถานะ 'รอจัดส่ง' เพื่อให้สามารถแจ้งของที่เหลือเพิ่มทีหลังได้
+        po.status = 'รอจัดส่ง';
+    }
+
     po.received_by = employeeId;
     await po.save();
 
@@ -1908,7 +1985,8 @@ router.post('/transactions', async (req, res) => {
                 quantity: Number(it.quantity) || 1,
                 price: Number(it.price) || 0,
                 warranty_period: period,
-                warranty_expiry: expiry
+                warranty_expiry: expiry,
+                is_gift: it.is_gift === true
             };
         });
 
@@ -2006,7 +2084,21 @@ router.post('/transactions', async (req, res) => {
         // Split-Accounting for Financing (การแยกบัญชีจัดไฟแนนซ์)
         // ===================================================================
         if (payment_method === 'จัดไฟแนนซ์' || payment_type === 'จัดไฟแนนซ์') {
-            const immediateCash = (Number(down_payment) || 0) + (Number(icloud_fee) || 0) + (Number(contract_fee) || 0);
+            let devicesTotal = 0;
+            const itemsSubtotal = normalizedItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+            
+            for (const item of normalizedItems) {
+                const product = await Product.findById(item.product_id).populate('unit_id');
+                const unitName = product && product.unit_id ? product.unit_id.name : 'ชิ้น';
+                if (unitName === 'เครื่อง') {
+                    devicesTotal += item.price * item.quantity;
+                }
+            }
+
+            const inferredDiscount = Math.max(0, itemsSubtotal + (Number(contract_fee) || 0) + (Number(icloud_fee) || 0) - (Number(total_amount) || 0));
+            const netDevicesTotal = Math.max(0, devicesTotal - inferredDiscount);
+            const finalFinancedAmount = Math.max(0, netDevicesTotal - (Number(down_payment) || 0));
+            const immediateCash = Math.max(0, (Number(total_amount) || 0) - finalFinancedAmount);
 
             // 1. Immediately create a CashMovement record for immediate cash collected
             const dateStr = now.getFullYear() + 
@@ -2036,7 +2128,7 @@ router.post('/transactions', async (req, res) => {
                 down_payment: Number(down_payment) || 0,
                 icloud_fee: Number(icloud_fee) || 0,
                 contract_fee: Number(contract_fee) || 0,
-                financed_amount: (Number(total_amount) || 0) - (Number(down_payment) || 0) - (Number(icloud_fee) || 0) - (Number(contract_fee) || 0),
+                financed_amount: finalFinancedAmount,
                 status: 'รออนุมัติ', // stays in รออนุมัติ / ค้างโอน
                 recorded_by: req.user.employee_id
             });
@@ -2111,10 +2203,24 @@ router.get('/transactions', async (req, res) => {
             .populate('member_id', 'first_name last_name phone')
             .sort({ created_at: -1 });
 
+        const financeCompanies = await FinanceCompany.find({});
+        const companyMap = {};
+        financeCompanies.forEach(c => {
+            companyMap[c._id.toString()] = c.name;
+        });
+
+        const resolvedTransactions = transactions.map(txn => {
+            const doc = txn.toObject();
+            if (companyMap[doc.finance_company]) {
+                doc.finance_company = companyMap[doc.finance_company];
+            }
+            return doc;
+        });
+
         res.status(200).json({
             success: true,
             message: 'ดึงข้อมูลรายการขายสำเร็จ',
-            data: transactions
+            data: resolvedTransactions
         });
     } catch (error) {
         console.error('API Error GET /api/transactions:', error);
@@ -2139,7 +2245,15 @@ router.get('/transactions/:id', async (req, res) => {
             return res.status(404).json({ success: false, message: 'ไม่พบรายการที่ต้องการ' });
         }
 
-        res.status(200).json({ success: true, data: transaction });
+        const doc = transaction.toObject();
+        if (doc.finance_company && mongoose.Types.ObjectId.isValid(doc.finance_company)) {
+            const fc = await FinanceCompany.findById(doc.finance_company);
+            if (fc) {
+                doc.finance_company = fc.name;
+            }
+        }
+
+        res.status(200).json({ success: true, data: doc });
     } catch (error) {
         console.error('API Error GET /api/transactions/:id:', error);
         res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการดึงข้อมูลรายการขาย' });
@@ -3263,19 +3377,16 @@ router.post('/po/:id/report-arrival', async (req, res) => {
         }
 
         for (let item of po.items) {
-            const data = received_items[item._id.toString()];
-            if (!data) {
-                return res.status(400).json({ success: false, message: `กรุณากรอกข้อมูลสำหรับสินค้า ${item.product_name}` });
-            }
+            const data = received_items[item._id.toString()] || { imeis: item.imeis_scanned || [], qty: item.received_qty || 0 };
 
             if (item.track_imei) {
                 const listImeis = Array.isArray(data.imeis) ? data.imeis.map(x => x.toString().trim()).filter(Boolean) : [];
                 
-                // ตรวจสอบว่าจำนวน IMEI ครบตามจำนวนที่สั่งซื้อหรือไม่
-                if (listImeis.length !== item.ordered_qty) {
+                // ตรวจสอบว่าจำนวน IMEI ไม่เกินจำนวนที่สั่งซื้อ
+                if (listImeis.length > item.ordered_qty) {
                     return res.status(400).json({ 
                         success: false, 
-                        message: `สินค้า ${item.product_name} ต้องการ IMEI จำนวน ${item.ordered_qty} รายการ (คุณระบุมา ${listImeis.length} รายการ)` 
+                        message: `สินค้า ${item.product_name} ได้รับเกินจำนวนที่สั่งซื้อ (${item.ordered_qty} รายการ)` 
                     });
                 }
 
@@ -3288,15 +3399,23 @@ router.post('/po/:id/report-arrival', async (req, res) => {
                     });
                 }
 
-                // ตรวจสอบว่า IMEI ซ้ำกับในคลังสินค้าหลักหรือไม่
-                const existingProduct = await Product.findOne({
-                    'stock_balances.imeis': { $in: listImeis }
-                });
-                if (existingProduct) {
-                    return res.status(400).json({
-                        success: false,
-                        message: `หมายเลข IMEI บางรายการสำหรับ ${item.product_name} มีอยู่ในสต็อกระบบแล้ว กรุณาตรวจสอบ`
+                // ตรวจสอบเฉพาะ IMEI ใหม่ที่ยังไม่เคยสแกนมาก่อน ว่าซ้ำกับในคลังสินค้าหลักหรือไม่
+                const prevImeis = Array.isArray(item.imeis_scanned) ? item.imeis_scanned : [];
+                const newImeisOnly = listImeis.filter(imei => !prevImeis.includes(imei));
+
+                if (newImeisOnly.length > 0) {
+                    const existingProduct = await Product.findOne({
+                        $or: [
+                            { product_code: { $in: newImeisOnly } },
+                            { 'stock_balances.imeis': { $in: newImeisOnly } }
+                        ]
                     });
+                    if (existingProduct) {
+                        return res.status(400).json({
+                            success: false,
+                            message: `หมายเลข IMEI บางรายการสำหรับ ${item.product_name} มีอยู่ในสต็อกระบบแล้ว กรุณาตรวจสอบ`
+                        });
+                    }
                 }
 
                 item.imeis_scanned = listImeis;
@@ -3304,10 +3423,10 @@ router.post('/po/:id/report-arrival', async (req, res) => {
             } else {
                 // สินค้าทั่วไป (ไม่มี IMEI)
                 const qty = Number(data.qty || 0);
-                if (qty !== item.ordered_qty) {
+                if (qty > item.ordered_qty) {
                     return res.status(400).json({
                         success: false,
-                        message: `สินค้า ${item.product_name} ต้องระบุจำนวนให้ครบ ${item.ordered_qty} ชิ้น (คุณระบุมา ${qty} ชิ้น)`
+                        message: `สินค้า ${item.product_name} ได้รับเกินจำนวนที่สั่งซื้อ (${item.ordered_qty} ชิ้น)`
                     });
                 }
                 item.received_qty = qty;
@@ -3362,8 +3481,11 @@ router.post('/po/:id/scan-item', async (req, res) => {
                 if (item.track_imei) {
                     const newImeis = Array.isArray(data.imeis) ? data.imeis.map(x => x.toString().trim()).filter(Boolean) : [];
                     
-                    // Validate each IMEI against existing products in database
-                    for (const imei of newImeis) {
+                    // Validate only new IMEIs (not already imported for this item) against the database
+                    const importedImeis = Array.isArray(item.imported_imeis) ? item.imported_imeis : [];
+                    const actualNewImeis = newImeis.filter(imei => !importedImeis.includes(imei));
+                    
+                    for (const imei of actualNewImeis) {
                         const exists = await Product.exists({
                             $or: [
                                 { product_code: imei },

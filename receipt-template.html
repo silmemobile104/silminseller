@@ -229,16 +229,24 @@
                 const itemTotal = item.quantity * item.price;
                 itemsSubtotal += itemTotal;
                 
+                const isGift = item.is_gift === true;
                 const row = document.createElement('tr');
                 row.className = 'product-item-row';
                 row.innerHTML = `
                     <td>
-                        <div style="font-weight: bold;">${item.product_name}</div>
+                        <div style="font-weight: bold;">
+                            ${item.product_name}
+                            ${isGift ? ' <span style="font-weight: normal; font-size: 11px; color: #e65100;">(ของแถม)</span>' : ''}
+                        </div>
                         ${item.imei_sold ? `<div class="item-details">IMEI: ${item.imei_sold}</div>` : ''}
                     </td>
                     <td style="text-align: center;">${item.quantity}</td>
-                    <td style="text-align: right;">฿${item.price.toLocaleString()}</td>
-                    <td style="text-align: right;">฿${itemTotal.toLocaleString()}</td>
+                    <td style="text-align: right; color: ${isGift ? '#e65100' : 'black'}; font-weight: ${isGift ? 'bold' : 'normal'};">
+                        ${isGift ? 'แถม' : `฿${item.price.toLocaleString()}`}
+                    </td>
+                    <td style="text-align: right; color: ${isGift ? '#e65100' : 'black'}; font-weight: ${isGift ? 'bold' : 'normal'};">
+                        ${isGift ? 'แถม' : `฿${itemTotal.toLocaleString()}`}
+                    </td>
                 `;
                 itemsList.appendChild(row);
 
@@ -260,7 +268,7 @@
                 const row = document.createElement('tr');
                 row.innerHTML = `
                     <td>
-                        <div style="font-weight: bold;">ค่าใบสัญญา / Contract Fee</div>
+                        <div style="font-weight: bold;">ค่าใบสัญญา</div>
                     </td>
                     <td style="text-align: center;">1</td>
                     <td style="text-align: right;">฿${txn.contract_fee.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
@@ -276,7 +284,7 @@
                 const row = document.createElement('tr');
                 row.innerHTML = `
                     <td>
-                        <div style="font-weight: bold;">ค่าบริการ iCloud / iCloud Fee</div>
+                        <div style="font-weight: bold;">ค่าบริการ iCloud</div>
                     </td>
                     <td style="text-align: center;">1</td>
                     <td style="text-align: right;">฿${txn.icloud_fee.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>

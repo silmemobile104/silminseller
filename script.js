@@ -680,6 +680,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 // โหลดสาขาสำหรับ dropdown ที่จัดเก็บสินค้า
                 loadBranchesForProductForm();
+                
+                // โหลดสาขาสำหรับตัวกรองหน้าตรวจสอบนำเข้า
+                populateApproveImportBranchFilter();
 
                 renderSettingsList();
             } else {
@@ -707,6 +710,23 @@ document.addEventListener('DOMContentLoaded', () => {
             option.textContent = item.code ? `${item.name} (${item.code})` : item.name;
             selectElement.appendChild(option);
         });
+    };
+
+    const populateApproveImportBranchFilter = () => {
+        const select = document.getElementById('approve-import-filter-branch');
+        if (!select) return;
+        
+        const currentVal = select.value;
+        select.innerHTML = '<option value="">ทุกสาขา</option>';
+        if (window.masterDataCache && window.masterDataCache.branches) {
+            window.masterDataCache.branches.forEach(branch => {
+                const opt = document.createElement('option');
+                opt.value = branch._id;
+                opt.textContent = branch.name;
+                select.appendChild(opt);
+            });
+        }
+        select.value = currentVal;
     };
 
     // โหลดสาขาสำหรับ dropdown ที่จัดเก็บสินค้า
@@ -898,7 +918,7 @@ document.addEventListener('DOMContentLoaded', () => {
         setTimeout(() => toast.remove(), 3000);
     };
 
-    const showConfirm = (title, message, onConfirm, okText = 'ยืนยัน', type = null) => {
+    const showConfirm = (title, message, onConfirm, okText = 'ยืนยัน', type = null, widthClass = 'max-w-md') => {
         const modal = document.getElementById('custom-confirm-modal');
         const card = document.getElementById('confirm-card');
         const iconContainer = document.getElementById('confirm-icon-container');
@@ -929,7 +949,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Apply styles based on detectedType
         // Reset old dynamic classes first
-        card.className = "modal-content bg-slate-900/95 border rounded-3xl w-full max-w-md p-6 text-center modal-animate-in shadow-2xl transition-all duration-300";
+        card.className = `modal-content bg-slate-900/95 border rounded-3xl w-full ${widthClass} p-6 text-center modal-animate-in shadow-2xl transition-all duration-300`;
         iconContainer.className = "w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 border transition-all duration-300";
         iconEl.className = "text-2xl transition-transform duration-300 hover:scale-110";
         okBtn.className = "flex-1 py-2.5 rounded-xl text-sm font-bold text-white transition-all active:scale-[0.98]";
@@ -1214,6 +1234,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (navAccountingPO) navAccountingPO.style.display = permissions.manage_po ? '' : 'none';
         if (navBranchReceive) navBranchReceive.style.display = permissions.receive_po ? '' : 'none';
         if (navAccounting) navAccounting.style.display = permissions.manage_finance ? '' : 'none';
+        if (navBranchInventory) navBranchInventory.style.display = permissions.view_branch_inventory ? '' : 'none';
 
         // Mobile Nav Permissions mapping
         if (mobileNavTransactions) mobileNavTransactions.style.display = permissions.do_pos ? '' : 'none';
@@ -2077,6 +2098,16 @@ document.addEventListener('DOMContentLoaded', () => {
     // View Navigation Logic
     // ==========================================
     const switchView = async (viewName) => {
+        // ล้างข้อมูลตะกร้าสินค้าเมื่อเปลี่ยนไปหน้าอื่นที่ไม่ใช่หน้ารายการขาย (transactions)
+        if (viewName !== 'transactions') {
+            if (typeof cart !== 'undefined' && Array.isArray(cart) && cart.length > 0) {
+                cart = [];
+                if (typeof renderCart === 'function') {
+                    renderCart();
+                }
+            }
+        }
+
         // Reset all active states
         document.querySelectorAll('.nav-menu-item').forEach(item => {
             item.classList.remove('bg-cyan-500/10', 'text-cyan-400', 'border', 'border-cyan-500/20', 'active');
@@ -3205,8 +3236,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const transactionDetailPaymentBreakdown = document.getElementById('transaction-detail-payment-breakdown');
     const transactionDetailFinanceInfo = document.getElementById('transaction-detail-finance-info');
     const transactionDetailFinanceCompany = document.getElementById('transaction-detail-finance-company');
-    const transactionDetailFinanceMonths = document.getElementById('transaction-detail-finance-months');
-    const transactionDetailFinanceDay = document.getElementById('transaction-detail-finance-day');
     const btnReprintReceipt = document.getElementById('btn-reprint-receipt');
     const btnCancelTransaction = document.getElementById('btn-cancel-transaction');
 
@@ -3379,7 +3408,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     quantity: 1,
                     price: product.selling_price,
                     subtotal: product.selling_price,
-                    _isDevice: true
+                    _isDevice: true,
+                    is_gift: false,
+                    unit_name: product.unit_id ? (product.unit_id.name || '') : '',
+                    original_price: product.selling_price
                 });
                 showToast(`เพิ่ม ${product.name} (IMEI: ...${imei.slice(-4)}) ลงตะกร้าแล้ว`);
                 renderCart();
@@ -3408,7 +3440,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     quantity: 1,
                     price: product.selling_price,
                     subtotal: product.selling_price,
-                    _isDevice: false
+                    _isDevice: false,
+                    is_gift: false,
+                    unit_name: product.unit_id ? (product.unit_id.name || '') : 'ชิ้น',
+                    original_price: product.selling_price
                 });
             }
             showToast(`เพิ่ม ${product.name} ลงตะกร้าแล้ว`);
@@ -3475,7 +3510,10 @@ document.addEventListener('DOMContentLoaded', () => {
                         quantity: 1,
                         price: product.selling_price,
                         subtotal: product.selling_price,
-                        _isDevice: true
+                        _isDevice: true,
+                        is_gift: false,
+                        unit_name: product.unit_id ? (product.unit_id.name || '') : '',
+                        original_price: product.selling_price
                     });
                     showToast(`เพิ่ม ${product.name} (IMEI: ...${imei.slice(-4)}) ลงตะกร้าแล้ว`);
                     closeImeiModal();
@@ -3613,7 +3651,10 @@ document.addEventListener('DOMContentLoaded', () => {
             const input = confirmPriceList ? confirmPriceList.querySelector(`.modal-item-price-input[data-index="${index}"]`) : null;
 
             if (input) {
-                if (isFinancing) {
+                if (item.is_gift || item.unit_name !== 'เครื่อง') {
+                    input.setAttribute('disabled', 'true');
+                    input.classList.add('opacity-60', 'bg-slate-800/50');
+                } else if (isFinancing) {
                     input.removeAttribute('disabled');
                     input.classList.remove('opacity-60', 'bg-slate-800/50');
                 } else {
@@ -3624,11 +3665,26 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (!badgeContainer) return;
 
+            if (item.is_gift || item.unit_name !== 'เครื่อง') {
+                badgeContainer.innerHTML = '';
+                const targetPrice = item.is_gift ? 0 : (item.default_selling_price !== undefined ? item.default_selling_price : (item.original_price || 0));
+                if (item.price !== targetPrice) {
+                    item.price = targetPrice;
+                    item.subtotal = item.price * item.quantity;
+                    if (input) input.value = item.price;
+                    const subtotalLabel = confirmPriceList ? confirmPriceList.querySelector(`.modal-item-subtotal[data-index="${index}"]`) : null;
+                    if (subtotalLabel) {
+                        subtotalLabel.textContent = `฿${item.subtotal.toLocaleString()}`;
+                    }
+                }
+                return;
+            }
+
             if (!isFinancing) {
                 badgeContainer.innerHTML = '';
-                // Revert price to default selling price for non-financing payment methods
-                if (item.default_selling_price !== undefined && item.price !== item.default_selling_price) {
-                    item.price = item.default_selling_price;
+                const targetPrice = item.default_selling_price !== undefined ? item.default_selling_price : (item.original_price || 0);
+                if (item.price !== targetPrice) {
+                    item.price = targetPrice;
                     item.subtotal = item.price * item.quantity;
                     if (input) input.value = item.price;
                     const subtotalLabel = confirmPriceList ? confirmPriceList.querySelector(`.modal-item-subtotal[data-index="${index}"]`) : null;
@@ -3682,6 +3738,20 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
+    const updateFinancingAmount = () => {
+        const financingInput = document.getElementById('modal-finance-financing-amount');
+        if (!financingInput) return;
+
+        const discount = posDiscount ? (parseFloat(posDiscount.value) || 0) : 0;
+        const devicesTotal = cart.filter(item => item.unit_name === 'เครื่อง').reduce((sum, item) => sum + item.subtotal, 0);
+        const totalDown = parseFloat(modalFinanceDownTotal ? modalFinanceDownTotal.value : 0) || 0;
+
+        const netDevicesTotal = Math.max(0, devicesTotal - discount);
+        const financingAmount = Math.max(0, netDevicesTotal - totalDown);
+
+        financingInput.value = financingAmount.toLocaleString(undefined, { minimumFractionDigits: 2 });
+    };
+
     const updateModalTotals = () => {
         validateFinancePrices();
         const subtotal = cart.reduce((sum, item) => sum + item.subtotal, 0);
@@ -3691,6 +3761,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const contractFee = (checkboxContractFee && checkboxContractFee.checked) ? (parseFloat(inputContractFee.value) || 0) : 0;
         const icloudFee = (checkboxIcloudFee && checkboxIcloudFee.checked) ? (parseFloat(inputIcloudFee.value) || 0) : 0;
         const grandTotal = Math.max(0, subtotal - discount + contractFee + icloudFee);
+        updateFinancingAmount();
 
         if (modalSubtotalDisplay) modalSubtotalDisplay.textContent = `฿${subtotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
         if (modalDiscountDisplay) modalDiscountDisplay.textContent = `-฿${discount.toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
@@ -3722,10 +3793,36 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (modalTotalDisplay) modalTotalDisplay.textContent = `฿${grandTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
 
+        // Update Finance Summary Breakdown Row in Ledger
+        const modalFinanceSummaryRow = document.getElementById('modal-finance-summary-row');
+        const selectedPayment = paymentMethod ? paymentMethod.value : '';
+        if (modalFinanceSummaryRow) {
+            if (selectedPayment === 'จัดไฟแนนซ์') {
+                modalFinanceSummaryRow.classList.remove('hidden');
+                modalFinanceSummaryRow.classList.add('flex');
+
+                const devicesTotal = cart.filter(item => item.unit_name === 'เครื่อง').reduce((sum, item) => sum + item.subtotal, 0);
+                const netDevicesTotal = Math.max(0, devicesTotal - discount);
+                const totalDown = parseFloat(modalFinanceDownTotal ? modalFinanceDownTotal.value : 0) || 0;
+                const financingAmount = Math.max(0, netDevicesTotal - totalDown);
+                const totalUpfrontToCollect = Math.max(0, grandTotal - financingAmount);
+
+                const summaryAmountEl = document.getElementById('modal-finance-summary-amount');
+                const summaryDownEl = document.getElementById('modal-finance-summary-down');
+                const summaryUpfrontEl = document.getElementById('modal-finance-summary-upfront');
+
+                if (summaryAmountEl) summaryAmountEl.textContent = `฿${financingAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
+                if (summaryDownEl) summaryDownEl.textContent = `฿${totalDown.toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
+                if (summaryUpfrontEl) summaryUpfrontEl.textContent = `฿${totalUpfrontToCollect.toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
+            } else {
+                modalFinanceSummaryRow.classList.add('hidden');
+                modalFinanceSummaryRow.classList.remove('flex');
+            }
+        }
+
         // ===================================================================
         // ตรวจรับเงินและคำนวณเงินทอน Real-time Payment Verification Pipeline
         // ===================================================================
-        const selectedPayment = paymentMethod ? paymentMethod.value : '';
 
         if (selectedPayment === 'ซื้อสด') {
             // แสดงแผงตรวจรับเงิน
@@ -3786,9 +3883,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
         } else if (selectedPayment === 'จัดไฟแนนซ์') {
-            // กรณีจัดไฟแนนซ์ ซ่อนส่วนเงินทอน เนื่องจากยอดเงินคือเงินดาวน์
             if (paymentVerifyPanel) paymentVerifyPanel.classList.add('hidden');
-            // สถานะปุ่มชำระเงินถูกจัดการใน validateFinancePrices() ด้านบนแล้ว
+            updateFinanceDownPaymentLabel();
         } else {
             // ยังไม่ได้เลือกวิธีชำระเงิน
             if (paymentVerifyPanel) paymentVerifyPanel.classList.add('hidden');
@@ -3911,7 +4007,10 @@ document.addEventListener('DOMContentLoaded', () => {
             quantity: 1,
             price: product.selling_price,
             subtotal: product.selling_price,
-            _isDevice: true
+            _isDevice: true,
+            is_gift: false,
+            unit_name: product.unit_id ? (product.unit_id.name || '') : '',
+            original_price: product.selling_price
         });
         return true;
     };
@@ -3935,7 +4034,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 quantity: 1,
                 price: product.selling_price,
                 subtotal: product.selling_price,
-                _isDevice: false
+                _isDevice: false,
+                is_gift: false,
+                unit_name: product.unit_id ? (product.unit_id.name || '') : 'ชิ้น',
+                original_price: product.selling_price
             });
         }
         return true;
@@ -3961,25 +4063,61 @@ document.addEventListener('DOMContentLoaded', () => {
     // Update dynamic Down Payment labels reactive logic
     const updateFinanceDownPaymentLabel = () => {
         if (!modalFinanceTotalDownLabel) return;
+
+        // Calculate totalUpfrontToCollect
+        const subtotal = cart.reduce((sum, item) => sum + item.subtotal, 0);
+        const discount = posDiscount ? (parseFloat(posDiscount.value) || 0) : 0;
+        const contractFee = (checkboxContractFee && checkboxContractFee.checked) ? (parseFloat(inputContractFee.value) || 0) : 0;
+        const icloudFee = (checkboxIcloudFee && checkboxIcloudFee.checked) ? (parseFloat(inputIcloudFee.value) || 0) : 0;
+        const grandTotal = Math.max(0, subtotal - discount + contractFee + icloudFee);
+
+        const devicesTotal = cart.filter(item => item.unit_name === 'เครื่อง').reduce((sum, item) => sum + item.subtotal, 0);
+        const netDevicesTotal = Math.max(0, devicesTotal - discount);
         const totalDown = parseFloat(modalFinanceDownTotal ? modalFinanceDownTotal.value : 0) || 0;
+        const financingAmount = Math.max(0, netDevicesTotal - totalDown);
+
+        const totalUpfrontToCollect = Math.max(0, grandTotal - financingAmount);
+
         const cash = parseFloat(modalFinanceDownCash ? modalFinanceDownCash.value : 0) || 0;
         const transfer = parseFloat(modalFinanceDownTransfer ? modalFinanceDownTransfer.value : 0) || 0;
         const actualPaid = cash + transfer;
-        const remaining = totalDown - actualPaid;
+        const remaining = totalUpfrontToCollect - actualPaid;
 
-        if (totalDown <= 0) {
+        if (totalUpfrontToCollect <= 0) {
             modalFinanceTotalDownLabel.className = 'text-sm font-bold text-slate-400 font-mono';
-            modalFinanceTotalDownLabel.textContent = 'ดาวน์รวม: ฿0.00';
+            modalFinanceTotalDownLabel.textContent = 'ยอดต้องรับ: ฿0.00';
+            if (btnConfirmCheckout) {
+                btnConfirmCheckout.disabled = false;
+                btnConfirmCheckout.classList.remove('opacity-40', 'cursor-not-allowed', 'grayscale');
+                btnConfirmCheckout.title = '';
+            }
         } else if (remaining > 0) {
             modalFinanceTotalDownLabel.className = 'text-sm font-bold text-amber-400 font-mono';
-            modalFinanceTotalDownLabel.textContent = `เป้าหมายดาวน์: ฿${totalDown.toLocaleString(undefined, { minimumFractionDigits: 2 })} | ขาดอีก: ฿${remaining.toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
+            modalFinanceTotalDownLabel.textContent = `ยอดต้องรับ: ฿${totalUpfrontToCollect.toLocaleString(undefined, { minimumFractionDigits: 2 })} | ขาดอีก: ฿${remaining.toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
+            if (btnConfirmCheckout) {
+                btnConfirmCheckout.disabled = true;
+                btnConfirmCheckout.classList.add('opacity-40', 'cursor-not-allowed', 'grayscale');
+                btnConfirmCheckout.title = 'กรุณารับเงินให้ครบตามยอดที่ต้องชำระหน้าร้าน';
+            }
         } else if (remaining < 0) {
-            modalFinanceTotalDownLabel.className = 'text-sm font-bold text-rose-400 font-mono';
-            modalFinanceTotalDownLabel.textContent = `เป้าหมายดาวน์: ฿${totalDown.toLocaleString(undefined, { minimumFractionDigits: 2 })} | ชำระเกิน: ฿${Math.abs(remaining).toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
+            const change = Math.abs(remaining);
+            modalFinanceTotalDownLabel.className = 'text-sm font-bold text-cyan-400 font-mono';
+            modalFinanceTotalDownLabel.textContent = `ยอดต้องรับ: ฿${totalUpfrontToCollect.toLocaleString(undefined, { minimumFractionDigits: 2 })} | ทอนคืน: ฿${change.toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
+            if (btnConfirmCheckout) {
+                btnConfirmCheckout.disabled = false;
+                btnConfirmCheckout.classList.remove('opacity-40', 'cursor-not-allowed', 'grayscale');
+                btnConfirmCheckout.title = '';
+            }
         } else {
             modalFinanceTotalDownLabel.className = 'text-sm font-bold text-emerald-400 font-mono';
-            modalFinanceTotalDownLabel.textContent = `ดาวน์เป้าหมาย: ฿${totalDown.toLocaleString(undefined, { minimumFractionDigits: 2 })} (ชำระครบถ้วน)`;
+            modalFinanceTotalDownLabel.textContent = `ยอดต้องรับ: ฿${totalUpfrontToCollect.toLocaleString(undefined, { minimumFractionDigits: 2 })} (ครบถ้วน)`;
+            if (btnConfirmCheckout) {
+                btnConfirmCheckout.disabled = false;
+                btnConfirmCheckout.classList.remove('opacity-40', 'cursor-not-allowed', 'grayscale');
+                btnConfirmCheckout.title = '';
+            }
         }
+        updateFinancingAmount();
     };
 
     if (modalFinanceDownTotal) {
@@ -4038,6 +4176,18 @@ document.addEventListener('DOMContentLoaded', () => {
         paymentMethod.addEventListener('change', (e) => {
             const selectedVal = e.target.value;
 
+            if (selectedVal === 'จัดไฟแนนซ์') {
+                const hasDevice = cart.some(item => item.unit_name === 'เครื่อง');
+                if (!hasDevice) {
+                    showToast('ไม่สามารถจัดไฟแนนซ์ได้ เนื่องจากไม่มีสินค้าที่เป็นเครื่องในตะกร้า', 'error');
+                    paymentMethod.value = 'ซื้อสด';
+                    if (blockBuyCashDetails) blockBuyCashDetails.classList.remove('hidden');
+                    if (blockFinanceDetails) blockFinanceDetails.classList.add('hidden');
+                    updateModalTotals();
+                    return;
+                }
+            }
+
             // Hide both initially
             if (blockBuyCashDetails) blockBuyCashDetails.classList.add('hidden');
             if (blockFinanceDetails) blockFinanceDetails.classList.add('hidden');
@@ -4093,6 +4243,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
         try {
             await fetchCartLatestPrices();
+            cart.forEach(item => {
+                if (item.is_gift) {
+                    item.price = 0;
+                } else if (item.default_selling_price !== undefined) {
+                    item.price = item.default_selling_price;
+                }
+                item.subtotal = item.price * item.quantity;
+            });
         } catch (err) {
             console.error(err);
         } finally {
@@ -4150,7 +4308,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         <div class="mt-1 flex flex-col gap-1.5">
                             ${item.imei_sold ?
                         `<span class="w-fit bg-slate-800 text-slate-300 border border-slate-700 px-1.5 py-0.5 rounded text-[10px] font-mono">IMEI: ${item.imei_sold}</span>`
-                        : `<span class="w-fit bg-slate-800/60 px-1.5 py-0.5 rounded text-slate-400 text-[10px]">จำนวน: ${item.quantity} ชิ้น</span>`
+                        : `<span class="w-fit bg-slate-800/60 px-1.5 py-0.5 rounded text-slate-400 text-[10px]">จำนวน: ${item.quantity} ${item.unit_name || 'ชิ้น'}</span>`
                     }
                             ${(item._isDevice || item.imei_sold) ? `
                                 <div class="flex items-center gap-2 mt-1">
@@ -4163,6 +4321,21 @@ document.addEventListener('DOMContentLoaded', () => {
                                     </select>
                                 </div>
                             ` : ''}
+                            ${(item.unit_name === 'ชิ้น') ? `
+                                <div class="flex items-center gap-2 mt-1.5">
+                                    <span class="text-[10px] text-slate-400">การขาย:</span>
+                                    <div class="inline-flex rounded-lg overflow-hidden border border-slate-700" role="group">
+                                        <button type="button" data-index="${index}" data-type="normal" 
+                                            class="gift-toggle-btn px-2.5 py-0.5 text-[10px] font-semibold transition-all ${!item.is_gift ? 'bg-cyan-500/20 text-cyan-400 border-r border-slate-700' : 'bg-slate-800/40 text-slate-400 hover:text-white border-r border-slate-700'}">
+                                            ขายปกติ
+                                        </button>
+                                        <button type="button" data-index="${index}" data-type="gift" 
+                                            class="gift-toggle-btn px-2.5 py-0.5 text-[10px] font-semibold transition-all ${item.is_gift ? 'bg-amber-500/20 text-amber-400' : 'bg-slate-800/40 text-slate-400 hover:text-white'}">
+                                            ของแถม
+                                        </button>
+                                    </div>
+                                </div>
+                            ` : ''}
                         </div>
                         <div class="modal-item-price-badge" data-index="${index}"></div>
                     </div>
@@ -4173,7 +4346,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                 <span class="absolute left-2 top-1/2 -translate-y-1/2 text-slate-500 text-xs font-mono">฿</span>
                                 <input type="number" value="${item.price}" min="0" step="1" data-index="${index}"
                                     class="modal-item-price-input w-28 pl-5 pr-2 py-1 rounded bg-slate-900 border border-slate-700 text-white text-right font-mono text-sm focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all"
-                                    ${(paymentMethod && paymentMethod.value === 'จัดไฟแนนซ์') ? '' : 'disabled'}>
+                                    ${(paymentMethod && paymentMethod.value === 'จัดไฟแนนซ์' && !item.is_gift && item.unit_name === 'เครื่อง') ? '' : 'disabled'}>
                             </div>
                         </div>
                         <div class="w-24 flex flex-col items-end pt-3.5 font-mono">
@@ -4195,12 +4368,67 @@ document.addEventListener('DOMContentLoaded', () => {
                     // Update state
                     cart[idx].price = newPrice;
                     cart[idx].subtotal = newPrice * cart[idx].quantity;
+                    if (!cart[idx].is_gift) {
+                        cart[idx].original_price = newPrice;
+                    }
 
                     // Update item line subtotal text reactively
                     const subtotalLabel = confirmPriceList.querySelector(`.modal-item-subtotal[data-index="${idx}"]`);
                     if (subtotalLabel) {
                         subtotalLabel.textContent = `฿${cart[idx].subtotal.toLocaleString()}`;
                     }
+
+                    // Recalculate global modal summary totals
+                    updateModalTotals();
+
+                    // Synchronize state seamlessly with sidebar background cart view
+                    renderCart();
+                });
+            });
+
+            // Attach dynamic listener for gift toggle buttons
+            const giftToggleBtns = confirmPriceList.querySelectorAll('.gift-toggle-btn');
+            giftToggleBtns.forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const idx = parseInt(btn.dataset.index);
+                    const type = btn.dataset.type;
+                    const isGift = (type === 'gift');
+                    
+                    // Update state
+                    cart[idx].is_gift = isGift;
+                    if (isGift) {
+                        if (cart[idx].price > 0) {
+                            cart[idx].original_price = cart[idx].price;
+                        }
+                        cart[idx].price = 0;
+                    } else {
+                        cart[idx].price = cart[idx].original_price || cart[idx].default_selling_price || 0;
+                    }
+                    cart[idx].subtotal = cart[idx].price * cart[idx].quantity;
+                    
+                    // Update UI elements reactively
+                    const priceInput = confirmPriceList.querySelector(`.modal-item-price-input[data-index="${idx}"]`);
+                    if (priceInput) {
+                        priceInput.value = cart[idx].price;
+                        const selectedPayment = paymentMethod ? paymentMethod.value : '';
+                        priceInput.disabled = isGift || (selectedPayment !== 'จัดไฟแนนซ์') || (cart[idx].unit_name !== 'เครื่อง');
+                    }
+                    
+                    const subtotalLabel = confirmPriceList.querySelector(`.modal-item-subtotal[data-index="${idx}"]`);
+                    if (subtotalLabel) {
+                        subtotalLabel.textContent = `฿${cart[idx].subtotal.toLocaleString()}`;
+                    }
+                    
+                    const parentGroup = btn.parentElement;
+                    const buttons = parentGroup.querySelectorAll('.gift-toggle-btn');
+                    buttons.forEach(b => {
+                        const bType = b.dataset.type;
+                        if (bType === 'normal') {
+                            b.className = `gift-toggle-btn px-2.5 py-0.5 text-[10px] font-semibold transition-all ${!isGift ? 'bg-cyan-500/20 text-cyan-400 border-r border-slate-700' : 'bg-slate-800/40 text-slate-400 hover:text-white border-r border-slate-700'}`;
+                        } else if (bType === 'gift') {
+                            b.className = `gift-toggle-btn px-2.5 py-0.5 text-[10px] font-semibold transition-all ${isGift ? 'bg-amber-500/20 text-amber-400' : 'bg-slate-800/40 text-slate-400 hover:text-white'}`;
+                        }
+                    });
 
                     // Recalculate global modal summary totals
                     updateModalTotals();
@@ -4287,8 +4515,8 @@ document.addEventListener('DOMContentLoaded', () => {
             dueDay = 0;
             instMonths = 0;
             const downTotal = parseFloat(modalFinanceDownTotal ? modalFinanceDownTotal.value : 0) || 0;
-            downCash = parseFloat(modalFinanceDownCash ? modalFinanceDownCash.value : 0) || 0;
-            downTrans = parseFloat(modalFinanceDownTransfer ? modalFinanceDownTransfer.value : 0) || 0;
+            const enteredCash = parseFloat(modalFinanceDownCash ? modalFinanceDownCash.value : 0) || 0;
+            const enteredTrans = parseFloat(modalFinanceDownTransfer ? modalFinanceDownTransfer.value : 0) || 0;
             finalDownPayment = downTotal;
 
             if (!compName) {
@@ -4297,12 +4525,33 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
-            const actualPaid = downCash + downTrans;
-            if (Math.abs(actualPaid - downTotal) > 0.01) {
-                showToast(`ยอดรับเงินสดและเงินโอนรวมกัน (฿${actualPaid.toLocaleString(undefined, { minimumFractionDigits: 2 })}) ต้องเท่ากับยอดเงินดาวน์ (฿${downTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}) พอดี`, 'error');
+            // Calculate totalUpfrontToCollect
+            const subtotalChk = cart.reduce((sum, item) => sum + item.subtotal, 0);
+            const discountChk = posDiscount ? (parseFloat(posDiscount.value) || 0) : 0;
+            const contractFeeChk = (checkboxContractFee && checkboxContractFee.checked) ? (parseFloat(inputContractFee.value) || 0) : 0;
+            const icloudFeeChk = (checkboxIcloudFee && checkboxIcloudFee.checked) ? (parseFloat(inputIcloudFee.value) || 0) : 0;
+            const grandTotalChk = Math.max(0, subtotalChk - discountChk + contractFeeChk + icloudFeeChk);
+
+            const devicesTotalChk = cart.filter(item => item.unit_name === 'เครื่อง').reduce((sum, item) => sum + item.subtotal, 0);
+            const netDevicesTotalChk = Math.max(0, devicesTotalChk - discountChk);
+            const financingAmountChk = Math.max(0, netDevicesTotalChk - downTotal);
+            const totalUpfrontToCollect = Math.max(0, grandTotalChk - financingAmountChk);
+
+            const actualReceived = enteredCash + enteredTrans;
+            if (actualReceived < totalUpfrontToCollect) {
+                showToast(`ยอดรับเงินรวมกัน (฿${actualReceived.toLocaleString(undefined, { minimumFractionDigits: 2 })}) ต้องไม่ต่ำกว่ายอดชำระหน้าร้าน (฿${totalUpfrontToCollect.toLocaleString(undefined, { minimumFractionDigits: 2 })})`, 'error');
                 if (modalFinanceDownCash) modalFinanceDownCash.focus();
                 return;
             }
+
+            // Deduct change from enteredCash
+            const change = actualReceived - totalUpfrontToCollect;
+            const netCash = enteredCash - change;
+            const netTransfer = enteredTrans;
+
+            // Split into down_payment cash vs transfer
+            downCash = Math.min(downTotal, Math.max(0, netCash));
+            downTrans = downTotal - downCash;
         }
 
         const discount = posDiscount ? (parseFloat(posDiscount.value) || 0) : 0;
@@ -4664,6 +4913,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const viewTransactionDetails = async (txnId) => {
         try {
+            await ensureMasterDataLoaded();
             const response = await authFetch(`${API_BASE_URL}/transactions/${txnId}`);
             const result = await response.json();
 
@@ -4760,9 +5010,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Populate Finance Details
                 if (transactionDetailFinanceInfo) {
                     transactionDetailFinanceInfo.classList.remove('hidden');
-                    if (transactionDetailFinanceCompany) transactionDetailFinanceCompany.textContent = txn.finance_company || '-';
-                    if (transactionDetailFinanceMonths) transactionDetailFinanceMonths.textContent = `${txn.finance_months || 0} เดือน`;
-                    if (transactionDetailFinanceDay) transactionDetailFinanceDay.textContent = `วันที่ ${txn.finance_payment_day || 0} ของเดือน`;
+                    if (transactionDetailFinanceCompany) {
+                        let compName = txn.finance_company || '-';
+                        if (window.masterDataCache && window.masterDataCache.financeCompanies) {
+                            const matchingCompany = window.masterDataCache.financeCompanies.find(c => c._id === txn.finance_company);
+                            if (matchingCompany) {
+                                compName = matchingCompany.name;
+                            }
+                        }
+                        transactionDetailFinanceCompany.textContent = compName;
+                    }
                 }
             } else {
                 transactionDetailBalance.textContent = `฿0`;
@@ -4778,11 +5035,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 const imeiValue = item.imei_sold || item.imei || item.serial || item.serial_number || '';
                 const itemRow = document.createElement('tr');
                 itemRow.className = 'border-b border-slate-700';
+                const isGift = item.is_gift === true;
                 itemRow.innerHTML = `
-                    <td class="px-4 py-3 text-white">${item.product_name}</td>
+                    <td class="px-4 py-3 text-white">
+                        ${item.product_name}
+                        ${isGift ? '<span class="ml-2 px-1.5 py-0.5 text-[10px] font-bold bg-amber-500/20 text-amber-400 rounded">ของแถม</span>' : ''}
+                    </td>
                     <td class="px-4 py-3 text-center text-slate-400">${imeiValue ? imeiValue : '-'}</td>
                     <td class="px-4 py-3 text-center text-slate-300">${item.quantity}</td>
-                    <td class="px-4 py-3 text-right text-cyan-400 font-mono">฿${item.price.toLocaleString()}</td>
+                    <td class="px-4 py-3 text-right text-cyan-400 font-mono">${isGift ? '<span class="text-amber-400 font-bold">ของแถม</span>' : `฿${item.price.toLocaleString()}`}</td>
                 `;
                 transactionDetailItems.appendChild(itemRow);
             });
@@ -5180,7 +5441,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const closeRoleModalBtn = document.getElementById('close-role-modal-btn');
     const cancelRoleModalBtn = document.getElementById('cancel-role-modal-btn');
 
-    const permKeys = ['view_dashboard', 'manage_stock', 'delete_stock', 'do_pos', 'manage_personnel', 'manage_branches', 'manage_settings', 'manage_roles', 'view_audit_logs', 'filter_stock_branch', 'cancel_sale', 'report_arrival', 'approve_import', 'manage_po', 'receive_po', 'manage_transfers', 'manage_finance'];
+    const permKeys = ['view_dashboard', 'manage_stock', 'delete_stock', 'do_pos', 'manage_personnel', 'manage_branches', 'manage_settings', 'manage_roles', 'view_audit_logs', 'filter_stock_branch', 'cancel_sale', 'report_arrival', 'approve_import', 'manage_po', 'receive_po', 'manage_transfers', 'manage_finance', 'view_branch_inventory'];
     const permLabels = {
         view_dashboard: 'ดูแดชบอร์ด',
         manage_stock: 'จัดการสต็อก',
@@ -5198,7 +5459,8 @@ document.addEventListener('DOMContentLoaded', () => {
         manage_po: 'จัดการระบบสั่งซื้อ (PO)',
         receive_po: 'ตรวจรับสินค้าเข้าสาขา',
         manage_transfers: 'โอนย้ายสินค้า',
-        manage_finance: 'จัดการระบบบัญชีและการเงิน'
+        manage_finance: 'จัดการระบบบัญชีและการเงิน',
+        view_branch_inventory: 'ดูสินค้าในสาขา'
     };
     const permIcons = {
         view_dashboard: 'fa-chart-pie text-blue-400',
@@ -5217,7 +5479,8 @@ document.addEventListener('DOMContentLoaded', () => {
         manage_po: 'fa-file-invoice-dollar text-pink-400',
         receive_po: 'fa-boxes-packing text-indigo-400',
         manage_transfers: 'fa-right-left text-cyan-400',
-        manage_finance: 'fa-chart-line text-amber-400'
+        manage_finance: 'fa-chart-line text-amber-400',
+        view_branch_inventory: 'fa-store text-emerald-400'
     };
 
     const openRoleModal = () => {
@@ -7055,6 +7318,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if (typeof window.loadImportNotifications === 'function') {
                 window.loadImportNotifications();
             }
+            loadApprovePOs();
+            loadApproveHistory();
         });
     }
 
@@ -9052,6 +9317,9 @@ document.addEventListener('DOMContentLoaded', () => {
             card.dataset.orderedQty = item.ordered_qty;
 
             if (item.track_imei) {
+                const scannedList = Array.isArray(item.imeis_scanned) ? item.imeis_scanned : [];
+                const importedList = Array.isArray(item.imported_imeis) ? item.imported_imeis : [];
+
                 card.innerHTML = `
                     <div class="flex justify-between items-center border-b border-slate-800 pb-2">
                         <span class="font-bold text-white text-base flex items-center gap-2">
@@ -9062,19 +9330,28 @@ document.addEventListener('DOMContentLoaded', () => {
                         </span>
                     </div>
                     <div class="space-y-2.5">
-                        <label class="text-xs font-medium text-slate-400 flex items-center gap-1">
-                            <i class="fa-solid fa-barcode text-green-400 text-xs"></i> ระบุหมายเลข IMEI สำหรับแต่ละเครื่อง (แสดงลำดับเลขด้านหน้า)
-                        </label>
+                        <div class="flex justify-between items-center text-xs">
+                            <label class="font-medium text-slate-400 flex items-center gap-1">
+                                <i class="fa-solid fa-barcode text-green-400"></i> ระบุหมายเลข IMEI สำหรับแต่ละเครื่อง (แสดงลำดับเลขด้านหน้า)
+                            </label>
+                            ${importedList.length > 0 ? `<span class="text-slate-505 font-bold text-emerald-400">(นำเข้าสต็อกแล้ว ${importedList.length} เครื่อง)</span>` : ''}
+                        </div>
                         <div class="grid grid-cols-1 gap-2 max-h-[220px] overflow-y-auto pr-1">
-                            ${Array.from({ length: item.ordered_qty }).map((_, idx) => `
-                                <div class="flex items-center gap-3 bg-slate-950 px-3 py-2.5 rounded-xl border border-slate-850 focus-within:border-cyan-500/50 transition-colors">
-                                    <span class="text-xs font-bold text-slate-500 font-mono w-5 text-right">${idx + 1}.</span>
-                                    <input type="text" 
-                                           data-index="${idx}"
-                                           placeholder="สแกนหรือพิมพ์หมายเลข IMEI เครื่องที่ ${idx + 1}"
-                                           class="imei-indiv-input w-full bg-transparent text-white focus:outline-none placeholder-slate-700 font-mono text-sm uppercase">
-                                </div>
-                            `).join('')}
+                            ${Array.from({ length: item.ordered_qty }).map((_, idx) => {
+                                const savedImei = scannedList[idx] || '';
+                                const isImported = importedList.includes(savedImei) && savedImei !== '';
+                                return `
+                                    <div class="flex items-center gap-3 bg-slate-950 px-3 py-2.5 rounded-xl border border-slate-850 focus-within:border-cyan-500/50 transition-all ${isImported ? 'opacity-60 bg-slate-950/40 border-slate-900' : ''}">
+                                        <span class="text-xs font-bold text-slate-500 font-mono w-5 text-right">${idx + 1}.</span>
+                                        <input type="text" 
+                                               data-index="${idx}"
+                                               value="${savedImei}"
+                                               ${isImported ? 'readonly disabled' : ''}
+                                               placeholder="${isImported ? 'นำเข้าสต็อกแล้ว' : `สแกนหรือพิมพ์หมายเลข IMEI เครื่องที่ ${idx + 1}`}"
+                                               class="imei-indiv-input w-full bg-transparent ${isImported ? 'text-slate-500 cursor-not-allowed font-mono text-sm uppercase focus:outline-none' : 'text-white focus:outline-none placeholder-slate-700 font-mono text-sm uppercase'}">
+                                    </div>
+                                `;
+                            }).join('')}
                         </div>
                         <textarea id="textarea-imei-${item._id}" class="hidden"></textarea>
                     </div>
@@ -9152,8 +9429,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     input.addEventListener('keydown', (e) => {
                         if (e.key === 'Enter') {
                             e.preventDefault();
-                            if (inputs[idx + 1]) {
-                                inputs[idx + 1].focus();
+                            let nextInp = inputs[idx + 1];
+                            while (nextInp && (nextInp.disabled || nextInp.readOnly)) {
+                                nextInp = inputs[nextInp.dataset.index + 1];
+                            }
+                            if (nextInp) {
+                                nextInp.focus();
                             } else {
                                 input.blur(); // Remove cursor focus on last item to save/commit immediately
                             }
@@ -9166,12 +9447,17 @@ document.addEventListener('DOMContentLoaded', () => {
                         const text = (e.clipboardData || window.clipboardData).getData('text');
                         const pastedLines = text.split('\n').map(x => x.trim().toUpperCase()).filter(Boolean);
                         
-                        pastedLines.forEach((imei, i) => {
+                        let pastedCount = 0;
+                        for (let i = 0; i < inputs.length; i++) {
                             const targetIdx = idx + i;
-                            if (inputs[targetIdx]) {
-                                inputs[targetIdx].value = imei;
+                            const targetInput = inputs[targetIdx];
+                            if (targetInput && !targetInput.disabled && !targetInput.readOnly) {
+                                if (pastedLines[pastedCount]) {
+                                    targetInput.value = pastedLines[pastedCount];
+                                    pastedCount++;
+                                }
                             }
-                        });
+                        }
                         
                         validateAllRowInputs();
                     });
@@ -9234,26 +9520,44 @@ document.addEventListener('DOMContentLoaded', () => {
                     });
                 });
 
-                if (Array.isArray(item.imeis_scanned) && item.imeis_scanned.length > 0) {
-                    item.imeis_scanned.forEach((imei, idx) => {
-                        if (inputs[idx]) {
-                            inputs[idx].value = imei;
-                        }
-                    });
-                    syncInputsToTextarea();
-                }
+                // Sync initial value
+                syncInputsToTextarea();
             } else {
+                const importedQty = item.imported_qty || 0;
+                const remainingQty = item.ordered_qty - importedQty;
+
                 card.innerHTML = `
-                    <div class="flex justify-between items-center">
+                    <div class="flex justify-between items-center border-b border-slate-800 pb-2.5">
                         <span class="font-bold text-white text-base flex items-center gap-2">
                             <i class="fa-solid fa-plug text-violet-400"></i> ${item.product_name}
                         </span>
-                        <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-green-500/10 text-green-400 border border-green-500/20">
-                            จำนวนครบ ${item.ordered_qty} ชิ้น
-                        </span>
+                        <div class="text-xs space-x-2">
+                            <span class="font-semibold px-2 py-0.5 rounded-full bg-slate-800 text-slate-400">
+                                สั่งซื้อ: ${item.ordered_qty} ชิ้น
+                            </span>
+                            <span class="font-semibold px-2 py-0.5 rounded-full bg-green-500/10 text-green-400 border border-green-500/20">
+                                นำเข้าแล้ว: ${importedQty} / ${item.ordered_qty} ชิ้น
+                            </span>
+                        </div>
                     </div>
-                    <div class="text-xs text-slate-500">
-                        สินค้าชิ้นนี้เป็นอุปกรณ์เสริม/ทั่วไป ไม่ต้องการบันทึกหมายเลข IMEI
+                    <div class="flex justify-between items-center pt-1">
+                        <span class="text-xs text-slate-400">
+                            อุปกรณ์ทั่วไป (ไม่มี IMEI) ค้างส่ง: <strong class="text-amber-400 font-mono text-sm">${remainingQty}</strong> ชิ้น
+                        </span>
+                        ${remainingQty > 0 ? `
+                            <div class="flex items-center gap-2">
+                                <label class="text-xs text-slate-500 font-medium">ส่งมาเพิ่มรอบนี้:</label>
+                                <input type="number" 
+                                       min="0" 
+                                       max="${remainingQty}" 
+                                       value="${remainingQty}" 
+                                       class="po-arrival-accessory-qty w-24 bg-slate-950 border border-slate-850 focus:border-cyan-500 text-white font-mono text-sm font-bold text-center py-2 rounded-xl focus:outline-none focus:ring-1 focus:ring-cyan-500/30 transition-colors">
+                            </div>
+                        ` : `
+                            <span class="text-xs text-emerald-400 font-bold flex items-center gap-1">
+                                <i class="fa-solid fa-circle-check"></i> ได้รับครบแล้ว
+                            </span>
+                        `}
                     </div>
                 `;
             }
@@ -9270,6 +9574,7 @@ document.addEventListener('DOMContentLoaded', () => {
         btnSubmit.onclick = async () => {
             const rows = document.querySelectorAll('.po-arrival-row');
             const received_items = {};
+            let totalNewReceived = 0;
 
             for (let row of rows) {
                 const itemId = row.dataset.itemId;
@@ -9277,12 +9582,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 const productName = row.dataset.productName;
                 const orderedQty = Number(row.dataset.orderedQty);
 
+                const dbItem = po.items.find(i => i._id === itemId);
+                const importedImeis = dbItem ? (dbItem.imported_imeis || []) : [];
+                const importedQty = dbItem ? (dbItem.imported_qty || 0) : 0;
+
                 if (trackImei) {
                     const textarea = row.querySelector('textarea');
-                    const imeis = textarea.value.split('\n').map(x => x.trim()).filter(Boolean);
+                    const imeis = textarea.value.split('\n').map(x => x.trim().toUpperCase()).filter(Boolean);
 
-                    if (imeis.length !== orderedQty) {
-                        showToast(`กรุณากรอก IMEI สำหรับ ${productName} ให้ครบ ${orderedQty} เครื่อง (ปัจจุบันกรอก ${imeis.length})`, 'error');
+                    if (imeis.length > orderedQty) {
+                        showToast(`จำนวน IMEI สำหรับ ${productName} เกินจำนวนสั่งซื้อ (${orderedQty})`, 'error');
                         return;
                     }
 
@@ -9292,38 +9601,158 @@ document.addEventListener('DOMContentLoaded', () => {
                         return;
                     }
 
+                    // ป้องกันการลบหรือแก้ไข IMEI เดิมที่นำเข้าคลังไปแล้ว
+                    const modifiedImported = importedImeis.some(imei => !imeis.includes(imei));
+                    if (modifiedImported) {
+                        showToast(`ไม่อนุญาตให้แก้ไขหรือลบหมายเลข IMEI ที่นำเข้าสต็อกแล้วในสินค้า ${productName}`, 'error');
+                        return;
+                    }
+
+                    const newImeisCount = imeis.length - importedImeis.length;
+                    if (newImeisCount > 0) {
+                        totalNewReceived += newImeisCount;
+                    }
+
                     received_items[itemId] = { imeis };
                 } else {
-                    received_items[itemId] = { qty: orderedQty };
+                    const inputQty = row.querySelector('.po-arrival-accessory-qty');
+                    const qtyThisRound = inputQty ? Number(inputQty.value) : 0;
+
+                    if (qtyThisRound < 0) {
+                        showToast(`จำนวนที่รับสำหรับ ${productName} ต้องไม่ต่ำกว่า 0`, 'error');
+                        return;
+                    }
+
+                    const remaining = orderedQty - importedQty;
+                    if (qtyThisRound > remaining) {
+                        showToast(`จำนวนรับเพิ่มสำหรับ ${productName} เกินกว่าจำนวนค้างส่ง (ค้างส่ง: ${remaining} ชิ้น)`, 'error');
+                        return;
+                    }
+
+                    if (qtyThisRound > 0) {
+                        totalNewReceived += qtyThisRound;
+                    }
+
+                    received_items[itemId] = { qty: importedQty + qtyThisRound };
                 }
             }
 
-            try {
-                btnSubmit.disabled = true;
-                btnSubmit.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i>กำลังบันทึกข้อมูล...';
+            if (totalNewReceived === 0) {
+                showToast('กรุณาระบุสินค้าหรือ IMEI ที่ได้รับเพิ่มอย่างน้อย 1 รายการก่อนกดยืนยัน', 'warning');
+                return;
+            }
 
-                const res = await authFetch(`${API_BASE_URL}/po/${po._id}/report-arrival`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ received_items })
-                });
+            const branchName = po.branch_id ? (typeof po.branch_id === 'object' ? po.branch_id.name : po.branch_id) : '-';
 
-                const json = await res.json();
-                if (json.success) {
-                    showToast(isEditMode ? 'แก้ไขข้อมูลการรับสินค้าสำเร็จเรียบร้อยแล้ว!' : 'แจ้งสถานะสินค้าถึงสาขาและบันทึก IMEI สำเร็จเรียบร้อยแล้ว!', 'success');
-                     document.getElementById('btn-close-po-arrival').click();
-                     if (typeof loadArrivalPOs === 'function') loadArrivalPOs();
-                     if (typeof loadPOs === 'function') loadPOs();
-                 } else {
-                     showToast(json.message, 'error');
-                 }
-             } catch (err) {
-                 console.error(err);
-                 showToast('เกิดข้อผิดพลาดในการบันทึกรายการ', 'error');
-             } finally {
-                 btnSubmit.disabled = false;
-                 btnSubmit.innerHTML = isEditMode ? 'บันทึกการแก้ไขข้อมูล' : 'ยืนยันรายการและแจ้งของถึงสาขา';
-             }
+            // สร้าง HTML สำหรับแสดงข้อมูลให้พนักงานตรวจสอบก่อนยืนยันจริง (เวอร์ชันขนาดใหญ่/อ่านง่ายชัดเจน)
+            let confirmHtml = `
+                <div class="text-left bg-slate-950/40 rounded-2xl p-5 border border-slate-800 space-y-5 max-h-[350px] overflow-y-auto mb-2 text-base mt-3 scrollbar-thin">
+                    <!-- PO Details Summary -->
+                    <div class="space-y-2.5 border-b border-slate-800/80 pb-4 text-sm">
+                        <div class="flex justify-between items-center">
+                            <span class="text-slate-400 font-medium">เลขที่ PO:</span>
+                            <span class="font-mono font-bold text-white text-base">${po.po_number}</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-slate-400 font-medium">คู่ค้า / Supplier:</span>
+                            <span class="text-white font-bold text-sm">${po.supplier_name || '-'}</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-slate-400 font-medium">สาขา:</span>
+                            <span class="text-white font-bold text-sm">${branchName}</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Items List -->
+                    <div class="space-y-4">
+                        <span class="text-slate-400 font-bold text-xs uppercase tracking-wider block">รายการที่จะแจ้งของถึงสาขาในรอบนี้:</span>
+            `;
+
+            po.items.forEach(item => {
+                const receivedInfo = received_items[item._id];
+                const importedList = Array.isArray(item.imported_imeis) ? item.imported_imeis : [];
+                const importedQty = item.imported_qty || 0;
+
+                if (item.track_imei && receivedInfo && receivedInfo.imeis) {
+                    const newImeisThisRound = receivedInfo.imeis.filter(imei => !importedList.includes(imei));
+                    if (newImeisThisRound.length > 0) {
+                        confirmHtml += `
+                            <div class="border-b border-slate-900/80 pb-3.5 last:border-0 last:pb-0 space-y-2">
+                                <div class="flex justify-between items-start">
+                                    <span class="font-bold text-white text-sm flex items-center gap-2">
+                                        <i class="fa-solid fa-mobile-screen text-cyan-400 text-xs"></i> ${item.product_name}
+                                    </span>
+                                    <span class="text-xs bg-cyan-500/10 text-cyan-400 border border-cyan-500/25 px-2.5 py-0.5 rounded-full font-bold font-mono">
+                                        ส่งมาเพิ่ม ${newImeisThisRound.length} เครื่อง (รวมรับแล้ว ${receivedInfo.imeis.length}/${item.ordered_qty})
+                                    </span>
+                                </div>
+                                <!-- IMEI Pills -->
+                                <div class="flex flex-wrap gap-1.5 mt-2">
+                                    ${newImeisThisRound.map(imei => `
+                                        <span class="px-2.5 py-1 bg-slate-900/90 text-slate-200 rounded-lg border border-slate-800 font-mono text-xs tracking-wider font-semibold">${imei}</span>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        `;
+                    }
+                } else if (receivedInfo) {
+                    const newQtyThisRound = receivedInfo.qty - importedQty;
+                    if (newQtyThisRound > 0) {
+                        confirmHtml += `
+                            <div class="border-b border-slate-900/80 pb-3.5 last:border-0 last:pb-0 flex justify-between items-center">
+                                <span class="font-bold text-white text-sm flex items-center gap-2">
+                                    <i class="fa-solid fa-plug text-violet-400 text-xs"></i> ${item.product_name}
+                                </span>
+                                <span class="text-xs bg-violet-500/10 text-violet-400 border border-violet-500/25 px-2.5 py-0.5 rounded-full font-bold font-mono">
+                                    ส่งมาเพิ่ม ${newQtyThisRound} ชิ้น (รวมรับแล้ว ${receivedInfo.qty}/${item.ordered_qty})
+                                </span>
+                            </div>
+                        `;
+                    }
+                }
+            });
+
+            confirmHtml += `
+                    </div>
+                </div>
+                <p class="text-xs text-slate-400 text-center mt-3">โปรดตรวจสอบรายละเอียดข้อมูลด้านบนอีกครั้งเพื่อความถูกต้องก่อนกดยืนยัน</p>
+            `;
+
+            showConfirm(
+                isEditMode ? 'ยืนยันบันทึกการแก้ไขข้อมูล' : 'ยืนยันแจ้งสินค้าถึงสาขา',
+                confirmHtml,
+                async () => {
+                    try {
+                        btnSubmit.disabled = true;
+                        btnSubmit.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i>กำลังบันทึกข้อมูล...';
+
+                        const res = await authFetch(`${API_BASE_URL}/po/${po._id}/report-arrival`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ received_items })
+                        });
+
+                        const json = await res.json();
+                        if (json.success) {
+                            showToast(isEditMode ? 'แก้ไขข้อมูลการรับสินค้าสำเร็จเรียบร้อยแล้ว!' : 'แจ้งสถานะสินค้าถึงสาขาและบันทึก IMEI สำเร็จเรียบร้อยแล้ว!', 'success');
+                            document.getElementById('btn-close-po-arrival').click();
+                            if (typeof loadArrivalPOs === 'function') loadArrivalPOs();
+                            if (typeof loadPOs === 'function') loadPOs();
+                        } else {
+                            showToast(json.message, 'error');
+                        }
+                    } catch (err) {
+                        console.error(err);
+                        showToast('เกิดข้อผิดพลาดในการบันทึกรายการ', 'error');
+                    } finally {
+                        btnSubmit.disabled = false;
+                        btnSubmit.innerHTML = isEditMode ? 'บันทึกการแก้ไขข้อมูล' : 'ยืนยันรายการและแจ้งของถึงสาขา';
+                    }
+                },
+                isEditMode ? 'บันทึกข้อมูล' : 'ยืนยันและส่งข้อมูล',
+                'success',
+                'max-w-2xl'
+            );
         };
     };
 
@@ -9336,16 +9765,16 @@ document.addEventListener('DOMContentLoaded', () => {
         window.__currentReceivePO = po._id;
 
         po.items.forEach(item => {
-            let pendingQty = item.ordered_qty - item.received_qty;
-            if (po.status === 'ของถึงสาขาแล้ว') {
-                pendingQty = item.ordered_qty;
-            }
+            const importedQty = item.imported_qty || 0;
+            const pendingQty = item.ordered_qty - importedQty;
             if (pendingQty <= 0) return; // Full received already
 
             const el = document.createElement('div');
             el.className = 'p-5 bg-[#151515] border border-gray-800 rounded-xl po-receive-row shadow-sm';
             el.dataset.itemId = item._id;
             el.dataset.trackImei = item.track_imei;
+            el.dataset.importedImeis = JSON.stringify(item.imported_imeis || []);
+            el.dataset.importedQty = importedQty;
 
             let inputHtml = '';
             if (item.track_imei) {
@@ -9373,7 +9802,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>
                 `;
             } else {
-                const defaultQty = (po.status === 'ของถึงสาขาแล้ว') ? pendingQty : 0;
+                const defaultQty = Math.max(0, (item.received_qty || 0) - importedQty);
                 inputHtml = `
                     <div class="mt-4 max-w-[200px]">
                         <label class="text-xs font-bold text-slate-400 mb-1.5 block">จำนวนที่รับเข้า (รอรับ ${pendingQty} ชิ้น)</label>
@@ -9389,7 +9818,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             <span>${item.product_name}</span>
                             <span class="text-xs text-slate-500 font-mono font-normal">(${item.product_code})</span>
                         </h5>
-                        <p class="text-xs text-slate-400 mt-1">สั่ง: <span class="text-white font-bold">${item.ordered_qty}</span> | รับแล้ว: <span class="text-emerald-400 font-bold">${po.status === 'ของถึงสาขาแล้ว' ? 0 : item.received_qty}</span> | <span class="text-amber-400 font-bold">ค้างรับ: ${pendingQty}</span></p>
+                        <p class="text-xs text-slate-400 mt-1">สั่ง: <span class="text-white font-bold">${item.ordered_qty}</span> | นำเข้าคลังแล้ว: <span class="text-emerald-400 font-bold">${importedQty}</span> | <span class="text-amber-400 font-bold">ค้างรับ: ${pendingQty}</span></p>
                     </div>
                     ${item.track_imei ? 
                         `<span class="text-xs font-semibold px-2.5 py-1 bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 rounded-lg flex items-center gap-1"><i class="fa-solid fa-barcode text-xs"></i> เก็บ IMEI</span>` : 
@@ -9416,13 +9845,16 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 };
 
+                const importedImeis = Array.isArray(item.imported_imeis) ? item.imported_imeis : [];
+
                 const handleRemoveImei = (tagEl, imeiVal) => {
                     showConfirm('ยืนยันการลบ IMEI', `คุณต้องการลบ IMEI: ${imeiVal} ใช่หรือไม่?`, async () => {
                         tagEl.remove();
                         updateScannedCount();
 
-                        // Get all remaining IMEIs in the UI container for this row to save immediately to DB
-                        const remainingImeis = Array.from(tagsContainer.querySelectorAll('.imei-tag-text')).map(t => t.textContent.trim());
+                        // Get all remaining IMEIs in the UI container for this row and merge with imported ones to save cumulative set
+                        const uiImeis = Array.from(tagsContainer.querySelectorAll('.imei-tag-text')).map(t => t.textContent.trim());
+                        const remainingImeis = [...importedImeis, ...uiImeis];
 
                         try {
                             const received_items = {};
@@ -9447,9 +9879,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     }, 'ยืนยันการลบ');
                 };
 
-                // ถ้ามี IMEI ที่สแกนไว้จากหน้าร้าน ให้แสดงขึ้นมาเป็น Tag อัตโนมัติเพื่อให้พนักงานสต็อกตรวจสอบ
-                if (Array.isArray(item.imeis_scanned) && item.imeis_scanned.length > 0) {
-                    item.imeis_scanned.forEach(val => {
+                // ถ้ามี IMEI ที่สแกนไว้จากหน้าร้าน ให้แสดงขึ้นมาเฉพาะ IMEI ใหม่ที่ยังไม่ได้นำเข้าสต็อก
+                const newImeis = (Array.isArray(item.imeis_scanned) ? item.imeis_scanned : []).filter(val => !importedImeis.includes(val));
+                if (newImeis.length > 0) {
+                    newImeis.forEach(val => {
                         const tag = document.createElement('div');
                         tag.className = 'imei-tag inline-flex items-center gap-1.5 bg-cyan-950/80 border border-cyan-800/60 text-cyan-300 px-3 py-1.5 rounded-lg text-sm transition-all hover:bg-cyan-900/80 animate-fade-in font-mono shadow-sm';
                         tag.innerHTML = `
@@ -9566,15 +9999,21 @@ document.addEventListener('DOMContentLoaded', () => {
             rows.forEach(row => {
                 const itemId = row.dataset.itemId;
                 const trackImei = row.dataset.trackImei === 'true';
+                const importedImeis = JSON.parse(row.dataset.importedImeis || '[]');
+                const importedQty = Number(row.dataset.importedQty || 0);
 
                 if (trackImei) {
-                    const imeis = Array.from(row.querySelectorAll('.imei-tag-text')).map(t => t.textContent.trim());
+                    const uiImeis = Array.from(row.querySelectorAll('.imei-tag-text')).map(t => t.textContent.trim());
+                    const imeis = [...importedImeis, ...uiImeis];
                     received_items[itemId] = { imeis };
-                    hasInput = true;
+                    if (uiImeis.length > 0) {
+                        hasInput = true;
+                    }
                 } else {
-                    const qty = Number(row.querySelector('.receive-qty').value);
-                    if (qty > 0) {
-                        received_items[itemId] = { qty };
+                    const qtyInput = row.querySelector('.receive-qty');
+                    const qtyNewRound = qtyInput ? Number(qtyInput.value) : 0;
+                    received_items[itemId] = { qty: importedQty + qtyNewRound };
+                    if (qtyNewRound > 0) {
                         hasInput = true;
                     }
                 }
@@ -9915,9 +10354,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     // Count scanned items vs total items ordered
                     let totalOrdered = 0;
                     let totalScanned = 0;
+                    let grandTotal = 0;
                     po.items.forEach(item => {
                         totalOrdered += item.ordered_qty;
                         totalScanned += item.received_qty || 0;
+                        grandTotal += (item.cost_price || 0) * (item.ordered_qty || 0);
                     });
 
                     tr.innerHTML = `
@@ -9928,7 +10369,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         <td class="px-6 py-4 text-center text-sm font-mono font-semibold">
                             <span class="text-cyan-400 font-bold">${totalScanned}</span> <span class="text-slate-500">/</span> <span class="text-slate-400">${totalOrdered}</span>
                         </td>
-                        <td class="px-6 py-4 text-right font-mono text-sm font-bold text-white">฿${(po.grand_total || 0).toLocaleString()}</td>
+                        <td class="px-6 py-4 text-right font-mono text-sm font-bold text-white">฿${(po.grand_total || grandTotal).toLocaleString()}</td>
                         <td class="px-6 py-4 text-right">
                             <button class="btn-finalize-import px-3 py-1.5 bg-violet-500/20 text-violet-400 hover:bg-violet-500/30 rounded-lg text-xs font-bold transition-all inline-flex items-center gap-1" data-id="${po._id}">
                                 <i class="fa-solid fa-clipboard-check"></i> อนุมัตินำเข้าสต็อก
@@ -9976,27 +10417,147 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
+    const loadApproveHistory = async () => {
+        const tbodyPo = document.getElementById('table-body-history-po');
+        const tbodyNonPo = document.getElementById('table-body-history-nonpo');
+        const filterBranch = document.getElementById('approve-import-filter-branch');
+        const selectedBranchId = filterBranch ? filterBranch.value : '';
+
+        if (tbodyPo) {
+            tbodyPo.innerHTML = '<tr><td colspan="7" class="text-center py-6 text-slate-400"><i class="fa-solid fa-spinner fa-spin mr-2 text-violet-400"></i>กำลังโหลดประวัติ PO...</td></tr>';
+        }
+        if (tbodyNonPo) {
+            tbodyNonPo.innerHTML = '<tr><td colspan="7" class="text-center py-6 text-slate-400"><i class="fa-solid fa-spinner fa-spin mr-2 text-teal-400"></i>กำลังโหลดประวัติพิเศษ...</td></tr>';
+        }
+
+        try {
+            const res = await authFetch(`${API_BASE_URL}/purchase-orders`);
+            const json = await res.json();
+            if (json.success && tbodyPo) {
+                tbodyPo.innerHTML = '';
+                let approvedPOs = json.data.filter(po => po.status === 'นำเข้าสำเร็จ');
+                if (selectedBranchId) {
+                    approvedPOs = approvedPOs.filter(po => po.branch_id && (po.branch_id._id === selectedBranchId || po.branch_id === selectedBranchId));
+                }
+
+                if (approvedPOs.length === 0) {
+                    tbodyPo.innerHTML = '<tr><td colspan="7" class="text-center py-8 text-slate-500 text-sm">ไม่มีประวัติการอนุมัติ PO</td></tr>';
+                } else {
+                    approvedPOs.forEach(po => {
+                        const tr = document.createElement('tr');
+                        tr.className = 'border-b border-slate-700/50 hover:bg-slate-700/20 transition-colors';
+                        const branchName = po.branch_id ? po.branch_id.name : '-';
+                        const approverName = po.received_by ? po.received_by.name : '-';
+                        
+                        let totalOrdered = 0;
+                        let totalScanned = 0;
+                        let grandTotal = 0;
+                        po.items.forEach(item => {
+                            totalOrdered += item.ordered_qty;
+                            totalScanned += item.received_qty || 0;
+                            grandTotal += (item.cost_price || 0) * (item.ordered_qty || 0);
+                        });
+
+                        const approvalDate = po.updatedAt ? new Date(po.updatedAt).toLocaleString('th-TH') : '-';
+
+                        tr.innerHTML = `
+                            <td class="px-6 py-4 font-mono font-bold text-white">${po.po_number}</td>
+                            <td class="px-6 py-4 text-sm text-slate-350">${approvalDate}</td>
+                            <td class="px-6 py-4 text-sm text-slate-300">${po.supplier_name}</td>
+                            <td class="px-6 py-4 text-sm text-slate-300">${branchName}</td>
+                            <td class="px-6 py-4 text-center text-sm font-mono font-semibold">
+                                <span class="text-cyan-400 font-bold">${totalScanned}</span> <span class="text-slate-500">/</span> <span class="text-slate-400">${totalOrdered}</span>
+                            </td>
+                            <td class="px-6 py-4 text-right font-mono text-sm font-bold text-white">฿${(po.grand_total || grandTotal).toLocaleString()}</td>
+                            <td class="px-6 py-4 text-sm text-slate-300">${approverName}</td>
+                        `;
+                        tbodyPo.appendChild(tr);
+                    });
+                }
+            }
+        } catch (err) {
+            console.error('Error loading PO history:', err);
+            if (tbodyPo) tbodyPo.innerHTML = '<tr><td colspan="7" class="text-center py-6 text-red-400">เกิดข้อผิดพลาดในการโหลดประวัติ PO</td></tr>';
+        }
+
+        try {
+            let url = `${API_BASE_URL}/import-notifications?status=อนุมัติแล้ว`;
+            if (selectedBranchId) {
+                url += `&branch_id=${selectedBranchId}`;
+            }
+            const res = await authFetch(url);
+            const json = await res.json();
+            if (json.success && tbodyNonPo) {
+                tbodyNonPo.innerHTML = '';
+                const approvedNonPOs = json.data || [];
+
+                if (approvedNonPOs.length === 0) {
+                    tbodyNonPo.innerHTML = '<tr><td colspan="7" class="text-center py-8 text-slate-500 text-sm">ไม่มีประวัติการอนุมัติสินค้านอกระบบ PO</td></tr>';
+                } else {
+                    approvedNonPOs.forEach(item => {
+                        const tr = document.createElement('tr');
+                        tr.className = 'border-b border-slate-700/50 hover:bg-slate-700/20 transition-colors';
+                        const branchName = item.branch_id ? item.branch_id.name : '-';
+                        const reporterName = item.reported_by ? item.reported_by.name : '-';
+                        const approverName = item.approved_by ? item.approved_by.name : '-';
+                        const approvalDate = item.approved_at ? new Date(item.approved_at).toLocaleString('th-TH') : '-';
+
+                        tr.innerHTML = `
+                            <td class="px-6 py-4 text-sm text-slate-350">${approvalDate}</td>
+                            <td class="px-6 py-4 text-sm text-slate-300">${branchName}</td>
+                            <td class="px-6 py-4 text-sm text-slate-300">${reporterName}</td>
+                            <td class="px-6 py-4 text-sm font-medium text-white">${item.product_name}</td>
+                            <td class="px-6 py-4 text-sm text-cyan-400 font-mono">${item.imeis ? item.imeis.length : 0}</td>
+                            <td class="px-6 py-4 text-sm text-slate-300">${approverName}</td>
+                            <td class="px-6 py-4 text-sm text-slate-400">${item.notes || '-'}</td>
+                        `;
+                        tbodyNonPo.appendChild(tr);
+                    });
+                }
+            }
+        } catch (err) {
+            console.error('Error loading Non-PO history:', err);
+            if (tbodyNonPo) tbodyNonPo.innerHTML = '<tr><td colspan="7" class="text-center py-6 text-red-400">เกิดข้อผิดพลาดในการโหลดประวัติสินค้านอกระบบ PO</td></tr>';
+        }
+    };
+
     // Tab toggle logic inside ตรวจสอบนำเข้าสินค้า (Approve Import)
     const tabBtnApprovePO = document.getElementById('tab-btn-approve-po');
     const tabBtnApproveNonPO = document.getElementById('tab-btn-approve-nonpo');
+    const tabBtnApproveHistory = document.getElementById('tab-btn-approve-history');
     const tabContentApprovePO = document.getElementById('tab-content-approve-po');
     const tabContentApproveNonPO = document.getElementById('tab-content-approve-nonpo');
+    const tabContentApproveHistory = document.getElementById('tab-content-approve-history');
 
-    if (tabBtnApprovePO && tabBtnApproveNonPO && tabContentApprovePO && tabContentApproveNonPO) {
+    if (tabBtnApprovePO && tabBtnApproveNonPO && tabBtnApproveHistory && tabContentApprovePO && tabContentApproveNonPO && tabContentApproveHistory) {
         tabBtnApprovePO.addEventListener('click', () => {
             tabBtnApprovePO.className = 'flex-1 py-2.5 px-4 rounded-xl text-sm font-bold transition-all bg-violet-500/20 text-violet-300 border border-violet-500/30';
             tabBtnApproveNonPO.className = 'flex-1 py-2.5 px-4 rounded-xl text-sm font-bold transition-all text-slate-400 hover:text-white hover:bg-slate-700';
+            tabBtnApproveHistory.className = 'flex-1 py-2.5 px-4 rounded-xl text-sm font-bold transition-all text-slate-400 hover:text-white hover:bg-slate-700';
             tabContentApprovePO.classList.remove('hidden');
             tabContentApproveNonPO.classList.add('hidden');
+            tabContentApproveHistory.classList.add('hidden');
             loadApprovePOs();
         });
 
         tabBtnApproveNonPO.addEventListener('click', () => {
             tabBtnApproveNonPO.className = 'flex-1 py-2.5 px-4 rounded-xl text-sm font-bold transition-all bg-violet-500/20 text-violet-300 border border-violet-500/30';
             tabBtnApprovePO.className = 'flex-1 py-2.5 px-4 rounded-xl text-sm font-bold transition-all text-slate-400 hover:text-white hover:bg-slate-700';
+            tabBtnApproveHistory.className = 'flex-1 py-2.5 px-4 rounded-xl text-sm font-bold transition-all text-slate-400 hover:text-white hover:bg-slate-700';
             tabContentApproveNonPO.classList.remove('hidden');
             tabContentApprovePO.classList.add('hidden');
+            tabContentApproveHistory.classList.add('hidden');
             if (typeof window.loadImportNotifications === 'function') window.loadImportNotifications();
+        });
+
+        tabBtnApproveHistory.addEventListener('click', () => {
+            tabBtnApproveHistory.className = 'flex-1 py-2.5 px-4 rounded-xl text-sm font-bold transition-all bg-violet-500/20 text-violet-300 border border-violet-500/30';
+            tabBtnApprovePO.className = 'flex-1 py-2.5 px-4 rounded-xl text-sm font-bold transition-all text-slate-400 hover:text-white hover:bg-slate-700';
+            tabBtnApproveNonPO.className = 'flex-1 py-2.5 px-4 rounded-xl text-sm font-bold transition-all text-slate-400 hover:text-white hover:bg-slate-700';
+            tabContentApproveHistory.classList.remove('hidden');
+            tabContentApprovePO.classList.add('hidden');
+            tabContentApproveNonPO.classList.add('hidden');
+            loadApproveHistory();
         });
     }
 
@@ -10011,6 +10572,7 @@ document.addEventListener('DOMContentLoaded', () => {
         btnReloadImportList.addEventListener('click', () => {
             loadApprovePOs();
             if (typeof window.loadImportNotifications === 'function') window.loadImportNotifications();
+            loadApproveHistory();
         });
     }
 
@@ -10025,8 +10587,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const navApproveImportBtn = document.getElementById('nav-approve-import');
     if (navApproveImportBtn) {
         navApproveImportBtn.addEventListener('click', () => {
+            populateApproveImportBranchFilter();
             loadApprovePOs();
             if (typeof window.loadImportNotifications === 'function') window.loadImportNotifications();
+            loadApproveHistory();
         });
     }
 

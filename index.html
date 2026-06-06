@@ -1136,7 +1136,7 @@
                         <button id="btn-add-product"
                             class="px-4 py-2 bg-cyan-500 hover:bg-cyan-400 text-slate-900 font-medium rounded-xl shadow-lg shadow-cyan-500/20 transition-all flex items-center gap-2 w-fit glow-button">
                             <i class="fa-solid fa-plus"></i>
-                            เพิ่มสินค้าใหม่
+                            เพิ่มสินค้าในสต็อก(กรณีไม่มีใบสั่งซื้อ)
                         </button>
                     </div>
 
@@ -2280,6 +2280,10 @@
                             <i class="fa-solid fa-circle-exclamation mr-1.5"></i> สินค้านอกระบบ PO (พิเศษ)
                             <span id="nonpo-approve-pending-count" class="ml-1.5 bg-violet-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full hidden">0</span>
                         </button>
+                        <button id="tab-btn-approve-history"
+                            class="flex-1 py-2.5 px-4 rounded-xl text-sm font-bold transition-all text-slate-400 hover:text-white hover:bg-slate-700">
+                            <i class="fa-solid fa-clock-rotate-left mr-1.5"></i> ประวัติการอนุมัติ
+                        </button>
                     </div>
 
                     <!-- TAB CONTENT 1: PO Import Approval -->
@@ -2331,6 +2335,67 @@
                                     </tr>
                                 </tbody>
                             </table>
+                        </div>
+                    </div>
+
+                    <!-- TAB CONTENT 3: Approval History -->
+                    <div id="tab-content-approve-history" class="hidden space-y-8">
+                        <!-- History Section 1: PO Imports -->
+                        <div class="space-y-4">
+                            <h4 class="text-base font-bold text-white flex items-center gap-2">
+                                <i class="fa-solid fa-file-invoice text-violet-400"></i> ประวัติการอนุมัติใบสั่งซื้อ (PO)
+                            </h4>
+                            <div class="overflow-x-auto bg-[#1a1a1a] rounded-xl border border-gray-800">
+                                <table class="w-full text-left border-collapse">
+                                    <thead class="bg-gray-900 text-gray-400 text-xs uppercase tracking-wider">
+                                        <tr>
+                                            <th class="px-6 py-4 font-bold">เลขที่ PO</th>
+                                            <th class="px-6 py-4 font-bold">วันที่อนุมัติ</th>
+                                            <th class="px-6 py-4 font-bold">Supplier</th>
+                                            <th class="px-6 py-4 font-bold">สาขา</th>
+                                            <th class="px-6 py-4 font-bold text-center">จำนวนนำเข้า</th>
+                                            <th class="px-6 py-4 font-bold text-right">ยอดรวม</th>
+                                            <th class="px-6 py-4 font-bold">ผู้อนุมัติ/ตรวจรับ</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="table-body-history-po" class="divide-y divide-gray-800/50">
+                                        <tr>
+                                            <td colspan="7" class="text-center py-8 text-slate-500 text-sm">
+                                                ไม่มีประวัติการอนุมัติ PO
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- History Section 2: Non-PO Imports -->
+                        <div class="space-y-4">
+                            <h4 class="text-base font-bold text-white flex items-center gap-2">
+                                <i class="fa-solid fa-circle-exclamation text-teal-400"></i> ประวัติการอนุมัติสินค้านอกระบบ PO (พิเศษ)
+                            </h4>
+                            <div class="overflow-x-auto bg-[#1a1a1a] rounded-xl border border-gray-800">
+                                <table class="w-full text-left border-collapse">
+                                    <thead class="bg-gray-900 text-gray-400 text-xs uppercase tracking-wider">
+                                        <tr>
+                                            <th class="px-6 py-4 font-bold">วันที่อนุมัติ</th>
+                                            <th class="px-6 py-4 font-bold">สาขา</th>
+                                            <th class="px-6 py-4 font-bold">ผู้แจ้ง</th>
+                                            <th class="px-6 py-4 font-bold">ชื่อสินค้า</th>
+                                            <th class="px-6 py-4 font-bold text-center">จำนวน IMEI</th>
+                                            <th class="px-6 py-4 font-bold">ผู้อนุมัติ</th>
+                                            <th class="px-6 py-4 font-bold">หมายเหตุ</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="table-body-history-nonpo" class="divide-y divide-gray-800/50">
+                                        <tr>
+                                            <td colspan="7" class="text-center py-8 text-slate-500 text-sm">
+                                                ไม่มีประวัติการอนุมัติสินค้านอกระบบ PO
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -4013,6 +4078,26 @@
                             </label>
                         </div>
 
+                        <!-- Toggle: view_branch_inventory -->
+                        <div
+                            class="flex items-center justify-between p-3 bg-slate-800/50 rounded-xl border border-slate-700/30 hover:bg-slate-700/30 transition-colors">
+                            <div class="flex items-center gap-3">
+                                <div class="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center">
+                                    <i class="fa-solid fa-store text-emerald-400 text-sm"></i>
+                                </div>
+                                <div>
+                                    <span class="text-sm font-medium text-slate-200">ดูสินค้าในสาขา</span>
+                                    <p class="text-[10px] text-slate-500 mt-0.5">อนุญาตให้เข้าดูเมนูสินค้าในสาขา</p>
+                                </div>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" id="perm-view_branch_inventory" class="sr-only peer">
+                                <div
+                                    class="w-10 h-5 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-slate-400 after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-500 peer-checked:after:bg-white">
+                                </div>
+                            </label>
+                        </div>
+
                     </div>
                 </div>
 
@@ -4303,40 +4388,22 @@
                                     </div>
                                 </div>
 
-                                <div class="flex justify-between items-center pt-2 border-t border-slate-700/50">
-                                    <span class="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-                                        <i class="fa-solid fa-calculator text-cyan-400"></i>
-                                        สถานะยอดรับเงิน
-                                    </span>
-                                    <span id="modal-finance-total-down-label"
-                                        class="text-sm font-bold text-slate-400 font-mono">ดาวน์รวม: ฿0.00</span>
-                                </div>
-                                <div class="grid grid-cols-2 gap-3">
-                                    <div class="space-y-1.5">
-                                        <label class="text-xs font-medium text-slate-300 block">รับเงินสด (บาท)</label>
-                                        <div class="relative">
-                                            <span
-                                                class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-xs font-mono">฿</span>
-                                            <input type="number" id="modal-finance-down-cash"
-                                                class="w-full pl-7 pr-3 py-2 rounded-lg bg-slate-900 border border-slate-600 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all font-mono text-sm"
-                                                value="0" min="0" placeholder="0">
-                                        </div>
-                                    </div>
-                                    <div class="space-y-1.5">
-                                        <label class="text-xs font-medium text-slate-300 block">รับเงินโอน (บาท)</label>
-                                        <div class="relative">
-                                            <span
-                                                class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-xs font-mono">฿</span>
-                                            <input type="number" id="modal-finance-down-transfer"
-                                                class="w-full pl-7 pr-3 py-2 rounded-lg bg-slate-900 border border-slate-600 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all font-mono text-sm"
-                                                value="0" min="0" placeholder="0">
-                                        </div>
+                                <!-- ยอดจัดไฟแนนซ์ -->
+                                <div class="space-y-2">
+                                    <label class="text-sm font-medium text-slate-300 block flex items-center gap-1.5">
+                                        <i class="fa-solid fa-calculator text-amber-400 text-xs"></i>
+                                        ยอดจัดไฟแนนซ์ (บาท)
+                                    </label>
+                                    <div class="relative">
+                                        <span class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 font-mono">฿</span>
+                                        <input type="text" id="modal-finance-financing-amount"
+                                            class="w-full pl-10 pr-4 py-3 rounded-xl bg-slate-900/60 border border-slate-700 text-cyan-400 font-mono font-bold"
+                                            value="0.00" disabled readonly>
                                     </div>
                                 </div>
-                            </div>
-                        </div>
 
-                        <!-- C: ADDITIONAL FEES (ค่าใบสัญญา & ค่า iCloud) -->
+                            </div>
+                                                    <!-- C: ADDITIONAL FEES (ค่าใบสัญญา & ค่า iCloud) -->
                         <div class="space-y-4 pt-4 border-t border-slate-700/50">
                             <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
                                 <i class="fa-solid fa-circle-plus text-cyan-400"></i>
@@ -4369,6 +4436,42 @@
                                 </div>
                             </div>
                         </div>
+
+                            <!-- สถานะยอดรับเงินหน้าร้าน -->
+                            <div class="bg-slate-800/60 p-4 border border-slate-700/70 rounded-xl space-y-4 border-l-4 border-l-cyan-500 shadow-md">
+                                <div class="flex justify-between items-center pb-2 border-b border-slate-700/50">
+                                    <span class="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+                                        <i class="fa-solid fa-coins text-cyan-400"></i>
+                                        สถานะยอดรับเงินหน้าร้าน
+                                    </span>
+                                    <span id="modal-finance-total-down-label"
+                                        class="text-sm font-bold text-slate-400 font-mono">ยอดต้องรับ: ฿0.00</span>
+                                </div>
+                                <div class="grid grid-cols-2 gap-3">
+                                    <div class="space-y-1.5">
+                                        <label class="text-xs font-medium text-slate-300 block">รับเงินสด (บาท)</label>
+                                        <div class="relative">
+                                            <span
+                                                class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-xs font-mono">฿</span>
+                                            <input type="number" id="modal-finance-down-cash"
+                                                class="w-full pl-7 pr-3 py-2 rounded-lg bg-slate-900 border border-slate-600 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all font-mono text-sm"
+                                                value="0" min="0" placeholder="0">
+                                        </div>
+                                    </div>
+                                    <div class="space-y-1.5">
+                                        <label class="text-xs font-medium text-slate-300 block">รับเงินโอน (บาท)</label>
+                                        <div class="relative">
+                                            <span
+                                                class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-xs font-mono">฿</span>
+                                            <input type="number" id="modal-finance-down-transfer"
+                                                class="w-full pl-7 pr-3 py-2 rounded-lg bg-slate-900 border border-slate-600 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all font-mono text-sm"
+                                                value="0" min="0" placeholder="0">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                     </div>
 
                     <!-- Totals & Checkout Actions (Sticky to bottom) -->
@@ -4392,6 +4495,20 @@
                                 <div id="modal-icloud-row" class="hidden justify-between text-sm text-slate-400">
                                     <span>ค่า iCloud</span>
                                     <span id="modal-icloud-display" class="text-white font-mono">฿0.00</span>
+                                </div>
+                                <div id="modal-finance-summary-row" class="hidden flex-col space-y-2 pt-2 border-t border-slate-700/50">
+                                    <div class="flex justify-between text-sm text-slate-400">
+                                        <span>ยอดจัดไฟแนนซ์</span>
+                                        <span id="modal-finance-summary-amount" class="text-cyan-400 font-mono font-bold">฿0.00</span>
+                                    </div>
+                                    <div class="flex justify-between text-sm text-slate-400">
+                                        <span>ยอดเงินดาวน์</span>
+                                        <span id="modal-finance-summary-down" class="text-white font-mono">฿0.00</span>
+                                    </div>
+                                    <div class="flex justify-between text-sm text-slate-400">
+                                        <span>ยอดต้องชำระหน้าร้าน</span>
+                                        <span id="modal-finance-summary-upfront" class="text-emerald-400 font-mono font-bold">฿0.00</span>
+                                    </div>
                                 </div>
                                 <div class="flex justify-between items-center pt-3 border-t border-slate-700">
                                     <span class="text-base text-slate-200 font-bold">ยอดชำระสุทธิ</span>
@@ -4824,19 +4941,9 @@
                     <h4 class="text-xs font-bold text-amber-500 tracking-wider uppercase mb-3 flex items-center gap-2">
                         <i class="fa-solid fa-building-columns"></i> ข้อมูลการจัดไฟแนนซ์
                     </h4>
-                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                        <div class="bg-slate-900/40 p-3 rounded-lg border border-slate-700/50">
-                            <p class="text-[10px] text-slate-500 uppercase font-bold mb-1">บริษัทไฟแนนซ์</p>
-                            <p id="transaction-detail-finance-company" class="text-white font-semibold">-</p>
-                        </div>
-                        <div class="bg-slate-900/40 p-3 rounded-lg border border-slate-700/50">
-                            <p class="text-[10px] text-slate-500 uppercase font-bold mb-1">ระยะเวลาผ่อน</p>
-                            <p id="transaction-detail-finance-months" class="text-white font-semibold">-</p>
-                        </div>
-                        <div class="bg-slate-900/40 p-3 rounded-lg border border-slate-700/50">
-                            <p class="text-[10px] text-slate-500 uppercase font-bold mb-1">ชำระทุกวันที่</p>
-                            <p id="transaction-detail-finance-day" class="text-white font-semibold">-</p>
-                        </div>
+                    <div class="bg-slate-900/40 p-3 rounded-lg border border-slate-700/50">
+                        <p class="text-[10px] text-slate-500 uppercase font-bold mb-1">บริษัทไฟแนนซ์</p>
+                        <p id="transaction-detail-finance-company" class="text-white font-semibold">-</p>
                     </div>
                 </div>
 

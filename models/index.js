@@ -28,7 +28,8 @@ const roleSchema = new mongoose.Schema({
         receive_po: { type: Boolean, default: false },       // ตรวจรับ PO (ที่สาขา)
         manage_transfers: { type: Boolean, default: false }, // โอนย้ายสินค้า
         manage_finance: { type: Boolean, default: false },   // อนุญาตให้จัดการระบบบัญชีและการเงิน
-        view_audit_logs: { type: Boolean, default: false }   // อนุญาตดูประวัติกิจกรรมระบบ
+        view_audit_logs: { type: Boolean, default: false },  // อนุญาตดูประวัติกิจกรรมระบบ
+        view_branch_inventory: { type: Boolean, default: false } // อนุญาตดูสินค้าในสาขา
     }
 }, { timestamps: true });
 const Role = mongoose.model('Role', roleSchema, 'role');
@@ -43,7 +44,7 @@ const seedDefaultRoles = async () => {
                 do_pos: true, manage_personnel: true, manage_branches: true,
                 manage_settings: true, manage_roles: true, filter_stock_branch: true, cancel_sale: true,
                 report_arrival: true, approve_import: true, manage_po: true, receive_po: true,
-                manage_transfers: true, manage_finance: true, view_audit_logs: true
+                manage_transfers: true, manage_finance: true, view_audit_logs: true, view_branch_inventory: true
             }
         },
         {
@@ -53,7 +54,7 @@ const seedDefaultRoles = async () => {
                 do_pos: true, manage_personnel: true, manage_branches: true,
                 manage_settings: true, manage_roles: false, filter_stock_branch: true, cancel_sale: true,
                 report_arrival: true, approve_import: false, manage_po: true, receive_po: true,
-                manage_transfers: true, manage_finance: true, view_audit_logs: true
+                manage_transfers: true, manage_finance: true, view_audit_logs: true, view_branch_inventory: true
             }
         },
         {
@@ -63,7 +64,7 @@ const seedDefaultRoles = async () => {
                 do_pos: true, manage_personnel: false, manage_branches: false,
                 manage_settings: false, manage_roles: false, filter_stock_branch: false, cancel_sale: false,
                 report_arrival: true, approve_import: false, manage_po: false, receive_po: true,
-                manage_transfers: false, manage_finance: false, view_audit_logs: false
+                manage_transfers: false, manage_finance: false, view_audit_logs: false, view_branch_inventory: false
             }
         }
     ];
@@ -92,6 +93,7 @@ const seedDefaultRoles = async () => {
                 existing.permissions.manage_transfers = true;
                 existing.permissions.manage_finance = true;
                 existing.permissions.view_audit_logs = true;
+                existing.permissions.view_branch_inventory = true;
                 changed = true;
             }
             if (changed) {
@@ -240,7 +242,8 @@ const transactionSchema = new mongoose.Schema({
         quantity: { type: Number, default: 1 }, // จำนวน
         price: { type: Number, default: 0 }, // ราคาต่อชิ้น
         warranty_period: { type: String }, // ระยะเวลาประกัน (เช่น "1 เดือน", "1 ปี")
-        warranty_expiry: { type: Date } // วันหมดอายุประกัน
+        warranty_expiry: { type: Date }, // วันหมดอายุประกัน
+        is_gift: { type: Boolean, default: false } // เป็นของแถม
     }],
     total_amount: { type: Number, required: true }, // ยอดรวมทั้งหมด
     payment_method: { type: String, required: true }, // วิธีชำระเงิน: ซื้อสด, จัดไฟแนนซ์ (และ legacy: เงินสด, โอนเงิน)
@@ -326,7 +329,9 @@ const purchaseOrderSchema = new mongoose.Schema({
         received_qty: { type: Number, default: 0 },
         cost_price: { type: Number, required: true },
         selling_price: { type: Number, required: true },
-        imeis_scanned: [{ type: String }]
+        imeis_scanned: [{ type: String }],
+        imported_qty: { type: Number, default: 0 },
+        imported_imeis: [{ type: String }]
     }],
     arrival_reported_at: { type: Date },
     arrival_reported_by: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee' },
