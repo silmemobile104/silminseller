@@ -241,6 +241,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const branchIdInput = document.getElementById('branch-id');
     const branchNameInput = document.getElementById('branch-name');
     const branchAddressInput = document.getElementById('branch-address');
+    const branchPhoneInput = document.getElementById('branch-phone');
     const branchModalTitle = document.getElementById('branch-modal-title');
     const submitBranchBtn = document.getElementById('submit-branch-btn');
     const promptOkBtn = document.getElementById('prompt-ok-btn');
@@ -2211,6 +2212,7 @@ document.addEventListener('DOMContentLoaded', () => {
         else if (viewName === 'sales-history') {
             activateView(viewSalesHistory, navSalesHistory);
             loadBranchesForSalesHistory();
+            loadEmployeesForSalesHistory();
             loadSalesHistory();
         }
         else if (viewName === 'transfers') {
@@ -2451,6 +2453,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             <i class="fa-solid fa-store text-xl"></i>
                         </div>
                         <h4 class="text-xl font-bold text-white mb-2">${branch.name}</h4>
+                        ${branch.phone ? `<p class="text-xs text-cyan-400 font-mono mb-2 flex items-center gap-1.5"><i class="fa-solid fa-phone text-[10px]"></i> ${branch.phone}</p>` : ''}
                         <p class="text-sm text-slate-400 line-clamp-2">${branch.address || 'ไม่มีรายละเอียดที่อยู่'}</p>
                     `;
                     branchGrid.appendChild(card);
@@ -2497,6 +2500,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const openViewBranchModal = (branch) => {
         document.getElementById('v-branch-name').textContent = branch.name || '-';
+        document.getElementById('v-branch-phone').textContent = branch.phone || 'ไม่ได้ระบุเบอร์โทรศัพท์';
         document.getElementById('v-branch-address').textContent = branch.address || 'ไม่มีรายละเอียดที่อยู่';
 
         const modal = document.getElementById('modal-branch-view');
@@ -2516,7 +2520,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (editBtn) {
             editBtn.onclick = () => {
                 closeDetailModal('modal-branch-view');
-                openBranchModal(branch._id, branch.name, branch.address || '');
+                openBranchModal(branch._id, branch.name, branch.address || '', branch.phone || '');
             };
         }
     };
@@ -2527,10 +2531,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const closeBranchBtnBottom = document.getElementById('close-branch-view-btn-bottom');
     if (closeBranchBtnBottom) closeBranchBtnBottom.onclick = () => closeDetailModal('modal-branch-view');
 
-    const openBranchModal = (id = '', name = '', address = '') => {
+    const openBranchModal = (id = '', name = '', address = '', phone = '') => {
         branchIdInput.value = id;
         branchNameInput.value = name;
         branchAddressInput.value = address;
+        if (branchPhoneInput) branchPhoneInput.value = phone;
 
         if (id) {
             branchModalTitle.innerHTML = `<i class="fa-solid fa-pen-to-square text-cyan-400"></i> แก้ไขสาขา`;
@@ -2563,6 +2568,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const id = branchIdInput.value;
             const name = branchNameInput.value.trim();
             const address = branchAddressInput.value.trim();
+            const phone = branchPhoneInput ? branchPhoneInput.value.trim() : '';
 
             const originalText = submitBranchBtn.innerHTML;
             submitBranchBtn.disabled = true;
@@ -2575,7 +2581,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const response = await authFetch(url, {
                     method: method,
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ name, address })
+                    body: JSON.stringify({ name, address, phone })
                 });
 
                 const result = await response.json();
@@ -4582,7 +4588,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     imei_sold: item.imei_sold || '',
                     quantity: item.quantity,
                     price: item.price,
-                    warranty_period: item.warranty_period || '1 เดือน'
+                    warranty_period: item.warranty_period || ((item._isDevice || item.imei_sold) ? '1 เดือน' : 'ไม่มีประกัน')
                 })),
                 total_amount: total,
                 payment_method: selectedPayment, // Keep legacy
@@ -4801,9 +4807,27 @@ document.addEventListener('DOMContentLoaded', () => {
             const dateValue = salesHistoryDate ? salesHistoryDate.value : '';
             const branchValue = salesHistoryBranch ? salesHistoryBranch.value : '';
 
+            // Advanced filters
+            const empEl = document.getElementById('sales-history-employee');
+            const payEl = document.getElementById('sales-history-payment-type');
+            const statEl = document.getElementById('sales-history-status');
+            const startEl = document.getElementById('sales-history-start-date');
+            const endEl = document.getElementById('sales-history-end-date');
+
+            const employeeValue = empEl ? empEl.value : '';
+            const paymentValue = payEl ? payEl.value : '';
+            const statusValue = statEl ? statEl.value : '';
+            const startDateValue = startEl ? startEl.value : '';
+            const endDateValue = endEl ? endEl.value : '';
+
             if (searchValue) params.append('search', searchValue);
             if (dateValue) params.append('date', dateValue);
             if (branchValue) params.append('branch_id', branchValue);
+            if (employeeValue) params.append('employee_id', employeeValue);
+            if (paymentValue) params.append('payment_type', paymentValue);
+            if (statusValue) params.append('status', statusValue);
+            if (startDateValue) params.append('startDate', startDateValue);
+            if (endDateValue) params.append('endDate', endDateValue);
 
             const response = await authFetch(`${API_BASE_URL}/transactions?${params.toString()}`);
             const result = await response.json();
@@ -4845,6 +4869,32 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         } catch (err) {
             console.error('[SALES-HISTORY] Error loading branches:', err);
+        }
+    }
+
+    // Load Employees for Sales History Filter
+    async function loadEmployeesForSalesHistory() {
+        const salesHistoryEmployee = document.getElementById('sales-history-employee');
+        if (!salesHistoryEmployee) return;
+
+        try {
+            const response = await authFetch(`${API_BASE_URL}/employees`);
+            const result = await response.json();
+
+            if (result.success && result.data) {
+                salesHistoryEmployee.innerHTML = '<option value="">ทุกคน</option>';
+
+                result.data.forEach(emp => {
+                    const option = document.createElement('option');
+                    option.value = emp._id;
+                    option.textContent = emp.name;
+                    salesHistoryEmployee.appendChild(option);
+                });
+            } else {
+                console.error('[SALES-HISTORY] Failed to load employees:', result.message);
+            }
+        } catch (err) {
+            console.error('[SALES-HISTORY] Error loading employees:', err);
         }
     }
 
@@ -5090,6 +5140,16 @@ document.addEventListener('DOMContentLoaded', () => {
         // Do not set currentTransaction = null here, as it might be needed for Reprint
     };
 
+    // Advanced Filters DOM Elements
+    const salesHistoryEmployee = document.getElementById('sales-history-employee');
+    const salesHistoryPaymentType = document.getElementById('sales-history-payment-type');
+    const salesHistoryStatus = document.getElementById('sales-history-status');
+    const salesHistoryStartDate = document.getElementById('sales-history-start-date');
+    const salesHistoryEndDate = document.getElementById('sales-history-end-date');
+    const btnToggleAdvancedFilters = document.getElementById('btn-toggle-advanced-filters');
+    const advancedFiltersPanel = document.getElementById('advanced-filters-panel');
+    const iconChevronAdvanced = document.getElementById('icon-chevron-advanced');
+
     // Event listeners for filters
     if (salesHistorySearch) {
         let searchTimeout;
@@ -5102,11 +5162,58 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     if (salesHistoryDate) {
-        salesHistoryDate.addEventListener('change', loadSalesHistory);
+        salesHistoryDate.addEventListener('change', () => {
+            if (salesHistoryDate.value === 'custom') {
+                if (advancedFiltersPanel && advancedFiltersPanel.classList.contains('hidden')) {
+                    advancedFiltersPanel.classList.remove('hidden');
+                    advancedFiltersPanel.classList.add('grid');
+                    if (iconChevronAdvanced) iconChevronAdvanced.classList.add('rotate-180');
+                }
+            }
+            loadSalesHistory();
+        });
     }
 
     if (salesHistoryBranch) {
         salesHistoryBranch.addEventListener('change', loadSalesHistory);
+    }
+
+    if (salesHistoryEmployee) {
+        salesHistoryEmployee.addEventListener('change', loadSalesHistory);
+    }
+
+    if (salesHistoryPaymentType) {
+        salesHistoryPaymentType.addEventListener('change', loadSalesHistory);
+    }
+
+    if (salesHistoryStatus) {
+        salesHistoryStatus.addEventListener('change', loadSalesHistory);
+    }
+
+    if (salesHistoryStartDate) {
+        salesHistoryStartDate.addEventListener('change', loadSalesHistory);
+    }
+
+    if (salesHistoryEndDate) {
+        salesHistoryEndDate.addEventListener('change', loadSalesHistory);
+    }
+
+    // Toggle advanced filters panel
+    if (btnToggleAdvancedFilters) {
+        btnToggleAdvancedFilters.addEventListener('click', () => {
+            if (advancedFiltersPanel) {
+                const isHidden = advancedFiltersPanel.classList.contains('hidden');
+                if (isHidden) {
+                    advancedFiltersPanel.classList.remove('hidden');
+                    advancedFiltersPanel.classList.add('grid');
+                    if (iconChevronAdvanced) iconChevronAdvanced.classList.add('rotate-180');
+                } else {
+                    advancedFiltersPanel.classList.add('hidden');
+                    advancedFiltersPanel.classList.remove('grid');
+                    if (iconChevronAdvanced) iconChevronAdvanced.classList.remove('rotate-180');
+                }
+            }
+        });
     }
 
     // Transaction detail modal close button

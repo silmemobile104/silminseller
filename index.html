@@ -1756,40 +1756,97 @@
                     </div>
 
                     <!-- Filters Bar -->
-                    <div class="bg-slate-800 rounded-2xl border border-slate-700 p-5">
-                        <div class="flex flex-col lg:flex-row gap-4">
+                    <div class="bg-slate-800 rounded-2xl border border-slate-700 p-5 space-y-4">
+                        <!-- Top Row: Main Search & Date Preset & Toggle Button -->
+                        <div class="flex flex-col md:flex-row gap-4 items-end">
                             <!-- Search Input -->
-                            <div class="flex-1">
-                                <label class="text-sm font-medium text-slate-300 mb-2 block">ค้นหา เลขที่บิล /
-                                    IMEI</label>
+                            <div class="flex-1 space-y-2 w-full">
+                                <label class="text-sm font-medium text-slate-300">ค้นหาข้อมูลครอบจักรวาล</label>
                                 <div class="relative">
                                     <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                                        <i class="fa-solid fa-search text-slate-500"></i>
+                                        <i class="fa-solid fa-magnifying-glass text-slate-500"></i>
                                     </div>
                                     <input type="text" id="sales-history-search"
-                                        class="w-full px-4 pl-10 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all"
-                                        placeholder="พิมพ์เลขที่บิล หรือ IMEI...">
+                                        class="w-full px-4 pl-10 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all placeholder-slate-500 text-sm"
+                                        placeholder="พิมพ์เลขที่บิล, IMEI, ชื่อสินค้า, ชื่อลูกค้า หรือเบอร์โทรศัพท์...">
                                 </div>
                             </div>
 
                             <!-- Date Filter -->
-                            <div class="w-full lg:w-48">
-                                <label class="text-sm font-medium text-slate-300 mb-2 block">ช่วงเวลา</label>
+                            <div class="w-full md:w-44 space-y-2">
+                                <label class="text-sm font-medium text-slate-300">ช่วงเวลา</label>
                                 <select id="sales-history-date"
-                                    class="w-full px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all">
+                                    class="w-full px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all text-sm cursor-pointer">
                                     <option value="">ทั้งหมด</option>
                                     <option value="today">วันนี้</option>
                                     <option value="week">สัปดาห์นี้</option>
                                     <option value="month">เดือนนี้</option>
+                                    <option value="custom">กำหนดเอง...</option>
                                 </select>
                             </div>
 
-                            <!-- Branch Filter (only visible if manage_branches permission) -->
-                            <div class="w-full lg:w-48" id="sales-history-branch-filter">
-                                <label class="text-sm font-medium text-slate-300 mb-2 block">สาขา</label>
+                            <!-- Toggle Advanced Filters Button -->
+                            <button type="button" id="btn-toggle-advanced-filters"
+                                class="w-full md:w-auto px-4 py-2.5 rounded-xl border border-slate-700 bg-slate-900/60 hover:bg-slate-700/30 text-slate-300 hover:text-white transition-all flex items-center justify-center gap-2 text-sm font-medium">
+                                <i class="fa-solid fa-sliders text-cyan-400"></i>
+                                ตัวกรองขั้นสูง
+                                <i class="fa-solid fa-chevron-down text-xs transition-transform duration-300" id="icon-chevron-advanced"></i>
+                            </button>
+                        </div>
+
+                        <!-- Collapsible Advanced Filters Panel -->
+                        <div id="advanced-filters-panel" class="hidden grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 pt-4 border-t border-slate-700/50">
+                            <!-- Custom Start Date -->
+                            <div class="space-y-2" id="custom-start-date-container">
+                                <label class="text-sm font-medium text-slate-300">วันที่เริ่มต้น</label>
+                                <input type="date" id="sales-history-start-date"
+                                    class="w-full px-4 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all text-sm font-mono">
+                            </div>
+
+                            <!-- Custom End Date -->
+                            <div class="space-y-2" id="custom-end-date-container">
+                                <label class="text-sm font-medium text-slate-300">วันที่สิ้นสุด</label>
+                                <input type="date" id="sales-history-end-date"
+                                    class="w-full px-4 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all text-sm font-mono">
+                            </div>
+
+                            <!-- Branch Filter -->
+                            <div class="space-y-2" id="sales-history-branch-filter">
+                                <label class="text-sm font-medium text-slate-300">สาขา</label>
                                 <select id="sales-history-branch"
-                                    class="w-full px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all">
+                                    class="w-full px-4 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all text-sm cursor-pointer">
                                     <option value="">ทุกสาขา</option>
+                                </select>
+                            </div>
+
+                            <!-- Employee Filter -->
+                            <div class="space-y-2">
+                                <label class="text-sm font-medium text-slate-300">พนักงานขาย</label>
+                                <select id="sales-history-employee"
+                                    class="w-full px-4 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all text-sm cursor-pointer">
+                                    <option value="">ทุกคน</option>
+                                </select>
+                            </div>
+
+                            <!-- Payment Method Filter -->
+                            <div class="space-y-2">
+                                <label class="text-sm font-medium text-slate-300">วิธีชำระเงิน</label>
+                                <select id="sales-history-payment-type"
+                                    class="w-full px-4 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all text-sm cursor-pointer">
+                                    <option value="">ทั้งหมด</option>
+                                    <option value="ซื้อสด">ซื้อสด</option>
+                                    <option value="จัดไฟแนนซ์">จัดไฟแนนซ์</option>
+                                </select>
+                            </div>
+
+                            <!-- Status Filter -->
+                            <div class="space-y-2">
+                                <label class="text-sm font-medium text-slate-300">สถานะรายการ</label>
+                                <select id="sales-history-status"
+                                    class="w-full px-4 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all text-sm cursor-pointer">
+                                    <option value="">ทั้งหมด</option>
+                                    <option value="เสร็จสิ้น">เสร็จสิ้น</option>
+                                    <option value="ยกเลิกแล้ว">ยกเลิกแล้ว</option>
                                 </select>
                             </div>
                         </div>
@@ -3574,6 +3631,10 @@
                     <p id="v-branch-name" class="text-white text-lg font-bold">-</p>
                 </div>
                 <div class="bg-slate-900 rounded-xl p-4 border border-slate-800/80 space-y-1">
+                    <p class="text-xs text-slate-500 font-bold">เบอร์โทรศัพท์ติดต่อ</p>
+                    <p id="v-branch-phone" class="text-white font-mono text-sm font-bold">-</p>
+                </div>
+                <div class="bg-slate-900 rounded-xl p-4 border border-slate-800/80 space-y-1">
                     <p class="text-xs text-slate-500 font-bold">ที่อยู่ / รายละเอียดเพิ่มเติม</p>
                     <p id="v-branch-address" class="text-white font-normal text-sm leading-relaxed whitespace-pre-line">-</p>
                 </div>
@@ -3693,6 +3754,12 @@
                             class="text-red-400">*</span></label>
                     <input type="text" id="branch-name" required placeholder="เช่น สาขาหาดใหญ่"
                         class="w-full px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all">
+                </div>
+
+                <div class="space-y-2">
+                    <label class="text-sm font-medium text-slate-300">เบอร์โทรศัพท์ติดต่อ</label>
+                    <input type="text" id="branch-phone" placeholder="เช่น 074-XXXXXX, 081-XXXXXXX"
+                        class="w-full px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all font-mono">
                 </div>
 
                 <div class="space-y-2">

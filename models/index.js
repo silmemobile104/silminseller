@@ -4,7 +4,8 @@ const Member = require('./member');
 // 1. Branch (สาขา)
 const branchSchema = new mongoose.Schema({
     name: { type: String, required: true }, // ชื่อสาขา
-    address: { type: String } // ที่อยู่
+    address: { type: String }, // ที่อยู่
+    phone: { type: String } // เบอร์โทรติดต่อ
 }, { timestamps: true });
 const Branch = mongoose.model('Branch', branchSchema, 'branch');
 

@@ -1429,10 +1429,10 @@ router.get('/branches', async (req, res) => {
 // POST /api/branches
 router.post('/branches', async (req, res) => {
     try {
-        const { name, address } = req.body;
+        const { name, address, phone } = req.body;
         if (!name) return res.status(400).json({ success: false, message: 'กรุณาระบุชื่อสาขา' });
 
-        const newBranch = new Branch({ name, address });
+        const newBranch = new Branch({ name, address, phone });
         const savedBranch = await newBranch.save();
         res.status(201).json({ success: true, message: 'เพิ่มสาขาใหม่สำเร็จ', data: savedBranch });
     } catch (error) {
@@ -1444,12 +1444,12 @@ router.post('/branches', async (req, res) => {
 // PUT /api/branches/:id
 router.put('/branches/:id', async (req, res) => {
     try {
-        const { name, address } = req.body;
+        const { name, address, phone } = req.body;
         if (!name) return res.status(400).json({ success: false, message: 'กรุณาระบุชื่อสาขา' });
 
         const updatedBranch = await Branch.findByIdAndUpdate(
             req.params.id,
-            { name, address },
+            { name, address, phone },
             { returnDocument: 'after' }
         );
 
@@ -2159,11 +2159,23 @@ router.post('/transactions', async (req, res) => {
 // หน้าที่: ดึงประวัติรายการขายทั้งหมด รองรับการกรองข้อมูล
 router.get('/transactions', async (req, res) => {
     try {
-        const { date, branch_id, search } = req.query;
+        const { date, branch_id, search, employee_id, payment_type, status, startDate, endDate } = req.query;
         let filter = {};
 
-        // Date filtering
-        if (date) {
+        // Date filtering (presets or custom date range)
+        if (startDate || endDate) {
+            filter.created_at = {};
+            if (startDate) {
+                const start = new Date(startDate);
+                start.setHours(0, 0, 0, 0);
+                filter.created_at.$gte = start;
+            }
+            if (endDate) {
+                const end = new Date(endDate);
+                end.setHours(23, 59, 59, 999);
+                filter.created_at.$lte = end;
+            }
+        } else if (date) {
             const now = new Date();
             const todayStart = new Date(now);
             todayStart.setHours(0, 0, 0, 0);
@@ -2188,12 +2200,44 @@ router.get('/transactions', async (req, res) => {
             filter.branch_id = branch_id;
         }
 
-        // Search filtering (receipt_number or items.imei_sold)
+        // Employee filtering
+        if (employee_id) {
+            filter.employee_id = employee_id;
+        }
+
+        // Payment type filtering
+        if (payment_type) {
+            filter.payment_type = payment_type;
+        }
+
+        // Status filtering
+        if (status) {
+            filter.status = status;
+        }
+
+        // Search filtering (receipt_number, items.imei_sold, items.product_name, or member details)
         if (search) {
-            filter.$or = [
-                { receipt_number: { $regex: search, $options: 'i' } },
-                { 'items.imei_sold': { $regex: search, $options: 'i' } }
+            const searchRegex = { $regex: search, $options: 'i' };
+            const orQuery = [
+                { receipt_number: searchRegex },
+                { 'items.imei_sold': searchRegex },
+                { 'items.product_name': searchRegex }
             ];
+
+            // Match member by name or phone
+            const matchingMembers = await Member.find({
+                $or: [
+                    { first_name: searchRegex },
+                    { last_name: searchRegex },
+                    { phone: searchRegex }
+                ]
+            });
+
+            if (matchingMembers.length > 0) {
+                orQuery.push({ member_id: { $in: matchingMembers.map(m => m._id) } });
+            }
+
+            filter.$or = orQuery;
         }
 
         const transactions = await Transaction.find(filter)

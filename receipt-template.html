@@ -24,10 +24,23 @@
             padding: 30px;
         }
         .header {
-            text-align: center;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
             margin-bottom: 30px;
             border-bottom: 2px solid #333;
             padding-bottom: 20px;
+        }
+        .header-left {
+            text-align: left;
+        }
+        .header-right {
+            text-align: right;
+            font-size: 20px;
+            font-weight: bold;
+            color: #000;
+            line-height: 1.2;
+            padding-top: 10px;
         }
         .store-name {
             font-size: 28px;
@@ -123,12 +136,18 @@
 <body>
     <div class="receipt-container" id="receipt">
         <div class="header">
-            <h1 class="store-name">บริษัท ซิลมิน โมบาย จำกัด</h1>
-            <h1 class="store-name">SilminMobile</h1>
-            <div class="branch-info" id="branch-name">-</div>
-            <div class="branch-info" id="branch-address">-</div>
-            <div class="branch-info" id="branch-policy">เลขประจำตัวผู้เสียภาษี : 0955562000701</div>
-            <div class="branch-info" id="receipt-date">วันที่: --/--/---- --:--</div>
+            <div class="header-left">
+                <h1 class="store-name">บริษัท ซิลมิน โมบาย จำกัด</h1>
+                <h1 class="store-name">SilminMobile</h1>
+                <div class="branch-info" id="branch-name">-</div>
+                <div class="branch-info" id="branch-address">-</div>
+                <div class="branch-info" id="branch-phone-row" style="display: none;">เบอร์โทรศัพท์ : <span id="branch-phone-text">-</span></div>
+                <div class="branch-info" id="branch-policy">เลขประจำตัวผู้เสียภาษี : 0955562000701</div>
+                <div class="branch-info" id="receipt-date">วันที่: --/--/---- --:--</div>
+            </div>
+            <div class="header-right">
+                ใบเสร็จรับเงิน/ใบกำกับภาษี
+            </div>
         </div>
 
         <div class="receipt-info">
@@ -140,6 +159,26 @@
                 <span class="label">พนักงานขาย / Seller</span>
                 <span class="value" id="employee-name">Admin</span>
             </div>
+        </div>
+
+        <!-- ข้อมูลลูกค้า / Customer Information -->
+        <div id="customer-info-section" style="display: none; border: 1px solid #ddd; padding: 12px; margin-bottom: 20px; border-radius: 6px; background-color: #fafafa;">
+            <div style="font-weight: bold; font-size: 13px; color: #333; border-bottom: 1px solid #ddd; padding-bottom: 6px; margin-bottom: 8px; text-transform: uppercase;">
+                ข้อมูลผู้ซื้อ / Customer Information
+            </div>
+            <table style="width: 100%; margin-bottom: 0; font-size: 13px; border-collapse: collapse;">
+                <tr style="border-bottom: none;">
+                    <td style="padding: 3px 0; border-bottom: none; width: 50%; vertical-align: top;"><strong>ชื่อลูกค้า / Name:</strong> <span id="customer-name">-</span></td>
+                    <td style="padding: 3px 0; border-bottom: none; width: 50%; vertical-align: top;"><strong>เบอร์โทร / Phone:</strong> <span id="customer-phone">-</span></td>
+                </tr>
+                <tr style="border-bottom: none;">
+                    <td style="padding: 3px 0; border-bottom: none; vertical-align: top;"><strong>เลขบัตรประชาชน / ID No:</strong> <span id="customer-citizen-id">-</span></td>
+                    <td style="padding: 3px 0; border-bottom: none; width: 50%; vertical-align: top;"><strong>รหัสสมาชิก / Member No:</strong> <span id="customer-member-number">-</span></td>
+                </tr>
+                <tr style="border-bottom: none;">
+                    <td colspan="2" style="padding: 3px 0; border-bottom: none; vertical-align: top;"><strong>ที่อยู่ / Address:</strong> <span id="customer-address">-</span></td>
+                </tr>
+            </table>
         </div>
 
         <table id="items-table">
@@ -209,16 +248,70 @@
             }
         });
 
+        function calculateWarrantyExpiry(purchaseDateStr, warrantyPeriod) {
+            if (!warrantyPeriod || warrantyPeriod === 'ไม่มีประกัน') return null;
+            
+            const purchaseDate = new Date(purchaseDateStr);
+            const expiryDate = new Date(purchaseDate);
+
+            const match = warrantyPeriod.match(/(\d+)\s*(เดือน|ปี)/);
+            if (match) {
+                const value = parseInt(match[1]);
+                const unit = match[2];
+                
+                if (unit === 'เดือน') {
+                    expiryDate.setMonth(purchaseDate.getMonth() + value);
+                } else if (unit === 'ปี') {
+                    expiryDate.setFullYear(purchaseDate.getFullYear() + value);
+                }
+                return expiryDate;
+            }
+            return null;
+        }
+
         function populateReceipt(txn, options) {
             options = options || { showItems: true, showContract: true, showIcloud: true };
             document.getElementById('branch-name').textContent = txn.branch_id ? txn.branch_id.name : 'สาขาหลัก';
             const addrEl = document.getElementById('branch-address');
             addrEl.textContent = (txn.branch_id && txn.branch_id.address) ? txn.branch_id.address : '';
             addrEl.style.display = addrEl.textContent ? 'block' : 'none';
+
+            // ส่วนข้อมูลเบอร์โทรศัพท์สาขา
+            const phoneRow = document.getElementById('branch-phone-row');
+            const phoneText = document.getElementById('branch-phone-text');
+            if (phoneRow && phoneText) {
+                const phoneVal = (txn.branch_id && txn.branch_id.phone) ? txn.branch_id.phone : '';
+                if (phoneVal) {
+                    phoneText.textContent = phoneVal;
+                    phoneRow.style.display = 'block';
+                } else {
+                    phoneRow.style.display = 'none';
+                }
+            }
             
             document.getElementById('receipt-date').textContent = 'วันที่: ' + new Date(txn.created_at).toLocaleString('th-TH');
             document.getElementById('receipt-number').textContent = txn.receipt_number;
             document.getElementById('employee-name').textContent = txn.employee_id ? txn.employee_id.name : 'Admin';
+            
+            // ส่วนข้อมูลลูกค้า
+            const custSection = document.getElementById('customer-info-section');
+            if (custSection) {
+                if (txn.member_id) {
+                    custSection.style.display = 'block';
+                    
+                    const m = txn.member_id;
+                    const titlePrefix = m.prefix ? m.prefix + ' ' : '';
+                    const fullName = titlePrefix + (m.first_name || '') + ' ' + (m.last_name || '');
+                    
+                    document.getElementById('customer-name').textContent = fullName.trim() || '-';
+                    document.getElementById('customer-phone').textContent = m.phone || '-';
+                    document.getElementById('customer-citizen-id').textContent = m.citizen_id || '-';
+                    document.getElementById('customer-member-number').textContent = m.member_number || '-';
+                    document.getElementById('customer-address').textContent = m.address || '-';
+                } else {
+                    custSection.style.display = 'none';
+                }
+            }
             
             const itemsList = document.getElementById('items-list');
             itemsList.innerHTML = '';
@@ -230,6 +323,23 @@
                 itemsSubtotal += itemTotal;
                 
                 const isGift = item.is_gift === true;
+
+                // Calculate warranty expiry date
+                let warrantyText = '';
+                if (item.warranty_period && item.warranty_period !== 'ไม่มีประกัน') {
+                    const expiry = calculateWarrantyExpiry(txn.created_at, item.warranty_period);
+                    if (expiry) {
+                        const dateFormatted = expiry.toLocaleDateString('th-TH', {
+                            day: 'numeric',
+                            month: 'long',
+                            year: 'numeric'
+                        });
+                        warrantyText = `รับประกัน: ${item.warranty_period} (หมดประกันวันที่ ${dateFormatted})`;
+                    } else {
+                        warrantyText = `รับประกัน: ${item.warranty_period}`;
+                    }
+                }
+
                 const row = document.createElement('tr');
                 row.className = 'product-item-row';
                 row.innerHTML = `
@@ -239,6 +349,7 @@
                             ${isGift ? ' <span style="font-weight: normal; font-size: 11px; color: #e65100;">(ของแถม)</span>' : ''}
                         </div>
                         ${item.imei_sold ? `<div class="item-details">IMEI: ${item.imei_sold}</div>` : ''}
+                        ${warrantyText ? `<div class="item-details" style="color: #2e7d32; font-weight: bold;">🛡️ ${warrantyText}</div>` : ''}
                     </td>
                     <td style="text-align: center;">${item.quantity}</td>
                     <td style="text-align: right; color: ${isGift ? '#e65100' : 'black'}; font-weight: ${isGift ? 'bold' : 'normal'};">
