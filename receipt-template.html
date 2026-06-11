@@ -224,14 +224,23 @@
             <!-- ส่วนข้อมูลเงินดาวน์สำหรับจัดไฟแนนซ์ -->
             <div id="finance-receipt-section" style="display: none; border-top: 1px dashed #333; margin-top: 10px; padding-top: 8px;">
                 <div class="total-row" style="font-weight: bold; font-size: 13px;">
-                    <span>ยอดเงินดาวน์ชำระแล้ว / Down Paid:</span>
+                    <span>ชำระสดหน้าร้าน / Upfront Paid:</span>
+                    <span id="upfront-payment">฿0.00</span>
+                </div>
+                <div class="total-row" style="font-weight: bold; font-size: 13px;">
+                    <span>เงินดาวน์ / Down Payment:</span>
                     <span id="down-payment">฿0.00</span>
                 </div>
-                <div class="total-row" style="font-size: 13px; font-weight: bold; color: #b71c1c;">
-                    <span>ค้างจัดไฟแนนซ์คงเหลือ / Balance:</span>
+                <div class="total-row" style="font-weight: bold; font-size: 13px; color: #b71c1c;">
+                    <span>ยอดจัดไฟแนนซ์ / Financed Amount:</span>
                     <span id="balance">฿0.00</span>
                 </div>
             </div>
+        </div>
+
+        <!-- วิธีชำระเงิน / Payment Method Info -->
+        <div class="payment-method">
+            วิธีชำระเงิน / Payment Method: <span id="payment-method-text">-</span>
         </div>
 
         <div class="footer">
@@ -454,7 +463,7 @@
                 if (payments.length > 0) {
                     paymentStr = `ซื้อสด (${payments.join(' / ')})`;
                 }
-            } else if (txn.payment_type === 'จัดไฟแนนซ์') {
+            } else if (txn.payment_type === 'จัดไฟแนนซ์' || txn.payment_method === 'จัดไฟแนนซ์') {
                 paymentStr = `จัดไฟแนนซ์ (${txn.finance_company || 'ไม่ระบุ'}) | ผ่อนชำระ ${txn.finance_months || 0} งวด`;
             }
             document.getElementById('payment-method-text').textContent = paymentStr;
@@ -462,11 +471,18 @@
             // ส่วนข้อมูลไฟแนนซ์ (Down Payment)
             const financeSection = document.getElementById('finance-receipt-section');
             const downPayment = txn.down_payment || 0;
-            if (txn.payment_type === 'จัดไฟแนนซ์' || downPayment > 0) {
-                const balance = printedGrandTotal - downPayment;
+            if (txn.payment_type === 'จัดไฟแนนซ์' || txn.payment_method === 'จัดไฟแนนซ์' || downPayment > 0) {
+                // คัดกรองและแยกยอดรวมของเฉพาะเครื่อง (ไอเทมที่มี IMEI)
+                const devicesTotal = txn.items.filter(item => !!item.imei_sold).reduce((sum, item) => sum + (item.quantity * item.price), 0);
+                const netDevicesTotal = Math.max(0, devicesTotal - originalDiscount);
+                const financedAmount = Math.max(0, netDevicesTotal - downPayment);
+                const upfrontPaid = Math.max(0, printedGrandTotal - financedAmount);
+
                 financeSection.style.display = 'block';
                 document.getElementById('down-payment').textContent = '฿' + downPayment.toLocaleString(undefined, {minimumFractionDigits: 2});
-                document.getElementById('balance').textContent = '฿' + balance.toLocaleString(undefined, {minimumFractionDigits: 2});
+                const upfrontEl = document.getElementById('upfront-payment');
+                if (upfrontEl) upfrontEl.textContent = '฿' + upfrontPaid.toLocaleString(undefined, {minimumFractionDigits: 2});
+                document.getElementById('balance').textContent = '฿' + financedAmount.toLocaleString(undefined, {minimumFractionDigits: 2});
             } else {
                 financeSection.style.display = 'none';
             }
