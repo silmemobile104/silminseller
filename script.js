@@ -639,6 +639,10 @@ document.addEventListener('DOMContentLoaded', () => {
             const modalTitle = document.getElementById('modal-title');
             if (modalTitle) modalTitle.innerHTML = `<i class="fa-solid fa-box-open text-cyan-400"></i> เพิ่มสินค้าใหม่`;
 
+            // Show Excel Button in modal header
+            const btnExcelOpen = document.getElementById('btn-add-product-excel');
+            if (btnExcelOpen) btnExcelOpen.classList.remove('hidden');
+
             // โหลดข้อมูล master data ก่อนเปิด modal
             await fetchMasterData();
 
@@ -1477,6 +1481,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const modalTitle = document.getElementById('modal-title');
         if (modalTitle) modalTitle.innerHTML = `<i class="fa-solid fa-pen-to-square text-cyan-400"></i> แก้ไขข้อมูลสินค้า`;
 
+        // Hide Excel Button in modal header when editing
+        const btnExcelOpen = document.getElementById('btn-add-product-excel');
+        if (btnExcelOpen) btnExcelOpen.classList.add('hidden');
+
         // Set Edit ID
         const editIdInput = document.getElementById('edit-product-id');
         if (editIdInput) {
@@ -2039,7 +2047,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     condition_id: productCondition ? productCondition.value : null,
                     branch_id: branch_id || null,
                     quantity: Number(productQuantity ? productQuantity.value : 1) || 1,
-                    old_branch_id: window.__editingProductOriginalBranchId || null
+                    old_branch_id: window.__editingProductOriginalBranchId || null,
+                    import_source: 'MANUAL'
                 };
 
                 if (isDeviceVisible) {
@@ -10626,6 +10635,66 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error('Error loading Non-PO history:', err);
             if (tbodyNonPo) tbodyNonPo.innerHTML = '<tr><td colspan="7" class="text-center py-6 text-red-400">เกิดข้อผิดพลาดในการโหลดประวัติสินค้านอกระบบ PO</td></tr>';
         }
+
+        const tbodyDirect = document.getElementById('table-body-history-direct-imports');
+        if (tbodyDirect) {
+            tbodyDirect.innerHTML = '<tr><td colspan="8" class="text-center py-6 text-slate-400"><i class="fa-solid fa-spinner fa-spin mr-2 text-emerald-400"></i>กำลังโหลดประวัตินำเข้าโดยตรง...</td></tr>';
+        }
+
+        try {
+            const res = await authFetch(`${API_BASE_URL}/products/direct-imports-history`);
+            const json = await res.json();
+            if (json.success && tbodyDirect) {
+                tbodyDirect.innerHTML = '';
+                let directLogs = json.data || [];
+                
+                // Filter by branch if selected
+                if (selectedBranchId) {
+                    directLogs = directLogs.filter(log => log.details && log.details.branch_id === selectedBranchId);
+                }
+
+                if (directLogs.length === 0) {
+                    tbodyDirect.innerHTML = '<tr><td colspan="8" class="text-center py-8 text-slate-500 text-sm">ไม่มีประวัติการนำเข้าคลังสินค้าโดยตรง</td></tr>';
+                } else {
+                    directLogs.forEach(log => {
+                        const tr = document.createElement('tr');
+                        tr.className = 'border-b border-slate-700/50 hover:bg-slate-700/20 transition-colors';
+                        
+                        const importDate = log.createdAt ? new Date(log.createdAt).toLocaleString('th-TH') : '-';
+                        const details = log.details || {};
+                        const typeText = details.import_source === 'EXCEL' ? 
+                            '<span class="px-2 py-1 rounded bg-emerald-500/10 text-emerald-400 text-xs font-semibold border border-emerald-500/20">Excel</span>' : 
+                            '<span class="px-2 py-1 rounded bg-blue-500/10 text-blue-400 text-xs font-semibold border border-blue-500/20">คลังปกติ</span>';
+                        
+                        const branchName = details.branch_name || '-';
+                        const productName = details.product_name || '-';
+                        const productCode = details.product_code || '-';
+                        const qty = details.quantity || 0;
+                        const importer = log.user_name || '-';
+                        
+                        let imeiStr = '-';
+                        if (Array.isArray(details.imeis) && details.imeis.length > 0) {
+                            imeiStr = `<div class="max-w-xs truncate font-mono text-xs text-slate-400" title="${details.imeis.join(', ')}">${details.imeis.join(', ')}</div>`;
+                        }
+
+                        tr.innerHTML = `
+                            <td class="px-6 py-4 text-sm text-slate-355">${importDate}</td>
+                            <td class="px-6 py-4 text-sm">${typeText}</td>
+                            <td class="px-6 py-4 text-sm text-slate-300">${branchName}</td>
+                            <td class="px-6 py-4 text-sm font-medium text-white">${productName}</td>
+                            <td class="px-6 py-4 text-sm text-slate-300 font-mono">${productCode}</td>
+                            <td class="px-6 py-4 text-sm text-center text-cyan-400 font-mono font-bold">${qty}</td>
+                            <td class="px-6 py-4 text-sm text-slate-300">${importer}</td>
+                            <td class="px-6 py-4 text-sm">${imeiStr}</td>
+                        `;
+                        tbodyDirect.appendChild(tr);
+                    });
+                }
+            }
+        } catch (err) {
+            console.error('Error loading Direct Imports history:', err);
+            if (tbodyDirect) tbodyDirect.innerHTML = '<tr><td colspan="8" class="text-center py-6 text-red-400">เกิดข้อผิดพลาดในการโหลดประวัติการนำเข้าโดยตรง</td></tr>';
+        }
     };
 
     // Tab toggle logic inside ตรวจสอบนำเข้าสินค้า (Approve Import)
@@ -11371,6 +11440,539 @@ document.addEventListener('DOMContentLoaded', () => {
     makeSelectSearchable(productCapacity, 'เลือกความจุ *');
     makeSelectSearchable(productCondition, 'เลือกสภาพเครื่อง *');
     makeSelectSearchable(productUnit, 'เลือกหน่วยนับ *');
+
+    // ==========================================
+    // EXCEL PRODUCT IMPORT SYSTEM
+    // ==========================================
+    function initExcelImport() {
+        const btnExcelOpen = document.getElementById('btn-add-product-excel');
+        const excelModal = document.getElementById('excel-import-modal');
+        const btnExcelClose = document.getElementById('close-excel-modal-btn');
+        
+        const step1Panel = document.getElementById('excel-step1-panel');
+        const step2Panel = document.getElementById('excel-step2-panel');
+        const step3Panel = document.getElementById('excel-step3-panel');
+        
+        const btnStep1Next = document.getElementById('excel-btn-step1-next');
+        const btnStep2Back = document.getElementById('excel-btn-step2-back');
+        const btnStep3Back = document.getElementById('excel-btn-step3-back');
+        const btnImportConfirm = document.getElementById('excel-btn-import-confirm');
+        
+        const step1Indicator = document.getElementById('excel-step1-indicator');
+        const step2Indicator = document.getElementById('excel-step2-indicator');
+        const step3Indicator = document.getElementById('excel-step3-indicator');
+        const connector1 = document.getElementById('excel-connector1');
+        const connector2 = document.getElementById('excel-connector2');
+        
+        const dragDropZone = document.getElementById('excel-drag-drop-zone');
+        const fileInput = document.getElementById('excel-file-input');
+        
+        const summaryTotal = document.getElementById('excel-summary-total');
+        const summaryValid = document.getElementById('excel-summary-valid');
+        const summaryInvalid = document.getElementById('excel-summary-invalid');
+        const summaryInvalidCard = document.getElementById('excel-summary-invalid-card');
+        const validationStatusBadge = document.getElementById('excel-validation-status-badge');
+        const previewTbody = document.getElementById('excel-preview-tbody');
+        const errorWarning = document.getElementById('excel-error-warning');
+        
+        const progressBox = document.getElementById('excel-import-progress-box');
+        const progressText = document.getElementById('excel-progress-text');
+        const progressPercent = document.getElementById('excel-progress-percent');
+        const progressBar = document.getElementById('excel-progress-bar');
+
+        let currentStep = 1;
+        let parsedRows = []; // Stores the evaluated objects
+        let isImporting = false;
+
+        if (!btnExcelOpen || !excelModal) return;
+
+        // Navigation
+        function goToStep(step) {
+            currentStep = step;
+            
+            // Hide all panels
+            step1Panel.classList.add('hidden');
+            step2Panel.classList.add('hidden');
+            step3Panel.classList.add('hidden');
+            
+            // Reset Indicators & Connectors
+            step1Indicator.className = "w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm z-10 transition-colors bg-slate-700 text-slate-400";
+            step2Indicator.className = "w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm z-10 transition-colors bg-slate-700 text-slate-400";
+            step3Indicator.className = "w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm z-10 transition-colors bg-slate-700 text-slate-400";
+            connector1.className = "h-full bg-slate-700 w-0 transition-all duration-300";
+            connector2.className = "h-full bg-slate-700 w-0 transition-all duration-300";
+            
+            // Active Step Styling
+            if (step === 1) {
+                step1Panel.classList.remove('hidden');
+                step1Indicator.className = "w-8 h-8 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold text-sm z-10 transition-colors shadow-lg shadow-emerald-600/30";
+                
+                document.querySelector('[id="excel-step1-indicator"] + span').className = "text-xs text-slate-300 mt-2 font-medium";
+                document.querySelector('[id="excel-step2-indicator"] + span').className = "text-xs text-slate-500 mt-2 font-medium";
+                document.querySelector('[id="excel-step3-indicator"] + span').className = "text-xs text-slate-500 mt-2 font-medium";
+            } else if (step === 2) {
+                step2Panel.classList.remove('hidden');
+                step1Indicator.className = "w-8 h-8 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold text-sm z-10 transition-colors";
+                step2Indicator.className = "w-8 h-8 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold text-sm z-10 transition-colors shadow-lg shadow-emerald-600/30";
+                connector1.className = "h-full bg-emerald-600 w-full transition-all duration-300";
+                
+                document.querySelector('[id="excel-step1-indicator"] + span').className = "text-xs text-slate-300 mt-2 font-medium";
+                document.querySelector('[id="excel-step2-indicator"] + span').className = "text-xs text-slate-300 mt-2 font-medium";
+                document.querySelector('[id="excel-step3-indicator"] + span').className = "text-xs text-slate-500 mt-2 font-medium";
+            } else if (step === 3) {
+                step3Panel.classList.remove('hidden');
+                step1Indicator.className = "w-8 h-8 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold text-sm z-10 transition-colors";
+                step2Indicator.className = "w-8 h-8 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold text-sm z-10 transition-colors";
+                step3Indicator.className = "w-8 h-8 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold text-sm z-10 transition-colors shadow-lg shadow-emerald-600/30";
+                connector1.className = "h-full bg-emerald-600 w-full transition-all duration-300";
+                connector2.className = "h-full bg-emerald-600 w-full transition-all duration-300";
+                
+                document.querySelector('[id="excel-step1-indicator"] + span').className = "text-xs text-slate-300 mt-2 font-medium";
+                document.querySelector('[id="excel-step2-indicator"] + span').className = "text-xs text-slate-300 mt-2 font-medium";
+                document.querySelector('[id="excel-step3-indicator"] + span').className = "text-xs text-slate-300 mt-2 font-medium";
+            }
+        }
+
+        async function openExcelModal() {
+            // Close main product modal
+            if (typeof closeModal === 'function') {
+                closeModal();
+            }
+
+            goToStep(1);
+            parsedRows = [];
+            isImporting = false;
+            
+            // Reset form fields
+            if (fileInput) fileInput.value = '';
+            previewTbody.innerHTML = '';
+            errorWarning.classList.add('hidden');
+            progressBox.classList.add('hidden');
+            progressBar.style.width = '0%';
+            progressPercent.textContent = '0%';
+            progressText.textContent = '';
+            btnImportConfirm.disabled = false;
+            
+            // Show modal
+            excelModal.classList.remove('opacity-0', 'pointer-events-none');
+            excelModal.querySelector('.modal-content').classList.add('modal-animate-in');
+            
+            // Refresh Master Data Caches
+            try {
+                // Check master data
+                const md = window.masterDataCache || {};
+                const hasTypes = Array.isArray(md.productTypes) && md.productTypes.length > 0;
+                const hasSuppliers = Array.isArray(md.suppliers) && md.suppliers.length > 0;
+                if (!hasTypes || !hasSuppliers) {
+                    await fetchMasterData();
+                }
+                
+                // Fetch branches to make sure they are in the cache
+                const branchResp = await authFetch(`${API_BASE_URL}/branches`);
+                const branchJson = await branchResp.json();
+                if (branchJson.success) {
+                    window.masterDataCache.branches = branchJson.data;
+                }
+            } catch (err) {
+                console.error("Error loading master data for Excel import:", err);
+            }
+        }
+
+        function closeExcelModal() {
+            if (isImporting) return; // Block closing while importing
+            excelModal.classList.add('opacity-0', 'pointer-events-none');
+            excelModal.querySelector('.modal-content').classList.remove('modal-animate-in');
+        }
+
+        btnExcelOpen.addEventListener('click', openExcelModal);
+        btnExcelClose.addEventListener('click', closeExcelModal);
+        
+        // Modal Backdrop Click
+        excelModal.addEventListener('click', (e) => {
+            if (e.target === excelModal) {
+                closeExcelModal();
+            }
+        });
+
+        btnStep1Next.addEventListener('click', () => goToStep(2));
+        btnStep2Back.addEventListener('click', () => goToStep(1));
+        btnStep3Back.addEventListener('click', () => {
+            if (isImporting) return;
+            goToStep(2);
+        });
+
+        // Drag & Drop event bindings
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dragDropZone.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                dragDropZone.classList.add('border-emerald-500', 'bg-emerald-500/5');
+            }, false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            dragDropZone.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                dragDropZone.classList.remove('border-emerald-500', 'bg-emerald-500/5');
+            }, false);
+        });
+
+        dragDropZone.addEventListener('drop', (e) => {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            if (files && files.length > 0) {
+                handleExcelFile(files[0]);
+            }
+        });
+
+        dragDropZone.addEventListener('click', () => {
+            fileInput.click();
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            if (fileInput.files && fileInput.files.length > 0) {
+                handleExcelFile(fileInput.files[0]);
+            }
+        });
+
+        // Helper to find match case-insensitively
+        function findMasterItem(list, value) {
+            if (!list || !value) return null;
+            const cleanVal = String(value).toLowerCase().replace(/\s+/g, '');
+            return list.find(item => {
+                const name = typeof item === 'object' ? (item.name || '') : String(item);
+                return name.toLowerCase().replace(/\s+/g, '') === cleanVal;
+            });
+        }
+
+        // Process File
+        function handleExcelFile(file) {
+            const extension = file.name.split('.').pop().toLowerCase();
+            if (extension !== 'xlsx' && extension !== 'xls') {
+                showToast('กรุณาเลือกไฟล์ Excel (.xlsx, .xls) เท่านั้น', 'error');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const firstSheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[firstSheetName];
+                    const rows = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+                    
+                    if (!rows || rows.length === 0) {
+                        showToast('ไม่พบข้อมูลในไฟล์ Excel', 'error');
+                        return;
+                    }
+
+                    processExcelRows(rows);
+                } catch (err) {
+                    console.error("Error reading excel file:", err);
+                    showToast('เกิดข้อผิดพลาดในการอ่านไฟล์ Excel: ' + err.message, 'error');
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function processExcelRows(rows) {
+            // Check if first row is a header
+            let startIndex = 0;
+            if (rows.length > 0) {
+                const firstRow = rows[0];
+                const headerKeywords = ['รหัสสินค้า', 'ชื่อสินค้า', 'หมวดหมู่', 'ผู้จัดจำหน่าย', 'สาขา', 'สี', 'ราคา', 'ต้นทุน', 'sku', 'name', 'category', 'supplier', 'branch'];
+                const isHeader = firstRow.some(cell => {
+                    if (!cell) return false;
+                    const str = String(cell).toLowerCase();
+                    return headerKeywords.some(kw => str.includes(kw));
+                });
+                if (isHeader) {
+                    startIndex = 1;
+                }
+            }
+
+            const md = window.masterDataCache || {};
+            parsedRows = [];
+            let validCount = 0;
+            let invalidCount = 0;
+
+            for (let i = startIndex; i < rows.length; i++) {
+                const row = rows[i];
+                // Skip completely empty rows
+                const isRowEmpty = row.every(cell => cell === undefined || cell === null || String(cell).trim() === '');
+                if (isRowEmpty || row.length === 0) continue;
+
+                // Extract fields
+                const code = row[0] ? String(row[0]).trim() : '';
+                const name = row[1] ? String(row[1]).trim() : '';
+                const category = row[2] ? String(row[2]).trim() : '';
+                const supplier = row[3] ? String(row[3]).trim() : '';
+                const branch = row[4] ? String(row[4]).trim() : '';
+                const color = row[5] ? String(row[5]).trim() : '';
+                const capacity = row[6] ? String(row[6]).trim() : '';
+                const condition = row[7] ? String(row[7]).trim() : '';
+                const unit = row[8] ? String(row[8]).trim() : '';
+                const cost = row[9] !== undefined && row[9] !== null ? parseFloat(row[9]) : NaN;
+                const price = row[10] !== undefined && row[10] !== null ? parseFloat(row[10]) : NaN;
+                const qty = row[11] !== undefined && row[11] !== null ? parseInt(row[11]) : NaN;
+                const imeisRaw = row[12] ? String(row[12]).trim() : '';
+
+                const errors = [];
+
+                // Validations
+                if (!code) errors.push("กรุณาระบุรหัสสินค้า (คอลัมน์ A)");
+                
+                let matchedName = null;
+                if (!name) {
+                    errors.push("กรุณาระบุชื่อสินค้า (คอลัมน์ B)");
+                } else {
+                    matchedName = findMasterItem(md.productNames, name);
+                    if (!matchedName) errors.push(`ไม่พบชื่อสินค้า '${name}' ในระบบ`);
+                }
+
+                let matchedCategory = null;
+                if (!category) {
+                    errors.push("กรุณาระบุหมวดหมู่ (คอลัมน์ C)");
+                } else {
+                    matchedCategory = findMasterItem(md.productTypes, category);
+                    if (!matchedCategory) errors.push(`ไม่พบหมวดหมู่ '${category}' ในระบบ`);
+                }
+
+                let matchedSupplier = null;
+                if (!supplier) {
+                    errors.push("กรุณาระบุผู้จัดจำหน่าย (คอลัมน์ D)");
+                } else {
+                    matchedSupplier = findMasterItem(md.suppliers, supplier);
+                    if (!matchedSupplier) errors.push(`ไม่พบผู้จัดจำหน่าย '${supplier}' ในระบบ`);
+                }
+
+                let matchedBranch = null;
+                if (!branch) {
+                    errors.push("กรุณาระบุสาขา (คอลัมน์ E)");
+                } else {
+                    matchedBranch = findMasterItem(md.branches, branch);
+                    if (!matchedBranch) errors.push(`ไม่พบสาขา '${branch}' ในระบบ`);
+                }
+
+                let matchedColor = null;
+                if (!color) {
+                    errors.push("กรุณาระบุสี (คอลัมน์ F)");
+                } else {
+                    matchedColor = findMasterItem(md.productColors, color);
+                    if (!matchedColor) errors.push(`ไม่พบสี '${color}' ในระบบ`);
+                }
+
+                let matchedUnit = null;
+                if (!unit) {
+                    errors.push("กรุณาระบุหน่วยนับ (คอลัมน์ I)");
+                } else {
+                    matchedUnit = findMasterItem(md.productUnits, unit);
+                    if (!matchedUnit) errors.push(`ไม่พบหน่วยนับ '${unit}' ในระบบ`);
+                }
+
+                if (isNaN(cost) || cost <= 0) {
+                    errors.push("ราคาต้นทุนต้องระบุเป็นตัวเลขมากกว่า 0 (คอลัมน์ J)");
+                }
+
+                if (isNaN(price) || price < 0) {
+                    errors.push("ราคาขายต้องระบุเป็นตัวเลขไม่น้อยกว่า 0 (คอลัมน์ K)");
+                }
+
+                // Check device rules
+                const isDevice = matchedCategory ? checkIsDevice(matchedCategory.name) : checkIsDevice(category);
+                let matchedCapacity = null;
+                let matchedCondition = null;
+                let finalImeis = [];
+
+                if (isDevice) {
+                    if (!capacity) {
+                        errors.push("ประเภทอุปกรณ์มือถือ/แท็บเล็ต จำเป็นต้องระบุความจุ (คอลัมน์ G)");
+                    } else {
+                        matchedCapacity = findMasterItem(md.productCapacities, capacity);
+                        if (!matchedCapacity) errors.push(`ไม่พบความจุ '${capacity}' ในระบบ`);
+                    }
+
+                    if (!condition) {
+                        errors.push("ประเภทอุปกรณ์มือถือ/แท็บเล็ต จำเป็นต้องระบุสภาพเครื่อง (คอลัมน์ H)");
+                    } else {
+                        matchedCondition = findMasterItem(md.productConditions, condition);
+                        if (!matchedCondition) errors.push(`ไม่พบสภาพเครื่อง '${condition}' ในระบบ`);
+                    }
+
+                    finalImeis = imeisRaw ? imeisRaw.split(',').map(x => x.trim()).filter(Boolean) : [];
+                    if (finalImeis.length === 0) {
+                        errors.push("ประเภทอุปกรณ์มือถือ/แท็บเล็ต จำเป็นต้องระบุ IMEI อย่างน้อย 1 รายการ (คอลัมน์ M)");
+                    }
+                } else {
+                    if (isNaN(qty) || qty < 1) {
+                        errors.push("จำนวนสินค้าต้องเป็นตัวเลขมากกว่าหรือเท่ากับ 1 (คอลัมน์ L)");
+                    }
+                }
+
+                const isValid = errors.length === 0;
+                if (isValid) validCount++;
+                else invalidCount++;
+
+                const finalQty = isDevice ? finalImeis.length : qty;
+
+                // Build Payload
+                const payload = {
+                    product_code: code,
+                    supplier_id: matchedSupplier ? matchedSupplier._id : null,
+                    name: matchedName ? matchedName.name : name,
+                    type_id: matchedCategory ? matchedCategory._id : null,
+                    color_id: matchedColor ? matchedColor._id : null,
+                    cost_price: cost,
+                    selling_price: price,
+                    unit_id: matchedUnit ? matchedUnit._id : null,
+                    capacity_id: matchedCapacity ? matchedCapacity._id : null,
+                    condition_id: matchedCondition ? matchedCondition._id : null,
+                    branch_id: matchedBranch ? matchedBranch._id : null,
+                    quantity: finalQty,
+                    imeis: finalImeis,
+                    import_source: 'EXCEL'
+                };
+
+                parsedRows.push({
+                    index: i + 1 - startIndex,
+                    isValid,
+                    errors,
+                    code,
+                    name,
+                    branch: matchedBranch ? matchedBranch.name : (branch || '-'),
+                    cost: isNaN(cost) ? '-' : cost,
+                    price: isNaN(price) ? '-' : price,
+                    qty: finalQty || '-',
+                    payload
+                });
+            }
+
+            if (parsedRows.length === 0) {
+                showToast('ไม่พบข้อมูลสินค้าที่จัดเรียงเหมาะสมในไฟล์ Excel', 'error');
+                return;
+            }
+
+            // Render Preview Step
+            renderExcelPreview(validCount, invalidCount);
+            goToStep(3);
+        }
+
+        function renderExcelPreview(validCount, invalidCount) {
+            summaryTotal.textContent = parsedRows.length;
+            summaryValid.textContent = validCount;
+            summaryInvalid.textContent = invalidCount;
+
+            if (invalidCount > 0) {
+                summaryInvalidCard.className = "bg-red-500/20 p-4 rounded-xl border border-red-500 text-center";
+                validationStatusBadge.className = "px-2.5 py-1 text-xs rounded-full font-medium bg-red-500/10 text-red-400 border border-red-500/20";
+                validationStatusBadge.textContent = "พบข้อผิดพลาด";
+                errorWarning.classList.remove('hidden');
+                btnImportConfirm.disabled = true;
+                btnImportConfirm.className = "px-6 py-2.5 bg-slate-700 text-slate-500 font-bold rounded-xl flex items-center gap-2 cursor-not-allowed";
+            } else {
+                summaryInvalidCard.className = "bg-red-500/5 p-4 rounded-xl border border-slate-700 text-center text-slate-500";
+                validationStatusBadge.className = "px-2.5 py-1 text-xs rounded-full font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20";
+                validationStatusBadge.textContent = "ข้อมูลถูกต้องทั้งหมด";
+                errorWarning.classList.add('hidden');
+                btnImportConfirm.disabled = false;
+                btnImportConfirm.className = "px-6 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl glow-button-emerald flex items-center gap-2";
+            }
+
+            previewTbody.innerHTML = '';
+            
+            // Show maximum of 5 items
+            const previewItems = parsedRows.slice(0, 5);
+            previewItems.forEach(item => {
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-700/30 transition-colors";
+                
+                const statusBadge = item.isValid 
+                    ? `<span class="px-2 py-0.5 text-[10px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-full font-medium">ผ่าน</span>`
+                    : `<span class="px-2 py-0.5 text-[10px] bg-red-500/10 text-red-400 border border-red-500/20 rounded-full font-medium">ผิดพลาด</span>`;
+
+                const errorList = item.isValid 
+                    ? `<span class="text-slate-500">-</span>`
+                    : `<ul class="list-disc pl-4 text-red-400 text-[11px] space-y-0.5">${item.errors.map(err => `<li>${err}</li>`).join('')}</ul>`;
+
+                tr.innerHTML = `
+                    <td class="p-3 text-center text-slate-500">${item.index}</td>
+                    <td class="p-3">${statusBadge}</td>
+                    <td class="p-3 font-medium text-white">${item.code || '-'}</td>
+                    <td class="p-3 text-slate-300 font-medium">${item.name || '-'}</td>
+                    <td class="p-3 text-slate-400">${item.branch}</td>
+                    <td class="p-3 text-slate-300">฿${Number(item.cost).toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 2})}</td>
+                    <td class="p-3 text-slate-300">฿${Number(item.price).toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 2})}</td>
+                    <td class="p-3 text-center font-bold text-white">${item.qty}</td>
+                    <td class="p-3">${errorList}</td>
+                `;
+                previewTbody.appendChild(tr);
+            });
+        }
+
+        btnImportConfirm.addEventListener('click', async () => {
+            if (isImporting || parsedRows.some(r => !r.isValid)) return;
+
+            isImporting = true;
+            btnImportConfirm.disabled = true;
+            btnImportConfirm.innerHTML = `<i class="fa-solid fa-circle-notch fa-spin mr-2"></i> กำลังนำเข้า...`;
+            btnExcelClose.style.display = 'none'; // Hide close button during import
+            btnStep3Back.disabled = true;
+            btnStep3Back.className = "px-5 py-2.5 rounded-xl font-medium text-slate-600 cursor-not-allowed";
+
+            progressBox.classList.remove('hidden');
+
+            let successCount = 0;
+            const total = parsedRows.length;
+
+            for (let i = 0; i < total; i++) {
+                const item = parsedRows[i];
+                const pct = Math.round((i / total) * 100);
+                
+                // Update Progress UI
+                progressBar.style.width = `${pct}%`;
+                progressPercent.textContent = `${pct}%`;
+                progressText.textContent = `กำลังรับเข้าคลังสินค้า (${i + 1}/${total}): ${item.name}`;
+
+                try {
+                    const response = await authFetch(`${API_BASE_URL}/products`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(item.payload)
+                    });
+                    const res = await response.json();
+                    if (res.success) {
+                        successCount++;
+                    } else {
+                        console.error(`Error importing row ${item.index}: ${res.message}`);
+                    }
+                } catch (err) {
+                    console.error(`Connection error importing row ${item.index}:`, err);
+                }
+            }
+
+            progressBar.style.width = '100%';
+            progressPercent.textContent = '100%';
+            progressText.textContent = 'นำเข้าข้อมูลสินค้าทั้งหมดสำเร็จเสร็จสิ้น';
+
+            // Show Toast with success message and count
+            showToast(`ยืนยันการนำเข้าสำเร็จจำนวน ${successCount} รายการ`);
+
+            // Restore close buttons
+            btnExcelClose.style.display = 'block';
+            isImporting = false;
+            
+            // Close Modal
+            closeExcelModal();
+
+            // Refresh Table & UI
+            if (typeof fetchProducts === 'function') {
+                await fetchProducts();
+            }
+        });
+    }
+    initExcelImport();
 });
 
 // ============================================================================

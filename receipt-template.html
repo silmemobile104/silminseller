@@ -220,22 +220,6 @@
                 <span>ยอดรวมสุทธิ / Grand Total:</span>
                 <span id="total-amount">฿0.00</span>
             </div>
-
-            <!-- ส่วนข้อมูลเงินดาวน์สำหรับจัดไฟแนนซ์ -->
-            <div id="finance-receipt-section" style="display: none; border-top: 1px dashed #333; margin-top: 10px; padding-top: 8px;">
-                <div class="total-row" style="font-weight: bold; font-size: 13px;">
-                    <span>ชำระสดหน้าร้าน / Upfront Paid:</span>
-                    <span id="upfront-payment">฿0.00</span>
-                </div>
-                <div class="total-row" style="font-weight: bold; font-size: 13px;">
-                    <span>เงินดาวน์ / Down Payment:</span>
-                    <span id="down-payment">฿0.00</span>
-                </div>
-                <div class="total-row" style="font-weight: bold; font-size: 13px; color: #b71c1c;">
-                    <span>ยอดจัดไฟแนนซ์ / Financed Amount:</span>
-                    <span id="balance">฿0.00</span>
-                </div>
-            </div>
         </div>
 
         <!-- วิธีชำระเงิน / Payment Method Info -->
@@ -431,10 +415,18 @@
             const printedDiscount = options.showItems ? originalDiscount : 0;
             const printedGrandTotal = Math.max(0, printedSubtotal - printedDiscount);
 
-            // สูตรถอด Vat 7%: ยอดรวม * 7 / 107
+            // แยกส่วนที่ไม่คิดภาษี (ค่าสัญญา และ ค่า iCloud)
+            const contractFeeVal = (options.showContract && txn.contract_fee > 0) ? txn.contract_fee : 0;
+            const icloudFeeVal = (options.showIcloud && txn.icloud_fee > 0) ? txn.icloud_fee : 0;
+            const nonTaxableFees = contractFeeVal + icloudFeeVal;
+
+            // ยอดที่นำมาคิดภาษี (สินค้าปกติ) = ยอดรวมสุทธิ - ยอดที่ไม่คิดภาษี
+            const taxableAmount = Math.max(0, printedGrandTotal - nonTaxableFees);
+
+            // สูตรถอด Vat 7%: ยอดรวมที่ต้องเสียภาษี * 7 / 107
             const vatRate = 7;
-            const vatAmount = (printedGrandTotal * vatRate) / (100 + vatRate);
-            const beforeVat = printedGrandTotal - vatAmount;
+            const vatAmount = (taxableAmount * vatRate) / (100 + vatRate);
+            const beforeVat = taxableAmount - vatAmount;
 
             // กรอกข้อมูลสรุปยอดต่างๆ (ป้อนเป็น printedSubtotal เพื่อสะท้อนเฉพาะที่เปิดแสดง)
             document.getElementById('subtotal').textContent = '฿' + printedSubtotal.toLocaleString(undefined, {minimumFractionDigits: 2});
@@ -464,7 +456,7 @@
                     paymentStr = `ซื้อสด (${payments.join(' / ')})`;
                 }
             } else if (txn.payment_type === 'จัดไฟแนนซ์' || txn.payment_method === 'จัดไฟแนนซ์') {
-                paymentStr = `จัดไฟแนนซ์ (${txn.finance_company || 'ไม่ระบุ'}) | ผ่อนชำระ ${txn.finance_months || 0} งวด`;
+                paymentStr = `จัดไฟแนนซ์ (${txn.finance_company || 'ไม่ระบุ'})`;
             }
             document.getElementById('payment-method-text').textContent = paymentStr;
 

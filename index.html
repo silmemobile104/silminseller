@@ -8,6 +8,7 @@
     <link rel="icon" type="image/svg+xml"
         href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='grad' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' style='stop-color:%2306b6d4'/%3E%3Cstop offset='100%25' style='stop-color:%232563eb'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='64' height='64' rx='12' fill='url(%23grad)'/%3E%3Crect x='18' y='12' width='28' height='40' rx='4' fill='%23ffffff'/%3E%3Crect x='20' y='15' width='24' height='34' rx='2' fill='%230f172a'/%3E%3Ccircle cx='32' cy='52' r='2' fill='%23ffffff'/%3E%3C/svg%3E">
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <style>
@@ -49,6 +50,16 @@
 
         .glow-button:hover {
             box-shadow: 0 0 25px rgba(6, 182, 212, 0.8);
+            transform: translateY(-2px);
+        }
+
+        .glow-button-emerald {
+            box-shadow: 0 0 15px rgba(16, 185, 129, 0.5);
+            transition: all 0.3s ease;
+        }
+
+        .glow-button-emerald:hover {
+            box-shadow: 0 0 25px rgba(16, 185, 129, 0.8);
             transform: translateY(-2px);
         }
 
@@ -2454,6 +2465,36 @@
                                 </table>
                             </div>
                         </div>
+
+                        <!-- History Section 3: Direct Manual/Excel Imports -->
+                        <div class="space-y-4 pt-4">
+                            <h4 class="text-base font-bold text-white flex items-center gap-2">
+                                <i class="fa-solid fa-clock-rotate-left text-emerald-400"></i> ประวัติการนำเข้าคลังสินค้าโดยตรง (กรณีไม่มีใบสั่งซื้อ / Excel)
+                            </h4>
+                            <div class="overflow-x-auto bg-[#1a1a1a] rounded-xl border border-gray-800">
+                                <table class="w-full text-left border-collapse">
+                                    <thead class="bg-gray-900 text-gray-400 text-xs uppercase tracking-wider">
+                                        <tr>
+                                            <th class="px-6 py-4 font-bold">วันที่นำเข้า</th>
+                                            <th class="px-6 py-4 font-bold">ประเภท</th>
+                                            <th class="px-6 py-4 font-bold">สาขา</th>
+                                            <th class="px-6 py-4 font-bold">ชื่อสินค้า</th>
+                                            <th class="px-6 py-4 font-bold">รหัสสินค้า</th>
+                                            <th class="px-6 py-4 font-bold text-center">จำนวน</th>
+                                            <th class="px-6 py-4 font-bold">ผู้นำเข้า</th>
+                                            <th class="px-6 py-4 font-bold">รายละเอียด IMEI</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="table-body-history-direct-imports" class="divide-y divide-gray-800/50">
+                                        <tr>
+                                            <td colspan="8" class="text-center py-8 text-slate-500 text-sm">
+                                                ไม่มีประวัติการนำเข้าคลังสินค้าโดยตรง
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -3279,9 +3320,16 @@
                 <h3 id="modal-title" class="text-2xl font-bold text-white flex items-center gap-2">
                     <i class="fa-solid fa-box-open text-cyan-400"></i> เพิ่มสินค้าใหม่
                 </h3>
-                <button id="close-modal-btn" type="button" class="text-slate-400 hover:text-white transition-colors">
-                    <i class="fa-solid fa-xmark text-xl"></i>
-                </button>
+                <div class="flex items-center gap-3">
+                    <button id="btn-add-product-excel" type="button"
+                        class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-lg shadow-md transition-all flex items-center gap-1.5 glow-button-emerald">
+                        <i class="fa-solid fa-file-excel"></i>
+                        เพิ่มสิน(Excel)
+                    </button>
+                    <button id="close-modal-btn" type="button" class="text-slate-400 hover:text-white transition-colors">
+                        <i class="fa-solid fa-xmark text-xl"></i>
+                    </button>
+                </div>
             </div>
 
             <!-- Form -->
@@ -3427,6 +3475,274 @@
             </form>
         </div>
     </div>
+    </div>
+
+    <!-- EXCEL IMPORT MODAL -->
+    <div id="excel-import-modal"
+        class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 backdrop-blur-sm opacity-0 pointer-events-none transition-opacity duration-300 p-4">
+        <div
+            class="modal-content relative w-[95%] md:w-[900px] max-h-[90vh] overflow-y-auto p-6 md:p-8 bg-slate-800 rounded-2xl shadow-2xl border border-slate-700">
+            <!-- Modal Header -->
+            <div class="flex items-center justify-between mb-6 pb-4 border-b border-slate-700">
+                <h3 class="text-2xl font-bold text-white flex items-center gap-2">
+                    <i class="fa-solid fa-file-excel text-emerald-500"></i> นำเข้าสินค้าผ่าน Excel
+                </h3>
+                <button id="close-excel-modal-btn" type="button" class="text-slate-400 hover:text-white transition-colors">
+                    <i class="fa-solid fa-xmark text-xl"></i>
+                </button>
+            </div>
+
+            <!-- Steps Progress Bar -->
+            <div class="flex items-center justify-center mb-8">
+                <div class="flex items-center w-full max-w-lg">
+                    <!-- Step 1 Indicator -->
+                    <div class="flex flex-col items-center flex-1 relative">
+                        <div id="excel-step1-indicator" class="w-8 h-8 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold text-sm z-10 transition-colors">1</div>
+                        <span class="text-xs text-slate-300 mt-2 font-medium">โครงสร้างข้อมูล</span>
+                    </div>
+                    <!-- Connector 1 -->
+                    <div class="h-1 flex-1 bg-slate-700 -mt-6">
+                        <div id="excel-connector1" class="h-full bg-emerald-600 w-0 transition-all duration-300"></div>
+                    </div>
+                    <!-- Step 2 Indicator -->
+                    <div class="flex flex-col items-center flex-1 relative">
+                        <div id="excel-step2-indicator" class="w-8 h-8 rounded-full bg-slate-700 text-slate-400 flex items-center justify-center font-bold text-sm z-10 transition-colors">2</div>
+                        <span class="text-xs text-slate-400 mt-2 font-medium">เลือกไฟล์ Excel</span>
+                    </div>
+                    <!-- Connector 2 -->
+                    <div class="h-1 flex-1 bg-slate-700 -mt-6">
+                        <div id="excel-connector2" class="h-full bg-emerald-600 w-0 transition-all duration-300"></div>
+                    </div>
+                    <!-- Step 3 Indicator -->
+                    <div class="flex flex-col items-center flex-1 relative">
+                        <div id="excel-step3-indicator" class="w-8 h-8 rounded-full bg-slate-700 text-slate-400 flex items-center justify-center font-bold text-sm z-10 transition-colors">3</div>
+                        <span class="text-xs text-slate-400 mt-2 font-medium">ตรวจสอบและยืนยัน</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- STEP 1 PANEL: Instructions & Template Preview -->
+            <div id="excel-step1-panel" class="space-y-6">
+                <div class="bg-slate-900/50 p-4 rounded-xl border border-slate-700">
+                    <h4 class="text-sm font-semibold text-emerald-400 mb-2 flex items-center gap-2">
+                        <i class="fa-solid fa-circle-info"></i> คำแนะนำในการจัดเตรียมคอลัมน์ใน Excel
+                    </h4>
+                    <p class="text-xs text-slate-300 leading-relaxed">
+                        โปรดตรวจสอบให้แน่ใจว่าไฟล์ Excel ของคุณไม่มีแถวหัวตาราง (Header) หรือหากมีให้จัดเรียงลำดับคอลัมน์ A ถึง M ให้ถูกต้องครบถ้วนตามตารางตัวอย่างด้านล่างนี้ และพิมพ์ตัวสะกดของข้อมูลแต่ละช่องให้ถูกต้องตรงกับข้อมูลหลักในระบบ
+                    </p>
+                </div>
+
+                <!-- Template Table -->
+                <div class="overflow-x-auto border border-slate-700 rounded-xl bg-slate-900/30">
+                    <table class="w-full text-left border-collapse text-xs">
+                        <thead>
+                            <tr class="bg-slate-900 border-b border-slate-700 text-slate-300">
+                                <th class="p-3 font-semibold text-center w-16">คอลัมน์</th>
+                                <th class="p-3 font-semibold w-40">ชื่อข้อมูล</th>
+                                <th class="p-3 font-semibold w-24">จำเป็น</th>
+                                <th class="p-3 font-semibold">ตัวอย่าง / คำอธิบายเพิ่มเติม</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-800 text-slate-300">
+                            <tr>
+                                <td class="p-3 font-bold text-center bg-slate-900/50">A</td>
+                                <td class="p-3 font-medium text-white">รหัสสินค้า (SKU)</td>
+                                <td class="p-3 text-red-400">ใช่</td>
+                                <td class="p-3 text-slate-400">IP14-128-BK</td>
+                            </tr>
+                            <tr>
+                                <td class="p-3 font-bold text-center bg-slate-900/50">B</td>
+                                <td class="p-3 font-medium text-white">ชื่อสินค้า (Product Name)</td>
+                                <td class="p-3 text-red-400">ใช่</td>
+                                <td class="p-3 text-slate-400">iPhone 14 (ต้องมีข้อมูลชื่อนี้อยู่แล้วในระบบ)</td>
+                            </tr>
+                            <tr>
+                                <td class="p-3 font-bold text-center bg-slate-900/50">C</td>
+                                <td class="p-3 font-medium text-white">หมวดหมู่ (Category)</td>
+                                <td class="p-3 text-red-400">ใช่</td>
+                                <td class="p-3 text-slate-400">โทรศัพท์มือถือ (ต้องมีข้อมูลหมวดหมู่นี้อยู่แล้วในระบบ)</td>
+                            </tr>
+                            <tr>
+                                <td class="p-3 font-bold text-center bg-slate-900/50">D</td>
+                                <td class="p-3 font-medium text-white">ผู้จัดจำหน่าย (Supplier)</td>
+                                <td class="p-3 text-red-400">ใช่</td>
+                                <td class="p-3 text-slate-400">Apple Inc. (ต้องมีข้อมูลผู้จัดจำหน่ายนี้อยู่แล้วในระบบ)</td>
+                            </tr>
+                            <tr>
+                                <td class="p-3 font-bold text-center bg-slate-900/50">E</td>
+                                <td class="p-3 font-medium text-white">ที่จัดเก็บ / สาขา</td>
+                                <td class="p-3 text-red-400">ใช่</td>
+                                <td class="p-3 text-slate-400">สำนักงานใหญ่ (ระบุสาขาที่ต้องการนำสินค้าเข้าสต็อก)</td>
+                            </tr>
+                            <tr>
+                                <td class="p-3 font-bold text-center bg-slate-900/50">F</td>
+                                <td class="p-3 font-medium text-white">สี (Color)</td>
+                                <td class="p-3 text-red-400">ใช่</td>
+                                <td class="p-3 text-slate-400">Midnight (ต้องตรงกับสีหลักในระบบ)</td>
+                            </tr>
+                            <tr>
+                                <td class="p-3 font-bold text-center bg-slate-900/50">G</td>
+                                <td class="p-3 font-medium text-white">ความจุ (Capacity)</td>
+                                <td class="p-3 text-amber-400">เฉพาะมือถือ</td>
+                                <td class="p-3 text-slate-400">128GB (จำเป็นต้องใส่สำหรับสินค้าประเภทอุปกรณ์โทรศัพท์/แท็บเล็ต)</td>
+                            </tr>
+                            <tr>
+                                <td class="p-3 font-bold text-center bg-slate-900/50">H</td>
+                                <td class="p-3 font-medium text-white">สภาพเครื่อง (Condition)</td>
+                                <td class="p-3 text-amber-400">เฉพาะมือถือ</td>
+                                <td class="p-3 text-slate-400">มือหนึ่ง (จำเป็นต้องใส่สำหรับสินค้าประเภทอุปกรณ์โทรศัพท์/แท็บเล็ต)</td>
+                            </tr>
+                            <tr>
+                                <td class="p-3 font-bold text-center bg-slate-900/50">I</td>
+                                <td class="p-3 font-medium text-white">หน่วยนับ (Unit)</td>
+                                <td class="p-3 text-red-400">ใช่</td>
+                                <td class="p-3 text-slate-400">เครื่อง, ชิ้น, อัน (ต้องตรงกับหน่วยนับหลักในระบบ)</td>
+                            </tr>
+                            <tr>
+                                <td class="p-3 font-bold text-center bg-slate-900/50">J</td>
+                                <td class="p-3 font-medium text-white">ราคาต้นทุน (Cost)</td>
+                                <td class="p-3 text-red-400">ใช่</td>
+                                <td class="p-3 text-slate-400">ราคาเป็นตัวเลข มากกว่า 0 เช่น 18000</td>
+                            </tr>
+                            <tr>
+                                <td class="p-3 font-bold text-center bg-slate-900/50">K</td>
+                                <td class="p-3 font-medium text-white">ราคาขาย (Price)</td>
+                                <td class="p-3 text-red-400">ใช่</td>
+                                <td class="p-3 text-slate-400">ราคาเป็นตัวเลข มากกว่าหรือเท่ากับ 0 เช่น 22000</td>
+                            </tr>
+                            <tr>
+                                <td class="p-3 font-bold text-center bg-slate-900/50">L</td>
+                                <td class="p-3 font-medium text-white">จำนวน (Qty)</td>
+                                <td class="p-3 text-red-400">ใช่</td>
+                                <td class="p-3 text-slate-400">1 (หากมี IMEI จำนวนที่แท้จริงจะถูกคำนวณจากจำนวน IMEI ด้านล่าง)</td>
+                            </tr>
+                            <tr>
+                                <td class="p-3 font-bold text-center bg-slate-900/50">M</td>
+                                <td class="p-3 font-medium text-white">IMEIs (คั่นด้วยเครื่องหมาย `,`)</td>
+                                <td class="p-3 text-amber-400">เฉพาะมือถือ</td>
+                                <td class="p-3 text-slate-400">356677889900111, 356677889900222 (จำเป็นสำหรับมือถือ)</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="flex justify-end pt-4 border-t border-slate-700">
+                    <button type="button" id="excel-btn-step1-next"
+                        class="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl glow-button-emerald flex items-center gap-2">
+                        ฉันรับทราบและจัดเรียงข้อมูลตามนี้แล้ว <i class="fa-solid fa-arrow-right"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- STEP 2 PANEL: Drag and Drop Upload -->
+            <div id="excel-step2-panel" class="hidden space-y-6">
+                <div class="bg-slate-900/30 p-4 rounded-xl border border-slate-700 text-xs text-slate-300">
+                    โปรดเลือกไฟล์ Excel (`.xlsx`, `.xls`) ที่ท่านได้เรียงข้อมูลคอลัมน์ A ถึง M เรียบร้อยแล้วมาอัปโหลด
+                </div>
+
+                <!-- Drag & Drop Zone -->
+                <div id="excel-drag-drop-zone"
+                    class="border-2 border-dashed border-slate-600 hover:border-emerald-500 hover:bg-emerald-500/5 rounded-2xl p-12 text-center cursor-pointer transition-all duration-300 group">
+                    <input type="file" id="excel-file-input" class="hidden" accept=".xlsx, .xls">
+                    <div class="space-y-4">
+                        <div class="w-16 h-16 bg-slate-700/50 text-slate-400 group-hover:bg-emerald-500/20 group-hover:text-emerald-400 rounded-full flex items-center justify-center mx-auto transition-all duration-300">
+                            <i class="fa-solid fa-cloud-arrow-up text-3xl"></i>
+                        </div>
+                        <div class="space-y-1">
+                            <p class="text-sm font-semibold text-white">ลากไฟล์ Excel มาวางที่นี่ หรือ <span class="text-emerald-400 group-hover:underline">คลิกเพื่อเลือกไฟล์</span></p>
+                            <p class="text-xs text-slate-500">รองรับไฟล์ประเภท .xlsx และ .xls เท่านั้น</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex justify-between pt-4 border-t border-slate-700">
+                    <button type="button" id="excel-btn-step2-back"
+                        class="px-5 py-2.5 rounded-xl font-medium text-slate-300 hover:text-white hover:bg-slate-700 transition-colors">
+                        <i class="fa-solid fa-arrow-left"></i> ย้อนกลับ
+                    </button>
+                </div>
+            </div>
+
+            <!-- STEP 3 PANEL: Preview & Validation Results -->
+            <div id="excel-step3-panel" class="hidden space-y-6">
+                <!-- Summary Alerts -->
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div class="bg-slate-900/50 p-4 rounded-xl border border-slate-700 text-center">
+                        <div class="text-xs text-slate-400">รายการทั้งหมด</div>
+                        <div id="excel-summary-total" class="text-2xl font-bold text-white mt-1">0</div>
+                    </div>
+                    <div class="bg-emerald-500/10 p-4 rounded-xl border border-emerald-500/20 text-center">
+                        <div class="text-xs text-emerald-400">พร้อมนำเข้า (ผ่าน)</div>
+                        <div id="excel-summary-valid" class="text-2xl font-bold text-emerald-400 mt-1">0</div>
+                    </div>
+                    <div id="excel-summary-invalid-card" class="bg-red-500/10 p-4 rounded-xl border border-red-500/20 text-center">
+                        <div class="text-xs text-red-400">ข้อมูลไม่ถูกต้อง</div>
+                        <div id="excel-summary-invalid" class="text-2xl font-bold text-red-400 mt-1">0</div>
+                    </div>
+                </div>
+
+                <!-- Preview Table Header -->
+                <div class="flex items-center justify-between">
+                    <h4 class="text-sm font-semibold text-white">ตัวอย่างข้อมูลรายการสินค้า (แสดงสูงสุด 5 รายการแรก)</h4>
+                    <span id="excel-validation-status-badge" class="px-2.5 py-1 text-xs rounded-full font-medium"></span>
+                </div>
+
+                <!-- Preview Table -->
+                <div class="overflow-x-auto border border-slate-700 rounded-xl bg-slate-900/30 max-h-[300px]">
+                    <table class="w-full text-left border-collapse text-xs">
+                        <thead>
+                            <tr class="bg-slate-900 border-b border-slate-700 text-slate-300 sticky top-0">
+                                <th class="p-3 font-semibold text-center w-12">#</th>
+                                <th class="p-3 font-semibold w-24">สถานะ</th>
+                                <th class="p-3 font-semibold w-32">รหัสสินค้า</th>
+                                <th class="p-3 font-semibold w-40">ชื่อสินค้า</th>
+                                <th class="p-3 font-semibold w-28">สาขา</th>
+                                <th class="p-3 font-semibold w-20">ต้นทุน</th>
+                                <th class="p-3 font-semibold w-20">ราคาขาย</th>
+                                <th class="p-3 font-semibold w-16">จำนวน</th>
+                                <th class="p-3 font-semibold">รายละเอียดข้อผิดพลาด</th>
+                            </tr>
+                        </thead>
+                        <tbody id="excel-preview-tbody" class="divide-y divide-slate-800 text-slate-300">
+                            <!-- Populated dynamically by JS -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Validation Error Warning Box -->
+                <div id="excel-error-warning" class="bg-red-500/10 p-4 rounded-xl border border-red-500/20 hidden flex gap-3 items-start">
+                    <i class="fa-solid fa-triangle-exclamation text-red-500 text-lg mt-0.5"></i>
+                    <div>
+                        <h5 class="text-sm font-semibold text-red-400">พบข้อผิดพลาดในข้อมูลของท่าน</h5>
+                        <p class="text-xs text-slate-300 mt-1 leading-relaxed">
+                            ไม่สามารถดำเนินการนำเข้าไฟล์นี้ได้ เนื่องจากมีข้อมูลบางรายการที่ไม่ผ่านการตรวจสอบความถูกต้อง กรุณากลับไปตรวจสอบตัวสะกด ชื่อสินค้า หมวดหมู่ สี สาขา หน่วยนับ หรือข้อมูลความจุ/สภาพ และอัปโหลดไฟล์ใหม่อีกครั้ง
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Import Progress Overlay (Shown during importing) -->
+                <div id="excel-import-progress-box" class="hidden bg-slate-900/80 border border-slate-700 p-6 rounded-2xl space-y-4">
+                    <div class="flex items-center justify-between text-xs text-slate-300">
+                        <span id="excel-progress-text" class="font-medium">กำลังเตรียมการนำเข้าสินค้า...</span>
+                        <span id="excel-progress-percent" class="font-bold text-emerald-400">0%</span>
+                    </div>
+                    <div class="h-2 w-full bg-slate-700 rounded-full overflow-hidden">
+                        <div id="excel-progress-bar" class="h-full bg-emerald-500 w-0 transition-all duration-200"></div>
+                    </div>
+                </div>
+
+                <div class="flex justify-between pt-4 border-t border-slate-700">
+                    <button type="button" id="excel-btn-step3-back"
+                        class="px-5 py-2.5 rounded-xl font-medium text-slate-300 hover:text-white hover:bg-slate-700 transition-colors">
+                        <i class="fa-solid fa-arrow-left"></i> ย้อนกลับเพื่ออัปโหลดใหม่
+                    </button>
+                    <button type="button" id="excel-btn-import-confirm"
+                        class="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl glow-button-emerald flex items-center gap-2">
+                        <i class="fa-solid fa-cloud-arrow-up"></i> ยืนยันการนำเข้าสินค้า
+                    </button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- ========================================== -->

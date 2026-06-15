@@ -578,8 +578,30 @@ router.post('/products', async (req, res) => {
 
         const savedProduct = await product.save();
 
-        // Log product creation
-        await logActivity(req, 'CREATE', 'STOCK', `รับเข้าสต็อกสินค้าใหม่: ${product.name} (รหัสสินค้า: ${product.product_code || '-'}) จำนวน ${incomingQty}`, product.product_code, savedProduct._id);
+        // Fetch branch name for logging
+        let branchName = 'ไม่ระบุสาขา';
+        try {
+            const branchObj = await Branch.findById(branchId);
+            if (branchObj) {
+                branchName = branchObj.name;
+            }
+        } catch (branchErr) {
+            console.error('Failed to fetch branch name for audit log:', branchErr);
+        }
+
+        const importSource = productData.import_source === 'EXCEL' ? 'EXCEL' : 'MANUAL';
+        const importSourceText = importSource === 'EXCEL' ? 'ผ่าน Excel' : 'แบบปกติ';
+
+        // Log product creation with structured details
+        await logActivity(req, 'CREATE', 'STOCK', `รับเข้าสต็อกสินค้าใหม่ (${importSourceText}): ${product.name} (รหัสสินค้า: ${product.product_code || '-'}) จำนวน ${incomingQty}`, product.product_code, savedProduct._id, {
+            branch_id: branchId,
+            branch_name: branchName,
+            import_source: importSource,
+            quantity: incomingQty,
+            imeis: incomingImeis,
+            product_name: product.name,
+            product_code: product.product_code
+        });
 
         // Movement: รับเข้าสต็อก
         await createMovementsForItem({
@@ -604,6 +626,41 @@ router.post('/products', async (req, res) => {
         res.status(500).json({
             success: false,
             message: 'ไม่สามารถบันทึกข้อมูลสินค้าได้ กรุณาตรวจสอบข้อมูลอีกครั้ง'
+        });
+    }
+});
+
+// GET /api/products/direct-imports-history
+router.get('/products/direct-imports-history', async (req, res) => {
+    try {
+        const filter = {
+            module: 'STOCK',
+            action: 'CREATE'
+        };
+
+        // If a search query is provided, search in description or user_name or reference_no
+        if (req.query.search && req.query.search.trim() !== '') {
+            const searchRegex = new RegExp(req.query.search.trim(), 'i');
+            filter.$or = [
+                { description: searchRegex },
+                { user_name: searchRegex },
+                { reference_no: searchRegex }
+            ];
+        }
+
+        const logs = await AuditLog.find(filter)
+            .sort({ createdAt: -1 })
+            .limit(100);
+
+        res.status(200).json({
+            success: true,
+            data: logs
+        });
+    } catch (error) {
+        console.error('API Error GET /api/products/direct-imports-history:', error);
+        res.status(500).json({
+            success: false,
+            message: 'เกิดข้อผิดพลาดในการดึงข้อมูลประวัติการนำเข้าโดยตรง'
         });
     }
 });
