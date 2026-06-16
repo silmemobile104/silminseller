@@ -3968,21 +3968,23 @@ router.put('/accounting/po-pay/:id', async (req, res) => {
             return res.status(400).json({ success: false, message: 'ใบสั่งซื้อนี้ชำระเงินเรียบร้อยแล้ว' });
         }
 
+        const payDate = req.body.payment_date ? new Date(req.body.payment_date) : new Date();
+
         // อัปเดตสถานะเป็นชำระเงินแล้ว
         po.payment_status = 'ชำระเงินแล้ว';
+        po.paid_at = payDate;
         await po.save();
 
         // คำนวณราคาทุนรวมของสินค้าในใบ PO
-        const totalCost = po.items.reduce((sum, item) => sum + (item.cost_price * (item.received_qty || 0)), 0);
+        const totalCost = po.items.reduce((sum, item) => sum + (item.cost_price * item.ordered_qty), 0);
 
         // Generate transaction_id: TXN-YYYYMMDD-XXXX
-        const now = new Date();
-        const dateStr = now.getFullYear() + 
-                        String(now.getMonth() + 1).padStart(2, '0') + 
-                        String(now.getDate()).padStart(2, '0');
+        const dateStr = payDate.getFullYear() + 
+                        String(payDate.getMonth() + 1).padStart(2, '0') + 
+                        String(payDate.getDate()).padStart(2, '0');
         
-        const todayStart = new Date(); todayStart.setHours(0,0,0,0);
-        const todayEnd = new Date(); todayEnd.setHours(23,59,59,999);
+        const todayStart = new Date(payDate); todayStart.setHours(0,0,0,0);
+        const todayEnd = new Date(payDate); todayEnd.setHours(23,59,59,999);
         const count = await CashMovement.countDocuments({ created_at: { $gte: todayStart, $lte: todayEnd } });
         const txn_id = `TXN-${dateStr}-${String(count + 1).padStart(4, '0')}`;
 
@@ -3992,7 +3994,8 @@ router.put('/accounting/po-pay/:id', async (req, res) => {
             category: 'ซื้อสินค้า (PO)',
             amount: totalCost,
             reference_id: po._id,
-            recorded_by: req.user.employee_id
+            recorded_by: req.user.employee_id,
+            created_at: payDate
         });
 
         await cashMove.save();
@@ -4108,7 +4111,7 @@ router.get('/accounting/ap-summary', async (req, res) => {
         const summary = await PurchaseOrder.aggregate([
             {
                 $match: {
-                    status: 'นำเข้าสำเร็จ',
+                    status: { $ne: 'ยกเลิก' },
                     payment_status: 'ยังไม่ได้ชำระ'
                 }
             },
@@ -4120,7 +4123,7 @@ router.get('/accounting/ap-summary', async (req, res) => {
                             $map: {
                                 input: "$items",
                                 as: "item",
-                                in: { $multiply: ["$$item.cost_price", { $ifNull: ["$$item.received_qty", 0] }] }
+                                in: { $multiply: ["$$item.cost_price", { $ifNull: ["$$item.ordered_qty", 0] }] }
                             }
                         }
                     }
@@ -4247,8 +4250,9 @@ router.post('/finance/payout/:id', async (req, res) => {
             return res.status(400).json({ success: false, message: 'รายการนี้ได้รับการชำระเงินเรียบร้อยแล้ว' });
         }
 
+        const settledAt = req.body.settled_at ? new Date(req.body.settled_at) : new Date();
         receivable.status = 'ได้รับเงินครบแล้ว';
-        receivable.settled_at = new Date();
+        receivable.settled_at = settledAt;
 
         const savedReceivable = await receivable.save();
 

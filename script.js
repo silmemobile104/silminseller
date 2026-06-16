@@ -8751,7 +8751,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const poRes = await authFetch(`${API_BASE_URL}/purchase-orders`);
             const poJson = await poRes.json();
             if (poJson.success) {
-                const apPOs = poJson.data.filter(po => po.status === 'นำเข้าสำเร็จ');
+                const apPOs = poJson.data.filter(po => po.status !== 'ยกเลิก');
                 
                 // Populate Supplier Dropdown Filter
                 const supplierSelect = document.getElementById('filter-ap-supplier');
@@ -8788,7 +8788,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         apTbody.innerHTML = '<tr><td colspan="6" class="text-center py-8 text-slate-500 text-sm"><i class="fa-solid fa-check-double text-slate-650 text-xl block mb-2"></i>ไม่มีหนี้สินใบสั่งซื้อค้างจ่าย</td></tr>';
                     } else {
                         filteredList.forEach(po => {
-                            const totalCost = po.items.reduce((sum, item) => sum + (item.cost_price * (item.received_qty || 0)), 0);
+                            const totalCost = po.items.reduce((sum, item) => sum + (item.cost_price * item.ordered_qty), 0);
                             const tr = document.createElement('tr');
                             tr.className = 'border-b border-slate-800/40 hover:bg-slate-700/5 transition-all duration-150';
 
@@ -8800,7 +8800,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                 ? `<button class="btn-pay-po px-3 py-1.5 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 border border-amber-500/35 hover:border-amber-500/60 rounded-xl text-xs font-bold transition-all inline-flex items-center gap-1.5 shadow-sm active:scale-95" data-id="${po._id}" data-no="${po.po_number}" data-amount="${totalCost}">
                                      <i class="fa-solid fa-money-bill-wave"></i> กดจ่ายเงิน
                                    </button>`
-                                : `<span class="text-xs text-slate-500 italic">ดำเนินการจ่ายแล้ว</span>`;
+                                : `<span class="text-xs text-emerald-400 font-bold bg-emerald-500/10 border border-emerald-500/25 px-2.5 py-1.5 rounded-xl inline-flex items-center gap-1"><i class="fa-solid fa-circle-check text-[10px]"></i> จ่ายแล้ว วันที่ ${new Date(po.paid_at || po.updatedAt).toLocaleDateString('th-TH')}</span>`;
 
                             tr.innerHTML = `
                                 <td class="px-6 py-4 font-mono font-bold text-slate-300 text-sm">${po.po_number}</td>
@@ -8820,13 +8820,21 @@ document.addEventListener('DOMContentLoaded', () => {
                                     const poNo = payBtn.dataset.no;
                                     const poAmount = Number(payBtn.dataset.amount);
 
+                                    const todayStr = new Date().toLocaleDateString('en-CA');
                                     showConfirm(
                                         `ยืนยันการจ่ายเงิน`,
-                                        `คุณต้องการยืนยันการชำระเงินสำหรับใบสั่งซื้อเลขที่ <strong class="font-mono text-white">${poNo}</strong><br>เป็นจำนวนเงิน <strong class="text-amber-400 font-mono">฿${poAmount.toLocaleString(undefined, {minimumFractionDigits: 2})}</strong> หรือไม่?`,
+                                        `คุณต้องการยืนยันการชำระเงินสำหรับใบสั่งซื้อเลขที่ <strong class="font-mono text-white">${poNo}</strong><br>เป็นจำนวนเงิน <strong class="text-amber-400 font-mono">฿${poAmount.toLocaleString(undefined, {minimumFractionDigits: 2})}</strong> หรือไม่?<br><br>
+                                         <div class="text-left bg-slate-950/45 p-4 rounded-2xl border border-slate-800 space-y-2 mt-3">
+                                             <label class="text-xs font-semibold text-slate-400 block">ระบุวันที่ชำระเงิน (จ่ายเจ้าหนี้):</label>
+                                             <input type="date" id="ap-pay-date-input" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-amber-500 text-sm" value="${todayStr}">
+                                         </div>`,
                                         async () => {
                                             try {
+                                                const payDateVal = document.getElementById('ap-pay-date-input')?.value || todayStr;
                                                 const payRes = await authFetch(`${API_BASE_URL}/accounting/po-pay/${poId}`, {
-                                                    method: 'PUT'
+                                                    method: 'PUT',
+                                                    headers: { 'Content-Type': 'application/json' },
+                                                    body: JSON.stringify({ payment_date: payDateVal })
                                                 });
                                                 const payJson = await payRes.json();
                                                 if (payJson.success) {
@@ -8942,13 +8950,21 @@ document.addEventListener('DOMContentLoaded', () => {
                                     const recNo = settleBtn.dataset.no;
                                     const amount = Number(settleBtn.dataset.amount);
 
+                                    const todayStr = new Date().toLocaleDateString('en-CA');
                                     showConfirm(
                                         `ยืนยันการรับเงินโอน`,
-                                        `คุณต้องการยืนยันการได้รับยอดเงินโอนจากบริษัทไฟแนนซ์ สำหรับใบเสร็จเลขที่ <strong class="font-mono text-white">${recNo}</strong><br>เป็นจำนวนเงินค้างโอน <strong class="text-green-400 font-mono">฿${amount.toLocaleString(undefined, {minimumFractionDigits: 2})}</strong> หรือไม่?`,
+                                        `คุณต้องการยืนยันการได้รับยอดเงินโอนจากบริษัทไฟแนนซ์ สำหรับใบเสร็จเลขที่ <strong class="font-mono text-white">${recNo}</strong><br>เป็นจำนวนเงินค้างโอน <strong class="text-green-400 font-mono">฿${amount.toLocaleString(undefined, {minimumFractionDigits: 2})}</strong> หรือไม่?<br><br>
+                                         <div class="text-left bg-slate-950/45 p-4 rounded-2xl border border-slate-800 space-y-2 mt-3">
+                                             <label class="text-xs font-semibold text-slate-400 block">ระบุวันที่ได้รับเงิน (รับจากไฟแนนซ์):</label>
+                                             <input type="date" id="ar-pay-date-input" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-green-500 text-sm" value="${todayStr}">
+                                         </div>`,
                                         async () => {
                                             try {
+                                                const payDateVal = document.getElementById('ar-pay-date-input')?.value || todayStr;
                                                 const settleRes = await authFetch(`${API_BASE_URL}/finance/payout/${arId}`, {
-                                                    method: 'POST'
+                                                    method: 'POST',
+                                                    headers: { 'Content-Type': 'application/json' },
+                                                    body: JSON.stringify({ settled_at: payDateVal })
                                                 });
                                                 const settleJson = await settleRes.json();
                                                 if (settleJson.success) {

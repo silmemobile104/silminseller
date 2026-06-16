@@ -338,7 +338,8 @@ const purchaseOrderSchema = new mongoose.Schema({
     arrival_reported_by: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee' },
     created_by: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee', required: true },
     received_by: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee' },
-    payment_status: { type: String, default: 'ยังไม่ได้ชำระ', enum: ['ยังไม่ได้ชำระ', 'ชำระเงินแล้ว'] }
+    payment_status: { type: String, default: 'ยังไม่ได้ชำระ', enum: ['ยังไม่ได้ชำระ', 'ชำระเงินแล้ว'] },
+    paid_at: { type: Date }
 }, { timestamps: true });
 const PurchaseOrder = mongoose.model('PurchaseOrder', purchaseOrderSchema, 'purchaseorder');
 
