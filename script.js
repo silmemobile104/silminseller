@@ -214,6 +214,17 @@ document.addEventListener('DOMContentLoaded', () => {
     const stockFilterStatus = document.getElementById('stock-filter-status');
     const stockFilterPriceMin = document.getElementById('stock-filter-price-min');
     const stockFilterPriceMax = document.getElementById('stock-filter-price-max');
+    const stockFilterProdType = document.getElementById('stock-filter-prod-type');
+    const stockFilterProductName = document.getElementById('stock-filter-product-name');
+    const stockFilterColor = document.getElementById('stock-filter-color');
+    const stockFilterCapacity = document.getElementById('stock-filter-capacity');
+    const stockFilterCondition = document.getElementById('stock-filter-condition');
+    const stockFilterUnit = document.getElementById('stock-filter-unit');
+    const stockFilterCostMin = document.getElementById('stock-filter-cost-min');
+    const stockFilterCostMax = document.getElementById('stock-filter-cost-max');
+    const stockFilterQtyMin = document.getElementById('stock-filter-qty-min');
+    const stockFilterQtyMax = document.getElementById('stock-filter-qty-max');
+    const stockFilterSort = document.getElementById('stock-filter-sort');
     const stockActiveFilters = document.getElementById('stock-active-filters');
     const stockResultCount = document.getElementById('stock-result-count');
 
@@ -298,7 +309,18 @@ document.addEventListener('DOMContentLoaded', () => {
         supplierId: '',
         status: 'in_stock',
         priceMin: '',
-        priceMax: ''
+        priceMax: '',
+        prodType: '',
+        productName: '',
+        colorId: '',
+        capacityId: '',
+        conditionId: '',
+        unitId: '',
+        costMin: '',
+        costMax: '',
+        qtyMin: '',
+        qtyMax: '',
+        sortBy: 'newest'
     };
 
     const getCurrentUser = () => {
@@ -344,16 +366,58 @@ document.addEventListener('DOMContentLoaded', () => {
         if (filters.status === 'out_of_stock' && quantity > 0 && !isTransferring) return false;
         if (filters.status === 'transferring' && !isTransferring) return false;
 
+        if (filters.prodType && productCategoryId !== filters.prodType) return false;
+
+        if (filters.productName && product.name !== filters.productName) return false;
+
+        const productColorId = getId(product.color_id);
+        if (filters.colorId && productColorId !== filters.colorId) return false;
+
+        const productCapacityId = getId(product.capacity_id);
+        if (filters.capacityId && productCapacityId !== filters.capacityId) return false;
+
+        const productConditionId = getId(product.condition_id);
+        if (filters.conditionId && productConditionId !== filters.conditionId) return false;
+
+        const productUnitId = getId(product.unit_id);
+        if (filters.unitId && productUnitId !== filters.unitId) return false;
+
         const price = Number(product.selling_price || 0);
         const min = filters.priceMin !== '' ? Number(filters.priceMin) : null;
         const max = filters.priceMax !== '' ? Number(filters.priceMax) : null;
         if (min !== null && !Number.isNaN(min) && price < min) return false;
         if (max !== null && !Number.isNaN(max) && price > max) return false;
+
+        const cost = Number(product.cost_price || 0);
+        const costMinVal = filters.costMin !== '' ? Number(filters.costMin) : null;
+        const costMaxVal = filters.costMax !== '' ? Number(filters.costMax) : null;
+        if (costMinVal !== null && !Number.isNaN(costMinVal) && cost < costMinVal) return false;
+        if (costMaxVal !== null && !Number.isNaN(costMaxVal) && cost > costMaxVal) return false;
+
+        const qtyMinVal = filters.qtyMin !== '' ? Number(filters.qtyMin) : null;
+        const qtyMaxVal = filters.qtyMax !== '' ? Number(filters.qtyMax) : null;
+        if (qtyMinVal !== null && !Number.isNaN(qtyMinVal) && quantity < qtyMinVal) return false;
+        if (qtyMaxVal !== null && !Number.isNaN(qtyMaxVal) && quantity > qtyMaxVal) return false;
+
         return true;
     };
 
     const getFilteredProducts = () => {
-        return allProductsCache.filter(p => productMatchesSearch(p, stockSearchQuery) && productMatchesFilters(p, stockFilters));
+        const list = allProductsCache.filter(p => productMatchesSearch(p, stockSearchQuery) && productMatchesFilters(p, stockFilters));
+        if (stockFilters.sortBy === 'name_asc') {
+            list.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'th'));
+        } else if (stockFilters.sortBy === 'price_asc') {
+            list.sort((a, b) => Number(a.selling_price || 0) - Number(b.selling_price || 0));
+        } else if (stockFilters.sortBy === 'price_desc') {
+            list.sort((a, b) => Number(b.selling_price || 0) - Number(a.selling_price || 0));
+        } else if (stockFilters.sortBy === 'qty_asc') {
+            list.sort((a, b) => Number(a.quantity || 0) - Number(b.quantity || 0));
+        } else if (stockFilters.sortBy === 'qty_desc') {
+            list.sort((a, b) => Number(b.quantity || 0) - Number(a.quantity || 0));
+        } else if (stockFilters.sortBy === 'newest') {
+            list.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+        }
+        return list;
     };
 
     const countActiveFilters = () => {
@@ -364,6 +428,14 @@ document.addEventListener('DOMContentLoaded', () => {
         if (stockFilters.supplierId) n += 1;
         if (stockFilters.status) n += 1;
         if (stockFilters.priceMin !== '' || stockFilters.priceMax !== '') n += 1;
+        if (stockFilters.prodType) n += 1;
+        if (stockFilters.colorId) n += 1;
+        if (stockFilters.capacityId) n += 1;
+        if (stockFilters.conditionId) n += 1;
+        if (stockFilters.unitId) n += 1;
+        if (stockFilters.costMin !== '' || stockFilters.costMax !== '') n += 1;
+        if (stockFilters.qtyMin !== '' || stockFilters.qtyMax !== '') n += 1;
+        if (stockFilters.sortBy && stockFilters.sortBy !== 'newest') n += 1;
         return n;
     };
 
@@ -410,6 +482,37 @@ document.addEventListener('DOMContentLoaded', () => {
                     stockFilters.priceMax = '';
                     if (stockFilterPriceMin) stockFilterPriceMin.value = '';
                     if (stockFilterPriceMax) stockFilterPriceMax.value = '';
+                } else if (key === 'prodType') {
+                    stockFilters.prodType = '';
+                    if (stockFilterProdType) stockFilterProdType.value = '';
+                } else if (key === 'productName') {
+                    stockFilters.productName = '';
+                    if (stockFilterProductName) stockFilterProductName.value = '';
+                } else if (key === 'color') {
+                    stockFilters.colorId = '';
+                    if (stockFilterColor) stockFilterColor.value = '';
+                } else if (key === 'capacity') {
+                    stockFilters.capacityId = '';
+                    if (stockFilterCapacity) stockFilterCapacity.value = '';
+                } else if (key === 'condition') {
+                    stockFilters.conditionId = '';
+                    if (stockFilterCondition) stockFilterCondition.value = '';
+                } else if (key === 'unit') {
+                    stockFilters.unitId = '';
+                    if (stockFilterUnit) stockFilterUnit.value = '';
+                } else if (key === 'cost') {
+                    stockFilters.costMin = '';
+                    stockFilters.costMax = '';
+                    if (stockFilterCostMin) stockFilterCostMin.value = '';
+                    if (stockFilterCostMax) stockFilterCostMax.value = '';
+                } else if (key === 'qty') {
+                    stockFilters.qtyMin = '';
+                    stockFilters.qtyMax = '';
+                    if (stockFilterQtyMin) stockFilterQtyMin.value = '';
+                    if (stockFilterQtyMax) stockFilterQtyMax.value = '';
+                } else if (key === 'sort') {
+                    stockFilters.sortBy = 'newest';
+                    if (stockFilterSort) stockFilterSort.value = 'newest';
                 }
                 applyStockSearchAndFilters();
             });
@@ -434,10 +537,48 @@ document.addEventListener('DOMContentLoaded', () => {
             const text = getSelectedText(stockFilterStatus) || 'สถานะ';
             addChip('status', `สถานะ: ${text}`);
         }
+        if (stockFilters.prodType) {
+            const text = getSelectedText(stockFilterProdType) || 'ประเภทสินค้า';
+            addChip('prodType', `ประเภท: ${text}`);
+        }
+        if (stockFilters.productName) {
+            const text = getSelectedText(stockFilterProductName) || 'ชื่อสินค้า';
+            addChip('productName', `ชื่อ: ${text}`);
+        }
+        if (stockFilters.colorId) {
+            const text = getSelectedText(stockFilterColor) || 'สี';
+            addChip('color', `สี: ${text}`);
+        }
+        if (stockFilters.capacityId) {
+            const text = getSelectedText(stockFilterCapacity) || 'ความจุ';
+            addChip('capacity', `ความจุ: ${text}`);
+        }
+        if (stockFilters.conditionId) {
+            const text = getSelectedText(stockFilterCondition) || 'สภาพ';
+            addChip('condition', `สภาพ: ${text}`);
+        }
+        if (stockFilters.unitId) {
+            const text = getSelectedText(stockFilterUnit) || 'หน่วยนับ';
+            addChip('unit', `หน่วยนับ: ${text}`);
+        }
         if (stockFilters.priceMin !== '' || stockFilters.priceMax !== '') {
             const min = stockFilters.priceMin !== '' ? Number(stockFilters.priceMin).toLocaleString() : '0';
             const max = stockFilters.priceMax !== '' ? Number(stockFilters.priceMax).toLocaleString() : 'ไม่จำกัด';
-            addChip('price', `ราคา: ${min} - ${max}`);
+            addChip('price', `ราคาขาย: ฿${min} - ฿${max}`);
+        }
+        if (stockFilters.costMin !== '' || stockFilters.costMax !== '') {
+            const min = stockFilters.costMin !== '' ? Number(stockFilters.costMin).toLocaleString() : '0';
+            const max = stockFilters.costMax !== '' ? Number(stockFilters.costMax).toLocaleString() : 'ไม่จำกัด';
+            addChip('cost', `ราคาทุน: ฿${min} - ฿${max}`);
+        }
+        if (stockFilters.qtyMin !== '' || stockFilters.qtyMax !== '') {
+            const min = stockFilters.qtyMin !== '' ? Number(stockFilters.qtyMin).toLocaleString() : '0';
+            const max = stockFilters.qtyMax !== '' ? Number(stockFilters.qtyMax).toLocaleString() : 'ไม่จำกัด';
+            addChip('qty', `จำนวนคงเหลือ: ${min} - ${max}`);
+        }
+        if (stockFilters.sortBy && stockFilters.sortBy !== 'newest') {
+            const text = getSelectedText(stockFilterSort) || 'เรียงลำดับ';
+            addChip('sort', `เรียง: ${text}`);
         }
 
         const activeCount = countActiveFilters();
@@ -487,9 +628,21 @@ document.addEventListener('DOMContentLoaded', () => {
         const master = window.masterDataCache || {};
         const categories = Array.isArray(master.productTypes) ? master.productTypes : [];
         const suppliers = Array.isArray(master.suppliers) ? master.suppliers : [];
+        const colors = Array.isArray(master.productColors) ? master.productColors : [];
+        const capacities = Array.isArray(master.productCapacities) ? master.productCapacities : [];
+        const conditions = Array.isArray(master.productConditions) ? master.productConditions : [];
+        const units = Array.isArray(master.productUnits) ? master.productUnits : [];
+
+        const productNames = Array.isArray(master.productNames) ? master.productNames : [];
 
         setSelectOptions(stockFilterCategory, categories.map(c => ({ value: String(c._id), label: c.name })), 'ทุกหมวดหมู่');
+        setSelectOptions(stockFilterProdType, categories.map(c => ({ value: String(c._id), label: c.name })), 'ทุกประเภท');
+        setSelectOptions(stockFilterProductName, productNames.map(x => ({ value: String(x.name), label: x.name })), 'ทุกชื่อสินค้า');
         setSelectOptions(stockFilterSupplier, suppliers.map(s => ({ value: String(s._id), label: s.name })), 'ทุก Supplier');
+        setSelectOptions(stockFilterColor, colors.map(x => ({ value: String(x._id), label: x.name })), 'ทุกสี');
+        setSelectOptions(stockFilterCapacity, capacities.map(x => ({ value: String(x._id), label: x.name })), 'ทุกความจุ');
+        setSelectOptions(stockFilterCondition, conditions.map(x => ({ value: String(x._id), label: x.name })), 'ทุกสภาพ');
+        setSelectOptions(stockFilterUnit, units.map(x => ({ value: String(x._id), label: x.name })), 'ทุกหน่วยนับ');
 
         try {
             const response = await authFetch(`${API_BASE_URL}/branches`);
@@ -515,6 +668,17 @@ document.addEventListener('DOMContentLoaded', () => {
         stockFilters.priceMin = '';
         stockFilters.priceMax = '';
         stockFilters.branchId = (!isAdmin && userBranchId) ? userBranchId : '';
+        stockFilters.prodType = '';
+        stockFilters.productName = '';
+        stockFilters.colorId = '';
+        stockFilters.capacityId = '';
+        stockFilters.conditionId = '';
+        stockFilters.unitId = '';
+        stockFilters.costMin = '';
+        stockFilters.costMax = '';
+        stockFilters.qtyMin = '';
+        stockFilters.qtyMax = '';
+        stockFilters.sortBy = 'newest';
 
         if (stockSearchInput) stockSearchInput.value = '';
         if (stockFilterCategory) stockFilterCategory.value = stockFilters.categoryId;
@@ -523,18 +687,29 @@ document.addEventListener('DOMContentLoaded', () => {
         if (stockFilterPriceMin) stockFilterPriceMin.value = '';
         if (stockFilterPriceMax) stockFilterPriceMax.value = '';
         if (stockFilterBranch) stockFilterBranch.value = stockFilters.branchId;
+        if (stockFilterProdType) stockFilterProdType.value = '';
+        if (stockFilterProductName) stockFilterProductName.value = '';
+        if (stockFilterColor) stockFilterColor.value = '';
+        if (stockFilterCapacity) stockFilterCapacity.value = '';
+        if (stockFilterCondition) stockFilterCondition.value = '';
+        if (stockFilterUnit) stockFilterUnit.value = '';
+        if (stockFilterCostMin) stockFilterCostMin.value = '';
+        if (stockFilterCostMax) stockFilterCostMax.value = '';
+        if (stockFilterQtyMin) stockFilterQtyMin.value = '';
+        if (stockFilterQtyMax) stockFilterQtyMax.value = '';
+        if (stockFilterSort) stockFilterSort.value = 'newest';
 
         updateFilterButtonBadge();
     };
 
     const openStockFilterPanel = () => {
         if (!stockFilterPanel) return;
-        stockFilterPanel.classList.remove('hidden');
+        stockFilterPanel.classList.remove('opacity-0', 'pointer-events-none');
     };
 
     const closeStockFilterPanel = () => {
         if (!stockFilterPanel) return;
-        stockFilterPanel.classList.add('hidden');
+        stockFilterPanel.classList.add('opacity-0', 'pointer-events-none');
     };
 
     // ==========================================
@@ -2386,18 +2561,16 @@ document.addEventListener('DOMContentLoaded', () => {
         btnStockFilter.addEventListener('click', (e) => {
             e.stopPropagation();
             if (!stockFilterPanel) return;
-            if (stockFilterPanel.classList.contains('hidden')) openStockFilterPanel();
+            if (stockFilterPanel.classList.contains('opacity-0')) openStockFilterPanel();
             else closeStockFilterPanel();
         });
     }
     if (btnStockFilterClose) btnStockFilterClose.addEventListener('click', closeStockFilterPanel);
-    document.addEventListener('click', (e) => {
-        if (!stockFilterPanel || stockFilterPanel.classList.contains('hidden')) return;
-        const t = e.target;
-        if (btnStockFilter && (btnStockFilter === t || btnStockFilter.contains(t))) return;
-        if (stockFilterPanel.contains(t)) return;
-        closeStockFilterPanel();
-    });
+    if (stockFilterPanel) {
+        stockFilterPanel.addEventListener('click', (e) => {
+            if (e.target === stockFilterPanel) closeStockFilterPanel();
+        });
+    }
 
     const syncFiltersFromPanel = () => {
         if (stockFilterBranch) stockFilters.branchId = stockFilterBranch.value || '';
@@ -2406,6 +2579,17 @@ document.addEventListener('DOMContentLoaded', () => {
         if (stockFilterStatus) stockFilters.status = stockFilterStatus.value || '';
         stockFilters.priceMin = stockFilterPriceMin ? (stockFilterPriceMin.value === '' ? '' : stockFilterPriceMin.value) : '';
         stockFilters.priceMax = stockFilterPriceMax ? (stockFilterPriceMax.value === '' ? '' : stockFilterPriceMax.value) : '';
+        if (stockFilterProdType) stockFilters.prodType = stockFilterProdType.value || '';
+        if (stockFilterProductName) stockFilters.productName = stockFilterProductName.value || '';
+        if (stockFilterColor) stockFilters.colorId = stockFilterColor.value || '';
+        if (stockFilterCapacity) stockFilters.capacityId = stockFilterCapacity.value || '';
+        if (stockFilterCondition) stockFilters.conditionId = stockFilterCondition.value || '';
+        if (stockFilterUnit) stockFilters.unitId = stockFilterUnit.value || '';
+        stockFilters.costMin = stockFilterCostMin ? (stockFilterCostMin.value === '' ? '' : stockFilterCostMin.value) : '';
+        stockFilters.costMax = stockFilterCostMax ? (stockFilterCostMax.value === '' ? '' : stockFilterCostMax.value) : '';
+        stockFilters.qtyMin = stockFilterQtyMin ? (stockFilterQtyMin.value === '' ? '' : stockFilterQtyMin.value) : '';
+        stockFilters.qtyMax = stockFilterQtyMax ? (stockFilterQtyMax.value === '' ? '' : stockFilterQtyMax.value) : '';
+        if (stockFilterSort) stockFilters.sortBy = stockFilterSort.value || 'newest';
     };
 
     if (btnStockFilterApply) {
@@ -2429,6 +2613,17 @@ document.addEventListener('DOMContentLoaded', () => {
     if (stockFilterStatus) stockFilterStatus.addEventListener('change', () => { syncFiltersFromPanel(); applyStockSearchAndFilters(); });
     if (stockFilterPriceMin) stockFilterPriceMin.addEventListener('input', () => { syncFiltersFromPanel(); applyStockSearchAndFilters(); });
     if (stockFilterPriceMax) stockFilterPriceMax.addEventListener('input', () => { syncFiltersFromPanel(); applyStockSearchAndFilters(); });
+    if (stockFilterProdType) stockFilterProdType.addEventListener('change', () => { syncFiltersFromPanel(); applyStockSearchAndFilters(); });
+    if (stockFilterProductName) stockFilterProductName.addEventListener('change', () => { syncFiltersFromPanel(); applyStockSearchAndFilters(); });
+    if (stockFilterColor) stockFilterColor.addEventListener('change', () => { syncFiltersFromPanel(); applyStockSearchAndFilters(); });
+    if (stockFilterCapacity) stockFilterCapacity.addEventListener('change', () => { syncFiltersFromPanel(); applyStockSearchAndFilters(); });
+    if (stockFilterCondition) stockFilterCondition.addEventListener('change', () => { syncFiltersFromPanel(); applyStockSearchAndFilters(); });
+    if (stockFilterUnit) stockFilterUnit.addEventListener('change', () => { syncFiltersFromPanel(); applyStockSearchAndFilters(); });
+    if (stockFilterCostMin) stockFilterCostMin.addEventListener('input', () => { syncFiltersFromPanel(); applyStockSearchAndFilters(); });
+    if (stockFilterCostMax) stockFilterCostMax.addEventListener('input', () => { syncFiltersFromPanel(); applyStockSearchAndFilters(); });
+    if (stockFilterQtyMin) stockFilterQtyMin.addEventListener('input', () => { syncFiltersFromPanel(); applyStockSearchAndFilters(); });
+    if (stockFilterQtyMax) stockFilterQtyMax.addEventListener('input', () => { syncFiltersFromPanel(); applyStockSearchAndFilters(); });
+    if (stockFilterSort) stockFilterSort.addEventListener('change', () => { syncFiltersFromPanel(); applyStockSearchAndFilters(); });
 
     // ==========================================
     // Branch Management Logic
@@ -11462,6 +11657,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // ==========================================
     function initExcelImport() {
         const btnExcelOpen = document.getElementById('btn-add-product-excel');
+        const btnStockExcelOpen = document.getElementById('btn-stock-add-excel');
         const excelModal = document.getElementById('excel-import-modal');
         const btnExcelClose = document.getElementById('close-excel-modal-btn');
         
@@ -11500,7 +11696,7 @@ document.addEventListener('DOMContentLoaded', () => {
         let parsedRows = []; // Stores the evaluated objects
         let isImporting = false;
 
-        if (!btnExcelOpen || !excelModal) return;
+        if (!excelModal) return;
 
         // Navigation
         function goToStep(step) {
@@ -11600,8 +11796,9 @@ document.addEventListener('DOMContentLoaded', () => {
             excelModal.querySelector('.modal-content').classList.remove('modal-animate-in');
         }
 
-        btnExcelOpen.addEventListener('click', openExcelModal);
-        btnExcelClose.addEventListener('click', closeExcelModal);
+        if (btnExcelOpen) btnExcelOpen.addEventListener('click', openExcelModal);
+        if (btnStockExcelOpen) btnStockExcelOpen.addEventListener('click', openExcelModal);
+        if (btnExcelClose) btnExcelClose.addEventListener('click', closeExcelModal);
         
         // Modal Backdrop Click
         excelModal.addEventListener('click', (e) => {
