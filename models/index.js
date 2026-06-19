@@ -30,7 +30,8 @@ const roleSchema = new mongoose.Schema({
         manage_transfers: { type: Boolean, default: false }, // โอนย้ายสินค้า
         manage_finance: { type: Boolean, default: false },   // อนุญาตให้จัดการระบบบัญชีและการเงิน
         view_audit_logs: { type: Boolean, default: false },  // อนุญาตดูประวัติกิจกรรมระบบ
-        view_branch_inventory: { type: Boolean, default: false } // อนุญาตดูสินค้าในสาขา
+        view_branch_inventory: { type: Boolean, default: false }, // อนุญาตดูสินค้าในสาขา
+        view_daily_summary: { type: Boolean, default: true } // อนุญาตให้ดูรายงานสรุปยอดขายรายวัน
     }
 }, { timestamps: true });
 const Role = mongoose.model('Role', roleSchema, 'role');
@@ -45,7 +46,8 @@ const seedDefaultRoles = async () => {
                 do_pos: true, manage_personnel: true, manage_branches: true,
                 manage_settings: true, manage_roles: true, filter_stock_branch: true, cancel_sale: true,
                 report_arrival: true, approve_import: true, manage_po: true, receive_po: true,
-                manage_transfers: true, manage_finance: true, view_audit_logs: true, view_branch_inventory: true
+                manage_transfers: true, manage_finance: true, view_audit_logs: true, view_branch_inventory: true,
+                view_daily_summary: true
             }
         },
         {
@@ -55,7 +57,8 @@ const seedDefaultRoles = async () => {
                 do_pos: true, manage_personnel: true, manage_branches: true,
                 manage_settings: true, manage_roles: false, filter_stock_branch: true, cancel_sale: true,
                 report_arrival: true, approve_import: false, manage_po: true, receive_po: true,
-                manage_transfers: true, manage_finance: true, view_audit_logs: true, view_branch_inventory: true
+                manage_transfers: true, manage_finance: true, view_audit_logs: true, view_branch_inventory: true,
+                view_daily_summary: true
             }
         },
         {
@@ -65,7 +68,8 @@ const seedDefaultRoles = async () => {
                 do_pos: true, manage_personnel: false, manage_branches: false,
                 manage_settings: false, manage_roles: false, filter_stock_branch: false, cancel_sale: false,
                 report_arrival: true, approve_import: false, manage_po: false, receive_po: true,
-                manage_transfers: false, manage_finance: false, view_audit_logs: false, view_branch_inventory: false
+                manage_transfers: false, manage_finance: false, view_audit_logs: false, view_branch_inventory: false,
+                view_daily_summary: true
             }
         }
     ];

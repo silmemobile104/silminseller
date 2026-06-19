@@ -166,12 +166,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const navBranchReceive = document.getElementById('nav-branch-receive');
     const navAuditLogs = document.getElementById('nav-audit-logs');
     const navAccounting = document.getElementById('nav-accounting');
+    const navDailySummary = document.getElementById('nav-daily-summary');
 
     // Mobile Navigation Buttons
     const mobileNavTransactions = document.getElementById('mobile-nav-transactions');
     const mobileNavStock = document.getElementById('mobile-nav-stock');
     const mobileNavAccountingPO = document.getElementById('mobile-nav-accounting-po');
     const mobileNavMembers = document.getElementById('mobile-nav-members');
+    const mobileNavDailySummary = document.getElementById('mobile-nav-daily-summary');
 
     const viewDashboard = document.getElementById('view-dashboard');
     const viewStock = document.getElementById('view-stock');
@@ -192,6 +194,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const viewBranchReceive = document.getElementById('view-branch-receive');
     const viewAuditLogs = document.getElementById('view-audit-logs');
     const viewAccounting = document.getElementById('view-accounting');
+    const viewDailySummary = document.getElementById('view-daily-summary');
 
     const settingsTabBtns = document.querySelectorAll('.settings-tab-btn');
     const masterDataInput = document.getElementById('master-data-input');
@@ -1444,6 +1447,9 @@ document.addEventListener('DOMContentLoaded', () => {
             stockFilterBranch.style.display = permissions.filter_stock_branch ? '' : 'none';
         }
 
+        if (navDailySummary) navDailySummary.style.display = permissions.view_daily_summary ? '' : 'none';
+        if (mobileNavDailySummary) mobileNavDailySummary.style.display = permissions.view_daily_summary ? '' : 'none';
+
         // เก็บ permissions ไว้ใน window สำหรับใช้ตรวจสอบใน renderProductTable
         window.__userPermissions = permissions;
     };
@@ -2325,7 +2331,7 @@ document.addEventListener('DOMContentLoaded', () => {
             viewTransfers, viewMovements, viewMembers,
             viewReportArrival, viewApproveImport, viewWarrantyCheck,
             viewBranchInventory, viewAccountingPO, viewBranchReceive,
-            viewAuditLogs, viewAccounting
+            viewAuditLogs, viewAccounting, viewDailySummary
         ];
         views.forEach(view => {
             if (view) {
@@ -2398,6 +2404,11 @@ document.addEventListener('DOMContentLoaded', () => {
             loadBranchesForSalesHistory();
             loadEmployeesForSalesHistory();
             loadSalesHistory();
+        }
+        else if (viewName === 'daily-summary') {
+            activateView(viewDailySummary, navDailySummary);
+            activateMobileNav(mobileNavDailySummary);
+            loadDailySummary();
         }
         else if (viewName === 'transfers') {
             activateView(viewTransfers, navTransfers);
@@ -2489,6 +2500,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (mobileNavStock) mobileNavStock.addEventListener('click', (e) => { e.preventDefault(); switchView('stock'); });
     if (mobileNavAccountingPO) mobileNavAccountingPO.addEventListener('click', (e) => { e.preventDefault(); switchView('accounting-po'); });
     if (mobileNavMembers) mobileNavMembers.addEventListener('click', (e) => { e.preventDefault(); switchView('members'); });
+    if (navDailySummary) navDailySummary.addEventListener('click', (e) => { e.preventDefault(); switchView('daily-summary'); });
+    if (mobileNavDailySummary) mobileNavDailySummary.addEventListener('click', (e) => { e.preventDefault(); switchView('daily-summary'); });
 
     // Dashboard card click to transfers
     const cardPendingTransfer = document.getElementById('card-pending-transfer');
@@ -5102,6 +5115,92 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // Load Daily Summary
+    const loadDailySummary = async () => {
+        try {
+            const response = await authFetch(`${API_BASE_URL}/sales/daily-summary`);
+            const result = await response.json();
+
+            if (result.success && result.data) {
+                const data = result.data;
+                
+                // Card values
+                const cashEl = document.getElementById('daily-summary-cash-received');
+                const financeEl = document.getElementById('daily-summary-finance-down');
+                const devicesEl = document.getElementById('daily-summary-devices-sold');
+                const countEl = document.getElementById('daily-summary-bill-count');
+
+                if (cashEl) cashEl.textContent = `฿${(data.cash_received || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
+                if (financeEl) financeEl.textContent = `฿${(data.finance_downpayment || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
+                if (devicesEl) devicesEl.textContent = `${data.devices_sold || 0} เครื่อง`;
+                if (countEl) countEl.textContent = `${(data.bills || []).length} รายการ`;
+
+                // Render table
+                const tbody = document.getElementById('daily-summary-table-body');
+                if (tbody) {
+                    if (!data.bills || data.bills.length === 0) {
+                        tbody.innerHTML = `
+                            <tr>
+                                <td colspan="7" class="text-center py-12 text-slate-500">
+                                    ไม่มีบิลขายสำหรับวันนี้
+                                </td>
+                            </tr>
+                        `;
+                    } else {
+                        tbody.innerHTML = data.bills.map(txn => {
+                            const timeStr = new Date(txn.created_at).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
+                            const memberName = txn.member_id 
+                                ? `${txn.member_id.first_name} ${txn.member_id.last_name}` 
+                                : 'ลูกค้าทั่วไป';
+                            const empName = txn.employee_id ? txn.employee_id.name : '-';
+                            const paymentType = txn.payment_type || txn.payment_method || '-';
+                            const totalAmount = `฿${(txn.total_amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
+
+                            return `
+                                <tr class="hover:bg-slate-700/30 transition-colors">
+                                    <td class="px-6 py-4 font-medium text-slate-300 font-mono">${timeStr}</td>
+                                    <td class="px-6 py-4 font-bold text-white">${txn.receipt_number}</td>
+                                    <td class="px-6 py-4 text-slate-300">${empName}</td>
+                                    <td class="px-6 py-4 text-slate-300">${memberName}</td>
+                                    <td class="px-6 py-4 text-right text-emerald-400 font-bold font-mono">${totalAmount}</td>
+                                    <td class="px-6 py-4">
+                                        <span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-900 border border-slate-700 text-slate-300">
+                                            ${paymentType}
+                                        </span>
+                                    </td>
+                                    <td class="px-6 py-4 text-center">
+                                        <button type="button" class="view-daily-txn-btn px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-lg text-xs font-medium transition-all" data-id="${txn._id}">
+                                            <i class="fa-solid fa-eye mr-1"></i> ดูรายละเอียด
+                                        </button>
+                                    </td>
+                                </tr>
+                            `;
+                        }).join('');
+
+                        // Bind detail button clicks
+                        tbody.querySelectorAll('.view-daily-txn-btn').forEach(btn => {
+                            btn.addEventListener('click', () => {
+                                const txnId = btn.dataset.id;
+                                viewTransactionDetails(txnId);
+                            });
+                        });
+                    }
+                }
+            } else {
+                showToast('เกิดข้อผิดพลาดในการโหลดข้อมูล: ' + result.message, 'error');
+            }
+        } catch (error) {
+            console.error('Error loading daily sales summary:', error);
+            showToast('เกิดข้อผิดพลาดในการดึงข้อมูลสรุปยอดขายรายวัน', 'error');
+        }
+    };
+
+    // Bind daily summary refresh button
+    const btnRefreshDaily = document.getElementById('btn-refresh-daily-summary');
+    if (btnRefreshDaily) {
+        btnRefreshDaily.addEventListener('click', loadDailySummary);
+    }
+
     const renderSalesHistoryTable = (transactions) => {
         if (!salesHistoryTableBody) return;
 
@@ -5752,7 +5851,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const closeRoleModalBtn = document.getElementById('close-role-modal-btn');
     const cancelRoleModalBtn = document.getElementById('cancel-role-modal-btn');
 
-    const permKeys = ['view_dashboard', 'manage_stock', 'delete_stock', 'do_pos', 'manage_personnel', 'manage_branches', 'manage_settings', 'manage_roles', 'view_audit_logs', 'filter_stock_branch', 'cancel_sale', 'report_arrival', 'approve_import', 'manage_po', 'receive_po', 'manage_transfers', 'manage_finance', 'view_branch_inventory'];
+    const permKeys = ['view_dashboard', 'manage_stock', 'delete_stock', 'do_pos', 'manage_personnel', 'manage_branches', 'manage_settings', 'manage_roles', 'view_audit_logs', 'filter_stock_branch', 'cancel_sale', 'report_arrival', 'approve_import', 'manage_po', 'receive_po', 'manage_transfers', 'manage_finance', 'view_branch_inventory', 'view_daily_summary'];
     const permLabels = {
         view_dashboard: 'ดูแดชบอร์ด',
         manage_stock: 'จัดการสต็อก',
@@ -5771,7 +5870,8 @@ document.addEventListener('DOMContentLoaded', () => {
         receive_po: 'ตรวจรับสินค้าเข้าสาขา',
         manage_transfers: 'โอนย้ายสินค้า',
         manage_finance: 'จัดการระบบบัญชีและการเงิน',
-        view_branch_inventory: 'ดูสินค้าในสาขา'
+        view_branch_inventory: 'ดูสินค้าในสาขา',
+        view_daily_summary: 'ดูสรุปยอดขายรายวัน'
     };
     const permIcons = {
         view_dashboard: 'fa-chart-pie text-blue-400',
@@ -5791,7 +5891,8 @@ document.addEventListener('DOMContentLoaded', () => {
         receive_po: 'fa-boxes-packing text-indigo-400',
         manage_transfers: 'fa-right-left text-cyan-400',
         manage_finance: 'fa-chart-line text-amber-400',
-        view_branch_inventory: 'fa-store text-emerald-400'
+        view_branch_inventory: 'fa-store text-emerald-400',
+        view_daily_summary: 'fa-chart-line text-emerald-400'
     };
 
     const openRoleModal = () => {

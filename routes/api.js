@@ -1215,7 +1215,7 @@ router.post('/auth/login', async (req, res) => {
             do_pos: false, manage_personnel: false, manage_branches: false,
             manage_settings: false, manage_roles: false, filter_stock_branch: false,
             cancel_sale: false, report_arrival: false, approve_import: false,
-            view_audit_logs: false
+            view_audit_logs: false, view_daily_summary: true
         };
         const dbPerms = roleDoc ? roleDoc.permissions.toObject() : {
             view_dashboard: true, manage_stock: true, delete_stock: true,
@@ -1223,7 +1223,7 @@ router.post('/auth/login', async (req, res) => {
             manage_settings: true, manage_roles: true,
             filter_stock_branch: true, cancel_sale: true,
             report_arrival: true, approve_import: true,
-            view_audit_logs: true
+            view_audit_logs: true, view_daily_summary: true
         };
         // Merge: DB values override defaults. For old roles missing new fields,
         // fall back to related existing permissions (do_pos → report_arrival, manage_stock → approve_import)
@@ -1232,7 +1232,8 @@ router.post('/auth/login', async (req, res) => {
             ...dbPerms,
             report_arrival: dbPerms.report_arrival !== undefined ? dbPerms.report_arrival : (dbPerms.do_pos || false),
             approve_import: dbPerms.approve_import !== undefined ? dbPerms.approve_import : (dbPerms.manage_stock || false),
-            view_audit_logs: dbPerms.view_audit_logs !== undefined ? dbPerms.view_audit_logs : (dbPerms.manage_settings || false)
+            view_audit_logs: dbPerms.view_audit_logs !== undefined ? dbPerms.view_audit_logs : (dbPerms.manage_settings || false),
+            view_daily_summary: dbPerms.view_daily_summary !== undefined ? dbPerms.view_daily_summary : true
         };
 
         // สร้าง JWT Token (รวม permissions)
@@ -1309,7 +1310,7 @@ router.get('/auth/me', async (req, res) => {
             do_pos: false, manage_personnel: false, manage_branches: false,
             manage_settings: false, manage_roles: false, filter_stock_branch: false,
             cancel_sale: false, report_arrival: false, approve_import: false,
-            view_audit_logs: false
+            view_audit_logs: false, view_daily_summary: true
         };
         const dbPerms = roleDoc ? roleDoc.permissions.toObject() : {
             view_dashboard: true, manage_stock: true, delete_stock: true,
@@ -1317,14 +1318,15 @@ router.get('/auth/me', async (req, res) => {
             manage_settings: true, manage_roles: true,
             filter_stock_branch: true, cancel_sale: true,
             report_arrival: true, approve_import: true,
-            view_audit_logs: true
+            view_audit_logs: true, view_daily_summary: true
         };
         const permissions = {
             ...defaultPermissions,
             ...dbPerms,
             report_arrival: dbPerms.report_arrival !== undefined ? dbPerms.report_arrival : (dbPerms.do_pos || false),
             approve_import: dbPerms.approve_import !== undefined ? dbPerms.approve_import : (dbPerms.manage_stock || false),
-            view_audit_logs: dbPerms.view_audit_logs !== undefined ? dbPerms.view_audit_logs : (dbPerms.manage_settings || false)
+            view_audit_logs: dbPerms.view_audit_logs !== undefined ? dbPerms.view_audit_logs : (dbPerms.manage_settings || false),
+            view_daily_summary: dbPerms.view_daily_summary !== undefined ? dbPerms.view_daily_summary : true
         };
 
         res.status(200).json({
@@ -2443,6 +2445,83 @@ router.post('/transactions/:id/cancel', async (req, res) => {
     } catch (error) {
         console.error('API Error POST /api/transactions/:id/cancel:', error);
         res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการยกเลิกบิลขาย' });
+    }
+});
+
+// GET /api/sales/daily-summary
+// สรุปยอดขายรายวันสำหรับพนักงานขายตามสาขาของตนเอง
+router.get('/sales/daily-summary', async (req, res) => {
+    try {
+        // ตรวจสอบสิทธิ์จาก permissions.view_daily_summary
+        if (!req.user || !req.user.permissions || !req.user.permissions.view_daily_summary) {
+            return res.status(403).json({
+                success: false,
+                message: 'ไม่มีสิทธิ์เข้าถึงข้อมูลส่วนนี้ (ต้องการสิทธิ์ดูสรุปยอดขายรายวัน)'
+            });
+        }
+
+        const branchId = req.user.branch_id;
+
+        // กำหนดช่วงเวลาวันนี้ (00:00 - 23:59)
+        const todayStart = new Date();
+        todayStart.setHours(0, 0, 0, 0);
+        const todayEnd = new Date();
+        todayEnd.setHours(23, 59, 59, 999);
+
+        // ดึงรายการขายวันนี้ (กรองตามสาขาถ้าระบุไว้) และไม่ยกเลิก
+        const query = {
+            created_at: { $gte: todayStart, $lte: todayEnd },
+            status: { $ne: 'ยกเลิกแล้ว' }
+        };
+        if (branchId) {
+            query.branch_id = branchId;
+        }
+
+        const todayTransactions = await Transaction.find(query)
+        .populate('employee_id', 'name emp_id')
+        .populate('member_id', 'first_name last_name phone')
+        .sort({ created_at: -1 });
+
+        let totalSales = 0;
+        let cashReceived = 0;
+        let financeDownpayment = 0;
+        let devicesSold = 0;
+
+        for (const txn of todayTransactions) {
+            totalSales += txn.total_amount || 0;
+
+            if (txn.payment_method === 'จัดไฟแนนซ์' || txn.payment_type === 'จัดไฟแนนซ์') {
+                financeDownpayment += txn.down_payment || 0;
+                cashReceived += txn.down_payment || 0;
+            } else {
+                cashReceived += txn.total_amount || 0;
+            }
+
+            for (const item of txn.items) {
+                const product = await Product.findById(item.product_id).populate('unit_id');
+                const unitName = product && product.unit_id ? product.unit_id.name : '';
+                if (unitName === 'เครื่อง') {
+                    devicesSold += item.quantity || 0;
+                }
+            }
+        }
+
+        res.json({
+            success: true,
+            data: {
+                total_sales: totalSales,
+                cash_received: cashReceived,
+                finance_downpayment: financeDownpayment,
+                devices_sold: devicesSold,
+                bills: todayTransactions
+            }
+        });
+    } catch (error) {
+        console.error('Error fetching daily sales summary:', error);
+        res.status(500).json({
+            success: false,
+            message: 'เกิดข้อผิดพลาดในการดึงข้อมูลสรุปยอดขายรายวัน'
+        });
     }
 });
 
