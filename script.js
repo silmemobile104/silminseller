@@ -1657,6 +1657,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const closeProductBtnBottom = document.getElementById('close-product-view-btn-bottom');
     if (closeProductBtnBottom) closeProductBtnBottom.onclick = () => closeDetailModal('modal-product-view');
 
+    // Close handlers for PO View Modal (Global to support both Receive PO and AP Queue)
+    const closePoBtn = document.getElementById('btn-close-po-view');
+    if (closePoBtn) closePoBtn.onclick = () => closeDetailModal('modal-po-view');
+    const closePoBtnBottom = document.getElementById('btn-close-po-view-bottom');
+    if (closePoBtnBottom) closePoBtnBottom.onclick = () => closeDetailModal('modal-po-view');
+
     const editProduct = async (product) => {
         // Change Modal Title
         const modalTitle = document.getElementById('modal-title');
@@ -3046,6 +3052,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const empPasswordInput = document.getElementById('emp-password');
     const empBranchSelect = document.getElementById('emp-branch');
     const empRoleSelect = document.getElementById('emp-role');
+    const empStatusSelect = document.getElementById('emp-status');
     const submitEmployeeBtn = document.getElementById('submit-employee-btn');
     const passwordRequiredStar = document.getElementById('password-required-star');
     const empPasswordHint = document.getElementById('emp-password-hint');
@@ -3082,7 +3089,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             employeeTableBody.innerHTML = `
                 <tr>
-                    <td colspan="5" class="px-6 py-8 text-center text-slate-500 italic">
+                    <td colspan="6" class="px-6 py-8 text-center text-slate-500 italic">
                         ยังไม่มีข้อมูลพนักงานในระบบ
                     </td>
                 </tr>
@@ -3108,6 +3115,14 @@ document.addEventListener('DOMContentLoaded', () => {
             else if (emp.role === 'ผู้จัดการ') roleClass = 'bg-purple-500/10 text-purple-400 border-purple-500/20';
             else if (emp.role === 'พนักงานขาย') roleClass = 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
 
+            // Status badge colors
+            const isSuspended = emp.status === 'ระงับ';
+            const statusClass = isSuspended
+                ? 'bg-red-500/10 text-red-400 border-red-500/20'
+                : 'bg-green-500/10 text-green-400 border-green-500/20';
+            const statusText = isSuspended ? 'ระงับ' : 'ปกติ';
+            const statusBadge = `<span class="px-2.5 py-1 ${statusClass} rounded-md text-xs font-medium border">${statusText}</span>`;
+
             row.innerHTML = `
                 <td class="px-6 py-4">
                     <div class="flex items-center gap-3">
@@ -3125,6 +3140,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <span class="px-2.5 py-1 ${roleClass} rounded-md text-xs font-medium border">${emp.role}</span>
                 </td>
                 <td class="px-6 py-4 text-slate-400">${branchName}</td>
+                <td class="px-6 py-4 text-center">${statusBadge}</td>
                 <td class="px-6 py-4 text-right">
                     <div class="flex items-center justify-end gap-1">
                         <button class="view-emp-btn text-slate-400 hover:text-indigo-400 transition-colors p-2" data-id="${emp._id}" title="ดูรายละเอียด"><i class="fa-solid fa-eye"></i></button>
@@ -3192,6 +3208,16 @@ document.addEventListener('DOMContentLoaded', () => {
             roleContainer.innerHTML = `<span class="px-2.5 py-1 ${roleClass} border rounded-lg text-xs font-bold">${emp.role || '-'}</span>`;
         }
 
+        const statusContainer = document.getElementById('v-employee-status');
+        if (statusContainer) {
+            const isSuspended = emp.status === 'ระงับ';
+            const statusClass = isSuspended
+                ? 'bg-red-500/10 text-red-400 border-red-500/20'
+                : 'bg-green-500/10 text-green-400 border-green-500/20';
+            const statusText = isSuspended ? 'ระงับ (Suspended)' : 'ปกติ (Active)';
+            statusContainer.innerHTML = `<span class="px-2.5 py-1 ${statusClass} border rounded-lg text-xs font-bold">${statusText}</span>`;
+        }
+
         const modal = document.getElementById('modal-employee-view');
         if (modal) {
             modal.classList.remove('hidden');
@@ -3226,6 +3252,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         loadBranchesForEmployeeModal().then(() => {
             loadRolesForEmployeeModal().then(() => {
+                const statusContainer = document.getElementById('emp-status-container');
                 if (emp) {
                     // Edit mode
                     employeeModalTitle.innerHTML = `<i class="fa-solid fa-pen-to-square text-cyan-400"></i> แก้ไขข้อมูลพนักงาน`;
@@ -3241,6 +3268,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         empBranchSelect.value = bId ? bId.toString() : '';
                     }
                     if (empRoleSelect) empRoleSelect.value = emp.role || 'พนักงานขาย';
+                    if (empStatusSelect) empStatusSelect.value = emp.status || 'ปกติ';
+                    if (statusContainer) statusContainer.classList.remove('hidden'); // Show status toggle on edit
                 } else {
                     // Add mode
                     employeeModalTitle.innerHTML = `<i class="fa-solid fa-user-plus text-cyan-400"></i> เพิ่มพนักงานใหม่`;
@@ -3249,6 +3278,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     empPasswordInput.setAttribute('required', '');
                     if (passwordRequiredStar) passwordRequiredStar.classList.remove('hidden');
                     if (empPasswordHint) empPasswordHint.classList.add('hidden');
+                    if (empStatusSelect) empStatusSelect.value = 'ปกติ';
+                    if (statusContainer) statusContainer.classList.add('hidden'); // Hide status toggle on add
                 }
 
                 employeeModal.classList.remove('opacity-0', 'pointer-events-none');
@@ -3282,6 +3313,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const password = empPasswordInput.value;
             const role = empRoleSelect.value;
             const branch_id = empBranchSelect.value || null;
+            const status = empStatusSelect ? empStatusSelect.value : 'ปกติ';
 
             if (!name || !emp_id) {
                 showToast('กรุณากรอกข้อมูลให้ครบถ้วน', 'error');
@@ -3302,7 +3334,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const url = id ? `${API_BASE_URL}/employees/${id}` : `${API_BASE_URL}/employees`;
                 const method = id ? 'PUT' : 'POST';
 
-                const body = { name, emp_id, role, branch_id };
+                const body = { name, emp_id, role, branch_id, status };
                 if (password) body.password = password;
 
                 const response = await authFetch(url, {
@@ -8903,13 +8935,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         });
 
-        // Setup close handlers for modal-po-view
-        if (document.getElementById('btn-close-po-view')) {
-            document.getElementById('btn-close-po-view').addEventListener('click', () => closeDetailModal('modal-po-view'));
-        }
-        if (document.getElementById('btn-close-po-view-bottom')) {
-            document.getElementById('btn-close-po-view-bottom').addEventListener('click', () => closeDetailModal('modal-po-view'));
-        }
+
 
         loadPOs();
     };

@@ -1208,6 +1208,14 @@ router.post('/auth/login', async (req, res) => {
             });
         }
 
+        // ตรวจสอบสถานะการระงับบัญชี
+        if (employee.status === 'ระงับ') {
+            return res.status(403).json({
+                success: false,
+                message: 'บัญชีของคุณถูกระงับ'
+            });
+        }
+
         // ค้นหา Role เพื่อดึง permissions
         const roleDoc = await Role.findOne({ name: employee.role });
         const defaultPermissions = {
@@ -1371,7 +1379,7 @@ router.get('/employees', async (req, res) => {
 // POST /api/employees
 router.post('/employees', async (req, res) => {
     try {
-        const { name, emp_id, password, role, branch_id } = req.body;
+        const { name, emp_id, password, role, branch_id, status } = req.body;
 
         if (!name || !emp_id || !password) {
             return res.status(400).json({ success: false, message: 'กรุณากรอกข้อมูลให้ครบถ้วน (ชื่อ, รหัสพนักงาน, รหัสผ่าน)' });
@@ -1392,7 +1400,8 @@ router.post('/employees', async (req, res) => {
             emp_id,
             password: hashedPassword,
             role: role || 'พนักงานขาย',
-            branch_id: branch_id || null
+            branch_id: branch_id || null,
+            status: status || 'ปกติ'
         });
 
         const saved = await newEmployee.save();
@@ -1414,7 +1423,7 @@ router.post('/employees', async (req, res) => {
 // PUT /api/employees/:id
 router.put('/employees/:id', async (req, res) => {
     try {
-        const { name, emp_id, password, role, branch_id } = req.body;
+        const { name, emp_id, password, role, branch_id, status } = req.body;
 
         if (!name || !emp_id) {
             return res.status(400).json({ success: false, message: 'กรุณากรอกข้อมูลให้ครบถ้วน' });
@@ -1426,7 +1435,7 @@ router.put('/employees/:id', async (req, res) => {
             return res.status(400).json({ success: false, message: 'รหัสพนักงานนี้ถูกใช้งานแล้ว' });
         }
 
-        const updateData = { name, emp_id, role: role || 'พนักงานขาย', branch_id: branch_id || null };
+        const updateData = { name, emp_id, role: role || 'พนักงานขาย', branch_id: branch_id || null, status: status || 'ปกติ' };
 
         // ถ้ามีการส่งรหัสผ่านใหม่มา → Hash ใหม่
         if (password && password.trim() !== '') {

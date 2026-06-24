@@ -118,7 +118,8 @@ const employeeSchema = new mongoose.Schema({
     emp_id: { type: String, required: true, unique: true }, // รหัสพนักงาน (ใช้เป็น username)
     password: { type: String, required: true }, // รหัสผ่าน (hashed with bcrypt)
     role: { type: String, default: 'พนักงานขาย' }, // ระดับสิทธิ์ (ดึงจาก Role collection)
-    branch_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Branch' } // สังกัดสาขา
+    branch_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Branch' }, // สังกัดสาขา
+    status: { type: String, enum: ['ปกติ', 'ระงับ'], default: 'ปกติ' } // สถานะบัญชี (ปกติ / ระงับ)
 }, { timestamps: true });
 const Employee = mongoose.model('Employee', employeeSchema, 'employee');
 
