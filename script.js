@@ -9081,19 +9081,28 @@ document.addEventListener('DOMContentLoaded', () => {
                     const filteredList = filterVal ? poList.filter(po => po.supplier_name === filterVal) : poList;
                     
                     if (filteredList.length === 0) {
-                        apTbody.innerHTML = '<tr><td colspan="6" class="text-center py-8 text-slate-500 text-sm"><i class="fa-solid fa-check-double text-slate-650 text-xl block mb-2"></i>ไม่มีหนี้สินใบสั่งซื้อค้างจ่าย</td></tr>';
+                        apTbody.innerHTML = '<tr><td colspan="9" class="text-center py-8 text-slate-500 text-sm"><i class="fa-solid fa-check-double text-slate-650 text-xl block mb-2"></i>ไม่มีหนี้สินใบสั่งซื้อค้างจ่าย</td></tr>';
                     } else {
                         filteredList.forEach(po => {
                             const totalCost = po.items.reduce((sum, item) => sum + (item.cost_price * item.ordered_qty), 0);
+                            const paidAmount = po.paid_amount || 0;
+                            const discount = po.discount || 0;
+                            const outstanding = Math.max(0, totalCost - paidAmount - discount);
+
                             const tr = document.createElement('tr');
                             tr.className = 'border-b border-slate-800/40 hover:bg-slate-700/5 transition-all duration-150';
 
-                            const statusBadge = po.payment_status === 'ชำระเงินแล้ว'
-                                ? `<span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-green-500/10 text-green-400 border border-green-500/20"><i class="fa-solid fa-circle-check text-[10px] mr-1"></i>ชำระเงินแล้ว</span>`
-                                : `<span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20"><i class="fa-solid fa-hourglass text-[10px] mr-1"></i>ยังไม่ได้ชำระ</span>`;
+                            let statusBadge = '';
+                            if (po.payment_status === 'ชำระเงินแล้ว') {
+                                statusBadge = `<span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-green-500/10 text-green-400 border border-green-500/20"><i class="fa-solid fa-circle-check text-[10px] mr-1"></i>ชำระเงินแล้ว</span>`;
+                            } else if (po.payment_status === 'ชำระเงินบางส่วน') {
+                                statusBadge = `<span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-500/10 text-blue-400 border border-blue-500/20"><i class="fa-solid fa-circle-info text-[10px] mr-1"></i>ชำระบางส่วน</span>`;
+                            } else {
+                                statusBadge = `<span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20"><i class="fa-solid fa-hourglass text-[10px] mr-1"></i>ยังไม่ได้ชำระ</span>`;
+                            }
 
-                            const payAction = po.payment_status === 'ยังไม่ได้ชำระ'
-                                ? `<button class="btn-pay-po px-3 py-1.5 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 border border-amber-500/35 hover:border-amber-500/60 rounded-xl text-xs font-bold transition-all inline-flex items-center gap-1.5 shadow-sm active:scale-95" data-id="${po._id}" data-no="${po.po_number}" data-amount="${totalCost}">
+                            const payAction = po.payment_status !== 'ชำระเงินแล้ว'
+                                ? `<button class="btn-pay-po px-3 py-1.5 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 border border-amber-500/35 hover:border-amber-500/60 rounded-xl text-xs font-bold transition-all inline-flex items-center gap-1.5 shadow-sm active:scale-95" data-id="${po._id}" data-no="${po.po_number}" data-amount="${totalCost}" data-paid="${paidAmount}" data-discount="${discount}" data-outstanding="${outstanding}">
                                      <i class="fa-solid fa-money-bill-wave"></i> กดจ่ายเงิน
                                    </button>`
                                 : `<span class="text-xs text-emerald-400 font-bold bg-emerald-500/10 border border-emerald-500/25 px-2.5 py-1.5 rounded-xl inline-flex items-center gap-1"><i class="fa-solid fa-circle-check text-[10px]"></i> จ่ายแล้ว วันที่ ${new Date(po.paid_at || po.updatedAt).toLocaleDateString('th-TH')}</span>`;
@@ -9102,11 +9111,29 @@ document.addEventListener('DOMContentLoaded', () => {
                                 <td class="px-6 py-4 font-mono font-bold text-slate-300 text-sm">${po.po_number}</td>
                                 <td class="px-6 py-4 text-sm text-slate-400">${new Date(po.createdAt).toLocaleDateString('th-TH')}</td>
                                 <td class="px-6 py-4 text-sm text-slate-300">${po.supplier_name}</td>
-                                <td class="px-6 py-4 font-mono text-sm text-amber-400 font-bold">฿${totalCost.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+                                <td class="px-6 py-4 font-mono text-sm text-slate-300 text-right">฿${totalCost.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+                                <td class="px-6 py-4 font-mono text-sm text-emerald-400 text-right">฿${paidAmount.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+                                <td class="px-6 py-4 font-mono text-sm text-rose-400 text-right cursor-help" title="${po.discount_remark || 'ไม่มีส่วนลด'}">฿${discount.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+                                <td class="px-6 py-4 font-mono text-sm text-amber-400 font-bold text-right">฿${outstanding.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
                                 <td class="px-6 py-4 text-center">${statusBadge}</td>
-                                <td class="px-6 py-4 text-right">${payAction}</td>
+                                <td class="px-6 py-4 text-right">
+                                    <div class="flex items-center justify-end gap-2">
+                                        <button class="btn-view-po-detail px-3 py-1.5 bg-sky-500/10 text-sky-400 hover:bg-sky-500/20 border border-sky-500/30 hover:border-sky-500/50 rounded-xl text-xs font-bold transition-all inline-flex items-center gap-1.5 shadow-sm active:scale-95">
+                                            <i class="fa-solid fa-eye"></i> ดูรายละเอียด
+                                        </button>
+                                        ${payAction}
+                                    </div>
+                                </td>
                             `;
                             apTbody.appendChild(tr);
+
+                            // Bind view details click handler
+                            const viewBtn = tr.querySelector('.btn-view-po-detail');
+                            if (viewBtn) {
+                                viewBtn.onclick = () => {
+                                    openViewPOModal(po);
+                                };
+                            }
 
                             // Bind pay click handler
                             const payBtn = tr.querySelector('.btn-pay-po');
@@ -9115,26 +9142,84 @@ document.addEventListener('DOMContentLoaded', () => {
                                     const poId = payBtn.dataset.id;
                                     const poNo = payBtn.dataset.no;
                                     const poAmount = Number(payBtn.dataset.amount);
+                                    const poPaid = Number(payBtn.dataset.paid);
+                                    const poDiscount = Number(payBtn.dataset.discount);
+                                    const poOutstanding = Number(payBtn.dataset.outstanding);
 
                                     const todayStr = new Date().toLocaleDateString('en-CA');
                                     showConfirm(
-                                        `ยืนยันการจ่ายเงิน`,
-                                        `คุณต้องการยืนยันการชำระเงินสำหรับใบสั่งซื้อเลขที่ <strong class="font-mono text-white">${poNo}</strong><br>เป็นจำนวนเงิน <strong class="text-amber-400 font-mono">฿${poAmount.toLocaleString(undefined, {minimumFractionDigits: 2})}</strong> หรือไม่?<br><br>
-                                         <div class="text-left bg-slate-950/45 p-4 rounded-2xl border border-slate-800 space-y-2 mt-3">
-                                             <label class="text-xs font-semibold text-slate-400 block">ระบุวันที่ชำระเงิน (จ่ายเจ้าหนี้):</label>
-                                             <input type="date" id="ap-pay-date-input" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-amber-500 text-sm" value="${todayStr}">
+                                        `บันทึกจ่ายเงินใบสั่งซื้อ (${poNo})`,
+                                        `<div class="text-left space-y-4">
+                                            <!-- Financial Summary -->
+                                            <div class="grid grid-cols-2 gap-2 bg-slate-950/60 p-4 rounded-2xl border border-slate-800 text-xs text-slate-400">
+                                                <div>ยอดรวม PO:</div>
+                                                <div class="text-right font-mono text-slate-200">฿${poAmount.toLocaleString(undefined, {minimumFractionDigits: 2})}</div>
+                                                <div>ชำระก่อนหน้า:</div>
+                                                <div class="text-right font-mono text-emerald-400">฿${poPaid.toLocaleString(undefined, {minimumFractionDigits: 2})}</div>
+                                                <div>ส่วนลดสะสม:</div>
+                                                <div class="text-right font-mono text-rose-400">฿${poDiscount.toLocaleString(undefined, {minimumFractionDigits: 2})}</div>
+                                                <div class="font-bold text-slate-200 border-t border-slate-800/80 pt-1 mt-1">ยอดค้างชำระ:</div>
+                                                <div class="text-right font-mono text-amber-400 font-bold border-t border-slate-800/80 pt-1 mt-1">฿${poOutstanding.toLocaleString(undefined, {minimumFractionDigits: 2})}</div>
+                                            </div>
+
+                                            <!-- Form Inputs -->
+                                            <div class="space-y-3 bg-slate-900/30 p-4 rounded-2xl border border-slate-800/40">
+                                                <div>
+                                                    <label class="text-xs font-semibold text-slate-400 block mb-1">วันที่ชำระเงิน:</label>
+                                                    <input type="date" id="ap-pay-date-input" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-amber-500 text-sm" value="${todayStr}">
+                                                </div>
+                                                <div class="grid grid-cols-2 gap-3">
+                                                    <div>
+                                                        <label class="text-xs font-semibold text-slate-400 block mb-1">จำนวนเงินที่จ่ายรอบนี้:</label>
+                                                        <input type="number" id="ap-pay-amount-input" step="any" min="0" max="${poOutstanding}" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-amber-500 text-sm font-mono text-right" value="${poOutstanding.toFixed(2)}">
+                                                    </div>
+                                                    <div>
+                                                        <label class="text-xs font-semibold text-slate-400 block mb-1">ส่วนลดรอบนี้:</label>
+                                                        <input type="number" id="ap-pay-discount-input" step="any" min="0" max="${poOutstanding}" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-amber-500 text-sm font-mono text-right" value="0.00">
+                                                    </div>
+                                                </div>
+                                                <div>
+                                                    <label class="text-xs font-semibold text-slate-400 block mb-1">หมายเหตุส่วนลด (ระบุหากได้ส่วนลด):</label>
+                                                    <input type="text" id="ap-pay-discount-remark-input" placeholder="เช่น ชำระก่อนครบกำหนดรับส่วนลด 2%" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-amber-500 text-sm">
+                                                </div>
+                                                <div id="ap-pay-calc-result" class="text-[11px] font-bold text-slate-400 text-right pt-1">
+                                                    คงเหลือหลังชำระ: ฿0.00
+                                                </div>
+                                            </div>
                                          </div>`,
                                         async () => {
                                             try {
                                                 const payDateVal = document.getElementById('ap-pay-date-input')?.value || todayStr;
+                                                const payAmtVal = Number(document.getElementById('ap-pay-amount-input')?.value || 0);
+                                                const discountVal = Number(document.getElementById('ap-pay-discount-input')?.value || 0);
+                                                const remarkVal = document.getElementById('ap-pay-discount-remark-input')?.value || '';
+
+                                                if (payAmtVal === 0 && discountVal === 0) {
+                                                    showToast('กรุณากรอกจำนวนเงินชำระหรือส่วนลดรอบนี้อย่างใดอย่างหนึ่ง', 'error');
+                                                    return;
+                                                }
+                                                if (discountVal > 0 && !remarkVal.trim()) {
+                                                    showToast('กรุณาระบุหมายเหตุของส่วนลดเพื่อใช้เป็นหลักฐานทางบัญชี', 'error');
+                                                    return;
+                                                }
+                                                if (payAmtVal + discountVal > poOutstanding + 0.01) {
+                                                    showToast('ยอดจ่ายรวมส่วนลด เกินยอดค้างชำระปัจจุบัน', 'error');
+                                                    return;
+                                                }
+
                                                 const payRes = await authFetch(`${API_BASE_URL}/accounting/po-pay/${poId}`, {
                                                     method: 'PUT',
                                                     headers: { 'Content-Type': 'application/json' },
-                                                    body: JSON.stringify({ payment_date: payDateVal })
+                                                    body: JSON.stringify({
+                                                        payment_date: payDateVal,
+                                                        payment_amount: payAmtVal,
+                                                        discount_amount: discountVal,
+                                                        discount_remark: remarkVal
+                                                    })
                                                 });
                                                 const payJson = await payRes.json();
                                                 if (payJson.success) {
-                                                    showToast('บันทึกการชำระเงินและจ่ายบัญชีเจ้าหนี้สำเร็จ!', 'success');
+                                                    showToast('บันทึกการชำระเงินสำเร็จ!', 'success');
                                                     loadAccountingData();
                                                 } else {
                                                     showToast(payJson.message || 'ไม่สามารถทำรายการได้', 'error');
@@ -9144,9 +9229,37 @@ document.addEventListener('DOMContentLoaded', () => {
                                                 showToast('เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์', 'error');
                                             }
                                         },
-                                        'ยืนยันจ่ายเงิน',
-                                        'warning'
+                                        'ยืนยันชำระเงิน',
+                                        'warning',
+                                        'max-w-lg'
                                     );
+
+                                    // Dynamic calculation handler inside the confirm modal
+                                    setTimeout(() => {
+                                        const amtInp = document.getElementById('ap-pay-amount-input');
+                                        const discInp = document.getElementById('ap-pay-discount-input');
+                                        const calcRes = document.getElementById('ap-pay-calc-result');
+
+                                        const updateCalc = () => {
+                                            if (!amtInp || !discInp || !calcRes) return;
+                                            const amt = Number(amtInp.value || 0);
+                                            const disc = Number(discInp.value || 0);
+                                            const left = Math.max(0, poOutstanding - amt - disc);
+                                            calcRes.textContent = `คงเหลือหลังชำระ: ฿${left.toLocaleString(undefined, {minimumFractionDigits: 2})}`;
+                                            if (amt + disc > poOutstanding + 0.01) {
+                                                calcRes.className = 'text-[11px] font-bold text-rose-400 text-right pt-1';
+                                                calcRes.textContent = `เกินยอดค้างชำระ: ฿${Math.abs(poOutstanding - amt - disc).toLocaleString(undefined, {minimumFractionDigits: 2})}`;
+                                            } else {
+                                                calcRes.className = 'text-[11px] font-bold text-emerald-400 text-right pt-1';
+                                            }
+                                        };
+
+                                        if (amtInp && discInp) {
+                                            amtInp.addEventListener('input', updateCalc);
+                                            discInp.addEventListener('input', updateCalc);
+                                            updateCalc();
+                                        }
+                                    }, 100);
                                 };
                             }
                         });
@@ -9404,7 +9517,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
 
-    const openViewPOModal = (po) => {
+    const openViewPOModal = async (po) => {
         const modal = document.getElementById('modal-po-view');
         if (!modal) return;
 
@@ -9428,6 +9541,43 @@ document.addEventListener('DOMContentLoaded', () => {
         const statusBadge = document.getElementById('view-po-status');
         statusBadge.className = `inline-flex px-3 py-1 rounded-full text-xs font-bold border ${statusClass}`;
         statusBadge.textContent = displayStatus;
+
+        // คำนวณรายละเอียดการชำระเงิน
+        const totalCost = po.items ? po.items.reduce((sum, item) => sum + (item.cost_price * item.ordered_qty), 0) : 0;
+        const paidAmount = po.paid_amount || 0;
+        const discount = po.discount || 0;
+        const outstanding = Math.max(0, totalCost - paidAmount - discount);
+
+        const payStatusColors = {
+            'ยังไม่ได้ชำระ': 'text-amber-400 font-bold',
+            'ชำระเงินบางส่วน': 'text-blue-400 font-bold',
+            'ชำระเงินแล้ว': 'text-green-400 font-bold'
+        };
+
+        const payStatusEl = document.getElementById('view-po-pay-status');
+        if (payStatusEl) {
+            payStatusEl.className = `${payStatusColors[po.payment_status || 'ยังไม่ได้ชำระ'] || 'text-slate-400'} font-semibold text-sm`;
+            payStatusEl.textContent = po.payment_status || 'ยังไม่ได้ชำระ';
+        }
+
+        const payPaidEl = document.getElementById('view-po-pay-paid');
+        if (payPaidEl) {
+            payPaidEl.textContent = '฿' + paidAmount.toLocaleString(undefined, {minimumFractionDigits: 2});
+        }
+
+        const payDiscEl = document.getElementById('view-po-pay-discount');
+        if (payDiscEl) {
+            let discText = '฿' + discount.toLocaleString(undefined, {minimumFractionDigits: 2});
+            if (discount > 0 && po.discount_remark) {
+                discText += ` (${po.discount_remark})`;
+            }
+            payDiscEl.textContent = discText;
+        }
+
+        const payOutEl = document.getElementById('view-po-pay-outstanding');
+        if (payOutEl) {
+            payOutEl.textContent = '฿' + outstanding.toLocaleString(undefined, {minimumFractionDigits: 2});
+        }
 
         const itemsContainer = document.getElementById('view-po-items');
         itemsContainer.innerHTML = '';
@@ -9496,6 +9646,46 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
 
+        // ดึงประวัติการชำระเงินของ PO
+        const historyContainer = document.getElementById('view-po-payments-history-container');
+        const historyTbody = document.getElementById('view-po-payments-history-rows');
+        
+        if (historyContainer && historyTbody) {
+            historyTbody.innerHTML = '<tr><td colspan="5" class="text-center p-3 text-slate-500 font-bold">กำลังโหลดประวัติการจ่ายเงิน...</td></tr>';
+            historyContainer.classList.remove('hidden');
+            
+            try {
+                const res = await authFetch(`${API_BASE_URL}/accounting/po-payments/${po._id}`);
+                const json = await res.json();
+                
+                if (json.success && json.data && json.data.length > 0) {
+                    historyTbody.innerHTML = json.data.map((item, index) => {
+                        const round = index + 1;
+                        const dateStr = new Date(item.created_at || item.createdAt).toLocaleDateString('th-TH');
+                        const amount = item.amount ? '฿' + item.amount.toLocaleString(undefined, {minimumFractionDigits: 2}) : '฿0.00';
+                        const recordedBy = item.recorded_by ? item.recorded_by.name : 'แอดมิน';
+                        const txnId = item.transaction_id || '-';
+                        
+                        return `
+                            <tr class="border-b border-slate-800/40 hover:bg-slate-700/5 transition-colors">
+                                <td class="p-3 font-bold text-slate-400">${round}</td>
+                                <td class="p-3 text-slate-300">${dateStr}</td>
+                                <td class="p-3 font-mono font-semibold text-slate-400">${txnId}</td>
+                                <td class="p-3 font-mono font-bold text-emerald-400 text-right">${amount}</td>
+                                <td class="p-3 text-right text-slate-400">${recordedBy}</td>
+                            </tr>
+                        `;
+                    }).join('');
+                } else {
+                    historyContainer.classList.add('hidden');
+                    historyTbody.innerHTML = '';
+                }
+            } catch (err) {
+                console.error('Error fetching PO payments history:', err);
+                historyTbody.innerHTML = '<tr><td colspan="5" class="text-center p-3 text-rose-400">โหลดข้อมูลล้มเหลว</td></tr>';
+            }
+        }
+
         modal.classList.remove('hidden');
         void modal.offsetWidth;
         modal.classList.remove('opacity-0', 'pointer-events-none');
@@ -9508,7 +9698,8 @@ document.addEventListener('DOMContentLoaded', () => {
         // Bind Edit button from details modal
         const editBtn = document.getElementById('btn-edit-po-from-view');
         if (editBtn) {
-            if (po.status === 'รอจัดส่ง' || po.status === 'สั่งซื้อแล้ว') {
+            const canManagePO = window.__userPermissions && window.__userPermissions.manage_po;
+            if (canManagePO && (po.status === 'รอจัดส่ง' || po.status === 'สั่งซื้อแล้ว')) {
                 editBtn.classList.remove('hidden');
                 editBtn.onclick = () => {
                     const viewModal = document.getElementById('modal-po-view');

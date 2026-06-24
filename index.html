@@ -2906,7 +2906,10 @@
                                         <th class="px-6 py-4 font-bold">เลขที่ PO</th>
                                         <th class="px-6 py-4 font-bold">วันที่สร้าง</th>
                                         <th class="px-6 py-4 font-bold">Supplier</th>
-                                        <th class="px-6 py-4 font-bold">ยอดเงินลงทุน (ทุน)</th>
+                                        <th class="px-6 py-4 font-bold text-right">ยอดรวม (ทุน)</th>
+                                        <th class="px-6 py-4 font-bold text-right">ชำระแล้ว</th>
+                                        <th class="px-6 py-4 font-bold text-right">ส่วนลด</th>
+                                        <th class="px-6 py-4 font-bold text-right">ยอดค้างชำระ</th>
                                         <th class="px-6 py-4 font-bold text-center">สถานะชำระเงิน</th>
                                         <th class="px-6 py-4 font-bold text-right">ดำเนินการ</th>
                                     </tr>
@@ -5460,6 +5463,47 @@
                     <h4 class="text-sm font-bold text-slate-400 flex items-center gap-1.5"><i class="fa-solid fa-cubes text-cyan-400"></i> รายการสินค้าและยอดตรวจรับ</h4>
                     <div id="view-po-items" class="space-y-4 font-normal">
                         <!-- Dynamic PO items read-only list -->
+                    </div>
+                </div>
+                
+                <div id="view-po-payment-section" class="space-y-3 pt-4 border-t border-gray-800">
+                    <h4 class="text-sm font-bold text-slate-400 flex items-center gap-1.5"><i class="fa-solid fa-receipt text-amber-400"></i> รายละเอียดการชำระเงิน</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                        <div class="bg-slate-950 p-4 rounded-2xl border border-slate-800/80">
+                            <span class="text-xs text-slate-500 font-bold block mb-1">สถานะชำระเงิน</span>
+                            <span id="view-po-pay-status" class="text-white font-medium text-sm">-</span>
+                        </div>
+                        <div class="bg-slate-950 p-4 rounded-2xl border border-slate-800/80">
+                            <span class="text-xs text-slate-500 font-bold block mb-1">ยอดจ่ายจริงแล้ว</span>
+                            <span id="view-po-pay-paid" class="text-emerald-400 font-bold text-sm font-mono">-</span>
+                        </div>
+                        <div class="bg-slate-950 p-4 rounded-2xl border border-slate-800/80">
+                            <span class="text-xs text-slate-500 font-bold block mb-1">ส่วนลดรวม</span>
+                            <span id="view-po-pay-discount" class="text-rose-400 font-bold text-sm font-mono">-</span>
+                        </div>
+                        <div class="bg-slate-950 p-4 rounded-2xl border border-slate-800/80">
+                            <span class="text-xs text-slate-500 font-bold block mb-1">ยอดคงเหลือค้างจ่าย</span>
+                            <span id="view-po-pay-outstanding" class="text-amber-400 font-bold text-sm font-mono">-</span>
+                        </div>
+                    </div>
+                    <div id="view-po-payments-history-container" class="space-y-2 pt-2 hidden">
+                        <span class="text-xs text-slate-500 font-bold block"><i class="fa-solid fa-clock-rotate-left mr-1 text-blue-400"></i>ประวัติการจ่ายเงินสด (แต่ละรอบ)</span>
+                        <div class="overflow-x-auto rounded-xl border border-slate-800">
+                            <table class="w-full text-left border-collapse text-xs">
+                                <thead>
+                                    <tr class="bg-slate-950 text-slate-400 border-b border-slate-850">
+                                        <th class="p-3 font-semibold">รอบที่</th>
+                                        <th class="p-3 font-semibold">วันที่จ่าย</th>
+                                        <th class="p-3 font-semibold">เลขที่ธุรกรรม</th>
+                                        <th class="p-3 font-semibold text-right">จำนวนเงินจ่ายจริง</th>
+                                        <th class="p-3 font-semibold text-right">ผู้บันทึก</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="view-po-payments-history-rows" class="text-slate-300 font-normal">
+                                    <!-- Dynamic rows -->
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
             </div>

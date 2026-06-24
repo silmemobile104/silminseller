@@ -3416,7 +3416,7 @@ router.post('/po/create', async (req, res) => {
 router.get('/purchase-orders', async (req, res) => {
     try {
         let query = {};
-        if (!req.user.permissions.manage_po) {
+        if (!req.user.permissions.manage_po && !req.user.permissions.manage_finance && !req.user.permissions.view_finance) {
             // สำหรับพนักงานสาขา / คลังสินค้า / สต็อก / ผู้จัดการ
             if (
                 req.user.permissions.receive_po || 
@@ -4047,48 +4047,122 @@ router.put('/accounting/po-pay/:id', async (req, res) => {
             return res.status(400).json({ success: false, message: 'ใบสั่งซื้อนี้ชำระเงินเรียบร้อยแล้ว' });
         }
 
-        const payDate = req.body.payment_date ? new Date(req.body.payment_date) : new Date();
+        const paymentAmount = req.body.payment_amount !== undefined ? Number(req.body.payment_amount) : 0;
+        const discountAmount = req.body.discount_amount !== undefined ? Number(req.body.discount_amount) : 0;
+        const discountRemark = req.body.discount_remark || '';
 
-        // อัปเดตสถานะเป็นชำระเงินแล้ว
-        po.payment_status = 'ชำระเงินแล้ว';
-        po.paid_at = payDate;
-        await po.save();
+        if (isNaN(paymentAmount) || paymentAmount < 0) {
+            return res.status(400).json({ success: false, message: 'จำนวนเงินที่ชำระไม่ถูกต้อง' });
+        }
+        if (isNaN(discountAmount) || discountAmount < 0) {
+            return res.status(400).json({ success: false, message: 'จำนวนส่วนลดไม่ถูกต้อง' });
+        }
+        if (paymentAmount === 0 && discountAmount === 0) {
+            return res.status(400).json({ success: false, message: 'กรุณากรอกจำนวนเงินชำระหรือส่วนลดอย่างใดอย่างหนึ่ง' });
+        }
+        if (discountAmount > 0 && !discountRemark.trim()) {
+            return res.status(400).json({ success: false, message: 'กรุณาระบุหมายเหตุของส่วนลด' });
+        }
+
+        const payDate = req.body.payment_date ? new Date(req.body.payment_date) : new Date();
 
         // คำนวณราคาทุนรวมของสินค้าในใบ PO
         const totalCost = po.items.reduce((sum, item) => sum + (item.cost_price * item.ordered_qty), 0);
+        const currentPaid = po.paid_amount || 0;
+        const currentDiscount = po.discount || 0;
+        const outstanding = totalCost - currentPaid - currentDiscount;
 
-        // Generate transaction_id: TXN-YYYYMMDD-XXXX
-        const dateStr = payDate.getFullYear() + 
-                        String(payDate.getMonth() + 1).padStart(2, '0') + 
-                        String(payDate.getDate()).padStart(2, '0');
-        
-        const todayStart = new Date(payDate); todayStart.setHours(0,0,0,0);
-        const todayEnd = new Date(payDate); todayEnd.setHours(23,59,59,999);
-        const count = await CashMovement.countDocuments({ created_at: { $gte: todayStart, $lte: todayEnd } });
-        const txn_id = `TXN-${dateStr}-${String(count + 1).padStart(4, '0')}`;
+        if (paymentAmount + discountAmount > outstanding + 0.01) {
+            return res.status(400).json({
+                success: false,
+                message: `ยอดรวมจ่ายและส่วนลด (฿${(paymentAmount + discountAmount).toFixed(2)}) เกินยอดค้างจ่ายปัจจุบัน (฿${outstanding.toFixed(2)})`
+            });
+        }
 
-        const cashMove = new CashMovement({
-            transaction_id: txn_id,
-            type: 'รายจ่าย',
-            category: 'ซื้อสินค้า (PO)',
-            amount: totalCost,
-            reference_id: po._id,
-            recorded_by: req.user.employee_id,
-            created_at: payDate
-        });
+        // อัปเดตข้อมูลการจ่าย
+        po.paid_amount = currentPaid + paymentAmount;
+        po.discount = currentDiscount + discountAmount;
 
-        await cashMove.save();
+        if (discountAmount > 0) {
+            const dateLabel = payDate.toLocaleDateString('th-TH');
+            const remarkText = `[วันที่ ${dateLabel} ลด ฿${discountAmount}]: ${discountRemark}`;
+            po.discount_remark = po.discount_remark ? po.discount_remark + '\n' + remarkText : remarkText;
+        }
 
-        await logActivity(req, 'UPDATE', 'ACCOUNTING', `ชำระเงินค่าสินค้าสำเร็จสำหรับใบสั่งซื้อ เลขที่ ${po.po_number} ยอดรวม ฿${totalCost}`, po.po_number, po._id);
+        if (po.paid_amount + po.discount >= totalCost - 0.01) {
+            po.payment_status = 'ชำระเงินแล้ว';
+            po.paid_at = payDate;
+        } else {
+            po.payment_status = 'ชำระเงินบางส่วน';
+        }
+
+        await po.save();
+
+        // บันทึก CashMovement เฉพาะถ้ามียอดจ่ายจริง
+        if (paymentAmount > 0) {
+            const dateStr = payDate.getFullYear() + 
+                            String(payDate.getMonth() + 1).padStart(2, '0') + 
+                            String(payDate.getDate()).padStart(2, '0');
+            
+            const todayStart = new Date(payDate); todayStart.setHours(0,0,0,0);
+            const todayEnd = new Date(payDate); todayEnd.setHours(23,59,59,999);
+            const count = await CashMovement.countDocuments({ created_at: { $gte: todayStart, $lte: todayEnd } });
+            const txn_id = `TXN-${dateStr}-${String(count + 1).padStart(4, '0')}`;
+
+            const cashMove = new CashMovement({
+                transaction_id: txn_id,
+                type: 'รายจ่าย',
+                category: 'ซื้อสินค้า (PO)',
+                amount: paymentAmount,
+                reference_id: po._id,
+                recorded_by: req.user.employee_id,
+                created_at: payDate
+            });
+
+            await cashMove.save();
+        }
+
+        await logActivity(
+            req, 
+            'UPDATE', 
+            'ACCOUNTING', 
+            `บันทึกจ่ายเงินใบ PO เลขที่ ${po.po_number} (จ่ายจริง ฿${paymentAmount.toLocaleString()}, ส่วนลด ฿${discountAmount.toLocaleString()}) สถานะ: ${po.payment_status}`, 
+            po.po_number, 
+            po._id
+        );
 
         res.status(200).json({
             success: true,
-            message: 'ชำระเงินและบันทึกรายจ่ายบัญชีซื้อสินค้าเรียบร้อยแล้ว',
+            message: 'บันทึกการชำระเงินเรียบร้อยแล้ว',
             data: po
         });
     } catch (error) {
         console.error('API Error PUT /api/accounting/po-pay/:id:', error);
         res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการชำระเงินใบสั่งซื้อ' });
+    }
+});
+
+// GET /api/accounting/po-payments/:id
+router.get('/accounting/po-payments/:id', async (req, res) => {
+    try {
+        if (!req.user.permissions.view_finance && !req.user.permissions.manage_finance) {
+            // ลองให้ผู้จัดการ/เจ้าของร้านหรือผู้มีสิทธิ์อื่นๆ ดูได้
+            if (req.user.role !== 'เจ้าของร้าน' && req.user.role !== 'ผู้จัดการ') {
+                return res.status(403).json({ success: false, message: 'ไม่มีสิทธิ์ในการดูข้อมูลการชำระเงิน' });
+            }
+        }
+
+        const payments = await CashMovement.find({ reference_id: req.params.id })
+            .populate('recorded_by', 'name')
+            .sort({ created_at: 1 });
+
+        res.status(200).json({
+            success: true,
+            data: payments
+        });
+    } catch (error) {
+        console.error('API Error GET /api/accounting/po-payments/:id:', error);
+        res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการดึงข้อมูลประวัติการชำระเงิน' });
     }
 });
 
@@ -4191,12 +4265,14 @@ router.get('/accounting/ap-summary', async (req, res) => {
             {
                 $match: {
                     status: { $ne: 'ยกเลิก' },
-                    payment_status: 'ยังไม่ได้ชำระ'
+                    payment_status: { $ne: 'ชำระเงินแล้ว' }
                 }
             },
             {
                 $project: {
                     supplier_name: 1,
+                    paid_amount: 1,
+                    discount: 1,
                     po_cost: {
                         $sum: {
                             $map: {
@@ -4209,11 +4285,22 @@ router.get('/accounting/ap-summary', async (req, res) => {
                 }
             },
             {
+                $project: {
+                    supplier_name: 1,
+                    outstanding: {
+                        $subtract: [
+                            "$po_cost",
+                            { $add: [ { $ifNull: ["$paid_amount", 0] }, { $ifNull: ["$discount", 0] } ] }
+                        ]
+                    }
+                }
+            },
+            {
                 $group: {
                     _id: "$supplier_name",
                     supplier_name: { $first: "$supplier_name" },
                     pending_bill_count: { $sum: 1 },
-                    total_outstanding: { $sum: "$po_cost" }
+                    total_outstanding: { $sum: "$outstanding" }
                 }
             },
             {
