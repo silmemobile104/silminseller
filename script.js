@@ -80,7 +80,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         const deviceKeywords = [
-            'iphone', 'ipad', 'samsung', 'oppo', 'vivo', 'xiaomi', 'realme', 'huawei', 
+            'iphone', 'ipad', 'samsung', 'oppo', 'vivo', 'xiaomi', 'realme', 'huawei',
             'oneplus', 'google', 'pixel', 'sony', 'nokia', 'asus', 'rog', 'lenovo',
             'มือถือ', 'โทรศัพท์', 'สมาร์ทโฟน', 'tablet', 'แท็บเล็ต', 'smart watch', 'นาฬิกา', 'เครื่อง'
         ];
@@ -122,6 +122,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const toggleSidebarBtn = document.getElementById('toggle-sidebar');
     const sidebar = document.getElementById('sidebar');
     const logoutBtn = document.getElementById('logout-btn');
+    let cart = [];
 
     const btnAddProduct = document.getElementById('btn-add-product');
     const addProductModal = document.getElementById('add-product-modal');
@@ -794,7 +795,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (addProductModal) {
             addProductModal.classList.add('opacity-0', 'pointer-events-none');
             if (addProductForm) addProductForm.reset();
-            
+
             // Reset dynamic fields to default state
             handleCategoryFields("");
 
@@ -863,7 +864,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 // โหลดสาขาสำหรับ dropdown ที่จัดเก็บสินค้า
                 loadBranchesForProductForm();
-                
+
                 // โหลดสาขาสำหรับตัวกรองหน้าตรวจสอบนำเข้า
                 populateApproveImportBranchFilter();
 
@@ -898,7 +899,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const populateApproveImportBranchFilter = () => {
         const select = document.getElementById('approve-import-filter-branch');
         if (!select) return;
-        
+
         const currentVal = select.value;
         select.innerHTML = '<option value="">ทุกสาขา</option>';
         if (window.masterDataCache && window.masterDataCache.branches) {
@@ -1060,7 +1061,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const showToast = (message, type = 'success') => {
         const toast = document.createElement('div');
-        
+
         let bgColor = 'bg-slate-950/85 backdrop-blur-md';
         let borderColor = 'border-slate-800';
         let iconColor = 'text-white';
@@ -1218,7 +1219,7 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const base64Url = token.split('.')[1];
             const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-            const jsonPayload = decodeURIComponent(window.atob(base64).split('').map(function(c) {
+            const jsonPayload = decodeURIComponent(window.atob(base64).split('').map(function (c) {
                 return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
             }).join(''));
             return JSON.parse(jsonPayload);
@@ -1286,7 +1287,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const nameForAvatar = encodeURIComponent(userName);
             const avatarUrl = `https://ui-avatars.com/api/?name=${nameForAvatar}&background=0D8ABC&color=fff`;
             if (topbarUserAvatar) topbarUserAvatar.src = avatarUrl;
-            
+
             // 2. Update Popup Elements
             const popupUserAvatar = document.getElementById('popup-user-avatar');
             const popupUserName = document.getElementById('popup-user-name');
@@ -1302,7 +1303,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         } catch (error) {
             console.error('[SILMIN] Error updating top bar with session info:', error);
-            
+
             // Fallback display
             const userNameFallback = 'ผู้ใช้งาน';
             const userRoleFallback = '-';
@@ -1312,7 +1313,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (topbarUserName) topbarUserName.textContent = userNameFallback;
             if (topbarUserRole) topbarUserRole.textContent = userRoleFallback;
-            
+
             const topbarBranch = document.getElementById('topbar-user-branch');
             if (topbarBranch) topbarBranch.textContent = branchNameFallback;
 
@@ -1375,7 +1376,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 localStorage.removeItem('silmin_token');
                 localStorage.removeItem('silmin_user');
                 stopPendingTransferPolling();
-                
+
                 mainLayout.classList.add('opacity-0');
                 setTimeout(() => {
                     mainLayout.classList.add('hidden');
@@ -2030,12 +2031,12 @@ document.addEventListener('DOMContentLoaded', () => {
             backdrop.id = 'sidebar-backdrop';
             backdrop.className = 'fixed inset-0 z-[43] bg-slate-950/60 backdrop-blur-sm opacity-0 transition-opacity duration-300 md:hidden';
             document.body.appendChild(backdrop);
-            
+
             // Trigger animation
             void backdrop.offsetWidth;
             backdrop.classList.remove('opacity-0');
             backdrop.classList.add('opacity-100');
-            
+
             // Close sidebar when clicking backdrop
             backdrop.addEventListener('click', () => {
                 sidebar.classList.remove('translate-x-0');
@@ -2044,7 +2045,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
     };
-    
+
     const removeSidebarBackdrop = () => {
         const backdrop = document.getElementById('sidebar-backdrop');
         if (backdrop) {
@@ -2084,8 +2085,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const handleResize = () => {
         if (window.innerWidth < 768) {
-            sidebar.classList.remove('sidebar-expanded');
-            sidebar.classList.add('sidebar-collapsed');
+            sidebar.classList.remove('sidebar-collapsed');
+            sidebar.classList.add('sidebar-expanded');
             if (!sidebar.classList.contains('translate-x-0') && !sidebar.classList.contains('-translate-x-full')) {
                 sidebar.classList.add('-translate-x-full');
             }
@@ -2468,7 +2469,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 try {
                     const u = JSON.parse(savedUserData);
                     hasAuditAccess = !!(u.permissions && u.permissions.view_audit_logs);
-                } catch(e) {}
+                } catch (e) { }
             }
             if (!hasAuditAccess) {
                 switchView('dashboard');
@@ -3193,16 +3194,16 @@ document.addEventListener('DOMContentLoaded', () => {
     const openViewEmployeeModal = (emp) => {
         document.getElementById('v-employee-name').textContent = emp.name || '-';
         document.getElementById('v-employee-username').textContent = emp.username || emp.emp_id || '-';
-        
+
         const branchName = emp.branch_id ? emp.branch_id.name : '-';
         document.getElementById('v-employee-branch').textContent = branchName;
-        
+
         // Role badge colors
         let roleClass = 'bg-slate-500/10 text-slate-400 border-slate-500/20';
         if (emp.role === 'แอดมิน') roleClass = 'bg-red-500/10 text-red-400 border-red-500/20';
         else if (emp.role === 'ผู้จัดการ') roleClass = 'bg-purple-500/10 text-purple-400 border-purple-500/20';
         else if (emp.role === 'พนักงานขาย') roleClass = 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
-        
+
         const roleContainer = document.getElementById('v-employee-role');
         if (roleContainer) {
             roleContainer.innerHTML = `<span class="px-2.5 py-1 ${roleClass} border rounded-lg text-xs font-bold">${emp.role || '-'}</span>`;
@@ -3386,8 +3387,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // POS / Transactions System (ระบบขายสินค้า)
     // ==========================================
 
-    // Cart State
-    let cart = [];
+    // Cart State (declared at top of DOMContentLoaded)
     let posProductsCache = [];
 
     // POS DOM Elements
@@ -4648,7 +4648,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     const idx = parseInt(btn.dataset.index);
                     const type = btn.dataset.type;
                     const isGift = (type === 'gift');
-                    
+
                     // Update state
                     cart[idx].is_gift = isGift;
                     if (isGift) {
@@ -4660,7 +4660,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         cart[idx].price = cart[idx].original_price || cart[idx].default_selling_price || 0;
                     }
                     cart[idx].subtotal = cart[idx].price * cart[idx].quantity;
-                    
+
                     // Update UI elements reactively
                     const priceInput = confirmPriceList.querySelector(`.modal-item-price-input[data-index="${idx}"]`);
                     if (priceInput) {
@@ -4668,12 +4668,12 @@ document.addEventListener('DOMContentLoaded', () => {
                         const selectedPayment = paymentMethod ? paymentMethod.value : '';
                         priceInput.disabled = isGift || (selectedPayment !== 'จัดไฟแนนซ์') || (cart[idx].unit_name !== 'เครื่อง');
                     }
-                    
+
                     const subtotalLabel = confirmPriceList.querySelector(`.modal-item-subtotal[data-index="${idx}"]`);
                     if (subtotalLabel) {
                         subtotalLabel.textContent = `฿${cart[idx].subtotal.toLocaleString()}`;
                     }
-                    
+
                     const parentGroup = btn.parentElement;
                     const buttons = parentGroup.querySelectorAll('.gift-toggle-btn');
                     buttons.forEach(b => {
@@ -4763,8 +4763,8 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         } else if (selectedPayment === 'จัดไฟแนนซ์') {
             const selectedCompanyId = modalFinanceCompany ? modalFinanceCompany.value : '';
-            const matchingCompany = (window.masterDataCache && window.masterDataCache.financeCompanies) 
-                ? window.masterDataCache.financeCompanies.find(c => c._id === selectedCompanyId) 
+            const matchingCompany = (window.masterDataCache && window.masterDataCache.financeCompanies)
+                ? window.masterDataCache.financeCompanies.find(c => c._id === selectedCompanyId)
                 : null;
             compName = matchingCompany ? matchingCompany.name : (modalFinanceCompany ? modalFinanceCompany.value.trim() : '');
             dueDay = 0;
@@ -5155,7 +5155,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (result.success && result.data) {
                 const data = result.data;
-                
+
                 // Card values
                 const cashEl = document.getElementById('daily-summary-cash-received');
                 const financeEl = document.getElementById('daily-summary-finance-down');
@@ -5181,8 +5181,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     } else {
                         tbody.innerHTML = data.bills.map(txn => {
                             const timeStr = new Date(txn.created_at).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
-                            const memberName = txn.member_id 
-                                ? `${txn.member_id.first_name} ${txn.member_id.last_name}` 
+                            const memberName = txn.member_id
+                                ? `${txn.member_id.first_name} ${txn.member_id.last_name}`
                                 : 'ลูกค้าทั่วไป';
                             const empName = txn.employee_id ? txn.employee_id.name : '-';
                             const paymentType = txn.payment_type || txn.payment_method || '-';
@@ -5260,24 +5260,24 @@ document.addEventListener('DOMContentLoaded', () => {
             });
 
             row.innerHTML = `
-                <td class="px-6 py-4 text-slate-300 ${isCancelled ? 'line-through text-red-400/70' : ''}">${dateStr}</td>
-                <td class="px-6 py-4 text-white font-mono flex items-center gap-2">
+                <td class="px-4 py-4 md:px-6 text-slate-300 whitespace-nowrap ${isCancelled ? 'line-through text-red-400/70' : ''}">${dateStr}</td>
+                <td class="px-4 py-4 md:px-6 text-slate-300 whitespace-nowrap">
                     <span class="${isCancelled ? 'line-through text-red-400' : ''}">${txn.receipt_number}</span>
-                    ${isCancelled ? '<span class="px-2 py-0.5 text-[10px] font-bold bg-red-500 text-white rounded-full">ยกเลิกแล้ว</span>' : ''}
+                    ${isCancelled ? '<span class="px-2 py-0.5 text-[10px] font-bold bg-red-500 text-white rounded-full shrink-0">ยกเลิกแล้ว</span>' : ''}
                 </td>
-                <td class="px-6 py-4 text-slate-300 ${isCancelled ? 'line-through text-red-400/70' : ''}">${txn.branch_id ? txn.branch_id.name : '-'}</td>
-                <td class="px-6 py-4 text-slate-300 ${isCancelled ? 'line-through text-red-400/70' : ''}">${txn.employee_id ? txn.employee_id.name : '-'}</td>
-                <td class="px-6 py-4 text-slate-300 ${isCancelled ? 'line-through text-red-400/70' : ''}">
+                <td class="px-4 py-4 md:px-6 text-slate-300 whitespace-nowrap ${isCancelled ? 'line-through text-red-400/70' : ''}">${txn.branch_id ? txn.branch_id.name : '-'}</td>
+                <td class="px-4 py-4 md:px-6 text-slate-300 whitespace-nowrap ${isCancelled ? 'line-through text-red-400/70' : ''}">${txn.employee_id ? txn.employee_id.name : '-'}</td>
+                <td class="px-4 py-4 md:px-6 text-slate-300 whitespace-nowrap ${isCancelled ? 'line-through text-red-400/70' : ''}">
                     ${txn.member_id ? `<span class="font-bold text-white">${txn.member_id.first_name} ${txn.member_id.last_name}</span><br><span class="text-xs text-slate-500">${txn.member_id.phone || ''}</span>` : '<span class="text-slate-500">-</span>'}
                 </td>
-                <td class="px-6 py-4 text-right ${isCancelled ? 'text-red-400/70 line-through' : 'text-cyan-400 font-bold'} font-mono">฿${txn.total_amount.toLocaleString()}</td>
-                <td class="px-6 py-4 text-slate-300 ${isCancelled ? 'line-through text-red-400/70' : ''}">
-                    <span class="px-2 py-1 rounded-md text-[11px] font-bold ${txn.payment_type === 'จัดไฟแนนซ์' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'}">
+                <td class="px-4 py-4 md:px-6 text-right whitespace-nowrap ${isCancelled ? 'text-red-400/70 line-through' : 'text-cyan-400 font-bold'} font-mono">฿${txn.total_amount.toLocaleString()}</td>
+                <td class="px-4 py-4 md:px-6 text-slate-300 whitespace-nowrap ${isCancelled ? 'line-through text-red-400/70' : ''}">
+                    <span class="px-2 py-1 rounded-md text-[11px] font-bold whitespace-nowrap ${txn.payment_type === 'จัดไฟแนนซ์' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'}">
                         ${txn.payment_type || txn.payment_method}
                     </span>
                 </td>
-                <td class="px-6 py-4 text-center">
-                    <button class="view-transaction-btn px-4 py-2 ${isCancelled ? 'bg-red-500/10 text-red-400 hover:bg-red-500/20' : 'bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 hover:text-amber-300'} rounded-lg transition-all font-medium"
+                <td class="px-4 py-4 md:px-6 text-center whitespace-nowrap">
+                    <button class="view-transaction-btn px-4 py-2 ${isCancelled ? 'bg-red-500/10 text-red-400 hover:bg-red-500/20' : 'bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 hover:text-amber-300'} rounded-lg transition-all font-medium whitespace-nowrap"
                             data-id="${txn._id}">
                         <i class="fa-solid fa-eye mr-2"></i>รายละเอียด
                     </button>
@@ -6306,7 +6306,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (result.success && result.product) {
                 const product = result.product;
                 const hasImeis = Array.isArray(product.imeis) && product.imeis.length > 0;
-                
+
                 if (hasImeis) {
                     // Check if the scanned code is one of the IMEIs of this product
                     const isImeiScan = product.imeis.includes(code);
@@ -6314,14 +6314,14 @@ document.addEventListener('DOMContentLoaded', () => {
                         showToast(`สินค้าประเภทเครื่อง ${product.name} กรุณาสแกนหรือระบุหมายเลข IMEI แทนรหัสสินค้า`, 'error');
                         return;
                     }
-                    
+
                     // Check if this IMEI is already in transferCart
                     const isAlreadyScanned = transferCart.some(item => Array.isArray(item.imeis) && item.imeis.includes(code));
                     if (isAlreadyScanned) {
                         showToast(`หมายเลข IMEI: ${code} ถูกสแกนเพิ่มในใบโอนแล้ว`, 'error');
                         return;
                     }
-                    
+
                     const existingItem = transferCart.find(item => item.product_code === product.product_code);
                     if (existingItem) {
                         if (!Array.isArray(existingItem.imeis)) existingItem.imeis = [];
@@ -6892,17 +6892,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const openViewMemberModal = (m) => {
         document.getElementById('v-member-num').textContent = m.member_number || '-';
-        
+
         const fullNameTh = `${m.prefix || ''} ${m.first_name || ''} ${m.last_name || ''}`.trim();
         const fullNameEn = `${m.first_name_en || ''} ${m.last_name_en || ''}`.trim();
         document.getElementById('v-member-name-th').textContent = fullNameTh || '-';
         document.getElementById('v-member-name-en').textContent = fullNameEn || '-';
-        
+
         const citizenDisplay = m.citizen_id ? m.citizen_id.replace(/(\d{1})(\d{4})(\d{5})(\d{2})(\d{1})/, '$1-$2-$3-$4-$5') : '-';
         document.getElementById('v-member-citizen').textContent = citizenDisplay;
         document.getElementById('v-member-phone').textContent = m.phone || '-';
         document.getElementById('v-member-email').textContent = m.email || '-';
-        
+
         const addressText = [
             m.address,
             m.sub_district ? `ต. ${m.sub_district}` : '',
@@ -6910,10 +6910,10 @@ document.addEventListener('DOMContentLoaded', () => {
             m.province ? `จ. ${m.province}` : '',
             m.postal_code
         ].filter(Boolean).join(' ');
-        
+
         document.getElementById('v-member-address').textContent = addressText.trim() || m.raw_address || '-';
         document.getElementById('v-member-referral').textContent = m.referral_source || '-';
-        
+
         const dateStr = m.createdAt ? new Date(m.createdAt).toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' }) : '-';
         document.getElementById('v-member-date').textContent = dateStr;
 
@@ -8045,18 +8045,18 @@ document.addEventListener('DOMContentLoaded', () => {
                         }
                     };
                     trName.innerHTML = `
-                        <td class="px-6 py-4">
-                            <div class="flex items-center gap-3">
-                                <i id="icon-${nameRowId}" class="fa-solid fa-chevron-right text-emerald-400 w-4 text-center"></i>
+                        <td class="px-3 py-4 md:px-6">
+                            <div class="flex items-center gap-2 md:gap-3">
+                                <i id="icon-${nameRowId}" class="fa-solid fa-chevron-right text-emerald-400 w-4 text-center shrink-0"></i>
                                 <span class="font-bold text-white text-base">${name}</span>
                             </div>
                         </td>
-                        <td class="px-6 py-4 text-center">
-                            <span class="bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-3 py-1 rounded-full font-bold text-sm">
+                        <td class="px-3 py-4 md:px-6 text-center whitespace-nowrap">
+                            <span class="bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-3 py-1 rounded-full font-bold text-sm whitespace-nowrap">
                                 ${nameGroup.total} ${nameGroup.unit || 'ชิ้น'}
                             </span>
                         </td>
-                        <td class="px-6 py-4 text-right"></td>
+                        <td class="px-3 py-4 md:px-6 text-right"></td>
                     `;
                     tbody.appendChild(trName);
 
@@ -8084,16 +8084,16 @@ document.addEventListener('DOMContentLoaded', () => {
                             }
                         };
                         trColor.innerHTML = `
-                            <td class="px-6 py-3 pl-12">
+                            <td class="px-3 py-3 md:px-6 pl-8 md:pl-12">
                                 <div class="flex items-center gap-2">
-                                    <i id="icon-${colorRowId}" class="fa-solid fa-chevron-right text-slate-400 w-4 text-center text-xs color-icon-of-${nameRowId}"></i>
+                                    <i id="icon-${colorRowId}" class="fa-solid fa-chevron-right text-slate-400 w-4 text-center text-xs color-icon-of-${nameRowId} shrink-0"></i>
                                     <span class="font-bold text-slate-200 text-sm">สี: ${color}</span>
                                 </div>
                             </td>
-                            <td class="px-6 py-3 text-center">
-                                <span class="text-slate-300 font-bold text-sm">${colorGroup.total} ${colorGroup.unit || 'ชิ้น'}</span>
+                            <td class="px-3 py-3 md:px-6 text-center whitespace-nowrap">
+                                <span class="text-slate-300 font-bold text-sm whitespace-nowrap">${colorGroup.total} ${colorGroup.unit || 'ชิ้น'}</span>
                             </td>
-                            <td class="px-6 py-3"></td>
+                            <td class="px-3 py-3 md:px-6"></td>
                         `;
                         tbody.appendChild(trColor);
 
@@ -8103,18 +8103,18 @@ document.addEventListener('DOMContentLoaded', () => {
                             const trItem = document.createElement('tr');
                             trItem.className = `item-row hidden child-of-${nameRowId} child-of-${colorRowId} hover:bg-slate-700/20 transition-colors border-l-4 border-slate-700`;
                             trItem.innerHTML = `
-                                <td class="px-6 py-3 pl-20">
+                                <td class="px-3 py-3 md:px-6 pl-14 md:pl-20">
                                     <div class="flex flex-col">
                                         <span class="text-sm text-slate-300">ความจุ: <span class="font-bold text-white">${capacity}</span> ${condition ? `/ ${condition}` : ''}</span>
                                         <span class="text-xs text-slate-500 font-mono mt-0.5">รหัส: ${p.product_code || '-'}</span>
                                     </div>
                                 </td>
-                                <td class="px-6 py-3 text-center">
-                                    <span class="text-sm text-emerald-400 font-bold">${p.qtyToDisplay} ${p.unit || 'ชิ้น'}</span>
-                                    ${p.is_transferring ? '<span class="text-[10px] bg-amber-500/20 text-amber-400 px-1 rounded ml-1 mt-1 block">กำลังโอน</span>' : ''}
+                                <td class="px-3 py-3 md:px-6 text-center whitespace-nowrap">
+                                    <span class="text-sm text-emerald-400 font-bold whitespace-nowrap">${p.qtyToDisplay} ${p.unit || 'ชิ้น'}</span>
+                                    ${p.is_transferring ? '<span class="text-[10px] bg-amber-500/20 text-amber-400 px-1 rounded ml-1 mt-1 block whitespace-nowrap">กำลังโอน</span>' : ''}
                                 </td>
-                                <td class="px-6 py-3 text-right">
-                                    <span class="text-sm text-cyan-400 font-mono font-bold">฿${(p.selling_price || 0).toLocaleString()}</span>
+                                <td class="px-3 py-3 md:px-6 text-right whitespace-nowrap">
+                                    <span class="text-sm text-cyan-400 font-mono font-bold whitespace-nowrap">฿${(p.selling_price || 0).toLocaleString()}</span>
                                 </td>
                             `;
                             tbody.appendChild(trItem);
@@ -8220,18 +8220,18 @@ document.addEventListener('DOMContentLoaded', () => {
                         }
                     };
                     trName.innerHTML = `
-                        <td class="px-6 py-4">
-                            <div class="flex items-center gap-3">
-                                <i id="icon-${nameRowId}" class="fa-solid fa-chevron-right text-cyan-400 w-4 text-center"></i>
+                        <td class="px-3 py-4 md:px-6">
+                            <div class="flex items-center gap-2 md:gap-3">
+                                <i id="icon-${nameRowId}" class="fa-solid fa-chevron-right text-cyan-400 w-4 text-center shrink-0"></i>
                                 <span class="font-bold text-white text-base">${name}</span>
                             </div>
                         </td>
-                        <td class="px-6 py-4 text-center">
-                            <span class="bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 px-3 py-1 rounded-full font-bold text-sm">
+                        <td class="px-3 py-4 md:px-6 text-center whitespace-nowrap">
+                            <span class="bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 px-3 py-1 rounded-full font-bold text-sm whitespace-nowrap">
                                 ${nameGroup.total} ${nameGroup.unit || 'ชิ้น'}
                             </span>
                         </td>
-                        <td class="px-6 py-4 text-right"></td>
+                        <td class="px-3 py-4 md:px-6 text-right"></td>
                     `;
                     tbody.appendChild(trName);
 
@@ -8259,16 +8259,16 @@ document.addEventListener('DOMContentLoaded', () => {
                             }
                         };
                         trBranch.innerHTML = `
-                            <td class="px-6 py-3 pl-12">
+                            <td class="px-3 py-3 md:px-6 pl-8 md:pl-12">
                                 <div class="flex items-center gap-2">
-                                    <i id="icon-${branchRowId}" class="fa-solid fa-chevron-right text-slate-400 w-4 text-center text-xs branch-icon-of-${nameRowId}"></i>
-                                    <span class="font-bold text-slate-200 text-sm"><i class="fa-solid fa-store text-emerald-400 mr-1"></i> สาขา: ${branchName}</span>
+                                    <i id="icon-${branchRowId}" class="fa-solid fa-chevron-right text-slate-400 w-4 text-center text-xs branch-icon-of-${nameRowId} shrink-0"></i>
+                                    <span class="font-bold text-slate-200 text-sm whitespace-nowrap"><i class="fa-solid fa-store text-emerald-400 mr-1"></i> สาขา: ${branchName}</span>
                                 </div>
                             </td>
-                            <td class="px-6 py-3 text-center">
-                                <span class="text-slate-300 font-bold text-sm">${branchGroup.total} ${branchGroup.unit || 'ชิ้น'}</span>
+                            <td class="px-3 py-3 md:px-6 text-center whitespace-nowrap">
+                                <span class="text-slate-300 font-bold text-sm whitespace-nowrap">${branchGroup.total} ${branchGroup.unit || 'ชิ้น'}</span>
                             </td>
-                            <td class="px-6 py-3"></td>
+                            <td class="px-3 py-3 md:px-6"></td>
                         `;
                         tbody.appendChild(trBranch);
 
@@ -8285,18 +8285,18 @@ document.addEventListener('DOMContentLoaded', () => {
                             const trItem = document.createElement('tr');
                             trItem.className = `item-row hidden child-of-${nameRowId} child-of-${branchRowId} hover:bg-slate-700/20 transition-colors border-l-4 border-slate-700`;
                             trItem.innerHTML = `
-                                <td class="px-6 py-3 pl-20">
+                                <td class="px-3 py-3 md:px-6 pl-14 md:pl-20">
                                     <div class="flex flex-col">
                                         <span class="text-sm text-slate-300">สี: <span class="font-bold text-white">${color}</span> / ความจุ: <span class="font-bold text-white">${capacity}</span> ${condition ? `/ ${condition}` : ''}</span>
                                         <span class="text-xs text-slate-500 font-mono mt-0.5">รหัส: ${p.product_code || '-'}</span>
                                         ${imeiDisplay}
                                     </div>
                                 </td>
-                                <td class="px-6 py-3 text-center">
-                                    <span class="text-sm text-cyan-400 font-bold">${p.qtyToDisplay} ${p.unit || 'ชิ้น'}</span>
+                                <td class="px-3 py-3 md:px-6 text-center whitespace-nowrap">
+                                    <span class="text-sm text-cyan-400 font-bold whitespace-nowrap">${p.qtyToDisplay} ${p.unit || 'ชิ้น'}</span>
                                 </td>
-                                <td class="px-6 py-3 text-right">
-                                    <span class="text-sm text-cyan-400 font-mono font-bold">฿${(p.selling_price || 0).toLocaleString()}</span>
+                                <td class="px-3 py-3 md:px-6 text-right whitespace-nowrap">
+                                    <span class="text-sm text-cyan-400 font-mono font-bold whitespace-nowrap">฿${(p.selling_price || 0).toLocaleString()}</span>
                                 </td>
                             `;
                             tbody.appendChild(trItem);
@@ -8355,10 +8355,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     <select name="po_item_name" required class="w-full px-3 py-2.5 text-sm rounded-lg bg-[#2a2a2a] border border-gray-700 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all">
                         <option value="" disabled selected>-- เลือกชื่อสินค้า --</option>
                         ${(window.masterDataCache?.productNames || []).map(x => {
-                            const val = x.name || x;
-                            const label = x.code ? `${val} (${x.code})` : val;
-                            return `<option value="${val}">${label}</option>`;
-                        }).join('')}
+            const val = x.name || x;
+            const label = x.code ? `${val} (${x.code})` : val;
+            return `<option value="${val}">${label}</option>`;
+        }).join('')}
                     </select>
                 </div>
                 <div>
@@ -8459,7 +8459,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Auto-fill logic when Name changes
         inputName.addEventListener('change', (e) => {
             const val = e.target.value.trim();
-            
+
             // If the name is completely deleted/empty
             if (!val) {
                 const elCode = row.querySelector('[name="po_item_code"]');
@@ -8544,8 +8544,8 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             try {
-                const url = editingPOId 
-                    ? `${API_BASE_URL}/purchase-orders/${editingPOId}/update` 
+                const url = editingPOId
+                    ? `${API_BASE_URL}/purchase-orders/${editingPOId}/update`
                     : `${API_BASE_URL}/purchase-orders`;
 
                 const res = await authFetch(url, {
@@ -8747,7 +8747,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             const branchName = (po.branch_id && po.branch_id.name) ? po.branch_id.name : '-';
-            
+
             // Total values
             let totalAmount = 0;
             let totalQty = 0;
@@ -8770,27 +8770,27 @@ document.addEventListener('DOMContentLoaded', () => {
             const badgeClass = statusColors[po.status] || 'border-slate-700 bg-slate-800 text-slate-400';
 
             tr.innerHTML = `
-                <td class="px-6 py-4 font-mono font-bold text-slate-300">${po.po_number || '-'}</td>
-                <td class="px-6 py-4 text-slate-400 text-sm">${dateStr}</td>
-                <td class="px-6 py-4 text-white font-medium">${po.supplier_name || '-'}</td>
-                <td class="px-6 py-4 text-slate-400 text-sm">${branchName}</td>
-                <td class="px-6 py-4 text-center">
-                    <span class="inline-flex px-2.5 py-0.5 rounded-full text-xs font-semibold border ${badgeClass}">
+                <td class="px-4 py-4 md:px-6 font-mono font-bold text-slate-300 whitespace-nowrap">${po.po_number || '-'}</td>
+                <td class="px-4 py-4 md:px-6 text-slate-400 text-sm whitespace-nowrap">${dateStr}</td>
+                <td class="px-4 py-4 md:px-6 text-white font-medium whitespace-nowrap">${po.supplier_name || '-'}</td>
+                <td class="px-4 py-4 md:px-6 text-slate-400 text-sm whitespace-nowrap">${branchName}</td>
+                <td class="px-4 py-4 md:px-6 text-center whitespace-nowrap">
+                    <span class="inline-flex px-2.5 py-0.5 rounded-full text-xs font-semibold border ${badgeClass} whitespace-nowrap">
                         ${po.status || '-'}
                     </span>
                 </td>
-                <td class="px-6 py-4 text-right font-mono font-bold text-cyan-400">฿${totalAmount.toLocaleString()}</td>
-                <td class="px-6 py-4 text-right">
-                    <div class="flex items-center justify-end gap-1.5">
-                        <button class="btn-view-po px-2.5 py-1.5 bg-indigo-500/10 text-indigo-400 hover:bg-indigo-500/25 border border-indigo-500/30 rounded-lg transition-all text-[11px] font-bold" title="รายละเอียดใบ PO">
+                <td class="px-4 py-4 md:px-6 text-right font-mono font-bold text-cyan-400 whitespace-nowrap">฿${totalAmount.toLocaleString()}</td>
+                <td class="px-4 py-4 md:px-6 text-right whitespace-nowrap">
+                    <div class="flex items-center justify-end gap-1.5 whitespace-nowrap">
+                        <button class="btn-view-po px-2.5 py-1.5 bg-indigo-500/10 text-indigo-400 hover:bg-indigo-500/25 border border-indigo-500/30 rounded-lg transition-all text-[11px] font-bold whitespace-nowrap shrink-0" title="รายละเอียดใบ PO">
                             <i class="fa-solid fa-eye"></i> รายละเอียด
                         </button>
                         ${po.status === 'รอจัดส่ง' || po.status === 'สั่งซื้อแล้ว' ? `
-                            <button class="btn-cancel-po px-2.5 py-1.5 bg-red-500/10 text-red-400 hover:bg-red-500/25 border border-red-500/30 rounded-lg transition-all text-[11px] font-bold" title="ยกเลิกใบ PO">
+                            <button class="btn-cancel-po px-2.5 py-1.5 bg-red-500/10 text-red-400 hover:bg-red-500/25 border border-red-500/30 rounded-lg transition-all text-[11px] font-bold whitespace-nowrap shrink-0" title="ยกเลิกใบ PO">
                                 <i class="fa-solid fa-trash-can"></i> ยกเลิก
                             </button>
                         ` : ''}
-                        <button class="btn-print-po px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg border border-slate-700 transition-all text-[11px] font-bold" title="พิมพ์ใบ PO">
+                        <button class="btn-print-po px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg border border-slate-700 transition-all text-[11px] font-bold whitespace-nowrap shrink-0" title="พิมพ์ใบ PO">
                             <i class="fa-solid fa-print"></i> พิมพ์
                         </button>
                     </div>
@@ -8842,7 +8842,7 @@ document.addEventListener('DOMContentLoaded', () => {
     window.initAccountingPO = async () => {
         // Reset view tab to create PO default
         switchPoTab('create');
-        
+
         // Populate branches list for selection in form (in case not loaded yet)
         const poBranchEl = document.getElementById('po-branch');
         if (poBranchEl) {
@@ -8929,7 +8929,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Add active class to clicked tab
                 const target = e.currentTarget;
                 target.className = 'tab-receive-po px-4 py-2 text-xs font-bold rounded-xl transition-all flex items-center gap-2 text-white bg-indigo-600 shadow-lg shadow-indigo-500/25';
-                
+
                 currentReceiveTab = target.dataset.status;
                 renderFilteredPOs();
             });
@@ -8951,7 +8951,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Set default dates if empty
         const startInput = document.getElementById('accounting-start-date');
         const endInput = document.getElementById('accounting-end-date');
-        
+
         const formatDateInput = (d) => {
             const year = d.getFullYear();
             const month = String(d.getMonth() + 1).padStart(2, '0');
@@ -9015,7 +9015,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // Fetch P&L data
             const res = await authFetch(`${API_BASE_URL}/accounting/profit-loss?startDate=${start}&endDate=${end}`);
             const json = await res.json();
-            
+
             if (json.success) {
                 const data = json.data;
                 const formatThaiBaht = (num) => '฿' + Number(num || 0).toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -9023,7 +9023,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Render KPI values
                 document.getElementById('kpi-revenue').textContent = formatThaiBaht(data.totalRevenue);
                 document.getElementById('kpi-expense').textContent = formatThaiBaht(data.totalExpense);
-                
+
                 const profitEl = document.getElementById('kpi-profit');
                 profitEl.textContent = formatThaiBaht(data.netProfit);
                 if (data.netProfit >= 0) {
@@ -9044,22 +9044,22 @@ document.addEventListener('DOMContentLoaded', () => {
                         data.ledger.forEach(item => {
                             const tr = document.createElement('tr');
                             tr.className = 'border-b border-slate-800/40 hover:bg-slate-700/5 transition-all duration-150';
-                            
+
                             const badgeType = item.type === 'รายรับ'
-                                ? `<span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"><i class="fa-solid fa-arrow-down text-[10px] mr-1"></i>รายรับ</span>`
-                                : `<span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-rose-500/10 text-rose-400 border border-rose-500/20"><i class="fa-solid fa-arrow-up text-[10px] mr-1"></i>รายจ่าย</span>`;
+                                ? `<span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 whitespace-nowrap inline-block"><i class="fa-solid fa-arrow-down text-[10px] mr-1"></i>รายรับ</span>`
+                                : `<span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-rose-500/10 text-rose-400 border border-rose-500/20 whitespace-nowrap inline-block"><i class="fa-solid fa-arrow-up text-[10px] mr-1"></i>รายจ่าย</span>`;
 
                             const amountVal = item.type === 'รายรับ'
-                                ? `<span class="text-emerald-400 font-bold font-mono">+฿${item.amount.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>`
-                                : `<span class="text-rose-400 font-bold font-mono">-฿${item.amount.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>`;
+                                ? `<span class="text-emerald-400 font-bold font-mono whitespace-nowrap">+฿${item.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>`
+                                : `<span class="text-rose-400 font-bold font-mono whitespace-nowrap">-฿${item.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>`;
 
                             tr.innerHTML = `
-                                <td class="px-6 py-4 font-mono font-bold text-slate-300 text-sm">${item.transaction_id}</td>
-                                <td class="px-6 py-4 text-sm text-slate-400">${new Date(item.created_at).toLocaleString('th-TH')}</td>
-                                <td class="px-6 py-4">${badgeType}</td>
-                                <td class="px-6 py-4 text-sm text-slate-355">${item.category}</td>
-                                <td class="px-6 py-4 text-right">${amountVal}</td>
-                                <td class="px-6 py-4 text-sm text-slate-400">${item.recorded_by || 'Admin'}</td>
+                                <td class="px-4 py-4 md:px-6 font-mono font-bold text-slate-300 text-sm whitespace-nowrap">${item.transaction_id}</td>
+                                <td class="px-4 py-4 md:px-6 text-sm text-slate-400 whitespace-nowrap">${new Date(item.created_at).toLocaleString('th-TH')}</td>
+                                <td class="px-4 py-4 md:px-6 whitespace-nowrap">${badgeType}</td>
+                                <td class="px-4 py-4 md:px-6 text-sm text-slate-355 whitespace-nowrap">${item.category}</td>
+                                <td class="px-4 py-4 md:px-6 text-right whitespace-nowrap">${amountVal}</td>
+                                <td class="px-4 py-4 md:px-6 text-sm text-slate-400 whitespace-nowrap">${item.recorded_by || 'Admin'}</td>
                             `;
                             plTbody.appendChild(tr);
                         });
@@ -9074,12 +9074,12 @@ document.addEventListener('DOMContentLoaded', () => {
             const poJson = await poRes.json();
             if (poJson.success) {
                 const apPOs = poJson.data.filter(po => po.status !== 'ยกเลิก');
-                
+
                 // Populate Supplier Dropdown Filter
                 const supplierSelect = document.getElementById('filter-ap-supplier');
                 const selectedSupplier = supplierSelect ? supplierSelect.value : '';
                 const uniqueSuppliers = [...new Set(apPOs.map(po => po.supplier_name))].sort();
-                
+
                 if (supplierSelect) {
                     supplierSelect.innerHTML = '<option value="">ทั้งหมด</option>';
                     uniqueSuppliers.forEach(sup => {
@@ -9103,9 +9103,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     const apTbody = document.getElementById('table-body-accounting-ap');
                     if (!apTbody) return;
                     apTbody.innerHTML = '';
-                    
+
                     const filteredList = filterVal ? poList.filter(po => po.supplier_name === filterVal) : poList;
-                    
+
                     if (filteredList.length === 0) {
                         apTbody.innerHTML = '<tr><td colspan="9" class="text-center py-8 text-slate-500 text-sm"><i class="fa-solid fa-check-double text-slate-650 text-xl block mb-2"></i>ไม่มีหนี้สินใบสั่งซื้อค้างจ่าย</td></tr>';
                     } else {
@@ -9120,31 +9120,31 @@ document.addEventListener('DOMContentLoaded', () => {
 
                             let statusBadge = '';
                             if (po.payment_status === 'ชำระเงินแล้ว') {
-                                statusBadge = `<span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-green-500/10 text-green-400 border border-green-500/20"><i class="fa-solid fa-circle-check text-[10px] mr-1"></i>ชำระเงินแล้ว</span>`;
+                                statusBadge = `<span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-green-500/10 text-green-400 border border-green-500/20 whitespace-nowrap inline-block"><i class="fa-solid fa-circle-check text-[10px] mr-1"></i>ชำระเงินแล้ว</span>`;
                             } else if (po.payment_status === 'ชำระเงินบางส่วน') {
-                                statusBadge = `<span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-500/10 text-blue-400 border border-blue-500/20"><i class="fa-solid fa-circle-info text-[10px] mr-1"></i>ชำระบางส่วน</span>`;
+                                statusBadge = `<span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-500/10 text-blue-400 border border-blue-500/20 whitespace-nowrap inline-block"><i class="fa-solid fa-circle-info text-[10px] mr-1"></i>ชำระบางส่วน</span>`;
                             } else {
-                                statusBadge = `<span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20"><i class="fa-solid fa-hourglass text-[10px] mr-1"></i>ยังไม่ได้ชำระ</span>`;
+                                statusBadge = `<span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20 whitespace-nowrap inline-block"><i class="fa-solid fa-hourglass text-[10px] mr-1"></i>ยังไม่ได้ชำระ</span>`;
                             }
 
                             const payAction = po.payment_status !== 'ชำระเงินแล้ว'
-                                ? `<button class="btn-pay-po px-3 py-1.5 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 border border-amber-500/35 hover:border-amber-500/60 rounded-xl text-xs font-bold transition-all inline-flex items-center gap-1.5 shadow-sm active:scale-95" data-id="${po._id}" data-no="${po.po_number}" data-amount="${totalCost}" data-paid="${paidAmount}" data-discount="${discount}" data-outstanding="${outstanding}">
+                                ? `<button class="btn-pay-po px-3 py-1.5 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 border border-amber-500/35 hover:border-amber-500/60 rounded-xl text-xs font-bold transition-all inline-flex items-center gap-1.5 shadow-sm active:scale-95 whitespace-nowrap shrink-0" data-id="${po._id}" data-no="${po.po_number}" data-amount="${totalCost}" data-paid="${paidAmount}" data-discount="${discount}" data-outstanding="${outstanding}">
                                      <i class="fa-solid fa-money-bill-wave"></i> กดจ่ายเงิน
                                    </button>`
-                                : `<span class="text-xs text-emerald-400 font-bold bg-emerald-500/10 border border-emerald-500/25 px-2.5 py-1.5 rounded-xl inline-flex items-center gap-1"><i class="fa-solid fa-circle-check text-[10px]"></i> จ่ายแล้ว วันที่ ${new Date(po.paid_at || po.updatedAt).toLocaleDateString('th-TH')}</span>`;
+                                : `<span class="text-xs text-emerald-400 font-bold bg-emerald-500/10 border border-emerald-500/25 px-2.5 py-1.5 rounded-xl inline-flex items-center gap-1 whitespace-nowrap"><i class="fa-solid fa-circle-check text-[10px]"></i> จ่ายแล้ว วันที่ ${new Date(po.paid_at || po.updatedAt).toLocaleDateString('th-TH')}</span>`;
 
                             tr.innerHTML = `
-                                <td class="px-6 py-4 font-mono font-bold text-slate-300 text-sm">${po.po_number}</td>
-                                <td class="px-6 py-4 text-sm text-slate-400">${new Date(po.createdAt).toLocaleDateString('th-TH')}</td>
-                                <td class="px-6 py-4 text-sm text-slate-300">${po.supplier_name}</td>
-                                <td class="px-6 py-4 font-mono text-sm text-slate-300 text-right">฿${totalCost.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
-                                <td class="px-6 py-4 font-mono text-sm text-emerald-400 text-right">฿${paidAmount.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
-                                <td class="px-6 py-4 font-mono text-sm text-rose-400 text-right cursor-help" title="${po.discount_remark || 'ไม่มีส่วนลด'}">฿${discount.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
-                                <td class="px-6 py-4 font-mono text-sm text-amber-400 font-bold text-right">฿${outstanding.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
-                                <td class="px-6 py-4 text-center">${statusBadge}</td>
-                                <td class="px-6 py-4 text-right">
-                                    <div class="flex items-center justify-end gap-2">
-                                        <button class="btn-view-po-detail px-3 py-1.5 bg-sky-500/10 text-sky-400 hover:bg-sky-500/20 border border-sky-500/30 hover:border-sky-500/50 rounded-xl text-xs font-bold transition-all inline-flex items-center gap-1.5 shadow-sm active:scale-95">
+                                <td class="px-4 py-4 md:px-6 font-mono font-bold text-slate-300 text-sm whitespace-nowrap">${po.po_number}</td>
+                                <td class="px-4 py-4 md:px-6 text-sm text-slate-400 whitespace-nowrap">${new Date(po.createdAt).toLocaleDateString('th-TH')}</td>
+                                <td class="px-4 py-4 md:px-6 text-sm text-slate-300 whitespace-nowrap">${po.supplier_name}</td>
+                                <td class="px-4 py-4 md:px-6 font-mono text-sm text-slate-300 text-right whitespace-nowrap">฿${totalCost.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                                <td class="px-4 py-4 md:px-6 font-mono text-sm text-emerald-400 text-right whitespace-nowrap">฿${paidAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                                <td class="px-4 py-4 md:px-6 font-mono text-sm text-rose-400 text-right cursor-help whitespace-nowrap" title="${po.discount_remark || 'ไม่มีส่วนลด'}">฿${discount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                                <td class="px-4 py-4 md:px-6 font-mono text-sm text-amber-400 font-bold text-right whitespace-nowrap">฿${outstanding.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                                <td class="px-4 py-4 md:px-6 text-center whitespace-nowrap">${statusBadge}</td>
+                                <td class="px-4 py-4 md:px-6 text-right whitespace-nowrap">
+                                    <div class="flex items-center justify-end gap-2 whitespace-nowrap">
+                                        <button class="btn-view-po-detail px-3 py-1.5 bg-sky-500/10 text-sky-400 hover:bg-sky-500/20 border border-sky-500/30 hover:border-sky-500/50 rounded-xl text-xs font-bold transition-all inline-flex items-center gap-1.5 shadow-sm active:scale-95 whitespace-nowrap shrink-0">
                                             <i class="fa-solid fa-eye"></i> ดูรายละเอียด
                                         </button>
                                         ${payAction}
@@ -9179,13 +9179,13 @@ document.addEventListener('DOMContentLoaded', () => {
                                             <!-- Financial Summary -->
                                             <div class="grid grid-cols-2 gap-2 bg-slate-950/60 p-4 rounded-2xl border border-slate-800 text-xs text-slate-400">
                                                 <div>ยอดรวม PO:</div>
-                                                <div class="text-right font-mono text-slate-200">฿${poAmount.toLocaleString(undefined, {minimumFractionDigits: 2})}</div>
+                                                <div class="text-right font-mono text-slate-200">฿${poAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
                                                 <div>ชำระก่อนหน้า:</div>
-                                                <div class="text-right font-mono text-emerald-400">฿${poPaid.toLocaleString(undefined, {minimumFractionDigits: 2})}</div>
+                                                <div class="text-right font-mono text-emerald-400">฿${poPaid.toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
                                                 <div>ส่วนลดสะสม:</div>
-                                                <div class="text-right font-mono text-rose-400">฿${poDiscount.toLocaleString(undefined, {minimumFractionDigits: 2})}</div>
+                                                <div class="text-right font-mono text-rose-400">฿${poDiscount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
                                                 <div class="font-bold text-slate-200 border-t border-slate-800/80 pt-1 mt-1">ยอดค้างชำระ:</div>
-                                                <div class="text-right font-mono text-amber-400 font-bold border-t border-slate-800/80 pt-1 mt-1">฿${poOutstanding.toLocaleString(undefined, {minimumFractionDigits: 2})}</div>
+                                                <div class="text-right font-mono text-amber-400 font-bold border-t border-slate-800/80 pt-1 mt-1">฿${poOutstanding.toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
                                             </div>
 
                                             <!-- Form Inputs -->
@@ -9271,10 +9271,10 @@ document.addEventListener('DOMContentLoaded', () => {
                                             const amt = Number(amtInp.value || 0);
                                             const disc = Number(discInp.value || 0);
                                             const left = Math.max(0, poOutstanding - amt - disc);
-                                            calcRes.textContent = `คงเหลือหลังชำระ: ฿${left.toLocaleString(undefined, {minimumFractionDigits: 2})}`;
+                                            calcRes.textContent = `คงเหลือหลังชำระ: ฿${left.toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
                                             if (amt + disc > poOutstanding + 0.01) {
                                                 calcRes.className = 'text-[11px] font-bold text-rose-400 text-right pt-1';
-                                                calcRes.textContent = `เกินยอดค้างชำระ: ฿${Math.abs(poOutstanding - amt - disc).toLocaleString(undefined, {minimumFractionDigits: 2})}`;
+                                                calcRes.textContent = `เกินยอดค้างชำระ: ฿${Math.abs(poOutstanding - amt - disc).toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
                                             } else {
                                                 calcRes.className = 'text-[11px] font-bold text-emerald-400 text-right pt-1';
                                             }
@@ -9318,7 +9318,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                     </div>
                                     <div class="flex justify-between text-xs items-center mt-2">
                                         <span class="text-slate-400">ยอดค้างจ่ายรวมทั้งหมด:</span>
-                                        <span class="font-mono text-amber-400 font-bold">฿${(sum.total_outstanding || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+                                        <span class="font-mono text-amber-400 font-bold">฿${(sum.total_outstanding || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                                     </div>
                                 `;
                                 summaryContainer.appendChild(card);
@@ -9346,35 +9346,35 @@ document.addEventListener('DOMContentLoaded', () => {
                             tr.className = 'border-b border-slate-800/40 hover:bg-slate-700/5 transition-all duration-150';
 
                             const isSettled = rec.status === 'ชำระแล้ว' || rec.status === 'ได้รับเงินครบแล้ว';
-                            const settledDateVal = isSettled && rec.settled_at 
-                                ? new Date(rec.settled_at).toLocaleDateString('th-TH') 
-                                : `<span class="px-2 py-0.5 rounded-full text-xs bg-amber-500/10 text-amber-400 border border-amber-500/20 inline-flex items-center gap-1 font-semibold">⏳ รอรับเงิน</span>`;
+                            const settledDateVal = isSettled && rec.settled_at
+                                ? new Date(rec.settled_at).toLocaleDateString('th-TH')
+                                : `<span class="px-2 py-0.5 rounded-full text-xs bg-amber-500/10 text-amber-400 border border-amber-500/20 inline-flex items-center gap-1 font-semibold whitespace-nowrap">⏳ รอรับเงิน</span>`;
 
                             let payAction = '';
                             if (!isSettled && rec.status !== 'ยกเลิก') {
                                 payAction = `
-                                    <button class="btn-settle-ar px-3 py-1.5 bg-green-500/10 text-green-400 hover:bg-green-500/20 border border-green-500/35 hover:border-green-500/60 rounded-xl text-xs font-bold transition-all inline-flex items-center gap-1.5 shadow-sm active:scale-95" data-id="${rec._id}" data-no="${rec.transaction_id ? rec.transaction_id.receipt_number : ''}" data-amount="${rec.financed_amount}">
+                                    <button class="btn-settle-ar px-3 py-1.5 bg-green-500/10 text-green-400 hover:bg-green-500/20 border border-green-500/35 hover:border-green-500/60 rounded-xl text-xs font-bold transition-all inline-flex items-center gap-1.5 shadow-sm active:scale-95 whitespace-nowrap shrink-0" data-id="${rec._id}" data-no="${rec.transaction_id ? rec.transaction_id.receipt_number : ''}" data-amount="${rec.financed_amount}">
                                         <i class="fa-solid fa-circle-check"></i> บันทึกยอดรับเงิน
                                     </button>
                                 `;
                             } else if (isSettled) {
-                                payAction = `<span class="text-xs text-slate-500 italic">ผ่านรายการสำเร็จ (${new Date(rec.settled_at).toLocaleDateString('th-TH')})</span>`;
+                                payAction = `<span class="text-xs text-slate-500 italic whitespace-nowrap">ผ่านรายการสำเร็จ (${new Date(rec.settled_at).toLocaleDateString('th-TH')})</span>`;
                             } else {
-                                payAction = `<span class="text-xs text-rose-500 italic">ยกเลิกแล้ว</span>`;
+                                payAction = `<span class="text-xs text-rose-500 italic whitespace-nowrap">ยกเลิกแล้ว</span>`;
                             }
 
                             const receiptNum = rec.transaction_id ? rec.transaction_id.receipt_number : '-';
-                            const createdDate = rec.transaction_id 
-                                ? new Date(rec.transaction_id.created_at || rec.transaction_id.createdAt).toLocaleDateString('th-TH', { day: '2-digit', month: '2-digit', year: '2-digit' }) 
+                            const createdDate = rec.transaction_id
+                                ? new Date(rec.transaction_id.created_at || rec.transaction_id.createdAt).toLocaleDateString('th-TH', { day: '2-digit', month: '2-digit', year: '2-digit' })
                                 : new Date(rec.createdAt).toLocaleDateString('th-TH', { day: '2-digit', month: '2-digit', year: '2-digit' });
 
                             tr.innerHTML = `
-                                <td class="px-6 py-4 font-mono font-bold text-slate-300 text-sm">${receiptNum}</td>
-                                <td class="px-6 py-4 text-sm text-slate-300">${rec.finance_company}</td>
-                                <td class="px-6 py-4 text-sm text-slate-400">${createdDate}</td>
-                                <td class="px-6 py-4 text-sm">${settledDateVal}</td>
-                                <td class="px-6 py-4 font-mono text-sm text-cyan-400 font-bold">฿${rec.financed_amount.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
-                                <td class="px-6 py-4 text-right">${payAction}</td>
+                                <td class="px-4 py-4 md:px-6 font-mono font-bold text-slate-300 text-sm whitespace-nowrap">${receiptNum}</td>
+                                <td class="px-4 py-4 md:px-6 text-sm text-slate-300 whitespace-nowrap">${rec.finance_company}</td>
+                                <td class="px-4 py-4 md:px-6 text-sm text-slate-400 whitespace-nowrap">${createdDate}</td>
+                                <td class="px-4 py-4 md:px-6 text-sm whitespace-nowrap">${settledDateVal}</td>
+                                <td class="px-4 py-4 md:px-6 font-mono text-sm text-cyan-400 font-bold whitespace-nowrap">฿${rec.financed_amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                                <td class="px-4 py-4 md:px-6 text-right whitespace-nowrap">${payAction}</td>
                             `;
                             arTbody.appendChild(tr);
 
@@ -9388,7 +9388,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                     const todayStr = new Date().toLocaleDateString('en-CA');
                                     showConfirm(
                                         `ยืนยันการรับเงินโอน`,
-                                        `คุณต้องการยืนยันการได้รับยอดเงินโอนจากบริษัทไฟแนนซ์ สำหรับใบเสร็จเลขที่ <strong class="font-mono text-white">${recNo}</strong><br>เป็นจำนวนเงินค้างโอน <strong class="text-green-400 font-mono">฿${amount.toLocaleString(undefined, {minimumFractionDigits: 2})}</strong> หรือไม่?<br><br>
+                                        `คุณต้องการยืนยันการได้รับยอดเงินโอนจากบริษัทไฟแนนซ์ สำหรับใบเสร็จเลขที่ <strong class="font-mono text-white">${recNo}</strong><br>เป็นจำนวนเงินค้างโอน <strong class="text-green-400 font-mono">฿${amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</strong> หรือไม่?<br><br>
                                          <div class="text-left bg-slate-950/45 p-4 rounded-2xl border border-slate-800 space-y-2 mt-3">
                                              <label class="text-xs font-semibold text-slate-400 block">ระบุวันที่ได้รับเงิน (รับจากไฟแนนซ์):</label>
                                              <input type="date" id="ar-pay-date-input" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-green-500 text-sm" value="${todayStr}">
@@ -9415,7 +9415,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                         },
                                         'ยืนยันรับยอด',
                                         'success'
-                                     );
+                                    );
                                 };
                             }
                         });
@@ -9446,11 +9446,11 @@ document.addEventListener('DOMContentLoaded', () => {
                                     <div class="space-y-1.5 mt-2">
                                         <div class="flex justify-between text-xs items-center">
                                             <span class="text-slate-400">ยอดรวมค้างโอน:</span>
-                                            <span class="font-mono text-amber-400 font-bold">฿${(sum.total_pending || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+                                            <span class="font-mono text-amber-400 font-bold">฿${(sum.total_pending || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                                         </div>
                                         <div class="flex justify-between text-xs items-center">
                                             <span class="text-slate-400">ยอดโอนสำเร็จแล้ว:</span>
-                                            <span class="font-mono text-green-400 font-bold">฿${(sum.payout_received || sum.total_settled || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+                                            <span class="font-mono text-green-400 font-bold">฿${(sum.payout_received || sum.total_settled || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                                         </div>
                                     </div>
                                 `;
@@ -9482,7 +9482,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const modal = document.getElementById('modal-accounting-expense');
         const form = document.getElementById('form-accounting-expense');
         if (form) form.reset();
-        
+
         if (modal) {
             modal.classList.remove('hidden');
             void modal.offsetWidth; // force reflow
@@ -9525,7 +9525,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     body: JSON.stringify({ category, amount: Number(amount) })
                 });
                 const json = await response.json();
-                
+
                 if (json.success) {
                     showToast('บันทึกค่าใช้จ่ายเสร็จสมบูรณ์!', 'success');
                     closeExpenseModal();
@@ -9549,7 +9549,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         document.getElementById('view-po-number').textContent = po.po_number;
         document.getElementById('view-po-supplier').innerHTML = `<i class="fa-solid fa-building text-slate-400 text-xs"></i> ${po.supplier_name}`;
-        
+
         const branchName = po.branch_id ? po.branch_id.name : '-';
         document.getElementById('view-po-branch').innerHTML = `<i class="fa-solid fa-location-dot text-slate-400 text-xs"></i> ${branchName}`;
 
@@ -9563,7 +9563,7 @@ document.addEventListener('DOMContentLoaded', () => {
         };
         const statusClass = statusColors[po.status] || 'bg-slate-800 text-slate-400 border-slate-700';
         const displayStatus = po.status === 'นำเข้าสำเร็จ' || po.status === 'รับของครบแล้ว' ? 'นำเข้าสำเร็จ' : po.status;
-        
+
         const statusBadge = document.getElementById('view-po-status');
         statusBadge.className = `inline-flex px-3 py-1 rounded-full text-xs font-bold border ${statusClass}`;
         statusBadge.textContent = displayStatus;
@@ -9588,12 +9588,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const payPaidEl = document.getElementById('view-po-pay-paid');
         if (payPaidEl) {
-            payPaidEl.textContent = '฿' + paidAmount.toLocaleString(undefined, {minimumFractionDigits: 2});
+            payPaidEl.textContent = '฿' + paidAmount.toLocaleString(undefined, { minimumFractionDigits: 2 });
         }
 
         const payDiscEl = document.getElementById('view-po-pay-discount');
         if (payDiscEl) {
-            let discText = '฿' + discount.toLocaleString(undefined, {minimumFractionDigits: 2});
+            let discText = '฿' + discount.toLocaleString(undefined, { minimumFractionDigits: 2 });
             if (discount > 0 && po.discount_remark) {
                 discText += ` (${po.discount_remark})`;
             }
@@ -9602,7 +9602,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const payOutEl = document.getElementById('view-po-pay-outstanding');
         if (payOutEl) {
-            payOutEl.textContent = '฿' + outstanding.toLocaleString(undefined, {minimumFractionDigits: 2});
+            payOutEl.textContent = '฿' + outstanding.toLocaleString(undefined, { minimumFractionDigits: 2 });
         }
 
         const itemsContainer = document.getElementById('view-po-items');
@@ -9614,7 +9614,7 @@ document.addEventListener('DOMContentLoaded', () => {
             po.items.forEach(item => {
                 const el = document.createElement('div');
                 el.className = 'p-5 bg-slate-950/80 border border-slate-850 rounded-2xl space-y-4 hover:border-slate-800 transition-all';
-                
+
                 const received = item.received_qty || 0;
                 const ordered = item.ordered_qty || 0;
                 let itemPercent = 0;
@@ -9675,23 +9675,23 @@ document.addEventListener('DOMContentLoaded', () => {
         // ดึงประวัติการชำระเงินของ PO
         const historyContainer = document.getElementById('view-po-payments-history-container');
         const historyTbody = document.getElementById('view-po-payments-history-rows');
-        
+
         if (historyContainer && historyTbody) {
             historyTbody.innerHTML = '<tr><td colspan="5" class="text-center p-3 text-slate-500 font-bold">กำลังโหลดประวัติการจ่ายเงิน...</td></tr>';
             historyContainer.classList.remove('hidden');
-            
+
             try {
                 const res = await authFetch(`${API_BASE_URL}/accounting/po-payments/${po._id}`);
                 const json = await res.json();
-                
+
                 if (json.success && json.data && json.data.length > 0) {
                     historyTbody.innerHTML = json.data.map((item, index) => {
                         const round = index + 1;
                         const dateStr = new Date(item.created_at || item.createdAt).toLocaleDateString('th-TH');
-                        const amount = item.amount ? '฿' + item.amount.toLocaleString(undefined, {minimumFractionDigits: 2}) : '฿0.00';
+                        const amount = item.amount ? '฿' + item.amount.toLocaleString(undefined, { minimumFractionDigits: 2 }) : '฿0.00';
                         const recordedBy = item.recorded_by ? item.recorded_by.name : 'แอดมิน';
                         const txnId = item.transaction_id || '-';
-                        
+
                         return `
                             <tr class="border-b border-slate-800/40 hover:bg-slate-700/5 transition-colors">
                                 <td class="p-3 font-bold text-slate-400">${round}</td>
@@ -9809,36 +9809,36 @@ document.addEventListener('DOMContentLoaded', () => {
             const tr = document.createElement('tr');
             tr.className = 'border-b border-slate-800/80 hover:bg-slate-800/40 transition-all group duration-200';
             tr.innerHTML = `
-                <td class="px-6 py-4 font-normal">
-                    <span class="text-white font-mono font-bold group-hover:text-indigo-400 transition-colors">${po.po_number}</span>
-                    <div class="text-[11px] text-slate-500 mt-1 flex items-center gap-1"><i class="fa-regular fa-clock"></i> ${new Date(po.createdAt).toLocaleDateString('th-TH')}</div>
+                <td class="px-4 py-4 md:px-6 font-normal whitespace-nowrap">
+                    <span class="text-white font-mono font-bold group-hover:text-indigo-400 transition-colors whitespace-nowrap">${po.po_number}</span>
+                    <div class="text-[11px] text-slate-500 mt-1 flex items-center gap-1 whitespace-nowrap"><i class="fa-regular fa-clock"></i> ${new Date(po.createdAt).toLocaleDateString('th-TH')}</div>
                 </td>
-                <td class="px-6 py-4 text-sm text-slate-300 font-medium">${po.supplier_name}</td>
-                <td class="px-6 py-4 text-sm text-slate-400 font-normal">
-                    <div class="flex items-center gap-1.5"><i class="fa-solid fa-location-dot text-slate-500 text-xs"></i> ${branchName}</div>
+                <td class="px-4 py-4 md:px-6 text-sm text-slate-300 font-medium whitespace-nowrap">${po.supplier_name}</td>
+                <td class="px-4 py-4 md:px-6 text-sm text-slate-400 font-normal whitespace-nowrap">
+                    <div class="flex items-center gap-1.5 whitespace-nowrap"><i class="fa-solid fa-location-dot text-slate-500 text-xs"></i> ${branchName}</div>
                 </td>
-                <td class="px-6 py-4 text-center">
-                    <div class="inline-flex flex-col items-center gap-1.5 w-max">
-                        <div class="w-24 bg-slate-900 rounded-full h-1.5 overflow-hidden border border-slate-800 progress-bar-glow">
+                <td class="px-4 py-4 md:px-6 text-center whitespace-nowrap">
+                    <div class="inline-flex flex-col items-center gap-1.5 w-max whitespace-nowrap">
+                        <div class="w-24 bg-slate-900 rounded-full h-1.5 overflow-hidden border border-slate-800 progress-bar-glow whitespace-nowrap">
                             <div class="bg-gradient-to-r from-indigo-500 to-cyan-500 h-full rounded-full transition-all duration-500" style="width: ${percent}%"></div>
                         </div>
-                        <span class="text-[10px] font-bold text-slate-400 font-mono">${totalReceived} / ${totalOrdered} ชิ้น (${percent}%)</span>
+                        <span class="text-[10px] font-bold text-slate-400 font-mono whitespace-nowrap">${totalReceived} / ${totalOrdered} ชิ้น (${percent}%)</span>
                     </div>
                 </td>
-                <td class="px-6 py-4 text-center">
-                    <span class="inline-flex px-3 py-1 rounded-full text-xs font-bold border ${badgeClass}">${displayStatus}</span>
+                <td class="px-4 py-4 md:px-6 text-center whitespace-nowrap">
+                    <span class="inline-flex px-3 py-1 rounded-full text-xs font-bold border ${badgeClass} whitespace-nowrap">${displayStatus}</span>
                 </td>
-                <td class="px-6 py-4 text-right shrink-0">
+                <td class="px-4 py-4 md:px-6 text-right whitespace-nowrap shrink-0">
                     ${po.status === 'รอจัดส่ง' ? `
-                        <button class="btn-action-arrival text-xs px-3.5 py-2 bg-gradient-to-r from-green-600 to-green-500 hover:from-green-500 hover:to-green-400 text-white rounded-xl shadow-lg shadow-green-500/10 font-bold transition-all" data-id="${po._id}">
+                        <button class="btn-action-arrival text-xs px-3.5 py-2 bg-gradient-to-r from-green-600 to-green-500 hover:from-green-500 hover:to-green-400 text-white rounded-xl shadow-lg shadow-green-500/10 font-bold transition-all whitespace-nowrap shrink-0" data-id="${po._id}">
                             <i class="fa-solid fa-truck-circle-check text-xs"></i> ของถึงสาขา
                         </button>
                     ` : (po.status === 'ของถึงสาขาแล้ว' || po.status === 'กำลังตรวจรับ') ? `
-                        <button class="btn-open-receive text-xs px-3.5 py-2 bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 text-white rounded-xl shadow-lg shadow-indigo-500/10 font-bold transition-all" data-id="${po._id}">
+                        <button class="btn-open-receive text-xs px-3.5 py-2 bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 text-white rounded-xl shadow-lg shadow-indigo-500/10 font-bold transition-all whitespace-nowrap shrink-0" data-id="${po._id}">
                             <i class="fa-solid fa-barcode text-xs"></i> ตรวจรับของ
                         </button>
                     ` : `
-                        <button class="btn-view-po text-xs px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-bold transition-all flex items-center gap-1 ml-auto" data-id="${po._id}">
+                        <button class="btn-view-po text-xs px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-bold transition-all inline-flex items-center gap-1 ml-auto whitespace-nowrap shrink-0" data-id="${po._id}">
                             <i class="fa-solid fa-eye text-slate-400 text-xs"></i> ดูข้อมูล
                         </button>
                     `}
@@ -9874,7 +9874,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const json = await res.json();
             if (json.success) {
                 cachedPOsData = json.data || [];
-                
+
                 // Update live status counts in tabs
                 const allCount = cachedPOsData.length;
                 const pendingCount = cachedPOsData.filter(po => po.status === 'รอจัดส่ง').length;
@@ -9983,9 +9983,9 @@ document.addEventListener('DOMContentLoaded', () => {
                         </div>
                         <div class="grid grid-cols-1 gap-2 max-h-[220px] overflow-y-auto pr-1">
                             ${Array.from({ length: item.ordered_qty }).map((_, idx) => {
-                                const savedImei = scannedList[idx] || '';
-                                const isImported = importedList.includes(savedImei) && savedImei !== '';
-                                return `
+                    const savedImei = scannedList[idx] || '';
+                    const isImported = importedList.includes(savedImei) && savedImei !== '';
+                    return `
                                     <div class="flex items-center gap-3 bg-slate-950 px-3 py-2.5 rounded-xl border border-slate-850 focus-within:border-cyan-500/50 transition-all ${isImported ? 'opacity-60 bg-slate-950/40 border-slate-900' : ''}">
                                         <span class="text-xs font-bold text-slate-500 font-mono w-5 text-right">${idx + 1}.</span>
                                         <input type="text" 
@@ -9996,7 +9996,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                                class="imei-indiv-input w-full bg-transparent ${isImported ? 'text-slate-500 cursor-not-allowed font-mono text-sm uppercase focus:outline-none' : 'text-white focus:outline-none placeholder-slate-700 font-mono text-sm uppercase'}">
                                     </div>
                                 `;
-                            }).join('')}
+                }).join('')}
                         </div>
                         <textarea id="textarea-imei-${item._id}" class="hidden"></textarea>
                     </div>
@@ -10009,7 +10009,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const syncInputsToTextarea = () => {
                     const vals = Array.from(inputs).map(inp => inp.value.trim().toUpperCase()).filter(Boolean);
                     textarea.value = vals.join('\n');
-                    
+
                     // Update badge count
                     const count = vals.length;
                     if (badge) {
@@ -10027,7 +10027,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     inputs.forEach((input) => {
                         const val = input.value.trim().toUpperCase();
                         if (!val) return;
-                        
+
                         // Check internal duplicate
                         if (seen.has(val)) {
                             showToast(`หมายเลข IMEI ซ้ำ: ${val}`, 'warning');
@@ -10035,14 +10035,14 @@ document.addEventListener('DOMContentLoaded', () => {
                             return;
                         }
                         seen.add(val);
-                        
+
                         // Check DB cache
                         if (duplicateImeisDb.has(val)) {
                             showToast(`⚠️ หมายเลข IMEI (${val}) มีอยู่ในคลังสินค้าแล้ว`, 'error');
                             input.value = '';
                             return;
                         }
-                        
+
                         // Check DB
                         if (val.length >= 5 && !checkedImeis.has(val) && !pendingChecks.has(val)) {
                             pendingChecks.add(val);
@@ -10065,7 +10065,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                 });
                         }
                     });
-                    
+
                     syncInputsToTextarea();
                 };
 
@@ -10091,7 +10091,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         e.preventDefault();
                         const text = (e.clipboardData || window.clipboardData).getData('text');
                         const pastedLines = text.split('\n').map(x => x.trim().toUpperCase()).filter(Boolean);
-                        
+
                         let pastedCount = 0;
                         for (let i = 0; i < inputs.length; i++) {
                             const targetIdx = idx + i;
@@ -10103,7 +10103,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                 }
                             }
                         }
-                        
+
                         validateAllRowInputs();
                     });
 
@@ -10465,10 +10465,10 @@ document.addEventListener('DOMContentLoaded', () => {
                         </h5>
                         <p class="text-xs text-slate-400 mt-1">สั่ง: <span class="text-white font-bold">${item.ordered_qty}</span> | นำเข้าคลังแล้ว: <span class="text-emerald-400 font-bold">${importedQty}</span> | <span class="text-amber-400 font-bold">ค้างรับ: ${pendingQty}</span></p>
                     </div>
-                    ${item.track_imei ? 
-                        `<span class="text-xs font-semibold px-2.5 py-1 bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 rounded-lg flex items-center gap-1"><i class="fa-solid fa-barcode text-xs"></i> เก็บ IMEI</span>` : 
-                        `<span class="text-xs font-semibold px-2.5 py-1 bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 rounded-lg flex items-center gap-1"><i class="fa-solid fa-calculator text-xs"></i> นับจำนวน</span>`
-                    }
+                    ${item.track_imei ?
+                    `<span class="text-xs font-semibold px-2.5 py-1 bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 rounded-lg flex items-center gap-1"><i class="fa-solid fa-barcode text-xs"></i> เก็บ IMEI</span>` :
+                    `<span class="text-xs font-semibold px-2.5 py-1 bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 rounded-lg flex items-center gap-1"><i class="fa-solid fa-calculator text-xs"></i> นับจำนวน</span>`
+                }
                 </div>
                 ${inputHtml}
             `;
@@ -10731,7 +10731,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             isArrivalTabsInitialized = true;
         }
-        
+
         if (!tbody) return;
         tbody.innerHTML = '<tr><td colspan="6" class="text-center py-6 text-slate-400"><i class="fa-solid fa-spinner fa-spin mr-2 text-green-400"></i>กำลังโหลดข้อมูลใบสั่งซื้อ...</td></tr>';
         if (tbodyCompleted) {
@@ -10748,7 +10748,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Filter POs heading to branch (status: 'รอจัดส่ง' หรือที่มีการลบ IMEI/สแกนไม่ครบในภายหลัง)
                 const pendingPOs = json.data.filter(po => {
                     if (po.status === 'รอจัดส่ง') return true;
-                    
+
                     if (po.status === 'ของถึงสาขาแล้ว' || po.status === 'กำลังตรวจรับ') {
                         // เช็คว่ามีสินค้าตัวใดสแกนไม่ครบหรือไม่
                         return po.items.some(item => {
@@ -10783,7 +10783,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Update Badges
                 if (badgePending) badgePending.textContent = pendingPOs.length;
                 if (badgeCompleted) badgeCompleted.textContent = completedPOs.length;
-                
+
                 // 1. Render Pending POs
                 if (pendingPOs.length === 0) {
                     tbody.innerHTML = '<tr><td colspan="6" class="text-center py-8 text-slate-500 text-sm"><i class="fa-solid fa-inbox text-slate-650 text-xl block mb-2"></i>ไม่มีใบสั่งซื้อที่อยู่ระหว่างจัดส่งถึงสาขานี้</td></tr>';
@@ -10792,17 +10792,17 @@ document.addEventListener('DOMContentLoaded', () => {
                         const tr = document.createElement('tr');
                         tr.className = 'border-b border-slate-800/40 hover:bg-slate-700/10 transition-all duration-150';
                         const itemsDesc = po.items.map(item => `${item.product_name} (${item.ordered_qty} ชิ้น)`).join(', ');
-                        
+
                         tr.innerHTML = `
-                            <td class="px-6 py-4 font-mono font-bold text-white">${po.po_number}</td>
-                            <td class="px-6 py-4 text-sm text-slate-350">${new Date(po.createdAt).toLocaleDateString('th-TH')}</td>
-                            <td class="px-6 py-4 text-sm text-slate-300">${po.supplier_name}</td>
-                            <td class="px-6 py-4 text-sm text-slate-400 max-w-[250px] truncate font-medium" title="${itemsDesc}">${itemsDesc}</td>
-                            <td class="px-6 py-4 text-center">
-                                <span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20">${po.status}</span>
+                            <td class="px-4 py-4 md:px-6 font-mono font-bold text-white whitespace-nowrap">${po.po_number}</td>
+                            <td class="px-4 py-4 md:px-6 text-sm text-slate-350 whitespace-nowrap">${new Date(po.createdAt).toLocaleDateString('th-TH')}</td>
+                            <td class="px-4 py-4 md:px-6 text-sm text-slate-300 whitespace-nowrap">${po.supplier_name}</td>
+                            <td class="px-4 py-4 md:px-6 text-sm text-slate-400 max-w-[250px] truncate font-medium whitespace-nowrap" title="${itemsDesc}">${itemsDesc}</td>
+                            <td class="px-4 py-4 md:px-6 text-center whitespace-nowrap">
+                                <span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20 whitespace-nowrap inline-block">${po.status}</span>
                             </td>
-                            <td class="px-6 py-4 text-right">
-                                <button class="btn-confirm-arrival px-3 py-1.5 bg-green-500/10 text-green-400 hover:bg-green-500/20 border border-green-500/35 hover:border-green-500/60 rounded-xl text-xs font-bold transition-all inline-flex items-center gap-1.5 shadow-sm active:scale-95" data-id="${po._id}">
+                            <td class="px-4 py-4 md:px-6 text-right whitespace-nowrap">
+                                <button class="btn-confirm-arrival px-3 py-1.5 bg-green-500/10 text-green-400 hover:bg-green-500/20 border border-green-500/35 hover:border-green-500/60 rounded-xl text-xs font-bold transition-all inline-flex items-center gap-1.5 shadow-sm active:scale-95 whitespace-nowrap shrink-0" data-id="${po._id}">
                                     <i class="fa-solid fa-truck-circle-check"></i> ยืนยันของถึงร้าน
                                 </button>
                             </td>
@@ -10824,24 +10824,24 @@ document.addEventListener('DOMContentLoaded', () => {
                             const tr = document.createElement('tr');
                             tr.className = 'border-b border-slate-800/40 hover:bg-slate-700/5 transition-all duration-150 opacity-90 hover:opacity-100';
                             const itemsDesc = po.items.map(item => `${item.product_name} (${item.ordered_qty} ชิ้น)`).join(', ');
-                            
+
                             let statusBadge = '';
                             if (po.status === 'นำเข้าสำเร็จ' || po.status === 'รับของครบแล้ว') {
-                                statusBadge = `<span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-green-500/10 text-green-400 border border-green-500/20"><i class="fa-solid fa-circle-check text-[10px] mr-1"></i>นำเข้าสต็อกแล้ว</span>`;
+                                statusBadge = `<span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-green-500/10 text-green-400 border border-green-500/20 whitespace-nowrap inline-block"><i class="fa-solid fa-circle-check text-[10px] mr-1"></i>นำเข้าสต็อกแล้ว</span>`;
                             } else {
-                                statusBadge = `<span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"><i class="fa-solid fa-check text-[10px] mr-1"></i>แจ้งของถึงร้านแล้ว</span>`;
+                                statusBadge = `<span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 whitespace-nowrap inline-block"><i class="fa-solid fa-check text-[10px] mr-1"></i>แจ้งของถึงร้านแล้ว</span>`;
                             }
 
                             tr.innerHTML = `
-                                <td class="px-6 py-4 font-mono font-bold text-slate-300">${po.po_number}</td>
-                                <td class="px-6 py-4 text-sm text-slate-400">${new Date(po.updatedAt || po.createdAt).toLocaleDateString('th-TH')}</td>
-                                <td class="px-6 py-4 text-sm text-slate-400">${po.supplier_name}</td>
-                                <td class="px-6 py-4 text-sm text-slate-500 max-w-[250px] truncate" title="${itemsDesc}">${itemsDesc}</td>
-                                <td class="px-6 py-4 text-center">
+                                <td class="px-4 py-4 md:px-6 font-mono font-bold text-slate-300 whitespace-nowrap">${po.po_number}</td>
+                                <td class="px-4 py-4 md:px-6 text-sm text-slate-400 whitespace-nowrap">${new Date(po.updatedAt || po.createdAt).toLocaleDateString('th-TH')}</td>
+                                <td class="px-4 py-4 md:px-6 text-sm text-slate-400 whitespace-nowrap">${po.supplier_name}</td>
+                                <td class="px-4 py-4 md:px-6 text-sm text-slate-500 max-w-[250px] truncate whitespace-nowrap" title="${itemsDesc}">${itemsDesc}</td>
+                                <td class="px-4 py-4 md:px-6 text-center whitespace-nowrap">
                                     ${statusBadge}
                                 </td>
-                                <td class="px-6 py-4 text-right">
-                                    <button class="btn-view-arrival-details px-3 py-1.5 bg-slate-900/60 text-slate-400 hover:bg-slate-800 hover:text-slate-200 border border-slate-800 hover:border-slate-700 rounded-xl text-xs font-semibold transition-all inline-flex items-center gap-1.5 shadow-sm active:scale-95" data-id="${po._id}">
+                                <td class="px-4 py-4 md:px-6 text-right whitespace-nowrap">
+                                    <button class="btn-view-arrival-details px-3 py-1.5 bg-slate-900/60 text-slate-400 hover:bg-slate-800 hover:text-slate-200 border border-slate-800 hover:border-slate-700 rounded-xl text-xs font-semibold transition-all inline-flex items-center gap-1.5 shadow-sm active:scale-95 whitespace-nowrap shrink-0" data-id="${po._id}">
                                         <i class="fa-solid fa-eye"></i> ดูรายละเอียด
                                     </button>
                                 </td>
@@ -10920,7 +10920,7 @@ document.addEventListener('DOMContentLoaded', () => {
         showConfirm(
             `รายละเอียดการรับสินค้า`,
             itemsHtml,
-            () => {},
+            () => { },
             'ปิดหน้าต่าง',
             'info'
         );
@@ -10932,7 +10932,7 @@ document.addEventListener('DOMContentLoaded', () => {
             cancelBtn.style.display = 'block';
             cancelBtn.textContent = 'แก้ไขข้อมูลการรับ';
             cancelBtn.className = "flex-1 py-2.5 rounded-xl text-sm font-bold text-amber-400 bg-amber-500/10 border border-amber-500/25 hover:bg-amber-500/20 hover:border-amber-500/40 transition-all active:scale-[0.98]";
-            
+
             cancelBtn.onclick = () => {
                 // Close confirm modal
                 const modal = document.getElementById('custom-confirm-modal');
@@ -10940,7 +10940,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     modal.classList.add('opacity-0', 'pointer-events-none');
                     setTimeout(() => modal.classList.add('hidden'), 300);
                 }
-                
+
                 // Open edit arrival modal
                 openArrivalModal(po);
             };
@@ -10995,7 +10995,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     const tr = document.createElement('tr');
                     tr.className = 'border-b border-slate-700/50 hover:bg-slate-700/20 transition-colors';
                     const branchName = po.branch_id ? po.branch_id.name : '-';
-                    
+
                     // Count scanned items vs total items ordered
                     let totalOrdered = 0;
                     let totalScanned = 0;
@@ -11093,7 +11093,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         tr.className = 'border-b border-slate-700/50 hover:bg-slate-700/20 transition-colors';
                         const branchName = po.branch_id ? po.branch_id.name : '-';
                         const approverName = po.received_by ? po.received_by.name : '-';
-                        
+
                         let totalOrdered = 0;
                         let totalScanned = 0;
                         let grandTotal = 0;
@@ -11176,7 +11176,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (json.success && tbodyDirect) {
                 tbodyDirect.innerHTML = '';
                 let directLogs = json.data || [];
-                
+
                 // Filter by branch if selected
                 if (selectedBranchId) {
                     directLogs = directLogs.filter(log => log.details && log.details.branch_id === selectedBranchId);
@@ -11188,19 +11188,19 @@ document.addEventListener('DOMContentLoaded', () => {
                     directLogs.forEach(log => {
                         const tr = document.createElement('tr');
                         tr.className = 'border-b border-slate-700/50 hover:bg-slate-700/20 transition-colors';
-                        
+
                         const importDate = log.createdAt ? new Date(log.createdAt).toLocaleString('th-TH') : '-';
                         const details = log.details || {};
-                        const typeText = details.import_source === 'EXCEL' ? 
-                            '<span class="px-2 py-1 rounded bg-emerald-500/10 text-emerald-400 text-xs font-semibold border border-emerald-500/20">Excel</span>' : 
+                        const typeText = details.import_source === 'EXCEL' ?
+                            '<span class="px-2 py-1 rounded bg-emerald-500/10 text-emerald-400 text-xs font-semibold border border-emerald-500/20">Excel</span>' :
                             '<span class="px-2 py-1 rounded bg-blue-500/10 text-blue-400 text-xs font-semibold border border-blue-500/20">คลังปกติ</span>';
-                        
+
                         const branchName = details.branch_name || '-';
                         const productName = details.product_name || '-';
                         const productCode = details.product_code || '-';
                         const qty = details.quantity || 0;
                         const importer = log.user_name || '-';
-                        
+
                         let imeiStr = '-';
                         if (Array.isArray(details.imeis) && details.imeis.length > 0) {
                             imeiStr = `<div class="max-w-xs truncate font-mono text-xs text-slate-400" title="${details.imeis.join(', ')}">${details.imeis.join(', ')}</div>`;
@@ -11487,7 +11487,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 let rowsHtml = '';
                 logs.forEach((log, index) => {
                     const timeStr = formatThaiDateTime(log.createdAt);
-                    const refBadge = log.reference_no 
+                    const refBadge = log.reference_no
                         ? `<span class="px-2 py-0.5 rounded bg-slate-700/40 border border-slate-700 text-slate-300 font-mono text-[11px]">${log.reference_no}</span>`
                         : `<span class="text-slate-600">-</span>`;
 
@@ -11686,7 +11686,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Create trigger box
         const trigger = document.createElement('div');
         trigger.className = 'searchable-select-trigger';
-        
+
         const input = document.createElement('input');
         input.type = 'text';
         input.className = 'searchable-select-input';
@@ -11709,7 +11709,7 @@ document.addEventListener('DOMContentLoaded', () => {
         function rebuildDropdown() {
             dropdown.innerHTML = '';
             const options = Array.from(selectElement.options);
-            
+
             // Filter out default placeholder option if it's disabled and has empty value
             const filteredOptions = options.filter(opt => !(opt.disabled && opt.value === ''));
 
@@ -11726,7 +11726,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 item.className = 'searchable-option-item';
                 item.textContent = opt.textContent;
                 item.dataset.value = opt.value;
-                
+
                 // If it is currently selected in native select
                 if (selectElement.value === opt.value) {
                     item.classList.add('selected');
@@ -11745,10 +11745,10 @@ document.addEventListener('DOMContentLoaded', () => {
         function selectOption(value, text) {
             selectElement.value = value;
             input.value = text;
-            
+
             // Dispatch change event to trigger existing app logic
             selectElement.dispatchEvent(new Event('change', { bubbles: true }));
-            
+
             closeDropdown();
         }
 
@@ -11777,10 +11777,10 @@ document.addEventListener('DOMContentLoaded', () => {
             dropdown.classList.remove('open');
             arrow.classList.remove('rotate-180');
             input.readOnly = true;
-            
+
             // If they clicked out without selecting or value is empty, restore selected text or clear
             syncUI();
-            
+
             document.removeEventListener('click', handleOutsideClick);
             document.removeEventListener('keydown', handleEscAndTab);
         }
@@ -11801,16 +11801,16 @@ document.addEventListener('DOMContentLoaded', () => {
             dropdown.classList.add('open');
             arrow.classList.add('rotate-180');
             input.readOnly = false;
-            
+
             // Save current value
             input.dataset.oldValue = input.value;
-            
+
             // Select all text so they can search immediately
             input.select();
-            
+
             // Rebuild the items first so we always have the freshest options
             rebuildDropdown();
-            
+
             // Sync highlighted and selected states
             syncUI();
 
@@ -11908,10 +11908,10 @@ document.addEventListener('DOMContentLoaded', () => {
             const originalValueProp = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value');
             if (originalValueProp) {
                 Object.defineProperty(selectElement, 'value', {
-                    get: function() {
+                    get: function () {
                         return originalValueProp.get.call(this);
                     },
-                    set: function(val) {
+                    set: function (val) {
                         originalValueProp.set.call(this, val);
                         syncUI();
                     },
@@ -11927,10 +11927,10 @@ document.addEventListener('DOMContentLoaded', () => {
             const originalSelectedIndexProp = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'selectedIndex');
             if (originalSelectedIndexProp) {
                 Object.defineProperty(selectElement, 'selectedIndex', {
-                    get: function() {
+                    get: function () {
                         return originalSelectedIndexProp.get.call(this);
                     },
-                    set: function(idx) {
+                    set: function (idx) {
                         originalSelectedIndexProp.set.call(this, idx);
                         syncUI();
                     },
@@ -11978,25 +11978,25 @@ document.addEventListener('DOMContentLoaded', () => {
         const btnStockExcelOpen = document.getElementById('btn-stock-add-excel');
         const excelModal = document.getElementById('excel-import-modal');
         const btnExcelClose = document.getElementById('close-excel-modal-btn');
-        
+
         const step1Panel = document.getElementById('excel-step1-panel');
         const step2Panel = document.getElementById('excel-step2-panel');
         const step3Panel = document.getElementById('excel-step3-panel');
-        
+
         const btnStep1Next = document.getElementById('excel-btn-step1-next');
         const btnStep2Back = document.getElementById('excel-btn-step2-back');
         const btnStep3Back = document.getElementById('excel-btn-step3-back');
         const btnImportConfirm = document.getElementById('excel-btn-import-confirm');
-        
+
         const step1Indicator = document.getElementById('excel-step1-indicator');
         const step2Indicator = document.getElementById('excel-step2-indicator');
         const step3Indicator = document.getElementById('excel-step3-indicator');
         const connector1 = document.getElementById('excel-connector1');
         const connector2 = document.getElementById('excel-connector2');
-        
+
         const dragDropZone = document.getElementById('excel-drag-drop-zone');
         const fileInput = document.getElementById('excel-file-input');
-        
+
         const summaryTotal = document.getElementById('excel-summary-total');
         const summaryValid = document.getElementById('excel-summary-valid');
         const summaryInvalid = document.getElementById('excel-summary-invalid');
@@ -12004,7 +12004,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const validationStatusBadge = document.getElementById('excel-validation-status-badge');
         const previewTbody = document.getElementById('excel-preview-tbody');
         const errorWarning = document.getElementById('excel-error-warning');
-        
+
         const progressBox = document.getElementById('excel-import-progress-box');
         const progressText = document.getElementById('excel-progress-text');
         const progressPercent = document.getElementById('excel-progress-percent');
@@ -12019,24 +12019,24 @@ document.addEventListener('DOMContentLoaded', () => {
         // Navigation
         function goToStep(step) {
             currentStep = step;
-            
+
             // Hide all panels
             step1Panel.classList.add('hidden');
             step2Panel.classList.add('hidden');
             step3Panel.classList.add('hidden');
-            
+
             // Reset Indicators & Connectors
             step1Indicator.className = "w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm z-10 transition-colors bg-slate-700 text-slate-400";
             step2Indicator.className = "w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm z-10 transition-colors bg-slate-700 text-slate-400";
             step3Indicator.className = "w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm z-10 transition-colors bg-slate-700 text-slate-400";
             connector1.className = "h-full bg-slate-700 w-0 transition-all duration-300";
             connector2.className = "h-full bg-slate-700 w-0 transition-all duration-300";
-            
+
             // Active Step Styling
             if (step === 1) {
                 step1Panel.classList.remove('hidden');
                 step1Indicator.className = "w-8 h-8 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold text-sm z-10 transition-colors shadow-lg shadow-emerald-600/30";
-                
+
                 document.querySelector('[id="excel-step1-indicator"] + span').className = "text-xs text-slate-300 mt-2 font-medium";
                 document.querySelector('[id="excel-step2-indicator"] + span').className = "text-xs text-slate-500 mt-2 font-medium";
                 document.querySelector('[id="excel-step3-indicator"] + span').className = "text-xs text-slate-500 mt-2 font-medium";
@@ -12045,7 +12045,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 step1Indicator.className = "w-8 h-8 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold text-sm z-10 transition-colors";
                 step2Indicator.className = "w-8 h-8 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold text-sm z-10 transition-colors shadow-lg shadow-emerald-600/30";
                 connector1.className = "h-full bg-emerald-600 w-full transition-all duration-300";
-                
+
                 document.querySelector('[id="excel-step1-indicator"] + span').className = "text-xs text-slate-300 mt-2 font-medium";
                 document.querySelector('[id="excel-step2-indicator"] + span').className = "text-xs text-slate-300 mt-2 font-medium";
                 document.querySelector('[id="excel-step3-indicator"] + span').className = "text-xs text-slate-500 mt-2 font-medium";
@@ -12056,7 +12056,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 step3Indicator.className = "w-8 h-8 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold text-sm z-10 transition-colors shadow-lg shadow-emerald-600/30";
                 connector1.className = "h-full bg-emerald-600 w-full transition-all duration-300";
                 connector2.className = "h-full bg-emerald-600 w-full transition-all duration-300";
-                
+
                 document.querySelector('[id="excel-step1-indicator"] + span').className = "text-xs text-slate-300 mt-2 font-medium";
                 document.querySelector('[id="excel-step2-indicator"] + span').className = "text-xs text-slate-300 mt-2 font-medium";
                 document.querySelector('[id="excel-step3-indicator"] + span').className = "text-xs text-slate-300 mt-2 font-medium";
@@ -12072,7 +12072,7 @@ document.addEventListener('DOMContentLoaded', () => {
             goToStep(1);
             parsedRows = [];
             isImporting = false;
-            
+
             // Reset form fields
             if (fileInput) fileInput.value = '';
             previewTbody.innerHTML = '';
@@ -12082,11 +12082,11 @@ document.addEventListener('DOMContentLoaded', () => {
             progressPercent.textContent = '0%';
             progressText.textContent = '';
             btnImportConfirm.disabled = false;
-            
+
             // Show modal
             excelModal.classList.remove('opacity-0', 'pointer-events-none');
             excelModal.querySelector('.modal-content').classList.add('modal-animate-in');
-            
+
             // Refresh Master Data Caches
             try {
                 // Check master data
@@ -12096,7 +12096,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (!hasTypes || !hasSuppliers) {
                     await fetchMasterData();
                 }
-                
+
                 // Fetch branches to make sure they are in the cache
                 const branchResp = await authFetch(`${API_BASE_URL}/branches`);
                 const branchJson = await branchResp.json();
@@ -12117,7 +12117,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (btnExcelOpen) btnExcelOpen.addEventListener('click', openExcelModal);
         if (btnStockExcelOpen) btnStockExcelOpen.addEventListener('click', openExcelModal);
         if (btnExcelClose) btnExcelClose.addEventListener('click', closeExcelModal);
-        
+
         // Modal Backdrop Click
         excelModal.addEventListener('click', (e) => {
             if (e.target === excelModal) {
@@ -12186,14 +12186,14 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             const reader = new FileReader();
-            reader.onload = function(e) {
+            reader.onload = function (e) {
                 try {
                     const data = new Uint8Array(e.target.result);
                     const workbook = XLSX.read(data, { type: 'array' });
                     const firstSheetName = workbook.SheetNames[0];
                     const worksheet = workbook.Sheets[firstSheetName];
                     const rows = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-                    
+
                     if (!rows || rows.length === 0) {
                         showToast('ไม่พบข้อมูลในไฟล์ Excel', 'error');
                         return;
@@ -12254,7 +12254,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 // Validations
                 if (!code) errors.push("กรุณาระบุรหัสสินค้า (คอลัมน์ A)");
-                
+
                 let matchedName = null;
                 if (!name) {
                     errors.push("กรุณาระบุชื่อสินค้า (คอลัมน์ B)");
@@ -12412,18 +12412,18 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             previewTbody.innerHTML = '';
-            
+
             // Show maximum of 5 items
             const previewItems = parsedRows.slice(0, 5);
             previewItems.forEach(item => {
                 const tr = document.createElement('tr');
                 tr.className = "hover:bg-slate-700/30 transition-colors";
-                
-                const statusBadge = item.isValid 
+
+                const statusBadge = item.isValid
                     ? `<span class="px-2 py-0.5 text-[10px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-full font-medium">ผ่าน</span>`
                     : `<span class="px-2 py-0.5 text-[10px] bg-red-500/10 text-red-400 border border-red-500/20 rounded-full font-medium">ผิดพลาด</span>`;
 
-                const errorList = item.isValid 
+                const errorList = item.isValid
                     ? `<span class="text-slate-500">-</span>`
                     : `<ul class="list-disc pl-4 text-red-400 text-[11px] space-y-0.5">${item.errors.map(err => `<li>${err}</li>`).join('')}</ul>`;
 
@@ -12433,8 +12433,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     <td class="p-3 font-medium text-white">${item.code || '-'}</td>
                     <td class="p-3 text-slate-300 font-medium">${item.name || '-'}</td>
                     <td class="p-3 text-slate-400">${item.branch}</td>
-                    <td class="p-3 text-slate-300">฿${Number(item.cost).toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 2})}</td>
-                    <td class="p-3 text-slate-300">฿${Number(item.price).toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 2})}</td>
+                    <td class="p-3 text-slate-300">฿${Number(item.cost).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}</td>
+                    <td class="p-3 text-slate-300">฿${Number(item.price).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}</td>
                     <td class="p-3 text-center font-bold text-white">${item.qty}</td>
                     <td class="p-3">${errorList}</td>
                 `;
@@ -12460,7 +12460,7 @@ document.addEventListener('DOMContentLoaded', () => {
             for (let i = 0; i < total; i++) {
                 const item = parsedRows[i];
                 const pct = Math.round((i / total) * 100);
-                
+
                 // Update Progress UI
                 progressBar.style.width = `${pct}%`;
                 progressPercent.textContent = `${pct}%`;
@@ -12493,7 +12493,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // Restore close buttons
             btnExcelClose.style.display = 'block';
             isImporting = false;
-            
+
             // Close Modal
             closeExcelModal();
 
