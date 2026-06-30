@@ -1,0 +1,200 @@
+[{
+  "_id": {
+    "$oid": "6a2fd686d7e9c48ac9155577"
+  },
+  "transaction_id": "TXN-20260615-0001",
+  "type": "รายรับ",
+  "category": "ขายสินค้า",
+  "amount": 5600,
+  "reference_id": {
+    "$oid": "6a2fd686d7e9c48ac9155574"
+  },
+  "recorded_by": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "created_at": {
+    "$date": "2026-06-15T10:40:06.355Z"
+  },
+  "createdAt": {
+    "$date": "2026-06-15T10:40:06.717Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-15T10:40:06.717Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a2fd83d22a259fc71246fd2"
+  },
+  "transaction_id": "TXN-20260620-0001",
+  "type": "รายจ่าย",
+  "category": "ซื้อสินค้า (PO)",
+  "amount": 69000,
+  "reference_id": {
+    "$oid": "6a2fd5bad7e9c48ac9155537"
+  },
+  "recorded_by": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "created_at": {
+    "$date": "2026-06-20T00:00:00.000Z"
+  },
+  "createdAt": {
+    "$date": "2026-06-15T10:47:25.831Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-15T10:47:25.831Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a2fd9df613b478aef213c5f"
+  },
+  "transaction_id": "TXN-20260617-0001",
+  "type": "รายจ่าย",
+  "category": "ซื้อสินค้า (PO)",
+  "amount": 28000,
+  "reference_id": {
+    "$oid": "6a2fd9af613b478aef213c27"
+  },
+  "recorded_by": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "created_at": {
+    "$date": "2026-06-17T00:00:00.000Z"
+  },
+  "createdAt": {
+    "$date": "2026-06-15T10:54:23.748Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-15T10:54:23.748Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a2fe7e566025b680275ebba"
+  },
+  "transaction_id": "TXN-20260619-0001",
+  "type": "รายจ่าย",
+  "category": "ซื้อสินค้า (PO)",
+  "amount": 70000,
+  "reference_id": {
+    "$oid": "6a2fe7b166025b680275eb93"
+  },
+  "recorded_by": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "created_at": {
+    "$date": "2026-06-19T00:00:00.000Z"
+  },
+  "createdAt": {
+    "$date": "2026-06-15T11:54:13.083Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-15T11:54:13.083Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a310d3cd95a1787a111a0f7"
+  },
+  "transaction_id": "TXN-20260615-0002",
+  "type": "รายจ่าย",
+  "category": "ซื้อสินค้า (PO)",
+  "amount": 150000,
+  "reference_id": {
+    "$oid": "6a310cf9d95a1787a111a0de"
+  },
+  "recorded_by": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "created_at": {
+    "$date": "2026-06-15T00:00:00.000Z"
+  },
+  "createdAt": {
+    "$date": "2026-06-16T08:45:48.738Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-16T08:45:48.738Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a310e52d95a1787a111a10c"
+  },
+  "transaction_id": "TXN-20260616-0001",
+  "type": "รายรับ",
+  "category": "ขายสินค้า",
+  "amount": 10600,
+  "reference_id": {
+    "$oid": "6a310e52d95a1787a111a109"
+  },
+  "recorded_by": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "created_at": {
+    "$date": "2026-06-16T08:50:26.118Z"
+  },
+  "createdAt": {
+    "$date": "2026-06-16T08:50:26.197Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-16T08:50:26.197Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a34b70d9e33919145b2263d"
+  },
+  "transaction_id": "TXN-20260619-0002",
+  "type": "รายจ่าย",
+  "category": "ซื้อสินค้า (PO)",
+  "amount": 50000,
+  "reference_id": {
+    "$oid": "6a34b6dd9e33919145b22623"
+  },
+  "recorded_by": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "created_at": {
+    "$date": "2026-06-19T00:00:00.000Z"
+  },
+  "createdAt": {
+    "$date": "2026-06-19T03:27:09.122Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-19T03:27:09.122Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a34b7529e33919145b2264c"
+  },
+  "transaction_id": "TXN-20260619-0003",
+  "type": "รายจ่าย",
+  "category": "ซื้อสินค้า (PO)",
+  "amount": 37500,
+  "reference_id": {
+    "$oid": "6a34b6dd9e33919145b22623"
+  },
+  "recorded_by": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "created_at": {
+    "$date": "2026-06-19T00:00:00.000Z"
+  },
+  "createdAt": {
+    "$date": "2026-06-19T03:28:18.405Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-19T03:28:18.405Z"
+  },
+  "__v": 0
+}]

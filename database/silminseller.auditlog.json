@@ -1,0 +1,6480 @@
+[{
+  "_id": {
+    "$oid": "6a0da759b2d10983807d6ff3"
+  },
+  "action": "LOGIN",
+  "module": "AUTH",
+  "description": "เข้าสู่ระบบสำเร็จ: พนักงาน Administrator (แอดมิน)",
+  "target_id": "69f5a15ce0775d4f2c85bc09",
+  "reference_no": null,
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-05-20T12:21:45.671Z"
+  },
+  "updatedAt": {
+    "$date": "2026-05-20T12:21:45.671Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a0da919b2d10983807d6ffc"
+  },
+  "action": "UPDATE",
+  "module": "ROLE",
+  "description": "แก้ไขระดับสิทธิ์/ตำแหน่ง: แอดมิน",
+  "target_id": "69f8505540663c796524b463",
+  "reference_no": null,
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-05-20T12:29:13.655Z"
+  },
+  "updatedAt": {
+    "$date": "2026-05-20T12:29:13.655Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a0da91fb2d10983807d6ffd"
+  },
+  "action": "LOGIN",
+  "module": "AUTH",
+  "description": "เข้าสู่ระบบสำเร็จ: พนักงาน พนักงานสต็อก (พนักงานสต็อก)",
+  "target_id": "69fc644470cdbc19c0ac1ea0",
+  "reference_no": null,
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69fc644470cdbc19c0ac1ea0"
+  },
+  "user_name": "พนักงานสต็อก",
+  "createdAt": {
+    "$date": "2026-05-20T12:29:19.553Z"
+  },
+  "updatedAt": {
+    "$date": "2026-05-20T12:29:19.553Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a0da92db2d10983807d7000"
+  },
+  "action": "LOGIN",
+  "module": "AUTH",
+  "description": "เข้าสู่ระบบสำเร็จ: พนักงาน Administrator (แอดมิน)",
+  "target_id": "69f5a15ce0775d4f2c85bc09",
+  "reference_no": null,
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-05-20T12:29:33.513Z"
+  },
+  "updatedAt": {
+    "$date": "2026-05-20T12:29:33.513Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a0e7bd46e5b466636881858"
+  },
+  "action": "APPROVE",
+  "module": "PO",
+  "description": "อนุมัตินำเข้าและตรวจรับสต็อกสินค้าสำเร็จ ใบสั่งซื้อ เลขที่ PO-20260520-0005",
+  "target_id": "6a0d8b1c68aba7b6a84b7b18",
+  "reference_no": "PO-20260520-0005",
+  "details": null,
+  "ip_address": null,
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-05-21T03:28:20.459Z"
+  },
+  "updatedAt": {
+    "$date": "2026-05-21T03:28:20.459Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a0e826bb37e9f57f1fe4c7c"
+  },
+  "action": "CREATE",
+  "module": "PO",
+  "description": "สร้างใบสั่งซื้อใหม่ เลขที่ PO-20260521-0001 สำหรับซัพพลายเออร์ SYSNEX",
+  "target_id": "6a0e826bb37e9f57f1fe4c7a",
+  "reference_no": "PO-20260521-0001",
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-05-21T03:56:27.305Z"
+  },
+  "updatedAt": {
+    "$date": "2026-05-21T03:56:27.305Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a0e836fb37e9f57f1fe4d00"
+  },
+  "action": "UPDATE",
+  "module": "PO",
+  "description": "แจ้งของถึงสาขาสำเร็จพร้อมระบุ IMEI ใบสั่งซื้อ เลขที่ PO-20260521-0001",
+  "target_id": "6a0e826bb37e9f57f1fe4c7a",
+  "reference_no": "PO-20260521-0001",
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-05-21T04:00:47.105Z"
+  },
+  "updatedAt": {
+    "$date": "2026-05-21T04:00:47.105Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a0e8396b37e9f57f1fe4d58"
+  },
+  "action": "APPROVE",
+  "module": "PO",
+  "description": "อนุมัตินำเข้าและตรวจรับสต็อกสินค้าสำเร็จ ใบสั่งซื้อ เลขที่ PO-20260521-0001",
+  "target_id": "6a0e826bb37e9f57f1fe4c7a",
+  "reference_no": "PO-20260521-0001",
+  "details": null,
+  "ip_address": null,
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-05-21T04:01:26.701Z"
+  },
+  "updatedAt": {
+    "$date": "2026-05-21T04:01:26.701Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a0e83f3b37e9f57f1fe4d7f"
+  },
+  "action": "LOGIN",
+  "module": "AUTH",
+  "description": "เข้าสู่ระบบสำเร็จ: พนักงาน พนักงานจัดซื้อ (พนักงานจัดซื้อ)",
+  "target_id": "6a0aadcebf470acf73eadd9f",
+  "reference_no": null,
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "6a0aadcebf470acf73eadd9f"
+  },
+  "user_name": "พนักงานจัดซื้อ",
+  "createdAt": {
+    "$date": "2026-05-21T04:02:59.149Z"
+  },
+  "updatedAt": {
+    "$date": "2026-05-21T04:02:59.149Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a0e8463b37e9f57f1fe4d82"
+  },
+  "action": "CREATE",
+  "module": "PO",
+  "description": "สร้างใบสั่งซื้อใหม่ เลขที่ PO-20260521-0001 สำหรับซัพพลายเออร์ SYSNEX",
+  "target_id": "6a0e8463b37e9f57f1fe4d80",
+  "reference_no": "PO-20260521-0001",
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "6a0aadcebf470acf73eadd9f"
+  },
+  "user_name": "พนักงานจัดซื้อ",
+  "createdAt": {
+    "$date": "2026-05-21T04:04:51.211Z"
+  },
+  "updatedAt": {
+    "$date": "2026-05-21T04:04:51.211Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a0e8469b37e9f57f1fe4d85"
+  },
+  "action": "LOGIN",
+  "module": "AUTH",
+  "description": "เข้าสู่ระบบสำเร็จ: พนักงาน พนักงานสต็อก (พนักงานสต็อก)",
+  "target_id": "69fc644470cdbc19c0ac1ea0",
+  "reference_no": null,
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69fc644470cdbc19c0ac1ea0"
+  },
+  "user_name": "พนักงานสต็อก",
+  "createdAt": {
+    "$date": "2026-05-21T04:04:57.845Z"
+  },
+  "updatedAt": {
+    "$date": "2026-05-21T04:04:57.845Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a0e8480b37e9f57f1fe4d8e"
+  },
+  "action": "UPDATE",
+  "module": "PO",
+  "description": "แจ้งของถึงสาขาสำเร็จพร้อมระบุ IMEI ใบสั่งซื้อ เลขที่ PO-20260521-0001",
+  "target_id": "6a0e8463b37e9f57f1fe4d80",
+  "reference_no": "PO-20260521-0001",
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69fc644470cdbc19c0ac1ea0"
+  },
+  "user_name": "พนักงานสต็อก",
+  "createdAt": {
+    "$date": "2026-05-21T04:05:20.201Z"
+  },
+  "updatedAt": {
+    "$date": "2026-05-21T04:05:20.201Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a0e8937a52a7b2086ef6a91"
+  },
+  "action": "LOGIN",
+  "module": "AUTH",
+  "description": "เข้าสู่ระบบสำเร็จ: พนักงาน พนักงานจัดซื้อ (พนักงานจัดซื้อ)",
+  "target_id": "6a0aadcebf470acf73eadd9f",
+  "reference_no": null,
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "6a0aadcebf470acf73eadd9f"
+  },
+  "user_name": "พนักงานจัดซื้อ",
+  "createdAt": {
+    "$date": "2026-05-21T04:25:27.001Z"
+  },
+  "updatedAt": {
+    "$date": "2026-05-21T04:25:27.001Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a0e894fa52a7b2086ef6a94"
+  },
+  "action": "LOGIN",
+  "module": "AUTH",
+  "description": "เข้าสู่ระบบสำเร็จ: พนักงาน พนักงานสต็อก (พนักงานสต็อก)",
+  "target_id": "69fc644470cdbc19c0ac1ea0",
+  "reference_no": null,
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69fc644470cdbc19c0ac1ea0"
+  },
+  "user_name": "พนักงานสต็อก",
+  "createdAt": {
+    "$date": "2026-05-21T04:25:51.233Z"
+  },
+  "updatedAt": {
+    "$date": "2026-05-21T04:25:51.233Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a0e8956a52a7b2086ef6a9a"
+  },
+  "action": "APPROVE",
+  "module": "PO",
+  "description": "อนุมัตินำเข้าและตรวจรับสต็อกสินค้าสำเร็จ ใบสั่งซื้อ เลขที่ PO-20260521-0001",
+  "target_id": "6a0e8463b37e9f57f1fe4d80",
+  "reference_no": "PO-20260521-0001",
+  "details": null,
+  "ip_address": null,
+  "user_id": {
+    "$oid": "69fc644470cdbc19c0ac1ea0"
+  },
+  "user_name": "พนักงานสต็อก",
+  "createdAt": {
+    "$date": "2026-05-21T04:25:58.624Z"
+  },
+  "updatedAt": {
+    "$date": "2026-05-21T04:25:58.624Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a0ecc56b16446e3f2809f06"
+  },
+  "action": "LOGIN",
+  "module": "AUTH",
+  "description": "เข้าสู่ระบบสำเร็จ: พนักงาน Administrator (แอดมิน)",
+  "target_id": "69f5a15ce0775d4f2c85bc09",
+  "reference_no": null,
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-05-21T09:11:50.025Z"
+  },
+  "updatedAt": {
+    "$date": "2026-05-21T09:11:50.025Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a11234c88bcd9585c3d924c"
+  },
+  "action": "LOGIN",
+  "module": "AUTH",
+  "description": "เข้าสู่ระบบสำเร็จ: พนักงาน Administrator (แอดมิน)",
+  "target_id": "69f5a15ce0775d4f2c85bc09",
+  "reference_no": null,
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-05-23T03:47:24.982Z"
+  },
+  "updatedAt": {
+    "$date": "2026-05-23T03:47:24.982Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a113281861c92bcb8735a8c"
+  },
+  "action": "LOGIN",
+  "module": "AUTH",
+  "description": "เข้าสู่ระบบสำเร็จ: พนักงาน พนักงานจัดซื้อ (พนักงานจัดซื้อ)",
+  "target_id": "6a0aadcebf470acf73eadd9f",
+  "reference_no": null,
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "6a0aadcebf470acf73eadd9f"
+  },
+  "user_name": "พนักงานจัดซื้อ",
+  "createdAt": {
+    "$date": "2026-05-23T04:52:17.227Z"
+  },
+  "updatedAt": {
+    "$date": "2026-05-23T04:52:17.227Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a11328e861c92bcb8735a90"
+  },
+  "action": "LOGIN",
+  "module": "AUTH",
+  "description": "เข้าสู่ระบบสำเร็จ: พนักงาน พนักงานสต็อก (พนักงานสต็อก)",
+  "target_id": "69fc644470cdbc19c0ac1ea0",
+  "reference_no": null,
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69fc644470cdbc19c0ac1ea0"
+  },
+  "user_name": "พนักงานสต็อก",
+  "createdAt": {
+    "$date": "2026-05-23T04:52:30.402Z"
+  },
+  "updatedAt": {
+    "$date": "2026-05-23T04:52:30.402Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a115763861c92bcb8735aa1"
+  },
+  "action": "LOGIN",
+  "module": "AUTH",
+  "description": "เข้าสู่ระบบสำเร็จ: พนักงาน Administrator (แอดมิน)",
+  "target_id": "69f5a15ce0775d4f2c85bc09",
+  "reference_no": null,
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-05-23T07:29:39.401Z"
+  },
+  "updatedAt": {
+    "$date": "2026-05-23T07:29:39.401Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a115773861c92bcb8735aa6"
+  },
+  "action": "LOGIN",
+  "module": "AUTH",
+  "description": "เข้าสู่ระบบสำเร็จ: พนักงาน พนักงานขาย-สาขายะลา (พนักงานขาย)",
+  "target_id": "69f85a505d8176293321cd44",
+  "reference_no": null,
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f85a505d8176293321cd44"
+  },
+  "user_name": "พนักงานขาย-สาขายะลา",
+  "createdAt": {
+    "$date": "2026-05-23T07:29:55.815Z"
+  },
+  "updatedAt": {
+    "$date": "2026-05-23T07:29:55.815Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a11579d861c92bcb8735aad"
+  },
+  "action": "LOGIN",
+  "module": "AUTH",
+  "description": "เข้าสู่ระบบสำเร็จ: พนักงาน Administrator (แอดมิน)",
+  "target_id": "69f5a15ce0775d4f2c85bc09",
+  "reference_no": null,
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-05-23T07:30:37.864Z"
+  },
+  "updatedAt": {
+    "$date": "2026-05-23T07:30:37.864Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a13c2f6bab242c03967ac57"
+  },
+  "action": "LOGIN",
+  "module": "AUTH",
+  "description": "เข้าสู่ระบบสำเร็จ: พนักงาน Administrator (แอดมิน)",
+  "target_id": "69f5a15ce0775d4f2c85bc09",
+  "reference_no": null,
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-05-25T03:33:10.431Z"
+  },
+  "updatedAt": {
+    "$date": "2026-05-25T03:33:10.431Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a13c30ebab242c03967ac5b"
+  },
+  "action": "LOGIN",
+  "module": "AUTH",
+  "description": "เข้าสู่ระบบสำเร็จ: พนักงาน พนักงานขาย-สาขายะลา (พนักงานขาย)",
+  "target_id": "69f85a505d8176293321cd44",
+  "reference_no": null,
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f85a505d8176293321cd44"
+  },
+  "user_name": "พนักงานขาย-สาขายะลา",
+  "createdAt": {
+    "$date": "2026-05-25T03:33:34.612Z"
+  },
+  "updatedAt": {
+    "$date": "2026-05-25T03:33:34.612Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a13c332bab242c03967ac65"
+  },
+  "action": "CREATE",
+  "module": "POS",
+  "description": "ทำรายการขายสำเร็จ เลขที่ใบเสร็จ INV-20260525-T82T4 ยอดรวม ฿17000",
+  "target_id": "6a13c332bab242c03967ac63",
+  "reference_no": "INV-20260525-T82T4",
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f85a505d8176293321cd44"
+  },
+  "user_name": "พนักงานขาย-สาขายะลา",
+  "createdAt": {
+    "$date": "2026-05-25T03:34:10.352Z"
+  },
+  "updatedAt": {
+    "$date": "2026-05-25T03:34:10.352Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a13c354bab242c03967ac6e"
+  },
+  "action": "LOGIN",
+  "module": "AUTH",
+  "description": "เข้าสู่ระบบสำเร็จ: พนักงาน Administrator (แอดมิน)",
+  "target_id": "69f5a15ce0775d4f2c85bc09",
+  "reference_no": null,
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-05-25T03:34:44.351Z"
+  },
+  "updatedAt": {
+    "$date": "2026-05-25T03:34:44.351Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a13c812bab242c03967ac7a"
+  },
+  "action": "LOGIN",
+  "module": "AUTH",
+  "description": "เข้าสู่ระบบสำเร็จ: พนักงาน พนักงานจัดซื้อ (พนักงานจัดซื้อ)",
+  "target_id": "6a0aadcebf470acf73eadd9f",
+  "reference_no": null,
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "6a0aadcebf470acf73eadd9f"
+  },
+  "user_name": "พนักงานจัดซื้อ",
+  "createdAt": {
+    "$date": "2026-05-25T03:54:58.781Z"
+  },
+  "updatedAt": {
+    "$date": "2026-05-25T03:54:58.781Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a13c84dbab242c03967ac7f"
+  },
+  "action": "CREATE",
+  "module": "PO",
+  "description": "สร้างใบสั่งซื้อใหม่ เลขที่ PO-20260525-0001 สำหรับซัพพลายเออร์ SYSNEX",
+  "target_id": "6a13c84dbab242c03967ac7d",
+  "reference_no": "PO-20260525-0001",
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "6a0aadcebf470acf73eadd9f"
+  },
+  "user_name": "พนักงานจัดซื้อ",
+  "createdAt": {
+    "$date": "2026-05-25T03:55:57.966Z"
+  },
+  "updatedAt": {
+    "$date": "2026-05-25T03:55:57.966Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a13c863bab242c03967ac84"
+  },
+  "action": "LOGIN",
+  "module": "AUTH",
+  "description": "เข้าสู่ระบบสำเร็จ: พนักงาน Administrator (แอดมิน)",
+  "target_id": "69f5a15ce0775d4f2c85bc09",
+  "reference_no": null,
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-05-25T03:56:19.675Z"
+  },
+  "updatedAt": {
+    "$date": "2026-05-25T03:56:19.675Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a13c8bdbab242c03967ac8a"
+  },
+  "action": "UPDATE",
+  "module": "PO",
+  "description": "แจ้งของถึงสาขาสำเร็จพร้อมระบุ IMEI ใบสั่งซื้อ เลขที่ PO-20260525-0001",
+  "target_id": "6a13c84dbab242c03967ac7d",
+  "reference_no": "PO-20260525-0001",
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-05-25T03:57:49.576Z"
+  },
+  "updatedAt": {
+    "$date": "2026-05-25T03:57:49.576Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a13c8ccbab242c03967ac8f"
+  },
+  "action": "LOGIN",
+  "module": "AUTH",
+  "description": "เข้าสู่ระบบสำเร็จ: พนักงาน พนักงานสต็อก (พนักงานสต็อก)",
+  "target_id": "69fc644470cdbc19c0ac1ea0",
+  "reference_no": null,
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69fc644470cdbc19c0ac1ea0"
+  },
+  "user_name": "พนักงานสต็อก",
+  "createdAt": {
+    "$date": "2026-05-25T03:58:04.738Z"
+  },
+  "updatedAt": {
+    "$date": "2026-05-25T03:58:04.738Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a13c9d7bab242c03967acb8"
+  },
+  "action": "APPROVE",
+  "module": "PO",
+  "description": "อนุมัตินำเข้าและตรวจรับสต็อกสินค้าสำเร็จ ใบสั่งซื้อ เลขที่ PO-20260525-0001",
+  "target_id": "6a13c84dbab242c03967ac7d",
+  "reference_no": "PO-20260525-0001",
+  "details": null,
+  "ip_address": null,
+  "user_id": {
+    "$oid": "69fc644470cdbc19c0ac1ea0"
+  },
+  "user_name": "พนักงานสต็อก",
+  "createdAt": {
+    "$date": "2026-05-25T04:02:31.525Z"
+  },
+  "updatedAt": {
+    "$date": "2026-05-25T04:02:31.525Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a13ca30bab242c03967acff"
+  },
+  "action": "CREATE",
+  "module": "STOCK",
+  "description": "รับเข้าสต็อกสินค้าใหม่: Case 11 (CASE-11) (รหัสสินค้า: 123) จำนวน 50",
+  "target_id": "6a13ca30bab242c03967acfd",
+  "reference_no": "123",
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69fc644470cdbc19c0ac1ea0"
+  },
+  "user_name": "พนักงานสต็อก",
+  "createdAt": {
+    "$date": "2026-05-25T04:04:00.720Z"
+  },
+  "updatedAt": {
+    "$date": "2026-05-25T04:04:00.720Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a13cac6bab242c03967ad7d"
+  },
+  "action": "CREATE",
+  "module": "POS",
+  "description": "ทำรายการขายสำเร็จ เลขที่ใบเสร็จ INV-20260525-NQPJA ยอดรวม ฿13000",
+  "target_id": "6a13cac6bab242c03967ad7b",
+  "reference_no": "INV-20260525-NQPJA",
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69fc644470cdbc19c0ac1ea0"
+  },
+  "user_name": "พนักงานสต็อก",
+  "createdAt": {
+    "$date": "2026-05-25T04:06:30.688Z"
+  },
+  "updatedAt": {
+    "$date": "2026-05-25T04:06:30.688Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a13dd65f4b9effe7065da1f"
+  },
+  "action": "LOGIN",
+  "module": "AUTH",
+  "description": "เข้าสู่ระบบสำเร็จ: พนักงาน Administrator (แอดมิน)",
+  "target_id": "69f5a15ce0775d4f2c85bc09",
+  "reference_no": null,
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-05-25T05:25:57.314Z"
+  },
+  "updatedAt": {
+    "$date": "2026-05-25T05:25:57.314Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a13de31f4b9effe7065da55"
+  },
+  "action": "CREATE",
+  "module": "STOCK",
+  "description": "รับเข้าสต็อกสินค้าใหม่: Case 11 (CASE-11) (รหัสสินค้า: 984498984) จำนวน 30",
+  "target_id": "6a13de31f4b9effe7065da53",
+  "reference_no": "984498984",
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-05-25T05:29:21.518Z"
+  },
+  "updatedAt": {
+    "$date": "2026-05-25T05:29:21.518Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a13e22a26dde1cd157efe16"
+  },
+  "action": "CREATE",
+  "module": "STOCK",
+  "description": "รับเข้าสต็อกสินค้าใหม่: Case 11 (CASE-11) (รหัสสินค้า: CASE-11) จำนวน 10",
+  "target_id": "6a13e22a26dde1cd157efe14",
+  "reference_no": "CASE-11",
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-05-25T05:46:18.792Z"
+  },
+  "updatedAt": {
+    "$date": "2026-05-25T05:46:18.792Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a13e24b26dde1cd157efe1a"
+  },
+  "action": "CREATE",
+  "module": "STOCK",
+  "description": "รับเข้าสต็อกสินค้าใหม่: Case 11 (CASE-11) (รหัสสินค้า: CASE-11) จำนวน 100",
+  "target_id": "6a13e22a26dde1cd157efe14",
+  "reference_no": "CASE-11",
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-05-25T05:46:51.963Z"
+  },
+  "updatedAt": {
+    "$date": "2026-05-25T05:46:51.963Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a13e27d26dde1cd157efe1f"
+  },
+  "action": "CREATE",
+  "module": "STOCK",
+  "description": "รับเข้าสต็อกสินค้าใหม่: Case 11 (CASE-11) (รหัสสินค้า: CASE-11) จำนวน 5",
+  "target_id": "6a13e22a26dde1cd157efe14",
+  "reference_no": "CASE-11",
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-05-25T05:47:41.827Z"
+  },
+  "updatedAt": {
+    "$date": "2026-05-25T05:47:41.827Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a13e36e26dde1cd157efe25"
+  },
+  "action": "CREATE",
+  "module": "STOCK",
+  "description": "รับเข้าสต็อกสินค้าใหม่: Case 11 (CASE-11) (รหัสสินค้า: CASE-11) จำนวน 5",
+  "target_id": "6a13e22a26dde1cd157efe14",
+  "reference_no": "CASE-11",
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-05-25T05:51:42.618Z"
+  },
+  "updatedAt": {
+    "$date": "2026-05-25T05:51:42.618Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a13e39026dde1cd157efe2b"
+  },
+  "action": "CREATE",
+  "module": "STOCK",
+  "description": "รับเข้าสต็อกสินค้าใหม่: Case 11 (CASE-11) (รหัสสินค้า: CASE-11) จำนวน 5",
+  "target_id": "6a13e22a26dde1cd157efe14",
+  "reference_no": "CASE-11",
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-05-25T05:52:16.408Z"
+  },
+  "updatedAt": {
+    "$date": "2026-05-25T05:52:16.408Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a13e72426dde1cd157efe37"
+  },
+  "action": "CREATE",
+  "module": "STOCK",
+  "description": "รับเข้าสต็อกสินค้าใหม่: Case 11 (CASE-11) (รหัสสินค้า: CASE-11) จำนวน 5",
+  "target_id": "6a13e22a26dde1cd157efe14",
+  "reference_no": "CASE-11",
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-05-25T06:07:32.067Z"
+  },
+  "updatedAt": {
+    "$date": "2026-05-25T06:07:32.067Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a13e925e03164ee52091a1b"
+  },
+  "action": "CREATE",
+  "module": "STOCK",
+  "description": "รับเข้าสต็อกสินค้าใหม่: Case 11 (CASE-11) (รหัสสินค้า: CASE-11) จำนวน 5",
+  "target_id": "6a13e925e03164ee52091a19",
+  "reference_no": "CASE-11",
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-05-25T06:16:05.612Z"
+  },
+  "updatedAt": {
+    "$date": "2026-05-25T06:16:05.612Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a13e9b0e03164ee52091a25"
+  },
+  "action": "CREATE",
+  "module": "STOCK",
+  "description": "รับเข้าสต็อกสินค้าใหม่: Case 11 (CASE-11) (รหัสสินค้า: CASE-11) จำนวน 5",
+  "target_id": "6a13e9b0e03164ee52091a23",
+  "reference_no": "CASE-11",
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-05-25T06:18:24.814Z"
+  },
+  "updatedAt": {
+    "$date": "2026-05-25T06:18:24.814Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a1423e8c369f8898256a96a"
+  },
+  "action": "CREATE",
+  "module": "STOCK",
+  "description": "รับเข้าสต็อกสินค้าใหม่: IPhone 11 (รหัสสินค้า: SC7QNK44DRW) จำนวน 1",
+  "target_id": "6a1423e8c369f8898256a968",
+  "reference_no": "SC7QNK44DRW",
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-05-25T10:26:48.859Z"
+  },
+  "updatedAt": {
+    "$date": "2026-05-25T10:26:48.859Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a142435c369f8898256a97e"
+  },
+  "action": "UPDATE",
+  "module": "STOCK",
+  "description": "แก้ไขข้อมูล/ปรับสต็อกสินค้า: IPhone 11 (รหัสสินค้า: SC7QNK44DRW)",
+  "target_id": "6a1423e8c369f8898256a968",
+  "reference_no": "SC7QNK44DRW",
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-05-25T10:28:05.759Z"
+  },
+  "updatedAt": {
+    "$date": "2026-05-25T10:28:05.759Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a14243ec369f8898256a986"
+  },
+  "action": "LOGIN",
+  "module": "AUTH",
+  "description": "เข้าสู่ระบบสำเร็จ: พนักงาน พนักงานขาย-สาขายะลา (พนักงานขาย)",
+  "target_id": "69f85a505d8176293321cd44",
+  "reference_no": null,
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f85a505d8176293321cd44"
+  },
+  "user_name": "พนักงานขาย-สาขายะลา",
+  "createdAt": {
+    "$date": "2026-05-25T10:28:14.937Z"
+  },
+  "updatedAt": {
+    "$date": "2026-05-25T10:28:14.937Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a142466c369f8898256a998"
+  },
+  "action": "CREATE",
+  "module": "POS",
+  "description": "ทำรายการขายสำเร็จ เลขที่ใบเสร็จ INV-20260525-RM7LC ยอดรวม ฿18600",
+  "target_id": "6a142466c369f8898256a996",
+  "reference_no": "INV-20260525-RM7LC",
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f85a505d8176293321cd44"
+  },
+  "user_name": "พนักงานขาย-สาขายะลา",
+  "createdAt": {
+    "$date": "2026-05-25T10:28:54.776Z"
+  },
+  "updatedAt": {
+    "$date": "2026-05-25T10:28:54.776Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a14258ac369f8898256a9b7"
+  },
+  "action": "LOGIN",
+  "module": "AUTH",
+  "description": "เข้าสู่ระบบสำเร็จ: พนักงาน Administrator (แอดมิน)",
+  "target_id": "69f5a15ce0775d4f2c85bc09",
+  "reference_no": null,
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-05-25T10:33:46.454Z"
+  },
+  "updatedAt": {
+    "$date": "2026-05-25T10:33:46.454Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a1425b4c369f8898256a9e0"
+  },
+  "action": "CREATE",
+  "module": "STOCK",
+  "description": "รับเข้าสต็อกสินค้าใหม่: IPhone 11 (รหัสสินค้า: SF72DQVPWMY) จำนวน 1",
+  "target_id": "6a1425b4c369f8898256a9de",
+  "reference_no": "SF72DQVPWMY",
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-05-25T10:34:28.755Z"
+  },
+  "updatedAt": {
+    "$date": "2026-05-25T10:34:28.755Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a1425ddc369f8898256a9f4"
+  },
+  "action": "CREATE",
+  "module": "POS",
+  "description": "ทำรายการขายสำเร็จ เลขที่ใบเสร็จ INV-20260525-AE1A0 ยอดรวม ฿15600",
+  "target_id": "6a1425ddc369f8898256a9f2",
+  "reference_no": "INV-20260525-AE1A0",
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-05-25T10:35:09.295Z"
+  },
+  "updatedAt": {
+    "$date": "2026-05-25T10:35:09.295Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a15132aa72e3a5f896a7b43"
+  },
+  "action": "CREATE",
+  "module": "PO",
+  "description": "สร้างใบสั่งซื้อใหม่ เลขที่ PO-20260526-0001 สำหรับซัพพลายเออร์ SYSNEX",
+  "target_id": "6a15132aa72e3a5f896a7b41",
+  "reference_no": "PO-20260526-0001",
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-05-26T03:27:38.770Z"
+  },
+  "updatedAt": {
+    "$date": "2026-05-26T03:27:38.770Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a1516ef1c1290e3a03f5ddb"
+  },
+  "action": "UPDATE",
+  "module": "PO",
+  "description": "แจ้งของถึงสาขาสำเร็จพร้อมระบุ IMEI ใบสั่งซื้อ เลขที่ PO-20260526-0001",
+  "target_id": "6a15132aa72e3a5f896a7b41",
+  "reference_no": "PO-20260526-0001",
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-05-26T03:43:43.736Z"
+  },
+  "updatedAt": {
+    "$date": "2026-05-26T03:43:43.736Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a151c79d8a173294356b1f4"
+  },
+  "action": "UPDATE",
+  "module": "PO",
+  "description": "แจ้งของถึงสาขาสำเร็จพร้อมระบุ IMEI ใบสั่งซื้อ เลขที่ PO-20260526-0001",
+  "target_id": "6a15132aa72e3a5f896a7b41",
+  "reference_no": "PO-20260526-0001",
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-05-26T04:07:21.795Z"
+  },
+  "updatedAt": {
+    "$date": "2026-05-26T04:07:21.795Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a151c9bd8a173294356b1fa"
+  },
+  "action": "UPDATE",
+  "module": "PO",
+  "description": "แจ้งของถึงสาขาสำเร็จพร้อมระบุ IMEI ใบสั่งซื้อ เลขที่ PO-20260526-0001",
+  "target_id": "6a15132aa72e3a5f896a7b41",
+  "reference_no": "PO-20260526-0001",
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-05-26T04:07:55.219Z"
+  },
+  "updatedAt": {
+    "$date": "2026-05-26T04:07:55.219Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a151cb2d8a173294356b212"
+  },
+  "action": "APPROVE",
+  "module": "PO",
+  "description": "อนุมัตินำเข้าและตรวจรับสต็อกสินค้าสำเร็จ ใบสั่งซื้อ เลขที่ PO-20260526-0001",
+  "target_id": "6a15132aa72e3a5f896a7b41",
+  "reference_no": "PO-20260526-0001",
+  "details": null,
+  "ip_address": null,
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-05-26T04:08:18.742Z"
+  },
+  "updatedAt": {
+    "$date": "2026-05-26T04:08:18.742Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a15912801ae4170886be961"
+  },
+  "action": "LOGIN",
+  "module": "AUTH",
+  "description": "เข้าสู่ระบบสำเร็จ: พนักงาน Administrator (แอดมิน)",
+  "target_id": "69f5a15ce0775d4f2c85bc09",
+  "reference_no": null,
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-05-26T12:25:12.652Z"
+  },
+  "updatedAt": {
+    "$date": "2026-05-26T12:25:12.652Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a1d16f8bd83e3f947e59a12"
+  },
+  "action": "LOGIN",
+  "module": "AUTH",
+  "description": "เข้าสู่ระบบสำเร็จ: พนักงาน Administrator (แอดมิน)",
+  "target_id": "69f5a15ce0775d4f2c85bc09",
+  "reference_no": null,
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-01T05:22:00.674Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-01T05:22:00.674Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a1d1ab3708e6a6a4c4de951"
+  },
+  "action": "LOGIN",
+  "module": "AUTH",
+  "description": "เข้าสู่ระบบสำเร็จ: พนักงาน Administrator (แอดมิน)",
+  "target_id": "69f5a15ce0775d4f2c85bc09",
+  "reference_no": null,
+  "details": null,
+  "ip_address": "171.7.231.134, 172.70.142.189, 10.26.55.3",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-01T05:37:55.061Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-01T05:37:55.061Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a1d1ab4708e6a6a4c4de952"
+  },
+  "action": "LOGIN",
+  "module": "AUTH",
+  "description": "เข้าสู่ระบบสำเร็จ: พนักงาน Administrator (แอดมิน)",
+  "target_id": "69f5a15ce0775d4f2c85bc09",
+  "reference_no": null,
+  "details": null,
+  "ip_address": "171.7.231.134, 172.68.4.143, 10.26.55.3",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-01T05:37:56.056Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-01T05:37:56.056Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a1e5181ecb2de29da503e9d"
+  },
+  "action": "UPDATE",
+  "module": "ACCOUNTING",
+  "description": "ชำระเงินค่าสินค้าสำเร็จสำหรับใบสั่งซื้อ เลขที่ PO-20260526-0001 ยอดรวม ฿75000",
+  "target_id": "6a15132aa72e3a5f896a7b41",
+  "reference_no": "PO-20260526-0001",
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-02T03:44:01.451Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-02T03:44:01.451Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a1e54e3de645a29ee0dd831"
+  },
+  "action": "LOGIN",
+  "module": "AUTH",
+  "description": "เข้าสู่ระบบสำเร็จ: พนักงาน พนักงานจัดซื้อ (พนักงานจัดซื้อ)",
+  "target_id": "6a0aadcebf470acf73eadd9f",
+  "reference_no": null,
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "6a0aadcebf470acf73eadd9f"
+  },
+  "user_name": "พนักงานจัดซื้อ",
+  "createdAt": {
+    "$date": "2026-06-02T03:58:27.324Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-02T03:58:27.324Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a1e54f2de645a29ee0dd832"
+  },
+  "action": "LOGIN",
+  "module": "AUTH",
+  "description": "เข้าสู่ระบบสำเร็จ: พนักงาน Administrator (แอดมิน)",
+  "target_id": "69f5a15ce0775d4f2c85bc09",
+  "reference_no": null,
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-02T03:58:42.435Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-02T03:58:42.435Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a1e55c4d9857cdf0eb60b91"
+  },
+  "action": "CREATE",
+  "module": "ROLE",
+  "description": "สร้างระดับสิทธิ์/ตำแหน่งใหม่: พนักงานบัญชี",
+  "target_id": "6a1e55c4d9857cdf0eb60b90",
+  "reference_no": null,
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-02T04:02:12.605Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-02T04:02:12.605Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a1e55fdd9857cdf0eb60b93"
+  },
+  "action": "CREATE",
+  "module": "PERSONNEL",
+  "description": "เพิ่มพนักงานใหม่: พนักงานบัญชี (รหัสพนักงาน: accounter, บทบาท: พนักงานบัญชี)",
+  "target_id": "6a1e55fdd9857cdf0eb60b92",
+  "reference_no": "accounter",
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-02T04:03:09.705Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-02T04:03:09.705Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a1e5603d9857cdf0eb60b94"
+  },
+  "action": "LOGIN",
+  "module": "AUTH",
+  "description": "เข้าสู่ระบบสำเร็จ: พนักงาน พนักงานบัญชี (พนักงานบัญชี)",
+  "target_id": "6a1e55fdd9857cdf0eb60b92",
+  "reference_no": null,
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "6a1e55fdd9857cdf0eb60b92"
+  },
+  "user_name": "พนักงานบัญชี",
+  "createdAt": {
+    "$date": "2026-06-02T04:03:15.251Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-02T04:03:15.251Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a1e5690d9857cdf0eb60b95"
+  },
+  "action": "LOGIN",
+  "module": "AUTH",
+  "description": "เข้าสู่ระบบสำเร็จ: พนักงาน พนักงานจัดซื้อ (พนักงานจัดซื้อ)",
+  "target_id": "6a0aadcebf470acf73eadd9f",
+  "reference_no": null,
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "6a0aadcebf470acf73eadd9f"
+  },
+  "user_name": "พนักงานจัดซื้อ",
+  "createdAt": {
+    "$date": "2026-06-02T04:05:36.558Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-02T04:05:36.558Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a1e56c8d9857cdf0eb60b98"
+  },
+  "action": "CREATE",
+  "module": "PO",
+  "description": "สร้างใบสั่งซื้อใหม่ เลขที่ PO-20260602-0001 สำหรับซัพพลายเออร์ SYSNEX",
+  "target_id": "6a1e56c8d9857cdf0eb60b96",
+  "reference_no": "PO-20260602-0001",
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "6a0aadcebf470acf73eadd9f"
+  },
+  "user_name": "พนักงานจัดซื้อ",
+  "createdAt": {
+    "$date": "2026-06-02T04:06:32.170Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-02T04:06:32.170Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a1e56d3d9857cdf0eb60b9b"
+  },
+  "action": "LOGIN",
+  "module": "AUTH",
+  "description": "เข้าสู่ระบบสำเร็จ: พนักงาน พนักงานบัญชี (พนักงานบัญชี)",
+  "target_id": "6a1e55fdd9857cdf0eb60b92",
+  "reference_no": null,
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "6a1e55fdd9857cdf0eb60b92"
+  },
+  "user_name": "พนักงานบัญชี",
+  "createdAt": {
+    "$date": "2026-06-02T04:06:43.976Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-02T04:06:43.976Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a1e56ecd9857cdf0eb60ba5"
+  },
+  "action": "LOGIN",
+  "module": "AUTH",
+  "description": "เข้าสู่ระบบสำเร็จ: พนักงาน พนักงานสต็อก (พนักงานสต็อก)",
+  "target_id": "69fc644470cdbc19c0ac1ea0",
+  "reference_no": null,
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69fc644470cdbc19c0ac1ea0"
+  },
+  "user_name": "พนักงานสต็อก",
+  "createdAt": {
+    "$date": "2026-06-02T04:07:08.427Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-02T04:07:08.427Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a1e5719d9857cdf0eb60ba8"
+  },
+  "action": "UPDATE",
+  "module": "PO",
+  "description": "แจ้งของถึงสาขาสำเร็จพร้อมระบุ IMEI ใบสั่งซื้อ เลขที่ PO-20260602-0001",
+  "target_id": "6a1e56c8d9857cdf0eb60b96",
+  "reference_no": "PO-20260602-0001",
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69fc644470cdbc19c0ac1ea0"
+  },
+  "user_name": "พนักงานสต็อก",
+  "createdAt": {
+    "$date": "2026-06-02T04:07:53.509Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-02T04:07:53.509Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a1e572ed9857cdf0eb60bc1"
+  },
+  "action": "APPROVE",
+  "module": "PO",
+  "description": "อนุมัตินำเข้าและตรวจรับสต็อกสินค้าสำเร็จ ใบสั่งซื้อ เลขที่ PO-20260602-0001",
+  "target_id": "6a1e56c8d9857cdf0eb60b96",
+  "reference_no": "PO-20260602-0001",
+  "details": null,
+  "ip_address": null,
+  "user_id": {
+    "$oid": "69fc644470cdbc19c0ac1ea0"
+  },
+  "user_name": "พนักงานสต็อก",
+  "createdAt": {
+    "$date": "2026-06-02T04:08:14.634Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-02T04:08:14.634Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a1e573bd9857cdf0eb60bcd"
+  },
+  "action": "LOGIN",
+  "module": "AUTH",
+  "description": "เข้าสู่ระบบสำเร็จ: พนักงาน พนักงานบัญชี (พนักงานบัญชี)",
+  "target_id": "6a1e55fdd9857cdf0eb60b92",
+  "reference_no": null,
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "6a1e55fdd9857cdf0eb60b92"
+  },
+  "user_name": "พนักงานบัญชี",
+  "createdAt": {
+    "$date": "2026-06-02T04:08:27.154Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-02T04:08:27.154Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a1e5754d9857cdf0eb60bdc"
+  },
+  "action": "UPDATE",
+  "module": "ACCOUNTING",
+  "description": "ชำระเงินค่าสินค้าสำเร็จสำหรับใบสั่งซื้อ เลขที่ PO-20260602-0001 ยอดรวม ฿150000",
+  "target_id": "6a1e56c8d9857cdf0eb60b96",
+  "reference_no": "PO-20260602-0001",
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "6a1e55fdd9857cdf0eb60b92"
+  },
+  "user_name": "พนักงานบัญชี",
+  "createdAt": {
+    "$date": "2026-06-02T04:08:52.991Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-02T04:08:52.991Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a1e575fd9857cdf0eb60bdf"
+  },
+  "action": "LOGIN",
+  "module": "AUTH",
+  "description": "เข้าสู่ระบบสำเร็จ: พนักงาน พนักงานขาย-สาขายะลา (พนักงานขาย)",
+  "target_id": "69f85a505d8176293321cd44",
+  "reference_no": null,
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f85a505d8176293321cd44"
+  },
+  "user_name": "พนักงานขาย-สาขายะลา",
+  "createdAt": {
+    "$date": "2026-06-02T04:09:03.324Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-02T04:09:03.324Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a1e5768d9857cdf0eb60be5"
+  },
+  "action": "LOGIN",
+  "module": "AUTH",
+  "description": "เข้าสู่ระบบสำเร็จ: พนักงาน Administrator (แอดมิน)",
+  "target_id": "69f5a15ce0775d4f2c85bc09",
+  "reference_no": null,
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-02T04:09:12.313Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-02T04:09:12.313Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a1e57a0d9857cdf0eb60bf9"
+  },
+  "action": "CREATE",
+  "module": "POS",
+  "description": "ทำรายการขายสำเร็จ เลขที่ใบเสร็จ INV-20260602-67DYA ยอดรวม ฿35600",
+  "target_id": "6a1e57a0d9857cdf0eb60bf7",
+  "reference_no": "INV-20260602-67DYA",
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-02T04:10:08.611Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-02T04:10:08.611Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a1e6033af0af35cb79163f2"
+  },
+  "action": "CREATE",
+  "module": "POS",
+  "description": "ทำรายการขายสำเร็จ เลขที่ใบเสร็จ INV-20260602-9MX5Z ยอดรวม ฿36600",
+  "target_id": "6a1e6033af0af35cb79163ee",
+  "reference_no": "INV-20260602-9MX5Z",
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-02T04:46:43.294Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-02T04:46:43.294Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a1e6075af0af35cb7916404"
+  },
+  "action": "UPDATE",
+  "module": "ACCOUNTING",
+  "description": "ปรับสถานะรายการลูกหนี้จัดไฟแนนซ์เป็น ชำระแล้ว ยอดเงิน ฿31000",
+  "target_id": "6a1e6033af0af35cb79163f1",
+  "reference_no": "INV-20260602-9MX5Z",
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-02T04:47:49.480Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-02T04:47:49.480Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a1e61733fedea9bcca5e91a"
+  },
+  "action": "LOGIN",
+  "module": "AUTH",
+  "description": "เข้าสู่ระบบสำเร็จ: พนักงาน พนักงานจัดซื้อ (พนักงานจัดซื้อ)",
+  "target_id": "6a0aadcebf470acf73eadd9f",
+  "reference_no": null,
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "6a0aadcebf470acf73eadd9f"
+  },
+  "user_name": "พนักงานจัดซื้อ",
+  "createdAt": {
+    "$date": "2026-06-02T04:52:03.736Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-02T04:52:03.736Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a1e61d13fedea9bcca5e91d"
+  },
+  "action": "CREATE",
+  "module": "PO",
+  "description": "สร้างใบสั่งซื้อใหม่ เลขที่ PO-20260602-0001 สำหรับซัพพลายเออร์ SYSNEX",
+  "target_id": "6a1e61d13fedea9bcca5e91b",
+  "reference_no": "PO-20260602-0001",
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "6a0aadcebf470acf73eadd9f"
+  },
+  "user_name": "พนักงานจัดซื้อ",
+  "createdAt": {
+    "$date": "2026-06-02T04:53:37.424Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-02T04:53:37.424Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a1e61e13fedea9bcca5e922"
+  },
+  "action": "UPDATE",
+  "module": "PO",
+  "description": "แก้ไขใบสั่งซื้อ เลขที่ PO-20260602-0001 ซัพพลายเออร์ SYSNEX",
+  "target_id": "6a1e61d13fedea9bcca5e91b",
+  "reference_no": "PO-20260602-0001",
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "6a0aadcebf470acf73eadd9f"
+  },
+  "user_name": "พนักงานจัดซื้อ",
+  "createdAt": {
+    "$date": "2026-06-02T04:53:53.031Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-02T04:53:53.031Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a1e61f53fedea9bcca5e926"
+  },
+  "action": "LOGIN",
+  "module": "AUTH",
+  "description": "เข้าสู่ระบบสำเร็จ: พนักงาน พนักงานขาย-สาขายะลา (พนักงานขาย)",
+  "target_id": "69f85a505d8176293321cd44",
+  "reference_no": null,
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f85a505d8176293321cd44"
+  },
+  "user_name": "พนักงานขาย-สาขายะลา",
+  "createdAt": {
+    "$date": "2026-06-02T04:54:13.117Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-02T04:54:13.117Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a1e62063fedea9bcca5e929"
+  },
+  "action": "UPDATE",
+  "module": "PO",
+  "description": "แจ้งของถึงสาขาสำเร็จพร้อมระบุ IMEI ใบสั่งซื้อ เลขที่ PO-20260602-0001",
+  "target_id": "6a1e61d13fedea9bcca5e91b",
+  "reference_no": "PO-20260602-0001",
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f85a505d8176293321cd44"
+  },
+  "user_name": "พนักงานขาย-สาขายะลา",
+  "createdAt": {
+    "$date": "2026-06-02T04:54:30.466Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-02T04:54:30.466Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a1e62143fedea9bcca5e92c"
+  },
+  "action": "LOGIN",
+  "module": "AUTH",
+  "description": "เข้าสู่ระบบสำเร็จ: พนักงาน พนักงานสต็อก (พนักงานสต็อก)",
+  "target_id": "69fc644470cdbc19c0ac1ea0",
+  "reference_no": null,
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69fc644470cdbc19c0ac1ea0"
+  },
+  "user_name": "พนักงานสต็อก",
+  "createdAt": {
+    "$date": "2026-06-02T04:54:44.928Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-02T04:54:44.928Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a1e62213fedea9bcca5e936"
+  },
+  "action": "APPROVE",
+  "module": "PO",
+  "description": "อนุมัตินำเข้าและตรวจรับสต็อกสินค้าสำเร็จ ใบสั่งซื้อ เลขที่ PO-20260602-0001",
+  "target_id": "6a1e61d13fedea9bcca5e91b",
+  "reference_no": "PO-20260602-0001",
+  "details": null,
+  "ip_address": null,
+  "user_id": {
+    "$oid": "69fc644470cdbc19c0ac1ea0"
+  },
+  "user_name": "พนักงานสต็อก",
+  "createdAt": {
+    "$date": "2026-06-02T04:54:57.546Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-02T04:54:57.546Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a1e62283fedea9bcca5e93a"
+  },
+  "action": "LOGIN",
+  "module": "AUTH",
+  "description": "เข้าสู่ระบบสำเร็จ: พนักงาน พนักงานขาย-สาขายะลา (พนักงานขาย)",
+  "target_id": "69f85a505d8176293321cd44",
+  "reference_no": null,
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f85a505d8176293321cd44"
+  },
+  "user_name": "พนักงานขาย-สาขายะลา",
+  "createdAt": {
+    "$date": "2026-06-02T04:55:04.816Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-02T04:55:04.816Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a1e62573fedea9bcca5e946"
+  },
+  "action": "CREATE",
+  "module": "POS",
+  "description": "ทำรายการขายสำเร็จ เลขที่ใบเสร็จ INV-20260602-MF9IV ยอดรวม ฿32600",
+  "target_id": "6a1e62563fedea9bcca5e942",
+  "reference_no": "INV-20260602-MF9IV",
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f85a505d8176293321cd44"
+  },
+  "user_name": "พนักงานขาย-สาขายะลา",
+  "createdAt": {
+    "$date": "2026-06-02T04:55:51.181Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-02T04:55:51.181Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a1e62a23fedea9bcca5e948"
+  },
+  "action": "LOGIN",
+  "module": "AUTH",
+  "description": "เข้าสู่ระบบสำเร็จ: พนักงาน พนักงานบัญชี (พนักงานบัญชี)",
+  "target_id": "6a1e55fdd9857cdf0eb60b92",
+  "reference_no": null,
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "6a1e55fdd9857cdf0eb60b92"
+  },
+  "user_name": "พนักงานบัญชี",
+  "createdAt": {
+    "$date": "2026-06-02T04:57:06.127Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-02T04:57:06.127Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a1e62aa3fedea9bcca5e952"
+  },
+  "action": "UPDATE",
+  "module": "ACCOUNTING",
+  "description": "ชำระเงินค่าสินค้าสำเร็จสำหรับใบสั่งซื้อ เลขที่ PO-20260602-0001 ยอดรวม ฿28000",
+  "target_id": "6a1e61d13fedea9bcca5e91b",
+  "reference_no": "PO-20260602-0001",
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "6a1e55fdd9857cdf0eb60b92"
+  },
+  "user_name": "พนักงานบัญชี",
+  "createdAt": {
+    "$date": "2026-06-02T04:57:14.617Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-02T04:57:14.617Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a1e62bb3fedea9bcca5e958"
+  },
+  "action": "UPDATE",
+  "module": "ACCOUNTING",
+  "description": "ปรับสถานะรายการลูกหนี้จัดไฟแนนซ์เป็น ชำระแล้ว ยอดเงิน ฿29000",
+  "target_id": "6a1e62573fedea9bcca5e945",
+  "reference_no": "INV-20260602-MF9IV",
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "6a1e55fdd9857cdf0eb60b92"
+  },
+  "user_name": "พนักงานบัญชี",
+  "createdAt": {
+    "$date": "2026-06-02T04:57:31.942Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-02T04:57:31.942Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a1fa1f7ef758fe3d304e64d"
+  },
+  "action": "LOGIN",
+  "module": "AUTH",
+  "description": "เข้าสู่ระบบสำเร็จ: พนักงาน พนักงานจัดซื้อ (พนักงานจัดซื้อ)",
+  "target_id": "6a0aadcebf470acf73eadd9f",
+  "reference_no": null,
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "6a0aadcebf470acf73eadd9f"
+  },
+  "user_name": "พนักงานจัดซื้อ",
+  "createdAt": {
+    "$date": "2026-06-03T03:39:35.843Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-03T03:39:35.843Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a1fa21cef758fe3d304e653"
+  },
+  "action": "CREATE",
+  "module": "PO",
+  "description": "สร้างใบสั่งซื้อใหม่ เลขที่ PO-20260603-0001 สำหรับซัพพลายเออร์ SYSNEX",
+  "target_id": "6a1fa21cef758fe3d304e651",
+  "reference_no": "PO-20260603-0001",
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "6a0aadcebf470acf73eadd9f"
+  },
+  "user_name": "พนักงานจัดซื้อ",
+  "createdAt": {
+    "$date": "2026-06-03T03:40:12.639Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-03T03:40:12.639Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a1fa22cef758fe3d304e658"
+  },
+  "action": "LOGIN",
+  "module": "AUTH",
+  "description": "เข้าสู่ระบบสำเร็จ: พนักงาน Administrator (แอดมิน)",
+  "target_id": "69f5a15ce0775d4f2c85bc09",
+  "reference_no": null,
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-03T03:40:28.419Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-03T03:40:28.419Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a1fa25bef758fe3d304e664"
+  },
+  "action": "UPDATE",
+  "module": "PO",
+  "description": "แจ้งของถึงสาขาสำเร็จพร้อมระบุ IMEI ใบสั่งซื้อ เลขที่ PO-20260603-0001",
+  "target_id": "6a1fa21cef758fe3d304e651",
+  "reference_no": "PO-20260603-0001",
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-03T03:41:15.524Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-03T03:41:15.524Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a1fa268ef758fe3d304e676"
+  },
+  "action": "APPROVE",
+  "module": "PO",
+  "description": "อนุมัตินำเข้าและตรวจรับสต็อกสินค้าสำเร็จ ใบสั่งซื้อ เลขที่ PO-20260603-0001",
+  "target_id": "6a1fa21cef758fe3d304e651",
+  "reference_no": "PO-20260603-0001",
+  "details": null,
+  "ip_address": null,
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-03T03:41:28.800Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-03T03:41:28.800Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a1fa6ce837ff0a97c7ffb5c"
+  },
+  "action": "LOGIN",
+  "module": "AUTH",
+  "description": "เข้าสู่ระบบสำเร็จ: พนักงาน Administrator (แอดมิน)",
+  "target_id": "69f5a15ce0775d4f2c85bc09",
+  "reference_no": null,
+  "details": null,
+  "ip_address": "171.7.228.143, 172.68.4.143, 10.30.104.3",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-03T04:00:14.378Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-03T04:00:14.378Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a1fa76e9f7e97161b4c2f07"
+  },
+  "action": "LOGIN",
+  "module": "AUTH",
+  "description": "เข้าสู่ระบบสำเร็จ: พนักงาน พนักงานขาย-สาขาปัตตานี (พนักงานขาย)",
+  "target_id": "6a0bd77a21ae5b8e0f7624bf",
+  "reference_no": null,
+  "details": null,
+  "ip_address": "171.7.228.143, 172.68.4.143, 10.30.104.3",
+  "user_id": {
+    "$oid": "6a0bd77a21ae5b8e0f7624bf"
+  },
+  "user_name": "พนักงานขาย-สาขาปัตตานี",
+  "createdAt": {
+    "$date": "2026-06-03T04:02:54.424Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-03T04:02:54.424Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a1fa8959f7e97161b4c2f08"
+  },
+  "action": "LOGIN",
+  "module": "AUTH",
+  "description": "เข้าสู่ระบบสำเร็จ: พนักงาน Administrator (แอดมิน)",
+  "target_id": "69f5a15ce0775d4f2c85bc09",
+  "reference_no": null,
+  "details": null,
+  "ip_address": "171.7.228.143, 104.22.66.163, 10.30.39.131",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-03T04:07:49.925Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-03T04:07:49.925Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a1faac19f7e97161b4c2f15"
+  },
+  "action": "CREATE",
+  "module": "ROLE",
+  "description": "สร้างระดับสิทธิ์/ตำแหน่งใหม่: ทดสอบระบบ",
+  "target_id": "6a1faac19f7e97161b4c2f14",
+  "reference_no": null,
+  "details": null,
+  "ip_address": "171.7.228.143, 104.22.66.162, 10.30.104.3",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-03T04:17:05.428Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-03T04:17:05.428Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a1faae09f7e97161b4c2f17"
+  },
+  "action": "CREATE",
+  "module": "PERSONNEL",
+  "description": "เพิ่มพนักงานใหม่: พนักงานทดสอบระบบ (รหัสพนักงาน: tester, บทบาท: ทดสอบระบบ)",
+  "target_id": "6a1faae09f7e97161b4c2f16",
+  "reference_no": "tester",
+  "details": null,
+  "ip_address": "171.7.228.143, 172.68.4.142, 10.30.104.3",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-03T04:17:36.524Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-03T04:17:36.524Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a1faae99f7e97161b4c2f18"
+  },
+  "action": "LOGIN",
+  "module": "AUTH",
+  "description": "เข้าสู่ระบบสำเร็จ: พนักงาน พนักงานทดสอบระบบ (ทดสอบระบบ)",
+  "target_id": "6a1faae09f7e97161b4c2f16",
+  "reference_no": null,
+  "details": null,
+  "ip_address": "171.7.228.143, 104.22.66.162, 10.30.104.3",
+  "user_id": {
+    "$oid": "6a1faae09f7e97161b4c2f16"
+  },
+  "user_name": "พนักงานทดสอบระบบ",
+  "createdAt": {
+    "$date": "2026-06-03T04:17:45.432Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-03T04:17:45.432Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a1faaf49f7e97161b4c2f1a"
+  },
+  "action": "LOGIN",
+  "module": "AUTH",
+  "description": "เข้าสู่ระบบสำเร็จ: พนักงาน Administrator (แอดมิน)",
+  "target_id": "69f5a15ce0775d4f2c85bc09",
+  "reference_no": null,
+  "details": null,
+  "ip_address": "171.7.228.143, 172.68.4.143, 10.27.190.85",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-03T04:17:56.230Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-03T04:17:56.230Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a1facf19f7e97161b4c2f20"
+  },
+  "action": "LOGIN",
+  "module": "AUTH",
+  "description": "เข้าสู่ระบบสำเร็จ: พนักงาน Administrator (แอดมิน)",
+  "target_id": "69f5a15ce0775d4f2c85bc09",
+  "reference_no": null,
+  "details": null,
+  "ip_address": "223.205.59.187, 104.22.66.162, 10.30.39.131",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-03T04:26:25.220Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-03T04:26:25.220Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a1fae2a0896533f4a42a31e"
+  },
+  "action": "LOGIN",
+  "module": "AUTH",
+  "description": "เข้าสู่ระบบสำเร็จ: พนักงาน พนักงานทดสอบระบบ (ทดสอบระบบ)",
+  "target_id": "6a1faae09f7e97161b4c2f16",
+  "reference_no": null,
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "6a1faae09f7e97161b4c2f16"
+  },
+  "user_name": "พนักงานทดสอบระบบ",
+  "createdAt": {
+    "$date": "2026-06-03T04:31:38.477Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-03T04:31:38.477Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a1faf290896533f4a42a320"
+  },
+  "action": "LOGIN",
+  "module": "AUTH",
+  "description": "เข้าสู่ระบบสำเร็จ: พนักงาน Administrator (แอดมิน)",
+  "target_id": "69f5a15ce0775d4f2c85bc09",
+  "reference_no": null,
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-03T04:35:53.030Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-03T04:35:53.030Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a1fafff9f7e97161b4c2f3a"
+  },
+  "action": "CREATE",
+  "module": "STOCK",
+  "description": "รับเข้าสต็อกสินค้าใหม่: IPhone 11 (รหัสสินค้า: aa) จำนวน 1",
+  "target_id": "6a1fafff9f7e97161b4c2f38",
+  "reference_no": "aa",
+  "details": null,
+  "ip_address": "223.205.59.187, 172.68.4.143, 10.24.119.129",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-03T04:39:27.645Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-03T04:39:27.645Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a1fb0919f7e97161b4c2f47"
+  },
+  "action": "CREATE",
+  "module": "STOCK",
+  "description": "รับเข้าสต็อกสินค้าใหม่: Case 11 (CASE-11) (รหัสสินค้า: CASE-11) จำนวน 10",
+  "target_id": "6a1fb0919f7e97161b4c2f45",
+  "reference_no": "CASE-11",
+  "details": null,
+  "ip_address": "223.205.59.187, 104.22.66.163, 10.30.39.131",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-03T04:41:53.129Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-03T04:41:53.129Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a1fb28e9f7e97161b4c2f5e"
+  },
+  "action": "CREATE",
+  "module": "STOCK",
+  "description": "รับเข้าสต็อกสินค้าใหม่: IPhone 17 Pro (รหัสสินค้า: 1) จำนวน 1",
+  "target_id": "6a1fb28e9f7e97161b4c2f5c",
+  "reference_no": "1",
+  "details": null,
+  "ip_address": "223.205.59.187, 172.68.4.143, 10.27.35.2",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-03T04:50:22.297Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-03T04:50:22.297Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a1fb2ab9f7e97161b4c2f66"
+  },
+  "action": "UPDATE",
+  "module": "STOCK",
+  "description": "แก้ไขข้อมูล/ปรับสต็อกสินค้า: IPhone 17 Pro (รหัสสินค้า: 1)",
+  "target_id": "6a1fb28e9f7e97161b4c2f5c",
+  "reference_no": "1",
+  "details": null,
+  "ip_address": "223.205.59.187, 172.68.4.143, 10.27.35.2",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-03T04:50:51.126Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-03T04:50:51.126Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a1fb2dd9f7e97161b4c2f6e"
+  },
+  "action": "CREATE",
+  "module": "STOCK",
+  "description": "รับเข้าสต็อกสินค้าใหม่: IPhone 17 Pro Max (รหัสสินค้า: 2) จำนวน 1",
+  "target_id": "6a1fb2dd9f7e97161b4c2f6c",
+  "reference_no": "2",
+  "details": null,
+  "ip_address": "223.205.59.187, 104.22.66.163, 10.30.13.3",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-03T04:51:41.615Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-03T04:51:41.615Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a1fb42d9f7e97161b4c2f86"
+  },
+  "action": "CREATE",
+  "module": "POS",
+  "description": "ทำรายการขายสำเร็จ เลขที่ใบเสร็จ INV-20260603-9YOX3 ยอดรวม ฿45600",
+  "target_id": "6a1fb42d9f7e97161b4c2f82",
+  "reference_no": "INV-20260603-9YOX3",
+  "details": null,
+  "ip_address": "223.205.59.187, 172.68.4.143, 10.27.35.2",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-03T04:57:17.530Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-03T04:57:17.530Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a1feb7172d1081747c92a35"
+  },
+  "action": "LOGIN",
+  "module": "AUTH",
+  "description": "เข้าสู่ระบบสำเร็จ: พนักงาน พนักงานขาย-สาขายะลา (พนักงานขาย)",
+  "target_id": "69f85a505d8176293321cd44",
+  "reference_no": null,
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f85a505d8176293321cd44"
+  },
+  "user_name": "พนักงานขาย-สาขายะลา",
+  "createdAt": {
+    "$date": "2026-06-03T08:53:05.375Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-03T08:53:05.375Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a210102db53aa2aeb92fc0a"
+  },
+  "action": "LOGIN",
+  "module": "AUTH",
+  "description": "เข้าสู่ระบบสำเร็จ: พนักงาน Administrator (แอดมิน)",
+  "target_id": "69f5a15ce0775d4f2c85bc09",
+  "reference_no": null,
+  "details": null,
+  "ip_address": "223.205.59.187, 104.22.66.162, 10.27.35.2",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-04T04:37:22.161Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-04T04:37:22.161Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a213517db53aa2aeb92fc29"
+  },
+  "action": "LOGIN",
+  "module": "AUTH",
+  "description": "เข้าสู่ระบบสำเร็จ: พนักงาน Administrator (แอดมิน)",
+  "target_id": "69f5a15ce0775d4f2c85bc09",
+  "reference_no": null,
+  "details": null,
+  "ip_address": "171.7.228.143, 172.69.165.77, 10.25.51.136",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-04T08:19:35.954Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-04T08:19:35.954Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a2136d15a9b770f2a68f7f1"
+  },
+  "action": "LOGIN",
+  "module": "AUTH",
+  "description": "เข้าสู่ระบบสำเร็จ: พนักงาน Administrator (แอดมิน)",
+  "target_id": "69f5a15ce0775d4f2c85bc09",
+  "reference_no": null,
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-04T08:26:57.167Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-04T08:26:57.167Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a2235940ec006672347699b"
+  },
+  "action": "LOGIN",
+  "module": "AUTH",
+  "description": "เข้าสู่ระบบสำเร็จ: พนักงาน พนักงานจัดซื้อ (พนักงานจัดซื้อ)",
+  "target_id": "6a0aadcebf470acf73eadd9f",
+  "reference_no": null,
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "6a0aadcebf470acf73eadd9f"
+  },
+  "user_name": "พนักงานจัดซื้อ",
+  "createdAt": {
+    "$date": "2026-06-05T02:33:56.465Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-05T02:33:56.465Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a22359b0ec00667234769aa"
+  },
+  "action": "LOGIN",
+  "module": "AUTH",
+  "description": "เข้าสู่ระบบสำเร็จ: พนักงาน Administrator (แอดมิน)",
+  "target_id": "69f5a15ce0775d4f2c85bc09",
+  "reference_no": null,
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-05T02:34:03.941Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-05T02:34:03.941Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a2235c30ec00667234769bb"
+  },
+  "action": "CREATE",
+  "module": "PO",
+  "description": "สร้างใบสั่งซื้อใหม่ เลขที่ PO-20260605-0001 สำหรับซัพพลายเออร์ SYSNEX",
+  "target_id": "6a2235c30ec00667234769b9",
+  "reference_no": "PO-20260605-0001",
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-05T02:34:43.447Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-05T02:34:43.447Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a2236040ec00667234769c6"
+  },
+  "action": "UPDATE",
+  "module": "PO",
+  "description": "แจ้งของถึงสาขาสำเร็จพร้อมระบุ IMEI ใบสั่งซื้อ เลขที่ PO-20260605-0001",
+  "target_id": "6a2235c30ec00667234769b9",
+  "reference_no": "PO-20260605-0001",
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-05T02:35:48.719Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-05T02:35:48.719Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a2236450ec00667234769f9"
+  },
+  "action": "APPROVE",
+  "module": "PO",
+  "description": "อนุมัตินำเข้าและตรวจรับสต็อกสินค้าสำเร็จ ใบสั่งซื้อ เลขที่ PO-20260605-0001",
+  "target_id": "6a2235c30ec00667234769b9",
+  "reference_no": "PO-20260605-0001",
+  "details": null,
+  "ip_address": null,
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-05T02:36:53.196Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-05T02:36:53.196Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a2237060ec0066723476a5b"
+  },
+  "action": "LOGIN",
+  "module": "AUTH",
+  "description": "เข้าสู่ระบบสำเร็จ: พนักงาน พนักงานขาย-สาขายะลา (พนักงานขาย)",
+  "target_id": "69f85a505d8176293321cd44",
+  "reference_no": null,
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f85a505d8176293321cd44"
+  },
+  "user_name": "พนักงานขาย-สาขายะลา",
+  "createdAt": {
+    "$date": "2026-06-05T02:40:06.965Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-05T02:40:06.965Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a22371b0ec0066723476a9b"
+  },
+  "action": "LOGIN",
+  "module": "AUTH",
+  "description": "เข้าสู่ระบบสำเร็จ: พนักงาน Administrator (แอดมิน)",
+  "target_id": "69f5a15ce0775d4f2c85bc09",
+  "reference_no": null,
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-05T02:40:27.019Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-05T02:40:27.019Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a22372a0ec0066723476abe"
+  },
+  "action": "UPDATE",
+  "module": "ROLE",
+  "description": "แก้ไขระดับสิทธิ์/ตำแหน่ง: พนักงานขาย",
+  "target_id": "69f8505540663c796524b465",
+  "reference_no": null,
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-05T02:40:42.353Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-05T02:40:42.353Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a22372f0ec0066723476abf"
+  },
+  "action": "LOGIN",
+  "module": "AUTH",
+  "description": "เข้าสู่ระบบสำเร็จ: พนักงาน พนักงานขาย-สาขายะลา (พนักงานขาย)",
+  "target_id": "69f85a505d8176293321cd44",
+  "reference_no": null,
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f85a505d8176293321cd44"
+  },
+  "user_name": "พนักงานขาย-สาขายะลา",
+  "createdAt": {
+    "$date": "2026-06-05T02:40:47.868Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-05T02:40:47.868Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a22377b0ec0066723476b21"
+  },
+  "action": "LOGIN",
+  "module": "AUTH",
+  "description": "เข้าสู่ระบบสำเร็จ: พนักงาน Administrator (แอดมิน)",
+  "target_id": "69f5a15ce0775d4f2c85bc09",
+  "reference_no": null,
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-05T02:42:03.014Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-05T02:42:03.014Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a2237950ec0066723476b67"
+  },
+  "action": "CREATE",
+  "module": "STOCK",
+  "description": "รับเข้าสต็อกสินค้าใหม่: Case 11 (CASE-11) (รหัสสินค้า: CASE-11) จำนวน 50",
+  "target_id": "6a2237950ec0066723476b65",
+  "reference_no": "CASE-11",
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-05T02:42:29.564Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-05T02:42:29.564Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a22379b0ec0066723476b7a"
+  },
+  "action": "LOGIN",
+  "module": "AUTH",
+  "description": "เข้าสู่ระบบสำเร็จ: พนักงาน พนักงานขาย-สาขายะลา (พนักงานขาย)",
+  "target_id": "69f85a505d8176293321cd44",
+  "reference_no": null,
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f85a505d8176293321cd44"
+  },
+  "user_name": "พนักงานขาย-สาขายะลา",
+  "createdAt": {
+    "$date": "2026-06-05T02:42:35.214Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-05T02:42:35.214Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a2238d90ec0066723476bb9"
+  },
+  "action": "CREATE",
+  "module": "POS",
+  "description": "ทำรายการขายสำเร็จ เลขที่ใบเสร็จ INV-20260605-4SN1K ยอดรวม ฿15600",
+  "target_id": "6a2238d90ec0066723476bb4",
+  "reference_no": "INV-20260605-4SN1K",
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f85a505d8176293321cd44"
+  },
+  "user_name": "พนักงานขาย-สาขายะลา",
+  "createdAt": {
+    "$date": "2026-06-05T02:47:53.657Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-05T02:47:53.657Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a2239370ec0066723476bd1"
+  },
+  "action": "LOGIN",
+  "module": "AUTH",
+  "description": "เข้าสู่ระบบสำเร็จ: พนักงาน Administrator (แอดมิน)",
+  "target_id": "69f5a15ce0775d4f2c85bc09",
+  "reference_no": null,
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-05T02:49:27.856Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-05T02:49:27.856Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a239c7867f08b2498941ca9"
+  },
+  "action": "LOGIN",
+  "module": "AUTH",
+  "description": "เข้าสู่ระบบสำเร็จ: พนักงาน Administrator (แอดมิน)",
+  "target_id": "69f5a15ce0775d4f2c85bc09",
+  "reference_no": null,
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-06T04:05:12.326Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-06T04:05:12.326Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a239ddf67f08b2498941d04"
+  },
+  "action": "CREATE",
+  "module": "PO",
+  "description": "สร้างใบสั่งซื้อใหม่ เลขที่ PO-20260606-0001 สำหรับซัพพลายเออร์ SYSNEX",
+  "target_id": "6a239ddf67f08b2498941d02",
+  "reference_no": "PO-20260606-0001",
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-06T04:11:11.949Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-06T04:11:11.949Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a239fa6117c251e89b1b1c6"
+  },
+  "action": "UPDATE",
+  "module": "PO",
+  "description": "แจ้งของถึงสาขาสำเร็จพร้อมระบุ IMEI ใบสั่งซื้อ เลขที่ PO-20260606-0001",
+  "target_id": "6a239ddf67f08b2498941d02",
+  "reference_no": "PO-20260606-0001",
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-06T04:18:46.713Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-06T04:18:46.713Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a239fdc117c251e89b1b1d9"
+  },
+  "action": "CREATE",
+  "module": "PO",
+  "description": "สร้างใบสั่งซื้อใหม่ เลขที่ PO-20260606-0002 สำหรับซัพพลายเออร์ SYSNEX",
+  "target_id": "6a239fdc117c251e89b1b1d7",
+  "reference_no": "PO-20260606-0002",
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-06T04:19:40.760Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-06T04:19:40.760Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a23a090b61497be72cb1af0"
+  },
+  "action": "UPDATE",
+  "module": "PO",
+  "description": "แจ้งของถึงสาขาสำเร็จพร้อมระบุ IMEI ใบสั่งซื้อ เลขที่ PO-20260606-0002",
+  "target_id": "6a239fdc117c251e89b1b1d7",
+  "reference_no": "PO-20260606-0002",
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-06T04:22:40.730Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-06T04:22:40.730Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a23a0b5b61497be72cb1afd"
+  },
+  "action": "CREATE",
+  "module": "PO",
+  "description": "สร้างใบสั่งซื้อใหม่ เลขที่ PO-20260606-0003 สำหรับซัพพลายเออร์ SYSNEX",
+  "target_id": "6a23a0b4b61497be72cb1afb",
+  "reference_no": "PO-20260606-0003",
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-06T04:23:17.091Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-06T04:23:17.091Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a23a0c2b61497be72cb1b0c"
+  },
+  "action": "UPDATE",
+  "module": "PO",
+  "description": "แก้ไขใบสั่งซื้อ เลขที่ PO-20260606-0003 ซัพพลายเออร์ SYSNEX",
+  "target_id": "6a23a0b4b61497be72cb1afb",
+  "reference_no": "PO-20260606-0003",
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-06T04:23:30.990Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-06T04:23:30.990Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a23a3f9108eff5f1465988d"
+  },
+  "action": "UPDATE",
+  "module": "PO",
+  "description": "แจ้งของถึงสาขาสำเร็จพร้อมระบุ IMEI ใบสั่งซื้อ เลขที่ PO-20260606-0003",
+  "target_id": "6a23a0b4b61497be72cb1afb",
+  "reference_no": "PO-20260606-0003",
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-06T04:37:13.829Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-06T04:37:13.829Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a23a40a108eff5f1465989b"
+  },
+  "action": "UPDATE",
+  "module": "PO",
+  "description": "แจ้งของถึงสาขาสำเร็จพร้อมระบุ IMEI ใบสั่งซื้อ เลขที่ PO-20260606-0003",
+  "target_id": "6a23a0b4b61497be72cb1afb",
+  "reference_no": "PO-20260606-0003",
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-06T04:37:30.988Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-06T04:37:30.988Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a23a427108eff5f146598a9"
+  },
+  "action": "UPDATE",
+  "module": "PO",
+  "description": "แจ้งของถึงสาขาสำเร็จพร้อมระบุ IMEI ใบสั่งซื้อ เลขที่ PO-20260606-0003",
+  "target_id": "6a23a0b4b61497be72cb1afb",
+  "reference_no": "PO-20260606-0003",
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-06T04:37:59.393Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-06T04:37:59.393Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a23a456108eff5f146598dc"
+  },
+  "action": "CREATE",
+  "module": "PO",
+  "description": "สร้างใบสั่งซื้อใหม่ เลขที่ PO-20260606-0004 สำหรับซัพพลายเออร์ SYSNEX",
+  "target_id": "6a23a455108eff5f146598da",
+  "reference_no": "PO-20260606-0004",
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-06T04:38:46.081Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-06T04:38:46.081Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a23a45d108eff5f146598f3"
+  },
+  "action": "UPDATE",
+  "module": "PO",
+  "description": "แจ้งของถึงสาขาสำเร็จพร้อมระบุ IMEI ใบสั่งซื้อ เลขที่ PO-20260606-0004",
+  "target_id": "6a23a455108eff5f146598da",
+  "reference_no": "PO-20260606-0004",
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-06T04:38:53.537Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-06T04:38:53.537Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a23a469108eff5f14659923"
+  },
+  "action": "APPROVE",
+  "module": "PO",
+  "description": "อนุมัตินำเข้าและตรวจรับสต็อกสินค้าสำเร็จ ใบสั่งซื้อ เลขที่ PO-20260606-0004",
+  "target_id": "6a23a455108eff5f146598da",
+  "reference_no": "PO-20260606-0004",
+  "details": null,
+  "ip_address": null,
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-06T04:39:05.973Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-06T04:39:05.973Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a23a47a108eff5f1465995b"
+  },
+  "action": "UPDATE",
+  "module": "PO",
+  "description": "แจ้งของถึงสาขาสำเร็จพร้อมระบุ IMEI ใบสั่งซื้อ เลขที่ PO-20260606-0004",
+  "target_id": "6a23a455108eff5f146598da",
+  "reference_no": "PO-20260606-0004",
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-06T04:39:22.359Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-06T04:39:22.359Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a23a4c1108eff5f146599cc"
+  },
+  "action": "APPROVE",
+  "module": "PO",
+  "description": "อนุมัตินำเข้าและตรวจรับสต็อกสินค้าสำเร็จ ใบสั่งซื้อ เลขที่ PO-20260606-0004",
+  "target_id": "6a23a455108eff5f146598da",
+  "reference_no": "PO-20260606-0004",
+  "details": null,
+  "ip_address": null,
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-06T04:40:33.312Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-06T04:40:33.312Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a23a4ee108eff5f14659a38"
+  },
+  "action": "UPDATE",
+  "module": "PO",
+  "description": "แจ้งของถึงสาขาสำเร็จพร้อมระบุ IMEI ใบสั่งซื้อ เลขที่ PO-20260606-0003",
+  "target_id": "6a23a0b4b61497be72cb1afb",
+  "reference_no": "PO-20260606-0003",
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-06T04:41:18.460Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-06T04:41:18.460Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a23a70855372a91bbdc2318"
+  },
+  "action": "UPDATE",
+  "module": "PO",
+  "description": "แจ้งของถึงสาขาสำเร็จพร้อมระบุ IMEI ใบสั่งซื้อ เลขที่ PO-20260606-0003",
+  "target_id": "6a23a0b4b61497be72cb1afb",
+  "reference_no": "PO-20260606-0003",
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-06T04:50:16.979Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-06T04:50:16.979Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a23a71455372a91bbdc234e"
+  },
+  "action": "APPROVE",
+  "module": "PO",
+  "description": "อนุมัตินำเข้าและตรวจรับสต็อกสินค้าสำเร็จ ใบสั่งซื้อ เลขที่ PO-20260606-0003",
+  "target_id": "6a23a0b4b61497be72cb1afb",
+  "reference_no": "PO-20260606-0003",
+  "details": null,
+  "ip_address": null,
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-06T04:50:28.324Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-06T04:50:28.324Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a23a74555372a91bbdc23ac"
+  },
+  "action": "CREATE",
+  "module": "PO",
+  "description": "สร้างใบสั่งซื้อใหม่ เลขที่ PO-20260606-0005 สำหรับซัพพลายเออร์ SYSNEX",
+  "target_id": "6a23a74555372a91bbdc23aa",
+  "reference_no": "PO-20260606-0005",
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-06T04:51:17.456Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-06T04:51:17.456Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a23a74d55372a91bbdc23c6"
+  },
+  "action": "UPDATE",
+  "module": "PO",
+  "description": "แจ้งของถึงสาขาสำเร็จพร้อมระบุ IMEI ใบสั่งซื้อ เลขที่ PO-20260606-0005",
+  "target_id": "6a23a74555372a91bbdc23aa",
+  "reference_no": "PO-20260606-0005",
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-06T04:51:25.225Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-06T04:51:25.225Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a23a76455372a91bbdc2414"
+  },
+  "action": "APPROVE",
+  "module": "PO",
+  "description": "อนุมัตินำเข้าและตรวจรับสต็อกสินค้าสำเร็จ ใบสั่งซื้อ เลขที่ PO-20260606-0005",
+  "target_id": "6a23a74555372a91bbdc23aa",
+  "reference_no": "PO-20260606-0005",
+  "details": null,
+  "ip_address": null,
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-06T04:51:48.602Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-06T04:51:48.602Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a23a77755372a91bbdc2451"
+  },
+  "action": "UPDATE",
+  "module": "PO",
+  "description": "แจ้งของถึงสาขาสำเร็จพร้อมระบุ IMEI ใบสั่งซื้อ เลขที่ PO-20260606-0005",
+  "target_id": "6a23a74555372a91bbdc23aa",
+  "reference_no": "PO-20260606-0005",
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-06T04:52:07.193Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-06T04:52:07.193Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a23a81e0b68b51f39b837fc"
+  },
+  "action": "APPROVE",
+  "module": "PO",
+  "description": "อนุมัตินำเข้าและตรวจรับสต็อกสินค้าสำเร็จ ใบสั่งซื้อ เลขที่ PO-20260606-0005",
+  "target_id": "6a23a74555372a91bbdc23aa",
+  "reference_no": "PO-20260606-0005",
+  "details": null,
+  "ip_address": null,
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-06T04:54:54.083Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-06T04:54:54.083Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a23afd3f4c8d82d218a3805"
+  },
+  "action": "LOGIN",
+  "module": "AUTH",
+  "description": "เข้าสู่ระบบสำเร็จ: พนักงาน พนักงานขาย-สาขายะลา (พนักงานขาย)",
+  "target_id": "69f85a505d8176293321cd44",
+  "reference_no": null,
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f85a505d8176293321cd44"
+  },
+  "user_name": "พนักงานขาย-สาขายะลา",
+  "createdAt": {
+    "$date": "2026-06-06T05:27:47.660Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-06T05:27:47.660Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a23b010f4c8d82d218a3854"
+  },
+  "action": "CREATE",
+  "module": "POS",
+  "description": "ทำรายการขายสำเร็จ เลขที่ใบเสร็จ INV-20260606-RF4JL ยอดรวม ฿30600",
+  "target_id": "6a23b010f4c8d82d218a3851",
+  "reference_no": "INV-20260606-RF4JL",
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f85a505d8176293321cd44"
+  },
+  "user_name": "พนักงานขาย-สาขายะลา",
+  "createdAt": {
+    "$date": "2026-06-06T05:28:48.553Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-06T05:28:48.553Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a23b02bf4c8d82d218a385d"
+  },
+  "action": "LOGIN",
+  "module": "AUTH",
+  "description": "เข้าสู่ระบบสำเร็จ: พนักงาน Administrator (แอดมิน)",
+  "target_id": "69f5a15ce0775d4f2c85bc09",
+  "reference_no": null,
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-06T05:29:15.071Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-06T05:29:15.071Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a23e156f45acbc9112b6e1e"
+  },
+  "action": "LOGIN",
+  "module": "AUTH",
+  "description": "เข้าสู่ระบบสำเร็จ: พนักงาน พนักงานขาย-สาขายะลา (พนักงานขาย)",
+  "target_id": "69f85a505d8176293321cd44",
+  "reference_no": null,
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f85a505d8176293321cd44"
+  },
+  "user_name": "พนักงานขาย-สาขายะลา",
+  "createdAt": {
+    "$date": "2026-06-06T08:59:02.295Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-06T08:59:02.295Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a23e5e4f45acbc9112b6e8d"
+  },
+  "action": "CREATE",
+  "module": "POS",
+  "description": "ทำรายการขายสำเร็จ เลขที่ใบเสร็จ INV-20260606-FQF84 ยอดรวม ฿30650",
+  "target_id": "6a23e5e4f45acbc9112b6e86",
+  "reference_no": "INV-20260606-FQF84",
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f85a505d8176293321cd44"
+  },
+  "user_name": "พนักงานขาย-สาขายะลา",
+  "createdAt": {
+    "$date": "2026-06-06T09:18:28.744Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-06T09:18:28.744Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a263e1fea07444ea711cffc"
+  },
+  "action": "LOGIN",
+  "module": "AUTH",
+  "description": "เข้าสู่ระบบสำเร็จ: พนักงาน Administrator (แอดมิน)",
+  "target_id": "69f5a15ce0775d4f2c85bc09",
+  "reference_no": null,
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-08T03:59:27.270Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-08T03:59:27.270Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a26432500a706e53d2cb98a"
+  },
+  "action": "LOGIN",
+  "module": "AUTH",
+  "description": "เข้าสู่ระบบสำเร็จ: พนักงาน Administrator (แอดมิน)",
+  "target_id": "69f5a15ce0775d4f2c85bc09",
+  "reference_no": null,
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-08T04:20:53.689Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-08T04:20:53.689Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a26433000a706e53d2cb9c5"
+  },
+  "action": "LOGIN",
+  "module": "AUTH",
+  "description": "เข้าสู่ระบบสำเร็จ: พนักงาน พนักงานขาย-สาขายะลา (พนักงานขาย)",
+  "target_id": "69f85a505d8176293321cd44",
+  "reference_no": null,
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f85a505d8176293321cd44"
+  },
+  "user_name": "พนักงานขาย-สาขายะลา",
+  "createdAt": {
+    "$date": "2026-06-08T04:21:04.984Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-08T04:21:04.984Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a26435c00a706e53d2cba18"
+  },
+  "action": "CREATE",
+  "module": "POS",
+  "description": "ทำรายการขายสำเร็จ เลขที่ใบเสร็จ INV-20260608-09V30 ยอดรวม ฿15650",
+  "target_id": "6a26435c00a706e53d2cba11",
+  "reference_no": "INV-20260608-09V30",
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f85a505d8176293321cd44"
+  },
+  "user_name": "พนักงานขาย-สาขายะลา",
+  "createdAt": {
+    "$date": "2026-06-08T04:21:48.790Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-08T04:21:48.790Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a26439700a706e53d2cba29"
+  },
+  "action": "LOGIN",
+  "module": "AUTH",
+  "description": "เข้าสู่ระบบสำเร็จ: พนักงาน Administrator (แอดมิน)",
+  "target_id": "69f5a15ce0775d4f2c85bc09",
+  "reference_no": null,
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-08T04:22:47.158Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-08T04:22:47.158Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a28d3dc823247a93364a518"
+  },
+  "action": "LOGIN",
+  "module": "AUTH",
+  "description": "เข้าสู่ระบบสำเร็จ: พนักงาน Administrator (แอดมิน)",
+  "target_id": "69f5a15ce0775d4f2c85bc09",
+  "reference_no": null,
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-10T03:02:52.664Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-10T03:02:52.664Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a28d764ddee5b768a10dbe6"
+  },
+  "action": "LOGIN",
+  "module": "AUTH",
+  "description": "เข้าสู่ระบบสำเร็จ: พนักงาน พนักงานขาย-สาขายะลา (พนักงานขาย)",
+  "target_id": "69f85a505d8176293321cd44",
+  "reference_no": null,
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f85a505d8176293321cd44"
+  },
+  "user_name": "พนักงานขาย-สาขายะลา",
+  "createdAt": {
+    "$date": "2026-06-10T03:17:56.216Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-10T03:17:56.216Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a28d7b0ddee5b768a10dc53"
+  },
+  "action": "CREATE",
+  "module": "POS",
+  "description": "ทำรายการขายสำเร็จ เลขที่ใบเสร็จ INV-20260610-WKOXV ยอดรวม ฿15650",
+  "target_id": "6a28d7b0ddee5b768a10dc4c",
+  "reference_no": "INV-20260610-WKOXV",
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f85a505d8176293321cd44"
+  },
+  "user_name": "พนักงานขาย-สาขายะลา",
+  "createdAt": {
+    "$date": "2026-06-10T03:19:12.625Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-10T03:19:12.625Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a28d91ebce8df7c589928a2"
+  },
+  "action": "CREATE",
+  "module": "POS",
+  "description": "ทำรายการขายสำเร็จ เลขที่ใบเสร็จ INV-20260610-8LQ73 ยอดรวม ฿15650",
+  "target_id": "6a28d91ebce8df7c5899289b",
+  "reference_no": "INV-20260610-8LQ73",
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f85a505d8176293321cd44"
+  },
+  "user_name": "พนักงานขาย-สาขายะลา",
+  "createdAt": {
+    "$date": "2026-06-10T03:25:18.859Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-10T03:25:18.859Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a2b6ef9e00fe0a4a45d13b3"
+  },
+  "action": "LOGIN",
+  "module": "AUTH",
+  "description": "เข้าสู่ระบบสำเร็จ: พนักงาน Administrator (แอดมิน)",
+  "target_id": "69f5a15ce0775d4f2c85bc09",
+  "reference_no": null,
+  "details": null,
+  "ip_address": "171.7.251.182, 172.68.4.142, 10.26.1.1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-12T02:29:13.350Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-12T02:29:13.350Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a2b73c748f3bbbebf915cc4"
+  },
+  "action": "LOGIN",
+  "module": "AUTH",
+  "description": "เข้าสู่ระบบสำเร็จ: พนักงาน Administrator (แอดมิน)",
+  "target_id": "69f5a15ce0775d4f2c85bc09",
+  "reference_no": null,
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-12T02:49:43.394Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-12T02:49:43.394Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a2bc7c7622535d737e1d7aa"
+  },
+  "action": "CREATE",
+  "module": "STOCK",
+  "description": "รับเข้าสต็อกสินค้าใหม่: IPhone 14 (รหัสสินค้า: 350032735534827) จำนวน 1",
+  "target_id": "6a2bc7c7622535d737e1d7a8",
+  "reference_no": "350032735534827",
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-12T08:48:07.161Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-12T08:48:07.161Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a2bc7c7622535d737e1d7ae"
+  },
+  "action": "CREATE",
+  "module": "STOCK",
+  "description": "รับเข้าสต็อกสินค้าใหม่: IPhone 14 (รหัสสินค้า: 350032736143321) จำนวน 1",
+  "target_id": "6a2bc7c7622535d737e1d7ac",
+  "reference_no": "350032736143321",
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-12T08:48:07.457Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-12T08:48:07.457Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a2bc7c7622535d737e1d7b2"
+  },
+  "action": "CREATE",
+  "module": "STOCK",
+  "description": "รับเข้าสต็อกสินค้าใหม่: IPhone 14 (รหัสสินค้า: 350032739230505) จำนวน 1",
+  "target_id": "6a2bc7c7622535d737e1d7b0",
+  "reference_no": "350032739230505",
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-12T08:48:07.722Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-12T08:48:07.722Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a2bc7c7622535d737e1d7b6"
+  },
+  "action": "CREATE",
+  "module": "STOCK",
+  "description": "รับเข้าสต็อกสินค้าใหม่: IPhone 15 Pro Max (รหัสสินค้า: 350069701648736) จำนวน 1",
+  "target_id": "6a2bc7c7622535d737e1d7b4",
+  "reference_no": "350069701648736",
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-12T08:48:07.990Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-12T08:48:07.990Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a2bc7c8622535d737e1d7ba"
+  },
+  "action": "CREATE",
+  "module": "STOCK",
+  "description": "รับเข้าสต็อกสินค้าใหม่: IPhone 15 Pro Max (รหัสสินค้า: 350069703275652) จำนวน 1",
+  "target_id": "6a2bc7c8622535d737e1d7b8",
+  "reference_no": "350069703275652",
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-12T08:48:08.254Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-12T08:48:08.254Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a2bc7c8622535d737e1d7be"
+  },
+  "action": "CREATE",
+  "module": "STOCK",
+  "description": "รับเข้าสต็อกสินค้าใหม่: IPhone 15 Pro Max (รหัสสินค้า: 350069705822394) จำนวน 1",
+  "target_id": "6a2bc7c8622535d737e1d7bc",
+  "reference_no": "350069705822394",
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-12T08:48:08.519Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-12T08:48:08.519Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a2bc7c8622535d737e1d7c2"
+  },
+  "action": "CREATE",
+  "module": "STOCK",
+  "description": "รับเข้าสต็อกสินค้าใหม่: IPhone 15 Pro Max (รหัสสินค้า: 350069706072999) จำนวน 1",
+  "target_id": "6a2bc7c8622535d737e1d7c0",
+  "reference_no": "350069706072999",
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-12T08:48:08.776Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-12T08:48:08.776Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a2bc7c9622535d737e1d7c6"
+  },
+  "action": "CREATE",
+  "module": "STOCK",
+  "description": "รับเข้าสต็อกสินค้าใหม่: IPhone 16 Pro Max (รหัสสินค้า: 350096141434062) จำนวน 1",
+  "target_id": "6a2bc7c8622535d737e1d7c4",
+  "reference_no": "350096141434062",
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-12T08:48:09.037Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-12T08:48:09.037Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a2bc7c9622535d737e1d7ca"
+  },
+  "action": "CREATE",
+  "module": "STOCK",
+  "description": "รับเข้าสต็อกสินค้าใหม่: IPhone 16 Pro Max (รหัสสินค้า: 350096147761955) จำนวน 1",
+  "target_id": "6a2bc7c9622535d737e1d7c8",
+  "reference_no": "350096147761955",
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-12T08:48:09.309Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-12T08:48:09.309Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a2bca074e3b7249f8067a23"
+  },
+  "action": "CREATE",
+  "module": "STOCK",
+  "description": "รับเข้าสต็อกสินค้าใหม่ (ผ่าน Excel): IPhone 14 (รหัสสินค้า: 350032735534827) จำนวน 1",
+  "target_id": "6a2bc7c7622535d737e1d7a8",
+  "reference_no": "350032735534827",
+  "details": {
+    "branch_id": "69f5b2da4795c06e1774cbb0",
+    "branch_name": "สำนักงานใหญ่",
+    "import_source": "EXCEL",
+    "quantity": 1,
+    "imeis": [
+      "350032735534827"
+    ],
+    "product_name": "IPhone 14",
+    "product_code": "350032735534827"
+  },
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-12T08:57:43.712Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-12T08:57:43.712Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a2bca084e3b7249f8067a26"
+  },
+  "action": "CREATE",
+  "module": "STOCK",
+  "description": "รับเข้าสต็อกสินค้าใหม่ (ผ่าน Excel): IPhone 14 (รหัสสินค้า: 350032736143321) จำนวน 1",
+  "target_id": "6a2bc7c7622535d737e1d7ac",
+  "reference_no": "350032736143321",
+  "details": {
+    "branch_id": "69f5b2da4795c06e1774cbb0",
+    "branch_name": "สำนักงานใหญ่",
+    "import_source": "EXCEL",
+    "quantity": 1,
+    "imeis": [
+      "350032736143321"
+    ],
+    "product_name": "IPhone 14",
+    "product_code": "350032736143321"
+  },
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-12T08:57:44.032Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-12T08:57:44.032Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a2bca084e3b7249f8067a29"
+  },
+  "action": "CREATE",
+  "module": "STOCK",
+  "description": "รับเข้าสต็อกสินค้าใหม่ (ผ่าน Excel): IPhone 14 (รหัสสินค้า: 350032739230505) จำนวน 1",
+  "target_id": "6a2bc7c7622535d737e1d7b0",
+  "reference_no": "350032739230505",
+  "details": {
+    "branch_id": "69f5b2da4795c06e1774cbb0",
+    "branch_name": "สำนักงานใหญ่",
+    "import_source": "EXCEL",
+    "quantity": 1,
+    "imeis": [
+      "350032739230505"
+    ],
+    "product_name": "IPhone 14",
+    "product_code": "350032739230505"
+  },
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-12T08:57:44.344Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-12T08:57:44.344Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a2bca084e3b7249f8067a2c"
+  },
+  "action": "CREATE",
+  "module": "STOCK",
+  "description": "รับเข้าสต็อกสินค้าใหม่ (ผ่าน Excel): IPhone 15 Pro Max (รหัสสินค้า: 350069701648736) จำนวน 1",
+  "target_id": "6a2bc7c7622535d737e1d7b4",
+  "reference_no": "350069701648736",
+  "details": {
+    "branch_id": "69f5b2da4795c06e1774cbb0",
+    "branch_name": "สำนักงานใหญ่",
+    "import_source": "EXCEL",
+    "quantity": 1,
+    "imeis": [
+      "350069701648736"
+    ],
+    "product_name": "IPhone 15 Pro Max",
+    "product_code": "350069701648736"
+  },
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-12T08:57:44.645Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-12T08:57:44.645Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a2bca084e3b7249f8067a2f"
+  },
+  "action": "CREATE",
+  "module": "STOCK",
+  "description": "รับเข้าสต็อกสินค้าใหม่ (ผ่าน Excel): IPhone 15 Pro Max (รหัสสินค้า: 350069703275652) จำนวน 1",
+  "target_id": "6a2bc7c8622535d737e1d7b8",
+  "reference_no": "350069703275652",
+  "details": {
+    "branch_id": "69f5b2da4795c06e1774cbb0",
+    "branch_name": "สำนักงานใหญ่",
+    "import_source": "EXCEL",
+    "quantity": 1,
+    "imeis": [
+      "350069703275652"
+    ],
+    "product_name": "IPhone 15 Pro Max",
+    "product_code": "350069703275652"
+  },
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-12T08:57:44.961Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-12T08:57:44.961Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a2bca094e3b7249f8067a32"
+  },
+  "action": "CREATE",
+  "module": "STOCK",
+  "description": "รับเข้าสต็อกสินค้าใหม่ (ผ่าน Excel): IPhone 15 Pro Max (รหัสสินค้า: 350069705822394) จำนวน 1",
+  "target_id": "6a2bc7c8622535d737e1d7bc",
+  "reference_no": "350069705822394",
+  "details": {
+    "branch_id": "69f5b2da4795c06e1774cbb0",
+    "branch_name": "สำนักงานใหญ่",
+    "import_source": "EXCEL",
+    "quantity": 1,
+    "imeis": [
+      "350069705822394"
+    ],
+    "product_name": "IPhone 15 Pro Max",
+    "product_code": "350069705822394"
+  },
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-12T08:57:45.260Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-12T08:57:45.260Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a2bca094e3b7249f8067a35"
+  },
+  "action": "CREATE",
+  "module": "STOCK",
+  "description": "รับเข้าสต็อกสินค้าใหม่ (ผ่าน Excel): IPhone 15 Pro Max (รหัสสินค้า: 350069706072999) จำนวน 1",
+  "target_id": "6a2bc7c8622535d737e1d7c0",
+  "reference_no": "350069706072999",
+  "details": {
+    "branch_id": "69f5b2da4795c06e1774cbb0",
+    "branch_name": "สำนักงานใหญ่",
+    "import_source": "EXCEL",
+    "quantity": 1,
+    "imeis": [
+      "350069706072999"
+    ],
+    "product_name": "IPhone 15 Pro Max",
+    "product_code": "350069706072999"
+  },
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-12T08:57:45.561Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-12T08:57:45.561Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a2bca094e3b7249f8067a38"
+  },
+  "action": "CREATE",
+  "module": "STOCK",
+  "description": "รับเข้าสต็อกสินค้าใหม่ (ผ่าน Excel): IPhone 16 Pro Max (รหัสสินค้า: 350096141434062) จำนวน 1",
+  "target_id": "6a2bc7c8622535d737e1d7c4",
+  "reference_no": "350096141434062",
+  "details": {
+    "branch_id": "69f5b2da4795c06e1774cbb0",
+    "branch_name": "สำนักงานใหญ่",
+    "import_source": "EXCEL",
+    "quantity": 1,
+    "imeis": [
+      "350096141434062"
+    ],
+    "product_name": "IPhone 16 Pro Max",
+    "product_code": "350096141434062"
+  },
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-12T08:57:45.864Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-12T08:57:45.864Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a2bca0a4e3b7249f8067a3b"
+  },
+  "action": "CREATE",
+  "module": "STOCK",
+  "description": "รับเข้าสต็อกสินค้าใหม่ (ผ่าน Excel): IPhone 16 Pro Max (รหัสสินค้า: 350096147761955) จำนวน 1",
+  "target_id": "6a2bc7c9622535d737e1d7c8",
+  "reference_no": "350096147761955",
+  "details": {
+    "branch_id": "69f5b2da4795c06e1774cbb0",
+    "branch_name": "สำนักงานใหญ่",
+    "import_source": "EXCEL",
+    "quantity": 1,
+    "imeis": [
+      "350096147761955"
+    ],
+    "product_name": "IPhone 16 Pro Max",
+    "product_code": "350096147761955"
+  },
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-12T08:57:46.173Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-12T08:57:46.173Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a2bca354e3b7249f8067af6"
+  },
+  "action": "CREATE",
+  "module": "STOCK",
+  "description": "รับเข้าสต็อกสินค้าใหม่ (ผ่าน Excel): IPhone 14 (รหัสสินค้า: 350032735534827) จำนวน 1",
+  "target_id": "6a2bc7c7622535d737e1d7a8",
+  "reference_no": "350032735534827",
+  "details": {
+    "branch_id": "69f5b2da4795c06e1774cbb0",
+    "branch_name": "สำนักงานใหญ่",
+    "import_source": "EXCEL",
+    "quantity": 1,
+    "imeis": [
+      "350032735534827"
+    ],
+    "product_name": "IPhone 14",
+    "product_code": "350032735534827"
+  },
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-12T08:58:29.637Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-12T08:58:29.637Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a2bca354e3b7249f8067af9"
+  },
+  "action": "CREATE",
+  "module": "STOCK",
+  "description": "รับเข้าสต็อกสินค้าใหม่ (ผ่าน Excel): IPhone 14 (รหัสสินค้า: 350032736143321) จำนวน 1",
+  "target_id": "6a2bc7c7622535d737e1d7ac",
+  "reference_no": "350032736143321",
+  "details": {
+    "branch_id": "69f5b2da4795c06e1774cbb0",
+    "branch_name": "สำนักงานใหญ่",
+    "import_source": "EXCEL",
+    "quantity": 1,
+    "imeis": [
+      "350032736143321"
+    ],
+    "product_name": "IPhone 14",
+    "product_code": "350032736143321"
+  },
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-12T08:58:29.937Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-12T08:58:29.937Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a2bca364e3b7249f8067afc"
+  },
+  "action": "CREATE",
+  "module": "STOCK",
+  "description": "รับเข้าสต็อกสินค้าใหม่ (ผ่าน Excel): IPhone 14 (รหัสสินค้า: 350032739230505) จำนวน 1",
+  "target_id": "6a2bc7c7622535d737e1d7b0",
+  "reference_no": "350032739230505",
+  "details": {
+    "branch_id": "69f5b2da4795c06e1774cbb0",
+    "branch_name": "สำนักงานใหญ่",
+    "import_source": "EXCEL",
+    "quantity": 1,
+    "imeis": [
+      "350032739230505"
+    ],
+    "product_name": "IPhone 14",
+    "product_code": "350032739230505"
+  },
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-12T08:58:30.238Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-12T08:58:30.238Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a2bca364e3b7249f8067aff"
+  },
+  "action": "CREATE",
+  "module": "STOCK",
+  "description": "รับเข้าสต็อกสินค้าใหม่ (ผ่าน Excel): IPhone 15 Pro Max (รหัสสินค้า: 350069701648736) จำนวน 1",
+  "target_id": "6a2bc7c7622535d737e1d7b4",
+  "reference_no": "350069701648736",
+  "details": {
+    "branch_id": "69f5b2da4795c06e1774cbb0",
+    "branch_name": "สำนักงานใหญ่",
+    "import_source": "EXCEL",
+    "quantity": 1,
+    "imeis": [
+      "350069701648736"
+    ],
+    "product_name": "IPhone 15 Pro Max",
+    "product_code": "350069701648736"
+  },
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-12T08:58:30.539Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-12T08:58:30.539Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a2bca364e3b7249f8067b02"
+  },
+  "action": "CREATE",
+  "module": "STOCK",
+  "description": "รับเข้าสต็อกสินค้าใหม่ (ผ่าน Excel): IPhone 15 Pro Max (รหัสสินค้า: 350069703275652) จำนวน 1",
+  "target_id": "6a2bc7c8622535d737e1d7b8",
+  "reference_no": "350069703275652",
+  "details": {
+    "branch_id": "69f5b2da4795c06e1774cbb0",
+    "branch_name": "สำนักงานใหญ่",
+    "import_source": "EXCEL",
+    "quantity": 1,
+    "imeis": [
+      "350069703275652"
+    ],
+    "product_name": "IPhone 15 Pro Max",
+    "product_code": "350069703275652"
+  },
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-12T08:58:30.836Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-12T08:58:30.836Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a2bca374e3b7249f8067b05"
+  },
+  "action": "CREATE",
+  "module": "STOCK",
+  "description": "รับเข้าสต็อกสินค้าใหม่ (ผ่าน Excel): IPhone 15 Pro Max (รหัสสินค้า: 350069705822394) จำนวน 1",
+  "target_id": "6a2bc7c8622535d737e1d7bc",
+  "reference_no": "350069705822394",
+  "details": {
+    "branch_id": "69f5b2da4795c06e1774cbb0",
+    "branch_name": "สำนักงานใหญ่",
+    "import_source": "EXCEL",
+    "quantity": 1,
+    "imeis": [
+      "350069705822394"
+    ],
+    "product_name": "IPhone 15 Pro Max",
+    "product_code": "350069705822394"
+  },
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-12T08:58:31.130Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-12T08:58:31.130Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a2bca374e3b7249f8067b08"
+  },
+  "action": "CREATE",
+  "module": "STOCK",
+  "description": "รับเข้าสต็อกสินค้าใหม่ (ผ่าน Excel): IPhone 15 Pro Max (รหัสสินค้า: 350069706072999) จำนวน 1",
+  "target_id": "6a2bc7c8622535d737e1d7c0",
+  "reference_no": "350069706072999",
+  "details": {
+    "branch_id": "69f5b2da4795c06e1774cbb0",
+    "branch_name": "สำนักงานใหญ่",
+    "import_source": "EXCEL",
+    "quantity": 1,
+    "imeis": [
+      "350069706072999"
+    ],
+    "product_name": "IPhone 15 Pro Max",
+    "product_code": "350069706072999"
+  },
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-12T08:58:31.422Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-12T08:58:31.422Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a2bca374e3b7249f8067b0b"
+  },
+  "action": "CREATE",
+  "module": "STOCK",
+  "description": "รับเข้าสต็อกสินค้าใหม่ (ผ่าน Excel): IPhone 16 Pro Max (รหัสสินค้า: 350096141434062) จำนวน 1",
+  "target_id": "6a2bc7c8622535d737e1d7c4",
+  "reference_no": "350096141434062",
+  "details": {
+    "branch_id": "69f5b2da4795c06e1774cbb0",
+    "branch_name": "สำนักงานใหญ่",
+    "import_source": "EXCEL",
+    "quantity": 1,
+    "imeis": [
+      "350096141434062"
+    ],
+    "product_name": "IPhone 16 Pro Max",
+    "product_code": "350096141434062"
+  },
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-12T08:58:31.719Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-12T08:58:31.719Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a2bca384e3b7249f8067b0e"
+  },
+  "action": "CREATE",
+  "module": "STOCK",
+  "description": "รับเข้าสต็อกสินค้าใหม่ (ผ่าน Excel): IPhone 16 Pro Max (รหัสสินค้า: 350096147761955) จำนวน 1",
+  "target_id": "6a2bc7c9622535d737e1d7c8",
+  "reference_no": "350096147761955",
+  "details": {
+    "branch_id": "69f5b2da4795c06e1774cbb0",
+    "branch_name": "สำนักงานใหญ่",
+    "import_source": "EXCEL",
+    "quantity": 1,
+    "imeis": [
+      "350096147761955"
+    ],
+    "product_name": "IPhone 16 Pro Max",
+    "product_code": "350096147761955"
+  },
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-12T08:58:32.013Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-12T08:58:32.013Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a2bcb384e3b7249f8067b78"
+  },
+  "action": "CREATE",
+  "module": "STOCK",
+  "description": "รับเข้าสต็อกสินค้าใหม่ (ผ่าน Excel): IPhone 14 (รหัสสินค้า: 350970406216267) จำนวน 1",
+  "target_id": "6a2bcb384e3b7249f8067b76",
+  "reference_no": "350970406216267",
+  "details": {
+    "branch_id": "69f9775fed912a3837928bdb",
+    "branch_name": "ยะลา",
+    "import_source": "EXCEL",
+    "quantity": 1,
+    "imeis": [
+      "350032735534827"
+    ],
+    "product_name": "IPhone 14",
+    "product_code": "350970406216267"
+  },
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-12T09:02:48.931Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-12T09:02:48.931Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a2bcb394e3b7249f8067b7c"
+  },
+  "action": "CREATE",
+  "module": "STOCK",
+  "description": "รับเข้าสต็อกสินค้าใหม่ (ผ่าน Excel): IPhone 14 (รหัสสินค้า: 350970406406975) จำนวน 1",
+  "target_id": "6a2bcb394e3b7249f8067b7a",
+  "reference_no": "350970406406975",
+  "details": {
+    "branch_id": "69f9775fed912a3837928bdb",
+    "branch_name": "ยะลา",
+    "import_source": "EXCEL",
+    "quantity": 1,
+    "imeis": [
+      "350032736143321"
+    ],
+    "product_name": "IPhone 14",
+    "product_code": "350970406406975"
+  },
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-12T09:02:49.237Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-12T09:02:49.237Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a2bcb394e3b7249f8067b80"
+  },
+  "action": "CREATE",
+  "module": "STOCK",
+  "description": "รับเข้าสต็อกสินค้าใหม่ (ผ่าน Excel): IPhone 14 (รหัสสินค้า: 350970406461509) จำนวน 1",
+  "target_id": "6a2bcb394e3b7249f8067b7e",
+  "reference_no": "350970406461509",
+  "details": {
+    "branch_id": "69f9775fed912a3837928bdb",
+    "branch_name": "ยะลา",
+    "import_source": "EXCEL",
+    "quantity": 1,
+    "imeis": [
+      "350032739230505"
+    ],
+    "product_name": "IPhone 14",
+    "product_code": "350970406461509"
+  },
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-12T09:02:49.539Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-12T09:02:49.539Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a2bcb394e3b7249f8067b84"
+  },
+  "action": "CREATE",
+  "module": "STOCK",
+  "description": "รับเข้าสต็อกสินค้าใหม่ (ผ่าน Excel): IPhone 15 Pro Max (รหัสสินค้า: 350970407136894) จำนวน 1",
+  "target_id": "6a2bcb394e3b7249f8067b82",
+  "reference_no": "350970407136894",
+  "details": {
+    "branch_id": "69f9775fed912a3837928bdb",
+    "branch_name": "ยะลา",
+    "import_source": "EXCEL",
+    "quantity": 1,
+    "imeis": [
+      "350069701648736"
+    ],
+    "product_name": "IPhone 15 Pro Max",
+    "product_code": "350970407136894"
+  },
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-12T09:02:49.839Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-12T09:02:49.839Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a2bcb3a4e3b7249f8067b88"
+  },
+  "action": "CREATE",
+  "module": "STOCK",
+  "description": "รับเข้าสต็อกสินค้าใหม่ (ผ่าน Excel): IPhone 15 Pro Max (รหัสสินค้า: 351006193067982) จำนวน 1",
+  "target_id": "6a2bcb394e3b7249f8067b86",
+  "reference_no": "351006193067982",
+  "details": {
+    "branch_id": "69f9775fed912a3837928bdb",
+    "branch_name": "ยะลา",
+    "import_source": "EXCEL",
+    "quantity": 1,
+    "imeis": [
+      "350069703275652"
+    ],
+    "product_name": "IPhone 15 Pro Max",
+    "product_code": "351006193067982"
+  },
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-12T09:02:50.140Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-12T09:02:50.140Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a2bcb3a4e3b7249f8067b8c"
+  },
+  "action": "CREATE",
+  "module": "STOCK",
+  "description": "รับเข้าสต็อกสินค้าใหม่ (ผ่าน Excel): IPhone 15 Pro Max (รหัสสินค้า: 351138100240517) จำนวน 1",
+  "target_id": "6a2bcb3a4e3b7249f8067b8a",
+  "reference_no": "351138100240517",
+  "details": {
+    "branch_id": "69f9775fed912a3837928bdb",
+    "branch_name": "ยะลา",
+    "import_source": "EXCEL",
+    "quantity": 1,
+    "imeis": [
+      "350069705822394"
+    ],
+    "product_name": "IPhone 15 Pro Max",
+    "product_code": "351138100240517"
+  },
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-12T09:02:50.452Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-12T09:02:50.452Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a2bcb3a4e3b7249f8067b90"
+  },
+  "action": "CREATE",
+  "module": "STOCK",
+  "description": "รับเข้าสต็อกสินค้าใหม่ (ผ่าน Excel): IPhone 15 Pro Max (รหัสสินค้า: 351149512591553) จำนวน 1",
+  "target_id": "6a2bcb3a4e3b7249f8067b8e",
+  "reference_no": "351149512591553",
+  "details": {
+    "branch_id": "69f9775fed912a3837928bdb",
+    "branch_name": "ยะลา",
+    "import_source": "EXCEL",
+    "quantity": 1,
+    "imeis": [
+      "350069706072999"
+    ],
+    "product_name": "IPhone 15 Pro Max",
+    "product_code": "351149512591553"
+  },
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-12T09:02:50.754Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-12T09:02:50.754Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a2bcb3b4e3b7249f8067b94"
+  },
+  "action": "CREATE",
+  "module": "STOCK",
+  "description": "รับเข้าสต็อกสินค้าใหม่ (ผ่าน Excel): IPhone 16 Pro Max (รหัสสินค้า: 351182292534105) จำนวน 1",
+  "target_id": "6a2bcb3a4e3b7249f8067b92",
+  "reference_no": "351182292534105",
+  "details": {
+    "branch_id": "69f9775fed912a3837928bdb",
+    "branch_name": "ยะลา",
+    "import_source": "EXCEL",
+    "quantity": 1,
+    "imeis": [
+      "350096141434062"
+    ],
+    "product_name": "IPhone 16 Pro Max",
+    "product_code": "351182292534105"
+  },
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-12T09:02:51.077Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-12T09:02:51.077Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a2bcb3b4e3b7249f8067b98"
+  },
+  "action": "CREATE",
+  "module": "STOCK",
+  "description": "รับเข้าสต็อกสินค้าใหม่ (ผ่าน Excel): IPhone 16 Pro Max (รหัสสินค้า: 351182298156960) จำนวน 1",
+  "target_id": "6a2bcb3b4e3b7249f8067b96",
+  "reference_no": "351182298156960",
+  "details": {
+    "branch_id": "69f9775fed912a3837928bdb",
+    "branch_name": "ยะลา",
+    "import_source": "EXCEL",
+    "quantity": 1,
+    "imeis": [
+      "350096147761955"
+    ],
+    "product_name": "IPhone 16 Pro Max",
+    "product_code": "351182298156960"
+  },
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-12T09:02:51.380Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-12T09:02:51.380Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a2f7c0bd7e9c48ac9154fb6"
+  },
+  "action": "LOGIN",
+  "module": "AUTH",
+  "description": "เข้าสู่ระบบสำเร็จ: พนักงาน Administrator (แอดมิน)",
+  "target_id": "69f5a15ce0775d4f2c85bc09",
+  "reference_no": null,
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-15T04:14:03.850Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-15T04:14:03.850Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a2f884fd7e9c48ac915529f"
+  },
+  "action": "UPDATE",
+  "module": "ACCOUNTING",
+  "description": "เคลียร์ยอดรับเงินโอนจัดไฟแนนซ์สำเร็จ ยอดเงิน ฿10050",
+  "target_id": "6a28d91ebce8df7c589928a1",
+  "reference_no": "INV-20260610-8LQ73",
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-15T05:06:23.442Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-15T05:06:23.442Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a2f8852d7e9c48ac91552ca"
+  },
+  "action": "UPDATE",
+  "module": "ACCOUNTING",
+  "description": "เคลียร์ยอดรับเงินโอนจัดไฟแนนซ์สำเร็จ ยอดเงิน ฿10050",
+  "target_id": "6a28d7b0ddee5b768a10dc52",
+  "reference_no": "INV-20260610-WKOXV",
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-15T05:06:26.297Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-15T05:06:26.297Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a2f8854d7e9c48ac91552f5"
+  },
+  "action": "UPDATE",
+  "module": "ACCOUNTING",
+  "description": "เคลียร์ยอดรับเงินโอนจัดไฟแนนซ์สำเร็จ ยอดเงิน ฿10050",
+  "target_id": "6a26435c00a706e53d2cba17",
+  "reference_no": "INV-20260608-09V30",
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-15T05:06:28.719Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-15T05:06:28.719Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a2f8856d7e9c48ac9155320"
+  },
+  "action": "UPDATE",
+  "module": "ACCOUNTING",
+  "description": "เคลียร์ยอดรับเงินโอนจัดไฟแนนซ์สำเร็จ ยอดเงิน ฿20050",
+  "target_id": "6a23e5e4f45acbc9112b6e8c",
+  "reference_no": "INV-20260606-FQF84",
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-15T05:06:30.773Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-15T05:06:30.773Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a2f8859d7e9c48ac915534b"
+  },
+  "action": "UPDATE",
+  "module": "ACCOUNTING",
+  "description": "เคลียร์ยอดรับเงินโอนจัดไฟแนนซ์สำเร็จ ยอดเงิน ฿10100",
+  "target_id": "6a2238d90ec0066723476bb8",
+  "reference_no": "INV-20260605-4SN1K",
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-15T05:06:33.182Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-15T05:06:33.182Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a2f885bd7e9c48ac9155375"
+  },
+  "action": "UPDATE",
+  "module": "ACCOUNTING",
+  "description": "เคลียร์ยอดรับเงินโอนจัดไฟแนนซ์สำเร็จ ยอดเงิน ฿40000",
+  "target_id": "6a1fb42d9f7e97161b4c2f85",
+  "reference_no": "INV-20260603-9YOX3",
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-15T05:06:35.375Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-15T05:06:35.375Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a2f887dd7e9c48ac91553a0"
+  },
+  "action": "UPDATE",
+  "module": "ACCOUNTING",
+  "description": "ชำระเงินค่าสินค้าสำเร็จสำหรับใบสั่งซื้อ เลขที่ PO-20260606-0005 ยอดรวม ฿45000",
+  "target_id": "6a23a74555372a91bbdc23aa",
+  "reference_no": "PO-20260606-0005",
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-15T05:07:09.957Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-15T05:07:09.957Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a2f8880d7e9c48ac91553cb"
+  },
+  "action": "UPDATE",
+  "module": "ACCOUNTING",
+  "description": "ชำระเงินค่าสินค้าสำเร็จสำหรับใบสั่งซื้อ เลขที่ PO-20260606-0004 ยอดรวม ฿25000",
+  "target_id": "6a23a455108eff5f146598da",
+  "reference_no": "PO-20260606-0004",
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-15T05:07:12.243Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-15T05:07:12.243Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a2f8882d7e9c48ac91553f6"
+  },
+  "action": "UPDATE",
+  "module": "ACCOUNTING",
+  "description": "ชำระเงินค่าสินค้าสำเร็จสำหรับใบสั่งซื้อ เลขที่ PO-20260606-0003 ยอดรวม ฿75000",
+  "target_id": "6a23a0b4b61497be72cb1afb",
+  "reference_no": "PO-20260606-0003",
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-15T05:07:14.169Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-15T05:07:14.169Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a2f8884d7e9c48ac9155421"
+  },
+  "action": "UPDATE",
+  "module": "ACCOUNTING",
+  "description": "ชำระเงินค่าสินค้าสำเร็จสำหรับใบสั่งซื้อ เลขที่ PO-20260605-0001 ยอดรวม ฿130000",
+  "target_id": "6a2235c30ec00667234769b9",
+  "reference_no": "PO-20260605-0001",
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-15T05:07:16.490Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-15T05:07:16.490Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a2f8886d7e9c48ac915544c"
+  },
+  "action": "UPDATE",
+  "module": "ACCOUNTING",
+  "description": "ชำระเงินค่าสินค้าสำเร็จสำหรับใบสั่งซื้อ เลขที่ PO-20260603-0001 ยอดรวม ฿30000",
+  "target_id": "6a1fa21cef758fe3d304e651",
+  "reference_no": "PO-20260603-0001",
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-15T05:07:18.856Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-15T05:07:18.856Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a2fd5bad7e9c48ac9155539"
+  },
+  "action": "CREATE",
+  "module": "PO",
+  "description": "สร้างใบสั่งซื้อใหม่ เลขที่ PO-20260615-0001 สำหรับซัพพลายเออร์ ซัพพลายเออร์ทดสอบ",
+  "target_id": "6a2fd5bad7e9c48ac9155537",
+  "reference_no": "PO-20260615-0001",
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-15T10:36:42.691Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-15T10:36:42.691Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a2fd5c8d7e9c48ac915553e"
+  },
+  "action": "UPDATE",
+  "module": "PO",
+  "description": "แก้ไขใบสั่งซื้อ เลขที่ PO-20260615-0001 ซัพพลายเออร์ ซัพพลายเออร์ทดสอบ",
+  "target_id": "6a2fd5bad7e9c48ac9155537",
+  "reference_no": "PO-20260615-0001",
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-15T10:36:56.138Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-15T10:36:56.138Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a2fd5edd7e9c48ac915554a"
+  },
+  "action": "UPDATE",
+  "module": "PO",
+  "description": "แจ้งของถึงสาขาสำเร็จพร้อมระบุ IMEI ใบสั่งซื้อ เลขที่ PO-20260615-0001",
+  "target_id": "6a2fd5bad7e9c48ac9155537",
+  "reference_no": "PO-20260615-0001",
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-15T10:37:33.054Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-15T10:37:33.054Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a2fd60ed7e9c48ac915555f"
+  },
+  "action": "APPROVE",
+  "module": "PO",
+  "description": "อนุมัตินำเข้าและตรวจรับสต็อกสินค้าสำเร็จ ใบสั่งซื้อ เลขที่ PO-20260615-0001",
+  "target_id": "6a2fd5bad7e9c48ac9155537",
+  "reference_no": "PO-20260615-0001",
+  "details": null,
+  "ip_address": null,
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-15T10:38:06.585Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-15T10:38:06.585Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a2fd686d7e9c48ac9155579"
+  },
+  "action": "CREATE",
+  "module": "POS",
+  "description": "ทำรายการขายสำเร็จ เลขที่ใบเสร็จ INV-20260615-AAZ8M ยอดรวม ฿30600",
+  "target_id": "6a2fd686d7e9c48ac9155574",
+  "reference_no": "INV-20260615-AAZ8M",
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-15T10:40:06.871Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-15T10:40:06.871Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a2fd83d22a259fc71246fd3"
+  },
+  "action": "UPDATE",
+  "module": "ACCOUNTING",
+  "description": "ชำระเงินค่าสินค้าสำเร็จสำหรับใบสั่งซื้อ เลขที่ PO-20260615-0001 ยอดรวม ฿69000",
+  "target_id": "6a2fd5bad7e9c48ac9155537",
+  "reference_no": "PO-20260615-0001",
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-15T10:47:25.933Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-15T10:47:25.933Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a2fd85a22a259fc71246fd9"
+  },
+  "action": "UPDATE",
+  "module": "ACCOUNTING",
+  "description": "เคลียร์ยอดรับเงินโอนจัดไฟแนนซ์สำเร็จ ยอดเงิน ฿25000",
+  "target_id": "6a2fd686d7e9c48ac9155578",
+  "reference_no": "INV-20260615-AAZ8M",
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-15T10:47:54.883Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-15T10:47:54.883Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a2fd9b0613b478aef213c29"
+  },
+  "action": "CREATE",
+  "module": "PO",
+  "description": "สร้างใบสั่งซื้อใหม่ เลขที่ PO-20260615-0002 สำหรับซัพพลายเออร์ SYSNEX",
+  "target_id": "6a2fd9af613b478aef213c27",
+  "reference_no": "PO-20260615-0002",
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-15T10:53:36.078Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-15T10:53:36.078Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a2fd9c8613b478aef213c3e"
+  },
+  "action": "UPDATE",
+  "module": "PO",
+  "description": "แจ้งของถึงสาขาสำเร็จพร้อมระบุ IMEI ใบสั่งซื้อ เลขที่ PO-20260615-0002",
+  "target_id": "6a2fd9af613b478aef213c27",
+  "reference_no": "PO-20260615-0002",
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-15T10:54:00.402Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-15T10:54:00.402Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a2fd9d4613b478aef213c4e"
+  },
+  "action": "APPROVE",
+  "module": "PO",
+  "description": "อนุมัตินำเข้าและตรวจรับสต็อกสินค้าสำเร็จ ใบสั่งซื้อ เลขที่ PO-20260615-0002",
+  "target_id": "6a2fd9af613b478aef213c27",
+  "reference_no": "PO-20260615-0002",
+  "details": null,
+  "ip_address": null,
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-15T10:54:12.467Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-15T10:54:12.467Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a2fd9df613b478aef213c60"
+  },
+  "action": "UPDATE",
+  "module": "ACCOUNTING",
+  "description": "ชำระเงินค่าสินค้าสำเร็จสำหรับใบสั่งซื้อ เลขที่ PO-20260615-0002 ยอดรวม ฿28000",
+  "target_id": "6a2fd9af613b478aef213c27",
+  "reference_no": "PO-20260615-0002",
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-15T10:54:23.848Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-15T10:54:23.848Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a2fe7b166025b680275eb95"
+  },
+  "action": "CREATE",
+  "module": "PO",
+  "description": "สร้างใบสั่งซื้อใหม่ เลขที่ PO-20260615-0003 สำหรับซัพพลายเออร์ SYSNEX",
+  "target_id": "6a2fe7b166025b680275eb93",
+  "reference_no": "PO-20260615-0003",
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-15T11:53:21.278Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-15T11:53:21.278Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a2fe7d966025b680275ebab"
+  },
+  "action": "UPDATE",
+  "module": "PO",
+  "description": "แก้ไขใบสั่งซื้อ เลขที่ PO-20260615-0003 ซัพพลายเออร์ SYSNEX",
+  "target_id": "6a2fe7b166025b680275eb93",
+  "reference_no": "PO-20260615-0003",
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-15T11:54:01.719Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-15T11:54:01.719Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a2fe7e566025b680275ebbb"
+  },
+  "action": "UPDATE",
+  "module": "ACCOUNTING",
+  "description": "ชำระเงินค่าสินค้าสำเร็จสำหรับใบสั่งซื้อ เลขที่ PO-20260615-0003 ยอดรวม ฿70000",
+  "target_id": "6a2fe7b166025b680275eb93",
+  "reference_no": "PO-20260615-0003",
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-15T11:54:13.190Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-15T11:54:13.190Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a2fe83f66025b680275ec14"
+  },
+  "action": "UPDATE",
+  "module": "PO",
+  "description": "แก้ไขใบสั่งซื้อ เลขที่ PO-20260615-0003 ซัพพลายเออร์ SYSNEX",
+  "target_id": "6a2fe7b166025b680275eb93",
+  "reference_no": "PO-20260615-0003",
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-15T11:55:43.148Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-15T11:55:43.148Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a2fe85866025b680275ec2d"
+  },
+  "action": "UPDATE",
+  "module": "PO",
+  "description": "แจ้งของถึงสาขาสำเร็จพร้อมระบุ IMEI ใบสั่งซื้อ เลขที่ PO-20260615-0003",
+  "target_id": "6a2fe7b166025b680275eb93",
+  "reference_no": "PO-20260615-0003",
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-15T11:56:08.580Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-15T11:56:08.580Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a2fe86166025b680275ec42"
+  },
+  "action": "APPROVE",
+  "module": "PO",
+  "description": "อนุมัตินำเข้าและตรวจรับสต็อกสินค้าสำเร็จ ใบสั่งซื้อ เลขที่ PO-20260615-0003",
+  "target_id": "6a2fe7b166025b680275eb93",
+  "reference_no": "PO-20260615-0003",
+  "details": null,
+  "ip_address": null,
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-15T11:56:17.777Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-15T11:56:17.777Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a30e4fbf36408471dc80f7e"
+  },
+  "action": "LOGIN",
+  "module": "AUTH",
+  "description": "เข้าสู่ระบบสำเร็จ: พนักงาน Administrator (แอดมิน)",
+  "target_id": "69f5a15ce0775d4f2c85bc09",
+  "reference_no": null,
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-16T05:54:03.143Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-16T05:54:03.143Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a310cc3d95a1787a111a0d2"
+  },
+  "action": "LOGIN",
+  "module": "AUTH",
+  "description": "เข้าสู่ระบบสำเร็จ: พนักงาน Administrator (แอดมิน)",
+  "target_id": "69f5a15ce0775d4f2c85bc09",
+  "reference_no": null,
+  "details": null,
+  "ip_address": "171.7.231.199, 172.68.4.143, 10.28.187.2",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-16T08:43:47.403Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-16T08:43:47.403Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a310cf9d95a1787a111a0e0"
+  },
+  "action": "CREATE",
+  "module": "PO",
+  "description": "สร้างใบสั่งซื้อใหม่ เลขที่ PO-20260616-0001 สำหรับซัพพลายเออร์ SYSNEX",
+  "target_id": "6a310cf9d95a1787a111a0de",
+  "reference_no": "PO-20260616-0001",
+  "details": null,
+  "ip_address": "171.7.231.199, 172.71.124.105, 10.24.127.129",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-16T08:44:41.356Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-16T08:44:41.356Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a310d3cd95a1787a111a0f8"
+  },
+  "action": "UPDATE",
+  "module": "ACCOUNTING",
+  "description": "ชำระเงินค่าสินค้าสำเร็จสำหรับใบสั่งซื้อ เลขที่ PO-20260616-0001 ยอดรวม ฿150000",
+  "target_id": "6a310cf9d95a1787a111a0de",
+  "reference_no": "PO-20260616-0001",
+  "details": null,
+  "ip_address": "171.7.231.199, 172.68.4.142, 10.30.207.129",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-16T08:45:48.749Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-16T08:45:48.749Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a310e52d95a1787a111a10e"
+  },
+  "action": "CREATE",
+  "module": "POS",
+  "description": "ทำรายการขายสำเร็จ เลขที่ใบเสร็จ INV-20260616-RJNGN ยอดรวม ฿40600",
+  "target_id": "6a310e52d95a1787a111a109",
+  "reference_no": "INV-20260616-RJNGN",
+  "details": null,
+  "ip_address": "171.7.231.199, 172.71.124.105, 10.30.155.2",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-16T08:50:26.211Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-16T08:50:26.211Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a310e7ed95a1787a111a11d"
+  },
+  "action": "UPDATE",
+  "module": "ACCOUNTING",
+  "description": "เคลียร์ยอดรับเงินโอนจัดไฟแนนซ์สำเร็จ ยอดเงิน ฿30000",
+  "target_id": "6a310e52d95a1787a111a10d",
+  "reference_no": "INV-20260616-RJNGN",
+  "details": null,
+  "ip_address": "171.7.231.199, 172.68.4.142, 10.30.155.2",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-16T08:51:10.136Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-16T08:51:10.136Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a3361539e6689a6f23069a9"
+  },
+  "action": "LOGIN",
+  "module": "AUTH",
+  "description": "เข้าสู่ระบบสำเร็จ: พนักงาน Administrator (แอดมิน)",
+  "target_id": "69f5a15ce0775d4f2c85bc09",
+  "reference_no": null,
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-18T03:09:07.531Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-18T03:09:07.531Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a337b2fc539e9760444fb36"
+  },
+  "action": "LOGIN",
+  "module": "AUTH",
+  "description": "เข้าสู่ระบบสำเร็จ: พนักงาน พนักงานขาย-สาขายะลา (พนักงานขาย)",
+  "target_id": "69f85a505d8176293321cd44",
+  "reference_no": null,
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f85a505d8176293321cd44"
+  },
+  "user_name": "พนักงานขาย-สาขายะลา",
+  "createdAt": {
+    "$date": "2026-06-18T04:59:27.519Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-18T04:59:27.519Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a337b3cc539e9760444fb37"
+  },
+  "action": "LOGIN",
+  "module": "AUTH",
+  "description": "เข้าสู่ระบบสำเร็จ: พนักงาน Administrator (แอดมิน)",
+  "target_id": "69f5a15ce0775d4f2c85bc09",
+  "reference_no": null,
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-18T04:59:40.604Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-18T04:59:40.604Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a337cb53c71510091ab2600"
+  },
+  "action": "UPDATE",
+  "module": "ROLE",
+  "description": "แก้ไขระดับสิทธิ์/ตำแหน่ง: พนักงานบัญชี",
+  "target_id": "6a1e55c4d9857cdf0eb60b90",
+  "reference_no": null,
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-18T05:05:57.661Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-18T05:05:57.661Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a337cbd3c71510091ab2601"
+  },
+  "action": "UPDATE",
+  "module": "ROLE",
+  "description": "แก้ไขระดับสิทธิ์/ตำแหน่ง: พนักงานจัดซื้อ",
+  "target_id": "6a0aad8fbf470acf73eadd9e",
+  "reference_no": null,
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-18T05:06:05.958Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-18T05:06:05.958Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a337cc33c71510091ab2602"
+  },
+  "action": "UPDATE",
+  "module": "ROLE",
+  "description": "แก้ไขระดับสิทธิ์/ตำแหน่ง: พนักงานสต็อก",
+  "target_id": "69fc649070cdbc19c0ac1ea1",
+  "reference_no": null,
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-18T05:06:11.716Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-18T05:06:11.716Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a337ccd3c71510091ab2603"
+  },
+  "action": "UPDATE",
+  "module": "ROLE",
+  "description": "แก้ไขระดับสิทธิ์/ตำแหน่ง: ทดสอบระบบ",
+  "target_id": "6a1faac19f7e97161b4c2f14",
+  "reference_no": null,
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-18T05:06:21.404Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-18T05:06:21.404Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a337ce53c71510091ab2604"
+  },
+  "action": "LOGIN",
+  "module": "AUTH",
+  "description": "เข้าสู่ระบบสำเร็จ: พนักงาน Administrator (แอดมิน)",
+  "target_id": "69f5a15ce0775d4f2c85bc09",
+  "reference_no": null,
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-18T05:06:45.116Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-18T05:06:45.116Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a34b6739e33919145b225f3"
+  },
+  "action": "CANCEL",
+  "module": "PO",
+  "description": "ยกเลิกใบสั่งซื้อ เลขที่ PO-20260616-0001",
+  "target_id": "6a310cf9d95a1787a111a0de",
+  "reference_no": "PO-20260616-0001",
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-19T03:24:35.866Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-19T03:24:35.866Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a34b6dd9e33919145b22625"
+  },
+  "action": "CREATE",
+  "module": "PO",
+  "description": "สร้างใบสั่งซื้อใหม่ เลขที่ PO-20260619-0001 สำหรับซัพพลายเออร์ SYSNEX",
+  "target_id": "6a34b6dd9e33919145b22623",
+  "reference_no": "PO-20260619-0001",
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-19T03:26:21.279Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-19T03:26:21.279Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a34b70d9e33919145b2263e"
+  },
+  "action": "UPDATE",
+  "module": "ACCOUNTING",
+  "description": "บันทึกจ่ายเงินใบ PO เลขที่ PO-20260619-0001 (จ่ายจริง ฿50,000, ส่วนลด ฿0) สถานะ: ชำระเงินบางส่วน",
+  "target_id": "6a34b6dd9e33919145b22623",
+  "reference_no": "PO-20260619-0001",
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-19T03:27:09.274Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-19T03:27:09.274Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a34b7529e33919145b2264d"
+  },
+  "action": "UPDATE",
+  "module": "ACCOUNTING",
+  "description": "บันทึกจ่ายเงินใบ PO เลขที่ PO-20260619-0001 (จ่ายจริง ฿37,500, ส่วนลด ฿2,500) สถานะ: ชำระเงินแล้ว",
+  "target_id": "6a34b6dd9e33919145b22623",
+  "reference_no": "PO-20260619-0001",
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-19T03:28:18.511Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-19T03:28:18.511Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a38c41a3e5a0f6f41d510a2"
+  },
+  "action": "LOGIN",
+  "module": "AUTH",
+  "description": "เข้าสู่ระบบสำเร็จ: พนักงาน Administrator (แอดมิน)",
+  "target_id": "69f5a15ce0775d4f2c85bc09",
+  "reference_no": null,
+  "details": null,
+  "ip_address": "171.7.247.165, 172.71.124.104, 10.30.207.129",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-22T05:11:54.784Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-22T05:11:54.784Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a38d91547c7ea0c5e9d1911"
+  },
+  "action": "CREATE",
+  "module": "PERSONNEL",
+  "description": "เพิ่มพนักงานใหม่: admin1 (รหัสพนักงาน: admin1, บทบาท: แอดมิน)",
+  "target_id": "6a38d91547c7ea0c5e9d1910",
+  "reference_no": "admin1",
+  "details": null,
+  "ip_address": "171.7.247.165, 172.68.4.142, 10.28.187.2",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-22T06:41:25.406Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-22T06:41:25.406Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a38efce6eeeeb6fb4198849"
+  },
+  "action": "LOGIN",
+  "module": "AUTH",
+  "description": "เข้าสู่ระบบสำเร็จ: พนักงาน Administrator (แอดมิน)",
+  "target_id": "69f5a15ce0775d4f2c85bc09",
+  "reference_no": null,
+  "details": null,
+  "ip_address": "171.7.228.109, 172.68.4.143, 10.30.155.2",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-22T08:18:22.091Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-22T08:18:22.091Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a3b520264469e7e79fe8f62"
+  },
+  "action": "LOGIN",
+  "module": "AUTH",
+  "description": "เข้าสู่ระบบสำเร็จ: พนักงาน Administrator (แอดมิน)",
+  "target_id": "69f5a15ce0775d4f2c85bc09",
+  "reference_no": null,
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-24T03:41:54.885Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-24T03:41:54.885Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a3b598790f319665f04288b"
+  },
+  "action": "UPDATE",
+  "module": "PERSONNEL",
+  "description": "แก้ไขข้อมูลพนักงาน: พนักงานขาย-สาขายะลา (รหัสพนักงาน: saler1, บทบาท: พนักงานขาย)",
+  "target_id": "69f85a505d8176293321cd44",
+  "reference_no": "saler1",
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-24T04:13:59.111Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-24T04:13:59.111Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a3b599590f319665f04288c"
+  },
+  "action": "LOGIN",
+  "module": "AUTH",
+  "description": "เข้าสู่ระบบสำเร็จ: พนักงาน Administrator (แอดมิน)",
+  "target_id": "69f5a15ce0775d4f2c85bc09",
+  "reference_no": null,
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-24T04:14:13.344Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-24T04:14:13.344Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a3b59ab90f319665f042899"
+  },
+  "action": "LOGIN",
+  "module": "AUTH",
+  "description": "เข้าสู่ระบบสำเร็จ: พนักงาน Administrator (แอดมิน)",
+  "target_id": "69f5a15ce0775d4f2c85bc09",
+  "reference_no": null,
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-24T04:14:35.526Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-24T04:14:35.526Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a3cb62ae004056bb9c7cf12"
+  },
+  "action": "LOGIN",
+  "module": "AUTH",
+  "description": "เข้าสู่ระบบสำเร็จ: พนักงาน Administrator (แอดมิน)",
+  "target_id": "69f5a15ce0775d4f2c85bc09",
+  "reference_no": null,
+  "details": null,
+  "ip_address": "171.7.246.108, 172.68.4.143, 10.29.109.134",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-25T05:01:30.203Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-25T05:01:30.203Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a3df11738b7336b31128d0f"
+  },
+  "action": "LOGIN",
+  "module": "AUTH",
+  "description": "เข้าสู่ระบบสำเร็จ: พนักงาน Administrator (แอดมิน)",
+  "target_id": "69f5a15ce0775d4f2c85bc09",
+  "reference_no": null,
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-26T03:25:11.939Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-26T03:25:11.939Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a3df2c896f18b1b9720ba4a"
+  },
+  "action": "LOGIN",
+  "module": "AUTH",
+  "description": "เข้าสู่ระบบสำเร็จ: พนักงาน Administrator (แอดมิน)",
+  "target_id": "69f5a15ce0775d4f2c85bc09",
+  "reference_no": null,
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-26T03:32:24.276Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-26T03:32:24.276Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a3df2eb6da4aaa99b5222d4"
+  },
+  "action": "LOGIN",
+  "module": "AUTH",
+  "description": "เข้าสู่ระบบสำเร็จ: พนักงาน Administrator (แอดมิน)",
+  "target_id": "69f5a15ce0775d4f2c85bc09",
+  "reference_no": null,
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-26T03:32:59.204Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-26T03:32:59.204Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a3df2eb6da4aaa99b5222d5"
+  },
+  "action": "LOGIN",
+  "module": "AUTH",
+  "description": "เข้าสู่ระบบสำเร็จ: พนักงาน Administrator (แอดมิน)",
+  "target_id": "69f5a15ce0775d4f2c85bc09",
+  "reference_no": null,
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-26T03:32:59.501Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-26T03:32:59.501Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a3df65996f18b1b9720ba57"
+  },
+  "action": "LOGIN",
+  "module": "AUTH",
+  "description": "เข้าสู่ระบบสำเร็จ: พนักงาน Administrator (แอดมิน)",
+  "target_id": "69f5a15ce0775d4f2c85bc09",
+  "reference_no": null,
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-26T03:47:37.682Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-26T03:47:37.682Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a3dfb0d6da4aaa99b522309"
+  },
+  "action": "LOGIN",
+  "module": "AUTH",
+  "description": "เข้าสู่ระบบสำเร็จ: พนักงาน พนักงานสต็อก (พนักงานสต็อก)",
+  "target_id": "69fc644470cdbc19c0ac1ea0",
+  "reference_no": null,
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69fc644470cdbc19c0ac1ea0"
+  },
+  "user_name": "พนักงานสต็อก",
+  "createdAt": {
+    "$date": "2026-06-26T04:07:41.721Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-26T04:07:41.721Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a3e2f386da4aaa99b522325"
+  },
+  "action": "LOGIN",
+  "module": "AUTH",
+  "description": "เข้าสู่ระบบสำเร็จ: พนักงาน Administrator (แอดมิน)",
+  "target_id": "69f5a15ce0775d4f2c85bc09",
+  "reference_no": null,
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-26T07:50:16.749Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-26T07:50:16.749Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a3e2f556da4aaa99b522332"
+  },
+  "action": "LOGIN",
+  "module": "AUTH",
+  "description": "เข้าสู่ระบบสำเร็จ: พนักงาน Administrator (แอดมิน)",
+  "target_id": "69f5a15ce0775d4f2c85bc09",
+  "reference_no": null,
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-26T07:50:45.917Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-26T07:50:45.917Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a3e4f1296f18b1b9720be00"
+  },
+  "action": "CREATE",
+  "module": "POS",
+  "description": "ทำรายการขายสำเร็จ เลขที่ใบเสร็จ INV-20260626-QX2EB ยอดรวม ฿30000",
+  "target_id": "6a3e4f1296f18b1b9720bdfe",
+  "reference_no": "INV-20260626-QX2EB",
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-26T10:06:10.616Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-26T10:06:10.616Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a3f3cf4b6d8e6948d67136a"
+  },
+  "action": "LOGIN",
+  "module": "AUTH",
+  "description": "เข้าสู่ระบบสำเร็จ: พนักงาน Administrator (แอดมิน)",
+  "target_id": "69f5a15ce0775d4f2c85bc09",
+  "reference_no": null,
+  "details": null,
+  "ip_address": "::1",
+  "user_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "user_name": "Administrator",
+  "createdAt": {
+    "$date": "2026-06-27T03:01:08.091Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-27T03:01:08.091Z"
+  },
+  "__v": 0
+}]

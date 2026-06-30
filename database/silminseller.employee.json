@@ -1,0 +1,151 @@
+[{
+  "_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "name": "Administrator",
+  "emp_id": "admin",
+  "password": "$2b$10$PYE9Iv8Ag2sTBp/iZWTOlOAmzKJzyAnx51ogR.lSgTXQi78TS6xC2",
+  "createdAt": {
+    "$date": "2026-05-02T07:01:48.004Z"
+  },
+  "updatedAt": {
+    "$date": "2026-05-04T05:08:55.565Z"
+  },
+  "__v": 0,
+  "role": "แอดมิน",
+  "branch_id": {
+    "$oid": "69f5b2da4795c06e1774cbb0"
+  }
+},
+{
+  "_id": {
+    "$oid": "69f85a505d8176293321cd44"
+  },
+  "name": "พนักงานขาย-สาขายะลา",
+  "emp_id": "saler1",
+  "password": "$2b$10$PYE9Iv8Ag2sTBp/iZWTOlOAmzKJzyAnx51ogR.lSgTXQi78TS6xC2",
+  "role": "พนักงานขาย",
+  "branch_id": {
+    "$oid": "69f9775fed912a3837928bdb"
+  },
+  "createdAt": {
+    "$date": "2026-05-04T08:35:28.093Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-24T04:13:58.967Z"
+  },
+  "__v": 0,
+  "status": "ระงับ"
+},
+{
+  "_id": {
+    "$oid": "69fc644470cdbc19c0ac1ea0"
+  },
+  "name": "พนักงานสต็อก",
+  "emp_id": "stocker",
+  "password": "$2b$10$PYE9Iv8Ag2sTBp/iZWTOlOAmzKJzyAnx51ogR.lSgTXQi78TS6xC2",
+  "role": "พนักงานสต็อก",
+  "branch_id": {
+    "$oid": "69f5b2da4795c06e1774cbb0"
+  },
+  "createdAt": {
+    "$date": "2026-05-07T10:07:00.451Z"
+  },
+  "updatedAt": {
+    "$date": "2026-05-07T10:08:24.875Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a0aadcebf470acf73eadd9f"
+  },
+  "name": "พนักงานจัดซื้อ",
+  "emp_id": "purchaser",
+  "password": "$2b$10$6Od.ghTZlpXFk7vRaUV8geK.ug5DG/lgscbcKjZxXkbcf2w4kiaFy",
+  "role": "พนักงานจัดซื้อ",
+  "branch_id": {
+    "$oid": "69f5b2da4795c06e1774cbb0"
+  },
+  "createdAt": {
+    "$date": "2026-05-18T06:12:30.634Z"
+  },
+  "updatedAt": {
+    "$date": "2026-05-18T06:12:30.634Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a0bd77a21ae5b8e0f7624bf"
+  },
+  "name": "พนักงานขาย-สาขาปัตตานี",
+  "emp_id": "saler2",
+  "password": "$2b$10$1L1PtR.8SRiWR/rysxKWeufkxbagNim1JQIXub6F166m/JBeygniW",
+  "role": "พนักงานขาย",
+  "branch_id": {
+    "$oid": "69f9bb6946ec83f3681fed2f"
+  },
+  "createdAt": {
+    "$date": "2026-05-19T03:22:34.298Z"
+  },
+  "updatedAt": {
+    "$date": "2026-05-19T03:22:34.298Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a1e55fdd9857cdf0eb60b92"
+  },
+  "name": "พนักงานบัญชี",
+  "emp_id": "accounter",
+  "password": "$2b$10$IeWxZjhtyRP5hCK7/nnOc.c/m/WjCpG5byz16XKXY12L8Y93deSuy",
+  "role": "พนักงานบัญชี",
+  "branch_id": {
+    "$oid": "69f5b2da4795c06e1774cbb0"
+  },
+  "createdAt": {
+    "$date": "2026-06-02T04:03:09.600Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-02T04:03:09.600Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a1faae09f7e97161b4c2f16"
+  },
+  "name": "พนักงานทดสอบระบบ",
+  "emp_id": "tester",
+  "password": "$2b$10$.1hD7tgJ2uhR3FgzSm5FOeZyebrbQ2hvlQw638p88fTWqawJJbo8C",
+  "role": "ทดสอบระบบ",
+  "branch_id": {
+    "$oid": "69f5b2da4795c06e1774cbb0"
+  },
+  "createdAt": {
+    "$date": "2026-06-03T04:17:36.517Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-03T04:17:36.517Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a38d91547c7ea0c5e9d1910"
+  },
+  "name": "admin1",
+  "emp_id": "admin1",
+  "password": "$2b$10$h0jPuMOm38r58cE1URvj7uK0O9gbzqRpgBE5rYCSMP99ZadFKER0O",
+  "role": "แอดมิน",
+  "branch_id": null,
+  "createdAt": {
+    "$date": "2026-06-22T06:41:25.391Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-22T06:41:25.391Z"
+  },
+  "__v": 0
+}]

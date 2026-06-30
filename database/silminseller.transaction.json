@@ -1,0 +1,174 @@
+[{
+  "_id": {
+    "$oid": "6a2fd686d7e9c48ac9155574"
+  },
+  "receipt_number": "INV-20260615-AAZ8M",
+  "branch_id": {
+    "$oid": "69f5b2da4795c06e1774cbb0"
+  },
+  "member_id": {
+    "$oid": "6a053d150228b55536e4e612"
+  },
+  "employee_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "items": [
+    {
+      "product_id": {
+        "$oid": "6a2fd60ed7e9c48ac9155556"
+      },
+      "product_name": "IPhone 15",
+      "imei_sold": "111",
+      "quantity": 1,
+      "price": 30000,
+      "warranty_period": "3 เดือน",
+      "warranty_expiry": {
+        "$date": "2026-09-15T10:40:06.355Z"
+      },
+      "is_gift": false,
+      "_id": {
+        "$oid": "6a2fd686d7e9c48ac9155575"
+      }
+    }
+  ],
+  "total_amount": 30600,
+  "payment_method": "จัดไฟแนนซ์",
+  "down_payment": 5000,
+  "payment_type": "จัดไฟแนนซ์",
+  "cash_amount": 0,
+  "transfer_amount": 0,
+  "finance_company": "T-Plus",
+  "finance_payment_day": 0,
+  "finance_months": 0,
+  "finance_down_payment_cash": 2600,
+  "finance_down_payment_transfer": 2400,
+  "contract_fee": 300,
+  "icloud_fee": 300,
+  "status": "เสร็จสิ้น",
+  "created_at": {
+    "$date": "2026-06-15T10:40:06.355Z"
+  },
+  "createdAt": {
+    "$date": "2026-06-15T10:40:06.515Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-15T10:40:06.515Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a310e52d95a1787a111a109"
+  },
+  "receipt_number": "INV-20260616-RJNGN",
+  "branch_id": {
+    "$oid": "69f5b2da4795c06e1774cbb0"
+  },
+  "member_id": {
+    "$oid": "6a053d150228b55536e4e612"
+  },
+  "employee_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "items": [
+    {
+      "product_id": {
+        "$oid": "6a2fe86166025b680275ec3f"
+      },
+      "product_name": "IPhone 15 Pro Max",
+      "imei_sold": "555",
+      "quantity": 1,
+      "price": 40000,
+      "warranty_period": "1 เดือน",
+      "warranty_expiry": {
+        "$date": "2026-07-16T08:50:26.118Z"
+      },
+      "is_gift": false,
+      "_id": {
+        "$oid": "6a310e52d95a1787a111a10a"
+      }
+    }
+  ],
+  "total_amount": 40600,
+  "payment_method": "จัดไฟแนนซ์",
+  "down_payment": 10000,
+  "payment_type": "จัดไฟแนนซ์",
+  "cash_amount": 0,
+  "transfer_amount": 0,
+  "finance_company": "T-Plus",
+  "finance_payment_day": 0,
+  "finance_months": 0,
+  "finance_down_payment_cash": 4600,
+  "finance_down_payment_transfer": 5400,
+  "contract_fee": 300,
+  "icloud_fee": 300,
+  "status": "เสร็จสิ้น",
+  "created_at": {
+    "$date": "2026-06-16T08:50:26.118Z"
+  },
+  "createdAt": {
+    "$date": "2026-06-16T08:50:26.152Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-16T08:50:26.152Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a3e4f1296f18b1b9720bdfe"
+  },
+  "receipt_number": "INV-20260626-QX2EB",
+  "branch_id": {
+    "$oid": "69f5b2da4795c06e1774cbb0"
+  },
+  "member_id": {
+    "$oid": "6a053d150228b55536e4e612"
+  },
+  "employee_id": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "items": [
+    {
+      "product_id": {
+        "$oid": "6a2fd9d4613b478aef213c4b"
+      },
+      "product_name": "IPhone 17",
+      "imei_sold": "444",
+      "quantity": 1,
+      "price": 30000,
+      "warranty_period": "1 เดือน",
+      "warranty_expiry": {
+        "$date": "2026-07-26T10:06:10.313Z"
+      },
+      "is_gift": false,
+      "_id": {
+        "$oid": "6a3e4f1296f18b1b9720bdff"
+      }
+    }
+  ],
+  "total_amount": 30000,
+  "payment_method": "ซื้อสด",
+  "down_payment": 0,
+  "payment_type": "ซื้อสด",
+  "cash_amount": 15000,
+  "transfer_amount": 15000,
+  "finance_company": "",
+  "finance_payment_day": 0,
+  "finance_months": 0,
+  "finance_down_payment_cash": 0,
+  "finance_down_payment_transfer": 0,
+  "contract_fee": 0,
+  "icloud_fee": 0,
+  "status": "เสร็จสิ้น",
+  "created_at": {
+    "$date": "2026-06-26T10:06:10.313Z"
+  },
+  "createdAt": {
+    "$date": "2026-06-26T10:06:10.504Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-26T10:06:10.504Z"
+  },
+  "__v": 0
+}]

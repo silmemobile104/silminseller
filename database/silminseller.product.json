@@ -1,0 +1,234 @@
+[{
+  "_id": {
+    "$oid": "6a2fd60ed7e9c48ac9155556"
+  },
+  "product_code": "111",
+  "supplier_id": {
+    "$oid": "6a23a2464961d7bea5d2a7c8"
+  },
+  "name": "IPhone 15",
+  "cost_price": 23000,
+  "selling_price": 25000,
+  "type_id": {
+    "$oid": "69f5a508ca559c89ebc4201e"
+  },
+  "unit_id": {
+    "$oid": "69f5a532ca559c89ebc42021"
+  },
+  "color_id": {
+    "$oid": "6a2bc7a8622535d737e1d78e"
+  },
+  "capacity_id": {
+    "$oid": "69f5a54cca559c89ebc42026"
+  },
+  "condition_id": {
+    "$oid": "69f5a563ca559c89ebc4202b"
+  },
+  "stock_balances": [
+    {
+      "branch_id": {
+        "$oid": "69f5b2da4795c06e1774cbb0"
+      },
+      "quantity": 0,
+      "imeis": [],
+      "_id": {
+        "$oid": "6a2fd60ed7e9c48ac9155557"
+      }
+    }
+  ],
+  "createdAt": {
+    "$date": "2026-06-15T10:38:06.085Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-15T10:40:06.406Z"
+  },
+  "__v": 1
+},
+{
+  "_id": {
+    "$oid": "6a2fd60ed7e9c48ac9155559"
+  },
+  "product_code": "222",
+  "supplier_id": {
+    "$oid": "6a23a2464961d7bea5d2a7c8"
+  },
+  "name": "IPhone 15",
+  "cost_price": 23000,
+  "selling_price": 25000,
+  "type_id": {
+    "$oid": "69f5a508ca559c89ebc4201e"
+  },
+  "unit_id": {
+    "$oid": "69f5a532ca559c89ebc42021"
+  },
+  "color_id": {
+    "$oid": "6a2bc7a8622535d737e1d78e"
+  },
+  "capacity_id": {
+    "$oid": "69f5a54cca559c89ebc42026"
+  },
+  "condition_id": {
+    "$oid": "69f5a563ca559c89ebc4202b"
+  },
+  "stock_balances": [
+    {
+      "branch_id": {
+        "$oid": "69f5b2da4795c06e1774cbb0"
+      },
+      "quantity": 1,
+      "imeis": [
+        "222"
+      ],
+      "_id": {
+        "$oid": "6a2fd60ed7e9c48ac915555a"
+      }
+    }
+  ],
+  "createdAt": {
+    "$date": "2026-06-15T10:38:06.237Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-15T10:38:06.237Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a2fd60ed7e9c48ac915555c"
+  },
+  "product_code": "333",
+  "supplier_id": {
+    "$oid": "6a23a2464961d7bea5d2a7c8"
+  },
+  "name": "IPhone 15",
+  "cost_price": 23000,
+  "selling_price": 25000,
+  "type_id": {
+    "$oid": "69f5a508ca559c89ebc4201e"
+  },
+  "unit_id": {
+    "$oid": "69f5a532ca559c89ebc42021"
+  },
+  "color_id": {
+    "$oid": "6a2bc7a8622535d737e1d78e"
+  },
+  "capacity_id": {
+    "$oid": "69f5a54cca559c89ebc42026"
+  },
+  "condition_id": {
+    "$oid": "69f5a563ca559c89ebc4202b"
+  },
+  "stock_balances": [
+    {
+      "branch_id": {
+        "$oid": "69f5b2da4795c06e1774cbb0"
+      },
+      "quantity": 1,
+      "imeis": [
+        "333"
+      ],
+      "_id": {
+        "$oid": "6a2fd60ed7e9c48ac915555d"
+      }
+    }
+  ],
+  "createdAt": {
+    "$date": "2026-06-15T10:38:06.386Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-15T10:38:06.386Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a2fd9d4613b478aef213c4b"
+  },
+  "product_code": "444",
+  "supplier_id": {
+    "$oid": "69f5b97ad67d8667fe74592c"
+  },
+  "name": "IPhone 17",
+  "cost_price": 28000,
+  "selling_price": 30000,
+  "type_id": {
+    "$oid": "69f5a508ca559c89ebc4201e"
+  },
+  "unit_id": {
+    "$oid": "69f5a532ca559c89ebc42021"
+  },
+  "color_id": {
+    "$oid": "69f5a542ca559c89ebc42024"
+  },
+  "capacity_id": {
+    "$oid": "69f5a54cca559c89ebc42026"
+  },
+  "condition_id": {
+    "$oid": "69f5a563ca559c89ebc4202b"
+  },
+  "stock_balances": [
+    {
+      "branch_id": {
+        "$oid": "69f5b2da4795c06e1774cbb0"
+      },
+      "quantity": 0,
+      "imeis": [],
+      "_id": {
+        "$oid": "6a2fd9d4613b478aef213c4c"
+      }
+    }
+  ],
+  "createdAt": {
+    "$date": "2026-06-15T10:54:12.259Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-26T10:06:10.372Z"
+  },
+  "__v": 1
+},
+{
+  "_id": {
+    "$oid": "6a2fe86166025b680275ec3f"
+  },
+  "product_code": "555",
+  "supplier_id": {
+    "$oid": "69f5b97ad67d8667fe74592c"
+  },
+  "name": "IPhone 15 Pro Max",
+  "cost_price": 35000,
+  "selling_price": 40000,
+  "type_id": {
+    "$oid": "69f5a508ca559c89ebc4201e"
+  },
+  "unit_id": {
+    "$oid": "69f5a532ca559c89ebc42021"
+  },
+  "color_id": {
+    "$oid": "69f9bd6246ec83f3681fed46"
+  },
+  "capacity_id": {
+    "$oid": "69f5a550ca559c89ebc42027"
+  },
+  "condition_id": {
+    "$oid": "69f5a563ca559c89ebc4202b"
+  },
+  "stock_balances": [
+    {
+      "branch_id": {
+        "$oid": "69f5b2da4795c06e1774cbb0"
+      },
+      "quantity": 0,
+      "imeis": [],
+      "_id": {
+        "$oid": "6a2fe86166025b680275ec40"
+      }
+    }
+  ],
+  "createdAt": {
+    "$date": "2026-06-15T11:56:17.568Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-16T08:50:26.123Z"
+  },
+  "__v": 1
+}]

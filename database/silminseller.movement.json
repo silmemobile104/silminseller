@@ -1,0 +1,240 @@
+[{
+  "_id": {
+    "$oid": "6a2fd60ed7e9c48ac9155558"
+  },
+  "product_id": {
+    "$oid": "6a2fd60ed7e9c48ac9155556"
+  },
+  "imei": "111",
+  "action": "นำเข้าสินค้า (PO)",
+  "from_branch": null,
+  "to_branch": {
+    "$oid": "69f5b2da4795c06e1774cbb0"
+  },
+  "reference_no": "PO-20260615-0001",
+  "transit_hours": 0,
+  "quantity": 0,
+  "created_by": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "created_at": {
+    "$date": "2026-06-15T10:38:06.135Z"
+  },
+  "__v": 0,
+  "createdAt": {
+    "$date": "2026-06-15T10:38:06.136Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-15T10:38:06.136Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a2fd60ed7e9c48ac915555b"
+  },
+  "product_id": {
+    "$oid": "6a2fd60ed7e9c48ac9155559"
+  },
+  "imei": "222",
+  "action": "นำเข้าสินค้า (PO)",
+  "from_branch": null,
+  "to_branch": {
+    "$oid": "69f5b2da4795c06e1774cbb0"
+  },
+  "reference_no": "PO-20260615-0001",
+  "transit_hours": 0,
+  "quantity": 0,
+  "created_by": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "created_at": {
+    "$date": "2026-06-15T10:38:06.287Z"
+  },
+  "__v": 0,
+  "createdAt": {
+    "$date": "2026-06-15T10:38:06.287Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-15T10:38:06.287Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a2fd60ed7e9c48ac915555e"
+  },
+  "product_id": {
+    "$oid": "6a2fd60ed7e9c48ac915555c"
+  },
+  "imei": "333",
+  "action": "นำเข้าสินค้า (PO)",
+  "from_branch": null,
+  "to_branch": {
+    "$oid": "69f5b2da4795c06e1774cbb0"
+  },
+  "reference_no": "PO-20260615-0001",
+  "transit_hours": 0,
+  "quantity": 0,
+  "created_by": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "created_at": {
+    "$date": "2026-06-15T10:38:06.435Z"
+  },
+  "__v": 0,
+  "createdAt": {
+    "$date": "2026-06-15T10:38:06.436Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-15T10:38:06.436Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a2fd686d7e9c48ac9155573"
+  },
+  "product_id": {
+    "$oid": "6a2fd60ed7e9c48ac9155556"
+  },
+  "imei": "111",
+  "action": "ขายออก",
+  "from_branch": {
+    "$oid": "69f5b2da4795c06e1774cbb0"
+  },
+  "to_branch": null,
+  "reference_no": "INV-20260615-AAZ8M",
+  "transit_hours": 0,
+  "quantity": 0,
+  "created_by": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "created_at": {
+    "$date": "2026-06-15T10:40:06.458Z"
+  },
+  "__v": 0,
+  "createdAt": {
+    "$date": "2026-06-15T10:40:06.459Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-15T10:40:06.459Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a2fd9d4613b478aef213c4d"
+  },
+  "product_id": {
+    "$oid": "6a2fd9d4613b478aef213c4b"
+  },
+  "imei": "444",
+  "action": "นำเข้าสินค้า (PO)",
+  "from_branch": null,
+  "to_branch": {
+    "$oid": "69f5b2da4795c06e1774cbb0"
+  },
+  "reference_no": "PO-20260615-0002",
+  "transit_hours": 0,
+  "quantity": 0,
+  "created_by": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "created_at": {
+    "$date": "2026-06-15T10:54:12.310Z"
+  },
+  "__v": 0,
+  "createdAt": {
+    "$date": "2026-06-15T10:54:12.312Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-15T10:54:12.312Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a2fe86166025b680275ec41"
+  },
+  "product_id": {
+    "$oid": "6a2fe86166025b680275ec3f"
+  },
+  "imei": "555",
+  "action": "นำเข้าสินค้า (PO)",
+  "from_branch": null,
+  "to_branch": {
+    "$oid": "69f5b2da4795c06e1774cbb0"
+  },
+  "reference_no": "PO-20260615-0003",
+  "transit_hours": 0,
+  "quantity": 0,
+  "created_by": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "created_at": {
+    "$date": "2026-06-15T11:56:17.620Z"
+  },
+  "__v": 0,
+  "createdAt": {
+    "$date": "2026-06-15T11:56:17.621Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-15T11:56:17.621Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a310e52d95a1787a111a108"
+  },
+  "product_id": {
+    "$oid": "6a2fe86166025b680275ec3f"
+  },
+  "imei": "555",
+  "action": "ขายออก",
+  "from_branch": {
+    "$oid": "69f5b2da4795c06e1774cbb0"
+  },
+  "to_branch": null,
+  "reference_no": "INV-20260616-RJNGN",
+  "transit_hours": 0,
+  "quantity": 0,
+  "created_by": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "created_at": {
+    "$date": "2026-06-16T08:50:26.135Z"
+  },
+  "__v": 0,
+  "createdAt": {
+    "$date": "2026-06-16T08:50:26.137Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-16T08:50:26.137Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a3e4f1296f18b1b9720bdfd"
+  },
+  "product_id": {
+    "$oid": "6a2fd9d4613b478aef213c4b"
+  },
+  "imei": "444",
+  "action": "ขายออก",
+  "from_branch": {
+    "$oid": "69f5b2da4795c06e1774cbb0"
+  },
+  "to_branch": null,
+  "reference_no": "INV-20260626-QX2EB",
+  "transit_hours": 0,
+  "quantity": 0,
+  "created_by": {
+    "$oid": "69f5a15ce0775d4f2c85bc09"
+  },
+  "created_at": {
+    "$date": "2026-06-26T10:06:10.435Z"
+  },
+  "__v": 0,
+  "createdAt": {
+    "$date": "2026-06-26T10:06:10.437Z"
+  },
+  "updatedAt": {
+    "$date": "2026-06-26T10:06:10.437Z"
+  }
+}]
