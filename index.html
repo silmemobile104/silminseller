@@ -5,62 +5,137 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SilminMobile - ระบบจัดการคลังสินค้า</title>
-    <link rel="icon" type="image/svg+xml"
-        href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='grad' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' style='stop-color:%2306b6d4'/%3E%3Cstop offset='100%25' style='stop-color:%232563eb'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='64' height='64' rx='12' fill='url(%23grad)'/%3E%3Crect x='18' y='12' width='28' height='40' rx='4' fill='%23ffffff'/%3E%3Crect x='20' y='15' width='24' height='34' rx='2' fill='%230f172a'/%3E%3Ccircle cx='32' cy='52' r='2' fill='%23ffffff'/%3E%3C/svg%3E">
-    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="icon" type="image/svg+xml" href="logo_silminmobile.png">
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Prompt:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap"
+        rel="stylesheet">
     <style>
+        :root {
+            --color-slate-950: #ffffff !important;
+            --color-slate-900: #f8fafc !important;
+            --color-slate-800: #ffffff !important;
+            --color-slate-700: #e2e8f0 !important;
+            --color-slate-600: #cbd5e1 !important;
+            --color-slate-500: #94a3b8 !important;
+            --color-slate-400: #64748b !important;
+            --color-slate-300: #475569 !important;
+            --color-slate-200: #1e293b !important;
+
+            --color-cyan-500: #eab308 !important;
+            --color-cyan-400: #ca8a04 !important;
+            --color-cyan-300: #facc15 !important;
+            --color-cyan-600: #ca8a04 !important;
+        }
+
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #0f172a;
-            /* slate-900 */
-            color: #f8fafc;
-            /* slate-50 */
+            background-color: #f8fafc;
+            /* 60% Light background */
+            color: #0f172a;
+            /* Slate 900 for default text readability */
         }
 
-        /* Custom scrollbar for dark theme */
-        ::-webkit-scrollbar {
-            width: 8px;
-            height: 8px;
+        * {
+            font-family: 'Prompt', sans-serif;
         }
 
-        ::-webkit-scrollbar-track {
-            background: #0f172a;
+        /* Custom scrollbar styles */
+        * {
+            scrollbar-width: thin;
+            scrollbar-color: rgba(148, 163, 184, 0.4) transparent;
         }
 
-        ::-webkit-scrollbar-thumb {
-            background: #334155;
-            border-radius: 4px;
+        #sidebar {
+            scrollbar-color: rgba(234, 179, 8, 0.35) transparent;
         }
 
-        ::-webkit-scrollbar-thumb:hover {
-            background: #475569;
+        .scrollbar-thin,
+        .custom-scrollbar {
+            scrollbar-width: thin;
+            scrollbar-color: rgba(148, 163, 184, 0.4) transparent;
+        }
+
+        ::-webkit-scrollbar,
+        .scrollbar-thin::-webkit-scrollbar,
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+
+        ::-webkit-scrollbar-track,
+        .scrollbar-thin::-webkit-scrollbar-track,
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent !important;
+        }
+
+        ::-webkit-scrollbar-thumb,
+        .scrollbar-thin::-webkit-scrollbar-thumb,
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: rgba(148, 163, 184, 0.4) !important;
+            border-radius: 8px !important;
+        }
+
+        ::-webkit-scrollbar-thumb:hover,
+        .scrollbar-thin::-webkit-scrollbar-thumb:hover,
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: rgba(234, 179, 8, 0.8) !important;
+        }
+
+        ::-webkit-scrollbar-thumb:active,
+        .scrollbar-thin::-webkit-scrollbar-thumb:active,
+        .custom-scrollbar::-webkit-scrollbar-thumb:active {
+            background: #eab308 !important;
+        }
+
+        /* Sidebar scrollbar (Dark background with yellow accents) */
+        #sidebar ::-webkit-scrollbar-thumb {
+            background: rgba(234, 179, 8, 0.35) !important;
+            border-radius: 8px !important;
+        }
+
+        #sidebar ::-webkit-scrollbar-thumb:hover {
+            background: rgba(234, 179, 8, 0.75) !important;
+        }
+
+        #sidebar ::-webkit-scrollbar-thumb:active {
+            background: #eab308 !important;
         }
 
         .glow-text {
-            text-shadow: 0 0 10px rgba(6, 182, 212, 0.7), 0 0 20px rgba(6, 182, 212, 0.5);
+            text-shadow: 0 0 4px rgba(234, 179, 8, 0.15);
+            color: #ca8a04 !important;
+            /* Force darker yellow for contrast text on white */
         }
 
         .glow-button {
-            box-shadow: 0 0 15px rgba(6, 182, 212, 0.5);
-            transition: all 0.3s ease;
+            box-shadow: 0 4px 14px rgba(234, 179, 8, 0.2);
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            background: #eab308 !important;
+            /* 10% Yellow Button Accent */
+            color: #0f172a !important;
+            /* Dark text for readability on yellow */
         }
 
         .glow-button:hover {
-            box-shadow: 0 0 25px rgba(6, 182, 212, 0.8);
-            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(234, 179, 8, 0.35);
+            background: #facc15 !important;
+            transform: translateY(-1px);
         }
 
         .glow-button-emerald {
-            box-shadow: 0 0 15px rgba(16, 185, 129, 0.5);
-            transition: all 0.3s ease;
+            box-shadow: 0 4px 14px rgba(16, 185, 129, 0.15);
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
         .glow-button-emerald:hover {
-            box-shadow: 0 0 25px rgba(16, 185, 129, 0.8);
-            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(16, 185, 129, 0.25);
+            transform: translateY(-1px);
         }
 
         .input-floating-label {
@@ -68,14 +143,15 @@
         }
 
         .input-floating-label input {
-            border: 1px solid #334155;
-            background-color: rgba(15, 23, 42, 0.6);
-            transition: all 0.3s ease;
+            border: 1px solid #cbd5e1;
+            background-color: #ffffff;
+            color: #0f172a;
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
         .input-floating-label input:focus {
-            border-color: #06b6d4;
-            box-shadow: 0 0 10px rgba(6, 182, 212, 0.2);
+            border-color: #eab308;
+            box-shadow: 0 0 10px rgba(234, 179, 8, 0.15);
             outline: none;
         }
 
@@ -84,8 +160,8 @@
             top: 50%;
             left: 1rem;
             transform: translateY(-50%);
-            color: #94a3b8;
-            transition: all 0.3s ease;
+            color: #64748b;
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
             pointer-events: none;
         }
 
@@ -93,14 +169,182 @@
         .input-floating-label input:not(:placeholder-shown)+label {
             top: 0;
             font-size: 0.75rem;
-            background-color: #1e293b;
+            background-color: #ffffff;
+            /* Matches light background */
             padding: 0 0.5rem;
-            color: #06b6d4;
+            color: #ca8a04;
         }
 
-        /* Sidebar transition */
+        /* High-end clean flat cards for the dashboard stats */
+        div.grid>div[class*="shadow-[0_0_15px_rgba"] {
+            box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.05) !important;
+            background-color: #ffffff !important;
+            /* Premium light card bg */
+            border: 1px solid #e2e8f0 !important;
+            /* Light border */
+            border-radius: 1.25rem !important;
+        }
+
+        div.grid>div[class*="shadow-[0_0_15px_rgba(6,182,212"]:hover {
+            border-color: rgba(234, 179, 8, 0.45) !important;
+            box-shadow: 0 10px 30px -4px rgba(234, 179, 8, 0.08), 0 4px 20px -2px rgba(0, 0, 0, 0.05) !important;
+        }
+
+        div.grid>div[class*="shadow-[0_0_15px_rgba(16,185,129"]:hover {
+            border-color: rgba(16, 185, 129, 0.45) !important;
+            box-shadow: 0 10px 30px -4px rgba(16, 185, 129, 0.08), 0 4px 20px -2px rgba(0, 0, 0, 0.05) !important;
+        }
+
+        div.grid>div[class*="shadow-[0_0_15px_rgba(168,85,247"]:hover {
+            border-color: rgba(168, 85, 247, 0.45) !important;
+            box-shadow: 0 10px 30px -4px rgba(168, 85, 247, 0.08), 0 4px 20px -2px rgba(0, 0, 0, 0.05) !important;
+        }
+
+        div.grid>div[class*="shadow-[0_0_15px_rgba(245,158,11"]:hover {
+            border-color: rgba(245, 158, 11, 0.45) !important;
+            box-shadow: 0 10px 30px -4px rgba(245, 158, 11, 0.08), 0 4px 20px -2px rgba(0, 0, 0, 0.05) !important;
+        }
+
+        div.grid>div[class*="shadow-[0_0_15px_rgba(249,115,22"]:hover {
+            border-color: rgba(249, 115, 22, 0.45) !important;
+            box-shadow: 0 10px 30px -4px rgba(249, 115, 22, 0.08), 0 4px 20px -2px rgba(0, 0, 0, 0.05) !important;
+        }
+
+        /* Modern Table styling */
+        table {
+            border-collapse: separate !important;
+            border-spacing: 0 !important;
+            width: 100%;
+        }
+
+        th {
+            background-color: #f1f5f9 !important;
+            /* Clean light gray for header */
+            color: #475569 !important;
+            /* Muted header text */
+            font-weight: 600 !important;
+            text-transform: uppercase !important;
+            letter-spacing: 0.05em !important;
+            font-size: 0.75rem !important;
+            border-bottom: 1px solid #cbd5e1 !important;
+            padding: 0.875rem 1.5rem !important;
+        }
+
+        td {
+            padding: 0.875rem 1.5rem !important;
+            border-bottom: 1px solid #e2e8f0 !important;
+            color: #334155 !important;
+            font-size: 0.875rem !important;
+        }
+
+        tr:not([class*="bg-"]):nth-child(odd) {
+            background-color: #ffffff !important;
+        }
+
+        tr:not([class*="bg-"]):nth-child(even) {
+            background-color: #f8fafc !important;
+        }
+
+        tr:hover td {
+            background-color: #f1f5f9 !important;
+            color: #0f172a !important;
+        }
+
+        /* Force light theme readability inside Main Content Area */
+        main .text-white,
+        main h1,
+        main h2,
+        main h3,
+        main h4,
+        main h5,
+        main h6,
+        main .text-slate-100,
+        main .text-slate-200,
+        main .text-slate-300 {
+            color: #0f172a !important;
+            /* Dark text for light background */
+        }
+
+        main .text-slate-400,
+        main .text-slate-500 {
+            color: #475569 !important;
+            /* Muted slate-600 */
+        }
+
+        /* Muted status text adjustments on light backgrounds */
+        main .text-cyan-400 {
+            color: #ca8a04 !important;
+        }
+
+        main .text-emerald-400 {
+            color: #16a34a !important;
+        }
+
+        main .text-amber-400 {
+            color: #d97706 !important;
+        }
+
+        main .text-red-400 {
+            color: #dc2626 !important;
+        }
+
+        main .text-blue-400 {
+            color: #2563eb !important;
+        }
+
+        /* Main app form inputs and controls styling */
+        main input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+        main select,
+        main textarea {
+            background-color: #ffffff !important;
+            color: #0f172a !important;
+            border-color: #cbd5e1 !important;
+        }
+
+        main input:focus,
+        main select:focus,
+        main textarea:focus {
+            border-color: #eab308 !important;
+            box-shadow: 0 0 0 2px rgba(234, 179, 8, 0.15) !important;
+        }
+
+        /* POS card design overrides */
+        #pos-search-results .bg-slate-900 {
+            background-color: #ffffff !important;
+            border-color: #e2e8f0 !important;
+        }
+
+        #pos-search-results .bg-slate-900 h4 {
+            color: #0f172a !important;
+        }
+
+        #pos-search-results .bg-slate-900 .text-slate-400 {
+            color: #475569 !important;
+        }
+
+        #pos-search-results .bg-slate-900 .text-white {
+            color: #0f172a !important;
+        }
+
+        /* Header overrides */
+        header {
+            background-color: #ffffff !important;
+            border-bottom: 1px solid #e2e8f0 !important;
+        }
+
+        header span,
+        header p,
+        header h3 {
+            color: #0f172a !important;
+        }
+
+        /* Sidebar transition and professional styling */
         #sidebar {
-            transition: width 0.3s ease;
+            transition: width 0.3s ease, transform 0.3s ease, translate 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+            background-color: #070a12 !important;
+            /* 30% Pure Black Sidebar background */
+            border-right: 1px solid #1e293b !important;
+            /* Premium dark border */
         }
 
         .sidebar-expanded {
@@ -114,15 +358,131 @@
         }
 
         .sidebar-collapsed .sidebar-text {
-            display: none;
+            display: none !important;
         }
 
         .sidebar-collapsed .sidebar-logo-text {
-            display: none;
+            display: none !important;
+        }
+
+        /* Prevent text wrapping and handle smooth overflow during expand/collapse */
+        .sidebar-text,
+        .sidebar-logo-text {
+            white-space: nowrap !important;
+        }
+
+        #sidebar>div:first-child {
+            overflow: hidden !important;
+            /* Prevents logo text overflow during collapse */
         }
 
         .sidebar-collapsed .sidebar-icon {
             margin: 0 auto;
+        }
+
+        /* Collapsed Sidebar Balance Adjustments */
+        .sidebar-collapsed .nav-menu-item {
+            justify-content: center !important;
+            padding: 0.75rem 0 !important;
+            margin: 0.25rem 0.375rem !important;
+            /* Balanced square active background shape (44px x 42px) */
+            border-radius: 0.75rem !important;
+        }
+
+        /* Center logo box inside collapsed sidebar header */
+        .sidebar-collapsed div.h-16>div {
+            justify-content: center !important;
+            gap: 0 !important;
+        }
+
+        /* Center logout button in collapsed sidebar footer */
+        .sidebar-collapsed #logout-btn {
+            justify-content: center !important;
+            padding: 0.625rem 0 !important;
+        }
+
+        /* Sidebar Header and Footer border custom colors */
+        #sidebar .border-b,
+        #sidebar .border-t {
+            border-color: #1e293b !important;
+        }
+
+        /* Sidebar Logo Area Container and Icon */
+        #sidebar .glow-logo-container,
+        #sidebar div.h-16 div.rounded {
+            background-color: #090d16 !important;
+            border-color: #1e293b !important;
+        }
+
+        /* Sidebar nav link styles */
+        .nav-menu-item {
+            display: flex !important;
+            align-items: center !important;
+            padding: 0.75rem 0.875rem !important;
+            margin: 0.25rem 0.75rem !important;
+            border-radius: 0.75rem !important;
+            color: #94a3b8 !important;
+            /* Muted slate for inactive links */
+            background-color: transparent !important;
+            border: 1px solid transparent !important;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+            text-decoration: none !important;
+            box-shadow: none !important;
+            overflow: hidden !important;
+            /* Prevents text wrap during width transition */
+        }
+
+        /* Hover style for inactive links */
+        .nav-menu-item:hover {
+            color: #f1f5f9 !important;
+            /* Slate 100 on hover */
+            background-color: rgba(30, 41, 59, 0.5) !important;
+            /* Sleek slate hover bg */
+            border-color: transparent !important;
+        }
+
+        /* Active state - 10% Yellow Accent (Only text and icon color) */
+        .nav-menu-item.active {
+            color: #facc15 !important;
+            /* Yellow 400 */
+            background-color: transparent !important;
+            border: 1px solid transparent !important;
+            box-shadow: none !important;
+        }
+
+        /* Active hover state */
+        .nav-menu-item.active:hover {
+            background-color: rgba(30, 41, 59, 0.5) !important;
+            border-color: transparent !important;
+        }
+
+        /* Icon styling inside navigation links - Uniform slate-300 */
+        .nav-menu-item .sidebar-icon {
+            color: #cbd5e1 !important;
+            /* Force all default icons to text-slate-300 */
+            opacity: 0.65;
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        }
+
+        /* Active icon styling */
+        .nav-menu-item.active .sidebar-icon {
+            opacity: 1 !important;
+            transform: scale(1.05);
+            color: #facc15 !important;
+            /* Force active icon to yellow */
+        }
+
+        /* Hover icon styling */
+        .nav-menu-item:hover .sidebar-icon {
+            color: #ffffff !important;
+            /* Brighter slate-100/white on hover */
+            opacity: 1 !important;
+            transform: scale(1.05);
+        }
+
+        /* Hide shortcut/letter badges in sidebar */
+        .nav-menu-item .sidebar-text.ml-auto {
+            display: none !important;
         }
 
         /* Modal & Toast Animations */
@@ -226,15 +586,20 @@
 
         .modal-scrollable-content::-webkit-scrollbar {
             width: 6px;
+            height: 6px;
+        }
+
+        .modal-scrollable-content::-webkit-scrollbar-track {
+            background: transparent !important;
         }
 
         .modal-scrollable-content::-webkit-scrollbar-thumb {
-            background: #1e293b;
-            border-radius: 9999px;
+            background: rgba(148, 163, 184, 0.4) !important;
+            border-radius: 8px !important;
         }
 
         .modal-scrollable-content::-webkit-scrollbar-thumb:hover {
-            background: #334155;
+            background: rgba(234, 179, 8, 0.8) !important;
         }
 
         /* ==========================================
@@ -270,8 +635,8 @@
         .login-orb {
             position: absolute;
             border-radius: 50%;
-            filter: blur(90px);
-            opacity: 0.65;
+            filter: blur(120px);
+            opacity: 0.22;
             pointer-events: none;
             transition: all 1s ease-in-out;
             will-change: transform;
@@ -552,6 +917,2578 @@
             text-align: center;
             font-style: italic;
         }
+
+        /* My Branch Stock active tab & quantity badges overrides (green to yellow, transparent background) */
+        main .text-emerald-400 {
+            color: #ca8a04 !important;
+            /* Yellow-600 */
+        }
+
+        main .border-emerald-400 {
+            border-color: #ca8a04 !important;
+        }
+
+        main .border-emerald-500 {
+            border-color: #ca8a04 !important;
+        }
+
+        main .bg-emerald-500\/10,
+        main .bg-emerald-500\/15,
+        main .bg-emerald-500\/20 {
+            background-color: transparent !important;
+            border-color: transparent !important;
+            padding-left: 0 !important;
+            padding-right: 0 !important;
+        }
+
+        main .group:focus-within i {
+            color: #ca8a04 !important;
+        }
+
+        /* My Branch Stock active tab buttons overrides (Yellow background & Black text) */
+        #tab-branch-mystock.text-emerald-400,
+        #tab-branch-globalstock.text-emerald-400,
+        #tab-branch-mystock.bg-emerald-500\/10,
+        #tab-branch-globalstock.bg-emerald-500\/10 {
+            background-color: #eab308 !important;
+            /* Yellow-500 */
+            color: #0f172a !important;
+            /* Black text */
+            border-bottom-color: #ca8a04 !important;
+            /* Amber-600 */
+            padding-left: 1.5rem !important;
+            /* Restore padding inside the button */
+            padding-right: 1.5rem !important;
+        }
+
+        #tab-branch-mystock.text-emerald-400:hover,
+        #tab-branch-globalstock.text-emerald-400:hover {
+            background-color: #ca8a04 !important;
+            /* Darker amber on hover */
+            color: #0f172a !important;
+        }
+
+        /* POS out-of-stock product cards solid red border */
+        #pos-search-results .border-red-500\/30 {
+            border-color: #ef4444 !important;
+            /* Solid Red border */
+            border-width: 1.5px !important;
+            /* Thicker border to make it clear */
+        }
+
+        /* Modals and popups text and background overrides for light theme readability */
+        div[id^="modal-"] p.text-white,
+        div[id^="modal-"] span.text-white,
+        div[id^="modal-"] .text-slate-200,
+        div[id^="modal-"] .text-slate-300 {
+            color: #475569 !important;
+            /* Force data value fonts to Gray color */
+        }
+
+        div[id^="modal-"] .bg-slate-800 {
+            background-color: #ffffff !important;
+            border-color: #e2e8f0 !important;
+        }
+
+        div[id^="modal-"] .bg-slate-900 {
+            background-color: #f8fafc !important;
+            border-color: #e2e8f0 !important;
+        }
+
+        div[id^="modal-"] .bg-slate-850 {
+            background-color: #f8fafc !important;
+            border-top: 1px solid #e2e8f0 !important;
+        }
+
+        div[id^="modal-"] button[class*="bg-slate-800"] {
+            background-color: #cbd5e1 !important;
+            color: #1e293b !important;
+        }
+
+        div[id^="modal-"] button[class*="bg-slate-800"]:hover {
+            background-color: #94a3b8 !important;
+        }
+
+        /* ==========================================
+           Add Product Modal (เพิ่มสินค้า) Light Theme Styles
+           ========================================== */
+        #add-product-modal .modal-content {
+            background-color: #ffffff !important;
+            border-color: #e2e8f0 !important;
+        }
+
+        #add-product-modal #modal-title {
+            color: #0f172a !important;
+        }
+
+        #add-product-modal #modal-title i {
+            color: #ca8a04 !important;
+        }
+
+        #add-product-modal label {
+            color: #0f172a !important;
+        }
+
+        #add-product-modal input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+        #add-product-modal select {
+            background-color: #ffffff !important;
+            color: #0f172a !important;
+            border-color: #cbd5e1 !important;
+        }
+
+        #add-product-modal input::placeholder {
+            color: #94a3b8 !important;
+        }
+
+        #add-product-modal input:focus,
+        #add-product-modal select:focus {
+            border-color: #eab308 !important;
+            box-shadow: 0 0 0 2px rgba(234, 179, 8, 0.15) !important;
+            outline: none !important;
+        }
+
+        #add-product-modal .absolute i {
+            color: #64748b !important;
+        }
+
+        #add-product-modal select option {
+            background-color: #ffffff !important;
+            color: #0f172a !important;
+        }
+
+        #add-product-modal .border-b,
+        #add-product-modal .border-t {
+            border-color: #e2e8f0 !important;
+        }
+
+        #add-product-modal #close-modal-btn {
+            color: #64748b !important;
+        }
+
+        #add-product-modal #close-modal-btn:hover {
+            color: #0f172a !important;
+        }
+
+        #add-product-modal #cancel-modal-btn {
+            color: #475569 !important;
+        }
+
+        #add-product-modal #cancel-modal-btn:hover {
+            color: #0f172a !important;
+            background-color: #f1f5f9 !important;
+        }
+
+        /* Searchable select overrides inside Add Product Modal */
+        #add-product-modal .searchable-select-trigger {
+            background-color: #ffffff !important;
+            border-color: #cbd5e1 !important;
+            color: #0f172a !important;
+        }
+
+        #add-product-modal .searchable-select-trigger:focus-within {
+            border-color: #eab308 !important;
+            box-shadow: 0 0 0 2px rgba(234, 179, 8, 0.15) !important;
+        }
+
+        #add-product-modal .searchable-select-input {
+            color: #0f172a !important;
+            background: transparent !important;
+        }
+
+        #add-product-modal .searchable-select-arrow {
+            color: #475569 !important;
+        }
+
+        #add-product-modal .searchable-select-dropdown {
+            background-color: #ffffff !important;
+            border-color: #cbd5e1 !important;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05) !important;
+        }
+
+        #add-product-modal .searchable-option-item {
+            color: #0f172a !important;
+        }
+
+        #add-product-modal .searchable-option-item:hover,
+        #add-product-modal .searchable-option-item.highlighted {
+            background-color: rgba(234, 179, 8, 0.1) !important;
+            color: #ca8a04 !important;
+        }
+
+        #add-product-modal .searchable-option-item.selected {
+            background-color: rgba(234, 179, 8, 0.2) !important;
+            color: #ca8a04 !important;
+            font-weight: 600;
+        }
+
+        /* ==========================================
+           Create Transfer Modal (สร้างรายการโอนย้าย) Light Theme Styles
+           ========================================== */
+        #modal-create-transfer .modal-content {
+            background-color: #ffffff !important;
+            border-color: #e2e8f0 !important;
+        }
+
+        #modal-create-transfer h4 {
+            color: #0f172a !important;
+        }
+
+        #modal-create-transfer h4 i {
+            color: #ca8a04 !important;
+        }
+
+        #modal-create-transfer label {
+            color: #0f172a !important;
+        }
+
+        #modal-create-transfer input,
+        #modal-create-transfer select {
+            background-color: #ffffff !important;
+            color: #0f172a !important;
+            border-color: #cbd5e1 !important;
+        }
+
+        #modal-create-transfer input::placeholder {
+            color: #94a3b8 !important;
+        }
+
+        #modal-create-transfer input:focus,
+        #modal-create-transfer select:focus {
+            border-color: #eab308 !important;
+            box-shadow: 0 0 0 2px rgba(234, 179, 8, 0.15) !important;
+            outline: none !important;
+        }
+
+        #modal-create-transfer .border-b,
+        #modal-create-transfer .border-t {
+            border-color: #e2e8f0 !important;
+        }
+
+        #modal-create-transfer #btn-close-create-transfer {
+            color: #64748b !important;
+        }
+
+        #modal-create-transfer #btn-close-create-transfer:hover {
+            color: #0f172a !important;
+        }
+
+        /* Cart items box styling */
+        #modal-create-transfer .bg-slate-900\/40 {
+            background-color: #f8fafc !important;
+            border-color: #e2e8f0 !important;
+        }
+
+        #modal-create-transfer #transfer-cart-items div.bg-slate-900\/40 {
+            background-color: #f1f5f9 !important;
+            border-color: #cbd5e1 !important;
+        }
+
+        #modal-create-transfer .text-white {
+            color: #0f172a !important;
+        }
+
+        #modal-create-transfer .text-slate-500 {
+            color: #475569 !important;
+        }
+
+        /* IMEI chips styling */
+        #modal-create-transfer .text-cyan-400 {
+            color: #ca8a04 !important;
+        }
+
+        #modal-create-transfer .bg-cyan-500\/10 {
+            background-color: rgba(234, 179, 8, 0.1) !important;
+        }
+
+        #modal-create-transfer .border-cyan-500\/20 {
+            border-color: rgba(234, 179, 8, 0.2) !important;
+        }
+
+        /* ==========================================
+           Product Movement History (ประวัติการเคลื่อนไหว) Light Theme Styles
+           ========================================== */
+        #view-movements {
+            color: #0f172a !important;
+        }
+
+        #view-movements h2 {
+            background-image: linear-gradient(to right, #e11d48, #d97706) !important;
+            background-clip: text !important;
+            -webkit-background-clip: text !important;
+            color: transparent !important;
+        }
+
+        #view-movements .bg-slate-800\/90 {
+            background-color: #ffffff !important;
+            border-color: #e2e8f0 !important;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.02) !important;
+        }
+
+        /* Search input styling */
+        #view-movements #movement-search-input {
+            background-color: #ffffff !important;
+            border-color: #cbd5e1 !important;
+            color: #0f172a !important;
+        }
+
+        #view-movements #movement-search-input::placeholder {
+            color: #94a3b8 !important;
+        }
+
+        #view-movements #movement-search-input:focus {
+            border-color: #e11d48 !important;
+            box-shadow: 0 0 0 3px rgba(244, 63, 94, 0.15) !important;
+        }
+
+        #view-movements form .absolute i {
+            color: #64748b !important;
+        }
+
+        /* Info card */
+        #view-movements #mov-product-name {
+            color: #0f172a !important;
+        }
+
+        #view-movements #mov-product-code {
+            color: #ca8a04 !important;
+        }
+
+        #view-movements #movement-result-area .bg-slate-900\/90 {
+            background-color: #f8fafc !important;
+            border-color: #e2e8f0 !important;
+        }
+
+        /* Timeline styling */
+        #view-movements #movement-timeline>div.absolute {
+            background-image: linear-gradient(to bottom, rgba(244, 63, 94, 0.5), #cbd5e1, transparent) !important;
+        }
+
+        #view-movements .bg-slate-800\/60 {
+            background-color: #ffffff !important;
+            border-color: #e2e8f0 !important;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05) !important;
+        }
+
+        #view-movements h3.text-white {
+            color: #0f172a !important;
+            border-bottom-color: #e2e8f0 !important;
+        }
+
+        /* Timeline Items */
+        #view-movements #movement-timeline .bg-gradient-to-b {
+            background-image: linear-gradient(to bottom, #ffffff, #f8fafc) !important;
+            background-color: #ffffff !important;
+        }
+
+        #view-movements #movement-timeline span.text-white {
+            color: #0f172a !important;
+        }
+
+        #view-movements #movement-timeline .bg-slate-950\/50 {
+            background-color: #f1f5f9 !important;
+            border-color: #e2e8f0 !important;
+        }
+
+        #view-movements #movement-timeline .bg-slate-800\/80 {
+            background-color: #ffffff !important;
+            border-color: #e2e8f0 !important;
+        }
+
+        #view-movements #movement-timeline .bg-rose-950\/20 {
+            background-color: rgba(244, 63, 94, 0.08) !important;
+            border-color: rgba(244, 63, 94, 0.2) !important;
+        }
+
+        #view-movements #movement-timeline .text-slate-355,
+        #view-movements #movement-timeline .text-slate-300 {
+            color: #334155 !important;
+        }
+
+        #view-movements #movement-timeline .text-slate-200 {
+            color: #0f172a !important;
+        }
+
+        #view-movements #movement-timeline .text-slate-400 {
+            color: #475569 !important;
+        }
+
+        #view-movements #movement-timeline .text-slate-500 {
+            color: #64748b !important;
+        }
+
+        #view-movements #movement-timeline .border-slate-700\/50,
+        #view-movements #movement-timeline .border-slate-700\/80 {
+            border-color: #cbd5e1 !important;
+        }
+
+        /* Empty state */
+        #view-movements #movement-empty-state {
+            background-color: #ffffff !important;
+            border-color: #cbd5e1 !important;
+        }
+
+        #view-movements #movement-empty-state h3 {
+            color: #0f172a !important;
+        }
+
+        #view-movements #movement-empty-state p {
+            color: #475569 !important;
+        }
+
+        /* ==========================================
+           Accounting & Finance (ระบบบัญชีและการเงิน) Light Theme Styles
+           ========================================== */
+        #view-accounting {
+            color: #0f172a !important;
+        }
+
+        #view-accounting h3 {
+            color: #0f172a !important;
+        }
+
+        #view-accounting h3 div {
+            background-color: rgba(217, 119, 6, 0.15) !important;
+            border-color: rgba(217, 119, 6, 0.25) !important;
+        }
+
+        #view-accounting h3 i {
+            color: #d97706 !important;
+        }
+
+        #view-accounting .text-slate-400 {
+            color: #475569 !important;
+        }
+
+        /* Filters and refresh container */
+        #view-accounting .flex-wrap .bg-\[\#1a1a1a\] {
+            background-color: #ffffff !important;
+            border-color: #cbd5e1 !important;
+        }
+
+        #view-accounting .flex-wrap input[type="date"] {
+            color: #0f172a !important;
+            color-scheme: light !important;
+        }
+
+        #view-accounting #btn-refresh-accounting {
+            background-color: #ffffff !important;
+            border-color: #cbd5e1 !important;
+            color: #0f172a !important;
+        }
+
+        #view-accounting #btn-refresh-accounting:hover {
+            background-color: #f1f5f9 !important;
+        }
+
+        #view-accounting #btn-open-expense-modal {
+            background-color: #eab308 !important;
+            border-color: #ca8a04 !important;
+            color: #0f172a !important;
+            box-shadow: 0 4px 14px rgba(234, 179, 8, 0.2) !important;
+        }
+
+        #view-accounting #btn-open-expense-modal:hover {
+            background-color: #facc15 !important;
+        }
+
+        /* KPI summary cards */
+        #view-accounting .grid>.bg-\[\#151515\] {
+            background-color: #ffffff !important;
+            border-color: #e2e8f0 !important;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03) !important;
+        }
+
+        #view-accounting .grid>.bg-\[\#151515\] #kpi-revenue,
+        #view-accounting .grid>.bg-\[\#151515\] #kpi-expense {
+            color: #0f172a !important;
+        }
+
+        #view-accounting .grid>.bg-\[\#151515\] #kpi-profit {
+            color: #d97706 !important;
+        }
+
+        #view-accounting .grid>.bg-\[\#151515\] #kpi-vat {
+            color: #7c3aed !important;
+        }
+
+        #view-accounting .grid>.bg-\[\#151515\] .text-xs.font-semibold {
+            color: #475569 !important;
+        }
+
+        #view-accounting .grid>.bg-\[\#151515\] p.text-[10px] {
+            color: #64748b !important;
+        }
+
+        /* Tabs border and navigation */
+        #view-accounting .border-b.border-gray-800 {
+            border-color: #e2e8f0 !important;
+        }
+
+        #view-accounting #tab-accounting-ap {
+            color: #ca8a04 !important;
+            border-bottom-color: #eab308 !important;
+        }
+
+        #view-accounting #tab-accounting-pl,
+        #view-accounting #tab-accounting-ar {
+            color: #64748b !important;
+        }
+
+        #view-accounting #tab-accounting-pl:hover,
+        #view-accounting #tab-accounting-ar:hover {
+            color: #0f172a !important;
+        }
+
+        /* AP Filter Supplier box */
+        #view-accounting #section-accounting-ap .bg-\[\#1a1a1a\] {
+            background-color: #ffffff !important;
+            border-color: #cbd5e1 !important;
+        }
+
+        #view-accounting #filter-ap-supplier {
+            background-color: #ffffff !important;
+            border-color: #cbd5e1 !important;
+            color: #0f172a !important;
+        }
+
+        /* Tables and grid data */
+        #view-accounting .overflow-x-auto.bg-\[\#1a1a1a\] {
+            background-color: #ffffff !important;
+            border-color: #e2e8f0 !important;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05) !important;
+        }
+
+        #view-accounting table thead {
+            background-color: #f1f5f9 !important;
+            border-bottom: 1px solid #cbd5e1 !important;
+        }
+
+        #view-accounting table th {
+            color: #475569 !important;
+            border-bottom: 1px solid #cbd5e1 !important;
+        }
+
+        #view-accounting table tbody tr {
+            background-color: #ffffff !important;
+            border-bottom-color: #e2e8f0 !important;
+        }
+
+        #view-accounting table tbody tr:hover {
+            background-color: #f8fafc !important;
+        }
+
+        #view-accounting table tbody td {
+            color: #334155 !important;
+        }
+
+        #view-accounting table tbody td.font-mono {
+            color: #0f172a !important;
+        }
+
+        /* Table numbers colored cells overrides */
+        #view-accounting #table-body-accounting-ap td.text-emerald-400 {
+            color: #16a34a !important;
+        }
+
+        #view-accounting #table-body-accounting-ap td.text-rose-400 {
+            color: #dc2626 !important;
+        }
+
+        #view-accounting #table-body-accounting-ap td.text-amber-400,
+        #view-accounting #table-body-accounting-ar td.text-cyan-400 {
+            color: #ca8a04 !important;
+        }
+
+        /* Summary Cards Widgets for AP & AR Partner groups */
+        #ap-summary-widgets>div,
+        #finance-summary-widgets>div {
+            background-color: #ffffff !important;
+            border-color: #cbd5e1 !important;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05) !important;
+        }
+
+        #ap-summary-widgets>div:hover,
+        #finance-summary-widgets>div:hover {
+            border-color: #cbd5e1 !important;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.08) !important;
+        }
+
+        #ap-summary-widgets span.text-slate-200,
+        #finance-summary-widgets span.text-slate-200 {
+            color: #0f172a !important;
+        }
+
+        #ap-summary-widgets span.text-slate-400,
+        #finance-summary-widgets span.text-slate-400 {
+            color: #64748b !important;
+        }
+
+        #ap-summary-widgets span.text-amber-400,
+        #finance-summary-widgets span.text-amber-400 {
+            color: #ca8a04 !important;
+        }
+
+        #finance-summary-widgets span.text-green-400 {
+            color: #16a34a !important;
+        }
+
+        #ap-summary-widgets .bg-amber-500\/10,
+        #finance-summary-widgets .bg-cyan-500\/10 {
+            background-color: rgba(234, 179, 8, 0.1) !important;
+        }
+
+        #ap-summary-widgets .text-amber-400,
+        #finance-summary-widgets .text-cyan-400 {
+            color: #ca8a04 !important;
+        }
+
+        #ap-summary-widgets .border-amber-500\/20,
+        #finance-summary-widgets .border-cyan-500\/20 {
+            border-color: rgba(234, 179, 8, 0.2) !important;
+        }
+
+        /* Expense Modal light theme */
+        #modal-accounting-expense .modal-content {
+            background-color: #ffffff !important;
+            border-color: #e2e8f0 !important;
+        }
+
+        #modal-accounting-expense h3 {
+            color: #0f172a !important;
+        }
+
+        #modal-accounting-expense h3 div {
+            background-color: rgba(234, 179, 8, 0.1) !important;
+            border-color: rgba(234, 179, 8, 0.2) !important;
+        }
+
+        #modal-accounting-expense label {
+            color: #0f172a !important;
+        }
+
+        #modal-accounting-expense select,
+        #modal-accounting-expense input {
+            background-color: #ffffff !important;
+            color: #0f172a !important;
+            border-color: #cbd5e1 !important;
+        }
+
+        #modal-accounting-expense select option {
+            background-color: #ffffff !important;
+            color: #0f172a !important;
+        }
+
+        #modal-accounting-expense select:focus,
+        #modal-accounting-expense input:focus {
+            border-color: #eab308 !important;
+            box-shadow: 0 0 0 2px rgba(234, 179, 8, 0.15) !important;
+        }
+
+        #modal-accounting-expense input::placeholder {
+            color: #94a3b8 !important;
+        }
+
+        #modal-accounting-expense .bg-\[\#1a1a1a\] {
+            background-color: #ffffff !important;
+            border-color: #cbd5e1 !important;
+        }
+
+        #modal-accounting-expense .border-b,
+        #modal-accounting-expense .border-t {
+            border-color: #e2e8f0 !important;
+        }
+
+        #modal-accounting-expense #btn-close-accounting-expense {
+            color: #64748b !important;
+        }
+
+        #modal-accounting-expense #btn-close-accounting-expense:hover {
+            color: #0f172a !important;
+        }
+
+        /* ==========================================
+           Purchase Order System (ระบบสั่งซื้อ PO) Light Theme Styles
+           ========================================== */
+        #view-accounting-po {
+            color: #0f172a !important;
+        }
+
+        #view-accounting-po h3 {
+            color: #0f172a !important;
+        }
+
+        #view-accounting-po h3 div {
+            background-color: rgba(6, 182, 212, 0.15) !important;
+            border-color: rgba(6, 182, 212, 0.25) !important;
+        }
+
+        #view-accounting-po h3 i {
+            color: #ca8a04 !important;
+            /* Gold text */
+        }
+
+        #view-accounting-po .text-slate-400 {
+            color: #475569 !important;
+        }
+
+        /* Tabs container and buttons */
+        #view-accounting-po .flex.gap-2.p-1.bg-\[\#1a1a1a\] {
+            background-color: #ffffff !important;
+            border-color: #cbd5e1 !important;
+        }
+
+        /* Active tab (JS adds bg-cyan-500) */
+        #view-accounting-po button.bg-cyan-500 {
+            background-color: #eab308 !important;
+            color: #0f172a !important;
+            box-shadow: 0 4px 14px rgba(234, 179, 8, 0.2) !important;
+        }
+
+        #view-accounting-po button.bg-cyan-500:hover {
+            background-color: #facc15 !important;
+        }
+
+        /* Inactive tab (JS removes bg-cyan-500 and adds text-slate-400) */
+        #view-accounting-po button.text-slate-400 {
+            background-color: transparent !important;
+            color: #64748b !important;
+            box-shadow: none !important;
+        }
+
+        #view-accounting-po button.text-slate-400:hover {
+            color: #0f172a !important;
+            background-color: #f1f5f9 !important;
+        }
+
+        /* Form styling */
+        #view-accounting-po #tab-content-create-po .bg-\[\#1a1a1a\] {
+            background-color: #ffffff !important;
+            border-color: #e2e8f0 !important;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05) !important;
+        }
+
+        #view-accounting-po label {
+            color: #0f172a !important;
+        }
+
+        #view-accounting-po select,
+        #view-accounting-po input {
+            background-color: #ffffff !important;
+            color: #0f172a !important;
+            border-color: #cbd5e1 !important;
+        }
+
+        #view-accounting-po select:focus,
+        #view-accounting-po input:focus {
+            border-color: #eab308 !important;
+            box-shadow: 0 0 0 2px rgba(234, 179, 8, 0.15) !important;
+        }
+
+        #view-accounting-po select option {
+            background-color: #ffffff !important;
+            color: #0f172a !important;
+        }
+
+        #view-accounting-po h4.text-white {
+            color: #0f172a !important;
+        }
+
+        #view-accounting-po #btn-add-po-item {
+            background-color: #ffffff !important;
+            border-color: #cbd5e1 !important;
+            color: #0f172a !important;
+        }
+
+        #view-accounting-po #btn-add-po-item:hover {
+            background-color: #f1f5f9 !important;
+            border-color: #ca8a04 !important;
+        }
+
+        /* Dynamic items container rows */
+        #view-accounting-po #po-items-container .bg-\[\#151515\] {
+            background-color: #f8fafc !important;
+            border-color: #cbd5e1 !important;
+        }
+
+        #view-accounting-po #po-items-container .bg-\[\#151515\]:hover {
+            border-color: #ca8a04 !important;
+        }
+
+        #view-accounting-po #po-items-container input[readonly] {
+            background-color: #f1f5f9 !important;
+            color: #475569 !important;
+            border-color: #cbd5e1 !important;
+        }
+
+        #view-accounting-po #po-items-container .btn-delete-row {
+            background-color: #ffffff !important;
+            border-color: #cbd5e1 !important;
+            color: #ef4444 !important;
+        }
+
+        #view-accounting-po #po-items-container .btn-delete-row:hover {
+            background-color: #ef4444 !important;
+            color: #ffffff !important;
+            border-color: #ef4444 !important;
+        }
+
+        /* PO Summary Box */
+        #view-accounting-po .bg-\[\#151515\].rounded-xl {
+            background-color: #f8fafc !important;
+            border-color: #cbd5e1 !important;
+        }
+
+        #view-accounting-po .bg-\[\#151515\].rounded-xl p span.text-white {
+            color: #0f172a !important;
+        }
+
+        #view-accounting-po #po-grand-total {
+            color: #0f172a !important;
+        }
+
+        #view-accounting-po #po-grand-total-label,
+        #view-accounting-po p.text-cyan-400 {
+            color: #ca8a04 !important;
+        }
+
+        #view-accounting-po #btn-submit-po {
+            background-image: none !important;
+            background-color: #eab308 !important;
+            color: #0f172a !important;
+            box-shadow: 0 4px 14px rgba(234, 179, 8, 0.2) !important;
+        }
+
+        #view-accounting-po #btn-submit-po:hover {
+            background-color: #facc15 !important;
+        }
+
+        /* Cancel Edit button */
+        #view-accounting-po #btn-cancel-edit-po {
+            background-color: #ffffff !important;
+            border-color: #cbd5e1 !important;
+            color: #475569 !important;
+        }
+
+        #view-accounting-po #btn-cancel-edit-po:hover {
+            background-color: #f1f5f9 !important;
+            color: #0f172a !important;
+        }
+
+        /* PO History Filter and Search Bar */
+        #view-accounting-po #tab-content-po-history .bg-\[\#1a1a1a\] {
+            background-color: #ffffff !important;
+            border-color: #cbd5e1 !important;
+        }
+
+        #view-accounting-po #search-po-history {
+            background-color: #ffffff !important;
+            border-color: #cbd5e1 !important;
+            color: #0f172a !important;
+        }
+
+        #view-accounting-po #search-po-history::placeholder {
+            color: #94a3b8 !important;
+        }
+
+        #view-accounting-po #btn-refresh-po-history {
+            background-color: #ffffff !important;
+            border-color: #cbd5e1 !important;
+            color: #0f172a !important;
+        }
+
+        #view-accounting-po #btn-refresh-po-history:hover {
+            background-color: #f1f5f9 !important;
+        }
+
+        /* PO History Tables styling */
+        #view-accounting-po .overflow-x-auto.bg-\[\#1a1a1a\] {
+            background-color: #ffffff !important;
+            border-color: #e2e8f0 !important;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05) !important;
+        }
+
+        #view-accounting-po table thead {
+            background-color: #f1f5f9 !important;
+            border-bottom: 1px solid #cbd5e1 !important;
+        }
+
+        #view-accounting-po table th {
+            color: #475569 !important;
+            border-bottom: 1px solid #cbd5e1 !important;
+        }
+
+        #view-accounting-po table tbody tr {
+            background-color: #ffffff !important;
+            border-bottom-color: #e2e8f0 !important;
+        }
+
+        #view-accounting-po table tbody tr:hover {
+            background-color: #f8fafc !important;
+        }
+
+        #view-accounting-po table tbody td {
+            color: #334155 !important;
+        }
+
+        #view-accounting-po table tbody td.font-mono {
+            color: #0f172a !important;
+        }
+
+        #view-accounting-po table tbody td span.text-cyan-400 {
+            color: #ca8a04 !important;
+        }
+
+        /* ==========================================
+           PO Receive (ตรวจรับของเข้า PO) Light Theme Styles
+           ========================================== */
+        #view-branch-receive {
+            color: #0f172a !important;
+        }
+
+        #view-branch-receive h3 {
+            color: #0f172a !important;
+        }
+
+        #view-branch-receive h3 div {
+            background-color: rgba(234, 179, 8, 0.1) !important;
+            border-color: rgba(234, 179, 8, 0.2) !important;
+        }
+
+        #view-branch-receive h3 i {
+            color: #ca8a04 !important;
+        }
+
+        #view-branch-receive .text-slate-400 {
+            color: #475569 !important;
+        }
+
+        #view-branch-receive #btn-refresh-po-receive {
+            background-color: #ffffff !important;
+            border-color: #cbd5e1 !important;
+            color: #0f172a !important;
+        }
+
+        #view-branch-receive #btn-refresh-po-receive:hover {
+            background-color: #f1f5f9 !important;
+        }
+
+        /* Tabs bar */
+        #view-branch-receive .bg-slate-900\/50 {
+            background-color: #ffffff !important;
+            border-color: #cbd5e1 !important;
+        }
+
+        #view-branch-receive .tab-receive-po.text-slate-400 {
+            color: #64748b !important;
+        }
+
+        #view-branch-receive .tab-receive-po.text-slate-400:hover {
+            color: #0f172a !important;
+        }
+
+        #view-branch-receive .tab-receive-po.bg-indigo-600 {
+            background-image: none !important;
+            background-color: #eab308 !important;
+            color: #0f172a !important;
+            box-shadow: 0 4px 12px rgba(234, 179, 8, 0.15) !important;
+        }
+
+        #view-branch-receive .tab-receive-po.bg-indigo-600 .badge-tab {
+            background-color: rgba(0, 0, 0, 0.1) !important;
+            color: #0f172a !important;
+        }
+
+        #view-branch-receive .tab-receive-po:not(.bg-indigo-600) .badge-tab {
+            background-color: rgba(234, 179, 8, 0.08) !important;
+            color: #ca8a04 !important;
+        }
+
+        #view-branch-receive #search-receive-po {
+            background-color: #ffffff !important;
+            border-color: #cbd5e1 !important;
+            color: #0f172a !important;
+        }
+
+        #view-branch-receive #search-receive-po::placeholder {
+            color: #94a3b8 !important;
+        }
+
+        #view-branch-receive #search-receive-po:focus {
+            border-color: #eab308 !important;
+            box-shadow: 0 0 0 2px rgba(234, 179, 8, 0.15) !important;
+        }
+
+        #view-branch-receive .overflow-x-auto.bg-\[\#1a1a1a\] {
+            background-color: #ffffff !important;
+            border-color: #e2e8f0 !important;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05) !important;
+        }
+
+        #view-branch-receive table thead {
+            background-color: #f1f5f9 !important;
+            border-bottom: 1px solid #cbd5e1 !important;
+        }
+
+        #view-branch-receive table th {
+            color: #475569 !important;
+            border-bottom: 1px solid #cbd5e1 !important;
+        }
+
+        #view-branch-receive table tbody tr {
+            background-color: #ffffff !important;
+            border-bottom-color: #e2e8f0 !important;
+        }
+
+        #view-branch-receive table tbody tr:hover {
+            background-color: #f8fafc !important;
+        }
+
+        #view-branch-receive table tbody tr:hover td span.text-white {
+            color: #ca8a04 !important;
+        }
+
+        #view-branch-receive table tbody td {
+            color: #334155 !important;
+        }
+
+        #view-branch-receive table tbody td span.text-white {
+            color: #0f172a !important;
+        }
+
+        #view-branch-receive table tbody td.font-mono {
+            color: #0f172a !important;
+        }
+
+        /* Table Action Buttons Override */
+        #view-branch-receive .btn-action-arrival,
+        #view-branch-receive .btn-open-receive {
+            background-image: none !important;
+            background-color: #eab308 !important;
+            color: #0f172a !important;
+            border: 1px solid #ca8a04 !important;
+            box-shadow: 0 2px 4px rgba(234, 179, 8, 0.1) !important;
+        }
+
+        #view-branch-receive .btn-action-arrival:hover,
+        #view-branch-receive .btn-open-receive:hover {
+            background-color: #facc15 !important;
+        }
+
+        #view-branch-receive .btn-view-po {
+            background-color: #ffffff !important;
+            color: #475569 !important;
+            border: 1px solid #cbd5e1 !important;
+        }
+
+        #view-branch-receive .btn-view-po:hover {
+            background-color: #f1f5f9 !important;
+            color: #0f172a !important;
+        }
+
+        /* Progress Bar Accent */
+        #view-branch-receive .progress-bar-glow>div {
+            background-image: linear-gradient(to right, #ca8a04, #eab308) !important;
+        }
+
+        /* ==========================================
+           Report Arrival (แจ้งของถึงสาขา) Light Theme & Yellow Accents Styles
+           ========================================== */
+        #view-report-arrival {
+            color: #0f172a !important;
+        }
+
+        #view-report-arrival h3 {
+            color: #0f172a !important;
+        }
+
+        #view-report-arrival h3 div {
+            background-color: rgba(234, 179, 8, 0.1) !important;
+            border-color: rgba(234, 179, 8, 0.2) !important;
+            box-shadow: 0 4px 6px -1px rgba(234, 179, 8, 0.05) !important;
+        }
+
+        #view-report-arrival h3 i {
+            color: #ca8a04 !important;
+        }
+
+        #view-report-arrival .text-slate-400 {
+            color: #475569 !important;
+        }
+
+        /* Tabs bottom border line */
+        #view-report-arrival .border-b.border-slate-750\/50 {
+            border-color: #cbd5e1 !important;
+        }
+
+        /* Tab active/inactive states */
+        #view-report-arrival #tab-arrival-pending.border-green-500,
+        #view-report-arrival #tab-arrival-completed.border-green-500 {
+            border-bottom-color: #eab308 !important;
+            color: #ca8a04 !important;
+        }
+
+        #view-report-arrival #tab-arrival-pending.border-transparent,
+        #view-report-arrival #tab-arrival-completed.border-transparent {
+            border-bottom-color: transparent !important;
+            color: #64748b !important;
+        }
+
+        #view-report-arrival #tab-arrival-pending.border-transparent:hover,
+        #view-report-arrival #tab-arrival-completed.border-transparent:hover {
+            color: #0f172a !important;
+        }
+
+        /* Tab badges count */
+        #view-report-arrival #badge-arrival-pending-count {
+            background-color: rgba(234, 179, 8, 0.1) !important;
+            color: #ca8a04 !important;
+            border-color: rgba(234, 179, 8, 0.2) !important;
+            box-shadow: none !important;
+        }
+
+        #view-report-arrival #badge-arrival-completed-count {
+            background-color: #f1f5f9 !important;
+            color: #475569 !important;
+            border-color: #cbd5e1 !important;
+        }
+
+        /* Panels and containers */
+        #view-report-arrival .bg-slate-800\/80 {
+            background-color: #ffffff !important;
+            border-color: #cbd5e1 !important;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05) !important;
+        }
+
+        #view-report-arrival h4.text-white {
+            color: #0f172a !important;
+        }
+
+        #view-report-arrival h4.text-white i {
+            color: #ca8a04 !important;
+        }
+
+        /* Refresh lists button */
+        #view-report-arrival #btn-refresh-arrival-po {
+            background-color: #ffffff !important;
+            border-color: #cbd5e1 !important;
+            color: #0f172a !important;
+        }
+
+        #view-report-arrival #btn-refresh-arrival-po:hover {
+            background-color: #f1f5f9 !important;
+        }
+
+        #view-report-arrival #btn-refresh-arrival-po i.text-green-400 {
+            color: #ca8a04 !important;
+        }
+
+        /* Table container */
+        #view-report-arrival .overflow-x-auto {
+            background-color: #ffffff !important;
+            border-color: #e2e8f0 !important;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02) !important;
+        }
+
+        #view-report-arrival table thead {
+            background-color: #f1f5f9 !important;
+            border-bottom: 1px solid #cbd5e1 !important;
+        }
+
+        #view-report-arrival table th {
+            color: #475569 !important;
+            border-bottom: 1px solid #cbd5e1 !important;
+        }
+
+        #view-report-arrival table tbody tr {
+            background-color: #ffffff !important;
+            border-bottom-color: #e2e8f0 !important;
+        }
+
+        #view-report-arrival table tbody tr:hover {
+            background-color: #f8fafc !important;
+        }
+
+        #view-report-arrival table tbody td {
+            color: #334155 !important;
+        }
+
+        #view-report-arrival table tbody td.font-mono {
+            color: #0f172a !important;
+        }
+
+        /* Loading spinner icon color */
+        #view-report-arrival table tbody td i.text-green-400 {
+            color: #ca8a04 !important;
+        }
+
+        /* Confirm arrival action button inside row */
+        #view-report-arrival .btn-confirm-arrival {
+            background-color: #eab308 !important;
+            color: #0f172a !important;
+            border-color: #ca8a04 !important;
+            box-shadow: 0 2px 4px rgba(234, 179, 8, 0.15) !important;
+        }
+
+        #view-report-arrival .btn-confirm-arrival:hover {
+            background-color: #facc15 !important;
+        }
+
+        /* Completed badge text */
+        #view-report-arrival table tbody td span.bg-green-500\/10 {
+            background-color: rgba(34, 197, 94, 0.1) !important;
+            color: #16a34a !important;
+            border-color: rgba(34, 197, 94, 0.2) !important;
+        }
+
+        /* ==========================================
+           Verify Product Import (ตรวจสอบนำเข้าสินค้า) Light Theme & Yellow Accents Styles
+           ========================================== */
+        #view-approve-import {
+            color: #0f172a !important;
+        }
+
+        #view-approve-import h3 {
+            color: #0f172a !important;
+        }
+
+        #view-approve-import h3 div {
+            background-color: rgba(234, 179, 8, 0.1) !important;
+            border-color: rgba(234, 179, 8, 0.2) !important;
+            box-shadow: 0 4px 6px -1px rgba(234, 179, 8, 0.05) !important;
+        }
+
+        #view-approve-import h3 div i {
+            color: #ca8a04 !important;
+        }
+
+        #view-approve-import .text-slate-400 {
+            color: #475569 !important;
+        }
+
+        /* Top Action Buttons & Select Filter */
+        #view-approve-import #btn-reload-import-list {
+            background-color: #ffffff !important;
+            border-color: #cbd5e1 !important;
+            color: #0f172a !important;
+        }
+
+        #view-approve-import #btn-reload-import-list:hover {
+            background-color: #f1f5f9 !important;
+        }
+
+        #view-approve-import #approve-import-filter-branch {
+            background-color: #ffffff !important;
+            border-color: #cbd5e1 !important;
+            color: #0f172a !important;
+        }
+
+        #view-approve-import #approve-import-filter-branch:focus {
+            border-color: #eab308 !important;
+            box-shadow: 0 0 0 2px rgba(234, 179, 8, 0.15) !important;
+        }
+
+        /* Tabs Navigation Wrapper */
+        #view-approve-import .flex.gap-2.bg-slate-800.border {
+            background-color: #ffffff !important;
+            border-color: #cbd5e1 !important;
+        }
+
+        /* Active Tab Overrides (matches bg-violet-500/20 in JS toggle) */
+        #view-approve-import #tab-btn-approve-po.bg-violet-500\/20,
+        #view-approve-import #tab-btn-approve-nonpo.bg-violet-500\/20,
+        #view-approve-import #tab-btn-approve-history.bg-violet-500\/20 {
+            background-color: #eab308 !important;
+            color: #0f172a !important;
+            border-color: #ca8a04 !important;
+            box-shadow: 0 2px 8px rgba(234, 179, 8, 0.15) !important;
+        }
+
+        #view-approve-import #tab-btn-approve-po.bg-violet-500\/20 i,
+        #view-approve-import #tab-btn-approve-nonpo.bg-violet-500\/20 i,
+        #view-approve-import #tab-btn-approve-history.bg-violet-500\/20 i {
+            color: #0f172a !important;
+        }
+
+        /* Inactive Tab Overrides */
+        #view-approve-import #tab-btn-approve-po.text-slate-400,
+        #view-approve-import #tab-btn-approve-nonpo.text-slate-400,
+        #view-approve-import #tab-btn-approve-history.text-slate-400 {
+            background-color: transparent !important;
+            color: #64748b !important;
+            border-color: transparent !important;
+            box-shadow: none !important;
+        }
+
+        #view-approve-import #tab-btn-approve-po.text-slate-400:hover,
+        #view-approve-import #tab-btn-approve-nonpo.text-slate-400:hover,
+        #view-approve-import #tab-btn-approve-history.text-slate-400:hover {
+            color: #0f172a !important;
+            background-color: #f1f5f9 !important;
+        }
+
+        /* Pending counts inside tabs */
+        #view-approve-import #po-approve-pending-count,
+        #view-approve-import #nonpo-approve-pending-count {
+            background-color: #ef4444 !important;
+            color: #ffffff !important;
+        }
+
+        /* History subheadings */
+        #view-approve-import h4.text-white {
+            color: #0f172a !important;
+        }
+
+        #view-approve-import h4.text-white i {
+            color: #ca8a04 !important;
+        }
+
+        /* Tables containers & wrappers */
+        #view-approve-import .overflow-x-auto.bg-\[\#1a1a1a\],
+        #view-approve-import .overflow-x-auto.bg-slate-950\/40 {
+            background-color: #ffffff !important;
+            border-color: #e2e8f0 !important;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05) !important;
+        }
+
+        #view-approve-import table thead {
+            background-color: #f1f5f9 !important;
+            border-bottom: 1px solid #cbd5e1 !important;
+        }
+
+        #view-approve-import table th {
+            color: #475569 !important;
+            border-bottom: 1px solid #cbd5e1 !important;
+        }
+
+        #view-approve-import table tbody tr {
+            background-color: #ffffff !important;
+            border-bottom-color: #e2e8f0 !important;
+        }
+
+        #view-approve-import table tbody tr:hover {
+            background-color: #f8fafc !important;
+        }
+
+        #view-approve-import table tbody td {
+            color: #334155 !important;
+        }
+
+        #view-approve-import table tbody td.font-mono {
+            color: #0f172a !important;
+        }
+
+        #view-approve-import table tbody td.text-white {
+            color: #0f172a !important;
+        }
+
+        #view-approve-import table tbody td span.text-cyan-400 {
+            color: #ca8a04 !important;
+        }
+
+        #view-approve-import table tbody td i.text-violet-400,
+        #view-approve-import table tbody td i.text-teal-400,
+        #view-approve-import table tbody td i.text-emerald-400 {
+            color: #ca8a04 !important;
+        }
+
+        /* Confirm import buttons inside table row */
+        #view-approve-import .btn-approve-po-import,
+        #view-approve-import .btn-approve-import {
+            background-color: #eab308 !important;
+            color: #0f172a !important;
+            border-color: #ca8a04 !important;
+            box-shadow: 0 2px 4px rgba(234, 179, 8, 0.15) !important;
+        }
+
+        #view-approve-import .btn-approve-po-import:hover,
+        #view-approve-import .btn-approve-import:hover {
+            background-color: #facc15 !important;
+        }
+
+        /* ==========================================
+           PO Read-Only View Detail Modal (#modal-po-view) Styles
+           ========================================== */
+        #modal-po-view .modal-content {
+            background-color: #ffffff !important;
+            border-color: #cbd5e1 !important;
+            color: #0f172a !important;
+            overflow: hidden !important;
+        }
+
+        #modal-po-view .border-b.border-gray-800 {
+            border-bottom-color: #e2e8f0 !important;
+        }
+
+        #modal-po-view h3 {
+            color: #0f172a !important;
+        }
+
+        #modal-po-view h3 div {
+            background-color: rgba(234, 179, 8, 0.1) !important;
+            border-color: rgba(234, 179, 8, 0.2) !important;
+        }
+
+        #modal-po-view h3 div i {
+            color: #ca8a04 !important;
+        }
+
+        #modal-po-view h3 span#view-po-number {
+            color: #ca8a04 !important;
+        }
+
+        #modal-po-view #btn-close-po-view {
+            color: #64748b !important;
+        }
+
+        #modal-po-view #btn-close-po-view:hover {
+            color: #0f172a !important;
+            background-color: #f1f5f9 !important;
+        }
+
+        /* Inner Cards (Supplier, Branch, Status, Dynamic Items) */
+        #modal-po-view .bg-slate-950,
+        #modal-po-view #view-po-items>div {
+            background-color: #ffffff !important;
+            border-color: #cbd5e1 !important;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
+        }
+
+        #modal-po-view .text-slate-500 {
+            color: #475569 !important;
+        }
+
+        #modal-po-view .text-slate-400 {
+            color: #475569 !important;
+        }
+
+        #modal-po-view .text-white {
+            color: #0f172a !important;
+        }
+
+        #modal-po-view font-mono {
+            color: #0f172a !important;
+        }
+
+        #modal-po-view #view-po-supplier,
+        #modal-po-view #view-po-branch {
+            color: #0f172a !important;
+        }
+
+        #modal-po-view #view-po-supplier i,
+        #modal-po-view #view-po-branch i {
+            color: #64748b !important;
+        }
+
+        /* Payment items */
+        #modal-po-view #view-po-pay-status {
+            color: #0f172a !important;
+            font-weight: 600 !important;
+        }
+
+        /* Dynamic items lists inside body */
+        #modal-po-view #view-po-items>div .text-white {
+            color: #0f172a !important;
+        }
+
+        #modal-po-view #view-po-items>div .text-slate-500 {
+            color: #64748b !important;
+        }
+
+        #modal-po-view #view-po-items>div .text-slate-400 {
+            color: #475569 !important;
+        }
+
+        #modal-po-view #view-po-items>div .text-white.font-bold {
+            color: #0f172a !important;
+        }
+
+        #modal-po-view #view-po-items>div span.bg-slate-900 {
+            background-color: #f1f5f9 !important;
+            border-color: #cbd5e1 !important;
+            color: #ca8a04 !important;
+        }
+
+        #modal-po-view #view-po-items>div span.bg-slate-900 i {
+            color: #ca8a04 !important;
+        }
+
+        #modal-po-view #view-po-items>div .bg-slate-900\/30 {
+            background-color: #f8fafc !important;
+            border-color: #cbd5e1 !important;
+        }
+
+        #modal-po-view #view-po-items>div .progress-bar-glow {
+            background-color: #e2e8f0 !important;
+            border-color: #cbd5e1 !important;
+        }
+
+        /* Table inside modal payments history */
+        #modal-po-view #view-po-payments-history-container .overflow-x-auto {
+            border-color: #cbd5e1 !important;
+        }
+
+        #modal-po-view #view-po-payments-history-container table tr.bg-slate-950 {
+            background-color: #f1f5f9 !important;
+        }
+
+        #modal-po-view #view-po-payments-history-container table th {
+            color: #475569 !important;
+            border-bottom: 1px solid #cbd5e1 !important;
+        }
+
+        #modal-po-view #view-po-payments-history-container table tbody tr {
+            background-color: #ffffff !important;
+            border-bottom: 1px solid #e2e8f0 !important;
+        }
+
+        #modal-po-view #view-po-payments-history-container table tbody td {
+            color: #334155 !important;
+        }
+
+        /* Modal Header Hex Background Override */
+        #modal-po-view .bg-\[\#1a1a1a\] {
+            background-color: #ffffff !important;
+            border-bottom-color: #e2e8f0 !important;
+        }
+
+        /* Hiding bottom buttons footer as requested */
+        #modal-po-view .bg-\[\#151515\],
+        #modal-po-view #btn-close-po-view-bottom {
+            display: none !important;
+        }
+
+        /* ==========================================
+           Transaction Details Modal (#modal-transaction-details) Styles
+           ========================================== */
+        #modal-transaction-details .modal-content {
+            background-color: #ffffff !important;
+            border-color: #cbd5e1 !important;
+            color: #0f172a !important;
+            overflow: hidden !important;
+        }
+
+        #modal-transaction-details .border-b.border-slate-700,
+        #modal-transaction-details .border-b.border-gray-800 {
+            border-bottom-color: #e2e8f0 !important;
+        }
+
+        #modal-transaction-details .border-t.border-slate-700,
+        #modal-transaction-details .border-t.border-gray-800 {
+            border-top-color: #e2e8f0 !important;
+        }
+
+        #modal-transaction-details h3 {
+            color: #0f172a !important;
+        }
+
+        #modal-transaction-details h3 div {
+            background-color: rgba(234, 179, 8, 0.1) !important;
+            border-color: rgba(234, 179, 8, 0.2) !important;
+        }
+
+        #modal-transaction-details h3 div i {
+            color: #ca8a04 !important;
+        }
+
+        #modal-transaction-details h3 span#transaction-detail-receipt {
+            color: #ca8a04 !important;
+        }
+
+        #modal-transaction-details #close-transaction-detail-btn {
+            color: #64748b !important;
+        }
+
+        #modal-transaction-details #close-transaction-detail-btn:hover {
+            color: #0f172a !important;
+            background-color: #f1f5f9 !important;
+        }
+
+        /* Modal Header & Footer containers background override */
+        #modal-transaction-details .modal-content>div:first-child {
+            background-color: #ffffff !important;
+        }
+
+        #modal-transaction-details .modal-content>div.border-t {
+            background-color: #ffffff !important;
+        }
+
+        /* Info Cards inside Modal */
+        #modal-transaction-details .bg-slate-900,
+        #modal-transaction-details .bg-slate-950,
+        #modal-transaction-details #transaction-detail-finance-info .bg-slate-900\/40 {
+            background-color: #ffffff !important;
+            border-color: #cbd5e1 !important;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
+        }
+
+        #modal-transaction-details p.text-slate-400 {
+            color: #475569 !important;
+        }
+
+        #modal-transaction-details p.text-white {
+            color: #0f172a !important;
+        }
+
+        #modal-transaction-details #transaction-detail-member .text-white {
+            color: #0f172a !important;
+        }
+
+        #modal-transaction-details #transaction-detail-member .text-slate-400 {
+            color: #64748b !important;
+        }
+
+        /* Downpayment section detail lines */
+        #modal-transaction-details #transaction-detail-downpayment-section span.text-slate-400 {
+            color: #475569 !important;
+        }
+
+        #modal-transaction-details #transaction-detail-downpayment-section span.text-white {
+            color: #0f172a !important;
+        }
+
+        #modal-transaction-details #transaction-detail-payment-breakdown span {
+            color: #475569 !important;
+        }
+
+        /* Items Table */
+        #modal-transaction-details .bg-slate-900.rounded-xl.border {
+            background-color: #ffffff !important;
+            border-color: #cbd5e1 !important;
+        }
+
+        #modal-transaction-details table thead tr {
+            background-color: #f1f5f9 !important;
+            border-bottom: 1px solid #cbd5e1 !important;
+        }
+
+        #modal-transaction-details table th {
+            color: #475569 !important;
+        }
+
+        #modal-transaction-details table tbody tr {
+            background-color: #ffffff !important;
+            border-bottom: 1px solid #e2e8f0 !important;
+        }
+
+        #modal-transaction-details table tbody tr:hover {
+            background-color: #f8fafc !important;
+        }
+
+        #modal-transaction-details table tbody td {
+            color: #334155 !important;
+        }
+
+        #modal-transaction-details table tbody td.text-white {
+            color: #0f172a !important;
+        }
+
+        #modal-transaction-details table tbody td.text-slate-300,
+        #modal-transaction-details table tbody td.text-slate-400 {
+            color: #334155 !important;
+        }
+
+        #modal-transaction-details table tbody td.text-cyan-400 {
+            color: #ca8a04 !important;
+        }
+
+        /* Footer totals & Finance rows */
+        #modal-transaction-details .modal-content>div.border-t span.text-slate-400,
+        #modal-transaction-details .modal-content>div.border-t span.text-lg {
+            color: #475569 !important;
+        }
+
+        #modal-transaction-details #transaction-detail-contract,
+        #modal-transaction-details #transaction-detail-icloud {
+            color: #0f172a !important;
+        }
+
+        #modal-transaction-details #transaction-detail-total {
+            color: #ca8a04 !important;
+        }
+
+        /* Buttons overrides */
+        #modal-transaction-details #btn-reprint-receipt {
+            background-image: none !important;
+            background-color: #eab308 !important;
+            color: #0f172a !important;
+            border: 1px solid #ca8a04 !important;
+            box-shadow: 0 4px 12px rgba(234, 179, 8, 0.15) !important;
+        }
+
+        #modal-transaction-details #btn-reprint-receipt i {
+            color: #0f172a !important;
+        }
+
+        #modal-transaction-details #btn-reprint-receipt:hover {
+            background-color: #facc15 !important;
+        }
+
+        #modal-transaction-details #btn-cancel-transaction {
+            background-color: rgba(239, 68, 68, 0.1) !important;
+            color: #ef4444 !important;
+            border-color: rgba(239, 68, 68, 0.3) !important;
+        }
+
+        #modal-transaction-details #btn-cancel-transaction:hover {
+            background-color: rgba(239, 68, 68, 0.2) !important;
+        }
+
+        /* ==========================================
+           PO Arrival / IMEI recording Modal (#modal-po-arrival) Styles
+           ========================================== */
+        #modal-po-arrival .modal-content {
+            background-color: #ffffff !important;
+            border-color: #cbd5e1 !important;
+            color: #0f172a !important;
+            overflow: hidden !important;
+        }
+
+        #modal-po-arrival .border-b.border-gray-800 {
+            border-bottom-color: #e2e8f0 !important;
+        }
+
+        #modal-po-arrival .border-t.border-gray-800 {
+            border-top-color: #e2e8f0 !important;
+        }
+
+        #modal-po-arrival h3 {
+            color: #0f172a !important;
+        }
+
+        #modal-po-arrival h3 span#arrival-po-number {
+            color: #ca8a04 !important;
+        }
+
+        #modal-po-arrival #arrival-modal-icon-container {
+            background-color: rgba(234, 179, 8, 0.1) !important;
+            border-color: rgba(234, 179, 8, 0.2) !important;
+        }
+
+        #modal-po-arrival #arrival-modal-icon {
+            color: #ca8a04 !important;
+        }
+
+        #modal-po-arrival #btn-close-po-arrival {
+            color: #64748b !important;
+        }
+
+        #modal-po-arrival #btn-close-po-arrival:hover {
+            color: #0f172a !important;
+            background-color: #f1f5f9 !important;
+        }
+
+        /* Modal Header & Footer containers background override */
+        #modal-po-arrival .bg-\[\#1a1a1a\] {
+            background-color: #ffffff !important;
+            border-bottom-color: #e2e8f0 !important;
+        }
+
+        #modal-po-arrival .bg-\[\#151515\] {
+            background-color: #ffffff !important;
+            border-top-color: #e2e8f0 !important;
+        }
+
+        /* Instruction Banner */
+        #modal-po-arrival .bg-amber-500\/10 {
+            background-color: rgba(217, 119, 6, 0.08) !important;
+            border-color: rgba(217, 119, 6, 0.2) !important;
+            color: #b45309 !important;
+        }
+
+        #modal-po-arrival .bg-amber-500\/10 text-amber-400 {
+            color: #b45309 !important;
+        }
+
+        /* Inner Cards (Dynamic rows for products) */
+        #modal-po-arrival .po-arrival-row {
+            background-color: #ffffff !important;
+            border-color: #cbd5e1 !important;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
+        }
+
+        #modal-po-arrival .po-arrival-row span.text-white {
+            color: #0f172a !important;
+        }
+
+        #modal-po-arrival .po-arrival-row i.text-cyan-400 {
+            color: #ca8a04 !important;
+        }
+
+        #modal-po-arrival .po-arrival-row label.text-slate-400 {
+            color: #475569 !important;
+        }
+
+        #modal-po-arrival .po-arrival-row span.bg-amber-500\/10 {
+            background-color: rgba(234, 179, 8, 0.1) !important;
+            border-color: rgba(234, 179, 8, 0.2) !important;
+            color: #ca8a04 !important;
+        }
+
+        #modal-po-arrival .po-arrival-row span.bg-green-500\/10 {
+            background-color: rgba(34, 197, 94, 0.1) !important;
+            border-color: rgba(34, 197, 94, 0.2) !important;
+            color: #16a34a !important;
+        }
+
+        /* Inputs & Input wrappers */
+        #modal-po-arrival .po-arrival-row .bg-slate-950 {
+            background-color: #ffffff !important;
+            border-color: #cbd5e1 !important;
+        }
+
+        #modal-po-arrival .po-arrival-row .bg-slate-950:focus-within {
+            border-color: #eab308 !important;
+            box-shadow: 0 0 0 2px rgba(234, 179, 8, 0.15) !important;
+        }
+
+        #modal-po-arrival .po-arrival-row input.imei-indiv-input {
+            color: #0f172a !important;
+            background-color: transparent !important;
+        }
+
+        #modal-po-arrival .po-arrival-row input.imei-indiv-input::placeholder {
+            color: #94a3b8 !important;
+        }
+
+        #modal-po-arrival .po-arrival-row .opacity-60 {
+            opacity: 0.85 !important;
+            background-color: #f1f5f9 !important;
+            border-color: #cbd5e1 !important;
+        }
+
+        #modal-po-arrival .po-arrival-row input.imei-indiv-input:disabled {
+            color: #64748b !important;
+        }
+
+        /* Submit Button */
+        #modal-po-arrival #btn-submit-po-arrival {
+            background-image: none !important;
+            background-color: #eab308 !important;
+            color: #0f172a !important;
+            border: 1px solid #ca8a04 !important;
+            box-shadow: 0 4px 12px rgba(234, 179, 8, 0.15) !important;
+        }
+
+        #modal-po-arrival #btn-submit-po-arrival:hover {
+            background-color: #facc15 !important;
+        }
+
+        /* ==========================================
+           Checkout Modal (#confirm-price-modal) Light Theme Overrides
+           ========================================== */
+        #confirm-price-modal .modal-content {
+            background-color: #ffffff !important;
+            border-color: #e2e8f0 !important;
+            color: #0f172a !important;
+        }
+
+        /* Header */
+        #confirm-price-modal .bg-slate-800\/90 {
+            background-color: #ffffff !important;
+            border-bottom-color: #e2e8f0 !important;
+        }
+
+        #confirm-price-modal h3.text-white {
+            color: #0f172a !important;
+        }
+
+        #confirm-price-modal h3 .bg-cyan-500\/10 {
+            background-color: #fef3c7 !important;
+            border-color: #fde68a !important;
+        }
+
+        #confirm-price-modal h3 .text-cyan-400 {
+            color: #d97706 !important;
+        }
+
+        #confirm-price-modal button.text-slate-400 {
+            color: #64748b !important;
+        }
+
+        #confirm-price-modal button.text-slate-400:hover {
+            color: #0f172a !important;
+            background-color: #f1f5f9 !important;
+        }
+
+        /* Left Column - Member Section */
+        #confirm-price-modal .bg-slate-800\/80 {
+            background-color: #ffffff !important;
+            border-color: #fcd34d !important;
+            box-shadow: 0 0 15px rgba(245, 158, 11, 0.1) !important;
+        }
+
+        #confirm-price-modal .bg-slate-800\/80 .bg-cyan-500 {
+            background-color: #f59e0b !important;
+        }
+
+        #confirm-price-modal h4.text-white {
+            color: #0f172a !important;
+        }
+
+        #confirm-price-modal h4 .bg-cyan-500\/20 {
+            background-color: #fef3c7 !important;
+        }
+
+        #confirm-price-modal h4 .text-cyan-400 {
+            color: #d97706 !important;
+        }
+
+        #confirm-price-modal #btn-pos-add-member {
+            background-color: #f1f5f9 !important;
+            color: #475569 !important;
+        }
+
+        #confirm-price-modal #btn-pos-add-member:hover {
+            background-color: #f59e0b !important;
+            color: #ffffff !important;
+        }
+
+        /* Inputs & Selects */
+        #confirm-price-modal input,
+        #confirm-price-modal select,
+        #confirm-price-modal .bg-slate-900,
+        #confirm-price-modal .bg-slate-900\/60 {
+            background-color: #ffffff !important;
+            border-color: #cbd5e1 !important;
+            color: #0f172a !important;
+        }
+
+        #confirm-price-modal input:focus,
+        #confirm-price-modal select:focus {
+            border-color: #f59e0b !important;
+            box-shadow: 0 0 0 1px #f59e0b !important;
+        }
+
+        #confirm-price-modal input::placeholder {
+            color: #94a3b8 !important;
+        }
+
+        #confirm-price-modal .text-slate-500 {
+            color: #64748b !important;
+        }
+
+        /* Selected Member Display */
+        #confirm-price-modal #selected-member-display {
+            background-color: #fef3c7 !important;
+            border-color: #fde68a !important;
+        }
+
+        #confirm-price-modal #selected-member-display .bg-cyan-500 {
+            background-color: #f59e0b !important;
+        }
+
+        #confirm-price-modal #selected-member-name {
+            color: #0f172a !important;
+        }
+
+        #confirm-price-modal #selected-member-phone {
+            color: #b45309 !important;
+        }
+
+        #confirm-price-modal #btn-remove-member {
+            color: #ef4444 !important;
+        }
+
+        /* Left Column - Cart Items Summary */
+        #confirm-price-modal .bg-slate-900\/40 {
+            background-color: #f8fafc !important;
+            border-color: #e2e8f0 !important;
+        }
+
+        #confirm-price-modal h4.text-slate-400 {
+            color: #475569 !important;
+        }
+
+        #confirm-price-modal h4 .text-cyan-500,
+        #confirm-price-modal h4 .text-cyan-400 {
+            color: #f59e0b !important;
+        }
+
+        #confirm-price-list {
+            background-color: #ffffff !important;
+            border-color: #e2e8f0 !important;
+        }
+
+        /* Dynamically injected rows for cart items */
+        #confirm-price-list>div {
+            border-bottom: 1px solid #e2e8f0 !important;
+        }
+
+        #confirm-price-list>div:hover {
+            background-color: #f1f5f9 !important;
+        }
+
+        #confirm-price-list p.text-white {
+            color: #0f172a !important;
+        }
+
+        #confirm-price-list .bg-slate-800 {
+            background-color: #f1f5f9 !important;
+            border-color: #cbd5e1 !important;
+            color: #475569 !important;
+        }
+
+        #confirm-price-list .bg-slate-800\/60 {
+            background-color: #f1f5f9 !important;
+            color: #475569 !important;
+        }
+
+        #confirm-price-list select.modal-warranty-select {
+            background-color: #ffffff !important;
+            border-color: #cbd5e1 !important;
+            color: #f59e0b !important;
+        }
+
+        #confirm-price-list input {
+            color: #0f172a !important;
+        }
+
+        #confirm-price-list .text-cyan-400 {
+            color: #10b981 !important;
+        }
+
+        /* Right Column - Payment Controls */
+        #confirm-price-modal .bg-slate-900\/30 {
+            background-color: #ffffff !important;
+            border-color: #e2e8f0 !important;
+        }
+
+        #confirm-price-modal label.text-slate-300 {
+            color: #334155 !important;
+        }
+
+        #confirm-price-modal .border-t.border-slate-700\/50 {
+            border-top-color: #e2e8f0 !important;
+        }
+
+        /* Totals */
+        #confirm-price-modal .text-slate-400 {
+            color: #475569 !important;
+        }
+
+        #confirm-price-modal #modal-subtotal-display,
+        #confirm-price-modal #modal-contract-display,
+        #confirm-price-modal #modal-icloud-display,
+        #confirm-price-modal #modal-finance-summary-down {
+            color: #0f172a !important;
+        }
+
+        #confirm-price-modal #modal-total-display {
+            color: #f59e0b !important;
+            text-shadow: 0 0 8px rgba(245, 158, 11, 0.4);
+            -webkit-text-stroke: 1px #b45309;
+        }
+
+        #confirm-price-modal #modal-finance-summary-amount {
+            color: #0284c7 !important;
+        }
+
+        #confirm-price-modal #modal-finance-summary-upfront {
+            color: #059669 !important;
+        }
+
+        #confirm-price-modal .border-t.border-slate-700 {
+            border-top-color: #e2e8f0 !important;
+        }
+
+        /* Verify Panel */
+        #confirm-price-modal #payment-verify-panel {
+            background-color: #f1f5f9 !important;
+            border-color: #cbd5e1 !important;
+            border-left-color: #f59e0b !important;
+        }
+
+        #confirm-price-modal #payment-verify-panel i.text-cyan-400 {
+            color: #f59e0b !important;
+        }
+
+        #confirm-price-modal #verify-received-display,
+        #confirm-price-modal #verify-change-display {
+            color: #0f172a !important;
+        }
+
+        /* Action Buttons */
+        #confirm-price-modal #cancel-price-modal-btn {
+            background-color: #e2e8f0 !important;
+            color: #334155 !important;
+        }
+
+        #confirm-price-modal #cancel-price-modal-btn:hover {
+            background-color: #cbd5e1 !important;
+            color: #0f172a !important;
+        }
+
+        #confirm-price-modal #confirm-price-checkout-btn {
+            background-image: none !important;
+            background-color: #eab308 !important;
+            color: #0f172a !important;
+            box-shadow: 0 4px 14px rgba(234, 179, 8, 0.3) !important;
+        }
+
+        #confirm-price-modal #confirm-price-checkout-btn:hover {
+            background-color: #facc15 !important;
+            box-shadow: 0 6px 20px rgba(234, 179, 8, 0.4) !important;
+        }
+
+        /* ==========================================
+           Add Member Modal (#member-modal) Light Theme Overrides
+           ========================================== */
+        #member-modal .modal-content {
+            background-color: #ffffff !important;
+            border-color: #e2e8f0 !important;
+            color: #0f172a !important;
+        }
+
+        /* Header */
+        #member-modal .modal-content > div:first-child {
+            border-bottom-color: #e2e8f0 !important;
+            background-color: #ffffff !important;
+        }
+        #member-modal h3.text-white {
+            color: #0f172a !important;
+        }
+        #member-modal h3 .bg-teal-500\/10 {
+            background-color: #fef3c7 !important;
+            border-color: #fde68a !important;
+        }
+        #member-modal h3 .text-teal-400 {
+            color: #d97706 !important;
+        }
+        #member-modal button.text-slate-400 {
+            color: #64748b !important;
+        }
+        #member-modal button.text-slate-400:hover {
+            color: #0f172a !important;
+            background-color: #f1f5f9 !important;
+        }
+
+        /* Smart Card Button (keep gradient, text white) */
+        #member-modal #btn-read-smartcard {
+            color: #ffffff !important;
+        }
+
+        /* ID Card Data Box & Manual Input Box & Right Column */
+        #member-modal .bg-slate-900\/40 {
+            background-color: #ffffff !important;
+            border-color: #e2e8f0 !important;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
+        }
+        #member-modal h4.text-slate-300 {
+            color: #0f172a !important;
+            border-bottom-color: #e2e8f0 !important;
+        }
+        #member-modal h4 .text-cyan-400,
+        #member-modal h4 .text-teal-400 {
+            color: #d97706 !important;
+        }
+        
+        /* Labels & Inputs */
+        #member-modal label.text-slate-400 {
+            color: #475569 !important;
+        }
+        #member-modal input, 
+        #member-modal select, 
+        #member-modal textarea {
+            background-color: #f8fafc !important;
+            border-color: #cbd5e1 !important;
+            color: #0f172a !important;
+        }
+        #member-modal input:focus, 
+        #member-modal select:focus, 
+        #member-modal textarea:focus {
+            border-color: #f59e0b !important;
+            box-shadow: 0 0 0 1px #f59e0b !important;
+            background-color: #ffffff !important;
+        }
+        #member-modal input::placeholder,
+        #member-modal textarea::placeholder {
+            color: #94a3b8 !important;
+        }
+        
+        /* Photo Previews */
+        #member-modal #member-photo-preview,
+        #member-modal #member-card-front-preview-btn {
+            background-color: #f8fafc !important;
+            border-color: #cbd5e1 !important;
+        }
+        #member-modal #member-card-front-preview-btn:hover {
+            border-color: #f59e0b !important;
+            background-color: #fffbeb !important;
+        }
+        #member-modal .text-slate-500 {
+            color: #94a3b8 !important;
+        }
+        #member-modal #member-card-front-preview-btn:hover .text-slate-500 {
+            color: #d97706 !important;
+        }
+
+        /* Footer */
+        #member-modal .border-t.border-slate-700 {
+            border-top-color: #e2e8f0 !important;
+        }
+        #member-modal .bg-slate-800\/50 {
+            background-color: #ffffff !important;
+        }
+        #member-modal #cancel-member-modal-btn {
+            color: #475569 !important;
+        }
+        #member-modal #cancel-member-modal-btn:hover {
+            color: #0f172a !important;
+            background-color: #f1f5f9 !important;
+        }
+        #member-modal #submit-member-btn {
+            background-image: none !important;
+            background-color: #eab308 !important;
+            color: #0f172a !important;
+            box-shadow: 0 4px 14px rgba(234, 179, 8, 0.3) !important;
+        }
+        #member-modal #submit-member-btn:hover {
+            background-color: #facc15 !important;
+            box-shadow: 0 6px 20px rgba(234, 179, 8, 0.4) !important;
+        }
+
+        /* ==========================================
+           Mobile POS Floating Cart Button (FAB)
+           ========================================== */
+        #pos-mobile-cart-fab {
+            position: fixed;
+            bottom: 80px;
+            right: 20px;
+            z-index: 45;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #eab308, #ca8a04);
+            border: 3px solid #facc15;
+            box-shadow: 0 6px 24px rgba(234, 179, 8, 0.35), 0 2px 8px rgba(0, 0, 0, 0.15);
+            display: none;
+            /* Hidden by default, shown via JS on POS page */
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        #pos-mobile-cart-fab:active {
+            transform: scale(0.92);
+        }
+
+        #pos-mobile-cart-fab i {
+            font-size: 24px;
+            color: #0f172a;
+        }
+
+        #pos-mobile-cart-fab .cart-fab-badge {
+            position: absolute;
+            top: -4px;
+            right: -4px;
+            min-width: 22px;
+            height: 22px;
+            border-radius: 999px;
+            background-color: #ef4444;
+            color: #ffffff;
+            font-size: 11px;
+            font-weight: 800;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0 5px;
+            border: 2px solid #ffffff;
+            box-shadow: 0 2px 6px rgba(239, 68, 68, 0.4);
+        }
+
+        /* ==========================================
+           Mobile POS Cart Overlay Panel
+           ========================================== */
+        #pos-mobile-cart-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: 55;
+            background-color: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+            display: none;
+            opacity: 0;
+            transition: opacity 0.25s ease;
+        }
+
+        #pos-mobile-cart-overlay.active {
+            display: block;
+            opacity: 1;
+        }
+
+        #pos-mobile-cart-panel {
+            position: fixed;
+            top: 50%;
+            left: 12px;
+            right: 12px;
+            z-index: 56;
+            max-height: 80vh;
+            background-color: #ffffff;
+            border-radius: 20px;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2), 0 4px 16px rgba(0, 0, 0, 0.1);
+            display: none;
+            opacity: 0;
+            transform: translateY(-50%) scale(0.97);
+            transition: opacity 0.3s ease, transform 0.3s ease;
+            overflow: hidden;
+            flex-direction: column;
+        }
+
+        #pos-mobile-cart-panel.active {
+            display: flex;
+            opacity: 1;
+            transform: translateY(-50%) scale(1);
+        }
+
+        #pos-mobile-cart-panel .mobile-cart-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid #e2e8f0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background-color: #ffffff;
+            border-radius: 20px 20px 0 0;
+        }
+
+        #pos-mobile-cart-panel .mobile-cart-header h3 {
+            font-size: 18px;
+            font-weight: 800;
+            color: #0f172a;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        #pos-mobile-cart-panel .mobile-cart-header h3 i {
+            color: #ca8a04;
+            font-size: 20px;
+        }
+
+        #pos-mobile-cart-panel .mobile-cart-header .mobile-cart-count {
+            font-size: 16px;
+            font-weight: 800;
+            color: #0f172a;
+        }
+
+        #pos-mobile-cart-panel .mobile-cart-header .mobile-cart-count span {
+            color: #ca8a04;
+        }
+
+        #pos-mobile-cart-panel .mobile-cart-close {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background-color: #fef3c7;
+            border: 1px solid #fcd34d;
+            color: #92400e;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background-color 0.15s ease;
+        }
+
+        #pos-mobile-cart-panel .mobile-cart-close:hover {
+            background-color: #fde68a;
+        }
+
+        #pos-mobile-cart-panel .mobile-cart-branch {
+            padding: 8px 20px;
+            background-color: #fef9c3;
+            font-size: 12px;
+            font-weight: 700;
+            color: #92400e;
+            text-align: center;
+        }
+
+        #pos-mobile-cart-panel .mobile-cart-items {
+            flex: 1;
+            overflow-y: auto;
+            padding: 12px 16px;
+            max-height: calc(100vh - 380px);
+        }
+
+        #pos-mobile-cart-panel .mobile-cart-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px;
+            background-color: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 14px;
+            margin-bottom: 8px;
+        }
+
+        #pos-mobile-cart-panel .mobile-cart-item .item-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            background-color: rgba(234, 179, 8, 0.1);
+            border: 1px solid rgba(234, 179, 8, 0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            color: #ca8a04;
+            font-size: 16px;
+        }
+
+        #pos-mobile-cart-panel .mobile-cart-item .item-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        #pos-mobile-cart-panel .mobile-cart-item .item-info .item-name {
+            font-size: 14px;
+            font-weight: 600;
+            color: #0f172a;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        #pos-mobile-cart-panel .mobile-cart-item .item-info .item-detail {
+            font-size: 11px;
+            color: #64748b;
+            margin-top: 2px;
+        }
+
+        #pos-mobile-cart-panel .mobile-cart-item .item-prices {
+            text-align: right;
+            flex-shrink: 0;
+        }
+
+        #pos-mobile-cart-panel .mobile-cart-item .item-prices .unit-price {
+            font-size: 11px;
+            color: #64748b;
+            font-weight: 600;
+        }
+
+        #pos-mobile-cart-panel .mobile-cart-item .item-prices .subtotal-price {
+            font-size: 14px;
+            font-weight: 800;
+            color: #0f172a;
+            font-family: ui-monospace, monospace;
+        }
+
+        #pos-mobile-cart-panel .mobile-cart-item .item-remove {
+            width: 28px;
+            height: 28px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #94a3b8;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            flex-shrink: 0;
+        }
+
+        #pos-mobile-cart-panel .mobile-cart-item .item-remove:hover {
+            background-color: rgba(239, 68, 68, 0.1);
+            color: #ef4444;
+        }
+
+        #pos-mobile-cart-panel .mobile-cart-empty {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 40px 20px;
+            color: #94a3b8;
+        }
+
+        #pos-mobile-cart-panel .mobile-cart-empty i {
+            font-size: 36px;
+            margin-bottom: 12px;
+            color: #cbd5e1;
+        }
+
+        #pos-mobile-cart-panel .mobile-cart-empty p {
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        #pos-mobile-cart-panel .mobile-cart-footer {
+            padding: 16px 20px;
+            border-top: 1px solid #e2e8f0;
+            background-color: #ffffff;
+            border-radius: 0 0 20px 20px;
+        }
+
+        #pos-mobile-cart-panel .mobile-cart-footer .total-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+        }
+
+        #pos-mobile-cart-panel .mobile-cart-footer .total-row .total-label {
+            font-size: 16px;
+            font-weight: 800;
+            color: #0f172a;
+        }
+
+        #pos-mobile-cart-panel .mobile-cart-footer .total-row .total-amount {
+            font-size: 22px;
+            font-weight: 900;
+            color: #0f172a;
+            font-family: ui-monospace, monospace;
+        }
+
+        #pos-mobile-cart-panel .mobile-cart-footer .total-row .total-amount .baht {
+            color: #ef4444;
+        }
+
+        #pos-mobile-cart-panel .mobile-cart-footer .mobile-checkout-btn {
+            width: 100%;
+            padding: 14px;
+            border-radius: 14px;
+            background-color: #eab308;
+            color: #0f172a;
+            font-weight: 800;
+            font-size: 16px;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: background-color 0.15s ease, transform 0.1s ease;
+        }
+
+        #pos-mobile-cart-panel .mobile-cart-footer .mobile-checkout-btn:hover {
+            background-color: #facc15;
+        }
+
+        #pos-mobile-cart-panel .mobile-cart-footer .mobile-checkout-btn:active {
+            transform: scale(0.98);
+        }
+
+        /* Hide existing cart sidebar on mobile for POS */
+        @media (max-width: 767px) {
+            #view-transactions>div>.w-full.lg\:w-\[420px\] {
+                display: none !important;
+            }
+        }
+
+        /* Hide FAB on tablet+ */
+        @media (min-width: 768px) {
+            #pos-mobile-cart-fab {
+                display: none !important;
+            }
+
+            #pos-mobile-cart-overlay,
+            #pos-mobile-cart-panel {
+                display: none !important;
+            }
+        }
     </style>
 </head>
 
@@ -622,14 +3559,9 @@
         <aside id="sidebar"
             class="sidebar-expanded bg-slate-800 border-r border-slate-700 flex flex-col h-full z-20 flex-shrink-0 fixed md:static inset-y-0 left-0 z-[45] transition-transform duration-300 -translate-x-full md:translate-x-0">
             <!-- Sidebar Header -->
-            <div class="h-16 flex items-center px-4 border-b border-slate-700 shrink-0">
-                <div class="flex items-center gap-3 w-full">
-                    <div
-                        class="w-8 h-8 rounded bg-slate-900 flex items-center justify-center border border-slate-700 shrink-0">
-                        <i class="fa-solid fa-mobile-screen-button text-cyan-400"></i>
-                    </div>
-                    <span class="sidebar-logo-text font-bold text-lg tracking-tight truncate">Silmin<span
-                            class="text-cyan-400 glow-text">Mobile</span></span>
+            <div class="h-16 flex items-center px-4 ">
+                <div class="flex items-center gap-3 w-full align-center justify-center">
+                    <img src="/logo_silminmobile.png" alt="" width="120">
                 </div>
             </div>
 
@@ -640,8 +3572,7 @@
                     <i
                         class="fa-solid fa-chart-pie sidebar-icon text-lg w-6 text-center text-blue-400 group-hover:text-blue-300"></i>
                     <span class="sidebar-text ml-3 font-medium">แดชบอร์ด</span>
-                    <span
-                        class="sidebar-text ml-auto bg-cyan-500 text-slate-900 text-xs font-bold px-2 py-0.5 rounded-full">D</span>
+
                 </a>
 
                 <a href="#" id="nav-daily-summary"
@@ -895,8 +3826,8 @@
                                     <span class="text-[11px] text-cyan-400 font-medium"
                                         id="topbar-user-role-tablet">กำลังโหลด...</span>
                                 </div>
-                                <!-- Mobile view (narrow screens): Just name + branch icon -->
-                                <div class="flex sm:hidden flex-col text-right">
+                                <!-- Mobile view (narrow screens): Hidden to save space -->
+                                <div class="hidden flex-col text-right">
                                     <span id="topbar-user-name-mobile"
                                         class="font-semibold text-white text-sm">กำลังโหลด...</span>
                                     <span id="topbar-user-branch-mobile"
@@ -1112,11 +4043,11 @@
                     <!-- Tabs Navigation -->
                     <div class="flex space-x-1 border-b border-slate-700/50">
                         <button id="tab-branch-mystock"
-                            class="px-6 py-3 text-sm font-bold rounded-t-lg transition-all text-emerald-400 border-b-2 border-emerald-400 bg-emerald-500/10">
+                            class="px-6 py-3 text-sm font-bold rounded-lg transition-all text-emerald-400 border-b-2 border-emerald-400 bg-emerald-500/10">
                             <i class="fa-solid fa-box-open mr-2"></i> สินค้าในสาขาของฉัน
                         </button>
                         <button id="tab-branch-globalstock"
-                            class="px-6 py-3 text-sm font-bold text-slate-400 hover:text-slate-200 transition-all border-b-2 border-transparent">
+                            class="px-6 py-3 text-sm font-bold rounded-lg text-slate-400 hover:text-slate-200 transition-all border-b-2 border-transparent">
                             <i class="fa-solid fa-globe mr-2"></i> สินค้าและราคาสาขาอื่น
                         </button>
                     </div>
@@ -1362,13 +4293,12 @@
                         <div
                             class="w-full lg:w-[420px] flex flex-col h-auto lg:h-full bg-slate-800 rounded-2xl border border-slate-700 shadow-lg overflow-hidden">
                             <!-- Cart Header -->
-                            <div class="p-5 border-b border-slate-700 bg-slate-800/90">
-                                <h3 class="text-xl font-bold text-white flex items-center gap-2">
-                                    <i class="fa-solid fa-basket-shopping text-cyan-400"></i>
+                            <div class="p-5 border-b border-slate-700 bg-slate-800/90" id="pos-cart-header-container">
+                                <h3 class="text-xl font-bold text-black flex items-center gap-2">
+                                    <i class="fa-solid fa-basket-shopping text-yellow-500"></i>
                                     ตะกร้าสินค้า
-                                    <span id="cart-count-badge"
-                                        class="ml-auto bg-cyan-500/20 text-cyan-400 text-sm font-bold px-3 py-1 rounded-full border border-cyan-500/30">0
-                                        รายการ</span>
+                                    <span id="cart-count-badge" class="ml-auto text-sm font-bold text-black"><span
+                                            class="text-yellow-600 font-extrabold text-lg">0</span> รายการ</span>
                                 </h3>
                             </div>
 
@@ -1392,17 +4322,18 @@
                                 <!-- Cart Summary -->
                                 <div class="space-y-2">
                                     <div class="flex justify-between items-center pt-1">
-                                        <span class="text-base font-bold text-slate-300">ยอดรวมทั้งหมด</span>
+                                        <span class="text-base font-bold text-black">ยอดรวมทั้งหมด</span>
                                         <span id="cart-subtotal"
-                                            class="text-2xl font-extrabold font-mono text-cyan-400">฿0.00</span>
+                                            class="text-2xl font-extrabold font-mono text-black"><span
+                                                class="text-red-500">฿</span>0.00</span>
                                     </div>
                                 </div>
 
                                 <!-- Checkout Button -->
-                                <button id="btn-checkout"
-                                    class="w-full py-4 bg-gradient-to-r from-cyan-500 to-cyan-400 hover:from-cyan-400 hover:to-cyan-300 text-slate-900 font-bold text-lg rounded-xl shadow-[0_0_25px_rgba(6,182,212,0.4)] hover:shadow-[0_0_35px_rgba(6,182,212,0.6)] transition-all transform hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none disabled:hover:shadow-none">
-                                    <i class="fa-solid fa-cash-register text-xl"></i>
-                                    💵 ชำระเงินและออกใบเสร็จ
+                                <button id="btn-checkout" style="color: white;"
+                                    class="w-full py-4 bg-emerald-600 hover:bg-emerald-700 text-black font-bold text-lg rounded-xl transition-all transform hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none">
+                                    <i class="fa-solid fa-cash-register text-xl" style="color: white;"></i>
+                                    ชำระเงินและออกใบเสร็จ
                                 </button>
                             </div>
                         </div>
@@ -2151,7 +5082,7 @@
                             <p class="text-slate-400 mt-1">สร้างรายการโอนย้าย และรับเข้าสินค้าระหว่างสาขา</p>
                         </div>
                         <button id="btn-open-create-transfer"
-                            class="px-5 py-3 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-900 font-bold transition-all shadow-lg shadow-cyan-500/20 flex items-center gap-2">
+                            class="px-5 py-3 rounded-xl bg-cyan-500 hover:bg-cyan-400 font-bold transition-all shadow-lg shadow-cyan-500/20 flex items-center gap-2">
                             <i class="fa-solid fa-plus"></i>
                             สร้างรายการโอนย้าย
                         </button>
@@ -5814,9 +8745,8 @@
                     </div>
                     รายละเอียดใบสั่งซื้อ PO: <span id="view-po-number" class="text-cyan-400 font-mono"></span>
                 </h3>
-                <button id="btn-close-po-view"
-                    class="text-slate-400 hover:text-white transition-colors p-2 rounded-lg hover:bg-slate-800">
-                    <i class="fa-solid fa-xmark text-xl"></i>
+                <button id="btn-close-po-view" class="text-red-500 cursor-pointer">
+                    <i class="fa-solid fa-xmark text-xl " style="color: red;"></i>
                 </button>
             </div>
             <div class="flex-1 overflow-y-auto p-6 space-y-6">
@@ -6171,6 +9101,37 @@
     <datalist id="dl-product-codes"></datalist>
     <datalist id="dl-product-colors"></datalist>
     <datalist id="dl-product-capacities"></datalist>
+
+    <!-- Mobile POS Floating Cart Button (FAB) -->
+    <button id="pos-mobile-cart-fab" aria-label="เปิดตะกร้าสินค้า">
+        <i class="fa-solid fa-basket-shopping"></i>
+        <span class="cart-fab-badge" id="cart-fab-badge-count">0</span>
+    </button>
+
+    <!-- Mobile POS Cart Overlay -->
+    <div id="pos-mobile-cart-overlay"></div>
+    <div id="pos-mobile-cart-panel">
+        <div class="mobile-cart-header">
+            <h3><i class="fa-solid fa-basket-shopping"></i> ตะกร้าสินค้า</h3>
+            <div style="display:flex; align-items:center; gap:12px;">
+                <div class="mobile-cart-count"><span id="mobile-cart-count-num">0</span> รายการ</div>
+                <button class="mobile-cart-close" id="btn-close-mobile-cart"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+        </div>
+        <div class="mobile-cart-branch" id="mobile-cart-branch-name">คลังสินค้า : -</div>
+        <div class="mobile-cart-items" id="mobile-cart-items-list">
+            <!-- Dynamic cart items rendered here -->
+        </div>
+        <div class="mobile-cart-footer">
+            <div class="total-row">
+                <span class="total-label">ยอดรวมทั้งหมด</span>
+                <span class="total-amount" id="mobile-cart-total"><span class="baht">฿</span>0</span>
+            </div>
+            <button class="mobile-checkout-btn" id="btn-mobile-checkout">
+                <i class="fa-solid fa-cash-register"></i> ชำระเงินและออกใบเสร็จ
+            </button>
+        </div>
+    </div>
 
     <script src="script.js?v=po_history_fix_v1"></script>
 </body>

@@ -1062,40 +1062,44 @@ document.addEventListener('DOMContentLoaded', () => {
     const showToast = (message, type = 'success') => {
         const toast = document.createElement('div');
 
-        let bgColor = 'bg-slate-950/85 backdrop-blur-md';
-        let borderColor = 'border-slate-800';
+        let bgColor = 'bg-blue-600';
+        let borderColor = 'border-blue-700';
         let iconColor = 'text-white';
         let icon = 'fa-circle-info';
-        let shadow = 'shadow-[0_4px_20px_-2px_rgba(0,0,0,0.3)]';
+        let shadow = 'shadow-[0_4px_20px_rgba(0,0,0,0.15)]';
 
         if (type === 'success' || type === 'confirm') {
-            borderColor = 'border-emerald-500/30';
-            iconColor = 'text-emerald-400';
+            bgColor = 'bg-emerald-600';
+            borderColor = 'border-emerald-700';
+            iconColor = 'text-white';
             icon = 'fa-circle-check';
-            shadow = 'shadow-[0_4px_20px_-2px_rgba(16,185,129,0.2)]';
+            shadow = 'shadow-[0_4px_20px_rgba(16,185,129,0.25)]';
         } else if (type === 'error' || type === 'danger') {
-            borderColor = 'border-rose-500/30';
-            iconColor = 'text-rose-400';
+            bgColor = 'bg-rose-600';
+            borderColor = 'border-rose-700';
+            iconColor = 'text-white';
             icon = 'fa-circle-xmark';
-            shadow = 'shadow-[0_4px_20px_-2px_rgba(244,63,94,0.2)]';
+            shadow = 'shadow-[0_4px_20px_rgba(244,63,94,0.25)]';
         } else if (type === 'warning') {
-            borderColor = 'border-amber-500/30';
-            iconColor = 'text-amber-400';
+            bgColor = 'bg-amber-600';
+            borderColor = 'border-amber-700';
+            iconColor = 'text-white';
             icon = 'fa-triangle-exclamation';
-            shadow = 'shadow-[0_4px_20px_-2px_rgba(245,158,11,0.2)]';
+            shadow = 'shadow-[0_4px_20px_rgba(245,158,11,0.25)]';
         } else { // info
-            borderColor = 'border-cyan-500/30';
-            iconColor = 'text-cyan-400';
+            bgColor = 'bg-blue-600';
+            borderColor = 'border-blue-700';
+            iconColor = 'text-white';
             icon = 'fa-circle-info';
-            shadow = 'shadow-[0_4px_20px_-2px_rgba(6,182,212,0.2)]';
+            shadow = 'shadow-[0_4px_20px_rgba(37,99,235,0.25)]';
         }
 
         toast.className = `${bgColor} border ${borderColor} ${shadow} px-4 py-3 rounded-2xl flex items-center gap-3 toast-animate min-w-[240px] pointer-events-auto transition-all duration-300`;
         toast.innerHTML = `
-            <div class="flex items-center justify-center w-8 h-8 rounded-xl bg-slate-900/50 border border-white/5 flex-shrink-0">
+            <div class="flex items-center justify-center w-8 h-8 rounded-xl bg-white/15 border border-white/10 flex-shrink-0">
                 <i class="fa-solid ${icon} ${iconColor} text-base"></i>
             </div>
-            <span class="text-slate-100 text-sm font-medium pr-2 leading-tight">${message}</span>
+            <span class="text-white text-sm font-medium pr-2 leading-tight">${message}</span>
         `;
 
         toastContainer.appendChild(toast);
@@ -1505,16 +1509,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 ? `${product.quantity || product.imeis.length} <span class="text-xs text-slate-500 font-normal">เครื่อง</span>`
                 : `${product.quantity} <span class="text-xs text-slate-500 font-normal">${unitName}</span>`;
 
-            let statusColor = (product.quantity) > 0 ? 'bg-emerald-400' : 'bg-red-400';
+            let statusColor = (product.quantity) > 0 ? 'bg-emerald-500' : 'bg-red-500';
             let statusText = (product.quantity) > 0 ? 'มีสินค้า' : 'สินค้าหมด';
-            let statusClass = (product.quantity) > 0 ? 'text-emerald-400' : 'text-red-400';
-            let statusShadow = (product.quantity) > 0 ? 'shadow-[0_0_8px_rgba(52,211,153,0.8)]' : 'shadow-[0_0_8px_rgba(248,113,113,0.8)]';
+            let statusClass = (product.quantity) > 0 ? 'text-emerald-600' : 'text-red-600';
+            let statusBadge = (product.quantity) > 0 ? 'bg-emerald-50 border border-emerald-200' : 'bg-red-50 border border-red-200';
 
             if (product.is_transferring) {
-                statusColor = 'bg-amber-400';
+                statusColor = 'bg-orange-500';
                 statusText = 'กำลังโอนย้าย';
-                statusClass = 'text-amber-400';
-                statusShadow = 'shadow-[0_0_8px_rgba(251,191,36,0.8)]';
+                statusClass = 'text-orange-600';
+                statusBadge = 'bg-orange-50 border border-orange-200';
             }
 
             row.innerHTML = `
@@ -1538,9 +1542,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 <td class="px-6 py-4 text-right text-slate-300 font-mono">฿${product.selling_price.toLocaleString()}</td>
                 <td class="px-6 py-4 text-center text-white font-medium">${stockDisplay}</td>
                 <td class="px-6 py-4">
-                    <div class="flex items-center gap-2">
-                        <div class="w-2 h-2 rounded-full ${statusColor} ${statusShadow}"></div>
-                        <span class="${statusClass} font-medium">${statusText}</span>
+                    <div class="inline-flex items-center gap-2 px-2.5 py-1 rounded-md ${statusBadge}">
+                        <div class="w-2 h-2 rounded-full ${statusColor}"></div>
+                        <span class="${statusClass} font-medium text-xs">${statusText}</span>
                     </div>
                 </td>
                 <td class="px-6 py-4 text-right">
@@ -2304,13 +2308,18 @@ document.addEventListener('DOMContentLoaded', () => {
                     renderCart();
                 }
             }
+            // Hide mobile cart FAB on non-POS views
+            const _fab = document.getElementById('pos-mobile-cart-fab');
+            if (_fab) _fab.style.display = 'none';
+            const _overlay = document.getElementById('pos-mobile-cart-overlay');
+            const _panel = document.getElementById('pos-mobile-cart-panel');
+            if (_overlay) { _overlay.classList.remove('active'); _overlay.style.display = 'none'; }
+            if (_panel) { _panel.classList.remove('active'); _panel.style.display = 'none'; }
         }
 
         // Reset all active states
         document.querySelectorAll('.nav-menu-item').forEach(item => {
-            item.classList.remove('bg-cyan-500/10', 'text-cyan-400', 'border', 'border-cyan-500/20', 'active');
-            item.classList.add('text-slate-300', 'hover:bg-slate-700/50', 'hover:text-white');
-            item.style.borderColor = 'transparent';
+            item.classList.remove('active');
         });
 
         // Reset all mobile bottom nav items active states
@@ -2360,8 +2369,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 view.classList.add('animate-fade-in');
             }
             if (nav) {
-                nav.classList.remove('text-slate-300', 'hover:bg-slate-700/50', 'hover:text-white');
-                nav.classList.add('bg-cyan-500/10', 'text-cyan-400', 'border', 'border-cyan-500/20', 'active');
+                nav.classList.add('active');
             }
         };
 
@@ -2388,6 +2396,9 @@ document.addEventListener('DOMContentLoaded', () => {
             // โหลดสินค้าสำหรับ POS (Backend จะกรองตามสาขาอัตโนมัติสำหรับพนักงานขาย)
             await fetchPosProducts();
             updatePosBranchBadge();
+            // Show mobile cart FAB on POS page
+            const _posFab = document.getElementById('pos-mobile-cart-fab');
+            if (_posFab && window.innerWidth < 768) _posFab.style.display = 'flex';
         }
         else if (viewName === 'personnel') {
             activateView(viewPersonnel, navPersonnel);
@@ -3518,6 +3529,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const json = await response.json();
             if (json.success) {
                 posProductsCache = json.data;
+                if (typeof populatePosDropdowns === 'function') populatePosDropdowns();
+                if (typeof initPosRender === 'function') initPosRender();
             }
         } catch (error) {
             console.error('เกิดข้อผิดพลาดในการดึงข้อมูลสินค้าสำหรับ POS:', error);
@@ -3535,64 +3548,126 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const updatePosBranchBadge = () => {
-        if (!posCartHeader) return;
+        const headerContainer = document.getElementById('pos-cart-header-container');
+        if (!headerContainer) return;
 
         const user = getCurrentUserForPos();
         const branchName = user && user.branch && user.branch.name ? user.branch.name : '';
 
         let badge = document.getElementById('pos-branch-badge');
         if (!badge) {
-            badge = document.createElement('span');
+            badge = document.createElement('div');
             badge.id = 'pos-branch-badge';
-            badge.className = 'ml-2 text-xs font-bold px-2 py-1 rounded-full border border-slate-600 text-slate-300 bg-slate-900/50';
-            posCartHeader.insertBefore(badge, cartCountBadge);
+            badge.className = 'mt-3 bg-amber-100 text-amber-800 text-xs font-bold py-2 px-3 rounded-lg text-center';
+            headerContainer.appendChild(badge);
         }
 
-        badge.textContent = branchName ? `คลังสินค้า: ${branchName}` : 'คลังสินค้า: -';
+        badge.textContent = branchName ? `คลังสินค้า : ${branchName}` : 'คลังสินค้า : -';
     };
 
-    // Search/Filter Logic
-    const searchPosProducts = (query) => {
-        if (!query || query.trim() === '') {
+    // State for POS UI
+    let posCurrentPage = 1;
+    let posPerPage = 10;
+    let posFilteredData = [];
+    let posActiveTab = 'search'; // 'search' or 'scan'
+
+    const getProductImage = (productName, typeName) => {
+        let imageName = 'default.png';
+        if (!productName) return `/images/products/${imageName}`;
+        const name = productName.toLowerCase();
+        const type = typeName ? typeName.toLowerCase() : '';
+        if (name.includes('iphone 15 pro max')) imageName = 'iphone-15-pro-max.png';
+        else if (name.includes('iphone 15 pro')) imageName = 'iphone-15-pro.png';
+        else if (name.includes('iphone 15 plus')) imageName = 'iphone-15-plus.png';
+        else if (name.includes('iphone 15')) imageName = 'iphone-15.png';
+        else if (name.includes('iphone 14 pro max')) imageName = 'iphone-14-pro-max.png';
+        else if (name.includes('iphone 14 pro')) imageName = 'iphone-14-pro.png';
+        else if (name.includes('iphone 14 plus')) imageName = 'iphone-14-plus.png';
+        else if (name.includes('iphone 14')) imageName = 'iphone-14.png';
+        else if (name.includes('iphone 13 pro max')) imageName = 'iphone-13-pro-max.png';
+        else if (name.includes('iphone 13 pro')) imageName = 'iphone-13-pro.png';
+        else if (name.includes('iphone 13')) imageName = 'iphone-13.png';
+        else if (name.includes('ipad pro')) imageName = 'ipad-pro.png';
+        else if (name.includes('ipad air')) imageName = 'ipad-air.png';
+        else if (name.includes('ipad mini')) imageName = 'ipad-mini.png';
+        else if (name.includes('ipad')) imageName = 'ipad.png';
+        else if (name.includes('samsung galaxy s24 ultra')) imageName = 's24-ultra.png';
+        else if (name.includes('samsung galaxy z fold5')) imageName = 'z-fold5.png';
+        else if (type.includes('iphone')) imageName = 'iphone-15.png';
+        else if (type.includes('ipad')) imageName = 'ipad.png';
+        else if (type.includes('android')) imageName = 's24-ultra.png';
+        return `/images/products/${imageName}`;
+    };
+
+    const getBrandFromProduct = (product) => {
+        if (product.brand_id && product.brand_id.name) return product.brand_id.name;
+        const name = (product.name || '').toLowerCase();
+        const typeName = product.type_id ? (product.type_id.name || '').toLowerCase() : '';
+        if (name.includes('apple') || name.includes('iphone') || name.includes('ipad') || name.includes('mac') || typeName.includes('iphone') || typeName.includes('ipad') || typeName.includes('apple')) return 'Apple';
+        if (name.includes('samsung') || typeName.includes('samsung')) return 'Samsung';
+        if (name.includes('oppo') || typeName.includes('oppo')) return 'Oppo';
+        if (name.includes('vivo') || typeName.includes('vivo')) return 'Vivo';
+        if (name.includes('xiaomi') || name.includes('redmi') || typeName.includes('xiaomi')) return 'Xiaomi';
+        return 'อื่นๆ';
+    };
+
+    const populatePosDropdowns = () => {
+        const categorySelect = document.getElementById('pos-filter-category');
+        const brandSelect = document.getElementById('pos-filter-brand');
+        if (!categorySelect || !brandSelect) return;
+        
+        const categories = new Set();
+        const brands = new Set();
+        
+        posProductsCache.forEach(p => {
+            if (p.type_id && p.type_id.name) categories.add(p.type_id.name);
+            brands.add(getBrandFromProduct(p));
+        });
+        
+        categorySelect.innerHTML = '<option value="">หมวดหมู่ทั้งหมด</option>';
+        Array.from(categories).sort().forEach(c => {
+            const opt = document.createElement('option');
+            opt.value = c;
+            opt.textContent = c;
+            categorySelect.appendChild(opt);
+        });
+        
+        brandSelect.innerHTML = '<option value="">แบรนด์ทั้งหมด</option>';
+        Array.from(brands).sort().forEach(b => {
+            const opt = document.createElement('option');
+            opt.value = b;
+            opt.textContent = b;
+            brandSelect.appendChild(opt);
+        });
+    };
+
+    const renderPosProductsTable = () => {
+        if (!posSearchResults || !posEmptyState) return;
+        
+        posSearchResults.innerHTML = '';
+        
+        if (posFilteredData.length === 0) {
             posEmptyState.classList.remove('hidden');
             posSearchResults.classList.add('hidden');
-            posSearchResults.innerHTML = '';
+            updatePosPagination();
             return;
         }
-
-        const q = query.trim().toLowerCase();
-        const results = posProductsCache.filter(p => {
-            // Match by name
-            if (p.name && p.name.toLowerCase().includes(q)) return true;
-            // Match by product code
-            if (p.product_code && p.product_code.toLowerCase().includes(q)) return true;
-            // Match by IMEI
-            if (p.imeis && p.imeis.some(imei => imei.toLowerCase().includes(q))) return true;
-            return false;
-        });
-
+        
         posEmptyState.classList.add('hidden');
         posSearchResults.classList.remove('hidden');
-        posSearchResults.innerHTML = '';
-
-        if (results.length === 0) {
-            posSearchResults.innerHTML = `
-                <div class="col-span-full flex flex-col items-center justify-center py-12 text-slate-500">
-                    <i class="fa-solid fa-box-open text-4xl mb-3 text-slate-600"></i>
-                    <p class="font-medium text-slate-400">ไม่พบสินค้าที่ค้นหา</p>
-                    <p class="text-sm text-slate-600 mt-1">ลองค้นหาด้วยคำอื่น</p>
-                </div>
-            `;
-            return;
-        }
-
-        results.forEach(product => {
+        
+        const startIndex = (posCurrentPage - 1) * posPerPage;
+        const endIndex = startIndex + posPerPage;
+        const paginatedData = posFilteredData.slice(startIndex, endIndex);
+        
+        paginatedData.forEach(product => {
             const categoryName = product.type_id ? product.type_id.name : 'ทั่วไป';
-            const isDevice = checkIsDevice(categoryName, product);
             const colorName = product.color_id ? product.color_id.name : '';
             const capacityName = product.capacity_id ? product.capacity_id.name : '';
             const stockQty = product.quantity || 0;
             const isOutOfStock = stockQty <= 0;
+            const productNameFull = `${product.name} ${capacityName} ${colorName}`.trim();
+            const isDevice = typeof checkIsDevice === 'function' ? checkIsDevice(categoryName, product) : false;
 
             const card = document.createElement('div');
             card.className = `bg-slate-900 border rounded-xl p-4 transition-all ${isOutOfStock ? 'border-red-500/30 opacity-60' : 'border-slate-700 hover:border-cyan-500/50 hover:shadow-[0_0_15px_rgba(6,182,212,0.1)]'}`;
@@ -3602,17 +3677,16 @@ document.addEventListener('DOMContentLoaded', () => {
                         <i class="fa-solid ${isDevice ? 'fa-mobile-screen' : 'fa-box'} text-xl"></i>
                     </div>
                     <div class="min-w-0 flex-1">
-                        <h4 class="font-semibold text-white text-sm leading-tight">${product.name} ${capacityName} ${colorName}</h4>
-                        <p class="text-lg font-black font-mono text-white mt-0.5 tracking-wider">${product.product_code || '-'}</p>
+                        <h4 class="font-semibold text-white text-sm leading-tight">${productNameFull}</h4>
+                        <p class="text-sm font-black font-mono text-slate-400 mt-1 tracking-wider">${product.product_code || '-'}</p>
                         <p class="text-xs mt-1.5">
                             <span class="px-1.5 py-0.5 rounded ${isOutOfStock ? 'bg-red-500/10 text-red-400' : 'bg-emerald-500/10 text-emerald-400'} text-[10px] font-medium">${isOutOfStock ? 'สินค้าหมด' : `คงเหลือ: ${stockQty}`}</span>
                         </p>
                     </div>
                 </div>
                 <div class="flex items-center justify-between mt-2 pt-3 border-t border-slate-700/50">
-                    <span class="font-bold text-cyan-400 font-mono text-lg">฿${product.selling_price.toLocaleString()}</span>
-                    <button class="pos-add-btn px-3 py-1.5 rounded-lg text-sm font-bold transition-all flex items-center gap-1.5 ${isOutOfStock ? 'bg-slate-700 text-slate-500 cursor-not-allowed' : 'bg-cyan-500 hover:bg-cyan-400 text-slate-900 shadow-lg shadow-cyan-500/20'}"
-                        data-product-id="${product._id}" ${isOutOfStock ? 'disabled' : ''}>
+                    <span class="font-bold font-mono text-lg"><span class="text-red-500">฿</span><span class="text-black">${product.selling_price.toLocaleString()}</span></span>
+                    <button class="pos-add-btn px-3 py-1.5 rounded-lg text-sm font-bold transition-all flex items-center gap-1.5 ${isOutOfStock ? 'bg-slate-700 text-slate-500 cursor-not-allowed' : 'bg-cyan-500 hover:bg-cyan-400 text-slate-900 shadow-lg shadow-cyan-500/20'}" data-product-id="${product._id}" ${isOutOfStock ? 'disabled' : ''}>
                         <i class="fa-solid fa-plus text-xs"></i> เพิ่ม
                     </button>
                 </div>
@@ -3630,6 +3704,104 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             });
         });
+        
+        updatePosPagination();
+    };
+
+    const updatePosPagination = () => {
+        const infoEl = document.getElementById('pos-pagination-info');
+        const controlsEl = document.getElementById('pos-pagination-controls');
+        if (!infoEl || !controlsEl) return;
+        
+        const totalItems = posFilteredData.length;
+        if (totalItems === 0) {
+            infoEl.textContent = 'แสดง 0-0 จาก 0 รายการ';
+            controlsEl.innerHTML = '';
+            return;
+        }
+        
+        const totalPages = Math.ceil(totalItems / posPerPage);
+        const startIndex = (posCurrentPage - 1) * posPerPage + 1;
+        const endIndex = Math.min(startIndex + posPerPage - 1, totalItems);
+        
+        infoEl.textContent = `แสดง ${startIndex}-${endIndex} จาก ${totalItems} รายการ`;
+        
+        let paginationHTML = '';
+        
+        paginationHTML += `<button class="pos-page-btn px-2 py-1 rounded text-sm font-medium ${posCurrentPage === 1 ? 'text-slate-600 cursor-not-allowed' : 'text-slate-300 hover:bg-slate-700 hover:text-white'}" data-page="${posCurrentPage - 1}" ${posCurrentPage === 1 ? 'disabled' : ''}><i class="fa-solid fa-chevron-left"></i></button>`;
+        
+        let startPage = Math.max(1, posCurrentPage - 2);
+        let endPage = Math.min(totalPages, posCurrentPage + 2);
+        
+        if (startPage > 1) {
+            paginationHTML += `<button class="pos-page-btn px-3 py-1 rounded text-sm font-medium text-slate-400 hover:bg-slate-700 hover:text-white transition-colors" data-page="1">1</button>`;
+            if (startPage > 2) paginationHTML += `<span class="px-2 text-slate-500">...</span>`;
+        }
+        
+        for (let i = startPage; i <= endPage; i++) {
+            const isActive = i === posCurrentPage;
+            paginationHTML += `<button class="pos-page-btn px-3 py-1 rounded text-sm font-medium transition-colors ${isActive ? 'bg-cyan-500 text-slate-900 shadow-md shadow-cyan-500/20' : 'text-slate-400 hover:bg-slate-700 hover:text-white'}" data-page="${i}">${i}</button>`;
+        }
+        
+        if (endPage < totalPages) {
+            if (endPage < totalPages - 1) paginationHTML += `<span class="px-2 text-slate-500">...</span>`;
+            paginationHTML += `<button class="pos-page-btn px-3 py-1 rounded text-sm font-medium text-slate-400 hover:bg-slate-700 hover:text-white transition-colors" data-page="${totalPages}">${totalPages}</button>`;
+        }
+        
+        paginationHTML += `<button class="pos-page-btn px-2 py-1 rounded text-sm font-medium ${posCurrentPage === totalPages ? 'text-slate-600 cursor-not-allowed' : 'text-slate-300 hover:bg-slate-700 hover:text-white'}" data-page="${posCurrentPage + 1}" ${posCurrentPage === totalPages ? 'disabled' : ''}><i class="fa-solid fa-chevron-right"></i></button>`;
+        
+        controlsEl.innerHTML = paginationHTML;
+        
+        document.querySelectorAll('.pos-page-btn:not([disabled])').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const newPage = parseInt(e.currentTarget.getAttribute('data-page'));
+                if (newPage && newPage !== posCurrentPage && newPage >= 1 && newPage <= totalPages) {
+                    posCurrentPage = newPage;
+                    renderPosProductsTable();
+                }
+            });
+        });
+    };
+
+    const initPosRender = () => {
+        if (posSearchInput) posSearchInput.value = '';
+        const categorySelect = document.getElementById('pos-filter-category');
+        const brandSelect = document.getElementById('pos-filter-brand');
+        if (categorySelect) categorySelect.value = '';
+        if (brandSelect) brandSelect.value = '';
+        searchPosProducts();
+    };
+
+    const searchPosProducts = (query = null) => {
+        const categorySelect = document.getElementById('pos-filter-category');
+        const brandSelect = document.getElementById('pos-filter-brand');
+        
+        const selectedCategory = categorySelect ? categorySelect.value : '';
+        const selectedBrand = brandSelect ? brandSelect.value : '';
+        
+        const q = (query !== null ? query : (posSearchInput ? posSearchInput.value : '')).trim().toLowerCase();
+        
+        posFilteredData = posProductsCache.filter(p => {
+            // Category filter
+            if (selectedCategory && (!p.type_id || p.type_id.name !== selectedCategory)) return false;
+            
+            // Brand filter
+            if (selectedBrand && getBrandFromProduct(p) !== selectedBrand) return false;
+            
+            // Text search filter
+            if (q) {
+                let matchText = false;
+                if (p.name && p.name.toLowerCase().includes(q)) matchText = true;
+                if (p.product_code && p.product_code.toLowerCase().includes(q)) matchText = true;
+                if (p.imeis && p.imeis.some(imei => imei.toLowerCase().includes(q))) matchText = true;
+                if (!matchText) return false;
+            }
+            
+            return true;
+        });
+        
+        posCurrentPage = 1;
+        renderPosProductsTable();
     };
 
     // Add to Cart Handler
@@ -3807,13 +3979,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (cart.length === 0) {
             if (cartEmptyState) cartEmptyState.classList.remove('hidden');
-            if (cartCountBadge) cartCountBadge.textContent = '0 รายการ';
-            if (cartSubtotal) cartSubtotal.textContent = '฿0.00';
+            if (cartCountBadge) cartCountBadge.innerHTML = '<span class="text-yellow-600 font-extrabold text-lg">0</span> รายการ';
+            if (cartSubtotal) cartSubtotal.innerHTML = '<span class="text-red-500">฿</span>0.00';
+            if (typeof renderMobileCart === 'function') renderMobileCart();
             return;
         }
 
         if (cartEmptyState) cartEmptyState.classList.add('hidden');
-        if (cartCountBadge) cartCountBadge.textContent = `${cart.length} รายการ`;
+        if (cartCountBadge) cartCountBadge.innerHTML = `<span class="text-yellow-600 font-extrabold text-lg">${cart.length}</span> รายการ`;
 
         cart.forEach((item, index) => {
             const cartEl = document.createElement('div');
@@ -3890,12 +4063,185 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Update totals
         updateCartTotals();
+        // Sync mobile cart
+        if (typeof renderMobileCart === 'function') renderMobileCart();
     };
 
     const updateCartTotals = () => {
         const subtotal = cart.reduce((sum, item) => sum + item.subtotal, 0);
-        if (cartSubtotal) cartSubtotal.textContent = `฿${subtotal.toLocaleString()}`;
+        if (cartSubtotal) cartSubtotal.innerHTML = `<span class="text-red-500">฿</span>${subtotal.toLocaleString()}`;
     };
+
+    // ==========================================
+    // Mobile POS Cart Logic
+    // ==========================================
+    const mobileCartFab = document.getElementById('pos-mobile-cart-fab');
+    const mobileCartOverlay = document.getElementById('pos-mobile-cart-overlay');
+    const mobileCartPanel = document.getElementById('pos-mobile-cart-panel');
+    const mobileCartItemsList = document.getElementById('mobile-cart-items-list');
+    const mobileCartCountNum = document.getElementById('mobile-cart-count-num');
+    const mobileCartTotal = document.getElementById('mobile-cart-total');
+    const mobileCartBranchName = document.getElementById('mobile-cart-branch-name');
+    const cartFabBadgeCount = document.getElementById('cart-fab-badge-count');
+    const btnCloseMobileCart = document.getElementById('btn-close-mobile-cart');
+    const btnMobileCheckout = document.getElementById('btn-mobile-checkout');
+
+    let mobileCartOpen = false;
+
+    const showMobileCartFab = () => {
+        if (mobileCartFab && window.innerWidth < 768) {
+            mobileCartFab.style.display = 'flex';
+        }
+    };
+
+    const hideMobileCartFab = () => {
+        if (mobileCartFab) {
+            mobileCartFab.style.display = 'none';
+        }
+        closeMobileCart();
+    };
+
+    const openMobileCart = () => {
+        if (!mobileCartOverlay || !mobileCartPanel) return;
+        mobileCartOpen = true;
+        mobileCartOverlay.style.display = 'block';
+        mobileCartPanel.style.display = 'flex';
+        requestAnimationFrame(() => {
+            mobileCartOverlay.classList.add('active');
+            mobileCartPanel.classList.add('active');
+        });
+        renderMobileCart();
+    };
+
+    const closeMobileCart = () => {
+        if (!mobileCartOverlay || !mobileCartPanel) return;
+        mobileCartOpen = false;
+        mobileCartOverlay.classList.remove('active');
+        mobileCartPanel.classList.remove('active');
+        setTimeout(() => {
+            if (!mobileCartOpen) {
+                mobileCartOverlay.style.display = 'none';
+                mobileCartPanel.style.display = 'none';
+            }
+        }, 300);
+    };
+
+    const renderMobileCart = () => {
+        if (!mobileCartItemsList) return;
+
+        // Update branch name
+        if (mobileCartBranchName) {
+            const user = getCurrentUserForPos();
+            const branchName = user && user.branch && user.branch.name ? user.branch.name : '-';
+            mobileCartBranchName.textContent = '\u0e04\u0e25\u0e31\u0e07\u0e2a\u0e34\u0e19\u0e04\u0e49\u0e32 : ' + branchName;
+        }
+
+        // Update count
+        if (mobileCartCountNum) {
+            mobileCartCountNum.textContent = cart.length;
+        }
+
+        // Update FAB badge
+        if (cartFabBadgeCount) {
+            cartFabBadgeCount.textContent = cart.length;
+            cartFabBadgeCount.style.display = cart.length > 0 ? 'flex' : 'none';
+        }
+
+        // Update total
+        const subtotal = cart.reduce((sum, item) => sum + item.subtotal, 0);
+        if (mobileCartTotal) {
+            mobileCartTotal.innerHTML = '<span class="baht">\u0e3f</span>' + subtotal.toLocaleString();
+        }
+
+        // Clear and render items
+        mobileCartItemsList.innerHTML = '';
+
+        if (cart.length === 0) {
+            const emptyDiv = document.createElement('div');
+            emptyDiv.className = 'mobile-cart-empty';
+            emptyDiv.innerHTML = '<i class="fa-solid fa-cart-shopping"></i><p>\u0e44\u0e21\u0e48\u0e21\u0e35\u0e2a\u0e34\u0e19\u0e04\u0e49\u0e32\u0e43\u0e19\u0e15\u0e30\u0e01\u0e23\u0e49\u0e32</p>';
+            mobileCartItemsList.appendChild(emptyDiv);
+            return;
+        }
+
+        cart.forEach((item, index) => {
+            const el = document.createElement('div');
+            el.className = 'mobile-cart-item';
+
+            const iconDiv = document.createElement('div');
+            iconDiv.className = 'item-icon';
+            iconDiv.innerHTML = '<i class="fa-solid ' + (item._isDevice ? 'fa-mobile-screen' : 'fa-box') + '"></i>';
+
+            const infoDiv = document.createElement('div');
+            infoDiv.className = 'item-info';
+            const nameDiv = document.createElement('div');
+            nameDiv.className = 'item-name';
+            nameDiv.textContent = item.product_name;
+            const detailDiv = document.createElement('div');
+            detailDiv.className = 'item-detail';
+            detailDiv.textContent = item.imei_sold ? 'IMEI: ...' + item.imei_sold.slice(-6) : '\u0e08\u0e33\u0e19\u0e27\u0e19: ' + item.quantity;
+            infoDiv.appendChild(nameDiv);
+            infoDiv.appendChild(detailDiv);
+
+            const pricesDiv = document.createElement('div');
+            pricesDiv.className = 'item-prices';
+            const unitPrice = document.createElement('div');
+            unitPrice.className = 'unit-price';
+            unitPrice.textContent = '\u0e3f' + item.price.toLocaleString();
+            const subtotalPrice = document.createElement('div');
+            subtotalPrice.className = 'subtotal-price';
+            subtotalPrice.textContent = '\u0e3f' + item.subtotal.toLocaleString();
+            pricesDiv.appendChild(unitPrice);
+            pricesDiv.appendChild(subtotalPrice);
+
+            const removeDiv = document.createElement('div');
+            removeDiv.className = 'item-remove';
+            removeDiv.dataset.index = index;
+            removeDiv.innerHTML = '<i class="fa-solid fa-trash-can" style="font-size:12px;"></i>';
+            removeDiv.addEventListener('click', () => {
+                cart.splice(index, 1);
+                renderCart();
+            });
+
+            el.appendChild(iconDiv);
+            el.appendChild(infoDiv);
+            el.appendChild(pricesDiv);
+            el.appendChild(removeDiv);
+            mobileCartItemsList.appendChild(el);
+        });
+    };
+
+    // FAB click -> toggle cart overlay
+    if (mobileCartFab) {
+        mobileCartFab.addEventListener('click', () => {
+            if (mobileCartOpen) {
+                closeMobileCart();
+            } else {
+                openMobileCart();
+            }
+        });
+    }
+
+    // Close button
+    if (btnCloseMobileCart) {
+        btnCloseMobileCart.addEventListener('click', closeMobileCart);
+    }
+
+    // Overlay click -> close
+    if (mobileCartOverlay) {
+        mobileCartOverlay.addEventListener('click', closeMobileCart);
+    }
+
+    // Mobile checkout -> trigger existing checkout button
+    if (btnMobileCheckout) {
+        btnMobileCheckout.addEventListener('click', () => {
+            closeMobileCart();
+            const mainCheckoutBtn = document.getElementById('btn-checkout');
+            if (mainCheckoutBtn) {
+                mainCheckoutBtn.click();
+            }
+        });
+    }
 
     const validateFinancePrices = () => {
         const isFinancing = (paymentMethod && paymentMethod.value === 'จัดไฟแนนซ์');
@@ -4311,6 +4657,65 @@ document.addEventListener('DOMContentLoaded', () => {
         posSearchInput.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') {
                 e.preventDefault(); // ป้องกันการกด Enter แล้วทำการบันทึกตามคำขอของลูกค้า ให้ค้นหาอย่างเดียว
+                if (posActiveTab === 'scan' && e.target.value.trim() !== '') {
+                    const val = e.target.value.trim().toLowerCase();
+                    const exactMatch = posProductsCache.find(p => 
+                        (p.product_code && p.product_code.toLowerCase() === val) || 
+                        (p.imeis && p.imeis.some(imei => imei.toLowerCase() === val))
+                    );
+                    if (exactMatch) {
+                        handleAddToCart(exactMatch);
+                        e.target.value = '';
+                        searchPosProducts();
+                    } else {
+                        if (typeof showToast === 'function') showToast('ไม่พบสินค้าที่สแกน', 'warning');
+                    }
+                }
+            }
+        });
+    }
+
+    // POS Filters and Tabs Events
+    const categorySelect = document.getElementById('pos-filter-category');
+    const brandSelect = document.getElementById('pos-filter-brand');
+    const filterClearBtn = document.getElementById('pos-filter-clear');
+    
+    if (categorySelect) {
+        categorySelect.addEventListener('change', () => searchPosProducts());
+    }
+    if (brandSelect) {
+        brandSelect.addEventListener('change', () => searchPosProducts());
+    }
+    if (filterClearBtn) {
+        filterClearBtn.addEventListener('click', () => {
+            if (categorySelect) categorySelect.value = '';
+            if (brandSelect) brandSelect.value = '';
+            if (posSearchInput) posSearchInput.value = '';
+            searchPosProducts();
+        });
+    }
+
+    const tabSearch = document.getElementById('pos-tab-search');
+    const tabScan = document.getElementById('pos-tab-scan');
+    
+    if (tabSearch && tabScan) {
+        tabSearch.addEventListener('click', () => {
+            posActiveTab = 'search';
+            tabSearch.className = 'px-4 py-2 rounded-md text-sm font-semibold bg-slate-700 text-white shadow-sm transition-all';
+            tabScan.className = 'px-4 py-2 rounded-md text-sm font-semibold text-slate-400 hover:text-white hover:bg-slate-800 transition-all';
+            if (posSearchInput) {
+                posSearchInput.placeholder = 'ค้นหาสินค้า / สแกนบาร์โค้ด / สแกน IMEI...';
+                posSearchInput.focus();
+            }
+        });
+        
+        tabScan.addEventListener('click', () => {
+            posActiveTab = 'scan';
+            tabScan.className = 'px-4 py-2 rounded-md text-sm font-semibold bg-slate-700 text-white shadow-sm transition-all';
+            tabSearch.className = 'px-4 py-2 rounded-md text-sm font-semibold text-slate-400 hover:text-white hover:bg-slate-800 transition-all';
+            if (posSearchInput) {
+                posSearchInput.placeholder = 'สแกนบาร์โค้ด / IMEI และกด Enter...';
+                posSearchInput.focus();
             }
         });
     }
@@ -5272,9 +5677,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 </td>
                 <td class="px-4 py-4 md:px-6 text-right whitespace-nowrap ${isCancelled ? 'text-red-400/70 line-through' : 'text-cyan-400 font-bold'} font-mono">฿${txn.total_amount.toLocaleString()}</td>
                 <td class="px-4 py-4 md:px-6 text-slate-300 whitespace-nowrap ${isCancelled ? 'line-through text-red-400/70' : ''}">
-                    <span class="px-2 py-1 rounded-md text-[11px] font-bold whitespace-nowrap ${txn.payment_type === 'จัดไฟแนนซ์' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'}">
-                        ${txn.payment_type || txn.payment_method}
-                    </span>
+                    ${(() => {
+                        const pt = txn.payment_type || txn.payment_method || '-';
+                        let colorClass = 'bg-gray-100 text-gray-700 border border-gray-200';
+                        if (pt === 'จัดไฟแนนซ์') {
+                            colorClass = 'bg-orange-100 text-orange-600 border border-orange-200';
+                        } else if (pt === 'ซื้อสด' || pt === 'เงินสด' || pt === 'สด') {
+                            colorClass = 'bg-emerald-100 text-emerald-600 border border-emerald-200';
+                        } else if (pt.includes('โอน')) {
+                            colorClass = 'bg-blue-100 text-blue-600 border border-blue-200';
+                        } else if (pt.includes('บัตรเครดิต')) {
+                            colorClass = 'bg-purple-100 text-purple-600 border border-purple-200';
+                        }
+                        return `<span class="px-2 py-1 rounded-md text-[11px] font-bold whitespace-nowrap ${colorClass}">${pt}</span>`;
+                    })()}
                 </td>
                 <td class="px-4 py-4 md:px-6 text-center whitespace-nowrap">
                     <button class="view-transaction-btn px-4 py-2 ${isCancelled ? 'bg-red-500/10 text-red-400 hover:bg-red-500/20' : 'bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 hover:text-amber-300'} rounded-lg transition-all font-medium whitespace-nowrap"
