@@ -3615,15 +3615,15 @@ document.addEventListener('DOMContentLoaded', () => {
         const categorySelect = document.getElementById('pos-filter-category');
         const brandSelect = document.getElementById('pos-filter-brand');
         if (!categorySelect || !brandSelect) return;
-        
+
         const categories = new Set();
         const brands = new Set();
-        
+
         posProductsCache.forEach(p => {
             if (p.type_id && p.type_id.name) categories.add(p.type_id.name);
             brands.add(getBrandFromProduct(p));
         });
-        
+
         categorySelect.innerHTML = '<option value="">หมวดหมู่ทั้งหมด</option>';
         Array.from(categories).sort().forEach(c => {
             const opt = document.createElement('option');
@@ -3631,7 +3631,7 @@ document.addEventListener('DOMContentLoaded', () => {
             opt.textContent = c;
             categorySelect.appendChild(opt);
         });
-        
+
         brandSelect.innerHTML = '<option value="">แบรนด์ทั้งหมด</option>';
         Array.from(brands).sort().forEach(b => {
             const opt = document.createElement('option');
@@ -3643,23 +3643,23 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const renderPosProductsTable = () => {
         if (!posSearchResults || !posEmptyState) return;
-        
+
         posSearchResults.innerHTML = '';
-        
+
         if (posFilteredData.length === 0) {
             posEmptyState.classList.remove('hidden');
             posSearchResults.classList.add('hidden');
             updatePosPagination();
             return;
         }
-        
+
         posEmptyState.classList.add('hidden');
         posSearchResults.classList.remove('hidden');
-        
+
         const startIndex = (posCurrentPage - 1) * posPerPage;
         const endIndex = startIndex + posPerPage;
         const paginatedData = posFilteredData.slice(startIndex, endIndex);
-        
+
         paginatedData.forEach(product => {
             const categoryName = product.type_id ? product.type_id.name : 'ทั่วไป';
             const colorName = product.color_id ? product.color_id.name : '';
@@ -3704,7 +3704,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             });
         });
-        
+
         updatePosPagination();
     };
 
@@ -3712,46 +3712,46 @@ document.addEventListener('DOMContentLoaded', () => {
         const infoEl = document.getElementById('pos-pagination-info');
         const controlsEl = document.getElementById('pos-pagination-controls');
         if (!infoEl || !controlsEl) return;
-        
+
         const totalItems = posFilteredData.length;
         if (totalItems === 0) {
             infoEl.textContent = 'แสดง 0-0 จาก 0 รายการ';
             controlsEl.innerHTML = '';
             return;
         }
-        
+
         const totalPages = Math.ceil(totalItems / posPerPage);
         const startIndex = (posCurrentPage - 1) * posPerPage + 1;
         const endIndex = Math.min(startIndex + posPerPage - 1, totalItems);
-        
+
         infoEl.textContent = `แสดง ${startIndex}-${endIndex} จาก ${totalItems} รายการ`;
-        
+
         let paginationHTML = '';
-        
+
         paginationHTML += `<button class="pos-page-btn px-2 py-1 rounded text-sm font-medium ${posCurrentPage === 1 ? 'text-slate-600 cursor-not-allowed' : 'text-slate-300 hover:bg-slate-700 hover:text-white'}" data-page="${posCurrentPage - 1}" ${posCurrentPage === 1 ? 'disabled' : ''}><i class="fa-solid fa-chevron-left"></i></button>`;
-        
+
         let startPage = Math.max(1, posCurrentPage - 2);
         let endPage = Math.min(totalPages, posCurrentPage + 2);
-        
+
         if (startPage > 1) {
             paginationHTML += `<button class="pos-page-btn px-3 py-1 rounded text-sm font-medium text-slate-400 hover:bg-slate-700 hover:text-white transition-colors" data-page="1">1</button>`;
             if (startPage > 2) paginationHTML += `<span class="px-2 text-slate-500">...</span>`;
         }
-        
+
         for (let i = startPage; i <= endPage; i++) {
             const isActive = i === posCurrentPage;
             paginationHTML += `<button class="pos-page-btn px-3 py-1 rounded text-sm font-medium transition-colors ${isActive ? 'bg-cyan-500 text-slate-900 shadow-md shadow-cyan-500/20' : 'text-slate-400 hover:bg-slate-700 hover:text-white'}" data-page="${i}">${i}</button>`;
         }
-        
+
         if (endPage < totalPages) {
             if (endPage < totalPages - 1) paginationHTML += `<span class="px-2 text-slate-500">...</span>`;
             paginationHTML += `<button class="pos-page-btn px-3 py-1 rounded text-sm font-medium text-slate-400 hover:bg-slate-700 hover:text-white transition-colors" data-page="${totalPages}">${totalPages}</button>`;
         }
-        
+
         paginationHTML += `<button class="pos-page-btn px-2 py-1 rounded text-sm font-medium ${posCurrentPage === totalPages ? 'text-slate-600 cursor-not-allowed' : 'text-slate-300 hover:bg-slate-700 hover:text-white'}" data-page="${posCurrentPage + 1}" ${posCurrentPage === totalPages ? 'disabled' : ''}><i class="fa-solid fa-chevron-right"></i></button>`;
-        
+
         controlsEl.innerHTML = paginationHTML;
-        
+
         document.querySelectorAll('.pos-page-btn:not([disabled])').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 const newPage = parseInt(e.currentTarget.getAttribute('data-page'));
@@ -3775,19 +3775,19 @@ document.addEventListener('DOMContentLoaded', () => {
     const searchPosProducts = (query = null) => {
         const categorySelect = document.getElementById('pos-filter-category');
         const brandSelect = document.getElementById('pos-filter-brand');
-        
+
         const selectedCategory = categorySelect ? categorySelect.value : '';
         const selectedBrand = brandSelect ? brandSelect.value : '';
-        
+
         const q = (query !== null ? query : (posSearchInput ? posSearchInput.value : '')).trim().toLowerCase();
-        
+
         posFilteredData = posProductsCache.filter(p => {
             // Category filter
             if (selectedCategory && (!p.type_id || p.type_id.name !== selectedCategory)) return false;
-            
+
             // Brand filter
             if (selectedBrand && getBrandFromProduct(p) !== selectedBrand) return false;
-            
+
             // Text search filter
             if (q) {
                 let matchText = false;
@@ -3796,10 +3796,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (p.imeis && p.imeis.some(imei => imei.toLowerCase().includes(q))) matchText = true;
                 if (!matchText) return false;
             }
-            
+
             return true;
         });
-        
+
         posCurrentPage = 1;
         renderPosProductsTable();
     };
@@ -4659,8 +4659,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 e.preventDefault(); // ป้องกันการกด Enter แล้วทำการบันทึกตามคำขอของลูกค้า ให้ค้นหาอย่างเดียว
                 if (posActiveTab === 'scan' && e.target.value.trim() !== '') {
                     const val = e.target.value.trim().toLowerCase();
-                    const exactMatch = posProductsCache.find(p => 
-                        (p.product_code && p.product_code.toLowerCase() === val) || 
+                    const exactMatch = posProductsCache.find(p =>
+                        (p.product_code && p.product_code.toLowerCase() === val) ||
                         (p.imeis && p.imeis.some(imei => imei.toLowerCase() === val))
                     );
                     if (exactMatch) {
@@ -4679,7 +4679,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const categorySelect = document.getElementById('pos-filter-category');
     const brandSelect = document.getElementById('pos-filter-brand');
     const filterClearBtn = document.getElementById('pos-filter-clear');
-    
+
     if (categorySelect) {
         categorySelect.addEventListener('change', () => searchPosProducts());
     }
@@ -4697,7 +4697,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const tabSearch = document.getElementById('pos-tab-search');
     const tabScan = document.getElementById('pos-tab-scan');
-    
+
     if (tabSearch && tabScan) {
         tabSearch.addEventListener('click', () => {
             posActiveTab = 'search';
@@ -4708,7 +4708,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 posSearchInput.focus();
             }
         });
-        
+
         tabScan.addEventListener('click', () => {
             posActiveTab = 'scan';
             tabScan.className = 'px-4 py-2 rounded-md text-sm font-semibold bg-slate-700 text-white shadow-sm transition-all';
@@ -5678,19 +5678,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 <td class="px-4 py-4 md:px-6 text-right whitespace-nowrap ${isCancelled ? 'text-red-400/70 line-through' : 'text-cyan-400 font-bold'} font-mono">฿${txn.total_amount.toLocaleString()}</td>
                 <td class="px-4 py-4 md:px-6 text-slate-300 whitespace-nowrap ${isCancelled ? 'line-through text-red-400/70' : ''}">
                     ${(() => {
-                        const pt = txn.payment_type || txn.payment_method || '-';
-                        let colorClass = 'bg-gray-100 text-gray-700 border border-gray-200';
-                        if (pt === 'จัดไฟแนนซ์') {
-                            colorClass = 'bg-orange-100 text-orange-600 border border-orange-200';
-                        } else if (pt === 'ซื้อสด' || pt === 'เงินสด' || pt === 'สด') {
-                            colorClass = 'bg-emerald-100 text-emerald-600 border border-emerald-200';
-                        } else if (pt.includes('โอน')) {
-                            colorClass = 'bg-blue-100 text-blue-600 border border-blue-200';
-                        } else if (pt.includes('บัตรเครดิต')) {
-                            colorClass = 'bg-purple-100 text-purple-600 border border-purple-200';
-                        }
-                        return `<span class="px-2 py-1 rounded-md text-[11px] font-bold whitespace-nowrap ${colorClass}">${pt}</span>`;
-                    })()}
+                    const pt = txn.payment_type || txn.payment_method || '-';
+                    let colorClass = 'bg-gray-100 text-gray-700 border border-gray-200';
+                    if (pt === 'จัดไฟแนนซ์') {
+                        colorClass = 'bg-orange-100 text-orange-600 border border-orange-200';
+                    } else if (pt === 'ซื้อสด' || pt === 'เงินสด' || pt === 'สด') {
+                        colorClass = 'bg-emerald-100 text-emerald-600 border border-emerald-200';
+                    } else if (pt.includes('โอน')) {
+                        colorClass = 'bg-blue-100 text-blue-600 border border-blue-200';
+                    } else if (pt.includes('บัตรเครดิต')) {
+                        colorClass = 'bg-purple-100 text-purple-600 border border-purple-200';
+                    }
+                    return `<span class="px-2 py-1 rounded-md text-[11px] font-bold whitespace-nowrap ${colorClass}">${pt}</span>`;
+                })()}
                 </td>
                 <td class="px-4 py-4 md:px-6 text-center whitespace-nowrap">
                     <button class="view-transaction-btn px-4 py-2 ${isCancelled ? 'bg-red-500/10 text-red-400 hover:bg-red-500/20' : 'bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 hover:text-amber-300'} rounded-lg transition-all font-medium whitespace-nowrap"
@@ -6440,11 +6440,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const permBadges = permKeys.map(key => {
             const active = p[key];
-            return `<div class="flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-medium transition-all ${active
-                ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                : 'bg-slate-700/30 text-slate-500 border border-slate-700/50 opacity-60'
+            return `<div class="flex items-center gap-2 px-3 py-2 rounded-xl text-[13px] font-semibold transition-all ${active
+                ? 'bg-amber-50 text-amber-700 border border-amber-200 shadow-sm'
+                : 'bg-slate-100 text-slate-500 border border-slate-200'
                 }">
-                <i class="fa-solid ${permIcons[key].split(' ')[0]} ${active ? '' : 'grayscale'}"></i>
+                <i class="fa-solid ${permIcons[key].split(' ')[0]} ${active ? 'text-amber-500' : 'text-slate-400'}"></i>
                 <span>${permLabels[key]}</span>
             </div>`;
         }).join('');
@@ -9227,7 +9227,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 cancelBtn.addEventListener('click', () => {
                     showConfirm(
                         'ยืนยันการยกเลิกใบสั่งซื้อ',
-                        `คุณแน่ใจหรือไม่ว่าต้องการยกเลิกใบสั่งซื้อ <strong class="text-white font-mono">${po.po_number}</strong>?<br><span class="text-slate-400 text-xs">การดำเนินการนี้จะไม่สามารถแก้ไขกลับมาใช้งานได้อีก</span>`,
+                        `คุณแน่ใจหรือไม่ว่าต้องการยกเลิกใบสั่งซื้อ <strong class="text- font-mono">${po.po_number}</strong>?<br><span class="text-slate-400 text-xs">การดำเนินการนี้จะไม่สามารถแก้ไขกลับมาใช้งานได้อีก</span>`,
                         async () => {
                             try {
                                 const res = await authFetch(`${API_BASE_URL}/purchase-orders/${po._id}/cancel`, {
