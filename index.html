@@ -759,6 +759,7 @@
             border: 1px solid rgba(255, 255, 255, 0.08) !important;
             font-size: 0.92rem;
             letter-spacing: 0.025em;
+            color: #ffffff !important;
         }
 
         .glass-login-card .input-floating-label input:focus {
@@ -1424,18 +1425,17 @@
             border-color: #e2e8f0 !important;
         }
 
-        #view-accounting #tab-accounting-ap {
+        #view-accounting button.text-amber-400 {
             color: #ca8a04 !important;
             border-bottom-color: #eab308 !important;
         }
 
-        #view-accounting #tab-accounting-pl,
-        #view-accounting #tab-accounting-ar {
+        #view-accounting button.text-slate-400 {
             color: #64748b !important;
+            border-bottom-color: transparent !important;
         }
 
-        #view-accounting #tab-accounting-pl:hover,
-        #view-accounting #tab-accounting-ar:hover {
+        #view-accounting button.text-slate-400:hover {
             color: #0f172a !important;
         }
 
@@ -3523,13 +3523,8 @@
 
         <!-- Glassmorphic Login Card -->
         <div class="glass-login-card relative w-full max-w-md p-8 rounded-3xl shadow-2xl overflow-hidden">
-            <div class="text-center mb-8 relative z-10">
-                <div
-                    class="glow-logo-container inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-slate-950 border border-slate-800 mb-4 shadow-lg">
-                    <i class="fa-solid fa-mobile-screen-button text-3xl text-cyan-400 glow-text"></i>
-                </div>
-                <h1 class="text-3xl font-bold text-white tracking-tight">Silmin<span
-                        class="text-cyan-400 glow-text">Mobile</span></h1>
+            <div class="text-center mb-8 relative  flex flex-col items-center justify-center z-10">
+                <img src="/icon_silminmobile.png" alt="" width="200" height="200">
                 <p class="text-slate-400 mt-2 text-sm font-medium">เข้าสู่ระบบจัดการร้านค้าและสต็อกสินค้า</p>
             </div>
 
@@ -3545,23 +3540,18 @@
                     <label for="username">ชื่อผู้ใช้งาน</label>
                 </div>
 
-                <div class="input-floating-label">
+                <div class="input-floating-label relative">
                     <input type="password" id="password" placeholder=" " required
-                        class="w-full px-4 py-3 rounded-xl text-white placeholder-transparent focus:ring-0">
+                        class="w-full px-4 py-3 rounded-xl text-white placeholder-transparent focus:ring-0 pr-10">
                     <label for="password">รหัสผ่าน</label>
-                </div>
-
-                <div class="flex items-center justify-between text-sm">
-                    <label class="flex items-center text-slate-400 cursor-pointer hover:text-slate-300 select-none">
-                        <input type="checkbox"
-                            class="rounded border-slate-700 bg-slate-950 text-cyan-500 focus:ring-cyan-500 focus:ring-offset-slate-900 mr-2">
-                        จดจำการเข้าสู่ระบบ
-                    </label>
-                    <a href="#" class="text-cyan-400 hover:text-cyan-300 transition-colors font-medium">ลืมรหัสผ่าน?</a>
+                    <button type="button" id="toggle-password"
+                        class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white focus:outline-none cursor-pointer">
+                        <i class="fa-regular fa-eye" id="eye-icon"></i>
+                    </button>
                 </div>
 
                 <button type="submit"
-                    class="w-full py-3.5 px-4 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-900 font-extrabold text-base rounded-xl glow-button flex items-center justify-center gap-2.5 active:scale-[0.98] transition-all duration-300">
+                    class="w-full py-3.5 px-4 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-900 font-extrabold text-base rounded-xl glow-button flex items-center justify-center gap-2.5 active:scale-[0.98] transition-all duration-300 cursor-pointer">
                     <span>เข้าสู่ระบบ</span>
                     <i class="fa-solid fa-arrow-right-to-bracket text-sm"></i>
                 </button>
@@ -3578,7 +3568,7 @@
             class="sidebar-expanded bg-slate-800 border-r border-slate-700 flex flex-col h-full z-20 flex-shrink-0 fixed md:static inset-y-0 left-0 z-[45] transition-transform duration-300 -translate-x-full md:translate-x-0">
             <!-- Sidebar Header -->
             <div class="h-16 flex items-center px-4 ">
-                <div class="flex items-center gap-3 w-full align-center justify-center">
+                <div class="flex items-center gap-3 mt-6 w-full align-center justify-center">
                     <img src="/logo_silminmobile.png" alt="" width="120">
                 </div>
             </div>
@@ -7534,10 +7524,10 @@
                 class="w-14 h-14 rounded-2xl bg-cyan-500/10 flex items-center justify-center text-cyan-400 mb-4 border border-cyan-500/20">
                 <i class="fa-solid fa-pen-to-square text-xl"></i>
             </div>
-            <h4 id="prompt-title" class="text-xl font-bold text-white mb-2 tracking-tight">แก้ไขข้อมูล</h4>
+            <h4 id="prompt-title" class="text-xl font-bold text-black mb-2 tracking-tight">แก้ไขข้อมูล</h4>
             <div class="mb-6">
                 <input type="text" id="prompt-input"
-                    class="w-full px-4 py-3 rounded-xl bg-slate-950 border border-slate-800 text-white placeholder-slate-600 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all font-medium text-sm"
+                    class="w-full px-4 py-3 rounded-xl bg-slate-950 border border-width text-black placeholder-slate-600 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all font-medium text-sm"
                     placeholder="กรอกข้อมูล...">
             </div>
             <div class="flex gap-3">
@@ -7702,7 +7692,7 @@
             class="modal-content relative w-[95%] md:w-[600px] max-h-[90vh] overflow-y-auto p-6 md:p-8 bg-slate-800 rounded-2xl shadow-2xl border border-slate-700">
             <!-- Modal Header -->
             <div class="flex items-center justify-between mb-6 pb-4 border-b border-slate-700">
-                <h3 id="role-modal-title" class="text-xl font-bold text-white flex items-center gap-2">
+                <h3 id="role-modal-title" class="text-xl font-bold text-black flex items-center gap-2">
                     <i class="fa-solid fa-shield-halved text-amber-400"></i> เพิ่มบทบาทใหม่
                 </h3>
                 <button id="close-role-modal-btn" type="button"
@@ -9151,6 +9141,28 @@
         </div>
     </div>
 
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const togglePassword = document.getElementById('toggle-password');
+            const password = document.getElementById('password');
+            const eyeIcon = document.getElementById('eye-icon');
+
+            if (togglePassword && password && eyeIcon) {
+                togglePassword.addEventListener('click', function () {
+                    const type = password.getAttribute('type') === 'password' ? 'text' : 'password';
+                    password.setAttribute('type', type);
+
+                    if (type === 'password') {
+                        eyeIcon.classList.remove('fa-eye-slash');
+                        eyeIcon.classList.add('fa-eye');
+                    } else {
+                        eyeIcon.classList.remove('fa-eye');
+                        eyeIcon.classList.add('fa-eye-slash');
+                    }
+                });
+            }
+        });
+    </script>
     <script src="script.js?v=po_history_fix_v1"></script>
 </body>
 
