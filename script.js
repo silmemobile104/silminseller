@@ -154,6 +154,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const navPersonnel = document.getElementById('nav-personnel');
     const navBranches = document.getElementById('nav-branches');
     const navSettings = document.getElementById('nav-settings');
+    const navSettingsHeader = document.getElementById('nav-settings-header');
     const navRoles = document.getElementById('nav-roles');
     const navSalesHistory = document.getElementById('nav-sales-history');
     const navTransfers = document.getElementById('nav-transfers');
@@ -1402,58 +1403,65 @@ document.addEventListener('DOMContentLoaded', () => {
     const applyPermissions = (permissions) => {
         if (!permissions) return;
 
+        // ฟังก์ชันช่วยในการซ่อน/แสดง โดยคำนึงถึง display properties
+        const setVisible = (el, visible) => {
+            if (!el) return;
+            if (visible) {
+                el.style.removeProperty('display');
+                el.classList.remove('hidden');
+            } else {
+                el.style.setProperty('display', 'none', 'important');
+                el.classList.add('hidden');
+            }
+        };
+
         // ซ่อน/แสดง เมนู Sidebar ตาม permissions
-        if (navDashboard) navDashboard.style.display = permissions.view_dashboard ? '' : 'none';
-        if (navStock) navStock.style.display = permissions.manage_stock ? '' : 'none';
-        if (navTransactions) navTransactions.style.display = permissions.do_pos ? '' : 'none';
-        if (navSalesHistory) navSalesHistory.style.display = permissions.do_pos ? '' : 'none';
-        if (navTransfers) navTransfers.style.display = permissions.manage_transfers ? '' : 'none';
-        if (navMovements) navMovements.style.display = permissions.manage_stock ? '' : 'none';
-        if (navMembers) navMembers.style.display = permissions.do_pos ? '' : 'none';
-        if (navPersonnel) navPersonnel.style.display = permissions.manage_personnel ? '' : 'none';
-        if (navBranches) navBranches.style.display = permissions.manage_branches ? '' : 'none';
-        if (navSettings) navSettings.style.display = permissions.manage_settings ? '' : 'none';
-        if (navRoles) navRoles.style.display = permissions.manage_roles ? '' : 'none';
+        setVisible(navDashboard, permissions.view_dashboard);
+        setVisible(navStock, permissions.manage_stock);
+        setVisible(navTransactions, permissions.do_pos);
+        setVisible(navSalesHistory, permissions.do_pos);
+        setVisible(navTransfers, permissions.manage_transfers);
+        setVisible(navMovements, permissions.manage_stock);
+        setVisible(navMembers, permissions.do_pos);
+        setVisible(navPersonnel, permissions.manage_personnel);
+        setVisible(navBranches, permissions.manage_branches);
+        setVisible(navSettings, permissions.manage_settings);
+        setVisible(navRoles, permissions.manage_roles);
 
         // เมนูใหม่
-        if (typeof navReportArrival !== 'undefined' && navReportArrival) navReportArrival.style.display = permissions.report_arrival ? '' : 'none';
-        if (typeof navApproveImport !== 'undefined' && navApproveImport) navApproveImport.style.display = permissions.approve_import ? '' : 'none';
-        if (typeof navWarrantyCheck !== 'undefined' && navWarrantyCheck) navWarrantyCheck.style.display = permissions.do_pos ? '' : 'none';
-        if (navAccountingPO) navAccountingPO.style.display = permissions.manage_po ? '' : 'none';
-        if (navBranchReceive) navBranchReceive.style.display = permissions.receive_po ? '' : 'none';
-        if (navAccounting) navAccounting.style.display = permissions.manage_finance ? '' : 'none';
-        if (navBranchInventory) navBranchInventory.style.display = permissions.view_branch_inventory ? '' : 'none';
+        setVisible(navReportArrival, permissions.report_arrival);
+        setVisible(navApproveImport, permissions.approve_import);
+        setVisible(navWarrantyCheck, permissions.do_pos);
+        setVisible(navAccountingPO, permissions.manage_po);
+        setVisible(navBranchReceive, permissions.receive_po);
+        setVisible(navAccounting, permissions.manage_finance);
+        setVisible(navBranchInventory, permissions.view_branch_inventory);
 
         // Mobile Nav Permissions mapping
-        if (mobileNavTransactions) mobileNavTransactions.style.display = permissions.do_pos ? '' : 'none';
-        if (mobileNavStock) mobileNavStock.style.display = permissions.manage_stock ? '' : 'none';
-        if (mobileNavAccountingPO) mobileNavAccountingPO.style.display = permissions.manage_po ? '' : 'none';
-        if (mobileNavMembers) mobileNavMembers.style.display = permissions.do_pos ? '' : 'none';
+        setVisible(mobileNavTransactions, permissions.do_pos);
+        setVisible(mobileNavStock, permissions.manage_stock);
+        setVisible(mobileNavAccountingPO, permissions.manage_po);
+        setVisible(mobileNavMembers, permissions.do_pos);
 
         // Toggle Audit Logs Sidebar view
-        const hasAuditAccess = !!permissions.view_audit_logs;
-        if (navAuditLogs) {
-            if (hasAuditAccess) {
-                navAuditLogs.classList.remove('hidden');
-                navAuditLogs.style.display = '';
-            } else {
-                navAuditLogs.classList.add('hidden');
-                navAuditLogs.style.display = 'none';
-            }
-        }
+        setVisible(navAuditLogs, permissions.view_audit_logs);
 
         // ซ่อน/แสดง ปุ่มเพิ่มสินค้า + ลบสินค้า
         const btnAdd = document.getElementById('btn-add-product');
-        if (btnAdd) btnAdd.style.display = permissions.manage_stock ? '' : 'none';
+        setVisible(btnAdd, permissions.manage_stock);
 
         // ซ่อน/แสดง ฟิลเตอร์สาขาในเมนูจัดการสต็อก
         const stockFilterBranch = document.getElementById('stock-filter-branch');
-        if (stockFilterBranch) {
-            stockFilterBranch.style.display = permissions.filter_stock_branch ? '' : 'none';
-        }
+        setVisible(stockFilterBranch, permissions.filter_stock_branch);
 
-        if (navDailySummary) navDailySummary.style.display = permissions.view_daily_summary ? '' : 'none';
-        if (mobileNavDailySummary) mobileNavDailySummary.style.display = permissions.view_daily_summary ? '' : 'none';
+        setVisible(navDailySummary, permissions.view_daily_summary);
+        setVisible(mobileNavDailySummary, permissions.view_daily_summary);
+
+        // Toggle Settings header/divider based on sub-permissions
+        if (navSettingsHeader) {
+            const hasSettingsSection = !!(permissions.manage_settings || permissions.manage_roles || permissions.view_audit_logs);
+            setVisible(navSettingsHeader, hasSettingsSection);
+        }
 
         // เก็บ permissions ไว้ใน window สำหรับใช้ตรวจสอบใน renderProductTable
         window.__userPermissions = permissions;
@@ -1970,8 +1978,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     updateTopBar(result.data);
                     applyPermissions(result.data.permissions);
 
-                    // แสดง dashboard โดย default
-                    switchView('dashboard');
+                    // สลับไปหน้าแรกตามสิทธิ์การเข้าถึง
+                    switchView(getDefaultViewForUser(result.data.permissions));
 
                     // เรียกใช้ฟังก์ชันดึงข้อมูลทั้งหมดหลังจาก login สำเร็จ
                     fetchMasterData();
@@ -2296,10 +2304,86 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // ==========================================
-    // View Navigation Logic
-    // ==========================================
+    const getDefaultViewForUser = (permissions) => {
+        if (!permissions) return 'dashboard';
+        if (permissions.view_dashboard) return 'dashboard';
+        if (permissions.do_pos) return 'transactions';
+        if (permissions.manage_stock) return 'stock';
+        if (permissions.view_branch_inventory) return 'branch-inventory';
+        if (permissions.manage_po) return 'accounting-po';
+
+        const viewPermissionMap = {
+            'dashboard': 'view_dashboard',
+            'stock': 'manage_stock',
+            'transactions': 'do_pos',
+            'personnel': 'manage_personnel',
+            'branches': 'manage_branches',
+            'settings': 'manage_settings',
+            'roles': 'manage_roles',
+            'sales-history': 'do_pos',
+            'daily-summary': 'view_daily_summary',
+            'transfers': 'manage_transfers',
+            'movements': 'manage_stock',
+            'members': 'do_pos',
+            'report-arrival': 'report_arrival',
+            'approve-import': 'approve_import',
+            'warranty-check': 'do_pos',
+            'branch-inventory': 'view_branch_inventory',
+            'accounting-po': 'manage_po',
+            'branch-receive': 'receive_po',
+            'accounting': 'manage_finance',
+            'audit-logs': 'view_audit_logs'
+        };
+
+        for (const [view, perm] of Object.entries(viewPermissionMap)) {
+            if (permissions[perm]) return view;
+        }
+        return 'dashboard';
+    };
+
     const switchView = async (viewName) => {
+        // ตรวจสอบสิทธิ์การเข้าถึง View ก่อนเปลี่ยนหน้า
+        const savedUserData = localStorage.getItem('silmin_user');
+        let userPermissions = {};
+        if (savedUserData) {
+            try {
+                userPermissions = JSON.parse(savedUserData).permissions || {};
+            } catch (e) { }
+        }
+
+        const viewPermissionMap = {
+            'dashboard': 'view_dashboard',
+            'stock': 'manage_stock',
+            'transactions': 'do_pos',
+            'personnel': 'manage_personnel',
+            'branches': 'manage_branches',
+            'settings': 'manage_settings',
+            'roles': 'manage_roles',
+            'sales-history': 'do_pos',
+            'daily-summary': 'view_daily_summary',
+            'transfers': 'manage_transfers',
+            'movements': 'manage_stock',
+            'members': 'do_pos',
+            'report-arrival': 'report_arrival',
+            'approve-import': 'approve_import',
+            'warranty-check': 'do_pos',
+            'branch-inventory': 'view_branch_inventory',
+            'accounting-po': 'manage_po',
+            'branch-receive': 'receive_po',
+            'accounting': 'manage_finance',
+            'audit-logs': 'view_audit_logs'
+        };
+
+        const requiredPermission = viewPermissionMap[viewName];
+        if (requiredPermission && !userPermissions[requiredPermission]) {
+            // Silently redirect to default allowed view if not authorized
+            const defaultView = getDefaultViewForUser(userPermissions);
+            if (viewName !== defaultView) {
+                switchView(defaultView);
+            }
+            return;
+        }
+
         // ล้างข้อมูลตะกร้าสินค้าเมื่อเปลี่ยนไปหน้าอื่นที่ไม่ใช่หน้ารายการขาย (transactions)
         if (viewName !== 'transactions') {
             if (typeof cart !== 'undefined' && Array.isArray(cart) && cart.length > 0) {
@@ -2474,18 +2558,6 @@ document.addEventListener('DOMContentLoaded', () => {
             if (typeof initAccounting === 'function') initAccounting();
         }
         else if (viewName === 'audit-logs') {
-            const savedUserData = localStorage.getItem('silmin_user');
-            let hasAuditAccess = false;
-            if (savedUserData) {
-                try {
-                    const u = JSON.parse(savedUserData);
-                    hasAuditAccess = !!(u.permissions && u.permissions.view_audit_logs);
-                } catch (e) { }
-            }
-            if (!hasAuditAccess) {
-                switchView('dashboard');
-                return;
-            }
             activateView(viewAuditLogs, navAuditLogs);
             await fetchAuditLogs(1);
         }
@@ -2542,9 +2614,9 @@ document.addEventListener('DOMContentLoaded', () => {
             loginScreen.classList.remove('flex');
             mainLayout.classList.remove('hidden', 'opacity-0');
             mainLayout.classList.add('opacity-100');
-            switchView('dashboard');
             updateTopBar(user);
             applyPermissions(user.permissions);
+            switchView(getDefaultViewForUser(user.permissions));
             fetchMasterData();
             startPendingTransferPolling();
 
@@ -7683,8 +7755,8 @@ document.addEventListener('DOMContentLoaded', () => {
         updateTopBar(user);
         applyPermissions(user.permissions);
 
-        // แสดง dashboard โดย default
-        switchView('dashboard');
+        // สลับไปหน้าแรกตามสิทธิ์การเข้าถึง
+        switchView(getDefaultViewForUser(user.permissions));
 
         // เรียกใช้ฟังก์ชันดึงข้อมูลทั้งหมด
         fetchMasterData();
