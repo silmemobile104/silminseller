@@ -3798,6 +3798,11 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             return true;
+        }).sort((a, b) => {
+            const hasStockA = (a.quantity || 0) > 0;
+            const hasStockB = (b.quantity || 0) > 0;
+            if (hasStockA === hasStockB) return 0;
+            return hasStockA ? -1 : 1;
         });
 
         posCurrentPage = 1;

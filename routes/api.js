@@ -1405,10 +1405,10 @@ router.post('/employees', async (req, res) => {
         });
 
         const saved = await newEmployee.save();
-        
+
         // Log employee creation
         await logActivity(req, 'CREATE', 'PERSONNEL', `เพิ่มพนักงานใหม่: ${name} (รหัสพนักงาน: ${emp_id}, บทบาท: ${role || 'พนักงานขาย'})`, emp_id, saved._id);
-        
+
         const populatedEmp = await Employee.findById(saved._id).select('-password').populate('branch_id', 'name');
 
         console.log(`[EMPLOYEE] เพิ่มพนักงานใหม่: ${name} (${emp_id})`);
@@ -2154,7 +2154,7 @@ router.post('/transactions', async (req, res) => {
         if (payment_method === 'จัดไฟแนนซ์' || payment_type === 'จัดไฟแนนซ์') {
             let devicesTotal = 0;
             const itemsSubtotal = normalizedItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-            
+
             for (const item of normalizedItems) {
                 const product = await Product.findById(item.product_id).populate('unit_id');
                 const unitName = product && product.unit_id ? product.unit_id.name : 'ชิ้น';
@@ -2169,11 +2169,11 @@ router.post('/transactions', async (req, res) => {
             const immediateCash = Math.max(0, (Number(total_amount) || 0) - finalFinancedAmount);
 
             // 1. Immediately create a CashMovement record for immediate cash collected
-            const dateStr = now.getFullYear() + 
-                            String(now.getMonth() + 1).padStart(2, '0') + 
-                            String(now.getDate()).padStart(2, '0');
-            const todayStart = new Date(now); todayStart.setHours(0,0,0,0);
-            const todayEnd = new Date(now); todayEnd.setHours(23,59,59,999);
+            const dateStr = now.getFullYear() +
+                String(now.getMonth() + 1).padStart(2, '0') +
+                String(now.getDate()).padStart(2, '0');
+            const todayStart = new Date(now); todayStart.setHours(0, 0, 0, 0);
+            const todayEnd = new Date(now); todayEnd.setHours(23, 59, 59, 999);
             const count = await CashMovement.countDocuments({ created_at: { $gte: todayStart, $lte: todayEnd } });
             const txn_id = `TXN-${dateStr}-${String(count + 1).padStart(4, '0')}`;
 
@@ -2487,9 +2487,9 @@ router.get('/sales/daily-summary', async (req, res) => {
         }
 
         const todayTransactions = await Transaction.find(query)
-        .populate('employee_id', 'name emp_id')
-        .populate('member_id', 'first_name last_name phone')
-        .sort({ created_at: -1 });
+            .populate('employee_id', 'name emp_id')
+            .populate('member_id', 'first_name last_name phone')
+            .sort({ created_at: -1 });
 
         let totalSales = 0;
         let cashReceived = 0;
@@ -2727,10 +2727,10 @@ router.get('/audit-logs', async (req, res) => {
     try {
         const userRole = req.user && req.user.role ? req.user.role : '';
         const userPermissions = req.user && req.user.permissions ? req.user.permissions : {};
-        
+
         // จำกัดสิทธิ์เฉพาะผู้มีสิทธิ์ดูประวัติกิจกรรมระบบเท่านั้น
         const hasAccess = !!userPermissions.view_audit_logs;
-                          
+
         if (!hasAccess) {
             return res.status(403).json({
                 success: false,
@@ -3428,11 +3428,11 @@ router.get('/purchase-orders', async (req, res) => {
         if (!req.user.permissions.manage_po && !req.user.permissions.manage_finance && !req.user.permissions.view_finance) {
             // สำหรับพนักงานสาขา / คลังสินค้า / สต็อก / ผู้จัดการ
             if (
-                req.user.permissions.receive_po || 
+                req.user.permissions.receive_po ||
                 req.user.permissions.approve_import ||
                 req.user.permissions.report_arrival ||
-                req.user.role === 'พนักงานขาย' || 
-                req.user.role === 'พนักงานสต็อก' || 
+                req.user.role === 'พนักงานขาย' ||
+                req.user.role === 'พนักงานสต็อก' ||
                 req.user.role === 'พนักงานสาขา' ||
                 req.user.role === 'ผู้จัดการ'
             ) {
@@ -3570,12 +3570,12 @@ router.post('/po/:id/report-arrival', async (req, res) => {
 
             if (item.track_imei) {
                 const listImeis = Array.isArray(data.imeis) ? data.imeis.map(x => x.toString().trim()).filter(Boolean) : [];
-                
+
                 // ตรวจสอบว่าจำนวน IMEI ไม่เกินจำนวนที่สั่งซื้อ
                 if (listImeis.length > item.ordered_qty) {
-                    return res.status(400).json({ 
-                        success: false, 
-                        message: `สินค้า ${item.product_name} ได้รับเกินจำนวนที่สั่งซื้อ (${item.ordered_qty} รายการ)` 
+                    return res.status(400).json({
+                        success: false,
+                        message: `สินค้า ${item.product_name} ได้รับเกินจำนวนที่สั่งซื้อ (${item.ordered_qty} รายการ)`
                     });
                 }
 
@@ -3669,11 +3669,11 @@ router.post('/po/:id/scan-item', async (req, res) => {
             if (data) {
                 if (item.track_imei) {
                     const newImeis = Array.isArray(data.imeis) ? data.imeis.map(x => x.toString().trim()).filter(Boolean) : [];
-                    
+
                     // Validate only new IMEIs (not already imported for this item) against the database
                     const importedImeis = Array.isArray(item.imported_imeis) ? item.imported_imeis : [];
                     const actualNewImeis = newImeis.filter(imei => !importedImeis.includes(imei));
-                    
+
                     for (const imei of actualNewImeis) {
                         const exists = await Product.exists({
                             $or: [
@@ -3688,7 +3688,7 @@ router.post('/po/:id/scan-item', async (req, res) => {
                             });
                         }
                     }
-                    
+
                     item.imeis_scanned = newImeis;
                     item.received_qty = item.imeis_scanned.length;
                 } else {
@@ -4008,12 +4008,12 @@ router.post('/accounting/expenses', async (req, res) => {
 
         // Generate transaction_id: TXN-YYYYMMDD-XXXX
         const now = new Date();
-        const dateStr = now.getFullYear() + 
-                        String(now.getMonth() + 1).padStart(2, '0') + 
-                        String(now.getDate()).padStart(2, '0');
-        
-        const todayStart = new Date(); todayStart.setHours(0,0,0,0);
-        const todayEnd = new Date(); todayEnd.setHours(23,59,59,999);
+        const dateStr = now.getFullYear() +
+            String(now.getMonth() + 1).padStart(2, '0') +
+            String(now.getDate()).padStart(2, '0');
+
+        const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
+        const todayEnd = new Date(); todayEnd.setHours(23, 59, 59, 999);
         const count = await CashMovement.countDocuments({ created_at: { $gte: todayStart, $lte: todayEnd } });
         const txn_id = `TXN-${dateStr}-${String(count + 1).padStart(4, '0')}`;
 
@@ -4109,12 +4109,12 @@ router.put('/accounting/po-pay/:id', async (req, res) => {
 
         // บันทึก CashMovement เฉพาะถ้ามียอดจ่ายจริง
         if (paymentAmount > 0) {
-            const dateStr = payDate.getFullYear() + 
-                            String(payDate.getMonth() + 1).padStart(2, '0') + 
-                            String(payDate.getDate()).padStart(2, '0');
-            
-            const todayStart = new Date(payDate); todayStart.setHours(0,0,0,0);
-            const todayEnd = new Date(payDate); todayEnd.setHours(23,59,59,999);
+            const dateStr = payDate.getFullYear() +
+                String(payDate.getMonth() + 1).padStart(2, '0') +
+                String(payDate.getDate()).padStart(2, '0');
+
+            const todayStart = new Date(payDate); todayStart.setHours(0, 0, 0, 0);
+            const todayEnd = new Date(payDate); todayEnd.setHours(23, 59, 59, 999);
             const count = await CashMovement.countDocuments({ created_at: { $gte: todayStart, $lte: todayEnd } });
             const txn_id = `TXN-${dateStr}-${String(count + 1).padStart(4, '0')}`;
 
@@ -4132,11 +4132,11 @@ router.put('/accounting/po-pay/:id', async (req, res) => {
         }
 
         await logActivity(
-            req, 
-            'UPDATE', 
-            'ACCOUNTING', 
-            `บันทึกจ่ายเงินใบ PO เลขที่ ${po.po_number} (จ่ายจริง ฿${paymentAmount.toLocaleString()}, ส่วนลด ฿${discountAmount.toLocaleString()}) สถานะ: ${po.payment_status}`, 
-            po.po_number, 
+            req,
+            'UPDATE',
+            'ACCOUNTING',
+            `บันทึกจ่ายเงินใบ PO เลขที่ ${po.po_number} (จ่ายจริง ฿${paymentAmount.toLocaleString()}, ส่วนลด ฿${discountAmount.toLocaleString()}) สถานะ: ${po.payment_status}`,
+            po.po_number,
             po._id
         );
 
@@ -4299,7 +4299,7 @@ router.get('/accounting/ap-summary', async (req, res) => {
                     outstanding: {
                         $subtract: [
                             "$po_cost",
-                            { $add: [ { $ifNull: ["$paid_amount", 0] }, { $ifNull: ["$discount", 0] } ] }
+                            { $add: [{ $ifNull: ["$paid_amount", 0] }, { $ifNull: ["$discount", 0] }] }
                         ]
                     }
                 }
@@ -4394,7 +4394,7 @@ router.get('/finance/summary', async (req, res) => {
             mergedSummaryMap[resolvedName].payout_received += s.payout_received;
         });
 
-        const finalSummary = Object.values(mergedSummaryMap).sort((a, b) => 
+        const finalSummary = Object.values(mergedSummaryMap).sort((a, b) =>
             a.finance_partner_name.localeCompare(b.finance_partner_name, 'th')
         );
 
