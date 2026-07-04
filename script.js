@@ -1,5 +1,40 @@
 const API_BASE_URL = '/api';
 
+function compressImage(base64Str, maxWidth = 1024, maxHeight = 1024, quality = 0.7) {
+    return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.src = base64Str;
+        img.onload = () => {
+            const canvas = document.createElement('canvas');
+            let width = img.width;
+            let height = img.height;
+
+            if (width > height) {
+                if (width > maxWidth) {
+                    height = Math.round((height * maxWidth) / width);
+                    width = maxWidth;
+                }
+            } else {
+                if (height > maxHeight) {
+                    width = Math.round((width * maxHeight) / height);
+                    height = maxHeight;
+                }
+            }
+
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, width, height);
+            
+            const compressedBase64 = canvas.toDataURL('image/jpeg', quality);
+            resolve(compressedBase64);
+        };
+        img.onerror = (err) => {
+            reject(err);
+        };
+    });
+}
+
 document.addEventListener('DOMContentLoaded', () => {
 
     // ==========================================
@@ -1473,8 +1508,8 @@ document.addEventListener('DOMContentLoaded', () => {
         setVisible(navDailySummary, permissions.view_daily_summary);
         setVisible(mobileNavDailySummary, permissions.view_daily_summary);
 
-        setVisible(navStockAudit, permissions.do_pos);
-        setVisible(mobileNavStockAudit, permissions.do_pos);
+        setVisible(navStockAudit, permissions.do_stock_audit);
+        setVisible(mobileNavStockAudit, permissions.do_stock_audit);
         setVisible(navStockAuditReview, permissions.manage_stock_audit);
 
         // Toggle Settings header/divider based on sub-permissions
@@ -2353,7 +2388,7 @@ document.addEventListener('DOMContentLoaded', () => {
             'branch-receive': 'receive_po',
             'accounting': 'manage_finance',
             'audit-logs': 'view_audit_logs',
-            'stock-audit': 'do_pos',
+            'stock-audit': 'do_stock_audit',
             'stock-audit-review': 'manage_stock_audit'
         };
 
@@ -2394,7 +2429,7 @@ document.addEventListener('DOMContentLoaded', () => {
             'branch-receive': 'receive_po',
             'accounting': 'manage_finance',
             'audit-logs': 'view_audit_logs',
-            'stock-audit': 'do_pos',
+            'stock-audit': 'do_stock_audit',
             'stock-audit-review': 'manage_stock_audit'
         };
 
@@ -6420,7 +6455,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const closeRoleModalBtn = document.getElementById('close-role-modal-btn');
     const cancelRoleModalBtn = document.getElementById('cancel-role-modal-btn');
 
-    const permKeys = ['view_dashboard', 'manage_stock', 'delete_stock', 'do_pos', 'manage_personnel', 'manage_branches', 'manage_settings', 'manage_roles', 'view_audit_logs', 'filter_stock_branch', 'cancel_sale', 'report_arrival', 'approve_import', 'manage_po', 'receive_po', 'manage_transfers', 'manage_finance', 'view_branch_inventory', 'view_daily_summary'];
+    const permKeys = ['view_dashboard', 'manage_stock', 'delete_stock', 'do_pos', 'manage_personnel', 'manage_branches', 'manage_settings', 'manage_roles', 'view_audit_logs', 'filter_stock_branch', 'cancel_sale', 'report_arrival', 'approve_import', 'manage_po', 'receive_po', 'manage_transfers', 'manage_finance', 'view_branch_inventory', 'view_daily_summary', 'do_stock_audit', 'manage_stock_audit'];
     const permLabels = {
         view_dashboard: 'ดูแดชบอร์ด',
         manage_stock: 'จัดการสต็อก',
@@ -6440,7 +6475,9 @@ document.addEventListener('DOMContentLoaded', () => {
         manage_transfers: 'โอนย้ายสินค้า',
         manage_finance: 'จัดการระบบบัญชีและการเงิน',
         view_branch_inventory: 'ดูสินค้าในสาขา',
-        view_daily_summary: 'ดูสรุปยอดขายรายวัน'
+        view_daily_summary: 'ดูสรุปยอดขายรายวัน',
+        do_stock_audit: 'ตรวจนับสต็อกประจำวัน',
+        manage_stock_audit: 'ตรวจสอบผลสต็อก (จัดการ/อนุมัติ)'
     };
     const permIcons = {
         view_dashboard: 'fa-chart-pie text-blue-400',
@@ -6461,7 +6498,9 @@ document.addEventListener('DOMContentLoaded', () => {
         manage_transfers: 'fa-right-left text-cyan-400',
         manage_finance: 'fa-chart-line text-amber-400',
         view_branch_inventory: 'fa-store text-emerald-400',
-        view_daily_summary: 'fa-chart-line text-emerald-400'
+        view_daily_summary: 'fa-chart-line text-emerald-400',
+        do_stock_audit: 'fa-qrcode text-violet-400',
+        manage_stock_audit: 'fa-clipboard-check text-amber-400'
     };
 
     const openRoleModal = () => {
@@ -7623,15 +7662,16 @@ document.addEventListener('DOMContentLoaded', () => {
         cardFrontInput.addEventListener('change', (e) => {
             const file = e.target.files[0];
             if (file) {
-                if (file.size > 5 * 1024 * 1024) {
-                    showToast('ไฟล์มีขนาดใหญ่เกินไป (ไม่ควรเกิน 5MB)', 'error');
-                    cardFrontInput.value = '';
-                    return;
-                }
-
                 const reader = new FileReader();
-                reader.onload = (event) => {
-                    currentCardFrontPhotoBase64 = event.target.result;
+                reader.onload = async (event) => {
+                    const rawBase64 = event.target.result;
+                    try {
+                        // Compress the front card image before sending
+                        currentCardFrontPhotoBase64 = await compressImage(rawBase64, 1024, 1024, 0.7);
+                    } catch (err) {
+                        console.error('Image compression error:', err);
+                        currentCardFrontPhotoBase64 = rawBase64; // Fallback
+                    }
                     if (cardFrontContainer) {
                         cardFrontContainer.innerHTML = `<img src="${currentCardFrontPhotoBase64}" class="w-full h-full object-cover">`;
                     }
@@ -13119,16 +13159,33 @@ function initStockAudit() {
             const file = e.target.files[0];
             if (!file) return;
             const reader = new FileReader();
-            reader.onload = (ev) => {
-                _auditPhotoBase64 = ev.target.result;
+            reader.onload = async (ev) => {
+                const rawBase64 = ev.target.result;
                 const preview = document.getElementById('audit-modal-photo-preview');
                 const btnCamera = document.getElementById('btn-audit-modal-camera');
+                
+                // Show a loading/compressing state
+                if (btnCamera) {
+                    btnCamera.disabled = true;
+                    btnCamera.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> กำลังย่อภาพถ่าย...';
+                }
+                
+                try {
+                    // Compress the box photo to speed up uploads and save bandwidth
+                    _auditPhotoBase64 = await compressImage(rawBase64, 1024, 1024, 0.7);
+                } catch (err) {
+                    console.error('Image compression error:', err);
+                    _auditPhotoBase64 = rawBase64; // Fallback
+                } finally {
+                    if (btnCamera) {
+                        btnCamera.disabled = false;
+                        btnCamera.innerHTML = '<i class="fa-solid fa-rotate"></i> <span>ถ่ายภาพใหม่ / เปลี่ยนรูป</span>';
+                    }
+                }
+                
                 if (preview) {
                     preview.src = _auditPhotoBase64;
                     preview.classList.remove('hidden');
-                }
-                if (btnCamera) {
-                    btnCamera.innerHTML = '<i class="fa-solid fa-rotate"></i> <span>ถ่ายภาพใหม่ / เปลี่ยนรูป</span>';
                 }
             };
             reader.readAsDataURL(file);

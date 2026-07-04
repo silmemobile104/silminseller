@@ -60,6 +60,9 @@ const verifyToken = (req, res, next) => {
             if (decoded.permissions.manage_stock_audit === undefined) {
                 decoded.permissions.manage_stock_audit = (decoded.role === 'แอดมิน' || decoded.role === 'ผู้จัดการ' || decoded.permissions.manage_settings || false);
             }
+            if (decoded.permissions.do_stock_audit === undefined) {
+                decoded.permissions.do_stock_audit = (decoded.role === 'แอดมิน' || decoded.role === 'ผู้จัดการ' || decoded.permissions.do_pos || false);
+            }
         }
         req.user = decoded; // { employee_id, role, branch_id }
         next();
@@ -1249,7 +1252,8 @@ router.post('/auth/login', async (req, res) => {
             approve_import: dbPerms.approve_import !== undefined ? dbPerms.approve_import : (dbPerms.manage_stock || false),
             view_audit_logs: dbPerms.view_audit_logs !== undefined ? dbPerms.view_audit_logs : (dbPerms.manage_settings || false),
             view_daily_summary: dbPerms.view_daily_summary !== undefined ? dbPerms.view_daily_summary : true,
-            manage_stock_audit: dbPerms.manage_stock_audit !== undefined ? dbPerms.manage_stock_audit : (employee.role === 'แอดมิน' || employee.role === 'ผู้จัดการ' || dbPerms.manage_settings || false)
+            manage_stock_audit: dbPerms.manage_stock_audit !== undefined ? dbPerms.manage_stock_audit : (employee.role === 'แอดมิน' || employee.role === 'ผู้จัดการ' || dbPerms.manage_settings || false),
+            do_stock_audit: dbPerms.do_stock_audit !== undefined ? dbPerms.do_stock_audit : (employee.role === 'แอดมิน' || employee.role === 'ผู้จัดการ' || dbPerms.do_pos || false)
         };
 
         // สร้าง JWT Token (รวม permissions)
@@ -1342,7 +1346,9 @@ router.get('/auth/me', async (req, res) => {
             report_arrival: dbPerms.report_arrival !== undefined ? dbPerms.report_arrival : (dbPerms.do_pos || false),
             approve_import: dbPerms.approve_import !== undefined ? dbPerms.approve_import : (dbPerms.manage_stock || false),
             view_audit_logs: dbPerms.view_audit_logs !== undefined ? dbPerms.view_audit_logs : (dbPerms.manage_settings || false),
-            view_daily_summary: dbPerms.view_daily_summary !== undefined ? dbPerms.view_daily_summary : true
+            view_daily_summary: dbPerms.view_daily_summary !== undefined ? dbPerms.view_daily_summary : true,
+            manage_stock_audit: dbPerms.manage_stock_audit !== undefined ? dbPerms.manage_stock_audit : (employee.role === 'แอดมิน' || employee.role === 'ผู้จัดการ' || dbPerms.manage_settings || false),
+            do_stock_audit: dbPerms.do_stock_audit !== undefined ? dbPerms.do_stock_audit : (employee.role === 'แอดมิน' || employee.role === 'ผู้จัดการ' || dbPerms.do_pos || false)
         };
 
         res.status(200).json({
@@ -2870,7 +2876,7 @@ router.post('/members', async (req, res) => {
         let cardFrontPhotoUrl = '';
         if (data.card_front_photo_base64) {
             try {
-                const matches = data.card_front_photo_base64.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
+                const matches = data.card_front_photo_base64.match(/^data:([A-Za-z-+\/]+);base64,([\s\S]+)$/);
                 let buffer, mimeType;
                 if (matches && matches.length === 3) {
                     mimeType = matches[1];
@@ -2962,7 +2968,7 @@ router.put('/members/:id', async (req, res) => {
         let cardFrontPhotoUrl = data.card_front_photo || '';
         if (data.card_front_photo_base64) {
             try {
-                const matches = data.card_front_photo_base64.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
+                const matches = data.card_front_photo_base64.match(/^data:([A-Za-z-+\/]+);base64,([\s\S]+)$/);
                 let buffer, mimeType;
                 if (matches && matches.length === 3) {
                     mimeType = matches[1];
@@ -4458,9 +4464,11 @@ router.post('/finance/payout/:id', async (req, res) => {
 // Stock Audit APIs (ระบบตรวจนับสต็อกประจำวัน)
 // ==========================================
 
-// POST /api/stock-audit/sessions — เปิด Session ตรวจนับสต็อกวันนี้ (พนักงานขาย)
 router.post('/stock-audit/sessions', async (req, res) => {
     try {
+        if (!req.user.permissions || !req.user.permissions.do_stock_audit) {
+            return res.status(403).json({ success: false, message: 'ไม่มีสิทธิ์ตรวจนับสต็อกประจำวัน' });
+        }
         const branchId = req.user.branch_id;
         if (!branchId) return res.status(400).json({ success: false, message: 'ไม่พบข้อมูลสาขาของพนักงาน กรุณาตรวจสอบการตั้งค่า' });
 
@@ -4512,6 +4520,9 @@ router.post('/stock-audit/sessions', async (req, res) => {
 // GET /api/stock-audit/sessions/today — ดู session วันนี้ของสาขาตัวเอง
 router.get('/stock-audit/sessions/today', async (req, res) => {
     try {
+        if (!req.user.permissions || !req.user.permissions.do_stock_audit) {
+            return res.status(403).json({ success: false, message: 'ไม่มีสิทธิ์ตรวจนับสต็อกประจำวัน' });
+        }
         const branchId = req.user.branch_id;
         const todayStart = new Date(); todayStart.setHours(0,0,0,0);
         const todayEnd   = new Date(); todayEnd.setHours(23,59,59,999);
@@ -4609,6 +4620,9 @@ router.get('/stock-audit/sessions/:id', async (req, res) => {
 // POST /api/stock-audit/sessions/:id/scan — สแกน IMEI + upload รูปกล่อง
 router.post('/stock-audit/sessions/:id/scan', async (req, res) => {
     try {
+        if (!req.user.permissions || !req.user.permissions.do_stock_audit) {
+            return res.status(403).json({ success: false, message: 'ไม่มีสิทธิ์ตรวจนับสต็อกประจำวัน' });
+        }
         const { imei, box_photo_base64, scan_notes } = req.body;
         if (!imei || imei.trim() === '') return res.status(400).json({ success: false, message: 'กรุณาระบุหมายเลข IMEI' });
 
@@ -4633,13 +4647,16 @@ router.post('/stock-audit/sessions/:id/scan', async (req, res) => {
         let boxPhotoUrl = '';
         if (box_photo_base64 && box_photo_base64.trim() !== '') {
             try {
-                const matches = box_photo_base64.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
+                const matches = box_photo_base64.match(/^data:([A-Za-z-+\/]+);base64,([\s\S]+)$/);
                 let buffer, mimeType;
                 if (matches && matches.length === 3) { mimeType = matches[1]; buffer = Buffer.from(matches[2], 'base64'); }
                 else { mimeType = 'image/jpeg'; buffer = Buffer.from(box_photo_base64, 'base64'); }
                 const dateStr = new Date().toISOString().slice(0, 10);
                 boxPhotoUrl = await uploadBufferToDriveInFolder(buffer, mimeType, `AUDIT_${imeiClean}_${Date.now()}.jpg`, `ตรวจสต็อกประจำวัน/${dateStr}`);
-            } catch (err) { console.error('Drive upload error (audit photo):', err.message); }
+            } catch (err) {
+                console.error('Drive upload error (audit photo):', err.message || err);
+                return res.status(500).json({ success: false, message: `เกิดข้อผิดพลาดในการอัพโหลดภาพถ่ายไปยัง Google Drive: ${err.message || 'Unknown error'}` });
+            }
         }
 
         const newItem = await StockAuditItem.create({
@@ -4666,6 +4683,9 @@ router.post('/stock-audit/sessions/:id/scan', async (req, res) => {
 // DELETE /api/stock-audit/sessions/:id/scan/:imei — ลบรายการที่สแกนผิด
 router.delete('/stock-audit/sessions/:id/scan/:imei', async (req, res) => {
     try {
+        if (!req.user.permissions || !req.user.permissions.do_stock_audit) {
+            return res.status(403).json({ success: false, message: 'ไม่มีสิทธิ์ตรวจนับสต็อกประจำวัน' });
+        }
         const session = await StockAuditSession.findById(req.params.id);
         if (!session) return res.status(404).json({ success: false, message: 'ไม่พบรอบตรวจนับสต็อกที่ระบุ' });
         if (session.status !== 'กำลังตรวจนับ') return res.status(400).json({ success: false, message: 'รอบนี้ถูกส่งตรวจแล้ว ไม่สามารถลบรายการได้' });
@@ -4684,6 +4704,9 @@ router.delete('/stock-audit/sessions/:id/scan/:imei', async (req, res) => {
 // POST /api/stock-audit/sessions/:id/submit — ส่งให้พนักงานสต็อกตรวจ
 router.post('/stock-audit/sessions/:id/submit', async (req, res) => {
     try {
+        if (!req.user.permissions || !req.user.permissions.do_stock_audit) {
+            return res.status(403).json({ success: false, message: 'ไม่มีสิทธิ์ตรวจนับสต็อกประจำวัน' });
+        }
         const session = await StockAuditSession.findById(req.params.id);
         if (!session) return res.status(404).json({ success: false, message: 'ไม่พบรอบตรวจนับสต็อกที่ระบุ' });
         if (session.status !== 'กำลังตรวจนับ') return res.status(400).json({ success: false, message: `สถานะปัจจุบัน: ${session.status} ไม่สามารถส่งตรวจได้` });

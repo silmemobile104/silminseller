@@ -32,7 +32,8 @@ const roleSchema = new mongoose.Schema({
         view_audit_logs: { type: Boolean, default: false },  // อนุญาตดูประวัติกิจกรรมระบบ
         view_branch_inventory: { type: Boolean, default: false }, // อนุญาตดูสินค้าในสาขา
         view_daily_summary: { type: Boolean, default: true }, // อนุญาตให้ดูรายงานสรุปยอดขายรายวัน
-        manage_stock_audit: { type: Boolean, default: false } // อนุญาตให้ตรวจสอบและอนุมัติผลการตรวจนับสต็อกประจำวัน
+        manage_stock_audit: { type: Boolean, default: false }, // อนุญาตให้ตรวจสอบและอนุมัติผลการตรวจนับสต็อกประจำวัน
+        do_stock_audit: { type: Boolean, default: false } // อนุญาตให้ตรวจนับสต็อกประจำวัน
     }
 }, { timestamps: true });
 const Role = mongoose.model('Role', roleSchema, 'role');
@@ -48,7 +49,7 @@ const seedDefaultRoles = async () => {
                 manage_settings: true, manage_roles: true, filter_stock_branch: true, cancel_sale: true,
                 report_arrival: true, approve_import: true, manage_po: true, receive_po: true,
                 manage_transfers: true, manage_finance: true, view_audit_logs: true, view_branch_inventory: true,
-                view_daily_summary: true, manage_stock_audit: true
+                view_daily_summary: true, manage_stock_audit: true, do_stock_audit: true
             }
         },
         {
@@ -59,7 +60,7 @@ const seedDefaultRoles = async () => {
                 manage_settings: true, manage_roles: false, filter_stock_branch: true, cancel_sale: true,
                 report_arrival: true, approve_import: false, manage_po: true, receive_po: true,
                 manage_transfers: true, manage_finance: true, view_audit_logs: true, view_branch_inventory: true,
-                view_daily_summary: true, manage_stock_audit: true
+                view_daily_summary: true, manage_stock_audit: true, do_stock_audit: true
             }
         },
         {
@@ -70,7 +71,7 @@ const seedDefaultRoles = async () => {
                 manage_settings: false, manage_roles: false, filter_stock_branch: false, cancel_sale: false,
                 report_arrival: true, approve_import: false, manage_po: false, receive_po: true,
                 manage_transfers: false, manage_finance: false, view_audit_logs: false, view_branch_inventory: false,
-                view_daily_summary: true, manage_stock_audit: false
+                view_daily_summary: true, manage_stock_audit: false, do_stock_audit: true
             }
         }
     ];
@@ -101,12 +102,19 @@ const seedDefaultRoles = async () => {
                 existing.permissions.view_audit_logs = true;
                 existing.permissions.view_branch_inventory = true;
                 existing.permissions.manage_stock_audit = true;
+                existing.permissions.do_stock_audit = true;
                 changed = true;
             }
-            // Ensure ผู้จัดการ gets manage_stock_audit
-            if (r.name === 'ผู้จัดการ' && existing.permissions.manage_stock_audit === undefined) {
-                existing.permissions.manage_stock_audit = true;
-                changed = true;
+            // Ensure ผู้จัดการ gets manage_stock_audit & do_stock_audit
+            if (r.name === 'ผู้จัดการ') {
+                if (existing.permissions.manage_stock_audit === undefined || existing.permissions.manage_stock_audit === null) {
+                    existing.permissions.manage_stock_audit = true;
+                    changed = true;
+                }
+                if (existing.permissions.do_stock_audit === undefined || existing.permissions.do_stock_audit === null) {
+                    existing.permissions.do_stock_audit = true;
+                    changed = true;
+                }
             }
             if (changed) {
                 await existing.save();
