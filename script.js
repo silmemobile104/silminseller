@@ -1108,9 +1108,19 @@ document.addEventListener('DOMContentLoaded', () => {
             <span class="text-white text-sm font-medium pr-2 leading-tight">${message}</span>
         `;
 
-        toastContainer.appendChild(toast);
+        const container = toastContainer || document.getElementById('toast-container');
+        if (!container) {
+            console.warn('Toast container not found');
+            return;
+        }
+
+        container.appendChild(toast);
         setTimeout(() => toast.remove(), 3000);
     };
+
+    if (typeof window !== 'undefined') {
+        window.showToast = showToast;
+    }
 
     const showConfirm = (title, message, onConfirm, okText = 'ยืนยัน', type = null, widthClass = 'max-w-md') => {
         const modal = document.getElementById('custom-confirm-modal');
@@ -1193,6 +1203,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         cancelBtn.onclick = cleanup;
     };
+    if (typeof window !== 'undefined') window.showConfirm = showConfirm;
 
     const showPrompt = (title, defaultValue, onConfirm) => {
         promptTitle.textContent = title;
@@ -3903,6 +3914,11 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             return true;
+        }).sort((a, b) => {
+            const hasStockA = (a.quantity || 0) > 0;
+            const hasStockB = (b.quantity || 0) > 0;
+            if (hasStockA === hasStockB) return 0;
+            return hasStockA ? -1 : 1;
         });
 
         posCurrentPage = 1;
@@ -13125,7 +13141,7 @@ function verifyAuditImei() {
     if (!_auditSessionId) { showToast('กรุณาเปิดรอบตรวจนับก่อนทำการสแกน', 'error'); return; }
     const imeiInput = document.getElementById('audit-imei-input');
     const imei = imeiInput ? imeiInput.value.trim() : '';
-    if (!imei) { showToast('กรุณาระบุหมายเลข IMEI', 'error'); if(imeiInput) imeiInput.focus(); return; }
+    if (!imei) { showToast('กรุณาระบุหมายเลข IMEI', 'error'); if (imeiInput) imeiInput.focus(); return; }
 
     // 1. ตรวจสอบว่าเคยสแกนเครื่องนี้บันทึกเสร็จไปหรือยัง
     if (_scannedImeiSet && _scannedImeiSet.has(imei)) {
@@ -13136,7 +13152,7 @@ function verifyAuditImei() {
 
     // 2. ตรวจสอบว่าพบในสินค้าที่ระบบคาดหวังในสาขานี้ไหม
     const foundExpected = _expectedImeiData.find(e => e.imei === imei);
-    
+
     // ตั้งค่าข้อความและสีภายในหน้าต่างเด้ง (Modal)
     const modal = document.getElementById('modal-audit-verify');
     const modalTitle = document.getElementById('audit-modal-title');
@@ -13145,7 +13161,7 @@ function verifyAuditImei() {
     const modalProductName = document.getElementById('audit-modal-product-name');
 
     if (modalImeiDisplay) modalImeiDisplay.textContent = imei;
-    
+
     if (foundExpected) {
         if (modalTitle) modalTitle.textContent = 'พบสินค้าในระบบ';
         if (modalIndicator) {
@@ -13267,8 +13283,8 @@ async function submitModalAuditItem() {
         });
         const d = await r.json();
         if (d.success) {
-            showToast(d.message);
-            closeAuditVerifyModal(true); // Close instantly and focus
+            showToast(d.message || 'ยืนยันการตรวจสอบสำเร็จ', 'success');
+            closeAuditVerifyModal(true); // ปิด popup อัตโนมัติทันทีหลังสำเร็จ
             loadTodayAuditSession();
         } else {
             showToast(d.message || 'เกิดข้อผิดพลาดในการบันทึกข้อมูล', 'error');
@@ -13317,7 +13333,7 @@ async function loadTodayAuditSession() {
         if (!d.data) {
             if (_autoCreatingAudit) return;
             _autoCreatingAudit = true;
-            
+
             if (panel) panel.classList.add('hidden');
             if (btnOpen) {
                 btnOpen.style.removeProperty('display');
@@ -13451,7 +13467,7 @@ function _renderExpectedTable(rows) {
 
     if (!rows.length) {
         tbody.innerHTML = `
-            <tr><td colspan="4" class="text-center py-10 text-slate-500">
+            <tr><td colspan="6" class="text-center py-10 text-slate-500">
                 <i class="fa-solid fa-inbox text-2xl mb-2 block"></i>
                 ไม่พบสินค้าในสาขา
             </td></tr>`;
@@ -13475,12 +13491,20 @@ function _renderExpectedTable(rows) {
                    class="ml-1.5 p-0.5 rounded text-slate-500 hover:text-violet-400 hover:bg-violet-500/10 transition-all">
                    <i class="fa-solid fa-arrow-up-from-bracket text-[10px]"></i>
                </button>`;
+        const colorHtml = e.color
+            ? `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-pink-500/15 text-pink-300 border border-pink-500/20">${e.color}</span>`
+            : `<span class="text-slate-600 text-xs">—</span>`;
+        const capacityHtml = e.capacity
+            ? `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-sky-500/15 text-sky-300 border border-sky-500/20">${e.capacity}</span>`
+            : `<span class="text-slate-600 text-xs">—</span>`;
         return `
             <tr class="${rowBg} border-b border-slate-700/40 transition-all" data-imei="${e.imei}" data-name="${e.product_name}" data-status="${isScanned ? 'scanned' : 'pending'}">
                 <td class="px-4 py-2.5 text-slate-500 text-xs">${idx + 1}</td>
                 <td class="px-4 py-2.5">
                     <span class="text-slate-300 text-xs">${e.product_name}</span>
                 </td>
+                <td class="px-4 py-2.5">${colorHtml}</td>
+                <td class="px-4 py-2.5">${capacityHtml}</td>
                 <td class="px-4 py-2.5">${imeiHighlight}</td>
                 <td class="px-4 py-2.5 text-center">${statusBadge}</td>
             </tr>`;
@@ -13589,16 +13613,18 @@ function renderAuditScanList(items) {
 
 async function deleteAuditItem(imei) {
     if (!_auditSessionId) return;
-    if (!confirm(`ลบ IMEI ${imei} ออกจากรอบนี้?`)) return;
-    try {
-        const token = localStorage.getItem('silmin_token');
-        const r = await fetch(`/api/stock-audit/sessions/${_auditSessionId}/scan/${encodeURIComponent(imei)}`, {
-            method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` }
-        });
-        const d = await r.json();
-        if (d.success) { showToast(d.message); loadTodayAuditSession(); }
-        else showToast(d.message || 'เกิดข้อผิดพลาด', 'error');
-    } catch(e) { showToast('ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้', 'error'); }
+
+    showConfirm('ยืนยันลบรายการ', `คุณต้องการลบ IMEI ${imei} ออกจากรอบตรวจนับนี้ใช่หรือไม่?`, async () => {
+        try {
+            const token = localStorage.getItem('silmin_token');
+            const r = await fetch(`/api/stock-audit/sessions/${_auditSessionId}/scan/${encodeURIComponent(imei)}`, {
+                method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const d = await r.json();
+            if (d.success) { showToast(d.message); loadTodayAuditSession(); }
+            else showToast(d.message || 'เกิดข้อผิดพลาด', 'error');
+        } catch (e) { showToast('ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้', 'error'); }
+    });
 }
 
 // -------------------------------------------------------------------
@@ -13650,7 +13676,7 @@ async function loadAuditReviewSessions() {
                  onclick="openAuditReviewDetail('${session._id}')">
                 <div class="flex items-center justify-between mb-3">
                     <div>
-                        <p class="text-white font-bold text-lg">${new Date(session.session_date).toLocaleDateString('th-TH', { weekday:'long', year:'numeric', month:'long', day:'numeric' })}</p>
+                        <p class="text-white font-bold text-lg">${new Date(session.session_date).toLocaleDateString('th-TH', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
                         <p class="text-slate-400 text-sm mt-0.5">สาขา: ${session.branch_id?.name || '—'} | สแกนโดย: ${session.created_by?.name || '—'}</p>
                     </div>
                     <span class="px-3 py-1.5 rounded-full text-xs font-bold border ${statusColors[session.status] || 'bg-slate-500/20 text-slate-400 border-slate-500/30'}">${session.status}</span>
@@ -13667,7 +13693,7 @@ async function loadAuditReviewSessions() {
         if (filterSel) filterSel.onchange = loadAuditReviewSessions;
         if (btnRefresh) btnRefresh.onclick = loadAuditReviewSessions;
 
-    } catch(e) {
+    } catch (e) {
         console.error('[AUDIT REVIEW] loadAuditReviewSessions:', e);
         if (container) container.innerHTML = '<p class="text-red-400 p-4">เกิดข้อผิดพลาดในการดึงข้อมูล</p>';
     }
@@ -13715,7 +13741,7 @@ async function openAuditReviewDetail(sessionId) {
         }
         return true;
 
-    } catch(e) {
+    } catch (e) {
         console.error('[AUDIT REVIEW] openAuditReviewDetail:', e);
         showToast('เกิดข้อผิดพลาด', 'error');
         return false;
@@ -13728,7 +13754,7 @@ function renderReviewSummaryBar(summary) {
 
     // Highlight styles depending on the active filter
     const activeClass = 'ring-2 ring-amber-500 ring-offset-2 ring-offset-slate-900 scale-105 font-bold';
-    
+
     const cardAllActive = _reviewActiveFilter === 'all' ? activeClass : '';
     const cardPendingActive = _reviewActiveFilter === 'รอตรวจสอบ' ? activeClass : '';
     const cardPassedActive = _reviewActiveFilter === 'ผ่าน' ? activeClass : '';
@@ -13789,8 +13815,8 @@ function renderReviewItemsGrid() {
         }
 
         const btnLabel = item.scan_status === 'รอตรวจสอบ' ? 'ตรวจสอบสินค้า' : 'ดูรายละเอียด';
-        const btnColorClass = item.scan_status === 'รอตรวจสอบ' 
-            ? 'from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 shadow-amber-500/10' 
+        const btnColorClass = item.scan_status === 'รอตรวจสอบ'
+            ? 'from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 shadow-amber-500/10'
             : 'from-slate-700 to-slate-650 hover:from-slate-650 hover:to-slate-600 shadow-slate-700/10';
         const btnIcon = item.scan_status === 'รอตรวจสอบ' ? 'fa-magnifying-glass' : 'fa-circle-info';
 
@@ -13837,7 +13863,7 @@ function openAuditReviewItemModal(itemId) {
     const elImei = document.getElementById('audit-review-modal-imei');
     const elProduct = document.getElementById('audit-review-modal-product');
     const elScanner = document.getElementById('audit-review-modal-scanner');
-    
+
     if (elImei) elImei.textContent = item.imei;
     if (elProduct) elProduct.textContent = item.product_name;
     if (elScanner) elScanner.textContent = `${item.scanned_by?.name || '—'} ${item.scan_notes ? `(${item.scan_notes})` : ''}`;
@@ -13871,7 +13897,7 @@ function openAuditReviewItemModal(itemId) {
                    หมายเหตุ (ต้องระบุหาก ไม่ผ่าน/ตรวจใหม่)
                </label>
                <input id="modal-review-notes-${item._id}" type="text" placeholder="ระบุหมายเหตุ..."
-                   class="w-full px-4 py-2.5 bg-slate-950 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-amber-500 text-sm transition-all" />`
+                   class="w-full px-4 py-2.5 bg-slate-950 border border-slate-700 rounded-xl placeholder-slate-500 focus:outline-none focus:border-amber-500 text-sm transition-all" />`
             : ``;
     }
 
@@ -13971,7 +13997,7 @@ async function submitModalItemReview(btnEl, itemId, status) {
             if (parentRow) parentRow.querySelectorAll('button').forEach(b => b.disabled = false);
             btnEl.innerHTML = originalHtml;
         }
-    } catch(e) { 
+    } catch (e) {
         showToast('ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้', 'error');
         if (parentRow) parentRow.querySelectorAll('button').forEach(b => b.disabled = false);
         btnEl.innerHTML = originalHtml;
@@ -13993,7 +14019,7 @@ async function closeAuditSession(sessionId) {
             showToast(`ปิดรอบสำเร็จ! ผ่าน ${d.summary?.passed || 0} / ไม่ผ่าน ${d.summary?.failed || 0} รายการ`);
             loadAuditReviewSessions();
         } else showToast(d.message || 'เกิดข้อผิดพลาด', 'error');
-    } catch(e) { showToast('ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้', 'error'); }
+    } catch (e) { showToast('ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้', 'error'); }
 }
 
 // Expose Stock Audit functions to the window object for inline HTML event handlers
