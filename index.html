@@ -416,7 +416,7 @@
 
         /* Sidebar nav link styles */
         .nav-menu-item {
-            display: flex !important;
+            display: flex;
             align-items: center !important;
             padding: 0.75rem 0.875rem !important;
             margin: 0.25rem 0.75rem !important;
@@ -1416,7 +1416,7 @@
             color: #475569 !important;
         }
 
-        #view-accounting .grid>.bg-\[\#151515\] p.text-[10px] {
+        #view-accounting .grid>.bg-\[\#151515\] p.text-\[10px\] {
             color: #64748b !important;
         }
 
@@ -3536,13 +3536,13 @@
 
                 <div class="input-floating-label">
                     <input type="text" id="username" placeholder=" " required
-                        class="w-full px-4 py-3 rounded-xl text-white placeholder-transparent focus:ring-0">
+                        class="w-full px-4 py-3 rounded-xl text-slate-900 placeholder-transparent focus:ring-0">
                     <label for="username">ชื่อผู้ใช้งาน</label>
                 </div>
 
                 <div class="input-floating-label relative">
                     <input type="password" id="password" placeholder=" " required
-                        class="w-full px-4 py-3 rounded-xl text-white placeholder-transparent focus:ring-0 pr-10">
+                        class="w-full px-4 py-3 rounded-xl text-slate-900 placeholder-transparent focus:ring-0 pr-10">
                     <label for="password">รหัสผ่าน</label>
                     <button type="button" id="toggle-password"
                         class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white focus:outline-none cursor-pointer">
@@ -3591,6 +3591,30 @@
                     <span class="sidebar-text ml-3 font-medium">สรุปยอดขายรายวัน</span>
                     <span
                         class="sidebar-text ml-auto bg-cyan-500 text-slate-900 text-xs font-bold px-2 py-0.5 rounded-full">D</span>
+                </a>
+
+                <!-- [NEW] ตรวจนับสต็อกประจำวัน (พนักงานขาย) -->
+                <a href="#" id="nav-stock-audit"
+                    class="flex items-center px-3 py-3 rounded-xl text-slate-300 hover:bg-slate-700/50 hover:text-white transition-all group nav-menu-item"
+                    style="display: none;">
+                    <i
+                        class="fa-solid fa-qrcode sidebar-icon text-lg w-6 text-center text-violet-400 group-hover:text-violet-300"></i>
+                    <span class="sidebar-text ml-3 font-medium">ตรวจนับสต็อกประจำวัน</span>
+                    <span
+                        class="sidebar-text ml-auto bg-violet-500 text-white text-xs font-bold px-2 py-0.5 rounded-full"
+                        id="nav-stock-audit-badge" style="display:none;">!</span>
+                </a>
+
+                <!-- [NEW] ตรวจสอบผลสต็อก (พนักงานสต็อก/ผู้จัดการ) -->
+                <a href="#" id="nav-stock-audit-review"
+                    class="flex items-center px-3 py-3 rounded-xl text-slate-300 hover:bg-slate-700/50 hover:text-white transition-all group nav-menu-item"
+                    style="display: none;">
+                    <i
+                        class="fa-solid fa-clipboard-check sidebar-icon text-lg w-6 text-center text-amber-400 group-hover:text-amber-300"></i>
+                    <span class="sidebar-text ml-3 font-medium">ตรวจสอบผลสต็อก</span>
+                    <span
+                        class="sidebar-text ml-auto bg-amber-500 text-slate-900 text-xs font-bold px-2 py-0.5 rounded-full"
+                        id="nav-stock-audit-review-badge" style="display:none;">0</span>
                 </a>
 
                 <a href="#" id="nav-branch-inventory"
@@ -3720,7 +3744,8 @@
                         class="sidebar-text ml-auto bg-cyan-500 text-slate-900 text-xs font-bold px-2 py-0.5 rounded-full">B</span>
                 </a>
 
-                <div class="sidebar-text pt-4 pb-2 px-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                <div id="nav-settings-header"
+                    class="sidebar-text pt-4 pb-2 px-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">
                     การตั้งค่า
                 </div>
 
@@ -3783,7 +3808,7 @@
                                 class="fa-solid fa-search text-slate-500 group-focus-within:text-cyan-400 transition-colors"></i>
                         </div>
                         <input type="text" placeholder="ค้นหาสินค้า..."
-                            class="bg-slate-900 border border-slate-700 text-sm rounded-full pl-10 pr-4 py-2 w-64 text-white focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition-all placeholder-slate-500">
+                            class="bg-white border border-slate-300 text-sm rounded-full pl-10 pr-4 py-2 w-64 text-slate-900 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition-all placeholder-slate-400">
                     </div>
 
                     <!-- Notifications -->
@@ -3907,7 +3932,7 @@
             <div id="main-content" class="flex-1 overflow-y-auto p-4 pb-24 sm:p-6 sm:pb-6 lg:p-8 lg:pb-8">
 
                 <!-- VIEW: Dashboard -->
-                <div id="view-dashboard" class="space-y-8 animate-fade-in">
+                <div id="view-dashboard" class="hidden space-y-8 animate-fade-in">
                     <div>
                         <h3 class="text-2xl font-bold text-white">แดชบอร์ด</h3>
                         <p class="text-slate-400 mt-1">ภาพรวมยอดขายและสถานะคลังสินค้า — อัพเดตอัตโนมัติ</p>
@@ -4033,6 +4058,305 @@
                     </div>
                 </div>
 
+                <!-- ============================================================ -->
+                <!-- VIEW: STOCK AUDIT — ตรวจนับสต็อกประจำวัน (พนักงานขาย)       -->
+                <!-- ============================================================ -->
+                <div id="view-stock-audit" class="hidden space-y-5 animate-fade-in">
+
+                    <!-- Header + Status Badge -->
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div>
+                            <h3 class="text-2xl font-bold text-white flex items-center gap-3">
+                                <div
+                                    class="w-12 h-12 rounded-2xl bg-violet-500/10 flex items-center justify-center border border-violet-500/20 shadow-lg shadow-violet-500/5">
+                                    <i class="fa-solid fa-qrcode text-violet-400 text-xl"></i>
+                                </div>
+                                ตรวจนับสต็อกประจำวัน
+                            </h3>
+                            <p class="text-sm text-slate-400 mt-1.5">สแกน IMEI และถ่ายรูปกล่องสินค้าทุกเครื่องในสาขา</p>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <span id="audit-session-status-badge"
+                                class="hidden px-3 py-1.5 rounded-full text-xs font-bold border">—</span>
+                            <button id="btn-open-audit-session"
+                                class="px-5 py-2.5 bg-violet-600 hover:bg-violet-500 text-white rounded-xl font-bold transition-all shadow-lg shadow-violet-500/20 flex items-center gap-2">
+                                <i class="fa-solid fa-plus"></i>
+                                เปิดรอบตรวจนับวันนี้
+                            </button>
+                        </div>
+                    </div>
+
+                    <div id="audit-session-panel" class="hidden">
+
+                        <!-- Scan Input Area -->
+                        <div id="audit-scan-area"
+                            class="bg-slate-800/60 rounded-2xl border border-violet-500/20 p-5 mb-5">
+                            <h4 class="text-white font-bold mb-4 flex items-center gap-2">
+                                <i class="fa-solid fa-barcode text-violet-400"></i>
+                                สแกน IMEI เพื่อตรวจนับ
+                            </h4>
+
+                            <!-- Step 1: IMEI Input & Verify -->
+                            <div>
+                                <label
+                                    class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">หมายเลข
+                                    IMEI *</label>
+                                <div class="flex gap-2">
+                                    <input id="audit-imei-input" type="text" inputmode="numeric"
+                                        placeholder="สแกนหรือพิมพ์ IMEI..."
+                                        class="flex-1 px-4 py-3 bg-white border border-slate-300 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500 font-mono text-sm transition-all" />
+                                    <button id="btn-audit-imei-verify"
+                                        class="px-5 py-3 bg-violet-600 hover:bg-violet-500 rounded-xl text-white font-bold text-sm transition-all whitespace-nowrap">
+                                        ยืนยัน IMEI
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Progress Bar -->
+                        <div class="bg-slate-800/60 rounded-2xl border border-slate-700/60 p-5 mb-5">
+                            <div class="flex items-center justify-between mb-3">
+                                <div>
+                                    <span class="text-slate-300 text-sm font-medium">ความคืบหน้าการสแกน</span>
+                                    <div class="flex items-center gap-2 mt-1">
+                                        <span id="audit-scanned-count"
+                                            class="text-3xl font-black text-violet-400">0</span>
+                                        <span class="text-slate-500 text-xl font-bold">/</span>
+                                        <span id="audit-expected-count"
+                                            class="text-3xl font-black text-slate-300">0</span>
+                                        <span class="text-slate-400 text-sm ml-1">เครื่อง</span>
+                                    </div>
+                                </div>
+                                <div class="text-right">
+                                    <p class="text-xs text-slate-500">สาขา</p>
+                                    <p id="audit-branch-name" class="text-white font-bold">—</p>
+                                    <p id="audit-session-date" class="text-xs text-slate-400 mt-0.5">—</p>
+                                </div>
+                            </div>
+                            <div class="w-full bg-slate-700 rounded-full h-2.5 overflow-hidden">
+                                <div id="audit-progress-bar"
+                                    class="h-2.5 rounded-full bg-gradient-to-r from-violet-500 to-purple-400 transition-all duration-500"
+                                    style="width:0%"></div>
+                            </div>
+                            <p class="text-xs text-slate-500 mt-2" id="audit-progress-pct">0% สำเร็จ</p>
+                        </div>
+
+                        <!-- Expected Inventory Panel (สินค้าที่ต้องตรวจนับ) -->
+                        <div class="bg-slate-800/60 rounded-2xl border border-slate-700/60 overflow-hidden mb-5">
+                            <!-- Header (toggle) -->
+                            <button id="btn-toggle-expected-list"
+                                class="w-full flex items-center justify-between px-5 py-4 hover:bg-slate-700/30 transition-all text-left"
+                                onclick="toggleExpectedList()">
+                                <div class="flex items-center gap-3">
+                                    <div
+                                        class="w-8 h-8 rounded-lg bg-indigo-500/20 flex items-center justify-center border border-indigo-500/20">
+                                        <i class="fa-solid fa-boxes-stacking text-indigo-400 text-sm"></i>
+                                    </div>
+                                    <div>
+                                        <span class="text-white font-bold text-sm">สินค้าที่ต้องตรวจนับวันนี้</span>
+                                        <span id="expected-list-summary" class="ml-2 text-xs text-slate-400"></span>
+                                    </div>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <span id="expected-list-pill"
+                                        class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-indigo-500/20 text-indigo-400 border border-indigo-500/20">
+                                        0 เครื่อง
+                                    </span>
+                                    <i id="expected-list-chevron"
+                                        class="fa-solid fa-chevron-up text-slate-400 text-sm transition-transform duration-200"></i>
+                                </div>
+                            </button>
+                            <!-- Filter + Search -->
+                            <div id="expected-list-body">
+                                <div class="px-5 pb-3 flex items-center gap-2 border-t border-slate-700/60 pt-3">
+                                    <input id="expected-list-search" type="text"
+                                        placeholder="ค้นหา IMEI หรือชื่อสินค้า..."
+                                        class="flex-1 px-3 py-2 bg-white border border-slate-300 rounded-lg text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-500 text-xs font-mono transition-all"
+                                        oninput="filterExpectedList(this.value)" />
+                                    <select id="expected-list-filter"
+                                        class="px-3 py-2 bg-white border border-slate-300 text-slate-900 rounded-lg text-xs focus:outline-none focus:border-indigo-500"
+                                        onchange="filterExpectedList(document.getElementById('expected-list-search').value)">
+                                        <option value="all">ทั้งหมด</option>
+                                        <option value="pending">รอสแกน</option>
+                                        <option value="scanned">สแกนแล้ว</option>
+                                    </select>
+                                </div>
+                                <!-- Table -->
+                                <div class="overflow-x-auto max-h-[420px] overflow-y-auto">
+                                    <table class="w-full text-sm" id="expected-items-table">
+                                        <thead class="sticky top-0 z-10">
+                                            <tr class="bg-slate-900/90 backdrop-blur-sm">
+                                                <th
+                                                    class="text-left px-4 py-2.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider w-8">
+                                                    #</th>
+                                                <th
+                                                    class="text-left px-4 py-2.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                                                    ชื่อสินค้า</th>
+                                                <th
+                                                    class="text-left px-4 py-2.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider font-mono">
+                                                    หมายเลข IMEI</th>
+                                                <th
+                                                    class="text-center px-4 py-2.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider w-24">
+                                                    สถานะ</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="expected-items-tbody">
+                                            <!-- render โดย JS -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+
+
+                        <!-- Scanned List -->
+                        <div class="bg-slate-800/60 rounded-2xl border border-slate-700/60 overflow-hidden">
+                            <div class="px-5 py-4 border-b border-slate-700 flex items-center justify-between">
+                                <h4 class="text-white font-bold flex items-center gap-2">
+                                    <i class="fa-solid fa-list-check text-violet-400"></i>
+                                    รายการที่สแกนแล้ว
+                                </h4>
+                                <span id="audit-scan-list-count" class="text-xs text-slate-400">0 รายการ</span>
+                            </div>
+                            <div class="w-full overflow-x-auto">
+                                <div id="audit-scan-list" class="min-w-full">
+                                    <!-- จะถูก render โดย JS -->
+                                    <div class="flex flex-col items-center justify-center py-12 text-center">
+                                        <div
+                                            class="w-16 h-16 rounded-2xl bg-slate-700/50 flex items-center justify-center mb-4">
+                                            <i class="fa-solid fa-qrcode text-slate-500 text-2xl"></i>
+                                        </div>
+                                        <p class="text-slate-400">ยังไม่มีรายการ เริ่มสแกน IMEI เลย</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Submit Button -->
+                        <div id="audit-submit-area" class="mt-5 hidden">
+                            <button id="btn-audit-submit"
+                                class="w-full py-4 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500 text-white rounded-2xl font-black text-lg transition-all shadow-xl shadow-violet-500/25 flex items-center justify-center gap-3">
+                                <i class="fa-solid fa-paper-plane"></i>
+                                ส่งผลการตรวจนับให้ตรวจสอบ
+                            </button>
+                            <p class="text-center text-xs text-slate-500 mt-2">หลังส่งแล้ว
+                                พนักงานสต็อกจะตรวจสอบและอนุมัติ</p>
+                        </div>
+
+                        <!-- Submitted Message -->
+                        <div id="audit-submitted-msg"
+                            class="hidden mt-5 p-5 bg-amber-500/10 border border-amber-500/30 rounded-2xl flex items-center gap-4">
+                            <div
+                                class="w-12 h-12 rounded-full bg-amber-500/20 flex items-center justify-center shrink-0">
+                                <i class="fa-solid fa-hourglass-half text-amber-400 text-xl"></i>
+                            </div>
+                            <div>
+                                <p class="text-amber-400 font-bold">ส่งผลการตรวจนับสำเร็จแล้ว</p>
+                                <p class="text-slate-400 text-sm mt-0.5">รอพนักงานสต็อกตรวจสอบและอนุมัติผล</p>
+                            </div>
+                        </div>
+
+                        <!-- Approved Message -->
+                        <div id="audit-approved-msg"
+                            class="hidden mt-5 p-5 bg-emerald-500/10 border border-emerald-500/30 rounded-2xl flex items-center gap-4">
+                            <div
+                                class="w-12 h-12 rounded-full bg-emerald-500/20 flex items-center justify-center shrink-0">
+                                <i class="fa-solid fa-circle-check text-emerald-400 text-xl"></i>
+                            </div>
+                            <div>
+                                <p class="text-emerald-400 font-bold">รอบการตรวจนับสต็อกวันนี้อนุมัติแล้ว</p>
+                                <p class="text-slate-400 text-sm mt-0.5">
+                                    ผลการตรวจนับได้รับการอนุมัติจากพนักงานสต็อกเรียบร้อย</p>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+                <!-- ============================================================ -->
+                <!-- VIEW: STOCK AUDIT REVIEW — ตรวจสอบผลสต็อก (พนักงานสต็อก)  -->
+                <!-- ============================================================ -->
+                <div id="view-stock-audit-review" class="hidden space-y-5 animate-fade-in">
+
+                    <!-- Header -->
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div>
+                            <h3 class="text-2xl font-bold text-white flex items-center gap-3">
+                                <div
+                                    class="w-12 h-12 rounded-2xl bg-amber-500/10 flex items-center justify-center border border-amber-500/20 shadow-lg shadow-amber-500/5">
+                                    <i class="fa-solid fa-clipboard-check text-amber-400 text-xl"></i>
+                                </div>
+                                ตรวจสอบผลการตรวจนับสต็อก
+                            </h3>
+                            <p class="text-sm text-slate-400 mt-1.5">ตรวจสอบ IMEI และรูปกล่องที่พนักงานขายส่งมา</p>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <select id="audit-review-filter-status"
+                                class="px-3 py-2 bg-white border border-slate-300 text-slate-900 rounded-xl text-sm focus:outline-none focus:border-amber-500">
+                                <option value="">สถานะทั้งหมด</option>
+                                <option value="กำลังตรวจนับ">กำลังตรวจนับ</option>
+                                <option value="รอการอนุมัติ">รอการอนุมัติ</option>
+                                <option value="อนุมัติแล้ว">อนุมัติแล้ว</option>
+                            </select>
+                            <button id="btn-refresh-audit-review"
+                                class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-xl font-bold transition-all border border-slate-700 flex items-center gap-2">
+                                <i class="fa-solid fa-arrows-rotate"></i>
+                                รีเฟรช
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Sessions List -->
+                    <div id="audit-review-sessions-list" class="space-y-4">
+                        <!-- จะถูก render โดย JS -->
+                        <div class="flex flex-col items-center justify-center py-16 text-center">
+                            <div class="w-20 h-20 rounded-3xl bg-slate-700/50 flex items-center justify-center mb-4">
+                                <i class="fa-solid fa-clipboard-check text-slate-500 text-3xl"></i>
+                            </div>
+                            <p class="text-slate-400">ไม่พบรอบการตรวจนับสต็อก</p>
+                        </div>
+                    </div>
+
+                    <!-- Detail Panel (แสดงเมื่อเลือก session) -->
+                    <div id="audit-review-detail-panel" class="hidden">
+                        <div class="flex items-center gap-3 mb-4">
+                            <button id="btn-audit-review-back"
+                                class="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-all border border-slate-700">
+                                <i class="fa-solid fa-arrow-left"></i>
+                            </button>
+                            <h4 id="audit-review-detail-title" class="text-xl font-bold text-white">รายละเอียดการตรวจนับ
+                            </h4>
+                        </div>
+
+                        <!-- Summary Bar -->
+                        <div id="audit-review-summary-bar" class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
+                            <!-- ถูก render โดย JS -->
+                        </div>
+
+                        <!-- Items Grid -->
+                        <div id="audit-review-items-grid" class="space-y-3">
+                            <!-- ถูก render โดย JS -->
+                        </div>
+
+                        <!-- Close Session Button -->
+                        <div id="audit-review-close-area" class="mt-5 hidden">
+                            <div class="bg-slate-800/60 rounded-2xl border border-slate-700 p-5">
+                                <label
+                                    class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">หมายเหตุรวม
+                                    (ถ้ามี)</label>
+                                <input id="audit-close-notes" type="text" placeholder="ระบุหมายเหตุ..."
+                                    class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:border-amber-500 text-sm mb-4" />
+                                <button id="btn-audit-close-session"
+                                    class="w-full py-3.5 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white rounded-xl font-black text-base transition-all shadow-lg shadow-amber-500/20 flex items-center justify-center gap-2">
+                                    <i class="fa-solid fa-check-double"></i>
+                                    ปิดรอบและอนุมัติผลการตรวจนับ
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
                 <!-- VIEW: Branch Inventory -->
                 <div id="view-branch-inventory" class="hidden space-y-6 animate-fade-in">
                     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-2">
@@ -4070,14 +4394,14 @@
                                         class="fa-solid fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-emerald-400 transition-colors"></i>
                                     <input type="text" id="search-branch-mystock"
                                         placeholder="ค้นหาสินค้าในสาขา (ชื่อ, รหัส, IMEI)..."
-                                        class="w-full bg-slate-900 border border-slate-600 rounded-xl pl-11 pr-4 py-2.5 text-white focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all text-sm">
+                                        class="w-full bg-white border border-slate-300 rounded-xl pl-11 pr-4 py-2.5 text-slate-900 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all text-sm">
                                 </div>
                                 <select id="filter-branch-mystock-type"
-                                    class="w-full sm:w-44 bg-slate-900 border border-slate-600 rounded-xl px-3 py-2.5 text-white focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all text-sm font-semibold cursor-pointer">
+                                    class="w-full sm:w-44 bg-white border border-slate-300 rounded-xl px-3 py-2.5 text-slate-900 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all text-sm font-semibold cursor-pointer">
                                     <option value="ALL">ประเภททั้งหมด</option>
                                 </select>
                                 <select id="filter-branch-mystock-condition"
-                                    class="w-full sm:w-44 bg-slate-900 border border-slate-600 rounded-xl px-3 py-2.5 text-white focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all text-sm font-semibold cursor-pointer">
+                                    class="w-full sm:w-44 bg-white border border-slate-300 rounded-xl px-3 py-2.5 text-slate-900 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all text-sm font-semibold cursor-pointer">
                                     <option value="ALL">สภาพทั้งหมด</option>
                                     <option value="มือ1">มือ 1</option>
                                     <option value="มือ2">มือ 2</option>
@@ -4121,14 +4445,14 @@
                                         class="fa-solid fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-cyan-400 transition-colors"></i>
                                     <input type="text" id="search-branch-globalstock"
                                         placeholder="ค้นหาราคาหรือสต็อกสาขาอื่น..."
-                                        class="w-full bg-slate-900 border border-slate-600 rounded-xl pl-11 pr-4 py-2.5 text-white focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition-all text-sm">
+                                        class="w-full bg-white border border-slate-300 rounded-xl pl-11 pr-4 py-2.5 text-slate-900 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition-all text-sm">
                                 </div>
                                 <select id="filter-branch-globalstock-type"
-                                    class="w-full sm:w-44 bg-slate-900 border border-slate-600 rounded-xl px-3 py-2.5 text-white focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition-all text-sm font-semibold cursor-pointer">
+                                    class="w-full sm:w-44 bg-white border border-slate-300 rounded-xl px-3 py-2.5 text-slate-900 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition-all text-sm font-semibold cursor-pointer">
                                     <option value="ALL">ประเภททั้งหมด</option>
                                 </select>
                                 <select id="filter-branch-globalstock-condition"
-                                    class="w-full sm:w-44 bg-slate-900 border border-slate-600 rounded-xl px-3 py-2.5 text-white focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition-all text-sm font-semibold cursor-pointer">
+                                    class="w-full sm:w-44 bg-white border border-slate-300 rounded-xl px-3 py-2.5 text-slate-900 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition-all text-sm font-semibold cursor-pointer">
                                     <option value="ALL">สภาพทั้งหมด</option>
                                     <option value="มือ1">มือ 1</option>
                                     <option value="มือ2">มือ 2</option>
@@ -4193,24 +4517,24 @@
                                     </div>
                                     <input id="stock-search-input" type="text"
                                         placeholder="ค้นหา ชื่อสินค้า, รหัส, IMEI..."
-                                        class="bg-slate-900 border border-slate-700 text-sm rounded-lg pl-10 pr-4 py-2 w-full text-white focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition-all placeholder-slate-500">
+                                        class="bg-white border border-slate-300 text-sm rounded-lg pl-10 pr-4 py-2 w-full text-slate-900 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition-all placeholder-slate-400">
                                 </div>
 
                                 <select id="stock-filter-branch"
-                                    class="bg-slate-900 border border-slate-700 text-sm rounded-lg px-3 py-2 text-white focus:outline-none focus:border-cyan-500 w-full sm:w-auto">
+                                    class="bg-white border border-slate-300 text-sm rounded-lg px-3 py-2 text-slate-900 focus:outline-none focus:border-cyan-500 w-full sm:w-auto">
                                     <option value="">ทุกสาขา</option>
                                 </select>
                                 <select id="stock-filter-category"
-                                    class="hidden md:block bg-slate-900 border border-slate-700 text-sm rounded-lg px-3 py-2 text-white focus:outline-none focus:border-cyan-500">
+                                    class="hidden md:block bg-white border border-slate-300 text-sm rounded-lg px-3 py-2 text-slate-900 focus:outline-none focus:border-cyan-500">
                                     <option value="">ทุกหมวดหมู่</option>
                                 </select>
                                 <select id="stock-filter-supplier"
-                                    class="hidden md:block bg-slate-900 border border-slate-700 text-sm rounded-lg px-3 py-2 text-white focus:outline-none focus:border-cyan-500">
+                                    class="hidden md:block bg-white border border-slate-300 text-sm rounded-lg px-3 py-2 text-slate-900 focus:outline-none focus:border-cyan-500">
                                     <option value="">ทุก Supplier</option>
                                 </select>
 
                                 <select id="stock-filter-status"
-                                    class="hidden md:block bg-slate-900 border border-slate-700 text-sm rounded-lg px-3 py-2 text-white focus:outline-none focus:border-cyan-500">
+                                    class="hidden md:block bg-white border border-slate-300 text-sm rounded-lg px-3 py-2 text-slate-900 focus:outline-none focus:border-cyan-500">
                                     <option value="">ทุกสถานะ</option>
                                     <option value="in_stock" selected>มีสินค้า</option>
                                     <option value="out_of_stock">สินค้าหมด</option>
@@ -4273,7 +4597,7 @@
                                     </div>
                                     <input type="text" id="pos-search-input"
                                         placeholder="ค้นหาสินค้า / สแกนบาร์โค้ด / สแกน IMEI..."
-                                        class="w-full bg-slate-900 border-2 border-slate-600 text-base rounded-xl pl-12 pr-4 py-3.5 text-white focus:outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/30 transition-all placeholder-slate-500 font-medium"
+                                        class="w-full bg-white border-2 border-slate-300 text-base rounded-xl pl-12 pr-4 py-3.5 text-slate-900 focus:outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/30 transition-all placeholder-slate-400 font-medium"
                                         autocomplete="off">
                                 </div>
                             </div>
@@ -4364,7 +4688,7 @@
                         </div>
                         <div class="p-4 border-b border-slate-700">
                             <input type="text" id="imei-search-input" placeholder="ค้นหา IMEI..."
-                                class="w-full px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-600 text-white text-sm focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all placeholder-slate-500">
+                                class="w-full px-4 py-2.5 rounded-xl bg-white border border-slate-300 text-slate-900 text-sm focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all placeholder-slate-400">
                         </div>
                         <div id="imei-list-container" class="flex-1 overflow-y-auto p-4 space-y-2 max-h-[400px]">
                             <!-- IMEI items injected here -->
@@ -4489,10 +4813,10 @@
                     <div class="bg-slate-800 rounded-2xl border border-slate-700 shadow-lg p-6">
                         <div class="flex flex-col sm:flex-row gap-4 mb-8">
                             <input type="text" id="master-data-input" placeholder="พิมพ์ข้อมูลใหม่..."
-                                class="flex-1 px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all">
+                                class="flex-1 px-4 py-2.5 rounded-xl bg-white border border-slate-300 text-slate-900 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all">
                             <input type="text" id="master-data-code-input"
                                 placeholder="รหัสชื่อสินค้า (ไม่จำเป็นต้องระบุก็ได้)..."
-                                class="hidden px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all sm:w-64">
+                                class="hidden px-4 py-2.5 rounded-xl bg-white border border-slate-300 text-slate-900 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all sm:w-64">
                             <button id="btn-add-master-data"
                                 class="px-6 py-2.5 bg-cyan-500 hover:bg-cyan-400 text-slate-900 font-bold rounded-xl glow-button flex items-center justify-center gap-2 whitespace-nowrap">
                                 <i class="fa-solid fa-plus"></i> เพิ่ม
@@ -4585,7 +4909,7 @@
                                     / เอกสาร</label>
                                 <div class="relative">
                                     <input type="text" id="audit-filter-search" placeholder="ค้นหาข้อความ, เลขเอกสาร..."
-                                        class="w-full bg-slate-900/50 border border-slate-700 rounded-2xl py-3 px-4 pl-11 text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition-all text-sm">
+                                        class="w-full bg-white/50 border border-slate-300 rounded-2xl py-3 px-4 pl-11 text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-500 transition-all text-sm">
                                     <i class="fa-solid fa-magnifying-glass absolute left-4 top-3.5 text-slate-500"></i>
                                 </div>
                             </div>
@@ -4595,7 +4919,7 @@
                                 <label
                                     class="text-xs font-semibold text-slate-400 uppercase tracking-wider block">โมดูลระบบ</label>
                                 <select id="audit-filter-module"
-                                    class="w-full bg-slate-900/50 border border-slate-700 rounded-2xl py-3 px-4 text-white focus:outline-none focus:border-indigo-500 transition-all text-sm">
+                                    class="w-full bg-white/50 border border-slate-300 rounded-2xl py-3 px-4 text-slate-900 focus:outline-none focus:border-indigo-500 transition-all text-sm">
                                     <option value="ALL">ทั้งหมด (All Modules)</option>
                                     <option value="AUTH">ระบบล็อกอิน (Auth)</option>
                                     <option value="PO">ระบบใบสั่งซื้อ (PO)</option>
@@ -4612,7 +4936,7 @@
                                 <label
                                     class="text-xs font-semibold text-slate-400 uppercase tracking-wider block">ประเภทกิจกรรม</label>
                                 <select id="audit-filter-action"
-                                    class="w-full bg-slate-900/50 border border-slate-700 rounded-2xl py-3 px-4 text-white focus:outline-none focus:border-indigo-500 transition-all text-sm">
+                                    class="w-full bg-white/50 border border-slate-300 rounded-2xl py-3 px-4 text-slate-900 focus:outline-none focus:border-indigo-500 transition-all text-sm">
                                     <option value="ALL">ทั้งหมด (All Actions)</option>
                                     <option value="CREATE">สร้างใหม่ (CREATE)</option>
                                     <option value="UPDATE">แก้ไข/อัปเดต (UPDATE)</option>
@@ -4630,7 +4954,7 @@
                                 <div class="flex gap-2">
                                     <div class="relative flex-grow">
                                         <input type="text" id="audit-filter-user" placeholder="ชื่อพนักงาน..."
-                                            class="w-full bg-slate-900/50 border border-slate-700 rounded-2xl py-3 px-4 pl-11 text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition-all text-sm">
+                                            class="w-full bg-white/50 border border-slate-300 rounded-2xl py-3 px-4 pl-11 text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-500 transition-all text-sm">
                                         <i class="fa-solid fa-user absolute left-4 top-3.5 text-slate-500"></i>
                                     </div>
                                     <button id="btn-clear-audit-filters" title="ล้างตัวกรอง"
@@ -4818,7 +5142,7 @@
                                         <i class="fa-solid fa-magnifying-glass text-slate-500"></i>
                                     </div>
                                     <input type="text" id="sales-history-search"
-                                        class="w-full px-4 pl-10 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all placeholder-slate-500 text-sm"
+                                        class="w-full px-4 pl-10 py-2.5 rounded-xl bg-white border border-slate-300 text-slate-900 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all placeholder-slate-400 text-sm"
                                         placeholder="พิมพ์เลขที่บิล, IMEI, ชื่อสินค้า, ชื่อลูกค้า หรือเบอร์โทรศัพท์...">
                                 </div>
                             </div>
@@ -4827,7 +5151,7 @@
                             <div class="w-full md:w-44 space-y-2">
                                 <label class="text-sm font-medium text-slate-300">ช่วงเวลา</label>
                                 <select id="sales-history-date"
-                                    class="w-full px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all text-sm cursor-pointer">
+                                    class="w-full px-4 py-2.5 rounded-xl bg-white border border-slate-300 text-slate-900 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all text-sm cursor-pointer">
                                     <option value="">ทั้งหมด</option>
                                     <option value="today">วันนี้</option>
                                     <option value="week">สัปดาห์นี้</option>
@@ -4840,7 +5164,7 @@
                             <div class="w-full md:w-44 space-y-2" id="sales-history-branch-filter">
                                 <label class="text-sm font-medium text-slate-300">สาขา</label>
                                 <select id="sales-history-branch"
-                                    class="w-full px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all text-sm cursor-pointer">
+                                    class="w-full px-4 py-2.5 rounded-xl bg-white border border-slate-300 text-slate-900 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all text-sm cursor-pointer">
                                     <option value="">ทุกสาขา</option>
                                 </select>
                             </div>
@@ -4862,21 +5186,21 @@
                             <div class="space-y-2" id="custom-start-date-container">
                                 <label class="text-sm font-medium text-slate-300">วันที่เริ่มต้น</label>
                                 <input type="date" id="sales-history-start-date"
-                                    class="w-full px-4 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all text-sm font-mono">
+                                    class="w-full px-4 py-2 rounded-xl bg-white border border-slate-300 text-slate-900 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all text-sm font-mono">
                             </div>
 
                             <!-- Custom End Date -->
                             <div class="space-y-2" id="custom-end-date-container">
                                 <label class="text-sm font-medium text-slate-300">วันที่สิ้นสุด</label>
                                 <input type="date" id="sales-history-end-date"
-                                    class="w-full px-4 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all text-sm font-mono">
+                                    class="w-full px-4 py-2 rounded-xl bg-white border border-slate-300 text-slate-900 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all text-sm font-mono">
                             </div>
 
                             <!-- Employee Filter -->
                             <div class="space-y-2">
                                 <label class="text-sm font-medium text-slate-300">พนักงานขาย</label>
                                 <select id="sales-history-employee"
-                                    class="w-full px-4 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all text-sm cursor-pointer">
+                                    class="w-full px-4 py-2 rounded-xl bg-white border border-slate-300 text-slate-900 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all text-sm cursor-pointer">
                                     <option value="">ทุกคน</option>
                                 </select>
                             </div>
@@ -4885,7 +5209,7 @@
                             <div class="space-y-2">
                                 <label class="text-sm font-medium text-slate-300">วิธีชำระเงิน</label>
                                 <select id="sales-history-payment-type"
-                                    class="w-full px-4 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all text-sm cursor-pointer">
+                                    class="w-full px-4 py-2 rounded-xl bg-white border border-slate-300 text-slate-900 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all text-sm cursor-pointer">
                                     <option value="">ทั้งหมด</option>
                                     <option value="ซื้อสด">ซื้อสด</option>
                                     <option value="จัดไฟแนนซ์">จัดไฟแนนซ์</option>
@@ -4896,7 +5220,7 @@
                             <div class="space-y-2">
                                 <label class="text-sm font-medium text-slate-300">สถานะรายการ</label>
                                 <select id="sales-history-status"
-                                    class="w-full px-4 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all text-sm cursor-pointer">
+                                    class="w-full px-4 py-2 rounded-xl bg-white border border-slate-300 text-slate-900 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all text-sm cursor-pointer">
                                     <option value="">ทั้งหมด</option>
                                     <option value="เสร็จสิ้น">เสร็จสิ้น</option>
                                     <option value="ยกเลิกแล้ว">ยกเลิกแล้ว</option>
@@ -5168,7 +5492,7 @@
                                     </div>
                                     <input type="text" id="movement-search-input"
                                         placeholder="สแกนหรือพิมพ์เลข IMEI / รหัสสินค้าที่นี่..."
-                                        class="w-full bg-slate-900/60 border-2 border-slate-700 rounded-2xl py-4 pl-14 pr-6 text-lg text-white placeholder-slate-500 focus:outline-none focus:border-rose-500/80 focus:ring-4 focus:ring-rose-500/20 transition-all font-mono tracking-wider shadow-inner"
+                                        class="w-full bg-white/60 border-2 border-slate-300 rounded-2xl py-4 pl-14 pr-6 text-lg text-slate-900 placeholder-slate-400 focus:outline-none focus:border-rose-500/80 focus:ring-4 focus:ring-rose-500/20 transition-all font-mono tracking-wider shadow-inner"
                                         required autocomplete="off">
                                 </div>
                                 <button type="submit" id="btn-search-movement"
@@ -5410,7 +5734,7 @@
                                             <label class="text-sm font-medium text-slate-300 mb-2 block">ชื่อสินค้า
                                                 <span class="text-red-400">*</span></label>
                                             <select id="arrival-product-name"
-                                                class="w-full px-4 py-3 rounded-xl bg-slate-900 border border-slate-700 text-white focus:border-green-500 focus:ring-1 focus:ring-green-500 focus:outline-none transition-all">
+                                                class="w-full px-4 py-3 rounded-xl bg-white border border-slate-300 text-slate-900 focus:border-green-500 focus:ring-1 focus:ring-green-500 focus:outline-none transition-all">
                                                 <option value="">-- เลือกชื่อสินค้า --</option>
                                             </select>
                                         </div>
@@ -5420,7 +5744,7 @@
                                                 <label
                                                     class="text-sm font-medium text-slate-300 mb-2 block">ประเภทสินค้า</label>
                                                 <select id="arrival-type-name"
-                                                    class="w-full px-4 py-3 rounded-xl bg-slate-900 border border-slate-700 text-white focus:border-green-500 focus:ring-1 focus:ring-green-500 focus:outline-none transition-all">
+                                                    class="w-full px-4 py-3 rounded-xl bg-white border border-slate-300 text-slate-900 focus:border-green-500 focus:ring-1 focus:ring-green-500 focus:outline-none transition-all">
                                                     <option value="">-- เลือกประเภทสินค้า --</option>
                                                 </select>
                                             </div>
@@ -5428,14 +5752,14 @@
                                                 <label
                                                     class="text-sm font-medium text-slate-300 mb-2 block">สภาพ</label>
                                                 <select id="arrival-condition-name"
-                                                    class="w-full px-4 py-3 rounded-xl bg-slate-900 border border-slate-700 text-white focus:border-green-500 focus:ring-1 focus:ring-green-500 focus:outline-none transition-all">
+                                                    class="w-full px-4 py-3 rounded-xl bg-white border border-slate-300 text-slate-900 focus:border-green-500 focus:ring-1 focus:ring-green-500 focus:outline-none transition-all">
                                                     <option value="">-- เลือกสภาพ --</option>
                                                 </select>
                                             </div>
                                             <div>
                                                 <label class="text-sm font-medium text-slate-300 mb-2 block">สี</label>
                                                 <select id="arrival-color-name"
-                                                    class="w-full px-4 py-3 rounded-xl bg-slate-900 border border-slate-700 text-white focus:border-green-500 focus:ring-1 focus:ring-green-500 focus:outline-none transition-all">
+                                                    class="w-full px-4 py-3 rounded-xl bg-white border border-slate-300 text-slate-900 focus:border-green-500 focus:ring-1 focus:ring-green-500 focus:outline-none transition-all">
                                                     <option value="">-- เลือกสี --</option>
                                                 </select>
                                             </div>
@@ -5443,7 +5767,7 @@
                                                 <label
                                                     class="text-sm font-medium text-slate-300 mb-2 block">ความจุ</label>
                                                 <select id="arrival-capacity-name"
-                                                    class="w-full px-4 py-3 rounded-xl bg-slate-900 border border-slate-700 text-white focus:border-green-500 focus:ring-1 focus:ring-green-500 focus:outline-none transition-all">
+                                                    class="w-full px-4 py-3 rounded-xl bg-white border border-slate-300 text-slate-900 focus:border-green-500 focus:ring-1 focus:ring-green-500 focus:outline-none transition-all">
                                                     <option value="">-- เลือกความจุ --</option>
                                                 </select>
                                             </div>
@@ -5454,7 +5778,7 @@
                                                 <label class="text-sm font-medium text-slate-300 mb-2 block">Supplier /
                                                     แหล่งที่มา</label>
                                                 <select id="arrival-supplier-name"
-                                                    class="w-full px-4 py-3 rounded-xl bg-slate-900 border border-slate-700 text-white focus:border-green-500 focus:ring-1 focus:ring-green-500 focus:outline-none transition-all">
+                                                    class="w-full px-4 py-3 rounded-xl bg-white border border-slate-300 text-slate-900 focus:border-green-500 focus:ring-1 focus:ring-green-500 focus:outline-none transition-all">
                                                     <option value="">-- เลือก Supplier --</option>
                                                 </select>
                                             </div>
@@ -5462,7 +5786,7 @@
                                                 <label
                                                     class="text-sm font-medium text-slate-300 mb-2 block">หน่วยนับ</label>
                                                 <select id="arrival-unit-name"
-                                                    class="w-full px-4 py-3 rounded-xl bg-slate-900 border border-slate-700 text-white focus:border-green-500 focus:ring-1 focus:ring-green-500 focus:outline-none transition-all">
+                                                    class="w-full px-4 py-3 rounded-xl bg-white border border-slate-300 text-slate-900 focus:border-green-500 focus:ring-1 focus:ring-green-500 focus:outline-none transition-all">
                                                     <option value="">-- เลือกหน่วยนับ --</option>
                                                 </select>
                                             </div>
@@ -5477,7 +5801,7 @@
                                             <div class="relative">
                                                 <textarea id="arrival-imeis" rows="5"
                                                     placeholder="สแกนบาร์โค้ด IMEI ทีละเครื่อง&#10;350011234567890&#10;350011234567891"
-                                                    class="w-full px-4 py-3 rounded-xl bg-slate-900 border border-slate-700 text-white focus:border-green-500 focus:ring-1 focus:ring-green-500 focus:outline-none transition-all placeholder-slate-600 font-mono text-sm resize-none"></textarea>
+                                                    class="w-full px-4 py-3 rounded-xl bg-white border border-slate-300 text-slate-900 focus:border-green-500 focus:ring-1 focus:ring-green-500 focus:outline-none transition-all placeholder-slate-400 font-mono text-sm resize-none"></textarea>
                                                 <span id="arrival-imei-count"
                                                     class="absolute bottom-3 right-4 text-xs text-slate-500 font-mono">0
                                                     IMEI</span>
@@ -5489,7 +5813,7 @@
                                                 class="text-sm font-medium text-slate-300 mb-2 block">หมายเหตุ</label>
                                             <input type="text" id="arrival-notes"
                                                 placeholder="รายละเอียดเพิ่มเติม (ถ้ามี)"
-                                                class="w-full px-4 py-3 rounded-xl bg-slate-900 border border-slate-700 text-white focus:border-green-500 focus:ring-1 focus:ring-green-500 focus:outline-none transition-all placeholder-slate-600">
+                                                class="w-full px-4 py-3 rounded-xl bg-white border border-slate-300 text-slate-900 focus:border-green-500 focus:ring-1 focus:ring-green-500 focus:outline-none transition-all placeholder-slate-400">
                                         </div>
 
                                         <button id="btn-submit-arrival"
@@ -5539,7 +5863,7 @@
                                 <i class="fa-solid fa-arrows-rotate"></i>
                             </button>
                             <select id="approve-import-filter-branch"
-                                class="px-4 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-slate-300 focus:border-violet-500 focus:outline-none text-sm">
+                                class="px-4 py-2.5 rounded-xl bg-white border border-slate-300 text-slate-900 focus:border-violet-500 focus:outline-none text-sm">
                                 <option value="">ทุกสาขา</option>
                             </select>
                         </div>
@@ -5742,7 +6066,7 @@
                                 </div>
                                 <input id="member-search-input" type="text"
                                     placeholder="ค้นหาชื่อ, เลขบัตร, เบอร์โทร..."
-                                    class="bg-slate-900 border border-slate-700 text-sm rounded-lg pl-10 pr-4 py-2 w-64 text-white focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition-all placeholder-slate-500">
+                                    class="bg-white border border-slate-300 text-sm rounded-lg pl-10 pr-4 py-2 w-64 text-slate-900 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition-all placeholder-slate-400">
                             </div>
                         </div>
                         <div class="overflow-x-auto">
@@ -5786,7 +6110,7 @@
                                 </div>
                                 <input id="warranty-search-input" type="text"
                                     placeholder="ระบุ IMEI หรือ ชื่อลูกค้า/เบอร์โทร..."
-                                    class="bg-slate-900 border-2 border-slate-700 text-lg rounded-2xl pl-16 pr-32 py-5 w-full text-white focus:outline-none focus:border-cyan-500 focus:ring-4 focus:ring-cyan-500/20 transition-all placeholder-slate-500 shadow-inner">
+                                    class="bg-white border-2 border-slate-300 text-lg rounded-2xl pl-16 pr-32 py-5 w-full text-slate-900 focus:outline-none focus:border-cyan-500 focus:ring-4 focus:ring-cyan-500/20 transition-all placeholder-slate-400 shadow-inner">
                                 <button type="submit"
                                     class="absolute right-3 top-3 bottom-3 px-6 bg-cyan-500 hover:bg-cyan-400 text-slate-900 font-bold rounded-xl shadow-lg shadow-cyan-500/20 transition-all flex items-center gap-2 glow-button">
                                     <i class="fa-solid fa-search"></i> ค้นหา
@@ -5840,7 +6164,7 @@
                                         <label class="text-xs font-semibold text-slate-400 mb-1.5 block">ผู้จัดจำหน่าย
                                             (Supplier) <span class="text-red-400">*</span></label>
                                         <select id="po-supplier" required
-                                            class="w-full px-4 py-3 rounded-lg bg-[#2a2a2a] border border-gray-700 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all text-sm">
+                                            class="w-full px-4 py-3 rounded-lg bg-[#2a2a2a] border border-gray-700 text-slate-900 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all text-sm">
                                             <option value="" disabled selected>-- เลือกผู้จัดจำหน่าย --</option>
                                         </select>
                                     </div>
@@ -5848,7 +6172,7 @@
                                         <label class="text-xs font-semibold text-slate-400 mb-1.5 block">สาขาปลายทาง
                                             <span class="text-red-400">*</span></label>
                                         <select id="po-branch" required
-                                            class="w-full px-4 py-3 rounded-lg bg-[#2a2a2a] border border-gray-700 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all text-sm">
+                                            class="w-full px-4 py-3 rounded-lg bg-[#2a2a2a] border border-gray-700 text-slate-900 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all text-sm">
                                             <option value="">-- เลือกสาขา --</option>
                                         </select>
                                     </div>
@@ -5908,7 +6232,7 @@
                                 </span>
                                 <input type="text" id="search-po-history"
                                     placeholder="ค้นหาด้วยเลขที่ PO หรือผู้จำหน่าย..."
-                                    class="w-full pl-10 pr-4 py-2.5 bg-[#2a2a2a] border border-gray-700 text-white rounded-lg focus:outline-none focus:border-cyan-500 text-sm">
+                                    class="w-full pl-10 pr-4 py-2.5 bg-[#2a2a2a] border border-gray-700 text-slate-900 rounded-lg focus:outline-none focus:border-cyan-500 text-sm">
                             </div>
                             <div class="flex items-center gap-3">
                                 <button type="button" id="btn-refresh-po-history"
@@ -5961,10 +6285,10 @@
                                 class="flex items-center gap-2 bg-[#1a1a1a] border border-gray-800 rounded-xl px-3 py-1.5 text-xs text-slate-355">
                                 <span class="font-medium text-slate-400">เริ่ม:</span>
                                 <input type="date" id="accounting-start-date"
-                                    class="bg-transparent text-white focus:outline-none border-none [color-scheme:dark]">
+                                    class="bg-transparent text-slate-900 focus:outline-none border-none [color-scheme:dark]">
                                 <span class="font-medium text-slate-400">ถึง:</span>
                                 <input type="date" id="accounting-end-date"
-                                    class="bg-transparent text-white focus:outline-none border-none [color-scheme:dark]">
+                                    class="bg-transparent text-slate-900 focus:outline-none border-none [color-scheme:dark]">
                             </div>
                             <button id="btn-refresh-accounting"
                                 class="px-4 py-2.5 bg-[#2a2a2a] border border-gray-700 hover:border-gray-600 text-white rounded-xl hover:bg-slate-800 transition-colors flex items-center gap-1.5 text-sm font-medium">
@@ -6059,7 +6383,7 @@
                                 <label class="text-sm font-semibold text-slate-400"><i
                                         class="fa-solid fa-filter text-amber-500 text-xs mr-1"></i>กรองคู่ค้า/Supplier:</label>
                                 <select id="filter-ap-supplier"
-                                    class="px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-700 text-white text-xs font-semibold focus:outline-none focus:border-amber-500 transition-colors">
+                                    class="px-3 py-1.5 rounded-xl bg-white border border-slate-300 text-slate-900 text-xs font-semibold focus:outline-none focus:border-amber-500 transition-colors">
                                     <option value="">ทั้งหมด</option>
                                 </select>
                             </div>
@@ -6217,7 +6541,7 @@
                                 <i class="fa-solid fa-magnifying-glass"></i>
                             </span>
                             <input type="text" id="search-receive-po"
-                                class="w-full pl-10 pr-4 py-2.5 bg-slate-900 border border-slate-800 hover:border-slate-700 focus:border-indigo-500/60 focus:ring-1 focus:ring-indigo-500/20 focus:outline-none text-sm text-white rounded-xl placeholder-slate-500 transition-all font-medium"
+                                class="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-300 hover:border-slate-300 focus:border-indigo-500/60 focus:ring-1 focus:ring-indigo-500/20 focus:outline-none text-sm text-slate-900 rounded-xl placeholder-slate-400 transition-all font-medium"
                                 placeholder="ค้นหาเลขที่ PO, ชื่อผู้จัดจำหน่าย...">
                         </div>
                     </div>
@@ -6274,6 +6598,13 @@
                 <i class="fa-solid fa-chart-line text-lg"></i>
                 <span class="text-[10px] font-bold">สรุปยอด</span>
             </a>
+            <!-- [NEW] ตรวจนับสต็อก Mobile Nav -->
+            <a href="#" id="mobile-nav-stock-audit"
+                class="flex flex-col items-center justify-center text-slate-400 hover:text-white transition-all py-1 px-3 rounded-xl gap-0.5"
+                style="display: none;">
+                <i class="fa-solid fa-qrcode text-lg"></i>
+                <span class="text-[10px] font-bold">ตรวจสต็อก</span>
+            </a>
         </nav>
     </div>
 
@@ -6323,21 +6654,21 @@
                                     <label class="text-xs font-medium text-slate-400 mb-1 block">เลขบัตรประชาชน <span
                                             class="text-red-400">*</span></label>
                                     <input type="text" id="member-citizen-id" maxlength="13"
-                                        class="w-full px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all font-mono tracking-widest"
+                                        class="w-full px-4 py-2.5 rounded-xl bg-white border border-slate-300 text-slate-900 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all font-mono tracking-widest"
                                         placeholder="X-XXXX-XXXXX-XX-X">
                                 </div>
                                 <div>
                                     <label class="text-xs font-medium text-slate-400 mb-1 block">คำนำหน้า <span
                                             class="text-red-400">*</span></label>
                                     <input type="text" id="member-prefix"
-                                        class="w-full px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all"
+                                        class="w-full px-4 py-2.5 rounded-xl bg-white border border-slate-300 text-slate-900 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all"
                                         placeholder="นาย / นาง / นางสาว">
                                 </div>
                                 <div>
                                     <label class="text-xs font-medium text-slate-400 mb-1 block">เพศ <span
                                             class="text-red-400">*</span></label>
                                     <select id="member-gender"
-                                        class="w-full px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all appearance-none">
+                                        class="w-full px-4 py-2.5 rounded-xl bg-white border border-slate-300 text-slate-900 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all appearance-none">
                                         <option value="">-- เลือก --</option>
                                         <option value="ชาย">ชาย</option>
                                         <option value="หญิง">หญิง</option>
@@ -6347,49 +6678,49 @@
                                     <label class="text-xs font-medium text-slate-400 mb-1 block">ชื่อ (ไทย) <span
                                             class="text-red-400">*</span></label>
                                     <input type="text" id="member-first-name" required
-                                        class="w-full px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all"
+                                        class="w-full px-4 py-2.5 rounded-xl bg-white border border-slate-300 text-slate-900 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all"
                                         placeholder="ชื่อ">
                                 </div>
                                 <div>
                                     <label class="text-xs font-medium text-slate-400 mb-1 block">นามสกุล (ไทย) <span
                                             class="text-red-400">*</span></label>
                                     <input type="text" id="member-last-name" required
-                                        class="w-full px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all"
+                                        class="w-full px-4 py-2.5 rounded-xl bg-white border border-slate-300 text-slate-900 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all"
                                         placeholder="นามสกุล">
                                 </div>
                                 <div>
                                     <label class="text-xs font-medium text-slate-400 mb-1 block">ชื่อ (English) <span
                                             class="text-red-400">*</span></label>
                                     <input type="text" id="member-first-name-en"
-                                        class="w-full px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all"
+                                        class="w-full px-4 py-2.5 rounded-xl bg-white border border-slate-300 text-slate-900 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all"
                                         placeholder="First Name">
                                 </div>
                                 <div>
                                     <label class="text-xs font-medium text-slate-400 mb-1 block">นามสกุล (English) <span
                                             class="text-red-400">*</span></label>
                                     <input type="text" id="member-last-name-en"
-                                        class="w-full px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all"
+                                        class="w-full px-4 py-2.5 rounded-xl bg-white border border-slate-300 text-slate-900 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all"
                                         placeholder="Last Name">
                                 </div>
                                 <div>
                                     <label class="text-xs font-medium text-slate-400 mb-1 block">วันเกิด <span
                                             class="text-red-400">*</span></label>
                                     <input type="text" id="member-birthdate"
-                                        class="w-full px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all"
+                                        class="w-full px-4 py-2.5 rounded-xl bg-white border border-slate-300 text-slate-900 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all"
                                         placeholder="DD/MM/YYYY">
                                 </div>
                                 <div>
                                     <label class="text-xs font-medium text-slate-400 mb-1 block">วันหมดอายุบัตร <span
                                             class="text-red-400">*</span></label>
                                     <input type="text" id="member-card-expiry"
-                                        class="w-full px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all"
+                                        class="w-full px-4 py-2.5 rounded-xl bg-white border border-slate-300 text-slate-900 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all"
                                         placeholder="DD/MM/YYYY">
                                 </div>
                                 <div class="sm:col-span-2">
                                     <label class="text-xs font-medium text-slate-400 mb-1 block">ที่อยู่ <span
                                             class="text-red-400">*</span></label>
                                     <textarea id="member-address" rows="2"
-                                        class="w-full px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all resize-none"
+                                        class="w-full px-4 py-2.5 rounded-xl bg-white border border-slate-300 text-slate-900 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all resize-none"
                                         placeholder="ที่อยู่ตามบัตรประชาชน"></textarea>
                                 </div>
                             </div>
@@ -6406,42 +6737,42 @@
                                     <label class="text-xs font-medium text-slate-400 mb-1 block">รหัสไปรษณีย์ <span
                                             class="text-red-400">*</span></label>
                                     <input type="text" id="member-zipcode" maxlength="5"
-                                        class="w-full px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all"
+                                        class="w-full px-4 py-2.5 rounded-xl bg-white border border-slate-300 text-slate-900 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all"
                                         placeholder="รหัสไปรษณีย์">
                                 </div>
                                 <div>
                                     <label class="text-xs font-medium text-slate-400 mb-1 block">เบอร์โทรศัพท์ <span
                                             class="text-red-400">*</span></label>
                                     <input type="text" id="member-phone" maxlength="12"
-                                        class="w-full px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all"
+                                        class="w-full px-4 py-2.5 rounded-xl bg-white border border-slate-300 text-slate-900 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all"
                                         placeholder="0XX-XXX-XXXX">
                                 </div>
                                 <div>
                                     <label class="text-xs font-medium text-slate-400 mb-1 block">ชื่อ Facebook <span
                                             class="text-red-400">*</span></label>
                                     <input type="text" id="member-facebook-name"
-                                        class="w-full px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all"
+                                        class="w-full px-4 py-2.5 rounded-xl bg-white border border-slate-300 text-slate-900 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all"
                                         placeholder="ชื่อ Facebook">
                                 </div>
                                 <div>
                                     <label class="text-xs font-medium text-slate-400 mb-1 block">ลิงก์ Facebook <span
                                             class="text-red-400">*</span></label>
                                     <input type="text" id="member-facebook-link"
-                                        class="w-full px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all"
+                                        class="w-full px-4 py-2.5 rounded-xl bg-white border border-slate-300 text-slate-900 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all"
                                         placeholder="https://facebook.com/...">
                                 </div>
                                 <div>
                                     <label class="text-xs font-medium text-slate-400 mb-1 block">LINE ID <span
                                             class="text-red-400">*</span></label>
                                     <input type="text" id="member-line-id"
-                                        class="w-full px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all"
+                                        class="w-full px-4 py-2.5 rounded-xl bg-white border border-slate-300 text-slate-900 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all"
                                         placeholder="@lineid">
                                 </div>
                                 <div>
                                     <label class="text-xs font-medium text-slate-400 mb-1 block">แหล่งที่รู้จัก <span
                                             class="text-red-400">*</span></label>
                                     <select id="member-referral"
-                                        class="w-full px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all appearance-none">
+                                        class="w-full px-4 py-2.5 rounded-xl bg-white border border-slate-300 text-slate-900 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all appearance-none">
                                         <option value="">-- เลือก --</option>
                                         <option value="TikTok">TikTok</option>
                                         <option value="FaceBook">FaceBook</option>
@@ -6536,7 +6867,7 @@
                     <div class="space-y-2">
                         <label class="text-sm font-medium text-slate-400">สาขาปลายทาง</label>
                         <select id="transfer-to-branch"
-                            class="w-full px-4 py-3 rounded-xl bg-slate-900 border border-slate-600 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all">
+                            class="w-full px-4 py-3 rounded-xl bg-white border border-slate-300 text-slate-900 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all">
                             <option value="" disabled selected>-- เลือกสาขาปลายทาง --</option>
                         </select>
                     </div>
@@ -6544,7 +6875,7 @@
                         <label class="text-sm font-medium text-slate-400">สแกนบาร์โค้ด / IMEI</label>
                         <input type="text" id="transfer-scan-input" autocomplete="off"
                             placeholder="สแกนรหัสสินค้า หรือสแกน IMEI แล้วกด Enter..."
-                            class="w-full px-4 py-3 rounded-xl bg-slate-900 border-2 border-slate-600 text-white focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/30 transition-all placeholder-slate-500 font-medium" />
+                            class="w-full px-4 py-3 rounded-xl bg-white border-2 border-slate-300 text-slate-900 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/30 transition-all placeholder-slate-400 font-medium" />
                     </div>
                 </div>
 
@@ -6646,7 +6977,7 @@
                         <label class="text-sm font-medium text-slate-300">ชื่อสินค้า <span
                                 class="text-red-400">*</span></label>
                         <select id="product-name" required
-                            class="w-full px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all appearance-none">
+                            class="w-full px-4 py-2.5 rounded-xl bg-white border border-slate-300 text-slate-900 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all appearance-none">
                             <option value="" disabled selected>เลือกชื่อสินค้า</option>
                         </select>
                     </div>
@@ -6654,7 +6985,7 @@
                         <label class="text-sm font-medium text-slate-300">หมวดหมู่ <span
                                 class="text-red-400">*</span></label>
                         <select id="product-category" required
-                            class="w-full px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all appearance-none">
+                            class="w-full px-4 py-2.5 rounded-xl bg-white border border-slate-300 text-slate-900 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all appearance-none">
                             <option value="" disabled selected>เลือกหมวดหมู่</option>
                         </select>
                     </div>
@@ -6670,7 +7001,7 @@
                                 <i class="fa-solid fa-barcode text-slate-500"></i>
                             </div>
                             <input type="text" id="product-code" required
-                                class="w-full px-4 pl-10 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all"
+                                class="w-full px-4 pl-10 py-2.5 rounded-xl bg-white border border-slate-300 text-slate-900 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all"
                                 placeholder="สแกนบาร์โค้ด หรือ ระบุรหัส">
                         </div>
                     </div>
@@ -6682,7 +7013,7 @@
                                 <i class="fa-solid fa-truck-field text-slate-500"></i>
                             </div>
                             <select id="product-supplier" required
-                                class="w-full px-4 py-2.5 pl-10 rounded-xl bg-slate-900 border border-slate-700 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all appearance-none">
+                                class="w-full px-4 py-2.5 pl-10 rounded-xl bg-white border border-slate-300 text-slate-900 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all appearance-none">
                                 <option value="" disabled selected>เลือกผู้จัดจำหน่าย</option>
                             </select>
                         </div>
@@ -6698,7 +7029,7 @@
                             <i class="fa-solid fa-store text-slate-500"></i>
                         </div>
                         <select id="product-branch" required
-                            class="w-full px-4 py-2.5 pl-10 rounded-xl bg-slate-900 border border-slate-700 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all appearance-none">
+                            class="w-full px-4 py-2.5 pl-10 rounded-xl bg-white border border-slate-300 text-slate-900 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all appearance-none">
                             <option value="" disabled selected>เลือกสาขาที่จัดเก็บ</option>
                             <!-- Branches loaded dynamically -->
                         </select>
@@ -6709,7 +7040,7 @@
                     <div class="space-y-2">
                         <label class="text-sm font-medium text-slate-300">สี <span class="text-red-400">*</span></label>
                         <select id="product-color" required
-                            class="w-full px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all appearance-none">
+                            class="w-full px-4 py-2.5 rounded-xl bg-white border border-slate-300 text-slate-900 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all appearance-none">
                             <option value="" disabled selected>เลือกสี</option>
                         </select>
                     </div>
@@ -6721,7 +7052,7 @@
                         <label class="text-sm font-medium text-slate-300">ความจุ <span
                                 class="text-red-400">*</span></label>
                         <select id="product-capacity" required
-                            class="w-full px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all appearance-none">
+                            class="w-full px-4 py-2.5 rounded-xl bg-white border border-slate-300 text-slate-900 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all appearance-none">
                             <option value="" disabled selected>เลือกความจุ</option>
                         </select>
                     </div>
@@ -6729,7 +7060,7 @@
                         <label class="text-sm font-medium text-slate-300">สภาพเครื่อง <span
                                 class="text-red-400">*</span></label>
                         <select id="product-condition" required
-                            class="w-full px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all appearance-none">
+                            class="w-full px-4 py-2.5 rounded-xl bg-white border border-slate-300 text-slate-900 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all appearance-none">
                             <option value="" disabled selected>เลือกสภาพเครื่อง</option>
                         </select>
                     </div>
@@ -6741,7 +7072,7 @@
                         <label class="text-sm font-medium text-slate-300">หน่วยนับ <span
                                 class="text-red-400">*</span></label>
                         <select id="product-unit" required
-                            class="w-full px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all appearance-none">
+                            class="w-full px-4 py-2.5 rounded-xl bg-white border border-slate-300 text-slate-900 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all appearance-none">
                             <option value="" disabled selected>เลือกหน่วยนับ</option>
                         </select>
                     </div>
@@ -6751,7 +7082,7 @@
                         <label class="text-sm font-medium text-slate-300">จำนวน <span
                                 class="text-red-400">*</span></label>
                         <input type="number" id="product-quantity" min="1" value="1" required
-                            class="w-full px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all">
+                            class="w-full px-4 py-2.5 rounded-xl bg-white border border-slate-300 text-slate-900 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all">
                     </div>
                 </div>
 
@@ -6759,13 +7090,13 @@
                     <label class="text-sm font-medium text-slate-300">ราคาต้นทุน (฿) <span
                             class="text-red-400">*</span></label>
                     <input type="number" id="cost-price" required step="any"
-                        class="w-full px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all">
+                        class="w-full px-4 py-2.5 rounded-xl bg-white border border-slate-300 text-slate-900 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all">
                 </div>
                 <div class="space-y-2">
                     <label class="text-sm font-medium text-slate-300">ราคาขาย (฿) <span
                             class="text-red-400">*</span></label>
                     <input type="number" id="selling-price" required step="any"
-                        class="w-full px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all">
+                        class="w-full px-4 py-2.5 rounded-xl bg-white border border-slate-300 text-slate-900 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all">
                 </div>
 
                 <!-- Submit Button -->
@@ -6801,7 +7132,7 @@
                 <div>
                     <label class="text-xs font-semibold text-slate-400 block mb-1">ประเภทสินค้า</label>
                     <select id="stock-filter-prod-type"
-                        class="w-full bg-slate-900 border border-slate-700 text-sm rounded-lg px-3 py-2 text-white focus:outline-none focus:border-cyan-500">
+                        class="w-full bg-white border border-slate-300 text-sm rounded-lg px-3 py-2 text-slate-900 focus:outline-none focus:border-cyan-500">
                         <option value="">ทุกประเภท</option>
                     </select>
                 </div>
@@ -6809,7 +7140,7 @@
                 <div>
                     <label class="text-xs font-semibold text-slate-400 block mb-1">ชื่อสินค้า</label>
                     <select id="stock-filter-product-name"
-                        class="w-full bg-slate-900 border border-slate-700 text-sm rounded-lg px-3 py-2 text-white focus:outline-none focus:border-cyan-500">
+                        class="w-full bg-white border border-slate-300 text-sm rounded-lg px-3 py-2 text-slate-900 focus:outline-none focus:border-cyan-500">
                         <option value="">ทุกชื่อสินค้า</option>
                     </select>
                 </div>
@@ -6818,14 +7149,14 @@
                     <div>
                         <label class="text-xs font-semibold text-slate-400 block mb-1">สี</label>
                         <select id="stock-filter-color"
-                            class="w-full bg-slate-900 border border-slate-700 text-sm rounded-lg px-3 py-2 text-white focus:outline-none focus:border-cyan-500">
+                            class="w-full bg-white border border-slate-300 text-sm rounded-lg px-3 py-2 text-slate-900 focus:outline-none focus:border-cyan-500">
                             <option value="">ทุกสี</option>
                         </select>
                     </div>
                     <div>
                         <label class="text-xs font-semibold text-slate-400 block mb-1">ความจุ</label>
                         <select id="stock-filter-capacity"
-                            class="w-full bg-slate-900 border border-slate-700 text-sm rounded-lg px-3 py-2 text-white focus:outline-none focus:border-cyan-500">
+                            class="w-full bg-white border border-slate-300 text-sm rounded-lg px-3 py-2 text-slate-900 focus:outline-none focus:border-cyan-500">
                             <option value="">ทุกความจุ</option>
                         </select>
                     </div>
@@ -6835,14 +7166,14 @@
                     <div>
                         <label class="text-xs font-semibold text-slate-400 block mb-1">สภาพสินค้า</label>
                         <select id="stock-filter-condition"
-                            class="w-full bg-slate-900 border border-slate-700 text-sm rounded-lg px-3 py-2 text-white focus:outline-none focus:border-cyan-500">
+                            class="w-full bg-white border border-slate-300 text-sm rounded-lg px-3 py-2 text-slate-900 focus:outline-none focus:border-cyan-500">
                             <option value="">ทุกสภาพ</option>
                         </select>
                     </div>
                     <div>
                         <label class="text-xs font-semibold text-slate-400 block mb-1">หน่วยนับ</label>
                         <select id="stock-filter-unit"
-                            class="w-full bg-slate-900 border border-slate-700 text-sm rounded-lg px-3 py-2 text-white focus:outline-none focus:border-cyan-500">
+                            class="w-full bg-white border border-slate-300 text-sm rounded-lg px-3 py-2 text-slate-900 focus:outline-none focus:border-cyan-500">
                             <option value="">ทุกหน่วยนับ</option>
                         </select>
                     </div>
@@ -6853,9 +7184,9 @@
                     <span class="text-xs font-bold text-slate-300 block mb-2">ช่วงราคาขาย (บาท)</span>
                     <div class="grid grid-cols-2 gap-2">
                         <input id="stock-filter-price-min" type="number" inputmode="numeric" placeholder="ต่ำสุด"
-                            class="w-full bg-slate-900 border border-slate-700 text-sm rounded-lg px-3 py-2 text-white focus:outline-none focus:border-cyan-500 placeholder-slate-500" />
+                            class="w-full bg-white border border-slate-300 text-sm rounded-lg px-3 py-2 text-slate-900 focus:outline-none focus:border-cyan-500 placeholder-slate-400" />
                         <input id="stock-filter-price-max" type="number" inputmode="numeric" placeholder="สูงสุด"
-                            class="w-full bg-slate-900 border border-slate-700 text-sm rounded-lg px-3 py-2 text-white focus:outline-none focus:border-cyan-500 placeholder-slate-500" />
+                            class="w-full bg-white border border-slate-300 text-sm rounded-lg px-3 py-2 text-slate-900 focus:outline-none focus:border-cyan-500 placeholder-slate-400" />
                     </div>
                 </div>
 
@@ -6863,9 +7194,9 @@
                     <span class="text-xs font-bold text-slate-300 block mb-2">ช่วงราคาต้นทุน (บาท)</span>
                     <div class="grid grid-cols-2 gap-2">
                         <input id="stock-filter-cost-min" type="number" inputmode="numeric" placeholder="ต่ำสุด"
-                            class="w-full bg-slate-900 border border-slate-700 text-sm rounded-lg px-3 py-2 text-white focus:outline-none focus:border-cyan-500 placeholder-slate-500" />
+                            class="w-full bg-white border border-slate-300 text-sm rounded-lg px-3 py-2 text-slate-900 focus:outline-none focus:border-cyan-500 placeholder-slate-400" />
                         <input id="stock-filter-cost-max" type="number" inputmode="numeric" placeholder="สูงสุด"
-                            class="w-full bg-slate-900 border border-slate-700 text-sm rounded-lg px-3 py-2 text-white focus:outline-none focus:border-cyan-500 placeholder-slate-500" />
+                            class="w-full bg-white border border-slate-300 text-sm rounded-lg px-3 py-2 text-slate-900 focus:outline-none focus:border-cyan-500 placeholder-slate-400" />
                     </div>
                 </div>
 
@@ -6874,9 +7205,9 @@
                     <span class="text-xs font-bold text-slate-300 block mb-2">จำนวนคงเหลือในคลัง</span>
                     <div class="grid grid-cols-2 gap-2">
                         <input id="stock-filter-qty-min" type="number" inputmode="numeric" placeholder="ต่ำสุด"
-                            class="w-full bg-slate-900 border border-slate-700 text-sm rounded-lg px-3 py-2 text-white focus:outline-none focus:border-cyan-500 placeholder-slate-500" />
+                            class="w-full bg-white border border-slate-300 text-sm rounded-lg px-3 py-2 text-slate-900 focus:outline-none focus:border-cyan-500 placeholder-slate-400" />
                         <input id="stock-filter-qty-max" type="number" inputmode="numeric" placeholder="สูงสุด"
-                            class="w-full bg-slate-900 border border-slate-700 text-sm rounded-lg px-3 py-2 text-white focus:outline-none focus:border-cyan-500 placeholder-slate-500" />
+                            class="w-full bg-white border border-slate-300 text-sm rounded-lg px-3 py-2 text-slate-900 focus:outline-none focus:border-cyan-500 placeholder-slate-400" />
                     </div>
                 </div>
 
@@ -6884,7 +7215,7 @@
                 <div class="border-t border-slate-700/60 pt-3">
                     <label class="text-xs font-semibold text-slate-400 block mb-1">การเรียงลำดับ</label>
                     <select id="stock-filter-sort"
-                        class="w-full bg-slate-900 border border-slate-700 text-sm rounded-lg px-3 py-2 text-white focus:outline-none focus:border-cyan-500">
+                        class="w-full bg-white border border-slate-300 text-sm rounded-lg px-3 py-2 text-slate-900 focus:outline-none focus:border-cyan-500">
                         <option value="newest">อัปเดตล่าสุด / วันที่นำเข้า</option>
                         <option value="name_asc">ชื่อสินค้า (ก-ฮ)</option>
                         <option value="price_asc">ราคาขาย: ต่ำ -> สูง</option>
@@ -7504,7 +7835,7 @@
                 class="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 border transition-all duration-300">
                 <i id="confirm-icon" class="text-2xl transition-transform duration-300 hover:scale-110"></i>
             </div>
-            <h4 id="confirm-title" class="text-xl font-bold text-white mb-2 tracking-tight">ยืนยันการทำรายการ</h4>
+            <h4 id="confirm-title" class="text-xl font-bold mb-2 tracking-tight">ยืนยันการทำรายการ</h4>
             <p id="confirm-message" class="text-slate-300 text-sm font-light leading-relaxed mb-6 px-2"></p>
             <div class="flex gap-3">
                 <button id="confirm-cancel-btn"
@@ -7527,7 +7858,7 @@
             <h4 id="prompt-title" class="text-xl font-bold text-black mb-2 tracking-tight">แก้ไขข้อมูล</h4>
             <div class="mb-6">
                 <input type="text" id="prompt-input"
-                    class="w-full px-4 py-3 rounded-xl bg-slate-950 border border-width text-black placeholder-slate-600 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all font-medium text-sm"
+                    class="w-full px-4 py-3 rounded-xl bg-white border border-width text-black placeholder-slate-400 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all font-medium text-sm"
                     placeholder="กรอกข้อมูล...">
             </div>
             <div class="flex gap-3">
@@ -7545,7 +7876,7 @@
         <div
             class="modal-content relative w-[95%] md:w-[600px] max-h-[90vh] overflow-y-auto bg-slate-800 rounded-2xl shadow-2xl border border-slate-700 p-6 md:p-8 transform scale-95 transition-transform duration-300">
             <div class="flex items-center justify-between mb-6 pb-4 border-b border-slate-700">
-                <h3 id="branch-modal-title" class="text-2xl font-bold text-white flex items-center gap-2">
+                <h3 id="branch-modal-title" class="text-2xl font-bold  flex items-center gap-2">
                     <i class="fa-solid fa-store text-cyan-400"></i> เพิ่มสาขาใหม่
                 </h3>
                 <button id="close-branch-modal-btn" type="button"
@@ -7561,19 +7892,19 @@
                     <label class="text-sm font-medium text-slate-300">ชื่อสาขา <span
                             class="text-red-400">*</span></label>
                     <input type="text" id="branch-name" required placeholder="เช่น สาขาหาดใหญ่"
-                        class="w-full px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all">
+                        class="w-full px-4 py-2.5 rounded-xl bg-white border border-slate-300  focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all">
                 </div>
 
                 <div class="space-y-2">
                     <label class="text-sm font-medium text-slate-300">เบอร์โทรศัพท์ติดต่อ</label>
                     <input type="text" id="branch-phone" placeholder="เช่น 074-XXXXXX, 081-XXXXXXX"
-                        class="w-full px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all font-mono">
+                        class="w-full px-4 py-2.5 rounded-xl bg-white border border-slate-300  focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all font-mono">
                 </div>
 
                 <div class="space-y-2">
                     <label class="text-sm font-medium text-slate-300">ที่อยู่/รายละเอียด</label>
                     <textarea id="branch-address" rows="3" placeholder="ระบุที่อยู่หรือรายละเอียดเพิ่มเติม..."
-                        class="w-full px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all"></textarea>
+                        class="w-full px-4 py-2.5 rounded-xl bg-white border border-slate-300  focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all"></textarea>
                 </div>
 
                 <div class="pt-4 flex justify-end gap-3 border-t border-slate-700 mt-6">
@@ -7594,7 +7925,7 @@
         <div
             class="modal-content relative w-[95%] md:w-[600px] max-h-[90vh] overflow-y-auto bg-slate-800 rounded-2xl shadow-2xl border border-slate-700 p-6 md:p-8 transform scale-95 transition-transform duration-300">
             <div class="flex items-center justify-between mb-6 pb-4 border-b border-slate-700">
-                <h3 id="employee-modal-title" class="text-2xl font-bold text-white flex items-center gap-2">
+                <h3 id="employee-modal-title" class="text-2xl font-bold  flex items-center gap-2">
                     <i class="fa-solid fa-user-plus text-cyan-400"></i> เพิ่มพนักงานใหม่
                 </h3>
                 <button id="close-employee-modal-btn" type="button"
@@ -7614,7 +7945,7 @@
                             <i class="fa-solid fa-user text-slate-500"></i>
                         </div>
                         <input type="text" id="emp-name" required placeholder="เช่น สมชาย ใจดี"
-                            class="w-full px-4 pl-10 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all">
+                            class="w-full px-4 pl-10 py-2.5 rounded-xl bg-white border border-slate-300 text-black placeholder-slate-500 font-medium focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all">
                     </div>
                 </div>
 
@@ -7626,7 +7957,7 @@
                             <i class="fa-solid fa-id-badge text-slate-500"></i>
                         </div>
                         <input type="text" id="emp-id" required placeholder="เช่น EMP-001"
-                            class="w-full px-4 pl-10 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all">
+                            class="w-full px-4 pl-10 py-2.5 rounded-xl bg-white border border-slate-300 text-black placeholder-slate-500 font-medium focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all">
                     </div>
                 </div>
 
@@ -7638,7 +7969,7 @@
                             <i class="fa-solid fa-lock text-slate-500"></i>
                         </div>
                         <input type="password" id="emp-password" placeholder="ตั้งรหัสผ่าน"
-                            class="w-full px-4 pl-10 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all">
+                            class="w-full px-4 pl-10 py-2.5 rounded-xl bg-white border border-slate-300 text-black placeholder-slate-500 font-medium focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all">
                     </div>
                     <p id="emp-password-hint" class="text-xs text-slate-500 hidden">
                         เว้นว่างไว้หากไม่ต้องการเปลี่ยนรหัสผ่าน</p>
@@ -7647,8 +7978,8 @@
                 <div class="space-y-2">
                     <label class="text-sm font-medium text-slate-300">สาขา</label>
                     <select id="emp-branch"
-                        class="w-full px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all appearance-none">
-                        <option value="">-- ไม่ระบุสาขา --</option>
+                        class="w-full px-4 py-2.5 rounded-xl bg-white border border-slate-300 text-black font-medium focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all appearance-none">
+                        <option value="" class="text-slate-500">-- ไม่ระบุสาขา --</option>
                         <!-- Branches loaded dynamically -->
                     </select>
                 </div>
@@ -7657,8 +7988,8 @@
                     <label class="text-sm font-medium text-slate-300">ระดับสิทธิ์ <span
                             class="text-red-400">*</span></label>
                     <select id="emp-role" required
-                        class="w-full px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all appearance-none">
-                        <option value="" disabled selected>เลือกตำแหน่ง</option>
+                        class="w-full px-4 py-2.5 rounded-xl bg-white border border-slate-300 text-black font-medium focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all appearance-none">
+                        <option value="" disabled selected class="text-slate-500">เลือกตำแหน่ง</option>
                         <!-- โหลดจาก /api/roles อัตโนมัติ -->
                     </select>
                 </div>
@@ -7667,7 +7998,7 @@
                     <label class="text-sm font-medium text-slate-300">สถานะบัญชี <span
                             class="text-red-400">*</span></label>
                     <select id="emp-status" required
-                        class="w-full px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all appearance-none">
+                        class="w-full px-4 py-2.5 rounded-xl bg-white border border-slate-300 text-black font-medium focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all appearance-none">
                         <option value="ปกติ">ปกติ (Active)</option>
                         <option value="ระงับ">ระงับ (Suspended)</option>
                     </select>
@@ -7709,7 +8040,7 @@
                     <label class="text-sm font-medium text-slate-300">ชื่อตำแหน่ง <span
                             class="text-red-400">*</span></label>
                     <input type="text" id="role-name" required
-                        class="w-full px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white focus:border-amber-500 focus:ring-1 focus:ring-amber-500 focus:outline-none transition-all"
+                        class="w-full px-4 py-2.5 rounded-xl bg-white border border-slate-300 text-black font-medium focus:border-amber-500 focus:ring-1 focus:ring-amber-500 focus:outline-none transition-all"
                         placeholder="เช่น แอดมิน, ผู้จัดการ, พนักงานขาย">
                 </div>
 
@@ -8146,7 +8477,7 @@
                             </div>
                             <input type="text" id="pos-member-search"
                                 placeholder="ค้นหาสมาชิก (ชื่อ, เบอร์โทร, เลขบัตรประชาชน)..."
-                                class="w-full bg-slate-900 border border-slate-700 text-base rounded-xl pl-11 pr-4 py-3 text-white focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition-all placeholder-slate-600"
+                                class="w-full bg-white border border-slate-300 text-base rounded-xl pl-11 pr-4 py-3 text-slate-900 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition-all placeholder-slate-400"
                                 autocomplete="off">
 
                             <!-- Member Search Results Dropdown -->
@@ -8210,7 +8541,7 @@
                                     <span
                                         class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 font-mono">฿</span>
                                     <input type="number" id="modal-pos-discount"
-                                        class="w-full pl-10 pr-4 py-3 rounded-xl bg-slate-900 border border-slate-600 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all font-mono text-lg"
+                                        class="w-full pl-10 pr-4 py-3 rounded-xl bg-white border border-slate-300 text-slate-900 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all font-mono text-lg"
                                         value="0" min="0" step="1" placeholder="0">
                                 </div>
                             </div>
@@ -8221,7 +8552,7 @@
                                     <i class="fa-solid fa-wallet text-emerald-400 text-xs"></i> วิธีชำระเงิน
                                 </label>
                                 <select id="modal-pos-payment-method"
-                                    class="w-full px-4 py-3 rounded-xl bg-slate-900 border border-slate-600 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all appearance-none font-medium text-base">
+                                    class="w-full px-4 py-3 rounded-xl bg-white border border-slate-300 text-slate-900 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all appearance-none font-medium text-base">
                                     <option value="" disabled selected>-- เลือกช่องทาง --</option>
                                     <option value="ซื้อสด">💰 ซื้อสด</option>
                                     <option value="จัดไฟแนนซ์">🏦 จัดไฟแนนซ์</option>
@@ -8240,7 +8571,7 @@
                                     <span
                                         class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 font-mono">฿</span>
                                     <input type="number" id="modal-cash-amount"
-                                        class="w-full pl-10 pr-4 py-3 rounded-xl bg-slate-900 border border-slate-600 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all font-mono"
+                                        class="w-full pl-10 pr-4 py-3 rounded-xl bg-white border border-slate-300 text-slate-900 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all font-mono"
                                         value="0" min="0" step="1" placeholder="0">
                                 </div>
                             </div>
@@ -8252,7 +8583,7 @@
                                     <span
                                         class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 font-mono">฿</span>
                                     <input type="number" id="modal-transfer-amount"
-                                        class="w-full pl-10 pr-4 py-3 rounded-xl bg-slate-900 border border-slate-600 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all font-mono"
+                                        class="w-full pl-10 pr-4 py-3 rounded-xl bg-white border border-slate-300 text-slate-900 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all font-mono"
                                         value="0" min="0" step="1" placeholder="0">
                                 </div>
                             </div>
@@ -8269,7 +8600,7 @@
                                     <span class="text-red-400">*</span>
                                 </label>
                                 <select id="modal-finance-company"
-                                    class="w-full px-4 py-3 rounded-xl bg-slate-900 border border-slate-600 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all font-medium">
+                                    class="w-full px-4 py-3 rounded-xl bg-white border border-slate-300 text-slate-900 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all font-medium">
                                     <option value="" disabled selected>เลือกบริษัทจัดไฟแนนซ์...</option>
                                 </select>
                             </div>
@@ -8286,7 +8617,7 @@
                                         <span
                                             class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 font-mono">฿</span>
                                         <input type="number" id="modal-finance-down-total"
-                                            class="w-full pl-10 pr-4 py-3 rounded-xl bg-slate-900 border border-slate-600 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all font-mono"
+                                            class="w-full pl-10 pr-4 py-3 rounded-xl bg-white border border-slate-300 text-slate-900 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all font-mono"
                                             value="0" min="0" placeholder="ระบุยอดเงินดาวน์">
                                     </div>
                                 </div>
@@ -8301,7 +8632,7 @@
                                         <span
                                             class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 font-mono">฿</span>
                                         <input type="text" id="modal-finance-financing-amount"
-                                            class="w-full pl-10 pr-4 py-3 rounded-xl bg-slate-900/60 border border-slate-700 text-cyan-400 font-mono font-bold"
+                                            class="w-full pl-10 pr-4 py-3 rounded-xl bg-white/60 border border-slate-300 text-cyan-400 font-mono font-bold"
                                             value="0.00" disabled readonly>
                                     </div>
                                 </div>
@@ -8319,14 +8650,14 @@
                                         <label
                                             class="text-sm font-semibold text-slate-200 block flex items-center gap-2 select-none cursor-pointer">
                                             <input type="checkbox" id="checkbox-contract-fee"
-                                                class="w-4 h-4 rounded border-slate-600 bg-slate-950 text-cyan-500 focus:ring-cyan-500 focus:ring-opacity-25 cursor-pointer">
+                                                class="w-4 h-4 rounded border-slate-300 bg-white text-cyan-500 focus:ring-cyan-500 focus:ring-opacity-25 cursor-pointer">
                                             <span>ค่าใบสัญญา</span>
                                         </label>
                                         <div id="wrapper-contract-fee" class="relative mt-2 hidden animate-fade-in">
                                             <span
                                                 class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-xs font-mono">฿</span>
                                             <input type="number" id="input-contract-fee"
-                                                class="w-full pl-7 pr-3 py-1.5 rounded-lg bg-slate-900 border border-slate-600 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all font-mono text-sm"
+                                                class="w-full pl-7 pr-3 py-1.5 rounded-lg bg-white border border-slate-300 text-slate-900 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all font-mono text-sm"
                                                 value="0" min="0" placeholder="0">
                                         </div>
                                     </div>
@@ -8334,14 +8665,14 @@
                                         <label
                                             class="text-sm font-semibold text-slate-200 block flex items-center gap-2 select-none cursor-pointer">
                                             <input type="checkbox" id="checkbox-icloud-fee"
-                                                class="w-4 h-4 rounded border-slate-600 bg-slate-950 text-cyan-500 focus:ring-cyan-500 focus:ring-opacity-25 cursor-pointer">
+                                                class="w-4 h-4 rounded border-slate-300 bg-white text-cyan-500 focus:ring-cyan-500 focus:ring-opacity-25 cursor-pointer">
                                             <span>ค่าบริการ iCloud</span>
                                         </label>
                                         <div id="wrapper-icloud-fee" class="relative mt-2 hidden animate-fade-in">
                                             <span
                                                 class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-xs font-mono">฿</span>
                                             <input type="number" id="input-icloud-fee"
-                                                class="w-full pl-7 pr-3 py-1.5 rounded-lg bg-slate-900 border border-slate-600 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all font-mono text-sm"
+                                                class="w-full pl-7 pr-3 py-1.5 rounded-lg bg-white border border-slate-300 text-slate-900 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all font-mono text-sm"
                                                 value="0" min="0" placeholder="0">
                                         </div>
                                     </div>
@@ -8367,7 +8698,7 @@
                                             <span
                                                 class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-xs font-mono">฿</span>
                                             <input type="number" id="modal-finance-down-cash"
-                                                class="w-full pl-7 pr-3 py-2 rounded-lg bg-slate-900 border border-slate-600 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all font-mono text-sm"
+                                                class="w-full pl-7 pr-3 py-2 rounded-lg bg-white border border-slate-300 text-slate-900 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all font-mono text-sm"
                                                 value="0" min="0" placeholder="0">
                                         </div>
                                     </div>
@@ -8377,7 +8708,7 @@
                                             <span
                                                 class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-xs font-mono">฿</span>
                                             <input type="number" id="modal-finance-down-transfer"
-                                                class="w-full pl-7 pr-3 py-2 rounded-lg bg-slate-900 border border-slate-600 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all font-mono text-sm"
+                                                class="w-full pl-7 pr-3 py-2 rounded-lg bg-white border border-slate-300 text-slate-900 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all font-mono text-sm"
                                                 value="0" min="0" placeholder="0">
                                         </div>
                                     </div>
@@ -8522,49 +8853,49 @@
                             <label class="text-xs font-medium text-slate-400 mb-1.5 block">หมวดหมู่ <span
                                     class="text-red-400">*</span></label>
                             <select id="approve-type-id"
-                                class="w-full px-3 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white focus:border-violet-500 focus:outline-none text-sm">
+                                class="w-full px-3 py-2.5 rounded-xl bg-white border border-slate-300 text-slate-900 focus:border-violet-500 focus:outline-none text-sm">
                                 <option value="">-- เลือกหมวดหมู่ --</option>
                             </select>
                         </div>
                         <div>
                             <label class="text-xs font-medium text-slate-400 mb-1.5 block">สภาพ</label>
                             <select id="approve-condition-id"
-                                class="w-full px-3 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white focus:border-violet-500 focus:outline-none text-sm">
+                                class="w-full px-3 py-2.5 rounded-xl bg-white border border-slate-300 text-slate-900 focus:border-violet-500 focus:outline-none text-sm">
                                 <option value="">-- เลือกสภาพ --</option>
                             </select>
                         </div>
                         <div>
                             <label class="text-xs font-medium text-slate-400 mb-1.5 block">สี</label>
                             <select id="approve-color-id"
-                                class="w-full px-3 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white focus:border-violet-500 focus:outline-none text-sm">
+                                class="w-full px-3 py-2.5 rounded-xl bg-white border border-slate-300 text-slate-900 focus:border-violet-500 focus:outline-none text-sm">
                                 <option value="">-- เลือกสี --</option>
                             </select>
                         </div>
                         <div>
                             <label class="text-xs font-medium text-slate-400 mb-1.5 block">ความจุ</label>
                             <select id="approve-capacity-id"
-                                class="w-full px-3 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white focus:border-violet-500 focus:outline-none text-sm">
+                                class="w-full px-3 py-2.5 rounded-xl bg-white border border-slate-300 text-slate-900 focus:border-violet-500 focus:outline-none text-sm">
                                 <option value="">-- เลือกความจุ --</option>
                             </select>
                         </div>
                         <div>
                             <label class="text-xs font-medium text-slate-400 mb-1.5 block">Supplier</label>
                             <select id="approve-supplier-id"
-                                class="w-full px-3 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white focus:border-violet-500 focus:outline-none text-sm">
+                                class="w-full px-3 py-2.5 rounded-xl bg-white border border-slate-300 text-slate-900 focus:border-violet-500 focus:outline-none text-sm">
                                 <option value="">-- เลือก Supplier --</option>
                             </select>
                         </div>
                         <div>
                             <label class="text-xs font-medium text-slate-400 mb-1.5 block">หน่วยนับ</label>
                             <select id="approve-unit-id"
-                                class="w-full px-3 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white focus:border-violet-500 focus:outline-none text-sm">
+                                class="w-full px-3 py-2.5 rounded-xl bg-white border border-slate-300 text-slate-900 focus:border-violet-500 focus:outline-none text-sm">
                                 <option value="">-- เลือกหน่วยนับ --</option>
                             </select>
                         </div>
                         <div>
                             <label class="text-xs font-medium text-slate-400 mb-1.5 block">รหัสสินค้า (SKU)</label>
                             <input type="text" id="approve-product-code" placeholder="ถ้ามี SKU เดิม"
-                                class="w-full px-3 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white focus:border-violet-500 focus:outline-none text-sm placeholder-slate-600">
+                                class="w-full px-3 py-2.5 rounded-xl bg-white border border-slate-300 text-slate-900 focus:border-violet-500 focus:outline-none text-sm placeholder-slate-400">
                         </div>
                     </div>
                 </div>
@@ -8583,7 +8914,7 @@
                                 <span
                                     class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm font-bold">฿</span>
                                 <input type="number" id="approve-cost-price" placeholder="0" step="any"
-                                    class="w-full pl-8 pr-4 py-3 rounded-xl bg-slate-900 border border-slate-700 text-white focus:border-amber-500 focus:ring-1 focus:ring-amber-500 focus:outline-none text-sm placeholder-slate-600">
+                                    class="w-full pl-8 pr-4 py-3 rounded-xl bg-white border border-slate-300 text-slate-900 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 focus:outline-none text-sm placeholder-slate-400">
                             </div>
                         </div>
                         <div>
@@ -8593,7 +8924,7 @@
                                 <span
                                     class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm font-bold">฿</span>
                                 <input type="number" id="approve-selling-price" placeholder="0" step="any"
-                                    class="w-full pl-8 pr-4 py-3 rounded-xl bg-slate-900 border border-slate-700 text-white focus:border-amber-500 focus:ring-1 focus:ring-amber-500 focus:outline-none text-sm placeholder-slate-600">
+                                    class="w-full pl-8 pr-4 py-3 rounded-xl bg-white border border-slate-300 text-slate-900 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 focus:outline-none text-sm placeholder-slate-400">
                             </div>
                         </div>
                     </div>
@@ -8638,7 +8969,7 @@
                     <label class="text-xs font-bold text-slate-400 block mb-1.5">หมวดหมู่ค่าใช้จ่าย <span
                             class="text-red-400">*</span></label>
                     <select id="expense-category"
-                        class="w-full bg-[#1a1a1a] border border-gray-700 hover:border-gray-600 focus:border-amber-500 text-sm rounded-xl px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-amber-500/20 transition-all font-sans"
+                        class="w-full bg-[#1a1a1a] border border-gray-700 hover:border-gray-600 focus:border-amber-500 text-sm rounded-xl px-4 py-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500/20 transition-all font-sans"
                         required>
                         <option value="" disabled selected>-- เลือกหมวดหมู่ --</option>
                         <option value="ค่าเช่า">ค่าเช่า</option>
@@ -8652,7 +8983,7 @@
                             class="text-red-400">*</span></label>
                     <input type="number" id="expense-amount" min="0.01" step="0.01"
                         placeholder="ระบุจำนวนเงินที่จ่ายจริง"
-                        class="w-full bg-[#1a1a1a] border border-gray-700 hover:border-gray-600 focus:border-amber-500 text-sm rounded-xl px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-amber-500/20 transition-all font-mono"
+                        class="w-full bg-[#1a1a1a] border border-gray-700 hover:border-gray-600 focus:border-amber-500 text-sm rounded-xl px-4 py-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500/20 transition-all font-mono"
                         required>
                 </div>
                 <div class="pt-4">
@@ -9053,7 +9384,7 @@
                             </div>
                         </div>
                         <input type="checkbox" id="print-opt-items" checked
-                            class="w-5 h-5 rounded border-slate-600 bg-slate-950 text-cyan-500 focus:ring-cyan-500 focus:ring-opacity-25 cursor-pointer">
+                            class="w-5 h-5 rounded border-slate-300 bg-white text-cyan-500 focus:ring-cyan-500 focus:ring-opacity-25 cursor-pointer">
                     </label>
 
                     <!-- Option 2: Contract Fee -->
@@ -9070,7 +9401,7 @@
                             </div>
                         </div>
                         <input type="checkbox" id="print-opt-contract" checked
-                            class="w-5 h-5 rounded border-slate-600 bg-slate-950 text-cyan-500 focus:ring-cyan-500 focus:ring-opacity-25 cursor-pointer">
+                            class="w-5 h-5 rounded border-slate-300 bg-white text-cyan-500 focus:ring-cyan-500 focus:ring-opacity-25 cursor-pointer">
                     </label>
 
                     <!-- Option 3: iCloud Fee -->
@@ -9087,7 +9418,7 @@
                             </div>
                         </div>
                         <input type="checkbox" id="print-opt-icloud" checked
-                            class="w-5 h-5 rounded border-slate-600 bg-slate-950 text-cyan-500 focus:ring-cyan-500 focus:ring-opacity-25 cursor-pointer">
+                            class="w-5 h-5 rounded border-slate-300 bg-white text-cyan-500 focus:ring-cyan-500 focus:ring-opacity-25 cursor-pointer">
                     </label>
                 </div>
             </div>
@@ -9115,6 +9446,129 @@
         <i class="fa-solid fa-basket-shopping"></i>
         <span class="cart-fab-badge" id="cart-fab-badge-count">0</span>
     </button>
+
+    <!-- Audit Verify Modal (หน้าต่างเด้งสำหรับยืนยันและถ่ายรูปกล่อง) -->
+    <div id="modal-audit-verify"
+        class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm hidden">
+        <div
+            class="modal-content relative w-[95%] max-w-md bg-slate-900 rounded-3xl shadow-2xl border border-slate-700/60 p-6 flex flex-col gap-4 transform scale-95 transition-all duration-300">
+            <!-- Modal Header -->
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                <div class="flex items-center gap-2">
+                    <span id="audit-modal-status-indicator" class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+                    <h3 id="audit-modal-title" class="text-white font-bold text-base">พบสินค้าในระบบ</h3>
+                </div>
+                <button onclick="closeAuditVerifyModal()" class="text-slate-400 hover:text-white transition-all">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <!-- Details -->
+            <div>
+                <p class="text-slate-400 text-xs uppercase tracking-wider font-semibold mb-1">รหัสที่สแกน (IMEI)</p>
+                <p id="audit-modal-imei-display" class="text-white font-mono text-xl font-black">56446</p>
+                <p id="audit-modal-product-name" class="text-slate-300 text-sm mt-1 font-medium">—</p>
+            </div>
+
+            <!-- Box Photo Selection (Mandatory) -->
+            <div class="space-y-2">
+                <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider">
+                    * ถ่ายภาพ/อัปโหลดภาพหลักฐาน
+                </label>
+                <div class="relative">
+                    <input id="audit-modal-photo-input" type="file" accept="image/*" capture="environment"
+                        class="hidden" />
+                    <!-- Camera Button -->
+                    <button id="btn-audit-modal-camera"
+                        onclick="document.getElementById('audit-modal-photo-input').click()"
+                        class="w-full py-3.5 bg-slate-800 hover:bg-slate-700 text-violet-400 hover:text-white rounded-xl border border-slate-700 hover:border-violet-500 font-bold text-sm transition-all flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-camera text-base"></i>
+                        <span>เปิดกล้อง / เลือกรูป</span>
+                    </button>
+                    <!-- Photo Preview -->
+                    <img id="audit-modal-photo-preview" src="" alt="preview"
+                        class="hidden w-full h-[160px] object-cover rounded-2xl border border-violet-500/30 mt-3" />
+                </div>
+            </div>
+
+            <!-- Notes -->
+            <div>
+                <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">
+                    หมายเหตุ (ถ้ามี)
+                </label>
+                <textarea id="audit-modal-notes" rows="2" placeholder="บันทึกเพิ่มเติม..."
+                    class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:border-violet-500 text-sm transition-all resize-none"></textarea>
+            </div>
+
+            <!-- Actions -->
+            <div class="flex gap-3 pt-2">
+                <button onclick="closeAuditVerifyModal()"
+                    class="flex-1 py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-bold text-sm transition-all">
+                    ยกเลิก
+                </button>
+                <button id="btn-audit-modal-submit" onclick="submitModalAuditItem()"
+                    class="flex-[2] py-3 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500 text-white rounded-xl font-bold text-sm transition-all shadow-lg shadow-violet-500/25 flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-circle-check"></i>
+                    <span>ยืนยันการตรวจสอบ</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Audit Review Item Modal (หน้าต่างป๊อปอัปตรวจสอบรูปและยืนยันสถานะสำหรับผู้จัดการ) -->
+    <div id="modal-audit-review-item"
+        class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm hidden">
+        <div
+            class="modal-content relative w-[95%] max-w-lg bg-slate-900 rounded-3xl shadow-2xl border border-slate-700/60 p-6 flex flex-col gap-4 transform scale-95 transition-all duration-300 max-h-[90vh] overflow-y-auto">
+            <!-- Modal Header -->
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                <div class="flex items-center gap-2">
+                    <span id="audit-review-modal-indicator" class="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
+                    <h3 class="text-white font-bold text-base">ตรวจสอบรายการสแกน</h3>
+                </div>
+                <button onclick="closeAuditReviewItemModal()" class="text-slate-400 hover:text-white transition-all">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <!-- Details -->
+            <div class="grid grid-cols-2 gap-3 bg-slate-950 p-4 rounded-2xl border border-slate-800/80">
+                <div>
+                    <p class="text-slate-500 text-[10px] uppercase font-bold">หมายเลข IMEI</p>
+                    <p id="audit-review-modal-imei" class="text-white font-mono text-base font-bold mt-0.5">—</p>
+                </div>
+                <div>
+                    <p class="text-slate-500 text-[10px] uppercase font-bold">ชื่อสินค้า</p>
+                    <p id="audit-review-modal-product" class="text-slate-300 text-xs font-semibold mt-0.5 truncate">—
+                    </p>
+                </div>
+                <div class="col-span-2 border-t border-slate-800/50 pt-2">
+                    <p class="text-slate-500 text-[10px] uppercase font-bold">ผู้สแกน / บันทึกเพิ่มเติม</p>
+                    <p id="audit-review-modal-scanner" class="text-slate-300 text-xs font-medium mt-0.5">—</p>
+                </div>
+            </div>
+
+            <!-- Box Photo Preview -->
+            <div class="space-y-1.5">
+                <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider">
+                    ภาพหลักฐานกล่องสินค้า
+                </label>
+                <div id="audit-review-modal-photo-container">
+                    <!-- Photo injected dynamically -->
+                </div>
+            </div>
+
+            <!-- Notes Input -->
+            <div id="audit-review-modal-notes-area">
+                <!-- Notes input injected dynamically -->
+            </div>
+
+            <!-- Actions -->
+            <div id="audit-review-modal-actions-area" class="flex gap-2 pt-2">
+                <!-- Action buttons or status indicator injected dynamically -->
+            </div>
+        </div>
+    </div>
 
     <!-- Mobile POS Cart Overlay -->
     <div id="pos-mobile-cart-overlay"></div>

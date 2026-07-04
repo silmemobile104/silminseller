@@ -31,7 +31,8 @@ const roleSchema = new mongoose.Schema({
         manage_finance: { type: Boolean, default: false },   // อนุญาตให้จัดการระบบบัญชีและการเงิน
         view_audit_logs: { type: Boolean, default: false },  // อนุญาตดูประวัติกิจกรรมระบบ
         view_branch_inventory: { type: Boolean, default: false }, // อนุญาตดูสินค้าในสาขา
-        view_daily_summary: { type: Boolean, default: true } // อนุญาตให้ดูรายงานสรุปยอดขายรายวัน
+        view_daily_summary: { type: Boolean, default: true }, // อนุญาตให้ดูรายงานสรุปยอดขายรายวัน
+        manage_stock_audit: { type: Boolean, default: false } // อนุญาตให้ตรวจสอบและอนุมัติผลการตรวจนับสต็อกประจำวัน
     }
 }, { timestamps: true });
 const Role = mongoose.model('Role', roleSchema, 'role');
@@ -47,7 +48,7 @@ const seedDefaultRoles = async () => {
                 manage_settings: true, manage_roles: true, filter_stock_branch: true, cancel_sale: true,
                 report_arrival: true, approve_import: true, manage_po: true, receive_po: true,
                 manage_transfers: true, manage_finance: true, view_audit_logs: true, view_branch_inventory: true,
-                view_daily_summary: true
+                view_daily_summary: true, manage_stock_audit: true
             }
         },
         {
@@ -58,7 +59,7 @@ const seedDefaultRoles = async () => {
                 manage_settings: true, manage_roles: false, filter_stock_branch: true, cancel_sale: true,
                 report_arrival: true, approve_import: false, manage_po: true, receive_po: true,
                 manage_transfers: true, manage_finance: true, view_audit_logs: true, view_branch_inventory: true,
-                view_daily_summary: true
+                view_daily_summary: true, manage_stock_audit: true
             }
         },
         {
@@ -69,7 +70,7 @@ const seedDefaultRoles = async () => {
                 manage_settings: false, manage_roles: false, filter_stock_branch: false, cancel_sale: false,
                 report_arrival: true, approve_import: false, manage_po: false, receive_po: true,
                 manage_transfers: false, manage_finance: false, view_audit_logs: false, view_branch_inventory: false,
-                view_daily_summary: true
+                view_daily_summary: true, manage_stock_audit: false
             }
         }
     ];
@@ -99,6 +100,12 @@ const seedDefaultRoles = async () => {
                 existing.permissions.manage_finance = true;
                 existing.permissions.view_audit_logs = true;
                 existing.permissions.view_branch_inventory = true;
+                existing.permissions.manage_stock_audit = true;
+                changed = true;
+            }
+            // Ensure ผู้จัดการ gets manage_stock_audit
+            if (r.name === 'ผู้จัดการ' && existing.permissions.manage_stock_audit === undefined) {
+                existing.permissions.manage_stock_audit = true;
                 changed = true;
             }
             if (changed) {
@@ -398,6 +405,46 @@ financeReceivableSchema.pre('validate', function() {
 
 const FinanceReceivable = mongoose.model('FinanceReceivable', financeReceivableSchema, 'financereceivable');
 
+// 20. Stock Audit Session (รอบการตรวจนับสต็อกประจำวัน)
+const stockAuditSessionSchema = new mongoose.Schema({
+    session_date: { type: Date, required: true, index: true },
+    branch_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Branch', required: true },
+    status: {
+        type: String,
+        default: 'กำลังตรวจนับ',
+        enum: ['กำลังตรวจนับ', 'รอการอนุมัติ', 'อนุมัติแล้ว', 'ปิดโดยอัตโนมัติ']
+    },
+    created_by: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee', required: true },
+    closed_by: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee', default: null },
+    closed_at: { type: Date, default: null },
+    total_items_expected: { type: Number, default: 0 },
+    total_items_scanned: { type: Number, default: 0 },
+    notes: { type: String, default: '' }
+}, { timestamps: true });
+const StockAuditSession = mongoose.model('StockAuditSession', stockAuditSessionSchema, 'stockauditsession');
+
+// 21. Stock Audit Item (รายการสินค้าแต่ละชิ้นในรอบการตรวจนับ)
+const stockAuditItemSchema = new mongoose.Schema({
+    session_id: { type: mongoose.Schema.Types.ObjectId, ref: 'StockAuditSession', required: true, index: true },
+    product_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Product', default: null },
+    product_name: { type: String, required: true },
+    imei: { type: String, required: true },
+    box_photo_url: { type: String, default: '' },
+    scanned_by: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee', required: true },
+    scanned_at: { type: Date, default: Date.now },
+    scan_notes: { type: String, default: '' },
+    scan_status: {
+        type: String,
+        default: 'รอตรวจสอบ',
+        enum: ['รอตรวจสอบ', 'ผ่าน', 'ไม่ผ่าน', 'ตรวจใหม่']
+    },
+    reviewed_by: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee', default: null },
+    reviewed_at: { type: Date, default: null },
+    review_notes: { type: String, default: '' },
+    is_expected: { type: Boolean, default: true }
+}, { timestamps: true });
+const StockAuditItem = mongoose.model('StockAuditItem', stockAuditItemSchema, 'stockaudititem');
+
 module.exports = {
     Branch,
     Role,
@@ -420,6 +467,8 @@ module.exports = {
     AuditLog,
     CashMovement,
     FinanceReceivable,
+    StockAuditSession,
+    StockAuditItem,
     seedDefaultRoles,
     migrateProductsToERP
 };

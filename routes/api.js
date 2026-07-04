@@ -28,7 +28,9 @@ const {
     PurchaseOrder,
     AuditLog,
     CashMovement,
-    FinanceReceivable
+    FinanceReceivable,
+    StockAuditSession,
+    StockAuditItem
 } = require('../models');
 
 const { uploadBufferToDriveInFolder } = require('../utils/googleDrive');
@@ -54,6 +56,11 @@ const verifyToken = (req, res, next) => {
 
     try {
         const decoded = jwt.verify(token, JWT_SECRET);
+        if (decoded && decoded.permissions) {
+            if (decoded.permissions.manage_stock_audit === undefined) {
+                decoded.permissions.manage_stock_audit = (decoded.role === 'แอดมิน' || decoded.role === 'ผู้จัดการ' || decoded.permissions.manage_settings || false);
+            }
+        }
         req.user = decoded; // { employee_id, role, branch_id }
         next();
     } catch (error) {
@@ -1241,7 +1248,8 @@ router.post('/auth/login', async (req, res) => {
             report_arrival: dbPerms.report_arrival !== undefined ? dbPerms.report_arrival : (dbPerms.do_pos || false),
             approve_import: dbPerms.approve_import !== undefined ? dbPerms.approve_import : (dbPerms.manage_stock || false),
             view_audit_logs: dbPerms.view_audit_logs !== undefined ? dbPerms.view_audit_logs : (dbPerms.manage_settings || false),
-            view_daily_summary: dbPerms.view_daily_summary !== undefined ? dbPerms.view_daily_summary : true
+            view_daily_summary: dbPerms.view_daily_summary !== undefined ? dbPerms.view_daily_summary : true,
+            manage_stock_audit: dbPerms.manage_stock_audit !== undefined ? dbPerms.manage_stock_audit : (employee.role === 'แอดมิน' || employee.role === 'ผู้จัดการ' || dbPerms.manage_settings || false)
         };
 
         // สร้าง JWT Token (รวม permissions)
@@ -4446,5 +4454,322 @@ router.post('/finance/payout/:id', async (req, res) => {
     }
 });
 
-module.exports = router;
+// ==========================================
+// Stock Audit APIs (ระบบตรวจนับสต็อกประจำวัน)
+// ==========================================
 
+// POST /api/stock-audit/sessions — เปิด Session ตรวจนับสต็อกวันนี้ (พนักงานขาย)
+router.post('/stock-audit/sessions', async (req, res) => {
+    try {
+        const branchId = req.user.branch_id;
+        if (!branchId) return res.status(400).json({ success: false, message: 'ไม่พบข้อมูลสาขาของพนักงาน กรุณาตรวจสอบการตั้งค่า' });
+
+        const todayStart = new Date(); todayStart.setHours(0,0,0,0);
+        const todayEnd   = new Date(); todayEnd.setHours(23,59,59,999);
+
+        const existingToday = await StockAuditSession.findOne({
+            branch_id: branchId,
+            session_date: { $gte: todayStart, $lte: todayEnd },
+            status: { $in: ['กำลังตรวจนับ', 'รอการอนุมัติ'] }
+        });
+        if (existingToday) {
+            return res.status(400).json({
+                success: false,
+                message: 'มีรอบการตรวจนับสต็อกที่ยังไม่เสร็จสมบูรณ์ของวันนี้อยู่แล้ว กรุณาดำเนินการต่อจาก session เดิม',
+                data: existingToday
+            });
+        }
+
+        // Auto-close sessions เก่าที่ค้างอยู่
+        await StockAuditSession.updateMany(
+            { branch_id: branchId, status: { $in: ['กำลังตรวจนับ', 'รอการอนุมัติ'] } },
+            { $set: { status: 'ปิดโดยอัตโนมัติ', closed_at: new Date() } }
+        );
+
+        // นับ IMEI ที่คาดว่าจะมีในสาขา
+        const products = await Product.find({ 'stock_balances': { $elemMatch: { branch_id: branchId } } }).populate('unit_id');
+        let totalExpected = 0;
+        for (const p of products) {
+            const bal = p.stock_balances.find(b => b.branch_id && b.branch_id.toString() === branchId.toString());
+            if (bal && p.unit_id && p.unit_id.name === 'เครื่อง' && Array.isArray(bal.imeis)) {
+                totalExpected += bal.imeis.length;
+            }
+        }
+
+        const newSession = await StockAuditSession.create({
+            session_date: todayStart, branch_id: branchId, status: 'กำลังตรวจนับ',
+            created_by: req.user.employee_id, total_items_expected: totalExpected, total_items_scanned: 0
+        });
+
+        await logActivity(req, 'CREATE', 'STOCK_AUDIT', `เปิดรอบตรวจนับสต็อกประจำวัน (คาดหวัง ${totalExpected} เครื่อง)`, null, newSession._id);
+        res.status(201).json({ success: true, message: 'เปิดรอบตรวจนับสต็อกสำเร็จ', data: newSession });
+    } catch (error) {
+        console.error('API Error POST /api/stock-audit/sessions:', error);
+        res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการเปิดรอบตรวจนับสต็อก' });
+    }
+});
+
+// GET /api/stock-audit/sessions/today — ดู session วันนี้ของสาขาตัวเอง
+router.get('/stock-audit/sessions/today', async (req, res) => {
+    try {
+        const branchId = req.user.branch_id;
+        const todayStart = new Date(); todayStart.setHours(0,0,0,0);
+        const todayEnd   = new Date(); todayEnd.setHours(23,59,59,999);
+
+        const session = await StockAuditSession.findOne({
+            branch_id: branchId,
+            session_date: { $gte: todayStart, $lte: todayEnd }
+        }).sort({ createdAt: -1 }).populate('created_by', 'name emp_id').populate('branch_id', 'name');
+
+        if (!session) return res.json({ success: true, data: null });
+
+        const items = await StockAuditItem.find({ session_id: session._id })
+            .populate('scanned_by', 'name emp_id').sort({ scanned_at: -1 });
+
+        // รายการ IMEI ที่ควรมีในสาขา — ใช้ populate แบบเดียวกับ /api/products
+        const products = await Product.find({ 'stock_balances': { $elemMatch: { branch_id: branchId } } })
+            .populate('unit_id', 'name')
+            .populate('color_id', 'name')
+            .populate('capacity_id', 'name')
+            .populate('condition_id', 'name')
+            .lean();
+        
+        const expectedImeis = [];
+        for (const p of products) {
+            const bal = p.stock_balances.find(b => b.branch_id && b.branch_id.toString() === branchId.toString());
+            if (bal && p.unit_id && p.unit_id.name === 'เครื่อง' && Array.isArray(bal.imeis)) {
+                bal.imeis.forEach(imei => expectedImeis.push({
+                    imei,
+                    product_id: p._id,
+                    product_name: p.name,
+                    color: p.color_id ? p.color_id.name : '',
+                    capacity: (p.capacity_id ? p.capacity_id.name : '') + (p.condition_id ? ' / ' + p.condition_id.name : '')
+                }));
+            }
+        }
+
+        res.json({ success: true, data: { session, items, expectedImeis } });
+    } catch (error) {
+        console.error('API Error GET /api/stock-audit/sessions/today:', error);
+        res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการดึงข้อมูลรอบตรวจนับ' });
+    }
+});
+
+// GET /api/stock-audit/sessions — ดูรายการ sessions ทั้งหมด (manage_stock_audit)
+router.get('/stock-audit/sessions', async (req, res) => {
+    try {
+        if (!req.user.permissions || !req.user.permissions.manage_stock_audit) {
+            return res.status(403).json({ success: false, message: 'ไม่มีสิทธิ์เข้าถึงข้อมูลนี้' });
+        }
+        const { status, branch_id, startDate, endDate, page = 1 } = req.query;
+        const limit = 20; const skip = (parseInt(page) - 1) * limit;
+        const filter = {};
+        if (status) filter.status = status;
+        if (branch_id) filter.branch_id = branch_id;
+        if (startDate || endDate) {
+            filter.session_date = {};
+            if (startDate) { const s = new Date(startDate); s.setHours(0,0,0,0); filter.session_date.$gte = s; }
+            if (endDate) { const e = new Date(endDate); e.setHours(23,59,59,999); filter.session_date.$lte = e; }
+        }
+        const total = await StockAuditSession.countDocuments(filter);
+        const sessions = await StockAuditSession.find(filter)
+            .populate('branch_id', 'name').populate('created_by', 'name emp_id').populate('closed_by', 'name emp_id')
+            .sort({ session_date: -1 }).skip(skip).limit(limit);
+        res.json({ success: true, data: sessions, total, page: parseInt(page), limit });
+    } catch (error) {
+        console.error('API Error GET /api/stock-audit/sessions:', error);
+        res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการดึงรายการรอบตรวจนับ' });
+    }
+});
+
+// GET /api/stock-audit/sessions/:id — ดูรายละเอียด session + items
+router.get('/stock-audit/sessions/:id', async (req, res) => {
+    try {
+        const session = await StockAuditSession.findById(req.params.id)
+            .populate('branch_id', 'name').populate('created_by', 'name emp_id').populate('closed_by', 'name emp_id');
+        if (!session) return res.status(404).json({ success: false, message: 'ไม่พบรอบตรวจนับสต็อกที่ระบุ' });
+
+        const items = await StockAuditItem.find({ session_id: session._id })
+            .populate('scanned_by', 'name emp_id').populate('reviewed_by', 'name emp_id').sort({ scanned_at: 1 });
+
+        const summary = {
+            total: items.length,
+            passed: items.filter(i => i.scan_status === 'ผ่าน').length,
+            failed: items.filter(i => i.scan_status === 'ไม่ผ่าน').length,
+            recheck: items.filter(i => i.scan_status === 'ตรวจใหม่').length,
+            pending: items.filter(i => i.scan_status === 'รอตรวจสอบ').length
+        };
+        res.json({ success: true, data: { session, items, summary } });
+    } catch (error) {
+        console.error('API Error GET /api/stock-audit/sessions/:id:', error);
+        res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการดึงรายละเอียดรอบตรวจนับ' });
+    }
+});
+
+// POST /api/stock-audit/sessions/:id/scan — สแกน IMEI + upload รูปกล่อง
+router.post('/stock-audit/sessions/:id/scan', async (req, res) => {
+    try {
+        const { imei, box_photo_base64, scan_notes } = req.body;
+        if (!imei || imei.trim() === '') return res.status(400).json({ success: false, message: 'กรุณาระบุหมายเลข IMEI' });
+
+        const session = await StockAuditSession.findById(req.params.id);
+        if (!session) return res.status(404).json({ success: false, message: 'ไม่พบรอบตรวจนับสต็อกที่ระบุ' });
+        if (session.status !== 'กำลังตรวจนับ') return res.status(400).json({ success: false, message: `ไม่สามารถสแกนได้ รอบนี้มีสถานะ: ${session.status}` });
+
+        const imeiClean = imei.trim();
+        const alreadyScanned = await StockAuditItem.findOne({ session_id: session._id, imei: imeiClean });
+        if (alreadyScanned) return res.status(400).json({ success: false, message: `หมายเลข IMEI ${imeiClean} ถูกสแกนไปแล้วในรอบนี้` });
+
+        // ตรวจว่า IMEI อยู่ในสต็อกสาขา
+        const branchId = session.branch_id;
+        let foundProduct = null; let isExpected = false;
+        const allProducts = await Product.find({ 'stock_balances': { $elemMatch: { branch_id: branchId } } });
+        for (const p of allProducts) {
+            const bal = p.stock_balances.find(b => b.branch_id && b.branch_id.toString() === branchId.toString());
+            if (bal && Array.isArray(bal.imeis) && bal.imeis.includes(imeiClean)) { foundProduct = p; isExpected = true; break; }
+        }
+
+        // Upload รูปกล่อง → Google Drive
+        let boxPhotoUrl = '';
+        if (box_photo_base64 && box_photo_base64.trim() !== '') {
+            try {
+                const matches = box_photo_base64.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
+                let buffer, mimeType;
+                if (matches && matches.length === 3) { mimeType = matches[1]; buffer = Buffer.from(matches[2], 'base64'); }
+                else { mimeType = 'image/jpeg'; buffer = Buffer.from(box_photo_base64, 'base64'); }
+                const dateStr = new Date().toISOString().slice(0, 10);
+                boxPhotoUrl = await uploadBufferToDriveInFolder(buffer, mimeType, `AUDIT_${imeiClean}_${Date.now()}.jpg`, `ตรวจสต็อกประจำวัน/${dateStr}`);
+            } catch (err) { console.error('Drive upload error (audit photo):', err.message); }
+        }
+
+        const newItem = await StockAuditItem.create({
+            session_id: session._id,
+            product_id: foundProduct ? foundProduct._id : null,
+            product_name: foundProduct ? foundProduct.name : `ไม่พบในระบบ: ${imeiClean}`,
+            imei: imeiClean, box_photo_url: boxPhotoUrl,
+            scanned_by: req.user.employee_id, scanned_at: new Date(),
+            scan_notes: scan_notes || '', scan_status: 'รอตรวจสอบ', is_expected: isExpected
+        });
+        await StockAuditSession.findByIdAndUpdate(session._id, { $inc: { total_items_scanned: 1 } });
+
+        res.status(201).json({
+            success: true,
+            message: isExpected ? `สแกน IMEI ${imeiClean} สำเร็จ ✓ พบในระบบ` : `⚠️ IMEI ${imeiClean} ไม่พบในคลังสาขา`,
+            data: newItem, is_expected: isExpected
+        });
+    } catch (error) {
+        console.error('API Error POST /api/stock-audit/sessions/:id/scan:', error);
+        res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการบันทึกข้อมูลการสแกน' });
+    }
+});
+
+// DELETE /api/stock-audit/sessions/:id/scan/:imei — ลบรายการที่สแกนผิด
+router.delete('/stock-audit/sessions/:id/scan/:imei', async (req, res) => {
+    try {
+        const session = await StockAuditSession.findById(req.params.id);
+        if (!session) return res.status(404).json({ success: false, message: 'ไม่พบรอบตรวจนับสต็อกที่ระบุ' });
+        if (session.status !== 'กำลังตรวจนับ') return res.status(400).json({ success: false, message: 'รอบนี้ถูกส่งตรวจแล้ว ไม่สามารถลบรายการได้' });
+
+        const item = await StockAuditItem.findOneAndDelete({ session_id: session._id, imei: req.params.imei });
+        if (!item) return res.status(404).json({ success: false, message: 'ไม่พบรายการ IMEI ที่ระบุในรอบนี้' });
+
+        await StockAuditSession.findByIdAndUpdate(session._id, { $inc: { total_items_scanned: -1 } });
+        res.json({ success: true, message: `ลบรายการ IMEI ${req.params.imei} สำเร็จ` });
+    } catch (error) {
+        console.error('API Error DELETE /api/stock-audit/sessions/:id/scan/:imei:', error);
+        res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการลบรายการ' });
+    }
+});
+
+// POST /api/stock-audit/sessions/:id/submit — ส่งให้พนักงานสต็อกตรวจ
+router.post('/stock-audit/sessions/:id/submit', async (req, res) => {
+    try {
+        const session = await StockAuditSession.findById(req.params.id);
+        if (!session) return res.status(404).json({ success: false, message: 'ไม่พบรอบตรวจนับสต็อกที่ระบุ' });
+        if (session.status !== 'กำลังตรวจนับ') return res.status(400).json({ success: false, message: `สถานะปัจจุบัน: ${session.status} ไม่สามารถส่งตรวจได้` });
+
+        const itemCount = await StockAuditItem.countDocuments({ session_id: session._id });
+        if (itemCount === 0) return res.status(400).json({ success: false, message: 'ยังไม่มีรายการสแกนใดๆ กรุณาสแกนสินค้าก่อนส่งตรวจ' });
+
+        session.status = 'รอการอนุมัติ';
+        await session.save();
+        await logActivity(req, 'UPDATE', 'STOCK_AUDIT', `ส่งผลการตรวจนับสต็อกให้ตรวจสอบ (${itemCount} รายการ)`, null, session._id);
+        res.json({ success: true, message: 'ส่งผลการตรวจนับสต็อกสำเร็จ รอการอนุมัติ', data: session });
+    } catch (error) {
+        console.error('API Error POST /api/stock-audit/sessions/:id/submit:', error);
+        res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการส่งผลการตรวจนับ' });
+    }
+});
+
+// POST /api/stock-audit/items/:id/review — ตัดสิน: ผ่าน / ไม่ผ่าน / ตรวจใหม่ (พนักงานสต็อก)
+router.post('/stock-audit/items/:id/review', async (req, res) => {
+    try {
+        if (!req.user.permissions || !req.user.permissions.manage_stock_audit) {
+            return res.status(403).json({ success: false, message: 'ไม่มีสิทธิ์ตรวจสอบรายการสต็อก' });
+        }
+        const { scan_status, review_notes } = req.body;
+        const allowed = ['ผ่าน', 'ไม่ผ่าน', 'ตรวจใหม่'];
+        if (!scan_status || !allowed.includes(scan_status)) return res.status(400).json({ success: false, message: `สถานะต้องเป็น: ${allowed.join(', ')}` });
+
+        const item = await StockAuditItem.findById(req.params.id).populate('session_id');
+        if (!item) return res.status(404).json({ success: false, message: 'ไม่พบรายการที่ระบุ' });
+
+        const session = item.session_id;
+        if (!session || (session.status !== 'รอการอนุมัติ' && session.status !== 'กำลังตรวจนับ')) {
+            return res.status(400).json({ success: false, message: 'รอบนี้ยังไม่ถูกส่งตรวจ หรืออนุมัติแล้ว' });
+        }
+
+        item.scan_status = scan_status;
+        item.review_notes = review_notes || '';
+        item.reviewed_by = req.user.employee_id;
+        item.reviewed_at = new Date();
+        await item.save();
+
+        if (scan_status === 'ตรวจใหม่') {
+            await StockAuditSession.findByIdAndUpdate(session._id, { status: 'กำลังตรวจนับ' });
+            await StockAuditItem.findByIdAndDelete(item._id);
+            await StockAuditSession.findByIdAndUpdate(session._id, { $inc: { total_items_scanned: -1 } });
+            return res.json({ success: true, message: `ส่งกลับให้ตรวจใหม่: IMEI ${item.imei} — รอบนี้เปิดให้สแกนใหม่แล้ว` });
+        }
+
+        await logActivity(req, 'UPDATE', 'STOCK_AUDIT', `ตรวจสอบ IMEI ${item.imei}: ${scan_status}`, null, item._id);
+        res.json({ success: true, message: `บันทึกผล IMEI ${item.imei}: ${scan_status}`, data: item });
+    } catch (error) {
+        console.error('API Error POST /api/stock-audit/items/:id/review:', error);
+        res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการบันทึกผลการตรวจสอบ' });
+    }
+});
+
+// POST /api/stock-audit/sessions/:id/close — ปิด session (พนักงานสต็อก)
+router.post('/stock-audit/sessions/:id/close', async (req, res) => {
+    try {
+        if (!req.user.permissions || !req.user.permissions.manage_stock_audit) {
+            return res.status(403).json({ success: false, message: 'ไม่มีสิทธิ์ปิดรอบตรวจนับสต็อก' });
+        }
+        const { notes } = req.body;
+        const session = await StockAuditSession.findById(req.params.id);
+        if (!session) return res.status(404).json({ success: false, message: 'ไม่พบรอบตรวจนับสต็อกที่ระบุ' });
+        if (session.status !== 'รอการอนุมัติ' && session.status !== 'กำลังตรวจนับ') {
+            return res.status(400).json({ success: false, message: `สถานะปัจจุบัน: ${session.status}` });
+        }
+
+        const pendingCount = await StockAuditItem.countDocuments({ session_id: session._id, scan_status: 'รอตรวจสอบ' });
+        if (pendingCount > 0) return res.status(400).json({ success: false, message: `ยังมีสินค้ารอตรวจสอบอีก ${pendingCount} รายการ` });
+
+        session.status = 'อนุมัติแล้ว';
+        session.closed_by = req.user.employee_id;
+        session.closed_at = new Date();
+        if (notes) session.notes = notes;
+        await session.save();
+
+        const items = await StockAuditItem.find({ session_id: session._id });
+        const summary = { passed: items.filter(i => i.scan_status === 'ผ่าน').length, failed: items.filter(i => i.scan_status === 'ไม่ผ่าน').length };
+        await logActivity(req, 'UPDATE', 'STOCK_AUDIT', `ปิดรอบตรวจนับสต็อก: ผ่าน ${summary.passed} / ไม่ผ่าน ${summary.failed} รายการ`, null, session._id);
+        res.json({ success: true, message: 'ปิดรอบตรวจนับสต็อกสำเร็จ', data: session, summary });
+    } catch (error) {
+        console.error('API Error POST /api/stock-audit/sessions/:id/close:', error);
+        res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการปิดรอบตรวจนับสต็อก' });
+    }
+});
+
+module.exports = router;
