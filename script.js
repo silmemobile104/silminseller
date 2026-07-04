@@ -9729,21 +9729,21 @@ document.addEventListener('DOMContentLoaded', () => {
                                             <div class="space-y-3 bg-slate-900/30 p-4 rounded-2xl border border-slate-800/40">
                                                 <div>
                                                     <label class="text-xs font-semibold text-slate-400 block mb-1">วันที่ชำระเงิน:</label>
-                                                    <input type="date" id="ap-pay-date-input" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-amber-500 text-sm" value="${todayStr}">
+                                                    <input type="date" id="ap-pay-date-input" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2  focus:outline-none focus:border-amber-500 text-sm" value="${todayStr}">
                                                 </div>
                                                 <div class="grid grid-cols-2 gap-3">
                                                     <div>
                                                         <label class="text-xs font-semibold text-slate-400 block mb-1">จำนวนเงินที่จ่ายรอบนี้:</label>
-                                                        <input type="number" id="ap-pay-amount-input" step="any" min="0" max="${poOutstanding}" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-amber-500 text-sm font-mono text-right" value="${poOutstanding.toFixed(2)}">
+                                                        <input type="number" id="ap-pay-amount-input" step="any" min="0" max="${poOutstanding}" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2  focus:outline-none focus:border-amber-500 text-sm font-mono text-right" value="${poOutstanding.toFixed(2)}">
                                                     </div>
                                                     <div>
                                                         <label class="text-xs font-semibold text-slate-400 block mb-1">ส่วนลดรอบนี้:</label>
-                                                        <input type="number" id="ap-pay-discount-input" step="any" min="0" max="${poOutstanding}" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-amber-500 text-sm font-mono text-right" value="0.00">
+                                                        <input type="number" id="ap-pay-discount-input" step="any" min="0" max="${poOutstanding}" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2  focus:outline-none focus:border-amber-500 text-sm font-mono text-right" value="0.00">
                                                     </div>
                                                 </div>
                                                 <div>
                                                     <label class="text-xs font-semibold text-slate-400 block mb-1">หมายเหตุส่วนลด (ระบุหากได้ส่วนลด):</label>
-                                                    <input type="text" id="ap-pay-discount-remark-input" placeholder="เช่น ชำระก่อนครบกำหนดรับส่วนลด 2%" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-amber-500 text-sm">
+                                                    <input type="text" id="ap-pay-discount-remark-input" placeholder="เช่น ชำระก่อนครบกำหนดรับส่วนลด 2%" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2  focus:outline-none focus:border-amber-500 text-sm">
                                                 </div>
                                                 <div id="ap-pay-calc-result" class="text-[11px] font-bold text-slate-400 text-right pt-1">
                                                     คงเหลือหลังชำระ: ฿0.00
@@ -10733,7 +10733,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                        min="0" 
                                        max="${remainingQty}" 
                                        value="${remainingQty}" 
-                                       class="po-arrival-accessory-qty w-24 bg-slate-950 border border-slate-850 focus:border-cyan-500 text-white font-mono text-sm font-bold text-center py-2 rounded-xl focus:outline-none focus:ring-1 focus:ring-cyan-500/30 transition-colors">
+                                       class="po-arrival-accessory-qty w-24 bg-slate-950 border border-slate-850 focus:border-cyan-500  font-mono text-sm font-bold text-center py-2 rounded-xl focus:outline-none focus:ring-1 focus:ring-cyan-500/30 transition-colors">
                             </div>
                         ` : `
                             <span class="text-xs text-emerald-400 font-bold flex items-center gap-1">
