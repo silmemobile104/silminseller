@@ -422,7 +422,7 @@ const stockAuditSessionSchema = new mongoose.Schema({
         default: 'กำลังตรวจนับ',
         enum: ['กำลังตรวจนับ', 'รอการอนุมัติ', 'อนุมัติแล้ว', 'ปิดโดยอัตโนมัติ']
     },
-    created_by: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee', required: true },
+    created_by: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee', default: null },
     closed_by: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee', default: null },
     closed_at: { type: Date, default: null },
     total_items_expected: { type: Number, default: 0 },

@@ -7567,7 +7567,7 @@ document.addEventListener('DOMContentLoaded', () => {
         currentCardFrontPhotoBase64 = '';
         const cardFrontContainer = document.getElementById('member-card-front-container');
         if (cardFrontContainer && member.card_front_photo) {
-            cardFrontContainer.innerHTML = `<img src="${member.card_front_photo}" class="w-full h-full object-cover">`;
+            cardFrontContainer.innerHTML = `<img src="${member.card_front_photo}" referrerpolicy="no-referrer" class="w-full h-full object-cover">`;
         }
 
         openMemberModal();
@@ -13441,11 +13441,12 @@ async function loadTodayAuditSession() {
         const branchName = document.getElementById('audit-branch-name');
         const sessionDate = document.getElementById('audit-session-date');
 
-        const total = session.total_items_expected || expectedImeis.length;
-        const scanned = items.length;
-        const pct = total > 0 ? Math.min(100, Math.round((scanned / total) * 100)) : 0;
+        const scannedImeiSet = new Set((items || []).map(i => i.imei));
+        const total = expectedImeis.length;
+        const resolved = expectedImeis.filter(e => scannedImeiSet.has(e.imei) || e.sold).length;
+        const pct = total > 0 ? Math.min(100, Math.round((resolved / total) * 100)) : 0;
 
-        if (scannedCount) scannedCount.textContent = scanned;
+        if (scannedCount) scannedCount.textContent = resolved;
         if (expectedCount) expectedCount.textContent = total;
         if (progressBar) progressBar.style.width = `${pct}%`;
         if (progressPct) progressPct.textContent = `${pct}% สำเร็จ`;
@@ -13489,8 +13490,8 @@ function renderExpectedList(expectedImeis, scannedItems) {
     const pill = document.getElementById('expected-list-pill');
     const summaryEl = document.getElementById('expected-list-summary');
     const total = _expectedImeiData.length;
-    const scanned = _expectedImeiData.filter(e => _scannedImeiSet.has(e.imei)).length;
-    const pending = total - scanned;
+    const resolved = _expectedImeiData.filter(e => _scannedImeiSet.has(e.imei) || e.sold).length;
+    const pending = total - resolved;
 
     if (pill) {
         if (pending === 0 && total > 0) {
@@ -13503,14 +13504,14 @@ function renderExpectedList(expectedImeis, scannedItems) {
     }
     if (summaryEl) {
         summaryEl.textContent = total > 0
-            ? `✓ สแกนแล้ว ${scanned} | ⏳ รอสแกน ${pending}`
+            ? `✓ สำเร็จ ${resolved} | ⏳ รอสแกน ${pending}`
             : '';
     }
 
     // เรียง IMEI ตามชื่อสินค้า แล้วค่า (รอสแกนก่อน)
     const sorted = [..._expectedImeiData].sort((a, b) => {
-        const aScanned = _scannedImeiSet.has(a.imei) ? 1 : 0;
-        const bScanned = _scannedImeiSet.has(b.imei) ? 1 : 0;
+        const aScanned = (_scannedImeiSet.has(a.imei) || a.sold) ? 1 : 0;
+        const bScanned = (_scannedImeiSet.has(b.imei) || b.sold) ? 1 : 0;
         if (aScanned !== bScanned) return aScanned - bScanned;
         return a.product_name.localeCompare(b.product_name, 'th');
     });
@@ -13533,21 +13534,40 @@ function _renderExpectedTable(rows) {
 
     tbody.innerHTML = rows.map((e, idx) => {
         const isScanned = _scannedImeiSet.has(e.imei);
-        const rowBg = isScanned ? 'bg-emerald-500/5' : 'hover:bg-slate-700/20';
-        const statusBadge = isScanned
-            ? `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/20">
-                   <i class="fa-solid fa-check"></i>สแกนแล้ว
-               </span>`
-            : `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-400 border border-amber-500/20">
-                   <i class="fa-solid fa-clock"></i>รอสแกน
-               </span>`;
-        const imeiHighlight = isScanned
-            ? `<span class="font-mono text-xs text-emerald-400 line-through opacity-60">${e.imei}</span>`
-            : `<span class="font-mono text-xs text-white">${e.imei}</span>
+        const isSold = e.sold;
+        
+        let rowBg = 'hover:bg-slate-700/20';
+        if (isScanned) rowBg = 'bg-emerald-500/5';
+        else if (isSold) rowBg = 'bg-slate-800/80 opacity-70';
+
+        let statusBadge = '';
+        if (isScanned) {
+            statusBadge = `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/20">
+                               <i class="fa-solid fa-check"></i>สแกนแล้ว
+                           </span>`;
+        } else if (isSold) {
+            statusBadge = `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-500/20 text-slate-400 border border-slate-500/20">
+                               <i class="fa-solid fa-cart-shopping"></i>ขายแล้ว
+                           </span>`;
+        } else {
+            statusBadge = `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-400 border border-amber-500/20">
+                               <i class="fa-solid fa-clock"></i>รอสแกน
+                           </span>`;
+        }
+
+        let imeiHighlight = '';
+        if (isScanned) {
+            imeiHighlight = `<span class="font-mono text-xs text-emerald-400 line-through opacity-60">${e.imei}</span>`;
+        } else if (isSold) {
+            imeiHighlight = `<span class="font-mono text-xs text-slate-400 line-through opacity-60">${e.imei}</span>`;
+        } else {
+            imeiHighlight = `<span class="font-mono text-xs text-white">${e.imei}</span>
                <button onclick="fillImeiInput('${e.imei}')" title="กรอก IMEI"
                    class="ml-1.5 p-0.5 rounded text-slate-500 hover:text-violet-400 hover:bg-violet-500/10 transition-all">
                    <i class="fa-solid fa-arrow-up-from-bracket text-[10px]"></i>
                </button>`;
+        }
+
         const colorHtml = e.color
             ? `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-pink-500/15 text-pink-300 border border-pink-500/20">${e.color}</span>`
             : `<span class="text-slate-600 text-xs">—</span>`;
@@ -13555,7 +13575,7 @@ function _renderExpectedTable(rows) {
             ? `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-sky-500/15 text-sky-300 border border-sky-500/20">${e.capacity}</span>`
             : `<span class="text-slate-600 text-xs">—</span>`;
         return `
-            <tr class="${rowBg} border-b border-slate-700/40 transition-all" data-imei="${e.imei}" data-name="${e.product_name}" data-status="${isScanned ? 'scanned' : 'pending'}">
+            <tr class="${rowBg} border-b border-slate-700/40 transition-all" data-imei="${e.imei}" data-name="${e.product_name}" data-status="${isScanned ? 'scanned' : (isSold ? 'sold' : 'pending')}">
                 <td class="px-4 py-2.5 text-slate-500 text-xs">${idx + 1}</td>
                 <td class="px-4 py-2.5">
                     <span class="text-slate-300 text-xs">${e.product_name}</span>
@@ -13640,7 +13660,7 @@ function renderAuditScanList(items) {
         const statusText = item.is_expected ? 'พบในระบบ' : 'ไม่พบในระบบ';
         const photoHtml = item.box_photo_url
             ? `<a href="${item.box_photo_url}" target="_blank" class="shrink-0 w-12 h-12 rounded-lg overflow-hidden border border-slate-600 hover:border-violet-400 transition-all">
-                 <img src="${item.box_photo_url}" class="w-full h-full object-cover" loading="lazy" alt="box" />
+                 <img src="${item.box_photo_url}" referrerpolicy="no-referrer" class="w-full h-full object-cover" loading="lazy" alt="box" />
                </a>`
             : `<div class="shrink-0 w-12 h-12 rounded-lg bg-slate-700 border border-slate-600 flex items-center justify-center">
                  <i class="fa-solid fa-image text-slate-500 text-sm"></i>
@@ -13704,10 +13724,24 @@ async function loadAuditReviewSessions() {
     _reviewActiveFilter = 'รอตรวจสอบ';
 
     const filter = document.getElementById('audit-review-filter-status')?.value || '';
+    const dateType = document.getElementById('audit-review-filter-date-type')?.value || 'today';
+    const startDateVal = document.getElementById('audit-review-start-date')?.value || '';
+    const endDateVal = document.getElementById('audit-review-end-date')?.value || '';
+
     const token = localStorage.getItem('silmin_token');
     try {
         const params = new URLSearchParams();
         if (filter) params.set('status', filter);
+
+        if (dateType === 'today') {
+            const todayStr = new Date().toLocaleDateString('en-CA');
+            params.set('startDate', todayStr);
+            params.set('endDate', todayStr);
+        } else if (dateType === 'custom') {
+            if (startDateVal) params.set('startDate', startDateVal);
+            if (endDateVal) params.set('endDate', endDateVal);
+        }
+
         const r = await fetch(`/api/stock-audit/sessions?${params}`, { headers: { 'Authorization': `Bearer ${token}` } });
         const d = await r.json();
         if (!d.success || !d.data?.length) {
@@ -13734,7 +13768,7 @@ async function loadAuditReviewSessions() {
                 <div class="flex items-center justify-between mb-3">
                     <div>
                         <p class="text-white font-bold text-lg">${new Date(session.session_date).toLocaleDateString('th-TH', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
-                        <p class="text-slate-400 text-sm mt-0.5">สาขา: ${session.branch_id?.name || '—'} | สแกนโดย: ${session.created_by?.name || '—'}</p>
+                        <p class="text-slate-400 text-sm mt-0.5">สาขา: ${session.branch_id?.name || '—'} | ผู้เปิดรอบ: ${session.created_by?.name || 'ระบบอัตโนมัติ'}</p>
                     </div>
                     <span class="px-3 py-1.5 rounded-full text-xs font-bold border ${statusColors[session.status] || 'bg-slate-500/20 text-slate-400 border-slate-500/30'}">${session.status}</span>
                 </div>
@@ -13749,6 +13783,30 @@ async function loadAuditReviewSessions() {
         const btnRefresh = document.getElementById('btn-refresh-audit-review');
         if (filterSel) filterSel.onchange = loadAuditReviewSessions;
         if (btnRefresh) btnRefresh.onclick = loadAuditReviewSessions;
+
+        const filterDateType = document.getElementById('audit-review-filter-date-type');
+        const customStartDate = document.getElementById('audit-review-start-date');
+        const customEndDate = document.getElementById('audit-review-end-date');
+        const todayStr = new Date().toLocaleDateString('en-CA');
+        
+        if (customStartDate && !customStartDate.value) customStartDate.value = todayStr;
+        if (customEndDate && !customEndDate.value) customEndDate.value = todayStr;
+
+        if (filterDateType) {
+            filterDateType.onchange = () => {
+                const rangeContainer = document.getElementById('audit-review-date-range-container');
+                if (rangeContainer) {
+                    if (filterDateType.value === 'custom') {
+                        rangeContainer.classList.remove('hidden');
+                    } else {
+                        rangeContainer.classList.add('hidden');
+                    }
+                }
+                loadAuditReviewSessions();
+            };
+        }
+        if (customStartDate) customStartDate.onchange = loadAuditReviewSessions;
+        if (customEndDate) customEndDate.onchange = loadAuditReviewSessions;
 
     } catch (e) {
         console.error('[AUDIT REVIEW] loadAuditReviewSessions:', e);
@@ -13937,7 +13995,7 @@ function openAuditReviewItemModal(itemId) {
     if (elPhotoContainer) {
         elPhotoContainer.innerHTML = item.box_photo_url
             ? `<a href="${item.box_photo_url}" target="_blank" class="block w-full h-56 rounded-2xl overflow-hidden border border-slate-700 hover:border-amber-500 transition-all">
-                   <img src="${item.box_photo_url}" class="w-full h-full object-cover" alt="กล่อง" />
+                   <img src="${item.box_photo_url}" referrerpolicy="no-referrer" class="w-full h-full object-cover" alt="กล่อง" />
                </a>`
             : `<div class="w-full h-48 rounded-2xl bg-slate-950 border border-slate-800 flex flex-col items-center justify-center gap-2">
                    <i class="fa-solid fa-image text-slate-600 text-3xl"></i>

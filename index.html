@@ -4296,7 +4296,23 @@
                             </h3>
                             <p class="text-sm text-slate-400 mt-1.5">ตรวจสอบ IMEI และรูปกล่องที่พนักงานขายส่งมา</p>
                         </div>
-                        <div class="flex items-center gap-2">
+                        <div class="flex flex-wrap items-center gap-2">
+                            <!-- Filter Date Type -->
+                            <select id="audit-review-filter-date-type"
+                                class="px-3 py-2 bg-white border border-slate-300 text-slate-900 rounded-xl text-sm focus:outline-none focus:border-amber-500">
+                                <option value="today" selected>วันนี้</option>
+                                <option value="custom">กำหนดช่วงวัน</option>
+                            </select>
+                            
+                            <!-- Custom Date Range Inputs -->
+                            <div id="audit-review-date-range-container" class="hidden flex items-center gap-1.5">
+                                <input type="date" id="audit-review-start-date"
+                                    class="px-3 py-2 bg-white border border-slate-300 text-slate-900 rounded-xl text-sm focus:outline-none focus:border-amber-500">
+                                <span class="text-xs text-slate-400">ถึง</span>
+                                <input type="date" id="audit-review-end-date"
+                                    class="px-3 py-2 bg-white border border-slate-300 text-slate-900 rounded-xl text-sm focus:outline-none focus:border-amber-500">
+                            </div>
+
                             <select id="audit-review-filter-status"
                                 class="px-3 py-2 bg-white border border-slate-300 text-slate-900 rounded-xl text-sm focus:outline-none focus:border-amber-500">
                                 <option value="">สถานะทั้งหมด</option>
@@ -8336,6 +8352,55 @@
                             </label>
                         </div>
 
+                    </div>
+                </div>
+
+                <!-- Section: ระบบตรวจนับสต็อก (Stock Audit) -->
+                <div class="space-y-4 mt-6">
+                    <h5
+                        class="text-xs font-bold text-slate-500 uppercase tracking-wider pl-1 border-l-2 border-violet-500">
+                        ระบบตรวจนับสต็อกประจำวัน (Daily Stock Audit)
+                    </h5>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <!-- Toggle: do_stock_audit -->
+                        <div
+                            class="flex items-center justify-between p-3 bg-slate-800/50 rounded-xl border border-slate-700/30 hover:bg-slate-700/30 transition-colors">
+                            <div class="flex items-center gap-3">
+                                <div class="w-8 h-8 rounded-lg bg-violet-500/10 flex items-center justify-center">
+                                    <i class="fa-solid fa-qrcode text-violet-400 text-sm"></i>
+                                </div>
+                                <div>
+                                    <span class="text-sm font-medium text-slate-200">ตรวจนับสต็อกประจำวัน</span>
+                                    <p class="text-[10px] text-slate-500 mt-0.5">สแกนบาร์โค้ด ตรวจนับ ถ่ายรูปกล่อง</p>
+                                </div>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" id="perm-do_stock_audit" class="sr-only peer">
+                                <div
+                                    class="w-10 h-5 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-slate-400 after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-violet-500 peer-checked:after:bg-white">
+                                </div>
+                            </label>
+                        </div>
+
+                        <!-- Toggle: manage_stock_audit -->
+                        <div
+                            class="flex items-center justify-between p-3 bg-slate-800/50 rounded-xl border border-slate-700/30 hover:bg-slate-700/30 transition-colors">
+                            <div class="flex items-center gap-3">
+                                <div class="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center">
+                                    <i class="fa-solid fa-clipboard-check text-amber-400 text-sm"></i>
+                                </div>
+                                <div>
+                                    <span class="text-sm font-medium text-slate-200">ตรวจสอบผลสต็อก (จัดการ/อนุมัติ)</span>
+                                    <p class="text-[10px] text-slate-500 mt-0.5">อนุมัติหรือยกเลิกการตรวจนับสต็อก</p>
+                                </div>
+                            </div>
+                            <label class="relative inline-flex inline-flex items-center cursor-pointer">
+                                <input type="checkbox" id="perm-manage_stock_audit" class="sr-only peer">
+                                <div
+                                    class="w-10 h-5 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-slate-400 after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-amber-500 peer-checked:after:bg-white">
+                                </div>
+                            </label>
+                        </div>
                     </div>
                 </div>
 

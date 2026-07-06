@@ -4537,6 +4537,30 @@ router.get('/stock-audit/sessions/today', async (req, res) => {
         const items = await StockAuditItem.find({ session_id: session._id })
             .populate('scanned_by', 'name emp_id').sort({ scanned_at: -1 });
 
+        // Query transactions created in this branch since this session started to find items sold during the audit
+        const soldTxns = await Transaction.find({
+            branch_id: branchId,
+            status: { $ne: 'ยกเลิกแล้ว' },
+            createdAt: { $gte: session.createdAt }
+        }).lean();
+
+        const soldImeisMap = new Map();
+        for (const txn of soldTxns) {
+            if (Array.isArray(txn.items)) {
+                for (const item of txn.items) {
+                    if (item.imei) {
+                        soldImeisMap.set(item.imei, {
+                            imei: item.imei,
+                            product_id: item.product_id,
+                            product_name: item.product_name,
+                            sold: true,
+                            sold_at: txn.createdAt
+                        });
+                    }
+                }
+            }
+        }
+
         // รายการ IMEI ที่ควรมีในสาขา — ใช้ populate แบบเดียวกับ /api/products
         const products = await Product.find({ 'stock_balances': { $elemMatch: { branch_id: branchId } } })
             .populate('unit_id', 'name')
@@ -4546,16 +4570,44 @@ router.get('/stock-audit/sessions/today', async (req, res) => {
             .lean();
         
         const expectedImeis = [];
+        const addedImeis = new Set();
+
         for (const p of products) {
             const bal = p.stock_balances.find(b => b.branch_id && b.branch_id.toString() === branchId.toString());
             if (bal && p.unit_id && p.unit_id.name === 'เครื่อง' && Array.isArray(bal.imeis)) {
-                bal.imeis.forEach(imei => expectedImeis.push({
+                bal.imeis.forEach(imei => {
+                    expectedImeis.push({
+                        imei,
+                        product_id: p._id,
+                        product_name: p.name,
+                        color: p.color_id ? p.color_id.name : '',
+                        capacity: (p.capacity_id ? p.capacity_id.name : '') + (p.condition_id ? ' / ' + p.condition_id.name : ''),
+                        sold: soldImeisMap.has(imei)
+                    });
+                    addedImeis.add(imei);
+                });
+            }
+        }
+
+        // Add sold items that are no longer in stock balances but were expected because they were sold after the session opened
+        for (const [imei, soldData] of soldImeisMap.entries()) {
+            if (!addedImeis.has(imei)) {
+                let colorStr = '';
+                let capacityStr = '';
+                const pDoc = products.find(p => p._id.toString() === soldData.product_id?.toString());
+                if (pDoc) {
+                    colorStr = pDoc.color_id ? pDoc.color_id.name : '';
+                    capacityStr = (pDoc.capacity_id ? pDoc.capacity_id.name : '') + (pDoc.condition_id ? ' / ' + pDoc.condition_id.name : '');
+                }
+                expectedImeis.push({
                     imei,
-                    product_id: p._id,
-                    product_name: p.name,
-                    color: p.color_id ? p.color_id.name : '',
-                    capacity: (p.capacity_id ? p.capacity_id.name : '') + (p.condition_id ? ' / ' + p.condition_id.name : '')
-                }));
+                    product_id: soldData.product_id,
+                    product_name: soldData.product_name,
+                    color: colorStr,
+                    capacity: capacityStr,
+                    sold: true
+                });
+                addedImeis.add(imei);
             }
         }
 
@@ -4572,8 +4624,16 @@ router.get('/stock-audit/sessions', async (req, res) => {
         if (!req.user.permissions || !req.user.permissions.manage_stock_audit) {
             return res.status(403).json({ success: false, message: 'ไม่มีสิทธิ์เข้าถึงข้อมูลนี้' });
         }
-        const { status, branch_id, startDate, endDate, page = 1 } = req.query;
-        const limit = 20; const skip = (parseInt(page) - 1) * limit;
+
+        // Auto-create missing daily sessions for all branches when reviewer enters the screen
+        try {
+            const { generateDailySessionsForAllBranches } = require('../utils/cronTasks');
+            await generateDailySessionsForAllBranches();
+        } catch (cronErr) {
+            console.error('Error auto-creating sessions in GET /sessions:', cronErr);
+        }
+
+        const { status, branch_id, startDate, endDate } = req.query;
         const filter = {};
         if (status) filter.status = status;
         if (branch_id) filter.branch_id = branch_id;
@@ -4582,11 +4642,10 @@ router.get('/stock-audit/sessions', async (req, res) => {
             if (startDate) { const s = new Date(startDate); s.setHours(0,0,0,0); filter.session_date.$gte = s; }
             if (endDate) { const e = new Date(endDate); e.setHours(23,59,59,999); filter.session_date.$lte = e; }
         }
-        const total = await StockAuditSession.countDocuments(filter);
         const sessions = await StockAuditSession.find(filter)
             .populate('branch_id', 'name').populate('created_by', 'name emp_id').populate('closed_by', 'name emp_id')
-            .sort({ session_date: -1 }).skip(skip).limit(limit);
-        res.json({ success: true, data: sessions, total, page: parseInt(page), limit });
+            .sort({ session_date: -1 });
+        res.json({ success: true, data: sessions, total: sessions.length });
     } catch (error) {
         console.error('API Error GET /api/stock-audit/sessions:', error);
         res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการดึงรายการรอบตรวจนับ' });

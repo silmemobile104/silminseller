@@ -35,6 +35,10 @@ mongoose.connect(MONGODB_URI)
         const { seedDefaultRoles, migrateProductsToERP } = require('./models');
         await seedDefaultRoles();
         await migrateProductsToERP();
+
+        // Start Daily Stock Audit scheduler
+        const { initDailyStockAuditScheduler } = require('./utils/cronTasks');
+        initDailyStockAuditScheduler();
     })
     .catch((err) => {
         console.error('เกิดข้อผิดพลาดในการเชื่อมต่อฐานข้อมูล:', err);
