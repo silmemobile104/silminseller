@@ -407,7 +407,7 @@ const financeReceivableSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 // คำนวณยอดค้างโอนอัตโนมัติก่อนตรวจสอบข้อมูล (Validation)
-financeReceivableSchema.pre('validate', function() {
+financeReceivableSchema.pre('validate', function () {
     this.financed_amount = this.total_finance_price - this.down_payment - this.icloud_fee - this.contract_fee;
 });
 

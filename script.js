@@ -25,7 +25,7 @@ function compressImage(base64Str, maxWidth = 1024, maxHeight = 1024, quality = 0
             canvas.height = height;
             const ctx = canvas.getContext('2d');
             ctx.drawImage(img, 0, 0, width, height);
-            
+
             const compressedBase64 = canvas.toDataURL('image/jpeg', quality);
             resolve(compressedBase64);
         };
@@ -1081,7 +1081,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
         } catch (e) {
-            console.error('Error polling pending transfers', e);
+            if (e.message === 'เซสชั่นหมดอายุ') {
+                stopPendingTransferPolling();
+            } else {
+                console.error('Error polling pending transfers', e);
+            }
         }
     };
 
@@ -1168,7 +1172,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (cancelBtn) {
             cancelBtn.style.display = 'block';
             cancelBtn.textContent = 'ยกเลิก';
-            cancelBtn.className = "flex-1 py-2.5 rounded-xl text-sm font-bold text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-750 transition-all active:scale-[0.98]";
+            cancelBtn.className = "flex-1 py-2.5 rounded-xl text-sm font-bold text-black bg-slate-700 hover:bg-slate-600 transition-all active:scale-[0.98]";
         }
 
         // Auto-detect type if not provided
@@ -3718,7 +3722,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // State for POS UI
     let posCurrentPage = 1;
-    let posPerPage = 10;
+    let posPerPage = 12;
     let posFilteredData = [];
     let posActiveTab = 'search'; // 'search' or 'scan'
 
@@ -3797,15 +3801,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
         posSearchResults.innerHTML = '';
 
+        const paginationContainer = document.getElementById('pos-pagination-container');
+
         if (posFilteredData.length === 0) {
             posEmptyState.classList.remove('hidden');
             posSearchResults.classList.add('hidden');
+            if (paginationContainer) paginationContainer.classList.add('hidden');
             updatePosPagination();
             return;
         }
 
         posEmptyState.classList.add('hidden');
         posSearchResults.classList.remove('hidden');
+        if (paginationContainer) paginationContainer.classList.remove('hidden');
 
         const startIndex = (posCurrentPage - 1) * posPerPage;
         const endIndex = startIndex + posPerPage;
@@ -3820,25 +3828,43 @@ document.addEventListener('DOMContentLoaded', () => {
             const productNameFull = `${product.name} ${capacityName} ${colorName}`.trim();
             const isDevice = typeof checkIsDevice === 'function' ? checkIsDevice(categoryName, product) : false;
 
+            const qtyInCart = typeof cart !== 'undefined' ? cart.filter(item => item.product_id === product._id).reduce((sum, item) => sum + item.quantity, 0) : 0;
+
             const card = document.createElement('div');
-            card.className = `bg-slate-900 border rounded-xl p-4 transition-all ${isOutOfStock ? 'border-red-500/30 opacity-60' : 'border-slate-700 hover:border-cyan-500/50 hover:shadow-[0_0_15px_rgba(6,182,212,0.1)]'}`;
+            card.className = `pos-card bg-white border rounded-2xl p-4 transition-all shadow-sm ${isOutOfStock ? 'border-red-300 opacity-60' : 'border-gray-200 hover:border-[#f5b11a] hover:shadow-md'}`;
+            card.setAttribute('data-product-id', product._id);
             card.innerHTML = `
                 <div class="flex items-start gap-3 mb-3">
-                    <div class="w-12 h-12 rounded-lg ${isDevice ? 'bg-cyan-500/10 text-cyan-400' : 'bg-orange-500/10 text-orange-400'} flex items-center justify-center flex-shrink-0">
+                    <div class="w-12 h-12 rounded-xl ${isDevice ? 'bg-[#fdf9f1] text-[#f5b11a]' : 'bg-gray-100 text-gray-500'} border border-gray-100 flex items-center justify-center flex-shrink-0">
                         <i class="fa-solid ${isDevice ? 'fa-mobile-screen' : 'fa-box'} text-xl"></i>
                     </div>
                     <div class="min-w-0 flex-1">
-                        <h4 class="font-semibold text-white text-sm leading-tight">${productNameFull}</h4>
-                        <p class="text-sm font-black font-mono text-slate-400 mt-1 tracking-wider">${product.product_code || '-'}</p>
-                        <p class="text-xs mt-1.5">
-                            <span class="px-1.5 py-0.5 rounded ${isOutOfStock ? 'bg-red-500/10 text-red-400' : 'bg-emerald-500/10 text-emerald-400'} text-[10px] font-medium">${isOutOfStock ? 'สินค้าหมด' : `คงเหลือ: ${stockQty}`}</span>
-                        </p>
+                        <h4 class="font-bold text-slate-800 text-sm leading-tight">${productNameFull}</h4>
+                        <p class="text-sm font-bold font-mono text-[#f5b11a] mt-1 tracking-wider">${product.product_code || '-'}</p>
+                        <div class="flex items-center justify-between mt-1.5 pr-1">
+                            <span class="text-[12px] font-bold ${isOutOfStock ? 'text-red-500' : 'text-orange-500'}">${isOutOfStock ? 'สินค้าหมด' : `คงเหลือ: ${stockQty}`}</span>
+                            <span class="text-[12px] text-gray-500 text-right truncate pl-2">${product.branch_id && product.branch_id.name ? product.branch_id.name : ''}</span>
+                        </div>
                     </div>
                 </div>
-                <div class="flex items-center justify-between mt-2 pt-3 border-t border-slate-700/50">
-                    <span class="font-bold font-mono text-lg"><span class="text-red-500">฿</span><span class="text-black">${product.selling_price.toLocaleString()}</span></span>
-                    <button class="pos-add-btn px-3 py-1.5 rounded-lg text-sm font-bold transition-all flex items-center gap-1.5 ${isOutOfStock ? 'bg-slate-700 text-slate-500 cursor-not-allowed' : 'bg-cyan-500 hover:bg-cyan-400 text-slate-900 shadow-lg shadow-cyan-500/20'}" data-product-id="${product._id}" ${isOutOfStock ? 'disabled' : ''}>
-                        <i class="fa-solid fa-plus text-xs"></i> เพิ่ม
+                <div class="border-t border-gray-100 mt-3 pt-3">
+                    <div class="flex items-center justify-between mb-3">
+                        <span class="font-black font-mono text-xl"><span class="text-red-500">฿</span><span class="text-gray-900">${(product.selling_price || 0).toLocaleString()}</span></span>
+                        
+                        <!-- Quantity Controls -->
+                        <div class="pos-qty-controls flex items-center gap-3 ${qtyInCart > 0 ? '' : 'hidden'}">
+                             <button class="pos-card-qty-minus w-7 h-7 rounded-full border border-gray-300 flex items-center justify-center text-gray-500 hover:bg-gray-50 transition-colors" data-product-id="${product._id}">
+                                 <i class="fa-solid fa-minus text-[10px]"></i>
+                             </button>
+                             <span class="pos-card-qty-display font-bold font-mono text-lg text-black w-4 text-center">${qtyInCart}</span>
+                             <button class="pos-card-qty-plus w-7 h-7 rounded-full border border-gray-300 flex items-center justify-center text-gray-500 hover:bg-gray-50 transition-colors" data-product-id="${product._id}">
+                                 <i class="fa-solid fa-plus text-[10px]"></i>
+                             </button>
+                        </div>
+                    </div>
+                    
+                    <button class="pos-add-btn w-full py-2.5 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 ${isOutOfStock ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-[#f5b11a] hover:bg-[#e0a015] text-white shadow-lg shadow-amber-500/20'}" data-product-id="${product._id}" ${isOutOfStock ? 'disabled' : ''}>
+                        <i class="fa-solid fa-plus"></i> เพิ่ม
                     </button>
                 </div>
             `;
@@ -3852,6 +3878,40 @@ document.addEventListener('DOMContentLoaded', () => {
                 const product = posProductsCache.find(p => p._id === productId);
                 if (product) {
                     handleAddToCart(product);
+                }
+            });
+        });
+
+        document.querySelectorAll('.pos-card-qty-plus').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const productId = e.currentTarget.getAttribute('data-product-id');
+                const product = posProductsCache.find(p => p._id === productId);
+                if (product) {
+                    // Check stock limit before adding
+                    const currentQty = typeof cart !== 'undefined' ? cart.filter(item => item.product_id === productId).reduce((sum, item) => sum + item.quantity, 0) : 0;
+                    if (currentQty >= product.quantity) {
+                        if (typeof showToast === 'function') showToast(`สินค้า ${product.name} มีไม่เพียงพอในสต็อก`, 'error');
+                        return;
+                    }
+                    handleAddToCart(product);
+                }
+            });
+        });
+
+        document.querySelectorAll('.pos-card-qty-minus').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const productId = e.currentTarget.getAttribute('data-product-id');
+                if (typeof cart !== 'undefined') {
+                    const idx = cart.map(i => i.product_id).lastIndexOf(productId);
+                    if (idx !== -1) {
+                        if (cart[idx].quantity > 1) {
+                            cart[idx].quantity -= 1;
+                            cart[idx].subtotal = cart[idx].quantity * cart[idx].price;
+                        } else {
+                            cart.splice(idx, 1);
+                        }
+                        if (typeof renderCart === 'function') renderCart();
+                    }
                 }
             });
         });
@@ -3879,27 +3939,27 @@ document.addEventListener('DOMContentLoaded', () => {
 
         let paginationHTML = '';
 
-        paginationHTML += `<button class="pos-page-btn px-2 py-1 rounded text-sm font-medium ${posCurrentPage === 1 ? 'text-slate-600 cursor-not-allowed' : 'text-slate-300 hover:bg-slate-700 hover:text-white'}" data-page="${posCurrentPage - 1}" ${posCurrentPage === 1 ? 'disabled' : ''}><i class="fa-solid fa-chevron-left"></i></button>`;
+        paginationHTML += `<button class="pos-page-btn px-3 py-1.5 rounded-lg text-sm font-medium flex items-center gap-1.5 ${posCurrentPage === 1 ? 'text-slate-400 bg-slate-100 cursor-not-allowed' : 'text-slate-700 bg-slate-100 hover:bg-slate-200 transition-colors'}" data-page="${posCurrentPage - 1}" ${posCurrentPage === 1 ? 'disabled' : ''}><i class="fa-solid fa-chevron-left text-xs"></i> ย้อนกลับ</button>`;
 
         let startPage = Math.max(1, posCurrentPage - 2);
         let endPage = Math.min(totalPages, posCurrentPage + 2);
 
         if (startPage > 1) {
-            paginationHTML += `<button class="pos-page-btn px-3 py-1 rounded text-sm font-medium text-slate-400 hover:bg-slate-700 hover:text-white transition-colors" data-page="1">1</button>`;
-            if (startPage > 2) paginationHTML += `<span class="px-2 text-slate-500">...</span>`;
+            paginationHTML += `<button class="pos-page-btn px-3 py-1.5 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-200 transition-colors" data-page="1">1</button>`;
+            if (startPage > 2) paginationHTML += `<span class="px-2 text-slate-400">...</span>`;
         }
 
         for (let i = startPage; i <= endPage; i++) {
             const isActive = i === posCurrentPage;
-            paginationHTML += `<button class="pos-page-btn px-3 py-1 rounded text-sm font-medium transition-colors ${isActive ? 'bg-cyan-500 text-slate-900 shadow-md shadow-cyan-500/20' : 'text-slate-400 hover:bg-slate-700 hover:text-white'}" data-page="${i}">${i}</button>`;
+            paginationHTML += `<button class="pos-page-btn px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${isActive ? 'bg-[#eab308] text-white shadow-md shadow-yellow-500/20' : 'text-slate-600 hover:bg-slate-200'}" data-page="${i}">${i}</button>`;
         }
 
         if (endPage < totalPages) {
-            if (endPage < totalPages - 1) paginationHTML += `<span class="px-2 text-slate-500">...</span>`;
-            paginationHTML += `<button class="pos-page-btn px-3 py-1 rounded text-sm font-medium text-slate-400 hover:bg-slate-700 hover:text-white transition-colors" data-page="${totalPages}">${totalPages}</button>`;
+            if (endPage < totalPages - 1) paginationHTML += `<span class="px-2 text-slate-400">...</span>`;
+            paginationHTML += `<button class="pos-page-btn px-3 py-1.5 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-200 transition-colors" data-page="${totalPages}">${totalPages}</button>`;
         }
 
-        paginationHTML += `<button class="pos-page-btn px-2 py-1 rounded text-sm font-medium ${posCurrentPage === totalPages ? 'text-slate-600 cursor-not-allowed' : 'text-slate-300 hover:bg-slate-700 hover:text-white'}" data-page="${posCurrentPage + 1}" ${posCurrentPage === totalPages ? 'disabled' : ''}><i class="fa-solid fa-chevron-right"></i></button>`;
+        paginationHTML += `<button class="pos-page-btn px-3 py-1.5 rounded-lg text-sm font-medium flex items-center gap-1.5 ${posCurrentPage === totalPages ? 'text-slate-400 bg-slate-100 cursor-not-allowed' : 'text-slate-700 bg-slate-100 hover:bg-slate-200 transition-colors'}" data-page="${posCurrentPage + 1}" ${posCurrentPage === totalPages ? 'disabled' : ''}>ถัดไป <i class="fa-solid fa-chevron-right text-xs"></i></button>`;
 
         controlsEl.innerHTML = paginationHTML;
 
@@ -3933,6 +3993,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const q = (query !== null ? query : (posSearchInput ? posSearchInput.value : '')).trim().toLowerCase();
 
         posFilteredData = posProductsCache.filter(p => {
+            // Hide out of stock products
+            if ((p.quantity || 0) <= 0) return false;
+
             // Category filter
             if (selectedCategory && (!p.type_id || p.type_id.name !== selectedCategory)) return false;
 
@@ -3950,18 +4013,78 @@ document.addEventListener('DOMContentLoaded', () => {
 
             return true;
         }).sort((a, b) => {
-            const hasStockA = (a.quantity || 0) > 0;
-            const hasStockB = (b.quantity || 0) > 0;
-            if (hasStockA === hasStockB) return 0;
-            return hasStockA ? -1 : 1;
+            // Devices (mobile phones) first
+            const isDeviceA = typeof checkIsDevice === 'function' ? checkIsDevice(a.type_id ? a.type_id.name : '', a) : false;
+            const isDeviceB = typeof checkIsDevice === 'function' ? checkIsDevice(b.type_id ? b.type_id.name : '', b) : false;
+            if (isDeviceA && !isDeviceB) return -1;
+            if (!isDeviceA && isDeviceB) return 1;
+
+            // Newest uploaded first (created_at descending)
+            const dateA = new Date(a.created_at || 0).getTime();
+            const dateB = new Date(b.created_at || 0).getTime();
+            return dateB - dateA;
         });
 
         posCurrentPage = 1;
         renderPosProductsTable();
     };
 
-    // Add to Cart Handler
+    // Confirmation Modal Elements
+    const modalConfirmAddCart = document.getElementById('modal-confirm-add-cart');
+    const btnCancelAddCart = document.getElementById('btn-cancel-add-cart');
+    const btnConfirmAddCart = document.getElementById('btn-confirm-add-cart');
+    const confirmAddProductName = document.getElementById('confirm-add-product-name');
+    const confirmAddProductCode = document.getElementById('confirm-add-product-code');
+    const confirmAddProductDetails = document.getElementById('confirm-add-product-details');
+    let pendingProductToCart = null;
+
+    if (btnCancelAddCart && modalConfirmAddCart) {
+        btnCancelAddCart.addEventListener('click', () => {
+            pendingProductToCart = null;
+            modalConfirmAddCart.classList.add('opacity-0', 'pointer-events-none');
+            modalConfirmAddCart.children[0].classList.add('scale-95');
+        });
+    }
+    if (btnConfirmAddCart) {
+        btnConfirmAddCart.addEventListener('click', () => {
+            if (pendingProductToCart) {
+                processAddToCart(pendingProductToCart);
+                pendingProductToCart = null;
+                modalConfirmAddCart.classList.add('opacity-0', 'pointer-events-none');
+                modalConfirmAddCart.children[0].classList.add('scale-95');
+            }
+        });
+    }
+
     const handleAddToCart = (product) => {
+        if (!modalConfirmAddCart) {
+            // Fallback if modal not present
+            processAddToCart(product);
+            return;
+        }
+
+        pendingProductToCart = product;
+        confirmAddProductName.textContent = product.name;
+
+        if (confirmAddProductCode) {
+            confirmAddProductCode.textContent = product.product_code || '';
+            confirmAddProductCode.style.display = product.product_code ? 'block' : 'none';
+        }
+
+        let details = [];
+        if (product.type_id && product.type_id.name) details.push(product.type_id.name);
+        if (product.capacity_id && product.capacity_id.name) details.push(product.capacity_id.name);
+        if (product.color_id && product.color_id.name) details.push(product.color_id.name);
+        details.push(`ราคา: ฿${(product.selling_price || 0).toLocaleString()}`);
+
+        confirmAddProductDetails.textContent = details.join(' | ');
+
+        modalConfirmAddCart.classList.remove('opacity-0', 'pointer-events-none');
+        modalConfirmAddCart.children[0].classList.remove('scale-95');
+    };
+
+    // Actual Add to Cart Logic
+    const processAddToCart = (product) => {
         const hasImeis = Array.isArray(product.imeis) && product.imeis.length > 0;
         const typeName = product.type_id ? (product.type_id.name || '') : '';
         const unitName = product.unit_id ? (product.unit_id.name || '') : '';
@@ -3975,6 +4098,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // Fallback: if product has no IMEIs in stock, use product_code as identifier
             if (availableImeis.length === 0 && product.product_code) {
+                if (product.quantity <= 0) {
+                    showToast(`สินค้า ${product.name} หมดสต็อก`, 'error');
+                    return;
+                }
                 const codeAsImei = product.product_code.toString().trim();
                 if (codeAsImei && !cartImeis.includes(codeAsImei)) {
                     availableImeis = [codeAsImei];
@@ -4016,6 +4143,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 existingItem.quantity += 1;
                 existingItem.subtotal = existingItem.quantity * existingItem.price;
             } else {
+                if (product.quantity <= 0) {
+                    showToast(`สินค้า ${product.name} หมดสต็อก`, 'error');
+                    return;
+                }
                 cart.push({
                     product_id: product._id,
                     product_name: product.name,
@@ -4125,6 +4256,23 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (closeImeiModalBtn) closeImeiModalBtn.addEventListener('click', closeImeiModal);
 
+    const syncPOSCardQuantities = () => {
+        document.querySelectorAll('.pos-card').forEach(card => {
+            const productId = card.getAttribute('data-product-id');
+            const qtyInCart = typeof cart !== 'undefined' ? cart.filter(item => item.product_id === productId).reduce((sum, item) => sum + item.quantity, 0) : 0;
+
+            const controls = card.querySelector('.pos-qty-controls');
+            const display = card.querySelector('.pos-card-qty-display');
+
+            if (qtyInCart > 0) {
+                if (controls) controls.classList.remove('hidden');
+                if (display) display.textContent = qtyInCart;
+            } else {
+                if (controls) controls.classList.add('hidden');
+            }
+        });
+    };
+
     // Render Cart
     const renderCart = () => {
         if (!cartItemsContainer) return;
@@ -4219,6 +4367,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Update totals
         updateCartTotals();
+        // Sync POS card quantities
+        if (typeof syncPOSCardQuantities === 'function') syncPOSCardQuantities();
         // Sync mobile cart
         if (typeof renderMobileCart === 'function') renderMobileCart();
     };
@@ -5387,7 +5537,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const savedUserData = localStorage.getItem('silmin_user');
             if (savedUserData) {
                 const user = JSON.parse(savedUserData);
-                branch_id = user.branch ? user.branch._id : null;
+                branch_id = user.branch ? (user.branch._id || user.branch) : null;
             }
 
             const payload = {
@@ -5542,7 +5692,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <i class="fa-solid fa-user text-sm"></i>
                 </div>
                 <div class="flex-1 overflow-hidden">
-                    <p class="text-sm font-bold text-white truncate">${member.prefix}${member.first_name} ${member.last_name}</p>
+                    <p class="text-sm font-bold  truncate">${member.prefix}${member.first_name} ${member.last_name}</p>
                     <p class="text-xs text-slate-400 truncate">${member.phone || 'ไม่มีเบอร์โทร'} | ${member.member_number || '-'}</p>
                 </div>
             `;
@@ -5576,6 +5726,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (btnPosAddMember) {
         btnPosAddMember.addEventListener('click', () => {
+            if (typeof closeCheckoutModal === 'function') closeCheckoutModal();
             switchView('members');
             // Option: auto-click add member button in members view
             setTimeout(() => {
@@ -8923,7 +9074,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const container = document.getElementById('po-items-container');
 
         const row = document.createElement('div');
-        row.className = 'p-5 bg-[#151515] border border-gray-800 rounded-xl relative po-item-row shadow-sm hover:border-cyan-500/30 transition-colors group';
+        row.className = 'p-5  border border-gray-800 rounded-xl relative po-item-row shadow-sm hover:border-cyan-500/30 transition-colors group';
         row.innerHTML = `
             <button type="button" class="btn-delete-row absolute -top-3 -right-3 w-8 h-8 rounded-full bg-slate-800 border border-slate-700 text-slate-400 hover:text-white hover:bg-red-500 flex items-center justify-center shadow-lg transition-all opacity-0 group-hover:opacity-100 z-10"><i class="fa-solid fa-trash text-xs"></i></button>
             <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
@@ -9968,7 +10119,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                         `คุณต้องการยืนยันการได้รับยอดเงินโอนจากบริษัทไฟแนนซ์ สำหรับใบเสร็จเลขที่ <strong class="font-mono text-white">${recNo}</strong><br>เป็นจำนวนเงินค้างโอน <strong class="text-green-400 font-mono">฿${amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</strong> หรือไม่?<br><br>
                                          <div class="text-left bg-slate-950/45 p-4 rounded-2xl border border-slate-800 space-y-2 mt-3">
                                              <label class="text-xs font-semibold text-slate-400 block">ระบุวันที่ได้รับเงิน (รับจากไฟแนนซ์):</label>
-                                             <input type="date" id="ar-pay-date-input" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-green-500 text-sm" value="${todayStr}">
+                                             <input type="date" id="ar-pay-date-input" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 focus:outline-none focus:border-green-500 text-sm" value="${todayStr}">
                                          </div>`,
                                         async () => {
                                             try {
@@ -10992,7 +11143,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (pendingQty <= 0) return; // Full received already
 
             const el = document.createElement('div');
-            el.className = 'p-5 bg-[#151515] border border-gray-800 rounded-xl po-receive-row shadow-sm';
+            el.className = 'p-5  border border-gray-800 rounded-xl po-receive-row shadow-sm';
             el.dataset.itemId = item._id;
             el.dataset.trackImei = item.track_imei;
             el.dataset.importedImeis = JSON.stringify(item.imported_imeis || []);
@@ -11012,11 +11163,11 @@ document.addEventListener('DOMContentLoaded', () => {
                             </span>
                         </div>
                         <input type="text" 
-                            class="scan-imei-input w-full bg-[#1a1a1a] border border-gray-700 hover:border-gray-600 focus:border-cyan-500 text-lg rounded-xl px-4 py-3.5 text-white focus:outline-none focus:ring-2 focus:ring-cyan-500/20 transition-all font-mono placeholder-slate-600" 
+                            class="scan-imei-input w-full  border border-gray-700  focus:border-cyan-500 text-lg rounded-xl px-4 py-3.5 text-[#00000] focus:outline-none focus:ring-2 focus:ring-cyan-500/20 transition-all font-mono placeholder-slate-600" 
                             placeholder="ยิงบาร์โค้ด หรือพิมพ์ IMEI ที่นี่..." 
                             autocomplete="off">
                         
-                        <div class="scanned-imeis-container flex flex-wrap gap-2 min-h-[50px] p-3 bg-[#111111] border border-gray-800 rounded-xl">
+                        <div class="scanned-imeis-container flex flex-wrap gap-2 min-h-[50px] p-3  border border-gray-800 rounded-xl">
                             <div class="no-imeis-placeholder text-xs text-slate-600 flex items-center justify-center w-full py-2">
                                 <i class="fa-solid fa-info-circle mr-1"></i> ยังไม่มีการสแกน IMEI
                             </div>
@@ -11028,7 +11179,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 inputHtml = `
                     <div class="mt-4 max-w-[200px]">
                         <label class="text-xs font-bold text-slate-400 mb-1.5 block">จำนวนที่รับเข้า (รอรับ ${pendingQty} ชิ้น)</label>
-                        <input type="number" class="receive-qty w-full px-3 py-2.5 text-sm bg-[#2a2a2a] border border-gray-700 text-white rounded-lg focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:outline-none font-bold text-center" min="0" max="${pendingQty}" value="${defaultQty}">
+                        <input type="number" class="receive-qty w-full px-3 py-2.5 text-sm border border-gray-700 text-[#2a2a2a] rounded-lg focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:outline-none font-bold text-center" min="0" max="${pendingQty}" value="${defaultQty}">
                     </div>
                 `;
             }
@@ -11036,7 +11187,7 @@ document.addEventListener('DOMContentLoaded', () => {
             el.innerHTML = `
                 <div class="flex justify-between items-start gap-4">
                     <div>
-                        <h5 class="text-white font-bold text-base flex items-center gap-2">
+                        <h5 class=" font-bold text-base flex items-center gap-2">
                             <span>${item.product_name}</span>
                             <span class="text-xs text-slate-500 font-mono font-normal">(${item.product_code})</span>
                         </h5>
@@ -13163,13 +13314,13 @@ function initStockAudit() {
                 const rawBase64 = ev.target.result;
                 const preview = document.getElementById('audit-modal-photo-preview');
                 const btnCamera = document.getElementById('btn-audit-modal-camera');
-                
+
                 // Show a loading/compressing state
                 if (btnCamera) {
                     btnCamera.disabled = true;
                     btnCamera.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> กำลังย่อภาพถ่าย...';
                 }
-                
+
                 try {
                     // Compress the box photo to speed up uploads and save bandwidth
                     _auditPhotoBase64 = await compressImage(rawBase64, 1024, 1024, 0.7);
@@ -13182,7 +13333,7 @@ function initStockAudit() {
                         btnCamera.innerHTML = '<i class="fa-solid fa-rotate"></i> <span>ถ่ายภาพใหม่ / เปลี่ยนรูป</span>';
                     }
                 }
-                
+
                 if (preview) {
                     preview.src = _auditPhotoBase64;
                     preview.classList.remove('hidden');

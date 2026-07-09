@@ -4275,7 +4275,6 @@
                                     ผลการตรวจนับได้รับการอนุมัติจากพนักงานสต็อกเรียบร้อย</p>
                             </div>
                         </div>
-
                     </div>
                 </div>
 
@@ -4637,8 +4636,18 @@
                                 </div>
                                 <!-- Search Results Container -->
                                 <div id="pos-search-results"
-                                    class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 hidden">
+                                    class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 hidden mb-4">
                                     <!-- Product cards injected here -->
+                                </div>
+                                <!-- POS Pagination Container -->
+                                <div id="pos-pagination-container"
+                                    class="hidden flex flex-col sm:flex-row items-center justify-between border-t border-slate-200 pt-4 mt-auto">
+                                    <div id="pos-pagination-info"
+                                        class="text-sm text-slate-500 font-medium mb-3 sm:mb-0">
+                                        แสดง 0-0 จาก 0 รายการ
+                                    </div>
+                                    <div id="pos-pagination-controls" class="flex gap-2 items-center">
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -7861,7 +7870,7 @@
             <p id="confirm-message" class="text-slate-300 text-sm font-light leading-relaxed mb-6 px-2"></p>
             <div class="flex gap-3">
                 <button id="confirm-cancel-btn"
-                    class="flex-1 py-2.5 rounded-xl bg-slate-800 text-slate-400 border border-slate-700/60 text-sm font-medium hover:bg-slate-700 hover:text-white hover:border-slate-600 transition-all active:scale-[0.98]">ยกเลิก</button>
+                    class="flex-1 py-2.5 rounded-xl bg-red-800 text-white border border-slate-700/60 text-sm font-medium hover:bg-red-700 hover:text-white  transition-all active:scale-[0.98]">ยกเลิก</button>
                 <button id="confirm-ok-btn"
                     class="flex-1 py-2.5 rounded-xl text-sm font-bold text-white transition-all active:scale-[0.98]"></button>
             </div>
@@ -8830,8 +8839,7 @@
                                 </div>
                                 <div class="flex justify-between items-center pt-3 border-t border-slate-700">
                                     <span class="text-base text-slate-200 font-bold">ยอดชำระสุทธิ</span>
-                                    <span id="modal-total-display"
-                                        class="text-4xl font-black text-cyan-400 font-mono tracking-tight drop-shadow-[0_0_8px_rgba(6,182,212,0.5)]">฿0.00</span>
+                                    <span id="modal-total-display" class="text-4xl ">฿0.00</span>
                                 </div>
                             </div>
 
@@ -9071,9 +9079,9 @@
     <div id="modal-po-receive"
         class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm opacity-0 pointer-events-none transition-all duration-300 p-4">
         <div
-            class="modal-content relative w-full max-w-4xl max-h-[90vh] flex flex-col bg-slate-900 rounded-3xl shadow-2xl border border-gray-800 transform scale-95 transition-transform duration-300">
-            <div class="p-6 border-b border-gray-800 flex justify-between items-center bg-[#1a1a1a] rounded-t-3xl">
-                <h3 class="text-xl font-bold text-white flex items-center gap-3">
+            class="modal-content relative w-full max-w-4xl max-h-[90vh] flex flex-col bg-white rounded-3xl shadow-2xl border border-gray-800 transform scale-95 transition-transform duration-300">
+            <div class="p-6 border-b border-gray-800 flex justify-between items-center  rounded-t-3xl">
+                <h3 class="text-xl font-bold  flex items-center gap-3">
                     <div
                         class="w-10 h-10 rounded-xl bg-indigo-500/10 flex items-center justify-center border border-indigo-500/20">
                         <i class="fa-solid fa-boxes-packing text-indigo-400"></i>
@@ -9081,7 +9089,7 @@
                     ตรวจรับสินค้า PO: <span id="receive-po-number" class="text-cyan-400 font-mono"></span>
                 </h3>
                 <button id="btn-close-po-receive"
-                    class="text-slate-400 hover:text-white transition-colors p-2 rounded-lg hover:bg-slate-800">
+                    class="text-slate-400  transition-colors p-2 rounded-lg hover:bg-slate-800">
                     <i class="fa-solid fa-xmark text-xl"></i>
                 </button>
             </div>
@@ -9090,9 +9098,9 @@
                     <!-- Dynamic Items -->
                 </div>
             </div>
-            <div class="p-6 border-t border-gray-800 bg-[#151515] rounded-b-3xl">
+            <div class="p-6 border-t border-gray-800  rounded-b-3xl">
                 <button id="btn-submit-po-receive"
-                    class="w-full py-4 bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 text-white font-bold rounded-xl shadow-lg shadow-indigo-500/25 active:scale-[0.98] transition-all">
+                    class="w-full py-4 bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-white font-bold rounded-xl shadow-lg shadow-amber-500/25 active:scale-[0.98] transition-all text-lg">
                     ยืนยันการตรวจรับสินค้า
                 </button>
             </div>
@@ -9256,7 +9264,7 @@
                 <i class="fa-solid fa-check text-4xl text-green-400"></i>
             </div>
 
-            <h3 class="text-2xl font-bold text-white mb-2">ทำรายการสำเร็จ!</h3>
+            <h3 class="text-2xl font-bold mb-2">ทำรายการสำเร็จ!</h3>
             <p class="text-slate-400 mb-8" id="success-receipt-number">เลขที่ใบเสร็จ: INV-XXXXXXXX</p>
 
             <div class="space-y-3">
@@ -9270,6 +9278,31 @@
                     class="w-full py-3 text-slate-400 hover:text-white font-medium transition-colors">
                     ปิดหน้าต่างนี้
                 </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- CONFIRM ADD CART MODAL -->
+    <div id="modal-confirm-add-cart"
+        class="fixed inset-0 z-[70] flex items-center justify-center bg-slate-900/90 backdrop-blur-md opacity-0 pointer-events-none transition-all duration-300 p-4">
+        <div
+            class="modal-content w-full max-w-md bg-white rounded-3xl shadow-2xl flex flex-col transform scale-95 transition-transform duration-300">
+            <div class="p-8 text-center">
+                <div class="w-20 h-20 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <i class="fa-solid fa-cart-plus text-4xl text-amber-500"></i>
+                </div>
+                <h3 class="text-2xl font-bold  mb-2">ยืนยันเพิ่มสินค้า</h3>
+                <p id="confirm-add-product-code" class="text-xl font-bold text-amber-500 mb-2"></p>
+                <p class="mb-2">จะเพิ่มสินค้า <span id="confirm-add-product-name"
+                        class="font-bold text-amber-500"></span> เข้าในตะกร้าใช่ไหม?</p>
+                <p class="text-sm mb-8" id="confirm-add-product-details"></p>
+
+                <div class="flex gap-4">
+                    <button id="btn-cancel-add-cart"
+                        class="flex-1 py-3 bg-[#b91c1c] hover:bg-red-800 text-white font-bold rounded-xl transition-colors text-lg">ยกเลิก</button>
+                    <button id="btn-confirm-add-cart"
+                        class="flex-1 py-3 bg-[#eab308] hover:bg-yellow-600 text-white font-bold rounded-xl shadow-lg shadow-yellow-500/20 transition-all active:scale-95 text-lg">ยืนยันเพิ่ม</button>
+                </div>
             </div>
         </div>
     </div>
