@@ -2075,6 +2075,7 @@ router.post('/transactions', async (req, res) => {
         // ==========================================
         // CRITICAL: Stock Deduction Logic (หักสต็อกแยกตามสาขา)
         // ==========================================
+        const targetBranchId = branch_id || (req.user && req.user.branch_id ? req.user.branch_id : '');
         for (const item of normalizedItems) {
             const product = await Product.findById(item.product_id);
             if (!product) {
@@ -2084,7 +2085,7 @@ router.post('/transactions', async (req, res) => {
                 });
             }
 
-            const bId = branch_id ? branch_id.toString() : '';
+            const bId = targetBranchId ? targetBranchId.toString() : '';
             if (!product.stock_balances) product.stock_balances = [];
             let bal = product.stock_balances.find(x => x.branch_id && x.branch_id.toString() === bId);
 
@@ -2127,7 +2128,7 @@ router.post('/transactions', async (req, res) => {
             await createMovementsForItem({
                 productId: product._id,
                 action: 'ขายออก',
-                fromBranch: branch_id,
+                fromBranch: targetBranchId,
                 toBranch: null,
                 referenceNo: receipt_number,
                 createdBy: req.user.employee_id,
@@ -2140,7 +2141,7 @@ router.post('/transactions', async (req, res) => {
         // บันทึกรายการขาย
         const newTransaction = new Transaction({
             receipt_number,
-            branch_id: branch_id || null,
+            branch_id: targetBranchId || null,
             employee_id: req.user.employee_id, // เก็บ ID พนักงานที่ขาย
             items: normalizedItems,
             total_amount: Number(total_amount) || 0,
@@ -4472,8 +4473,8 @@ router.post('/stock-audit/sessions', async (req, res) => {
         const branchId = req.user.branch_id;
         if (!branchId) return res.status(400).json({ success: false, message: 'ไม่พบข้อมูลสาขาของพนักงาน กรุณาตรวจสอบการตั้งค่า' });
 
-        const todayStart = new Date(); todayStart.setHours(0,0,0,0);
-        const todayEnd   = new Date(); todayEnd.setHours(23,59,59,999);
+        const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
+        const todayEnd = new Date(); todayEnd.setHours(23, 59, 59, 999);
 
         const existingToday = await StockAuditSession.findOne({
             branch_id: branchId,
@@ -4524,8 +4525,8 @@ router.get('/stock-audit/sessions/today', async (req, res) => {
             return res.status(403).json({ success: false, message: 'ไม่มีสิทธิ์ตรวจนับสต็อกประจำวัน' });
         }
         const branchId = req.user.branch_id;
-        const todayStart = new Date(); todayStart.setHours(0,0,0,0);
-        const todayEnd   = new Date(); todayEnd.setHours(23,59,59,999);
+        const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
+        const todayEnd = new Date(); todayEnd.setHours(23, 59, 59, 999);
 
         const session = await StockAuditSession.findOne({
             branch_id: branchId,
@@ -4544,7 +4545,7 @@ router.get('/stock-audit/sessions/today', async (req, res) => {
             .populate('capacity_id', 'name')
             .populate('condition_id', 'name')
             .lean();
-        
+
         const expectedImeis = [];
         for (const p of products) {
             const bal = p.stock_balances.find(b => b.branch_id && b.branch_id.toString() === branchId.toString());
@@ -4579,8 +4580,8 @@ router.get('/stock-audit/sessions', async (req, res) => {
         if (branch_id) filter.branch_id = branch_id;
         if (startDate || endDate) {
             filter.session_date = {};
-            if (startDate) { const s = new Date(startDate); s.setHours(0,0,0,0); filter.session_date.$gte = s; }
-            if (endDate) { const e = new Date(endDate); e.setHours(23,59,59,999); filter.session_date.$lte = e; }
+            if (startDate) { const s = new Date(startDate); s.setHours(0, 0, 0, 0); filter.session_date.$gte = s; }
+            if (endDate) { const e = new Date(endDate); e.setHours(23, 59, 59, 999); filter.session_date.$lte = e; }
         }
         const total = await StockAuditSession.countDocuments(filter);
         const sessions = await StockAuditSession.find(filter)
