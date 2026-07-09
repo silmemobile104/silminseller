@@ -3959,7 +3959,7 @@ document.addEventListener('DOMContentLoaded', () => {
             paginationHTML += `<button class="pos-page-btn px-3 py-1.5 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-200 transition-colors" data-page="${totalPages}">${totalPages}</button>`;
         }
 
-        paginationHTML += `<button class="pos-page-btn px-3 py-1.5 rounded-lg text-sm font-medium flex items-center gap-1.5 ${posCurrentPage === totalPages ? 'text-slate-400 bg-slate-100 cursor-not-allowed' : 'text-slate-700 bg-slate-100 hover:bg-slate-200 transition-colors'}" data-page="${posCurrentPage + 1}" ${posCurrentPage === totalPages ? 'disabled' : ''}>ถัดไป <i class="fa-solid fa-chevron-right text-xs"></i></button>`;
+        paginationHTML += `<button class="pos-page-btn px-3 py-1.5 rounded-lg text-sm font-medium flex items-center gap-1.5 ${posCurrentPage === totalPages ? 'text-slate-400 bg-slate-100 cursor-not-allowed' : 'text-slate-400 bg-slate-100 hover:bg-slate-200 transition-colors'}" data-page="${posCurrentPage + 1}" ${posCurrentPage === totalPages ? 'disabled' : ''}>ถัดไป <i class="fa-solid fa-chevron-right text-xs"></i></button>`;
 
         controlsEl.innerHTML = paginationHTML;
 
@@ -6939,7 +6939,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Open View Transfer Modal
-    window.openTransferDetailModal = function(transferId) {
+    window.openTransferDetailModal = function (transferId) {
         const transfer = transfersData.find(t => t._id === transferId);
         if (!transfer) return;
 
@@ -6957,12 +6957,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const btnReceive = document.getElementById('btn-transfer-view-receive');
 
         if (numEl) numEl.textContent = transfer.transfer_number;
-        
+
         if (statusEl) {
             statusEl.textContent = transfer.status;
-            statusEl.className = 'px-2.5 py-1 rounded text-xs font-bold ' + 
-                (transfer.status === 'รอดำเนินการ' 
-                    ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' 
+            statusEl.className = 'px-2.5 py-1 rounded text-xs font-bold ' +
+                (transfer.status === 'รอดำเนินการ'
+                    ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
                     : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20');
         }
 
@@ -6989,7 +6989,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 tr.innerHTML = `
                     <td class="px-4 py-3">
-                        <div class="text-white font-medium">${item.product_name}</div>
+                        <div class="font-medium">${item.product_name}</div>
                         <div class="text-slate-500 text-xs font-mono">${item.product_code}</div>
                         ${imeiHtml}
                     </td>
@@ -7026,7 +7026,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnCloseTransferView = document.getElementById('btn-close-transfer-view');
     const btnTransferViewCloseModal = document.getElementById('btn-transfer-view-close-modal');
 
-    window.closeTransferViewModal = function() {
+    window.closeTransferViewModal = function () {
         if (!modalTransferView) return;
         modalTransferView.classList.add('opacity-0', 'pointer-events-none');
         modalTransferView.children[0].classList.add('scale-95');
@@ -8598,11 +8598,11 @@ document.addEventListener('DOMContentLoaded', () => {
             const contentGlobalStock = document.getElementById('content-branch-globalstock');
 
             const activateTab = (activeTab, inactiveTab, activeContent, inactiveContent) => {
-                activeTab.classList.add('text-emerald-400', 'border-b-2', 'border-emerald-400', 'bg-emerald-500/10');
-                activeTab.classList.remove('text-slate-400', 'border-transparent');
+                activeTab.classList.add('text-slate-900', 'bg-[#f5b11a]', 'border-transparent');
+                activeTab.classList.remove('text-slate-400', 'border-slate-700', 'bg-transparent', 'hover:text-slate-200');
 
-                inactiveTab.classList.remove('text-emerald-400', 'border-b-2', 'border-emerald-400', 'bg-emerald-500/10');
-                inactiveTab.classList.add('text-slate-400', 'border-transparent');
+                inactiveTab.classList.remove('text-slate-900', 'bg-[#f5b11a]', 'border-transparent');
+                inactiveTab.classList.add('text-slate-400', 'border-slate-700', 'bg-transparent', 'hover:text-slate-200');
 
                 activeContent.classList.remove('hidden');
                 inactiveContent.classList.add('hidden');
@@ -13775,7 +13775,7 @@ function _renderExpectedTable(rows) {
     tbody.innerHTML = rows.map((e, idx) => {
         const isScanned = _scannedImeiSet.has(e.imei);
         const isSold = e.sold;
-        
+
         let rowBg = 'hover:bg-slate-700/20';
         if (isScanned) rowBg = 'bg-emerald-500/5';
         else if (isSold) rowBg = 'bg-slate-800/80 opacity-70';
@@ -14028,7 +14028,7 @@ async function loadAuditReviewSessions() {
         const customStartDate = document.getElementById('audit-review-start-date');
         const customEndDate = document.getElementById('audit-review-end-date');
         const todayStr = new Date().toLocaleDateString('en-CA');
-        
+
         if (customStartDate && !customStartDate.value) customStartDate.value = todayStr;
         if (customEndDate && !customEndDate.value) customEndDate.value = todayStr;
 

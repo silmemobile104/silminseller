@@ -4302,7 +4302,7 @@
                                 <option value="today" selected>วันนี้</option>
                                 <option value="custom">กำหนดช่วงวัน</option>
                             </select>
-                            
+
                             <!-- Custom Date Range Inputs -->
                             <div id="audit-review-date-range-container" class="hidden flex items-center gap-1.5">
                                 <input type="date" id="audit-review-start-date"
@@ -4394,13 +4394,13 @@
                     </div>
 
                     <!-- Tabs Navigation -->
-                    <div class="flex space-x-1 border-b border-slate-700/50">
+                    <div class="flex space-x-2 border-b border-slate-700/50 pb-2">
                         <button id="tab-branch-mystock"
-                            class="px-6 py-3 text-sm font-bold rounded-lg transition-all text-emerald-400 border-b-2 border-emerald-400 bg-emerald-500/10">
+                            class="px-6 py-3 text-sm font-bold rounded-lg transition-all text-slate-900 bg-[#f5b11a] border border-transparent">
                             <i class="fa-solid fa-box-open mr-2"></i> สินค้าในสาขาของฉัน
                         </button>
                         <button id="tab-branch-globalstock"
-                            class="px-6 py-3 text-sm font-bold rounded-lg text-slate-400 hover:text-slate-200 transition-all border-b-2 border-transparent">
+                            class="px-6 py-3 text-sm font-bold rounded-lg transition-all text-slate-400 hover:text-slate-200 border border-slate-700 bg-transparent">
                             <i class="fa-solid fa-globe mr-2"></i> สินค้าและราคาสาขาอื่น
                         </button>
                     </div>
@@ -4713,7 +4713,8 @@
                                 <i class="fa-solid fa-sim-card text-cyan-400"></i>
                                 เลือก IMEI สำหรับขาย
                             </h4>
-                            <button id="close-imei-modal" class="text-slate-400 hover:text-white transition-colors p-1">
+                            <button id="close-imei-modal"
+                                class="text-slate-400 hover:text-red-400 transition-colors p-1">
                                 <i class="fa-solid fa-xmark text-lg"></i>
                             </button>
                         </div>
@@ -6888,7 +6889,7 @@
                     <i class="fa-solid fa-right-left text-cyan-400"></i>
                     สร้างรายการโอนย้ายสินค้า
                 </h4>
-                <button id="btn-close-create-transfer" class="text-slate-400 hover:text-white transition-colors p-1">
+                <button id="btn-close-create-transfer" class="text-slate-400 hover:text-red-400 transition-colors p-1">
                     <i class="fa-solid fa-xmark text-lg"></i>
                 </button>
             </div>
@@ -6939,11 +6940,10 @@
             class="modal-content relative w-full max-w-md max-h-[90vh] bg-slate-800 rounded-3xl shadow-2xl border border-slate-700 flex flex-col transform scale-95 transition-transform duration-300">
             <!-- Header -->
             <div class="p-6 border-b border-slate-700 flex justify-between items-center shrink-0">
-                <h3 class="text-xl font-bold text-white flex items-center gap-2">
+                <h3 class="text-xl font-bold  flex items-center gap-2">
                     <i class="fa-solid fa-print text-cyan-400"></i> พิมพ์สติ๊กเกอร์บาร์โค้ด
                 </h3>
-                <button id="close-barcode-modal-btn" type="button"
-                    class="text-slate-400 hover:text-white transition-colors p-1">
+                <button id="close-barcode-modal-btn" type="button" class=" transition-colors p-1">
                     <i class="fa-solid fa-xmark text-xl"></i>
                 </button>
             </div>
@@ -6951,7 +6951,7 @@
             <!-- Body -->
             <div class="p-6 overflow-y-auto space-y-4">
                 <div class="bg-slate-900/50 p-4 rounded-xl border border-slate-700">
-                    <p id="barcode-modal-product-name" class="font-bold text-white text-lg">-</p>
+                    <p id="barcode-modal-product-name" class="font-bold  text-lg">-</p>
                     <p id="barcode-modal-product-code" class="text-sm text-cyan-400 font-mono mt-1">-</p>
                 </div>
 
@@ -7150,11 +7150,10 @@
         <div
             class="relative w-[95%] md:w-[450px] max-h-[90vh] overflow-y-auto p-6 bg-slate-800 rounded-2xl shadow-2xl border border-slate-700 custom-scrollbar">
             <div class="flex items-center justify-between mb-4 pb-2 border-b border-slate-700">
-                <h4 class="text-sm font-bold text-white flex items-center gap-2">
+                <h4 class="text-sm font-bold  flex items-center gap-2">
                     <i class="fa-solid fa-sliders text-cyan-400"></i> ตัวกรองคลังสินค้าอย่างละเอียด
                 </h4>
-                <button id="btn-stock-filter-close" type="button"
-                    class="text-slate-400 hover:text-white transition-colors p-1">
+                <button id="btn-stock-filter-close" type="button" class="text-slate-400 hover: transition-colors p-1">
                     <i class="fa-solid fa-xmark text-xl"></i>
                 </button>
             </div>
@@ -7163,7 +7162,7 @@
                 <div>
                     <label class="text-xs font-semibold text-slate-400 block mb-1">ประเภทสินค้า</label>
                     <select id="stock-filter-prod-type"
-                        class="w-full bg-white border border-slate-300 text-sm rounded-lg px-3 py-2 text-slate-900 focus:outline-none focus:border-cyan-500">
+                        class="w-full bg-white border border-slate-300 text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-cyan-500">
                         <option value="">ทุกประเภท</option>
                     </select>
                 </div>
@@ -7171,7 +7170,7 @@
                 <div>
                     <label class="text-xs font-semibold text-slate-400 block mb-1">ชื่อสินค้า</label>
                     <select id="stock-filter-product-name"
-                        class="w-full bg-white border border-slate-300 text-sm rounded-lg px-3 py-2 text-slate-900 focus:outline-none focus:border-cyan-500">
+                        class="w-full bg-white border border-slate-300 text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-cyan-500">
                         <option value="">ทุกชื่อสินค้า</option>
                     </select>
                 </div>
@@ -7180,14 +7179,14 @@
                     <div>
                         <label class="text-xs font-semibold text-slate-400 block mb-1">สี</label>
                         <select id="stock-filter-color"
-                            class="w-full bg-white border border-slate-300 text-sm rounded-lg px-3 py-2 text-slate-900 focus:outline-none focus:border-cyan-500">
+                            class="w-full bg-white border border-slate-300 text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-cyan-500">
                             <option value="">ทุกสี</option>
                         </select>
                     </div>
                     <div>
                         <label class="text-xs font-semibold text-slate-400 block mb-1">ความจุ</label>
                         <select id="stock-filter-capacity"
-                            class="w-full bg-white border border-slate-300 text-sm rounded-lg px-3 py-2 text-slate-900 focus:outline-none focus:border-cyan-500">
+                            class="w-full bg-white border border-slate-300 text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-cyan-500">
                             <option value="">ทุกความจุ</option>
                         </select>
                     </div>
@@ -7197,14 +7196,14 @@
                     <div>
                         <label class="text-xs font-semibold text-slate-400 block mb-1">สภาพสินค้า</label>
                         <select id="stock-filter-condition"
-                            class="w-full bg-white border border-slate-300 text-sm rounded-lg px-3 py-2 text-slate-900 focus:outline-none focus:border-cyan-500">
+                            class="w-full bg-white border border-slate-300 text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-cyan-500">
                             <option value="">ทุกสภาพ</option>
                         </select>
                     </div>
                     <div>
                         <label class="text-xs font-semibold text-slate-400 block mb-1">หน่วยนับ</label>
                         <select id="stock-filter-unit"
-                            class="w-full bg-white border border-slate-300 text-sm rounded-lg px-3 py-2 text-slate-900 focus:outline-none focus:border-cyan-500">
+                            class="w-full bg-white border border-slate-300 text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-cyan-500">
                             <option value="">ทุกหน่วยนับ</option>
                         </select>
                     </div>
@@ -7215,9 +7214,9 @@
                     <span class="text-xs font-bold text-slate-300 block mb-2">ช่วงราคาขาย (บาท)</span>
                     <div class="grid grid-cols-2 gap-2">
                         <input id="stock-filter-price-min" type="number" inputmode="numeric" placeholder="ต่ำสุด"
-                            class="w-full bg-white border border-slate-300 text-sm rounded-lg px-3 py-2 text-slate-900 focus:outline-none focus:border-cyan-500 placeholder-slate-400" />
+                            class="w-full bg-white border border-slate-300 text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-cyan-500 placeholder-slate-400" />
                         <input id="stock-filter-price-max" type="number" inputmode="numeric" placeholder="สูงสุด"
-                            class="w-full bg-white border border-slate-300 text-sm rounded-lg px-3 py-2 text-slate-900 focus:outline-none focus:border-cyan-500 placeholder-slate-400" />
+                            class="w-full bg-white border border-slate-300 text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-cyan-500 placeholder-slate-400" />
                     </div>
                 </div>
 
@@ -7225,9 +7224,9 @@
                     <span class="text-xs font-bold text-slate-300 block mb-2">ช่วงราคาต้นทุน (บาท)</span>
                     <div class="grid grid-cols-2 gap-2">
                         <input id="stock-filter-cost-min" type="number" inputmode="numeric" placeholder="ต่ำสุด"
-                            class="w-full bg-white border border-slate-300 text-sm rounded-lg px-3 py-2 text-slate-900 focus:outline-none focus:border-cyan-500 placeholder-slate-400" />
+                            class="w-full bg-white border border-slate-300 text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-cyan-500 placeholder-slate-400" />
                         <input id="stock-filter-cost-max" type="number" inputmode="numeric" placeholder="สูงสุด"
-                            class="w-full bg-white border border-slate-300 text-sm rounded-lg px-3 py-2 text-slate-900 focus:outline-none focus:border-cyan-500 placeholder-slate-400" />
+                            class="w-full bg-white border border-slate-300 text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-cyan-500 placeholder-slate-400" />
                     </div>
                 </div>
 
@@ -7236,9 +7235,9 @@
                     <span class="text-xs font-bold text-slate-300 block mb-2">จำนวนคงเหลือในคลัง</span>
                     <div class="grid grid-cols-2 gap-2">
                         <input id="stock-filter-qty-min" type="number" inputmode="numeric" placeholder="ต่ำสุด"
-                            class="w-full bg-white border border-slate-300 text-sm rounded-lg px-3 py-2 text-slate-900 focus:outline-none focus:border-cyan-500 placeholder-slate-400" />
+                            class="w-full bg-white border border-slate-300 text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-cyan-500 placeholder-slate-400" />
                         <input id="stock-filter-qty-max" type="number" inputmode="numeric" placeholder="สูงสุด"
-                            class="w-full bg-white border border-slate-300 text-sm rounded-lg px-3 py-2 text-slate-900 focus:outline-none focus:border-cyan-500 placeholder-slate-400" />
+                            class="w-full bg-white border border-slate-300 text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-cyan-500 placeholder-slate-400" />
                     </div>
                 </div>
 
@@ -7246,7 +7245,7 @@
                 <div class="border-t border-slate-700/60 pt-3">
                     <label class="text-xs font-semibold text-slate-400 block mb-1">การเรียงลำดับ</label>
                     <select id="stock-filter-sort"
-                        class="w-full bg-white border border-slate-300 text-sm rounded-lg px-3 py-2 text-slate-900 focus:outline-none focus:border-cyan-500">
+                        class="w-full bg-white border border-slate-300 text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-cyan-500">
                         <option value="newest">อัปเดตล่าสุด / วันที่นำเข้า</option>
                         <option value="name_asc">ชื่อสินค้า (ก-ฮ)</option>
                         <option value="price_asc">ราคาขาย: ต่ำ -> สูง</option>
@@ -7273,11 +7272,10 @@
             class="modal-content relative w-[95%] md:w-[900px] max-h-[90vh] overflow-y-auto p-6 md:p-8 bg-slate-800 rounded-2xl shadow-2xl border border-slate-700">
             <!-- Modal Header -->
             <div class="flex items-center justify-between mb-6 pb-4 border-b border-slate-700">
-                <h3 class="text-2xl font-bold text-white flex items-center gap-2">
+                <h3 class="text-2xl font-bold  flex items-center gap-2">
                     <i class="fa-solid fa-file-excel text-emerald-500"></i> นำเข้าสินค้าผ่าน Excel
                 </h3>
-                <button id="close-excel-modal-btn" type="button"
-                    class="text-slate-400 hover:text-white transition-colors">
+                <button id="close-excel-modal-btn" type="button" class="text-slate-400 hover: transition-colors">
                     <i class="fa-solid fa-xmark text-xl"></i>
                 </button>
             </div>
@@ -7288,7 +7286,7 @@
                     <!-- Step 1 Indicator -->
                     <div class="flex flex-col items-center flex-1 relative">
                         <div id="excel-step1-indicator"
-                            class="w-8 h-8 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold text-sm z-10 transition-colors">
+                            class="w-8 h-8 rounded-full bg-emerald-600  flex items-center justify-center font-bold text-sm z-10 transition-colors">
                             1</div>
                         <span class="text-xs text-slate-300 mt-2 font-medium">โครงสร้างข้อมูล</span>
                     </div>
@@ -7344,84 +7342,84 @@
                         <tbody class="divide-y divide-slate-800 text-slate-300">
                             <tr>
                                 <td class="p-3 font-bold text-center bg-slate-900/50">A</td>
-                                <td class="p-3 font-medium text-white">รหัสสินค้า (SKU)</td>
+                                <td class="p-3 font-medium ">รหัสสินค้า (SKU)</td>
                                 <td class="p-3 text-red-400">ใช่</td>
                                 <td class="p-3 text-slate-400">IP14-128-BK</td>
                             </tr>
                             <tr>
                                 <td class="p-3 font-bold text-center bg-slate-900/50">B</td>
-                                <td class="p-3 font-medium text-white">ชื่อสินค้า (Product Name)</td>
+                                <td class="p-3 font-medium ">ชื่อสินค้า (Product Name)</td>
                                 <td class="p-3 text-red-400">ใช่</td>
                                 <td class="p-3 text-slate-400">iPhone 14 (ต้องมีข้อมูลชื่อนี้อยู่แล้วในระบบ)</td>
                             </tr>
                             <tr>
                                 <td class="p-3 font-bold text-center bg-slate-900/50">C</td>
-                                <td class="p-3 font-medium text-white">หมวดหมู่ (Category)</td>
+                                <td class="p-3 font-medium ">หมวดหมู่ (Category)</td>
                                 <td class="p-3 text-red-400">ใช่</td>
                                 <td class="p-3 text-slate-400">โทรศัพท์มือถือ (ต้องมีข้อมูลหมวดหมู่นี้อยู่แล้วในระบบ)
                                 </td>
                             </tr>
                             <tr>
                                 <td class="p-3 font-bold text-center bg-slate-900/50">D</td>
-                                <td class="p-3 font-medium text-white">ผู้จัดจำหน่าย (Supplier)</td>
+                                <td class="p-3 font-medium ">ผู้จัดจำหน่าย (Supplier)</td>
                                 <td class="p-3 text-red-400">ใช่</td>
                                 <td class="p-3 text-slate-400">Apple Inc. (ต้องมีข้อมูลผู้จัดจำหน่ายนี้อยู่แล้วในระบบ)
                                 </td>
                             </tr>
                             <tr>
                                 <td class="p-3 font-bold text-center bg-slate-900/50">E</td>
-                                <td class="p-3 font-medium text-white">ที่จัดเก็บ / สาขา</td>
+                                <td class="p-3 font-medium ">ที่จัดเก็บ / สาขา</td>
                                 <td class="p-3 text-red-400">ใช่</td>
                                 <td class="p-3 text-slate-400">สำนักงานใหญ่ (ระบุสาขาที่ต้องการนำสินค้าเข้าสต็อก)</td>
                             </tr>
                             <tr>
                                 <td class="p-3 font-bold text-center bg-slate-900/50">F</td>
-                                <td class="p-3 font-medium text-white">สี (Color)</td>
+                                <td class="p-3 font-medium ">สี (Color)</td>
                                 <td class="p-3 text-red-400">ใช่</td>
                                 <td class="p-3 text-slate-400">Midnight (ต้องตรงกับสีหลักในระบบ)</td>
                             </tr>
                             <tr>
                                 <td class="p-3 font-bold text-center bg-slate-900/50">G</td>
-                                <td class="p-3 font-medium text-white">ความจุ (Capacity)</td>
+                                <td class="p-3 font-medium ">ความจุ (Capacity)</td>
                                 <td class="p-3 text-amber-400">เฉพาะมือถือ</td>
                                 <td class="p-3 text-slate-400">128GB
                                     (จำเป็นต้องใส่สำหรับสินค้าประเภทอุปกรณ์โทรศัพท์/แท็บเล็ต)</td>
                             </tr>
                             <tr>
                                 <td class="p-3 font-bold text-center bg-slate-900/50">H</td>
-                                <td class="p-3 font-medium text-white">สภาพเครื่อง (Condition)</td>
+                                <td class="p-3 font-medium ">สภาพเครื่อง (Condition)</td>
                                 <td class="p-3 text-amber-400">เฉพาะมือถือ</td>
                                 <td class="p-3 text-slate-400">มือหนึ่ง
                                     (จำเป็นต้องใส่สำหรับสินค้าประเภทอุปกรณ์โทรศัพท์/แท็บเล็ต)</td>
                             </tr>
                             <tr>
                                 <td class="p-3 font-bold text-center bg-slate-900/50">I</td>
-                                <td class="p-3 font-medium text-white">หน่วยนับ (Unit)</td>
+                                <td class="p-3 font-medium ">หน่วยนับ (Unit)</td>
                                 <td class="p-3 text-red-400">ใช่</td>
                                 <td class="p-3 text-slate-400">เครื่อง, ชิ้น, อัน (ต้องตรงกับหน่วยนับหลักในระบบ)</td>
                             </tr>
                             <tr>
                                 <td class="p-3 font-bold text-center bg-slate-900/50">J</td>
-                                <td class="p-3 font-medium text-white">ราคาต้นทุน (Cost)</td>
+                                <td class="p-3 font-medium ">ราคาต้นทุน (Cost)</td>
                                 <td class="p-3 text-red-400">ใช่</td>
                                 <td class="p-3 text-slate-400">ราคาเป็นตัวเลข มากกว่า 0 เช่น 18000</td>
                             </tr>
                             <tr>
                                 <td class="p-3 font-bold text-center bg-slate-900/50">K</td>
-                                <td class="p-3 font-medium text-white">ราคาขาย (Price)</td>
+                                <td class="p-3 font-medium ">ราคาขาย (Price)</td>
                                 <td class="p-3 text-red-400">ใช่</td>
                                 <td class="p-3 text-slate-400">ราคาเป็นตัวเลข มากกว่าหรือเท่ากับ 0 เช่น 22000</td>
                             </tr>
                             <tr>
                                 <td class="p-3 font-bold text-center bg-slate-900/50">L</td>
-                                <td class="p-3 font-medium text-white">จำนวน (Qty)</td>
+                                <td class="p-3 font-medium ">จำนวน (Qty)</td>
                                 <td class="p-3 text-red-400">ใช่</td>
                                 <td class="p-3 text-slate-400">1 (หากมี IMEI จำนวนที่แท้จริงจะถูกคำนวณจากจำนวน IMEI
                                     ด้านล่าง)</td>
                             </tr>
                             <tr>
                                 <td class="p-3 font-bold text-center bg-slate-900/50">M</td>
-                                <td class="p-3 font-medium text-white">IMEIs (คั่นด้วยเครื่องหมาย `,`)</td>
+                                <td class="p-3 font-medium ">IMEIs (คั่นด้วยเครื่องหมาย `,`)</td>
                                 <td class="p-3 text-amber-400">เฉพาะมือถือ</td>
                                 <td class="p-3 text-slate-400">356677889900111, 356677889900222 (จำเป็นสำหรับมือถือ)
                                 </td>
@@ -7432,7 +7430,7 @@
 
                 <div class="flex justify-end pt-4 border-t border-slate-700">
                     <button type="button" id="excel-btn-step1-next"
-                        class="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl glow-button-emerald flex items-center gap-2">
+                        class="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-500  font-bold rounded-xl glow-button-emerald flex items-center gap-2">
                         ฉันรับทราบและจัดเรียงข้อมูลตามนี้แล้ว <i class="fa-solid fa-arrow-right"></i>
                     </button>
                 </div>
@@ -7454,7 +7452,7 @@
                             <i class="fa-solid fa-cloud-arrow-up text-3xl"></i>
                         </div>
                         <div class="space-y-1">
-                            <p class="text-sm font-semibold text-white">ลากไฟล์ Excel มาวางที่นี่ หรือ <span
+                            <p class="text-sm font-semibold ">ลากไฟล์ Excel มาวางที่นี่ หรือ <span
                                     class="text-emerald-400 group-hover:underline">คลิกเพื่อเลือกไฟล์</span></p>
                             <p class="text-xs text-slate-500">รองรับไฟล์ประเภท .xlsx และ .xls เท่านั้น</p>
                         </div>
@@ -7463,7 +7461,7 @@
 
                 <div class="flex justify-between pt-4 border-t border-slate-700">
                     <button type="button" id="excel-btn-step2-back"
-                        class="px-5 py-2.5 rounded-xl font-medium text-slate-300 hover:text-white hover:bg-slate-700 transition-colors">
+                        class="px-5 py-2.5 rounded-xl font-medium text-slate-300 hover: hover:bg-slate-700 transition-colors">
                         <i class="fa-solid fa-arrow-left"></i> ย้อนกลับ
                     </button>
                 </div>
@@ -8399,7 +8397,8 @@
                                     <i class="fa-solid fa-clipboard-check text-amber-400 text-sm"></i>
                                 </div>
                                 <div>
-                                    <span class="text-sm font-medium text-slate-200">ตรวจสอบผลสต็อก (จัดการ/อนุมัติ)</span>
+                                    <span class="text-sm font-medium text-slate-200">ตรวจสอบผลสต็อก
+                                        (จัดการ/อนุมัติ)</span>
                                     <p class="text-[10px] text-slate-500 mt-0.5">อนุมัติหรือยกเลิกการตรวจนับสต็อก</p>
                                 </div>
                             </div>
@@ -8904,7 +8903,7 @@
             <div
                 class="sticky top-0 bg-slate-800 border-b border-slate-700 px-6 py-4 flex items-center justify-between rounded-t-3xl z-10">
                 <div>
-                    <h3 class="text-lg font-bold text-white flex items-center gap-2">
+                    <h3 class="text-lg font-bold  flex items-center gap-2">
                         <i class="fa-solid fa-clipboard-check text-violet-400"></i> อนุมัตินำเข้าสต็อก
                     </h3>
                     <p id="approve-modal-product-title" class="text-sm text-slate-400 mt-0.5">-</p>
@@ -9289,11 +9288,11 @@
             class="modal-content relative w-[95%] md:w-[650px] max-h-[90vh] overflow-y-auto flex flex-col bg-slate-800 rounded-2xl shadow-2xl border border-slate-700 transform scale-95 transition-transform duration-300">
             <!-- Header -->
             <div class="p-5 border-b border-slate-700 flex items-center justify-between">
-                <h4 class="text-lg font-bold text-white flex items-center gap-2">
+                <h4 class="text-lg font-bold  flex items-center gap-2">
                     <i class="fa-solid fa-file-invoice text-cyan-400"></i>
                     รายละเอียดใบโอนย้ายสินค้า
                 </h4>
-                <button id="btn-close-transfer-view" class="text-slate-400 hover:text-white transition-colors p-1">
+                <button id="btn-close-transfer-view" class="text-slate-400 hover:text-red-400 transition-colors p-1">
                     <i class="fa-solid fa-xmark text-lg"></i>
                 </button>
             </div>
@@ -9351,7 +9350,7 @@
             <!-- Footer -->
             <div class="p-5 border-t border-slate-700 bg-slate-900/50 flex items-center justify-between gap-3">
                 <button id="btn-transfer-view-print"
-                    class="px-4 py-2.5 rounded-xl bg-slate-700 hover:bg-slate-600 text-white font-bold transition-all text-sm flex items-center gap-1.5">
+                    class="px-4 py-2.5 rounded-xl bg-slate-700 hover:bg-slate-600  font-bold transition-all text-sm flex items-center gap-1.5">
                     <i class="fa-solid fa-print"></i> พิมพ์ใบโอน
                 </button>
                 <div class="flex gap-2">
@@ -9549,7 +9548,7 @@
                     ตัวเลือกการพิมพ์ใบเสร็จ
                 </h3>
                 <button id="close-print-options-btn" type="button"
-                    class="text-slate-400 hover:text-white transition-colors p-1.5 rounded-lg hover:bg-slate-700">
+                    class="text-slate-400 hover:text-red-400 transition-colors p-1.5 rounded-lg hover:bg-slate-700">
                     <i class="fa-solid fa-xmark text-lg"></i>
                 </button>
             </div>
@@ -9646,9 +9645,9 @@
             <div class="flex items-center justify-between border-b border-slate-800 pb-3">
                 <div class="flex items-center gap-2">
                     <span id="audit-modal-status-indicator" class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
-                    <h3 id="audit-modal-title" class="text-white font-bold text-base">พบสินค้าในระบบ</h3>
+                    <h3 id="audit-modal-title" class="font-bold text-base">พบสินค้าในระบบ</h3>
                 </div>
-                <button onclick="closeAuditVerifyModal()" class="text-slate-400 hover:text-white transition-all">
+                <button onclick="closeAuditVerifyModal()" class="text-slate-400 hover:text-red-500 transition-all">
                     <i class="fa-solid fa-xmark text-lg"></i>
                 </button>
             </div>
@@ -9714,7 +9713,7 @@
             <div class="flex items-center justify-between border-b border-slate-800 pb-3">
                 <div class="flex items-center gap-2">
                     <span id="audit-review-modal-indicator" class="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
-                    <h3 class="text-white font-bold text-base">ตรวจสอบรายการสแกน</h3>
+                    <h3 class="font-bold text-base">ตรวจสอบรายการสแกน</h3>
                 </div>
                 <button onclick="closeAuditReviewItemModal()" class="text-slate-400 hover:text-white transition-all">
                     <i class="fa-solid fa-xmark text-lg"></i>
