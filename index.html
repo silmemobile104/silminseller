@@ -9282,6 +9282,92 @@
         </div>
     </div>
 
+    <!-- MODAL: VIEW TRANSFER DETAILS -->
+    <div id="modal-transfer-view"
+        class="fixed inset-0 z-[70] flex items-center justify-center bg-slate-900/80 backdrop-blur-sm opacity-0 pointer-events-none transition-opacity duration-300 p-4">
+        <div
+            class="modal-content relative w-[95%] md:w-[650px] max-h-[90vh] overflow-y-auto flex flex-col bg-slate-800 rounded-2xl shadow-2xl border border-slate-700 transform scale-95 transition-transform duration-300">
+            <!-- Header -->
+            <div class="p-5 border-b border-slate-700 flex items-center justify-between">
+                <h4 class="text-lg font-bold text-white flex items-center gap-2">
+                    <i class="fa-solid fa-file-invoice text-cyan-400"></i>
+                    รายละเอียดใบโอนย้ายสินค้า
+                </h4>
+                <button id="btn-close-transfer-view" class="text-slate-400 hover:text-white transition-colors p-1">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <!-- Body -->
+            <div class="p-5 space-y-4 overflow-y-auto text-slate-300">
+                <!-- Info Section -->
+                <div class="grid grid-cols-2 gap-4 bg-slate-900/40 p-4 rounded-xl border border-slate-700/50">
+                    <div>
+                        <span class="text-xs text-slate-500 block">เลขที่ใบโอน</span>
+                        <span id="transfer-view-number" class="text-sm font-bold text-cyan-400 font-mono">-</span>
+                    </div>
+                    <div>
+                        <span class="text-xs text-slate-500 block">สถานะ</span>
+                        <span id="transfer-view-status" class="px-2 py-0.5 rounded text-xs font-bold">-</span>
+                    </div>
+                    <div>
+                        <span class="text-xs text-slate-500 block">สาขาต้นทาง</span>
+                        <span id="transfer-view-from" class="text-sm text-white">-</span>
+                    </div>
+                    <div>
+                        <span class="text-xs text-slate-500 block">สาขาปลายทาง</span>
+                        <span id="transfer-view-to" class="text-sm text-white">-</span>
+                    </div>
+                    <div>
+                        <span class="text-xs text-slate-500 block">วันที่โอน</span>
+                        <span id="transfer-view-date" class="text-sm text-white">-</span>
+                    </div>
+                    <div>
+                        <span class="text-xs text-slate-500 block">ผู้ทำรายการ</span>
+                        <span id="transfer-view-sender" class="text-sm text-white">-</span>
+                    </div>
+                </div>
+
+                <!-- Items Table -->
+                <div class="space-y-2">
+                    <label class="text-sm font-medium text-slate-400 font-semibold block">รายการสินค้า</label>
+                    <div class="overflow-x-auto border border-slate-750 rounded-xl">
+                        <table class="w-full text-left text-sm text-slate-300">
+                            <thead class="bg-slate-900/60 text-slate-400 text-xs uppercase font-semibold">
+                                <tr>
+                                    <th class="px-4 py-3">สินค้า</th>
+                                    <th class="px-4 py-3">สี/ความจุ</th>
+                                    <th class="px-4 py-3 text-right">จำนวน</th>
+                                </tr>
+                            </thead>
+                            <tbody id="transfer-view-items-body" class="divide-y divide-slate-700/50">
+                                <!-- Dynamic rows -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <div class="p-5 border-t border-slate-700 bg-slate-900/50 flex items-center justify-between gap-3">
+                <button id="btn-transfer-view-print"
+                    class="px-4 py-2.5 rounded-xl bg-slate-700 hover:bg-slate-600 text-white font-bold transition-all text-sm flex items-center gap-1.5">
+                    <i class="fa-solid fa-print"></i> พิมพ์ใบโอน
+                </button>
+                <div class="flex gap-2">
+                    <button id="btn-transfer-view-close-modal"
+                        class="px-4 py-2.5 rounded-xl bg-slate-700 hover:bg-slate-600 text-slate-300 font-bold transition-all text-sm border border-slate-600">
+                        ปิดหน้าต่าง
+                    </button>
+                    <button id="btn-transfer-view-receive"
+                        class="px-5 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-900 font-bold transition-all text-sm flex items-center gap-1.5 hidden">
+                        <i class="fa-solid fa-circle-check"></i> ยืนยันรับเข้าสต็อก
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- CONFIRM ADD CART MODAL -->
     <div id="modal-confirm-add-cart"
         class="fixed inset-0 z-[70] flex items-center justify-center bg-slate-900/90 backdrop-blur-md opacity-0 pointer-events-none transition-all duration-300 p-4">

@@ -6918,20 +6918,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
                 : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20';
 
-            const actionButtons = transfer.status === 'รอดำเนินการ'
-                ? `<div class="flex items-center justify-end gap-2">
-                    <button onclick="printTransferDocument('${transfer._id}')" class="px-3 py-1.5 rounded-lg bg-slate-600 hover:bg-slate-500 text-white text-xs font-bold transition-all" title="พิมพ์ใบโอน">
-                        <i class="fa-solid fa-print"></i> พิมพ์
+            const actionButtons = `<div class="flex items-center justify-end gap-2">
+                    <button onclick="openTransferDetailModal('${transfer._id}')" class="px-3 py-1.5 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-slate-900 text-xs font-bold transition-all">
+                        ดูรายละเอียด
                     </button>
-                    <button onclick="receiveTransfer('${transfer._id}')" class="px-3 py-1.5 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-slate-900 text-xs font-bold transition-all">
-                        รับเข้า
-                    </button>
-                   </div>`
-                : `<div class="flex items-center justify-end gap-2">
-                    <button onclick="printTransferDocument('${transfer._id}')" class="px-3 py-1.5 rounded-lg bg-slate-600 hover:bg-slate-500 text-white text-xs font-bold transition-all" title="พิมพ์ใบโอน">
-                        <i class="fa-solid fa-print"></i> พิมพ์
-                    </button>
-                    <span class="text-slate-500 text-xs">รับเข้าแล้ว</span>
                    </div>`;
 
             row.innerHTML = `
@@ -6947,6 +6937,103 @@ document.addEventListener('DOMContentLoaded', () => {
             transferTableBody.appendChild(row);
         });
     }
+
+    // Open View Transfer Modal
+    window.openTransferDetailModal = function(transferId) {
+        const transfer = transfersData.find(t => t._id === transferId);
+        if (!transfer) return;
+
+        const modal = document.getElementById('modal-transfer-view');
+        if (!modal) return;
+
+        const numEl = document.getElementById('transfer-view-number');
+        const statusEl = document.getElementById('transfer-view-status');
+        const fromEl = document.getElementById('transfer-view-from');
+        const toEl = document.getElementById('transfer-view-to');
+        const dateEl = document.getElementById('transfer-view-date');
+        const senderEl = document.getElementById('transfer-view-sender');
+        const itemsBody = document.getElementById('transfer-view-items-body');
+        const btnPrint = document.getElementById('btn-transfer-view-print');
+        const btnReceive = document.getElementById('btn-transfer-view-receive');
+
+        if (numEl) numEl.textContent = transfer.transfer_number;
+        
+        if (statusEl) {
+            statusEl.textContent = transfer.status;
+            statusEl.className = 'px-2.5 py-1 rounded text-xs font-bold ' + 
+                (transfer.status === 'รอดำเนินการ' 
+                    ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' 
+                    : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20');
+        }
+
+        if (fromEl) fromEl.textContent = transfer.from_branch?.name || '-';
+        if (toEl) toEl.textContent = transfer.to_branch?.name || '-';
+        if (dateEl) dateEl.textContent = new Date(transfer.created_at).toLocaleString('th-TH');
+        if (senderEl) senderEl.textContent = transfer.created_by?.name || '-';
+
+        if (itemsBody) {
+            itemsBody.innerHTML = '';
+            (transfer.items || []).forEach(item => {
+                const tr = document.createElement('tr');
+                tr.className = 'border-b border-slate-700/50';
+
+                const colorStr = item.color ? `สี: ${item.color}` : '';
+                const capStr = item.capacity ? `ความจุ: ${item.capacity}` : '';
+                const details = [colorStr, capStr].filter(Boolean).join(' / ') || '-';
+
+                const imeiHtml = item.imeis && item.imeis.length > 0
+                    ? `<div class="flex flex-wrap gap-1 mt-1.5">
+                        ${item.imeis.map(imei => `<span class="bg-cyan-500/10 text-cyan-400 px-1.5 py-0.5 rounded text-[10px] font-mono border border-cyan-500/20">${imei}</span>`).join('')}
+                       </div>`
+                    : '';
+
+                tr.innerHTML = `
+                    <td class="px-4 py-3">
+                        <div class="text-white font-medium">${item.product_name}</div>
+                        <div class="text-slate-500 text-xs font-mono">${item.product_code}</div>
+                        ${imeiHtml}
+                    </td>
+                    <td class="px-4 py-3 text-slate-400 text-xs">${details}</td>
+                    <td class="px-4 py-3 text-right text-white font-bold font-mono">${item.quantity} ${item.unit || 'ชิ้น'}</td>
+                `;
+                itemsBody.appendChild(tr);
+            });
+        }
+
+        if (btnPrint) {
+            btnPrint.onclick = () => {
+                printTransferDocument(transferId);
+            };
+        }
+
+        if (btnReceive) {
+            if (transfer.status === 'รอดำเนินการ') {
+                btnReceive.classList.remove('hidden');
+                btnReceive.onclick = async () => {
+                    closeTransferViewModal();
+                    await receiveTransfer(transferId);
+                };
+            } else {
+                btnReceive.classList.add('hidden');
+            }
+        }
+
+        modal.classList.remove('opacity-0', 'pointer-events-none');
+        modal.children[0].classList.remove('scale-95');
+    };
+
+    const modalTransferView = document.getElementById('modal-transfer-view');
+    const btnCloseTransferView = document.getElementById('btn-close-transfer-view');
+    const btnTransferViewCloseModal = document.getElementById('btn-transfer-view-close-modal');
+
+    window.closeTransferViewModal = function() {
+        if (!modalTransferView) return;
+        modalTransferView.classList.add('opacity-0', 'pointer-events-none');
+        modalTransferView.children[0].classList.add('scale-95');
+    };
+
+    if (btnCloseTransferView) btnCloseTransferView.onclick = closeTransferViewModal;
+    if (btnTransferViewCloseModal) btnTransferViewCloseModal.onclick = closeTransferViewModal;
 
     // Switch Transfer Tab
     function switchTransferTab(tab) {
@@ -6987,7 +7074,7 @@ document.addEventListener('DOMContentLoaded', () => {
     async function loadBranchesForTransfer() {
         if (!transferToBranch) return;
         const user = JSON.parse(localStorage.getItem('silmin_user') || '{}');
-        const currentBranchId = user.branch_id;
+        const currentBranchId = user.branch ? (user.branch._id || user.branch) : '';
 
         console.log('[TRANSFER] Loading branches for transfer, current branch:', currentBranchId);
 
@@ -7027,7 +7114,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // Add Product to Transfer Cart (by scanning barcode or IMEI)
     async function addProductToTransferCart(code) {
         try {
-            const response = await authFetch(`${API_BASE_URL}/products/search?code=${encodeURIComponent(code)}`);
+            const user = JSON.parse(localStorage.getItem('silmin_user') || '{}');
+            const currentBranchId = user.branch ? (user.branch._id || user.branch) : '';
+            const response = await authFetch(`${API_BASE_URL}/products/search?code=${encodeURIComponent(code)}&branch_id=${currentBranchId}`);
             const result = await response.json();
 
             if (result.success && result.product) {
