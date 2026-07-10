@@ -33,7 +33,8 @@ const roleSchema = new mongoose.Schema({
         view_branch_inventory: { type: Boolean, default: false }, // อนุญาตดูสินค้าในสาขา
         view_daily_summary: { type: Boolean, default: true }, // อนุญาตให้ดูรายงานสรุปยอดขายรายวัน
         manage_stock_audit: { type: Boolean, default: false }, // อนุญาตให้ตรวจสอบและอนุมัติผลการตรวจนับสต็อกประจำวัน
-        do_stock_audit: { type: Boolean, default: false } // อนุญาตให้ตรวจนับสต็อกประจำวัน
+        do_stock_audit: { type: Boolean, default: false }, // อนุญาตให้ตรวจนับสต็อกประจำวัน
+        manage_deposits: { type: Boolean, default: false } // อนุญาตให้จัดการมัดจำสินค้า
     }
 }, { timestamps: true });
 const Role = mongoose.model('Role', roleSchema, 'role');
@@ -49,7 +50,7 @@ const seedDefaultRoles = async () => {
                 manage_settings: true, manage_roles: true, filter_stock_branch: true, cancel_sale: true,
                 report_arrival: true, approve_import: true, manage_po: true, receive_po: true,
                 manage_transfers: true, manage_finance: true, view_audit_logs: true, view_branch_inventory: true,
-                view_daily_summary: true, manage_stock_audit: true, do_stock_audit: true
+                view_daily_summary: true, manage_stock_audit: true, do_stock_audit: true, manage_deposits: true
             }
         },
         {
@@ -60,7 +61,7 @@ const seedDefaultRoles = async () => {
                 manage_settings: true, manage_roles: false, filter_stock_branch: true, cancel_sale: true,
                 report_arrival: true, approve_import: false, manage_po: true, receive_po: true,
                 manage_transfers: true, manage_finance: true, view_audit_logs: true, view_branch_inventory: true,
-                view_daily_summary: true, manage_stock_audit: true, do_stock_audit: true
+                view_daily_summary: true, manage_stock_audit: true, do_stock_audit: true, manage_deposits: true
             }
         },
         {
@@ -71,7 +72,7 @@ const seedDefaultRoles = async () => {
                 manage_settings: false, manage_roles: false, filter_stock_branch: false, cancel_sale: false,
                 report_arrival: true, approve_import: false, manage_po: false, receive_po: true,
                 manage_transfers: false, manage_finance: false, view_audit_logs: false, view_branch_inventory: false,
-                view_daily_summary: true, manage_stock_audit: false, do_stock_audit: true
+                view_daily_summary: true, manage_stock_audit: false, do_stock_audit: true, manage_deposits: true
             }
         }
     ];
@@ -103,6 +104,7 @@ const seedDefaultRoles = async () => {
                 existing.permissions.view_branch_inventory = true;
                 existing.permissions.manage_stock_audit = true;
                 existing.permissions.do_stock_audit = true;
+                existing.permissions.manage_deposits = true;
                 changed = true;
             }
             // Ensure ผู้จัดการ gets manage_stock_audit & do_stock_audit
@@ -113,6 +115,18 @@ const seedDefaultRoles = async () => {
                 }
                 if (existing.permissions.do_stock_audit === undefined || existing.permissions.do_stock_audit === null) {
                     existing.permissions.do_stock_audit = true;
+                    changed = true;
+                }
+                // Ensure ผู้จัดการ gets manage_deposits
+                if (!existing.permissions.manage_deposits) {
+                    existing.permissions.manage_deposits = true;
+                    changed = true;
+                }
+            }
+            // Ensure พนักงานขาย gets manage_deposits
+            if (r.name === 'พนักงานขาย') {
+                if (!existing.permissions.manage_deposits) {
+                    existing.permissions.manage_deposits = true;
                     changed = true;
                 }
             }
@@ -453,6 +467,36 @@ const stockAuditItemSchema = new mongoose.Schema({
 }, { timestamps: true });
 const StockAuditItem = mongoose.model('StockAuditItem', stockAuditItemSchema, 'stockaudititem');
 
+// 22. Deposit (ตารางการมัดจำสินค้า)
+const depositSchema = new mongoose.Schema({
+    deposit_number: { type: String, required: true, unique: true }, // DEP-YYYYMMDD-XXXX
+    branch_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Branch', required: true }, // สาขาที่รับมัดจำ
+    customer_name: { type: String, required: true }, // ชื่อลูกค้า
+    customer_phone: { type: String, required: true }, // เบอร์โทรศัพท์ลูกค้า
+    product_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Product', required: true }, // รหัสสินค้าอ้างอิง
+    product_name: { type: String, required: true }, // รายละเอียดสินค้า (เช่น iPhone 15 128 Black)
+    product_price: { type: Number, required: true }, // ราคาขายเต็ม
+    deposit_amount: { type: Number, required: true }, // ยอดเงินมัดจำ
+    remaining_amount: { type: Number, required: true }, // ยอดค้างชำระ (ราคาเต็ม - มัดจำ)
+    appointment_date: { type: Date, default: null }, // วันที่นัดรับเครื่อง
+    imei: { type: String, default: '' }, // เลข IMEI เครื่องที่จอง (ถ้ามี)
+    payment_method: { type: String, required: true, enum: ['เงินสด', 'โอนเงิน', 'ผสม'] },
+    cash_amount: { type: Number, default: 0 },
+    transfer_amount: { type: Number, default: 0 },
+    status: { type: String, default: 'รอดำเนินการ', enum: ['รอดำเนินการ', 'สำเร็จ', 'ยกเลิก'] },
+    stage: { type: String, default: 'รอลูกค้ารับเครื่อง', enum: ['รอลูกค้ารับเครื่อง', 'รอโอนย้ายจากสาขาอื่น', 'รอสินค้าเข้า'] },
+    bill_number: { type: String, default: '' }, // เลขที่ใบเสร็จขายจริงเมื่อมารับเครื่องสำเร็จ
+    created_by: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee', required: true },
+    completed_by: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee', default: null },
+    completed_at: { type: Date, default: null },
+    cancelled_by: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee', default: null },
+    cancelled_at: { type: Date, default: null },
+    cancel_reason: { type: String, default: '' },
+    notes: { type: String, default: '' }
+}, { timestamps: true });
+
+const Deposit = mongoose.model('Deposit', depositSchema, 'deposit');
+
 module.exports = {
     Branch,
     Role,
@@ -477,6 +521,7 @@ module.exports = {
     FinanceReceivable,
     StockAuditSession,
     StockAuditItem,
+    Deposit,
     seedDefaultRoles,
     migrateProductsToERP
 };

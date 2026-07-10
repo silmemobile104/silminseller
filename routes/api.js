@@ -30,7 +30,8 @@ const {
     CashMovement,
     FinanceReceivable,
     StockAuditSession,
-    StockAuditItem
+    StockAuditItem,
+    Deposit
 } = require('../models');
 
 const { uploadBufferToDriveInFolder } = require('../utils/googleDrive');
@@ -4847,11 +4848,360 @@ router.post('/stock-audit/sessions/:id/close', async (req, res) => {
 
         const items = await StockAuditItem.find({ session_id: session._id });
         const summary = { passed: items.filter(i => i.scan_status === 'ผ่าน').length, failed: items.filter(i => i.scan_status === 'ไม่ผ่าน').length };
-        await logActivity(req, 'UPDATE', 'STOCK_AUDIT', `ปิดรอบตรวจนับสต็อก: ผ่าน ${summary.passed} / ไม่ผ่าน ${summary.failed} รายการ`, null, session._id);
         res.json({ success: true, message: 'ปิดรอบตรวจนับสต็อกสำเร็จ', data: session, summary });
     } catch (error) {
         console.error('API Error POST /api/stock-audit/sessions/:id/close:', error);
         res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการปิดรอบตรวจนับสต็อก' });
+    }
+});
+
+// ==========================================
+// DEPOSIT MODULE (การมัดจำสินค้า)
+// ==========================================
+
+// GET /api/deposits — ดึงข้อมูลรายการมัดจำสินค้า
+router.get('/deposits', async (req, res) => {
+    try {
+        if (!req.user.permissions || !req.user.permissions.manage_deposits) {
+            return res.status(403).json({ success: false, message: 'ไม่มีสิทธิ์เข้าถึงข้อมูลมัดจำสินค้า' });
+        }
+
+        const userRole = req.user.role || '';
+        const userBranchId = req.user.branch_id ? req.user.branch_id.toString() : '';
+        const canFilterBranch = req.user.permissions.filter_stock_branch || userRole === 'Administrator' || userRole === 'ผู้จัดการ';
+
+        const query = {};
+
+        // คัดกรองตามสิทธิ์สาขา
+        if (!canFilterBranch) {
+            if (!userBranchId) return res.status(400).json({ success: false, message: 'ไม่พบข้อมูลสาขาของผู้ใช้งาน' });
+            query.branch_id = userBranchId;
+        } else {
+            if (req.query.branch_id && req.query.branch_id !== 'ALL') {
+                query.branch_id = req.query.branch_id;
+            }
+        }
+
+        // คัดกรองตามสถานะ
+        if (req.query.status) {
+            query.status = req.query.status;
+        }
+
+        // คัดกรองตามขั้นตอนย่อย (stage)
+        if (req.query.stage && req.query.stage !== 'ALL') {
+            query.stage = req.query.stage;
+        }
+
+        // คัดกรองตามช่วงวันที่ (วันที่ทำรายการมัดจำ)
+        if (req.query.startDate && req.query.endDate) {
+            const start = new Date(req.query.startDate);
+            start.setHours(0, 0, 0, 0);
+            const end = new Date(req.query.endDate);
+            end.setHours(23, 59, 59, 999);
+            query.createdAt = { $gte: start, $lte: end };
+        }
+
+        // ค้นหาตามชื่อลูกค้า หรือเบอร์โทร
+        if (req.query.search) {
+            const searchRegex = new RegExp(req.query.search.trim(), 'i');
+            query.$or = [
+                { customer_name: searchRegex },
+                { customer_phone: searchRegex }
+            ];
+        }
+
+        const list = await Deposit.find(query)
+            .populate('branch_id', 'name')
+            .populate('created_by', 'name')
+            .populate('completed_by', 'name')
+            .populate('cancelled_by', 'name')
+            .sort({ createdAt: -1 });
+
+        res.json({ success: true, data: list });
+    } catch (error) {
+        console.error('API Error GET /api/deposits:', error);
+        res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการดึงข้อมูลรายการมัดจำ' });
+    }
+});
+
+// POST /api/deposits — บันทึกใบจองมัดจำใหม่
+router.post('/deposits', async (req, res) => {
+    try {
+        if (!req.user.permissions || !req.user.permissions.manage_deposits) {
+            return res.status(403).json({ success: false, message: 'ไม่มีสิทธิ์ในการจองมัดจำสินค้า' });
+        }
+
+        const {
+            customer_name, customer_phone, product_id, product_name, product_price,
+            deposit_amount, appointment_date, imei, payment_method, cash_amount,
+            transfer_amount, stage, notes
+        } = req.body;
+
+        if (!customer_name || !customer_phone || !product_id || !product_name || !product_price || !deposit_amount || !payment_method) {
+            return res.status(400).json({ success: false, message: 'กรุณากรอกข้อมูลที่จำเป็นให้ครบถ้วน' });
+        }
+
+        const userBranchId = req.user.branch_id ? req.user.branch_id.toString() : '';
+        if (!userBranchId) return res.status(400).json({ success: false, message: 'ไม่พบข้อมูลสาขาของผู้ใช้' });
+
+        // สร้างเลขที่ใบจองอัตโนมัติ: DEP-YYYYMMDD-XXXX
+        const now = new Date();
+        const dateStr = now.getFullYear() +
+            String(now.getMonth() + 1).padStart(2, '0') +
+            String(now.getDate()).padStart(2, '0');
+        const todayStart = new Date(now); todayStart.setHours(0, 0, 0, 0);
+        const todayEnd = new Date(now); todayEnd.setHours(23, 59, 59, 999);
+        const count = await Deposit.countDocuments({ createdAt: { $gte: todayStart, $lte: todayEnd } });
+        const deposit_number = `DEP-${dateStr}-${String(count + 1).padStart(4, '0')}`;
+
+        const remaining_amount = Math.max(0, Number(product_price) - Number(deposit_amount));
+
+        const deposit = new Deposit({
+            deposit_number,
+            branch_id: userBranchId,
+            customer_name,
+            customer_phone,
+            product_id,
+            product_name,
+            product_price: Number(product_price),
+            deposit_amount: Number(deposit_amount),
+            remaining_amount,
+            appointment_date: appointment_date ? new Date(appointment_date) : null,
+            imei: (imei || '').trim(),
+            payment_method,
+            cash_amount: Number(cash_amount) || 0,
+            transfer_amount: Number(transfer_amount) || 0,
+            stage: stage || 'รอลูกค้ารับเครื่อง',
+            created_by: req.user.employee_id,
+            notes: notes || ''
+        });
+
+        const saved = await deposit.save();
+
+        // บันทึกเงินมัดจำลงในตารางเงินบัญชีหมุนเวียน (CashMovement)
+        if (Number(deposit_amount) > 0) {
+            const countMove = await CashMovement.countDocuments({ created_at: { $gte: todayStart, $lte: todayEnd } });
+            const txn_id = `TXN-${dateStr}-${String(countMove + 1).padStart(4, '0')}`;
+
+            const cashMove = new CashMovement({
+                transaction_id: txn_id,
+                type: 'รายรับ',
+                category: 'อื่นๆ',
+                amount: Number(deposit_amount),
+                reference_id: saved._id,
+                recorded_by: req.user.employee_id,
+                created_at: new Date()
+            });
+            await cashMove.save();
+        }
+
+        await logActivity(req, 'CREATE', 'DEPOSIT', `สร้างใบมัดจำสินค้าใหม่ เลขที่ ${deposit_number} ยอดมัดจำ ฿${deposit_amount}`, deposit_number, saved._id);
+
+        res.status(201).json({ success: true, message: 'บันทึกใบมัดจำสินค้าสำเร็จ', data: saved });
+    } catch (error) {
+        console.error('API Error POST /api/deposits:', error);
+        res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการสร้างใบมัดจำสินค้า' });
+    }
+});
+
+// PUT /api/deposits/:id — แก้ไขข้อมูลใบจองมัดจำ
+router.put('/deposits/:id', async (req, res) => {
+    try {
+        if (!req.user.permissions || !req.user.permissions.manage_deposits) {
+            return res.status(403).json({ success: false, message: 'ไม่มีสิทธิ์ในการแก้ไขใบมัดจำ' });
+        }
+
+        const {
+            customer_name, customer_phone, product_id, product_name, product_price,
+            deposit_amount, appointment_date, imei, payment_method, cash_amount,
+            transfer_amount, stage, notes
+        } = req.body;
+
+        const deposit = await Deposit.findById(req.params.id);
+        if (!deposit) return res.status(404).json({ success: false, message: 'ไม่พบรายการมัดจำที่ระบุ' });
+        if (deposit.status !== 'รอดำเนินการ') {
+            return res.status(400).json({ success: false, message: 'ไม่สามารถแก้ไขใบมัดจำที่เสร็จสมบูรณ์หรือยกเลิกแล้วได้' });
+        }
+
+        if (customer_name) deposit.customer_name = customer_name;
+        if (customer_phone) deposit.customer_phone = customer_phone;
+        if (product_id) deposit.product_id = product_id;
+        if (product_name) deposit.product_name = product_name;
+        if (product_price !== undefined) deposit.product_price = Number(product_price);
+        if (deposit_amount !== undefined) deposit.deposit_amount = Number(deposit_amount);
+        if (appointment_date !== undefined) deposit.appointment_date = appointment_date ? new Date(appointment_date) : null;
+        if (imei !== undefined) deposit.imei = (imei || '').trim();
+        if (payment_method) deposit.payment_method = payment_method;
+        if (cash_amount !== undefined) deposit.cash_amount = Number(cash_amount) || 0;
+        if (transfer_amount !== undefined) deposit.transfer_amount = Number(transfer_amount) || 0;
+        if (stage) deposit.stage = stage;
+        if (notes !== undefined) deposit.notes = notes;
+
+        // คืนค่าค้างชำระใหม่
+        deposit.remaining_amount = Math.max(0, deposit.product_price - deposit.deposit_amount);
+
+        const updated = await deposit.save();
+        await logActivity(req, 'UPDATE', 'DEPOSIT', `แก้ไขใบมัดจำสินค้า เลขที่ ${deposit.deposit_number}`, deposit.deposit_number, updated._id);
+
+        res.json({ success: true, message: 'แก้ไขข้อมูลสำเร็จ', data: updated });
+    } catch (error) {
+        console.error('API Error PUT /api/deposits/:id:', error);
+        res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการแก้ไขใบมัดจำ' });
+    }
+});
+
+// PUT /api/deposits/:id/complete — ส่งมอบสินค้าและตัดสต็อกเปลี่ยนเป็นบิล POS
+router.put('/deposits/:id/complete', async (req, res) => {
+    try {
+        if (!req.user.permissions || !req.user.permissions.manage_deposits) {
+            return res.status(403).json({ success: false, message: 'ไม่มีสิทธิ์ดำเนินการส่งมอบสินค้า' });
+        }
+        const { final_payment_method, final_cash_amount, final_transfer_amount, imei } = req.body;
+
+        const deposit = await Deposit.findById(req.params.id);
+        if (!deposit) return res.status(404).json({ success: false, message: 'ไม่พบรายการมัดจำที่ระบุ' });
+        if (deposit.status !== 'รอดำเนินการ') {
+            return res.status(400).json({ success: false, message: `รายการนี้อยู่ในสถานะ ${deposit.status} แล้ว` });
+        }
+
+        const selectedImei = (imei || deposit.imei || '').trim();
+
+        // 1. ตรวจสอบสินค้าและหักสต็อก
+        const product = await Product.findById(deposit.product_id);
+        if (!product) return res.status(404).json({ success: false, message: 'ไม่พบสินค้าในระบบ' });
+
+        const targetBranchId = deposit.branch_id.toString();
+        if (!product.stock_balances) product.stock_balances = [];
+        let bal = product.stock_balances.find(x => x.branch_id && x.branch_id.toString() === targetBranchId);
+        if (!bal) {
+            // สร้างยอดคงคลังเริ่มต้นของสาขานี้ให้เป็น 0 เพื่อป้องกันระบบค้าง
+            bal = { branch_id: deposit.branch_id, quantity: 0, imeis: [] };
+            product.stock_balances.push(bal);
+        }
+
+        const hasImeisInStock = Array.isArray(bal.imeis) && bal.imeis.length > 0;
+        if (hasImeisInStock && selectedImei) {
+            const idx = bal.imeis.indexOf(selectedImei);
+            if (idx !== -1) {
+                bal.imeis.splice(idx, 1);
+            }
+        }
+        bal.quantity = Math.max(0, Number(bal.quantity || 0) - 1);
+        
+        // บังคับให้ mongoose ตรวจจับการเปลี่ยนแปลงในอาเรย์ stock_balances
+        product.markModified('stock_balances');
+        await product.save();
+
+        // 2. สร้างใบเสร็จ Transaction (POS)
+        const now = new Date();
+        const dateStr = now.toISOString().slice(0, 10).replace(/-/g, '');
+        const randomStr = Math.random().toString(36).substring(2, 7).toUpperCase();
+        const receipt_number = `INV-${dateStr}-${randomStr}`;
+
+        const period = '1 เดือน'; // ค่าตั้งต้นระยะประกัน
+        const expiry = new Date(now);
+        expiry.setMonth(expiry.getMonth() + 1);
+
+        const transaction = new Transaction({
+            receipt_number,
+            branch_id: deposit.branch_id,
+            employee_id: req.user.employee_id,
+            items: [{
+                product_id: product._id,
+                product_name: deposit.product_name,
+                imei_sold: selectedImei,
+                quantity: 1,
+                price: deposit.product_price,
+                warranty_period: period,
+                warranty_expiry: expiry,
+                is_gift: false
+            }],
+            total_amount: deposit.product_price,
+            payment_type: 'ซื้อสด',
+            payment_method: final_payment_method || deposit.payment_method,
+            down_payment: 0,
+            cash_amount: (Number(deposit.cash_amount) || 0) + (Number(final_cash_amount) || 0),
+            transfer_amount: (Number(deposit.transfer_amount) || 0) + (Number(final_transfer_amount) || 0),
+            status: 'เสร็จสิ้น'
+        });
+
+        const savedTransaction = await transaction.save();
+
+        // 3. บันทึก CashMovement เฉพาะเงินที่จ่ายเพิ่มวันนี้ (ส่วนต่างค้างชำระ)
+        const diffAmount = (Number(final_cash_amount) || 0) + (Number(final_transfer_amount) || 0);
+        if (diffAmount > 0) {
+            const todayStart = new Date(now); todayStart.setHours(0, 0, 0, 0);
+            const todayEnd = new Date(now); todayEnd.setHours(23, 59, 59, 999);
+            const count = await CashMovement.countDocuments({ created_at: { $gte: todayStart, $lte: todayEnd } });
+            const txnDateStr = now.getFullYear() + String(now.getMonth() + 1).padStart(2, '0') + String(now.getDate()).padStart(2, '0');
+            const txn_id = `TXN-${txnDateStr}-${String(count + 1).padStart(4, '0')}`;
+
+            const cashMove = new CashMovement({
+                transaction_id: txn_id,
+                type: 'รายรับ',
+                category: 'ขายสินค้า',
+                amount: diffAmount,
+                reference_id: savedTransaction._id,
+                recorded_by: req.user.employee_id,
+                created_at: new Date()
+            });
+            await cashMove.save();
+        }
+
+        // 4. บันทึกความเคลื่อนไหว (Product Movement)
+        await createMovementsForItem({
+            productId: product._id,
+            action: 'ขายออก',
+            fromBranch: deposit.branch_id,
+            referenceNo: receipt_number,
+            createdBy: req.user.employee_id,
+            imeis: selectedImei ? [selectedImei] : [],
+            quantity: 1
+        }).catch(err => console.error('[MOVEMENT] Failed to log movement for deposit transaction:', err));
+
+        // 5. อัปเดตใบมัดจำ
+        deposit.status = 'สำเร็จ';
+        deposit.bill_number = receipt_number;
+        deposit.imei = selectedImei;
+        deposit.completed_by = req.user.employee_id;
+        deposit.completed_at = new Date();
+        await deposit.save();
+
+        await logActivity(req, 'UPDATE', 'DEPOSIT', `ดำเนินการส่งมอบเครื่องมัดจำสำเร็จ เลขใบเสร็จ: ${receipt_number}`, null, deposit._id);
+
+        res.json({ success: true, message: 'ดำเนินการส่งมอบสินค้าสำเร็จ', data: deposit });
+    } catch (error) {
+        console.error('API Error PUT /api/deposits/:id/complete:', error);
+        res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการส่งมอบสินค้า' });
+    }
+});
+
+// PUT /api/deposits/:id/cancel — ยกเลิกรายการจองมัดจำสินค้า
+router.put('/deposits/:id/cancel', async (req, res) => {
+    try {
+        if (!req.user.permissions || !req.user.permissions.manage_deposits) {
+            return res.status(403).json({ success: false, message: 'ไม่มีสิทธิ์ในการยกเลิกรายการมัดจำ' });
+        }
+        const { reason } = req.body;
+
+        const deposit = await Deposit.findById(req.params.id);
+        if (!deposit) return res.status(404).json({ success: false, message: 'ไม่พบรายการมัดจำที่ระบุ' });
+        if (deposit.status !== 'รอดำเนินการ') {
+            return res.status(400).json({ success: false, message: 'ไม่สามารถยกเลิกรายการจองที่ดำเนินการเสร็จสิ้นหรือยกเลิกแล้วได้' });
+        }
+
+        deposit.status = 'ยกเลิก';
+        deposit.cancelled_by = req.user.employee_id;
+        deposit.cancelled_at = new Date();
+        deposit.cancel_reason = reason || 'ไม่ระบุ';
+        await deposit.save();
+
+        await logActivity(req, 'CANCEL', 'DEPOSIT', `ยกเลิกใบมัดจำสินค้า เลขที่ ${deposit.deposit_number} เนื่องจาก: ${reason || 'ไม่ระบุ'}`, deposit.deposit_number, deposit._id);
+
+        res.json({ success: true, message: 'ยกเลิกรายการมัดจำสำเร็จ', data: deposit });
+    } catch (error) {
+        console.error('API Error PUT /api/deposits/:id/cancel:', error);
+        res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการยกเลิกรายการมัดจำ' });
     }
 });
 
