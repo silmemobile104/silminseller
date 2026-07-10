@@ -3507,6 +3507,43 @@
                 display: none !important;
             }
         }
+
+        /* ─── Force black text inside Deposit modals (outside <main>) ─── */
+        #modal-deposit-details .modal-content,
+        #modal-create-deposit .modal-content {
+            color: #0f172a !important;
+        }
+
+        #modal-deposit-details span,
+        #modal-deposit-details label,
+        #modal-deposit-details p,
+        #modal-deposit-details h4,
+        #modal-deposit-details h5 {
+            color: inherit;
+        }
+
+        #modal-deposit-details .modal-content span:not([id*="detail-deposit-status"]):not([id*="detail-deposit-number"]):not([id*="detail-deposit-paid"]):not([id*="detail-deposit-remaining"]):not([id*="detail-history-bill"]):not([id*="detail-history-reason"]),
+        #modal-deposit-details label {
+            color: #0f172a !important;
+        }
+
+        /* Label (dimmer) vs value (black) distinction */
+        #modal-deposit-details .text-slate-600 {
+            color: #475569 !important;
+        }
+
+        #modal-deposit-details input,
+        #modal-deposit-details select,
+        #modal-create-deposit input,
+        #modal-create-deposit select {
+            color: #0f172a !important;
+            background-color: #ffffff !important;
+        }
+
+        #modal-create-deposit label,
+        #modal-create-deposit span:not(.text-red-500):not(.text-emerald-500):not(.text-emerald-600) {
+            color: #0f172a !important;
+        }
     </style>
 </head>
 
@@ -3659,6 +3696,13 @@
                     <span class="sidebar-text ml-3 font-medium">โอนย้ายสินค้า</span>
                     <span id="transfer-nav-badge"
                         class="absolute right-3 top-1/2 -translate-y-1/2 bg-red-500 text-white text-[10px] font-bold h-5 w-5 flex items-center justify-center rounded-full shadow-[0_0_8px_rgba(239,68,68,0.6)] hidden">0</span>
+                </a>
+
+                <a href="#" id="nav-deposits"
+                    class="flex items-center px-3 py-3 rounded-xl text-slate-300 hover:bg-slate-700/50 hover:text-white transition-all group nav-menu-item relative">
+                    <i
+                        class="fa-solid fa-wallet sidebar-icon text-lg w-6 text-center text-emerald-400 group-hover:text-emerald-300"></i>
+                    <span class="sidebar-text ml-3 font-medium">การมัดจำสินค้า</span>
                 </a>
 
                 <a href="#" id="nav-movements"
@@ -5484,6 +5528,92 @@
 
                         <div id="transfer-empty" class="hidden p-10 text-center text-slate-500">
                             ไม่พบรายการโอนย้าย
+                        </div>
+                    </div>
+                </div>
+
+                <!-- VIEW: DEPOSITS (การมัดจำสินค้า) -->
+                <div id="view-deposits" class="hidden space-y-6 animate-fade-in pb-10">
+                    <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                        <div>
+                            <h3 class="text-2xl font-bold text-white flex items-center gap-2">
+                                <i class="fa-solid fa-wallet text-emerald-400"></i> การมัดจำและจองสินค้า
+                            </h3>
+                            <p class="text-slate-400 mt-1" id="deposit-branch-header">สาขา: ทุกสาขา</p>
+                        </div>
+                        <button id="btn-open-create-deposit"
+                            class="px-5 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold transition-all shadow-lg shadow-emerald-500/20 flex items-center gap-2">
+                            <i class="fa-solid fa-plus"></i>
+                            บันทึกเงินมัดจำใหม่
+                        </button>
+                    </div>
+
+                    <!-- Filters Panel -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4 bg-white p-5 rounded-2xl border border-slate-200 shadow-lg">
+                        <div class="space-y-1.5">
+                            <label class="text-[10px] font-bold uppercase tracking-wider text-slate-500">สาขา</label>
+                            <select id="deposit-filter-branch" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2.5 text-xs text-slate-800 focus:outline-none focus:border-emerald-500 font-medium">
+                                <option value="ALL">ทุกสาขา</option>
+                            </select>
+                        </div>
+                        <div class="space-y-1.5">
+                            <label class="text-[10px] font-bold uppercase tracking-wider text-slate-500">สถานะรายการ</label>
+                            <select id="deposit-filter-status" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2.5 text-xs text-slate-800 focus:outline-none focus:border-emerald-500 font-medium">
+                                <option value="รอดำเนินการ" selected>รอดำเนินการ (จองอยู่)</option>
+                                <option value="สำเร็จ">สำเร็จ (รับเครื่องแล้ว)</option>
+                                <option value="ยกเลิก">ยกเลิก (คืนเงิน/ยกเลิก)</option>
+                            </select>
+                        </div>
+                        <div class="space-y-1.5">
+                            <label class="text-[10px] font-bold uppercase tracking-wider text-slate-500">ขั้นตอนการดำเนินงาน</label>
+                            <select id="deposit-filter-stage" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2.5 text-xs text-slate-800 focus:outline-none focus:border-emerald-500 font-medium">
+                                <option value="ALL" selected>ขั้นตอนทั้งหมด</option>
+                                <option value="รอลูกค้ารับเครื่อง">รอลูกค้ารับเครื่อง</option>
+                                <option value="รอโอนย้ายจากสาขาอื่น">รอโอนย้ายจากสาขาอื่น</option>
+                                <option value="รอสินค้าเข้า">รอสินค้าเข้า</option>
+                            </select>
+                        </div>
+                        <div class="space-y-1.5">
+                            <label class="text-[10px] font-bold uppercase tracking-wider text-slate-500">จากวันที่ (นัดรับ)</label>
+                            <input type="date" id="deposit-filter-start-date" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-800 focus:outline-none focus:border-emerald-500 font-medium" />
+                        </div>
+                        <div class="space-y-1.5">
+                            <label class="text-[10px] font-bold uppercase tracking-wider text-slate-500">ถึงวันที่ (นัดรับ)</label>
+                            <input type="date" id="deposit-filter-end-date" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-800 focus:outline-none focus:border-emerald-500 font-medium" />
+                        </div>
+                        <div class="space-y-1.5">
+                            <label class="text-[10px] font-bold uppercase tracking-wider text-slate-500">ค้นหาด่วน</label>
+                            <input type="text" id="deposit-filter-search" placeholder="ค้นหาลูกค้า/เบอร์โทร..." class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2.5 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-emerald-500 font-medium" />
+                        </div>
+                    </div>
+
+                    <!-- Table List -->
+                    <div class="bg-slate-800 rounded-2xl border border-slate-700 shadow-lg overflow-hidden">
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left text-xs whitespace-nowrap">
+                                <thead class="bg-slate-900/50 text-slate-400 font-bold uppercase">
+                                    <tr>
+                                        <th class="px-4 py-3.5 font-semibold">วันที่มัดจำ</th>
+                                        <th class="px-4 py-3.5 font-semibold">ลูกค้า</th>
+                                        <th class="px-4 py-3.5 font-semibold">เบอร์โทร</th>
+                                        <th class="px-4 py-3.5 font-semibold">ยอดมัดจำ</th>
+                                        <th class="px-4 py-3.5 font-semibold">นัดรับเครื่อง</th>
+                                        <th class="px-3 py-3.5 font-semibold text-center border-r border-slate-700/50">เลขที่บิล POS</th>
+                                        <th class="px-3 py-3.5 font-semibold border-r border-slate-700/50">IMEI ที่จอง</th>
+                                        <th class="px-3 py-3.5 font-semibold border-r border-slate-700/50">สินค้าจอง</th>
+                                        <th class="px-3 py-3.5 font-semibold border-r border-slate-700/50">ราคาเต็ม</th>
+                                        <th class="px-3 py-3.5 font-semibold border-r border-slate-700/50">ค้างชำระ</th>
+                                        <th class="px-4 py-3.5 font-semibold">สถานะ / ขั้นตอน</th>
+                                        <th class="px-4 py-3.5 font-semibold">ผู้ทำรายการ</th>
+                                        <th class="px-4 py-3.5 font-semibold">สาขา</th>
+                                        <th class="px-4 py-3.5 font-semibold text-right">พิมพ์</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="deposit-table-body" class="divide-y divide-slate-700/50"></tbody>
+                            </table>
+                        </div>
+                        <div id="deposit-empty" class="hidden p-12 text-center text-slate-500 italic text-sm">
+                            ไม่พบข้อมูลใบมัดจำสินค้าตามตัวเลือก
                         </div>
                     </div>
                 </div>
@@ -8180,6 +8310,23 @@
                             </label>
                         </div>
 
+                        <!-- Toggle: manage_deposits -->
+                        <div
+                            class="flex items-center justify-between p-3 bg-slate-800/50 rounded-xl border border-slate-700/30 hover:bg-slate-700/30 transition-colors">
+                            <div class="flex items-center gap-3">
+                                <div class="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center">
+                                    <i class="fa-solid fa-wallet text-emerald-400 text-sm"></i>
+                                </div>
+                                <span class="text-sm font-medium text-slate-200">จัดการมัดจำสินค้า</span>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" id="perm-manage_deposits" class="sr-only peer">
+                                <div
+                                    class="w-10 h-5 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-slate-400 after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-500 peer-checked:after:bg-white">
+                                </div>
+                            </label>
+                        </div>
+
                         <!-- Toggle: manage_personnel -->
                         <div
                             class="flex items-center justify-between p-3 bg-slate-800/50 rounded-xl border border-slate-700/30 hover:bg-slate-700/30 transition-colors">
@@ -9363,6 +9510,324 @@
                         <i class="fa-solid fa-circle-check"></i> ยืนยันรับเข้าสต็อก
                     </button>
                 </div>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- MODAL: CREATE/EDIT DEPOSIT -->
+    <div id="modal-create-deposit"
+        class="fixed inset-0 z-[70] flex items-center justify-center bg-slate-900/80 backdrop-blur-sm opacity-0 pointer-events-none transition-opacity duration-300 p-4">
+        <div
+            class="modal-content relative w-[95%] md:w-[650px] max-h-[90vh] overflow-y-auto flex flex-col bg-white rounded-2xl shadow-2xl border border-slate-200 transform scale-95 transition-transform duration-300">
+            <!-- Header -->
+            <div class="p-5 border-b border-slate-200 flex items-center justify-between bg-slate-50 rounded-t-2xl">
+                <h4 id="deposit-modal-title" class="text-lg font-bold flex items-center gap-2">
+                    <i class="fa-solid fa-wallet text-emerald-500"></i>
+                    บันทึกรายการจองมัดจำใหม่
+                </h4>
+                <button id="btn-close-create-deposit" class="text-slate-400 hover:text-slate-700 transition-colors p-1">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <!-- Form -->
+            <form id="deposit-form" class="p-5 space-y-4 overflow-y-auto text-sm text-slate-600 bg-white">
+                <input type="hidden" id="edit-deposit-id" value="">
+
+                <!-- Customer Details -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div class="space-y-1.5">
+                        <label class="text-xs font-semibold text-slate-500">ชื่อลูกค้า <span class="text-red-500">*</span></label>
+                        <input type="text" id="modal-deposit-customer-name" required placeholder="ระบุชื่อลูกค้า..."
+                            class="w-full bg-white border border-slate-300 rounded-xl px-4 py-2.5 text-black placeholder-slate-400 focus:outline-none focus:border-emerald-500" />
+                    </div>
+                    <div class="space-y-1.5">
+                        <label class="text-xs font-semibold text-slate-500">เบอร์โทรลูกค้า <span class="text-red-500">*</span></label>
+                        <input type="text" id="modal-deposit-customer-phone" required placeholder="ระบุเบอร์โทร..."
+                            class="w-full bg-white border border-slate-300 rounded-xl px-4 py-2.5 text-black placeholder-slate-400 focus:outline-none focus:border-emerald-500 font-mono" />
+                    </div>
+                </div>
+
+                <!-- Product Details -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div class="space-y-1.5 sm:col-span-2 lg:col-span-1">
+                        <label class="text-xs font-semibold text-slate-500">เลือกสินค้าจอง <span class="text-red-500">*</span></label>
+                        <input type="text" id="modal-deposit-product-id" required placeholder="พิมพ์เพื่อค้นหาหรือเลือกสินค้า..." list="deposit-products-datalist"
+                            class="w-full bg-white border border-slate-300 rounded-xl px-4 py-2.5 text-black placeholder-slate-400 focus:outline-none focus:border-emerald-500" />
+                        <datalist id="deposit-products-datalist"></datalist>
+                    </div>
+                    <div class="space-y-1.5">
+                        <label class="text-xs font-semibold text-slate-500">เลือกสี <span class="text-red-500">*</span></label>
+                        <input type="text" id="modal-deposit-color" required placeholder="พิมพ์ค้นหาหรือเลือกสี..." list="deposit-colors-datalist"
+                            class="w-full bg-white border border-slate-300 rounded-xl px-4 py-2.5 text-black placeholder-slate-400 focus:outline-none focus:border-emerald-500" />
+                        <datalist id="deposit-colors-datalist"></datalist>
+                    </div>
+                    <div class="space-y-1.5">
+                        <label class="text-xs font-semibold text-slate-500">เลือกความจุ <span class="text-red-500">*</span></label>
+                        <input type="text" id="modal-deposit-capacity" required placeholder="พิมพ์ค้นหาหรือเลือกความจุ..." list="deposit-capacities-datalist"
+                            class="w-full bg-white border border-slate-300 rounded-xl px-4 py-2.5 text-black placeholder-slate-400 focus:outline-none focus:border-emerald-500" />
+                        <datalist id="deposit-capacities-datalist"></datalist>
+                    </div>
+                    <div class="space-y-1.5">
+                        <label class="text-xs font-semibold text-slate-500">ระบุ IMEI (ถ้ามี)</label>
+                        <input type="text" id="modal-deposit-imei" placeholder="สแกนหรือระบุ IMEI..."
+                            class="w-full bg-white border border-slate-300 rounded-xl px-4 py-2.5 text-black placeholder-slate-400 focus:outline-none focus:border-emerald-500 font-mono" />
+                    </div>
+                </div>
+
+                <!-- Prices -->
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div class="space-y-1.5">
+                        <label class="text-xs font-semibold text-slate-500">ราคาเต็มสินค้า (บาท) <span class="text-red-500">*</span></label>
+                        <input type="number" id="modal-deposit-product-price" required min="0" placeholder="0"
+                            class="w-full bg-white border border-slate-300 rounded-xl px-4 py-2.5 text-black focus:outline-none focus:border-emerald-500 font-mono font-bold" />
+                    </div>
+                    <div class="space-y-1.5">
+                        <label class="text-xs font-semibold text-slate-500">ยอดเงินมัดจำ (บาท) <span class="text-red-500">*</span></label>
+                        <input type="number" id="modal-deposit-amount" required min="0" placeholder="0"
+                            class="w-full bg-white border border-slate-300 rounded-xl px-4 py-2.5 text-black focus:outline-none focus:border-emerald-500 font-mono font-bold" />
+                    </div>
+                    <div class="space-y-1.5">
+                        <label class="text-xs font-semibold text-slate-500">ยอดค้างชำระ (บาท)</label>
+                        <input type="number" id="modal-deposit-remaining" readonly disabled value="0"
+                            class="w-full bg-slate-100 border border-slate-200 rounded-xl px-4 py-2.5 text-black font-mono font-bold" />
+                    </div>
+                </div>
+
+                <!-- Payment Method -->
+                <div class="bg-slate-50 p-4 border border-slate-200 rounded-xl space-y-4">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div class="space-y-1.5">
+                            <label class="text-xs font-semibold text-slate-500">ช่องทางการชำระมัดจำ <span class="text-red-500">*</span></label>
+                            <select id="modal-deposit-payment-method" required
+                                class="w-full bg-white border border-slate-300 rounded-xl px-4 py-2.5 text-black focus:outline-none focus:border-emerald-500">
+                                <option value="เงินสด" class="text-black">เงินสด</option>
+                                <option value="โอนเงิน" class="text-black">โอนเงิน</option>
+                                <option value="ผสม" class="text-black">ผสม (เงินสด + โอนเงิน)</option>
+                            </select>
+                        </div>
+                        <div class="space-y-1.5">
+                            <label class="text-xs font-semibold text-slate-500">วันที่นัดรับเครื่อง <span class="text-red-500">*</span></label>
+                            <input type="date" id="modal-deposit-appointment" required
+                                class="w-full bg-white border border-slate-300 rounded-xl px-4 py-2 text-black focus:outline-none focus:border-emerald-500 font-medium" />
+                        </div>
+                    </div>
+
+                    <!-- Split Payment Row (Hidden by default unless method is 'ผสม') -->
+                    <div id="deposit-split-row" class="grid grid-cols-2 gap-4 hidden">
+                        <div class="space-y-1.5">
+                            <label class="text-xs font-semibold text-slate-500">ระบุ ยอดเงินสด</label>
+                            <input type="number" id="modal-deposit-cash-amount" min="0" placeholder="0"
+                                class="w-full bg-white border border-slate-300 rounded-xl px-4 py-2.5 text-black focus:outline-none focus:border-emerald-500 font-mono" />
+                        </div>
+                        <div class="space-y-1.5">
+                            <label class="text-xs font-semibold text-slate-500">ระบุ ยอดโอนเงิน</label>
+                            <input type="number" id="modal-deposit-transfer-amount" min="0" placeholder="0"
+                                class="w-full bg-white border border-slate-300 rounded-xl px-4 py-2.5 text-black focus:outline-none focus:border-emerald-500 font-mono" />
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Stage and Notes -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div class="space-y-1.5">
+                        <label class="text-xs font-semibold text-slate-500">ขั้นตอนการดำเนินงาน <span class="text-red-500">*</span></label>
+                        <select id="modal-deposit-stage" required
+                            class="w-full bg-white border border-slate-300 rounded-xl px-4 py-2.5 text-black focus:outline-none focus:border-emerald-500">
+                            <option value="" disabled selected class="text-black">-- เลือกขั้นตอน --</option>
+                            <option value="รอโอนย้ายจากสาขาอื่น" class="text-black">รอโอนย้ายจากสาขาอื่น</option>
+                            <option value="รอฝ่ายจัดซื้อสั่งสินค้า" class="text-black">รอฝ่ายจัดซื้อสั่งสินค้า</option>
+                            <option value="สินค้าเข้า" class="text-black">รอจัดส่งจากSupplier</option>
+                            <option value="รอลูกค้ารับเครื่อง" class="text-black">รอลูกค้ามารับเครื่อง</option>
+                            <option value="สำเร็จ" class="text-black">สำเร็จ</option>
+                            <option value="ยกเลิก" class="text-black">ยกเลิก</option>
+                        </select>
+                    </div>
+                    <div class="space-y-1.5">
+                        <label class="text-xs font-semibold text-slate-500">หมายเหตุเพิ่มเติม</label>
+                        <input type="text" id="modal-deposit-notes" placeholder="ระบุรายละเอียดเพิ่มเติม..."
+                            class="w-full bg-white border border-slate-300 rounded-xl px-4 py-2.5 text-black placeholder-slate-400 focus:outline-none focus:border-emerald-500" />
+                    </div>
+                </div>
+
+                <!-- Footer / Buttons -->
+                <div class="pt-4 border-t border-slate-200 flex items-center justify-end gap-3 bg-slate-50 rounded-b-2xl">
+                    <button type="button" id="btn-cancel-create-deposit"
+                        class="px-5 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold transition-all border border-slate-300 text-xs">
+                        ยกเลิก
+                    </button>
+                    <button type="submit" id="btn-submit-deposit"
+                        class="px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold transition-all text-xs flex items-center gap-1.5 shadow-lg shadow-emerald-500/10">
+                        <i class="fa-solid fa-save"></i> บันทึกข้อมูล
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: DEPOSIT DETAILS & ACTIONS (รายละเอียดและการส่งมอบ/ยกเลิก) -->
+    <div id="modal-deposit-details"
+        class="fixed inset-0 z-[70] flex items-center justify-center bg-slate-900/80 backdrop-blur-sm opacity-0 pointer-events-none transition-opacity duration-300 p-4">
+        <div
+            class="modal-content relative w-[95%] md:w-[650px] max-h-[90vh] overflow-y-auto flex flex-col bg-white rounded-2xl shadow-2xl border border-slate-200 transform scale-95 transition-transform duration-300">
+            <!-- Header -->
+            <div class="p-5 border-b border-slate-200 flex items-center justify-between bg-slate-50 rounded-t-2xl">
+                <h4 class="text-lg font-bold text-slate-900 flex items-center gap-2">
+                    <i class="fa-solid fa-circle-info text-cyan-500"></i>
+                    รายละเอียดข้อมูลใบมัดจำสินค้า
+                </h4>
+                <button id="btn-close-deposit-details" class="text-slate-400 hover:text-slate-700 transition-colors p-1">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <!-- Body -->
+            <div class="p-5 space-y-4 overflow-y-auto text-xs text-slate-900 bg-white">
+                <!-- Info Grid -->
+                <div class="grid grid-cols-2 gap-4 bg-slate-50 p-4 rounded-xl border border-slate-200">
+                    <div>
+                        <span class="text-slate-600 block font-medium">เลขที่ใบมัดจำ</span>
+                        <span id="detail-deposit-number" class="text-sm font-bold text-emerald-600 font-mono">-</span>
+                    </div>
+                    <div>
+                        <span class="text-slate-600 block font-medium">สถานะรายการ</span>
+                        <span id="detail-deposit-status" class="px-2 py-0.5 rounded text-[10px] font-bold">-</span>
+                    </div>
+                    <div>
+                        <span class="text-slate-600 block font-medium">ชื่อลูกค้า</span>
+                        <span id="detail-deposit-customer" class="text-sm text-slate-900 font-semibold">-</span>
+                    </div>
+                    <div>
+                        <span class="text-slate-600 block font-medium">เบอร์โทรศัพท์</span>
+                        <span id="detail-deposit-phone" class="text-sm text-slate-900 font-mono">-</span>
+                    </div>
+                    <div>
+                        <span class="text-slate-600 block font-medium">สินค้าที่มัดจำ</span>
+                        <span id="detail-deposit-product" class="text-sm text-cyan-700 font-semibold">-</span>
+                    </div>
+                    <div>
+                        <span class="text-slate-600 block font-medium">เลข IMEI เครื่องจอง</span>
+                        <span id="detail-deposit-imei-text" class="text-sm text-slate-900 font-mono">-</span>
+                    </div>
+                    <div>
+                        <span class="text-slate-600 block font-medium">ราคาขายเต็ม</span>
+                        <span id="detail-deposit-price" class="text-sm text-slate-900 font-mono font-bold">-</span>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <span class="text-slate-600 block font-medium">ยอดมัดจำแล้ว</span>
+                            <span id="detail-deposit-paid" class="text-sm text-emerald-700 font-mono font-bold">-</span>
+                        </div>
+                        <div>
+                            <span class="text-slate-600 block font-medium">ยอดคงค้าง</span>
+                            <span id="detail-deposit-remaining" class="text-sm text-red-600 font-mono font-bold">-</span>
+                        </div>
+                    </div>
+                    <div>
+                        <span class="text-slate-600 block font-medium">วันที่จอง / นัดหมายรับ</span>
+                        <span id="detail-deposit-dates" class="text-xs text-slate-900 font-medium">-</span>
+                    </div>
+                    <div>
+                        <span class="text-slate-600 block font-medium">ผู้ทำรายการ / สาขา</span>
+                        <span id="detail-deposit-sender" class="text-xs text-slate-900 font-medium">-</span>
+                    </div>
+                </div>
+
+                <!-- Complete / Handover Section (Only visible for 'รอดำเนินการ') -->
+                <div id="detail-action-complete-section" class="bg-slate-50 p-4 border border-emerald-200 rounded-xl space-y-3 hidden">
+                    <h5 class="text-sm font-bold text-emerald-700 flex items-center gap-1.5 border-b border-slate-200 pb-2">
+                        <i class="fa-solid fa-hand-holding-hand"></i> ดำเนินการส่งมอบเครื่อง (ปิดใบเสร็จ POS)
+                    </h5>
+
+                    <!-- IMEI Assignment (If IMEI was empty) -->
+                    <div id="detail-assign-imei-row" class="space-y-1.5 hidden">
+                        <label class="text-[10px] uppercase font-bold text-slate-700">ระบุเลข IMEI ที่ส่งมอบสินค้าจริง <span class="text-red-500">*</span></label>
+                        <input type="text" id="detail-assign-imei-select" placeholder="ระบุเลข IMEI..." class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-emerald-500 font-mono" />
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div class="space-y-1.5">
+                            <label class="text-[10px] uppercase font-bold text-slate-700">ช่องทางการชำระยอดที่เหลือ <span class="text-red-500">*</span></label>
+                            <select id="detail-pickup-payment-method" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-emerald-500">
+                                <option value="เงินสด">เงินสด</option>
+                                <option value="โอนเงิน">โอนเงิน</option>
+                                <option value="ผสม">ผสม (เงินสด + โอนเงิน)</option>
+                            </select>
+                        </div>
+                        <div class="space-y-1.5">
+                            <label class="text-[10px] uppercase font-bold text-slate-700">ยอดที่ต้องจ่ายส่วนต่างวันนี้ (บาท)</label>
+                            <input type="text" id="detail-pickup-to-pay" readonly disabled class="w-full bg-slate-100 border border-slate-200 rounded-xl px-3 py-2 text-xs text-amber-700 font-mono font-bold" />
+                        </div>
+                    </div>
+
+                    <!-- Split payment details -->
+                    <div id="detail-pickup-split-row" class="grid grid-cols-2 gap-3 hidden">
+                        <div class="space-y-1.5">
+                            <label class="text-[10px] uppercase font-bold text-slate-700">จ่ายส่วนต่าง เงินสด</label>
+                            <input type="number" id="detail-pickup-cash-amount" min="0" placeholder="0" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 font-mono" />
+                        </div>
+                        <div class="space-y-1.5">
+                            <label class="text-[10px] uppercase font-bold text-slate-700">จ่ายส่วนต่าง เงินโอน</label>
+                            <input type="number" id="detail-pickup-transfer-amount" min="0" placeholder="0" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 font-mono" />
+                        </div>
+                    </div>
+
+                    <div class="pt-2 flex justify-end">
+                        <button type="button" id="btn-submit-complete-deposit" class="w-full sm:w-auto bg-emerald-500 hover:bg-emerald-400 text-white font-bold py-2.5 px-5 rounded-xl shadow-lg flex items-center justify-center gap-1.5 transition-all text-xs">
+                            <i class="fa-solid fa-circle-check"></i> ยืนยันส่งมอบและปิดบิลขาย
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Cancel Section (Only visible for 'รอดำเนินการ') -->
+                <div id="detail-action-cancel-section" class="bg-slate-50 p-4 border border-rose-200 rounded-xl space-y-3 hidden">
+                    <h5 class="text-sm font-bold text-rose-600 flex items-center gap-1.5 border-b border-slate-200 pb-2">
+                        <i class="fa-solid fa-ban"></i> ยกเลิกรายการมัดจำ
+                    </h5>
+                    <div class="space-y-1.5">
+                        <label class="text-[10px] uppercase font-bold text-slate-700">เหตุผลที่ยกเลิกการมัดจำ <span class="text-red-500">*</span></label>
+                        <input type="text" id="detail-cancel-reason" placeholder="ระบุเหตุผลการยกเลิกใบมัดจำนี้..." class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-rose-500" />
+                    </div>
+                    <div class="flex justify-end">
+                        <button type="button" id="btn-submit-cancel-deposit" class="w-full sm:w-auto bg-rose-600 hover:bg-rose-500 text-white font-bold py-2 px-4 rounded-xl shadow-lg flex items-center justify-center gap-1.5 transition-all text-xs">
+                            <i class="fa-solid fa-ban"></i> ยืนยันยกเลิกรายการจอง
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Finished History Info (Visible for 'สำเร็จ' or 'ยกเลิก') -->
+                <div id="detail-history-info-section" class="bg-slate-50 p-4 border border-slate-200 rounded-xl space-y-2 hidden">
+                    <h5 class="text-sm font-bold text-slate-800 border-b border-slate-200 pb-1">ข้อมูลการบันทึกเมื่อสิ้นสุดรายการ</h5>
+                    <div class="grid grid-cols-2 gap-3 text-[11px]">
+                        <div>
+                            <span class="text-slate-600 block font-medium" id="detail-history-completed-by-label">ผู้ทำรายการรับเครื่อง / ยกเลิก</span>
+                            <span id="detail-history-completed-by" class="text-slate-900 font-semibold">-</span>
+                        </div>
+                        <div>
+                            <span class="text-slate-600 block font-medium" id="detail-history-completed-at-label">วันเวลาเสร็จสิ้น</span>
+                            <span id="detail-history-completed-at" class="text-slate-900 font-mono">-</span>
+                        </div>
+                        <div class="col-span-2" id="detail-history-bill-row">
+                            <span class="text-slate-600 block font-medium">เลขที่บิลเสร็จขายจริง (POS)</span>
+                            <span id="detail-history-bill" class="text-cyan-700 font-mono font-bold">-</span>
+                        </div>
+                        <div class="col-span-2 hidden" id="detail-history-reason-row">
+                            <span class="text-slate-600 block font-medium">เหตุผลการยกเลิก</span>
+                            <span id="detail-history-reason" class="text-rose-700 font-semibold">-</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <div class="p-5 border-t border-slate-200 bg-slate-50 flex items-center justify-between gap-3 rounded-b-2xl">
+                <button type="button" id="btn-deposit-detail-print" class="px-4 py-2 rounded-xl bg-slate-700 hover:bg-slate-600 text-white font-bold transition-all text-xs flex items-center gap-1.5">
+                    <i class="fa-solid fa-print"></i> พิมพ์ใบจองมัดจำ
+                </button>
+                <button type="button" id="btn-close-deposit-detail-modal" class="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold transition-all border border-slate-300 text-xs">
+                    ปิดหน้าต่าง
+                </button>
             </div>
         </div>
     </div>
