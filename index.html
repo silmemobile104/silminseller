@@ -8756,6 +8756,47 @@
                     <!-- Payment Controls Inputs -->
                     <div class="bg-slate-900/30 border border-slate-700/60 rounded-2xl p-5 space-y-5">
 
+                        <!-- ส่วนหักเงินมัดจำลูกค้า (Deposit Lookup & Apply) -->
+                        <div class="bg-slate-800/40 p-4 border border-slate-700/60 rounded-xl space-y-3 relative z-30">
+                            <label class="text-sm font-semibold text-slate-300 block flex items-center gap-1.5">
+                                <i class="fa-solid fa-hand-holding-dollar text-cyan-400 text-xs"></i>
+                                หักเงินมัดจำลูกค้า (ถ้ามี)
+                            </label>
+                            
+                            <!-- ค้นหารายการมัดจำ -->
+                            <div class="relative" id="pos-deposit-search-wrapper">
+                                <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                                    <i class="fa-solid fa-search text-slate-500"></i>
+                                </div>
+                                <input type="text" id="pos-deposit-search" 
+                                    placeholder="พิมพ์ค้นหาใบมัดจำ (ชื่อ, เบอร์โทร, เลขใบมัดจำ)..."
+                                    class="w-full pl-9 pr-4 py-2.5 rounded-xl bg-white border border-slate-300 text-slate-900 text-sm focus:outline-none focus:border-cyan-500 transition-all placeholder-slate-400"
+                                    autocomplete="off">
+                                    
+                                <!-- กล่องผลลัพธ์การค้นหาใบมัดจำ -->
+                                <div id="pos-deposit-search-results" 
+                                    class="absolute left-0 right-0 top-full mt-2 bg-slate-800 border border-slate-700 rounded-xl shadow-[0_10px_40px_rgba(0,0,0,0.5)] z-[110] hidden max-h-60 overflow-y-auto divide-y divide-slate-700/50">
+                                    <!-- Results dynamically injected by JS -->
+                                </div>
+                            </div>
+
+                            <!-- ส่วนแสดงใบมัดจำที่เลือกใช้งาน -->
+                            <div id="applied-deposit-display" 
+                                class="hidden p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/30 animate-fade-in flex items-center justify-between">
+                                <div class="flex-1 min-w-0">
+                                    <p id="applied-deposit-number" class="text-xs font-bold text-emerald-400 font-mono"></p>
+                                    <p id="applied-deposit-info" class="text-xs text-white mt-0.5 truncate"></p>
+                                    <p id="applied-deposit-amount-text" class="text-sm font-bold text-emerald-400 font-mono mt-1"></p>
+                                </div>
+                                <button type="button" id="btn-remove-applied-deposit" 
+                                    class="text-slate-400 hover:text-red-400 hover:bg-red-500/10 p-1.5 transition-all rounded-lg shrink-0">
+                                    <i class="fa-solid fa-xmark text-lg"></i>
+                                </button>
+                                <input type="hidden" id="applied-deposit-id" value="">
+                                <input type="hidden" id="applied-deposit-amount" value="0">
+                            </div>
+                        </div>
+
                         <!-- Top Row: Discount & Method -->
                         <div class="grid grid-cols-2 gap-4">
                             <!-- 1. Discount Field -->
@@ -8957,6 +8998,10 @@
                                 <div class="flex justify-between text-sm text-slate-400">
                                     <span>ส่วนลดท้ายบิล</span>
                                     <span id="modal-discount-display" class="text-red-400 font-mono">-฿0.00</span>
+                                </div>
+                                <div id="modal-applied-deposit-row" class="hidden justify-between text-sm text-slate-400 animate-fade-in">
+                                    <span>หักเงินมัดจำ</span>
+                                    <span id="modal-applied-deposit-display" class="text-emerald-400 font-mono">-฿0.00</span>
                                 </div>
                                 <div id="modal-contract-row" class="hidden justify-between text-sm text-slate-400">
                                     <span>ค่าใบสัญญา</span>
