@@ -2033,7 +2033,7 @@ router.post('/transactions', async (req, res) => {
             items, total_amount, payment_method, down_payment, branch_id, member_id,
             payment_type, cash_amount, transfer_amount, finance_company,
             finance_payment_day, finance_months, finance_down_payment_cash, finance_down_payment_transfer,
-            contract_fee, icloud_fee
+            contract_fee, icloud_fee, applied_deposit_id, applied_deposit_amount
         } = req.body;
 
         // ตรวจสอบข้อมูลเบื้องต้น
@@ -2159,10 +2159,28 @@ router.post('/transactions', async (req, res) => {
             contract_fee: Number(contract_fee) || 0,
             icloud_fee: Number(icloud_fee) || 0,
             member_id: member_id || null,
+            applied_deposit_id: applied_deposit_id || null,
+            applied_deposit_amount: Number(applied_deposit_amount) || 0,
             created_at: now
         });
 
         const savedTransaction = await newTransaction.save();
+
+        // ==========================================
+        // อัปเดตสถานะใบมัดจำที่ถูกนำมาหัก (ถ้ามี)
+        // ==========================================
+        if (applied_deposit_id) {
+            const linkedDeposit = await Deposit.findById(applied_deposit_id);
+            if (linkedDeposit && linkedDeposit.status === 'รอดำเนินการ') {
+                linkedDeposit.status = 'สำเร็จ';
+                linkedDeposit.bill_number = receipt_number;
+                linkedDeposit.completed_by = req.user.employee_id;
+                linkedDeposit.completed_at = now;
+                await linkedDeposit.save();
+                
+                await logActivity(req, 'UPDATE', 'DEPOSIT', `หักยอดมัดจำใบจอง ${linkedDeposit.deposit_number} ในรายการขาย ${receipt_number}`, null, linkedDeposit._id);
+            }
+        }
 
         // ===================================================================
         // Split-Accounting for Financing (การแยกบัญชีจัดไฟแนนซ์)
@@ -5066,31 +5084,9 @@ router.put('/deposits/:id/complete', async (req, res) => {
 
         const selectedImei = (imei || deposit.imei || '').trim();
 
-        // 1. ตรวจสอบสินค้าและหักสต็อก
+        // 1. ดึงข้อมูลสินค้า (ตรวจสอบว่าสินค้ายังคงมีอยู่ในระบบ)
         const product = await Product.findById(deposit.product_id);
         if (!product) return res.status(404).json({ success: false, message: 'ไม่พบสินค้าในระบบ' });
-
-        const targetBranchId = deposit.branch_id.toString();
-        if (!product.stock_balances) product.stock_balances = [];
-        let bal = product.stock_balances.find(x => x.branch_id && x.branch_id.toString() === targetBranchId);
-        if (!bal) {
-            // สร้างยอดคงคลังเริ่มต้นของสาขานี้ให้เป็น 0 เพื่อป้องกันระบบค้าง
-            bal = { branch_id: deposit.branch_id, quantity: 0, imeis: [] };
-            product.stock_balances.push(bal);
-        }
-
-        const hasImeisInStock = Array.isArray(bal.imeis) && bal.imeis.length > 0;
-        if (hasImeisInStock && selectedImei) {
-            const idx = bal.imeis.indexOf(selectedImei);
-            if (idx !== -1) {
-                bal.imeis.splice(idx, 1);
-            }
-        }
-        bal.quantity = Math.max(0, Number(bal.quantity || 0) - 1);
-        
-        // บังคับให้ mongoose ตรวจจับการเปลี่ยนแปลงในอาเรย์ stock_balances
-        product.markModified('stock_balances');
-        await product.save();
 
         // 2. สร้างใบเสร็จ Transaction (POS)
         const now = new Date();
@@ -5147,17 +5143,6 @@ router.put('/deposits/:id/complete', async (req, res) => {
             });
             await cashMove.save();
         }
-
-        // 4. บันทึกความเคลื่อนไหว (Product Movement)
-        await createMovementsForItem({
-            productId: product._id,
-            action: 'ขายออก',
-            fromBranch: deposit.branch_id,
-            referenceNo: receipt_number,
-            createdBy: req.user.employee_id,
-            imeis: selectedImei ? [selectedImei] : [],
-            quantity: 1
-        }).catch(err => console.error('[MOVEMENT] Failed to log movement for deposit transaction:', err));
 
         // 5. อัปเดตใบมัดจำ
         deposit.status = 'สำเร็จ';

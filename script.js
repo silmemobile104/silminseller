@@ -3641,6 +3641,19 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnRemoveMember = document.getElementById('btn-remove-member');
     const btnPosAddMember = document.getElementById('btn-pos-add-member');
 
+    // Deposit Selection DOM
+    const posDepositSearch = document.getElementById('pos-deposit-search');
+    const posDepositSearchResults = document.getElementById('pos-deposit-search-results');
+    const appliedDepositDisplay = document.getElementById('applied-deposit-display');
+    const appliedDepositNumber = document.getElementById('applied-deposit-number');
+    const appliedDepositInfo = document.getElementById('applied-deposit-info');
+    const appliedDepositAmountText = document.getElementById('applied-deposit-amount-text');
+    const btnRemoveAppliedDeposit = document.getElementById('btn-remove-applied-deposit');
+    const appliedDepositId = document.getElementById('applied-deposit-id');
+    const appliedDepositAmount = document.getElementById('applied-deposit-amount');
+    const modalAppliedDepositRow = document.getElementById('modal-applied-deposit-row');
+    const modalAppliedDepositDisplay = document.getElementById('modal-applied-deposit-display');
+
     // Sales History DOM Elements
     const salesHistorySearch = document.getElementById('sales-history-search');
     const salesHistoryDate = document.getElementById('sales-history-date');
@@ -4659,10 +4672,12 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!financingInput) return;
 
         const discount = posDiscount ? (parseFloat(posDiscount.value) || 0) : 0;
+        const depositVal = appliedDepositAmount ? (parseFloat(appliedDepositAmount.value) || 0) : 0;
         const devicesTotal = cart.filter(item => item.unit_name === 'เครื่อง').reduce((sum, item) => sum + item.subtotal, 0);
         const totalDown = parseFloat(modalFinanceDownTotal ? modalFinanceDownTotal.value : 0) || 0;
 
-        const netDevicesTotal = Math.max(0, devicesTotal - discount);
+        // ยอดจัด = ราคาเครื่อง - ส่วนลด - เงินมัดจำ (ดาวน์ก้อนแรก) - เงินดาวน์เพิ่ม (totalDown)
+        const netDevicesTotal = Math.max(0, devicesTotal - discount - depositVal);
         const financingAmount = Math.max(0, netDevicesTotal - totalDown);
 
         financingInput.value = financingAmount.toLocaleString(undefined, { minimumFractionDigits: 2 });
@@ -4673,14 +4688,28 @@ document.addEventListener('DOMContentLoaded', () => {
         const subtotal = cart.reduce((sum, item) => sum + item.subtotal, 0);
         const discount = posDiscount ? (parseFloat(posDiscount.value) || 0) : 0;
 
-        // Additional fees inclusion
+        // Additional fees & Deposit inclusion
         const contractFee = (checkboxContractFee && checkboxContractFee.checked) ? (parseFloat(inputContractFee.value) || 0) : 0;
         const icloudFee = (checkboxIcloudFee && checkboxIcloudFee.checked) ? (parseFloat(inputIcloudFee.value) || 0) : 0;
-        const grandTotal = Math.max(0, subtotal - discount + contractFee + icloudFee);
+        
+        const depositVal = appliedDepositAmount ? (parseFloat(appliedDepositAmount.value) || 0) : 0;
+        const grandTotal = Math.max(0, subtotal - discount - depositVal + contractFee + icloudFee);
         updateFinancingAmount();
 
         if (modalSubtotalDisplay) modalSubtotalDisplay.textContent = `฿${subtotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
         if (modalDiscountDisplay) modalDiscountDisplay.textContent = `-฿${discount.toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
+
+        // Applied Deposit Display Sync
+        if (modalAppliedDepositRow) {
+            if (depositVal > 0) {
+                modalAppliedDepositRow.classList.remove('hidden');
+                modalAppliedDepositRow.classList.add('flex');
+                if (modalAppliedDepositDisplay) modalAppliedDepositDisplay.textContent = `-฿${depositVal.toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
+            } else {
+                modalAppliedDepositRow.classList.add('hidden');
+                modalAppliedDepositRow.classList.remove('flex');
+            }
+        }
 
         // Dynamic Additional Fees Ledger Sync
         const modalContractRow = document.getElementById('modal-contract-row');
@@ -4718,17 +4747,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 modalFinanceSummaryRow.classList.add('flex');
 
                 const devicesTotal = cart.filter(item => item.unit_name === 'เครื่อง').reduce((sum, item) => sum + item.subtotal, 0);
-                const netDevicesTotal = Math.max(0, devicesTotal - discount);
+                const netDevicesTotal = Math.max(0, devicesTotal - discount - depositVal);
                 const totalDown = parseFloat(modalFinanceDownTotal ? modalFinanceDownTotal.value : 0) || 0;
                 const financingAmount = Math.max(0, netDevicesTotal - totalDown);
-                const totalUpfrontToCollect = Math.max(0, grandTotal - financingAmount);
+                
+                // ยอดที่ต้องรับเงินเพิ่มหน้าร้าน = ยอดเงินดาวน์เพิ่ม + ค่าบริการสัญญา + ค่า iCloud (เนื่องจากค่ามัดจำจ่ายไปก่อนหน้านี้แล้ว)
+                const totalUpfrontToCollect = Math.max(0, totalDown + contractFee + icloudFee);
 
                 const summaryAmountEl = document.getElementById('modal-finance-summary-amount');
                 const summaryDownEl = document.getElementById('modal-finance-summary-down');
                 const summaryUpfrontEl = document.getElementById('modal-finance-summary-upfront');
 
                 if (summaryAmountEl) summaryAmountEl.textContent = `฿${financingAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
-                if (summaryDownEl) summaryDownEl.textContent = `฿${totalDown.toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
+                if (summaryDownEl) summaryDownEl.textContent = `฿${(totalDown + depositVal).toLocaleString(undefined, { minimumFractionDigits: 2 })}`; // แสดงเงินดาวน์รวม = ดาวน์เพิ่ม + มัดจำ
                 if (summaryUpfrontEl) summaryUpfrontEl.textContent = `฿${totalUpfrontToCollect.toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
             } else {
                 modalFinanceSummaryRow.classList.add('hidden');
@@ -5271,6 +5302,15 @@ document.addEventListener('DOMContentLoaded', () => {
         if (selectedMemberDisplay) selectedMemberDisplay.classList.add('hidden');
         if (posMemberSearch && posMemberSearch.parentElement) posMemberSearch.parentElement.classList.remove('hidden');
 
+        // Deposit Selection reset
+        if (appliedDepositId) appliedDepositId.value = '';
+        if (appliedDepositAmount) appliedDepositAmount.value = '0';
+        if (posDepositSearch) posDepositSearch.value = '';
+        const searchWrapper = document.getElementById('pos-deposit-search-wrapper');
+        if (searchWrapper) searchWrapper.classList.remove('hidden');
+        if (appliedDepositDisplay) appliedDepositDisplay.classList.add('hidden');
+        if (posDepositSearchResults) posDepositSearchResults.classList.add('hidden');
+
         // Render cart summary items with editable unit prices
         if (confirmPriceList) {
             confirmPriceList.innerHTML = '';
@@ -5473,8 +5513,9 @@ document.addEventListener('DOMContentLoaded', () => {
             transferVal = parseFloat(modalTransferAmount ? modalTransferAmount.value : 0) || 0;
 
             const discountChk = posDiscount ? (parseFloat(posDiscount.value) || 0) : 0;
-            const subtotalChk = cart.reduce((sum, item) => sum + item.subtotal, 0);
-            const totalChk = Math.max(0, subtotalChk - discountChk);
+            const depositChk = appliedDepositAmount ? (parseFloat(appliedDepositAmount.value) || 0) : 0;
+            const subtotalChk = cart.reduce((sum, item) => sum + item.subtotal);
+            const totalChk = Math.max(0, subtotalChk - discountChk - depositChk);
 
             if (cashVal + transferVal < totalChk) {
                 showToast('ยอดเงินที่รับมาไม่ครบถ้วนตามราคาสุทธิ กรุณาตรวจสอบการรับเงิน', 'error');
@@ -5503,12 +5544,13 @@ document.addEventListener('DOMContentLoaded', () => {
             // Calculate totalUpfrontToCollect
             const subtotalChk = cart.reduce((sum, item) => sum + item.subtotal, 0);
             const discountChk = posDiscount ? (parseFloat(posDiscount.value) || 0) : 0;
+            const depositChk = appliedDepositAmount ? (parseFloat(appliedDepositAmount.value) || 0) : 0;
             const contractFeeChk = (checkboxContractFee && checkboxContractFee.checked) ? (parseFloat(inputContractFee.value) || 0) : 0;
             const icloudFeeChk = (checkboxIcloudFee && checkboxIcloudFee.checked) ? (parseFloat(inputIcloudFee.value) || 0) : 0;
-            const grandTotalChk = Math.max(0, subtotalChk - discountChk + contractFeeChk + icloudFeeChk);
+            const grandTotalChk = Math.max(0, subtotalChk - discountChk - depositChk + contractFeeChk + icloudFeeChk);
 
             const devicesTotalChk = cart.filter(item => item.unit_name === 'เครื่อง').reduce((sum, item) => sum + item.subtotal, 0);
-            const netDevicesTotalChk = Math.max(0, devicesTotalChk - discountChk);
+            const netDevicesTotalChk = Math.max(0, devicesTotalChk - discountChk - depositChk);
             const financingAmountChk = Math.max(0, netDevicesTotalChk - downTotal);
             const totalUpfrontToCollect = Math.max(0, grandTotalChk - financingAmountChk);
 
@@ -5530,10 +5572,11 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         const discount = posDiscount ? (parseFloat(posDiscount.value) || 0) : 0;
+        const depositVal = appliedDepositAmount ? (parseFloat(appliedDepositAmount.value) || 0) : 0;
         const subtotal = cart.reduce((sum, item) => sum + item.subtotal, 0);
         const contractFee = (checkboxContractFee && checkboxContractFee.checked) ? (parseFloat(inputContractFee.value) || 0) : 0;
         const icloudFee = (checkboxIcloudFee && checkboxIcloudFee.checked) ? (parseFloat(inputIcloudFee.value) || 0) : 0;
-        const total = Math.max(0, subtotal - discount + contractFee + icloudFee);
+        const total = Math.max(0, subtotal - discount - depositVal + contractFee + icloudFee);
 
         const originalText = btnConfirmCheckout ? btnConfirmCheckout.innerHTML : '';
         if (btnConfirmCheckout) {
@@ -5551,6 +5594,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const payload = {
                 member_id: selectedMemberId ? (selectedMemberId.value || null) : null,
+                applied_deposit_id: appliedDepositId ? (appliedDepositId.value || null) : null,
+                applied_deposit_amount: depositVal,
                 items: cart.map(item => ({
                     product_id: item.product_id,
                     product_name: item.product_name,
@@ -5686,6 +5731,118 @@ document.addEventListener('DOMContentLoaded', () => {
             if (posMemberResults && !posMemberSearch.contains(e.target) && !posMemberResults.contains(e.target)) {
                 posMemberResults.classList.add('hidden');
             }
+            if (posDepositSearchResults && posDepositSearch && !posDepositSearch.contains(e.target) && !posDepositSearchResults.contains(e.target)) {
+                posDepositSearchResults.classList.add('hidden');
+            }
+        });
+    }
+
+    // ==========================================
+    // Deposit Search & Apply Logic (POS Discount)
+    // ==========================================
+    let depositSearchTimeout;
+    if (posDepositSearch) {
+        posDepositSearch.addEventListener('input', (e) => {
+            const query = e.target.value.trim();
+            clearTimeout(depositSearchTimeout);
+
+            if (query.length < 2) {
+                if (posDepositSearchResults) posDepositSearchResults.classList.add('hidden');
+                return;
+            }
+
+            depositSearchTimeout = setTimeout(async () => {
+                try {
+                    // ดึงรายการมัดจำเฉพาะสถานะ 'รอดำเนินการ'
+                    const response = await authFetch(`/api/deposits?status=รอดำเนินการ&search=${encodeURIComponent(query)}`);
+                    const result = await response.json();
+
+                    if (result.success && result.data.length > 0) {
+                        renderDepositSearchResults(result.data);
+                    } else {
+                        if (posDepositSearchResults) posDepositSearchResults.classList.add('hidden');
+                    }
+                } catch (error) {
+                    console.error('Deposit search error:', error);
+                }
+            }, 300);
+        });
+    }
+
+    const renderDepositSearchResults = (deposits) => {
+        if (!posDepositSearchResults) return;
+
+        posDepositSearchResults.innerHTML = '';
+        deposits.forEach(dep => {
+            const div = document.createElement('div');
+            div.className = 'p-3 hover:bg-slate-700 cursor-pointer transition-colors flex flex-col gap-0.5 text-left';
+            div.innerHTML = `
+                <div class="flex justify-between items-center">
+                    <span class="text-xs font-bold text-cyan-400 font-mono">${dep.deposit_number}</span>
+                    <span class="text-xs font-bold text-emerald-400 font-mono">฿${dep.deposit_amount.toLocaleString()}</span>
+                </div>
+                <div class="text-[11px] text-slate-300">
+                    ลูกค้า: ${dep.customer_name} (${dep.customer_phone})
+                </div>
+                <div class="text-[10px] text-slate-400 truncate">
+                    สินค้ามัดจำ: ${dep.product_name}
+                </div>
+            `;
+            div.addEventListener('click', () => applyDepositDiscount(dep));
+            posDepositSearchResults.appendChild(div);
+        });
+        posDepositSearchResults.classList.remove('hidden');
+    };
+
+    const applyDepositDiscount = (dep) => {
+        if (appliedDepositId) appliedDepositId.value = dep._id;
+        if (appliedDepositAmount) appliedDepositAmount.value = dep.deposit_amount;
+        
+        if (appliedDepositNumber) appliedDepositNumber.textContent = dep.deposit_number;
+        if (appliedDepositInfo) appliedDepositInfo.textContent = `จองโดย: ${dep.customer_name} (${dep.customer_phone})`;
+        if (appliedDepositAmountText) appliedDepositAmountText.textContent = `ยอดมัดจำ: ฿${dep.deposit_amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
+
+        // ซ่อน Input ค้นหา แสดงบล็อกที่เลือกแล้ว
+        const searchWrapper = document.getElementById('pos-deposit-search-wrapper');
+        if (searchWrapper) searchWrapper.classList.add('hidden');
+        if (appliedDepositDisplay) appliedDepositDisplay.classList.remove('hidden');
+        if (posDepositSearchResults) posDepositSearchResults.classList.add('hidden');
+
+        // หากยังไม่ได้เลือกสมาชิกในหน้าระบบ POS ให้พยายามค้นหาหรือดึงสมาชิกที่มีเบอร์โทรตรงกับมัดจำให้ทันที
+        autoSelectMemberByPhone(dep.customer_phone, dep.customer_name);
+
+        // คำนวณเงินใน Modal ใหม่อีกครั้ง
+        updateModalTotals();
+    };
+
+    const autoSelectMemberByPhone = async (phone, name) => {
+        if (selectedMemberId && selectedMemberId.value) return; // เลือกไปแล้วไม่ต้องทับ
+
+        try {
+            const response = await authFetch(`/api/members/search?q=${encodeURIComponent(phone)}`);
+            const result = await response.json();
+            if (result.success && result.data && result.data.length > 0) {
+                // เจอสมาชิกตามเบอร์โทรศัพท์
+                selectMember(result.data[0]);
+            }
+        } catch (err) {
+            console.error('Auto member selection err:', err);
+        }
+    };
+
+    if (btnRemoveAppliedDeposit) {
+        btnRemoveAppliedDeposit.addEventListener('click', () => {
+            if (appliedDepositId) appliedDepositId.value = '';
+            if (appliedDepositAmount) appliedDepositAmount.value = '0';
+            
+            const searchWrapper = document.getElementById('pos-deposit-search-wrapper');
+            if (searchWrapper) {
+                searchWrapper.classList.remove('hidden');
+                posDepositSearch.value = '';
+                posDepositSearch.focus();
+            }
+            if (appliedDepositDisplay) appliedDepositDisplay.classList.add('hidden');
+            updateModalTotals();
         });
     }
 

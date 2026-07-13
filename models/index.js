@@ -294,6 +294,8 @@ const transactionSchema = new mongoose.Schema({
     finance_down_payment_transfer: { type: Number, default: 0 }, // เงินดาวน์ที่เป็นเงินโอน
     contract_fee: { type: Number, default: 0 }, // ค่าใบสัญญา
     icloud_fee: { type: Number, default: 0 }, // ค่าบริการ iCloud
+    applied_deposit_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Deposit', default: null }, // ลิงก์ใบมัดจำที่นำมาหัก
+    applied_deposit_amount: { type: Number, default: 0 }, // จำนวนเงินมัดจำที่หักออก
     status: { type: String, default: 'เสร็จสิ้น', enum: ['เสร็จสิ้น', 'ยกเลิกแล้ว'] }, // สถานะรายการ
     cancel_reason: { type: String }, // เหตุผลที่ยกเลิก
     cancelled_by: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee' }, // ผู้ที่กดยกเลิก
