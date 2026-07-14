@@ -4901,7 +4901,7 @@ router.get('/deposits', async (req, res) => {
         }
 
         // คัดกรองตามสถานะ
-        if (req.query.status) {
+        if (req.query.status && req.query.status !== 'ALL') {
             query.status = req.query.status;
         }
 
