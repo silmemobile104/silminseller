@@ -247,6 +247,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const masterDataList = document.getElementById('master-data-list');
     const masterDataEmpty = document.getElementById('master-data-empty');
     const productTableBody = document.getElementById('product-table-body');
+    const stockPaginationContainer = document.getElementById('stock-pagination-container');
+    const stockPaginationInfo = document.getElementById('stock-pagination-info');
+    const btnStockPrevPage = document.getElementById('btn-stock-prev-page');
+    const btnStockNextPage = document.getElementById('btn-stock-next-page');
 
     const stockSearchInput = document.getElementById('stock-search-input');
     const btnStockFilter = document.getElementById('btn-stock-filter');
@@ -348,6 +352,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Stock Search & Filter State
     let allProductsCache = [];
+    let stockFilteredCache = [];
+    let currentStockPage = 1;
+    const stockItemsPerPage = 50;
     let stockSearchDebounceId = null;
     let stockSearchQuery = '';
     let stockFilters = {
@@ -647,12 +654,51 @@ document.addEventListener('DOMContentLoaded', () => {
         stockResultCount.textContent = `แสดง ${filteredCount} จาก ${totalCount} รายการ`;
     };
 
+    const updateStockPaginationControls = (totalItems, totalPages) => {
+        if (!stockPaginationContainer) return;
+        
+        if (totalItems <= stockItemsPerPage) {
+            stockPaginationContainer.classList.add('hidden');
+        } else {
+            stockPaginationContainer.classList.remove('hidden');
+        }
+
+        const startItem = (currentStockPage - 1) * stockItemsPerPage + 1;
+        const endItem = Math.min(currentStockPage * stockItemsPerPage, totalItems);
+        
+        if (stockPaginationInfo) {
+            stockPaginationInfo.textContent = `แสดง ${totalItems > 0 ? startItem : 0} ถึง ${endItem} จาก ${totalItems} รายการ (หน้า ${currentStockPage} จาก ${totalPages})`;
+        }
+
+        if (btnStockPrevPage) {
+            btnStockPrevPage.disabled = currentStockPage <= 1;
+        }
+        
+        if (btnStockNextPage) {
+            btnStockNextPage.disabled = currentStockPage >= totalPages;
+        }
+    };
+
+    const renderStockPage = () => {
+        const totalItems = stockFilteredCache.length;
+        const totalPages = Math.ceil(totalItems / stockItemsPerPage) || 1;
+        if (currentStockPage > totalPages) currentStockPage = totalPages;
+        if (currentStockPage < 1) currentStockPage = 1;
+
+        const startIndex = (currentStockPage - 1) * stockItemsPerPage;
+        const paginatedProducts = stockFilteredCache.slice(startIndex, startIndex + stockItemsPerPage);
+
+        renderProductTable(paginatedProducts);
+        updateStockPaginationControls(totalItems, totalPages);
+    };
+
     const applyStockSearchAndFilters = () => {
-        const filtered = getFilteredProducts();
-        renderProductTable(filtered);
+        stockFilteredCache = getFilteredProducts();
+        currentStockPage = 1;
+        renderStockPage();
         renderActiveFilterChips();
         updateFilterButtonBadge();
-        updateResultCount(filtered.length, allProductsCache.length);
+        updateResultCount(stockFilteredCache.length, allProductsCache.length);
     };
 
     const setSelectOptions = (selectEl, options, placeholderText) => {
@@ -2819,6 +2865,25 @@ document.addEventListener('DOMContentLoaded', () => {
     if (stockFilterQtyMin) stockFilterQtyMin.addEventListener('input', () => { syncFiltersFromPanel(); applyStockSearchAndFilters(); });
     if (stockFilterQtyMax) stockFilterQtyMax.addEventListener('input', () => { syncFiltersFromPanel(); applyStockSearchAndFilters(); });
     if (stockFilterSort) stockFilterSort.addEventListener('change', () => { syncFiltersFromPanel(); applyStockSearchAndFilters(); });
+
+    if (btnStockPrevPage) {
+        btnStockPrevPage.addEventListener('click', () => {
+            if (currentStockPage > 1) {
+                currentStockPage--;
+                renderStockPage();
+            }
+        });
+    }
+
+    if (btnStockNextPage) {
+        btnStockNextPage.addEventListener('click', () => {
+            const totalPages = Math.ceil(stockFilteredCache.length / stockItemsPerPage) || 1;
+            if (currentStockPage < totalPages) {
+                currentStockPage++;
+                renderStockPage();
+            }
+        });
+    }
 
     // ==========================================
     // Branch Management Logic
@@ -13703,12 +13768,14 @@ document.addEventListener('DOMContentLoaded', () => {
         const endVal = depositFilterEndDate ? depositFilterEndDate.value : '';
         const searchVal = depositFilterSearch ? depositFilterSearch.value : '';
         
-        let url = `/api/deposits?status=${statusVal}`;
-        if (branchVal !== 'ALL') url += `&branch_id=${branchVal}`;
-        if (stageVal !== 'ALL') url += `&stage=${stageVal}`;
-        if (startVal) url += `&startDate=${startVal}`;
-        if (endVal) url += `&endDate=${endVal}`;
-        if (searchVal) url += `&search=${encodeURIComponent(searchVal)}`;
+        let params = [];
+        if (statusVal !== 'ALL') params.push(`status=${statusVal}`);
+        if (branchVal !== 'ALL') params.push(`branch_id=${branchVal}`);
+        if (stageVal !== 'ALL') params.push(`stage=${stageVal}`);
+        if (startVal) params.push(`startDate=${startVal}`);
+        if (endVal) params.push(`endDate=${endVal}`);
+        if (searchVal) params.push(`search=${encodeURIComponent(searchVal)}`);
+        let url = `/api/deposits?` + params.join('&');
         
         const user = JSON.parse(localStorage.getItem('silmin_user') || '{}');
         const userRole = user.role || '';
@@ -13755,24 +13822,24 @@ document.addEventListener('DOMContentLoaded', () => {
                     else if (item.status === 'ยกเลิก') statusClass = 'bg-rose-500/10 text-rose-400 border border-rose-500/20';
                     
                     row.innerHTML = `
-                        <td class="px-4 py-3.5 whitespace-nowrap font-medium text-slate-400">${dateStr}</td>
-                        <td class="px-4 py-3.5 whitespace-nowrap text-white font-medium">${item.customer_name}</td>
-                        <td class="px-4 py-3.5 whitespace-nowrap font-mono text-slate-300">${item.customer_phone}</td>
-                        <td class="px-4 py-3.5 whitespace-nowrap font-mono font-semibold text-emerald-400">฿${item.deposit_amount.toLocaleString()}</td>
-                        <td class="px-4 py-3.5 whitespace-nowrap text-slate-300">${apptStr}</td>
-                        <td class="px-3 py-3.5 whitespace-nowrap text-center font-mono font-bold border-r border-slate-750/30 text-slate-400">${item.bill_number || '-'}</td>
-                        <td class="px-3 py-3.5 whitespace-nowrap font-mono border-r border-slate-750/30 text-slate-300">${item.imei || '<span class="text-slate-500 italic">ไม่ระบุ</span>'}</td>
-                        <td class="px-3 py-3.5 whitespace-nowrap border-r border-slate-750/30 text-cyan-400 font-medium max-w-[150px] truncate" title="${item.product_name}">${item.product_name}</td>
-                        <td class="px-3 py-3.5 whitespace-nowrap font-mono border-r border-slate-750/30 text-slate-300">฿${item.product_price.toLocaleString()}</td>
-                        <td class="px-3 py-3.5 whitespace-nowrap font-mono font-bold text-red-400">฿${item.remaining_amount.toLocaleString()}</td>
-                        <td class="px-4 py-3.5 whitespace-nowrap">
-                            <span class="px-2 py-0.5 rounded text-[10px] font-bold ${statusClass}">${item.status}</span>
-                            <div class="text-[10px] text-slate-500 mt-1">${item.stage}</div>
+                        <td class="px-1.5 py-2 font-medium text-slate-400">${dateStr}</td>
+                        <td class="px-1.5 py-2 text-white font-medium">${item.customer_name}</td>
+                        <td class="px-1.5 py-2 font-mono text-slate-300">${item.customer_phone}</td>
+                        <td class="px-1.5 py-2 font-mono font-semibold text-emerald-400">฿${item.deposit_amount.toLocaleString()}</td>
+                        <td class="px-1.5 py-2 text-slate-300">${apptStr}</td>
+                        <td class="px-1.5 py-2 text-center font-mono font-bold border-r border-slate-750/30 text-slate-400">${item.bill_number || '-'}</td>
+                        <td class="px-1.5 py-2 font-mono border-r border-slate-750/30 text-slate-300 break-words">${item.imei || '<span class="text-slate-500 italic">ไม่ระบุ</span>'}</td>
+                        <td class="px-1.5 py-2 border-r border-slate-750/30 text-cyan-400 font-medium break-words" title="${item.product_name}">${item.product_name}</td>
+                        <td class="px-1.5 py-2 font-mono border-r border-slate-750/30 text-slate-300">฿${item.product_price.toLocaleString()}</td>
+                        <td class="px-1.5 py-2 font-mono font-bold text-red-400">฿${item.remaining_amount.toLocaleString()}</td>
+                        <td class="px-1.5 py-2">
+                            <span class="px-1.5 py-0.5 rounded text-[9px] font-bold ${statusClass}">${item.status}</span>
+                            <div class="text-[9px] text-slate-500 mt-1">${item.stage}</div>
                         </td>
-                        <td class="px-4 py-3.5 whitespace-nowrap text-slate-400">${item.created_by?.name || '-'}</td>
-                        <td class="px-4 py-3.5 whitespace-nowrap text-slate-400">${item.branch_id?.name || '-'}</td>
-                        <td class="px-4 py-3.5 whitespace-nowrap text-right">
-                            <button class="btn-print-deposit w-8 h-8 rounded-lg bg-slate-700/50 flex items-center justify-center text-slate-400 hover:text-emerald-400 hover:bg-emerald-400/10 transition-colors" data-id="${item._id}" title="พิมพ์ใบมัดจำ">
+                        <td class="px-1.5 py-2 text-slate-400">${item.created_by?.name || '-'}</td>
+                        <td class="px-1.5 py-2 text-slate-400">${item.branch_id?.name || '-'}</td>
+                        <td class="px-1.5 py-2 text-center">
+                            <button class="btn-print-deposit w-7 h-7 mx-auto rounded-lg bg-slate-700/50 flex items-center justify-center text-slate-400 hover:text-emerald-400 hover:bg-emerald-400/10 transition-colors" data-id="${item._id}" title="พิมพ์ใบมัดจำ">
                                 <i class="fa-solid fa-print"></i>
                             </button>
                         </td>
