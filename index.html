@@ -3544,6 +3544,15 @@
         #modal-create-deposit span:not(.text-red-500):not(.text-emerald-500):not(.text-emerald-600) {
             color: #0f172a !important;
         }
+    
+        /* Fix read-only text colors in Edit Requisition modal */
+        #modal-edit-requisition input[readonly],
+        #modal-edit-requisition textarea[readonly] {
+            color: #1e293b !important; /* text-slate-800 */
+            -webkit-text-fill-color: #1e293b !important;
+            opacity: 1 !important;
+        }
+
     </style>
 </head>
 
@@ -3669,6 +3678,25 @@
                     <span class="sidebar-text ml-3 font-medium">จัดการสต็อก</span>
                     <span
                         class="sidebar-text ml-auto bg-cyan-500 text-slate-900 text-xs font-bold px-2 py-0.5 rounded-full">S</span>
+                </a>
+
+                <!-- [NEW] แจ้งเบิกสินค้า -->
+                <a href="#" id="nav-requisition"
+                    class="flex items-center px-3 py-3 rounded-xl text-slate-300 hover:bg-slate-700/50 hover:text-white transition-all group nav-menu-item">
+                    <i
+                        class="fa-solid fa-clipboard-list sidebar-icon text-lg w-6 text-center text-blue-400 group-hover:text-blue-300"></i>
+                    <span class="sidebar-text ml-3 font-medium">แจ้งเบิกสินค้า</span>
+                    <span
+                        class="sidebar-text ml-auto bg-cyan-500 text-slate-900 text-xs font-bold px-2 py-0.5 rounded-full">R</span>
+                </a>
+
+                <!-- [NEW] จัดการรายการเบิก -->
+                <a href="#" id="nav-manage-requisitions"
+                    class="flex items-center px-3 py-3 rounded-xl text-slate-300 hover:bg-slate-700/50 hover:text-white transition-all group nav-menu-item"
+                    style="display: none;">
+                    <i
+                        class="fa-solid fa-list-check sidebar-icon text-lg w-6 text-center text-indigo-400 group-hover:text-indigo-300"></i>
+                    <span class="sidebar-text ml-3 font-medium">จัดการรายการเบิก</span>
                 </a>
 
                 <a href="#" id="nav-transactions"
@@ -6765,6 +6793,193 @@
                         </table>
                     </div>
                 </div>
+
+                <!-- VIEW: แจ้งเบิกสินค้า (Requisition) -->
+                <div id="view-requisition" class="hidden space-y-6 animate-fade-in pb-10">
+                    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                        <div>
+                            <h3 class="text-2xl font-bold text-slate-800 flex items-center gap-2">
+                                <i class="fa-solid fa-clipboard-list text-blue-600"></i>
+                                ประวัติการแจ้งเบิกสินค้า
+                            </h3>
+                            <p class="text-slate-500 mt-1 text-sm">รายการประวัติการแจ้งเบิกสินค้าทั้งหมดในระบบ</p>
+                        </div>
+                        <button onclick="openCreateRequisitionModal()"
+                            class="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl transition-all shadow-lg shadow-blue-500/30 flex items-center justify-center gap-2 border border-blue-600">
+                            <i class="fa-solid fa-plus"></i>
+                            สร้างรายการเบิกใหม่
+                        </button>
+                    </div>
+
+                    <!-- Filters -->
+                    <div
+                        class="bg-white p-4 rounded-xl border border-slate-200 flex flex-col sm:flex-row gap-4 items-end shadow-[0_4px_20px_-2px_rgba(0,0,0,0.05)]">
+                        <div class="w-full sm:w-1/4">
+                            <label
+                                class="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wider">วัน/เดือน/ปี</label>
+                            <input type="date" id="filter-requisition-date"
+                                class="w-full px-3 py-2 bg-white border border-slate-300 text-slate-700 rounded-lg focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all">
+                        </div>
+                        <div class="w-full sm:w-1/4">
+                            <label class="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wider">สถานะ</label>
+                            <select id="filter-requisition-status" class="w-full px-3 py-2 bg-white border border-slate-300 text-slate-700 rounded-lg focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all">
+                                <option value="all">ทั้งหมด</option>
+                                <option value="รอตรวจสอบ" selected>รอตรวจสอบ (รอดำเนินการ)</option>
+                                <option value="จัดซื้อสั่งสินค้า">จัดซื้อสั่งสินค้า</option>
+                                <option value="งานเทคนิค">งานเทคนิค</option>
+                                <option value="ส่งสินค้าแล้ว">ส่งสินค้าแล้ว</option>
+                                <option value="ถึงสาขา">ถึงสาขา</option>
+                                <option value="ยกเลิก">ยกเลิก</option>
+                            </select>
+                        </div>
+                        <div class="w-full sm:w-1/4">
+                            <label
+                                class="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wider">ค้นหาชื่อรายการ,
+                                ชื่อสินค้า</label>
+                            <input type="text" id="filter-requisition-search" placeholder="พิมพ์เพื่อค้นหา..."
+                                class="w-full px-3 py-2 bg-white border border-slate-300 text-slate-700 rounded-lg focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all">
+                        </div>
+                        <div class="w-full sm:w-auto flex gap-2">
+                            <button onclick="loadRequisitions()"
+                                class="bg-[#0284c7] text-[#fff] px-3 py-2 rounded-lg cursor-pointer">
+                                <i class="fa-solid fa-filter"></i> กรองข้อมูล
+                            </button>
+                        </div>
+                        <div class="w-full sm:w-auto">
+                            <button onclick="clearRequisitionFilters()"
+                                class="w-full px-4 py-2 cursor-pointer border border-amber-400 rounded-lg bg-amber-100">
+                                ล้าง
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Table -->
+                    <div
+                        class="overflow-x-auto bg-white rounded-xl border border-slate-200 shadow-[0_4px_20px_-2px_rgba(0,0,0,0.05)]">
+                        <table class="w-full text-left border-collapse">
+                            <thead class="bg-slate-50 text-slate-500 text-sm border-b border-slate-200">
+                                <tr>
+                                    <th class="px-4 py-4 md:px-6 font-bold whitespace-nowrap">วันที่สั่ง</th>
+                                    <th class="px-4 py-4 md:px-6 font-bold">รายละเอียดคำขอ</th>
+                                    <th class="px-4 py-4 md:px-6 font-bold">รายการสินค้า</th>
+                                    <th class="px-4 py-4 md:px-6 font-bold text-center whitespace-nowrap">สถานะสินค้า
+                                    </th>
+                                    <th class="px-4 py-4 md:px-6 font-bold text-center whitespace-nowrap">วันคาดว่าจะถึง
+                                    </th>
+                                    <th class="px-4 py-4 md:px-6 font-bold text-center whitespace-nowrap">
+                                        รายชื่อผู้ที่เบิก</th>
+                                    <th class="px-4 py-4 md:px-6 font-bold text-right whitespace-nowrap">จัดการ</th>
+                                </tr>
+                            </thead>
+                            <tbody id="table-body-requisitions">
+                                <!-- Data will be loaded via JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- VIEW: จัดการรายการเบิก (Manage Requisitions) -->
+                <div id="view-manage-requisitions" class="hidden space-y-6 animate-fade-in pb-10">
+                    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                        <div>
+                            <h3 class="text-2xl font-bold text-slate-800 flex items-center gap-2">
+                                <i class="fa-solid fa-list-check text-indigo-600"></i>
+                                จัดการรายการแจ้งเบิกสินค้า
+                            </h3>
+                            <p class="text-gray-600 mt-1 text-sm">คัดกรองและบริหารจัดการคำขอเบิกสินค้าจากทุกสาขา</p>
+                        </div>
+                    </div>
+
+                    <!-- Filters -->
+                    <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-[0_4px_20px_-2px_rgba(0,0,0,0.05)] space-y-4">
+                        
+                        <!-- Status Pills -->
+                        <div class="flex flex-wrap items-center gap-2 pb-4 border-b border-slate-100" id="manage-req-status-filters">
+                            <button class="status-btn px-4 py-2 text-xs font-bold rounded-xl transition-all flex items-center gap-2 text-gray-700 hover:text-black bg-slate-50 hover:bg-slate-100" data-status="all">
+                                <i class="fa-solid fa-border-all"></i> ทั้งหมด 
+                                <span class="badge-tab bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded-lg font-mono text-[10px]" id="badge-manage-req-all">0</span>
+                            </button>
+                            <button class="status-btn px-4 py-2 text-xs font-bold rounded-xl transition-all flex items-center gap-2 text-white bg-indigo-600 shadow-md shadow-indigo-500/20 active" data-status="รอตรวจสอบ">
+                                <i class="fa-regular fa-clock"></i> รอเช็ค
+                                <span class="badge-tab bg-amber-100 text-amber-700 px-2 py-0.5 rounded-lg font-mono text-[10px]" id="badge-manage-req-รอตรวจสอบ">0</span>
+                            </button>
+                            <button class="status-btn px-4 py-2 text-xs font-bold rounded-xl transition-all flex items-center gap-2 text-gray-700 hover:text-black bg-slate-50 hover:bg-slate-100" data-status="จัดซื้อสั่งสินค้า">
+                                <i class="fa-solid fa-cart-shopping"></i> สั่งซื้อ
+                                <span class="badge-tab bg-blue-100 text-blue-700 px-2 py-0.5 rounded-lg font-mono text-[10px]" id="badge-manage-req-จัดซื้อสั่งสินค้า">0</span>
+                            </button>
+                            <button class="status-btn px-4 py-2 text-xs font-bold rounded-xl transition-all flex items-center gap-2 text-gray-700 hover:text-black bg-slate-50 hover:bg-slate-100" data-status="งานเทคนิค">
+                                <i class="fa-solid fa-wrench"></i> งานเทคนิค
+                                <span class="badge-tab bg-orange-100 text-orange-700 px-2 py-0.5 rounded-lg font-mono text-[10px]" id="badge-manage-req-งานเทคนิค">0</span>
+                            </button>
+                            <button class="status-btn px-4 py-2 text-xs font-bold rounded-xl transition-all flex items-center gap-2 text-gray-700 hover:text-black bg-slate-50 hover:bg-slate-100" data-status="ส่งสินค้าแล้ว">
+                                <i class="fa-solid fa-plane-departure"></i> ส่งแล้ว
+                                <span class="badge-tab bg-violet-100 text-violet-700 px-2 py-0.5 rounded-lg font-mono text-[10px]" id="badge-manage-req-ส่งสินค้าแล้ว">0</span>
+                            </button>
+                            <button class="status-btn px-4 py-2 text-xs font-bold rounded-xl transition-all flex items-center gap-2 text-gray-700 hover:text-black bg-slate-50 hover:bg-slate-100" data-status="ถึงสาขา">
+                                <i class="fa-solid fa-check-circle"></i> ถึงสาขา
+                                <span class="badge-tab bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-lg font-mono text-[10px]" id="badge-manage-req-ถึงสาขา">0</span>
+                            </button>
+                            <button class="status-btn px-4 py-2 text-xs font-bold rounded-xl transition-all flex items-center gap-2 text-gray-700 hover:text-black bg-slate-50 hover:bg-slate-100" data-status="ยกเลิก">
+                                <i class="fa-solid fa-times-circle"></i> ยกเลิก
+                                <span class="badge-tab bg-red-100 text-red-700 px-2 py-0.5 rounded-lg font-mono text-[10px]" id="badge-manage-req-ยกเลิก">0</span>
+                            </button>
+                        </div>
+
+                        <!-- Date, Search & Branch Filters -->
+                        <div class="flex flex-col sm:flex-row gap-4 items-end">
+                            <div class="w-full sm:w-1/4">
+                                <label class="block text-xs font-bold text-gray-800 mb-1.5 uppercase tracking-wider">สาขา</label>
+                                <div class="relative">
+                                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                        <i class="fa-regular fa-building text-slate-400"></i>
+                                    </div>
+                                    <select id="filter-manage-req-branch" class="w-full pl-9 pr-3 py-2 bg-white border border-slate-300 text-slate-700 rounded-lg focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all">
+                                        <option value="all">ทุกสาขา</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="w-full sm:w-1/4">
+                                <label class="block text-xs font-bold text-gray-800 mb-1.5 uppercase tracking-wider">ค้นหาชื่อรายการ</label>
+                                <div class="relative">
+                                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                        <i class="fa-solid fa-search text-slate-400"></i>
+                                    </div>
+                                    <input type="text" id="filter-manage-req-search" placeholder="พิมพ์เพื่อค้นหา..."
+                                        class="w-full pl-9 pr-3 py-2 bg-white border border-slate-300 text-slate-700 rounded-lg focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all">
+                                </div>
+                            </div>
+                            <div class="w-full sm:w-auto flex gap-2">
+                                <button onclick="loadManageRequisitions()"
+                                    class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg transition-all font-medium flex items-center justify-center gap-2 shadow-sm">
+                                    <i class="fa-solid fa-filter"></i> กรองข้อมูล
+                                </button>
+                                <button onclick="clearManageRequisitionFilters()"
+                                    class="px-4 py-2 bg-white border border-slate-300 text-slate-600 hover:text-slate-900 hover:bg-slate-50 rounded-lg transition-all font-medium shadow-sm">
+                                    ล้าง
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Table -->
+                    <div class="overflow-x-auto bg-white rounded-xl border border-slate-200 shadow-[0_4px_20px_-2px_rgba(0,0,0,0.05)]">
+                        <table class="w-full text-left border-collapse">
+                            <thead class="bg-slate-50 text-black text-xs border-b border-slate-200">
+                                <tr>
+                                    <th class="px-4 py-4 md:px-6 font-bold whitespace-nowrap">วันที่แจ้ง</th>
+                                    <th class="px-4 py-4 md:px-6 font-bold">สาขา / ผู้แจ้ง</th>
+                                    <th class="px-4 py-4 md:px-6 font-bold">รายการสินค้า</th>
+                                    <th class="px-4 py-4 md:px-6 font-bold text-center whitespace-nowrap">สถานะ</th>
+                                    <th class="px-4 py-4 md:px-6 font-bold text-center whitespace-nowrap">สินค้าถึงเมื่อ</th>
+                                    <th class="px-4 py-4 md:px-6 font-bold text-center whitespace-nowrap">จัดการ</th>
+                                </tr>
+                            </thead>
+                            <tbody id="table-body-manage-req">
+                                <!-- Data will be loaded via JS -->
+                            </tbody>
+                        </table>
+                    </div>
+
 
             </div> <!-- End of main-content -->
 
@@ -10351,6 +10566,229 @@
         </div>
     </div>
 
+    <!-- Modal Create Requisition -->
+    <div id="modal-create-requisition"
+        class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm hidden">
+        <div
+            class="modal-content relative w-[95%] max-w-2xl bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col transform scale-95 transition-all duration-300 max-h-[90vh]">
+            <!-- Header -->
+            <div class="bg-white px-6 py-4 flex items-center justify-between border-b border-gray-100">
+                <h3 class="text-xl font-bold text-gray-800 flex items-center gap-2">
+                    <i class="fa-solid fa-circle-plus text-slate-700"></i> แจ้งเบิกสินค้าใหม่
+                </h3>
+                <button onclick="closeCreateRequisitionModal()"
+                    class="text-gray-400 hover:text-gray-600 transition-all">
+                    <i class="fa-solid fa-xmark text-xl"></i>
+                </button>
+            </div>
+
+            <!-- Body -->
+            <div class="p-6 overflow-y-auto bg-white flex-1 space-y-6">
+                <!-- Title -->
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-2">ชื่อรายการ (เช่น เบิกเคส iPhone 15,
+                        เบิกสายชาร์จ)</label>
+                    <input type="text" id="modal-req-title"
+                        class="w-full px-4 py-3 bg-white border border-gray-200 text-gray-800 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all"
+                        placeholder="ระบุชื่อรายการแจ้งเบิก...">
+                </div>
+
+                <!-- Items -->
+                <div>
+                    <div class="flex items-center justify-between mb-2">
+                        <label class="block text-sm font-bold text-gray-700">รายการสินค้าที่ต้องการเบิก</label>
+                        <button type="button" onclick="addRequisitionItemRow()"
+                            class="text-amber-500 hover:text-amber-600 bg-amber-50 hover:bg-amber-100 px-3 py-1 rounded-lg text-sm font-bold transition-all flex items-center gap-1 border border-amber-200">
+                            <i class="fa-solid fa-circle-plus"></i> เพิ่มแถว
+                        </button>
+                    </div>
+                    <div id="modal-req-items-container"
+                        class="space-y-2 bg-slate-50 p-4 rounded-xl border border-slate-100">
+                        <!-- Items will be injected here -->
+                    </div>
+                </div>
+
+                <!-- Notes -->
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-2">หมายเหตุเพิ่มเติม</label>
+                    <textarea id="modal-req-notes" rows="3"
+                        class="w-full px-4 py-3 bg-white border border-gray-200 text-gray-800 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all resize-none"
+                        placeholder="ระบุรายละเอียด เช่น สี, ขนาด, หรือเหตุผลการเบิก..."></textarea>
+                </div>
+
+                <!-- Requisitioner (Read-only) -->
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-2">รายชื่อผู้ที่เบิก</label>
+                    <input type="text" id="modal-req-by" disabled
+                        class="w-full px-4 py-3 bg-gray-100 border border-gray-200 text-gray-500 rounded-xl cursor-not-allowed">
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <div class="bg-white px-6 py-4 border-t border-gray-100 flex items-center justify-end gap-3 rounded-b-2xl">
+                <button onclick="closeCreateRequisitionModal()"
+                    class="px-5 py-2.5 text-gray-600 hover:text-gray-800 font-medium transition-all">
+                    ยกเลิก
+                </button>
+                <button onclick="submitRequisition()"
+                    class="px-6 py-2.5 bg-amber-400 hover:bg-amber-500 text-white font-bold rounded-xl transition-all shadow-md shadow-amber-500/20">
+                    ส่งรายการแจ้งเบิก
+                </button>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- Modal User Edit Requisition -->
+    <div id="modal-user-edit-requisition"
+        class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm hidden">
+        <div
+            class="modal-content relative w-[95%] max-w-2xl bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col transform scale-95 transition-all duration-300 max-h-[90vh]">
+            <!-- Header -->
+            <div class="bg-white px-6 py-4 flex items-center justify-between border-b border-gray-100">
+                <h3 class="text-xl font-bold text-gray-800 flex items-center gap-2">
+                    <i class="fa-solid fa-pen-to-square text-indigo-600"></i> แก้ไขข้อมูลการแจ้งเบิก
+                </h3>
+                <button onclick="closeUserEditRequisitionModal()"
+                    class="text-gray-400 hover:text-gray-600 transition-all">
+                    <i class="fa-solid fa-xmark text-xl"></i>
+                </button>
+            </div>
+
+            <!-- Body -->
+            <div class="p-6 overflow-y-auto bg-white flex-1 space-y-6">
+                <!-- ID Hidden -->
+                <input type="hidden" id="modal-user-edit-req-id">
+
+                <!-- Title -->
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-2">ชื่อรายการ (เช่น เบิกเคส iPhone 15, เบิกสายชาร์จ)</label>
+                    <input type="text" id="modal-user-edit-req-title"
+                        class="w-full px-4 py-3 bg-white border border-gray-200 text-gray-800 rounded-xl focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all"
+                        placeholder="ระบุชื่อรายการแจ้งเบิก...">
+                </div>
+
+                <!-- Items -->
+                <div>
+                    <div class="flex items-center justify-between mb-2">
+                        <label class="block text-sm font-bold text-gray-700">รายการสินค้าที่ต้องการเบิก</label>
+                        <button type="button" onclick="addUserEditRequisitionItemRow()"
+                            class="text-amber-500 hover:text-amber-600 bg-amber-50 hover:bg-amber-100 px-3 py-1 rounded-lg text-sm font-bold transition-all flex items-center gap-1 border border-amber-200">
+                            <i class="fa-solid fa-circle-plus"></i> เพิ่มแถว
+                        </button>
+                    </div>
+                    <div id="modal-user-edit-req-items-container"
+                        class="space-y-2 bg-slate-50 p-4 rounded-xl border border-slate-100">
+                        <!-- Items will be injected here -->
+                    </div>
+                </div>
+
+                <!-- Notes -->
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-2">หมายเหตุเพิ่มเติม</label>
+                    <textarea id="modal-user-edit-req-notes" rows="3"
+                        class="w-full px-4 py-3 bg-white border border-gray-200 text-gray-800 rounded-xl focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all resize-none"
+                        placeholder="ระบุรายละเอียด เช่น สี, ขนาด, หรือเหตุผลการเบิก..."></textarea>
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <div class="bg-white px-6 py-4 border-t border-gray-100 flex items-center justify-end gap-3 rounded-b-2xl">
+                <button onclick="closeUserEditRequisitionModal()"
+                    class="px-5 py-2.5 text-gray-600 hover:text-gray-800 font-medium transition-all">
+                    ยกเลิก
+                </button>
+                <button onclick="submitUserEditRequisition()"
+                    class="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl transition-all shadow-md shadow-indigo-500/20">
+                    บันทึกการแก้ไข
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: จัดการ/แก้ไข รายการเบิก (Manage/Edit Requisition) -->
+    <div id="modal-edit-requisition"
+        class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm hidden">
+        <div
+            class="modal-content relative w-[95%] max-w-2xl bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col transform scale-95 transition-all duration-300 max-h-[90vh]">
+            <!-- Header -->
+            <div class="bg-white px-6 py-4 flex items-center justify-between border-b border-gray-100">
+                <h3 class="text-xl font-bold text-gray-800 flex items-center gap-2">
+                    <i class="fa-solid fa-pen-to-square text-indigo-600"></i> แก้ไขรายการเบิก
+                </h3>
+                <button onclick="closeEditRequisitionModal()"
+                    class="text-gray-400 hover:text-gray-600 transition-all">
+                    <i class="fa-solid fa-xmark text-xl"></i>
+                </button>
+            </div>
+
+            <!-- Body -->
+            <div class="p-6 overflow-y-auto bg-white flex-1 space-y-6">
+                <!-- ID Hidden -->
+                <input type="hidden" id="modal-edit-req-id">
+
+                <!-- Title -->
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-2">ชื่อรายการ (เช่น เบิกเคส iPhone 15, เบิกสายชาร์จ)</label>
+                    <input type="text" id="modal-edit-req-title" readonly class="w-full px-4 py-3 bg-slate-100 border border-slate-200 text-slate-800 font-medium rounded-xl cursor-not-allowed focus:outline-none">
+                </div>
+
+                <!-- Status -->
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-2">สถานะ</label>
+                    <select id="modal-edit-req-status"
+                        class="w-full px-4 py-3 bg-white border border-gray-200 text-gray-800 rounded-xl focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all">
+                        <option value="รอตรวจสอบ">รอตรวจสอบ</option>
+                        <option value="จัดซื้อสั่งสินค้า">จัดซื้อสั่งสินค้า</option>
+                        <option value="งานเทคนิค">งานเทคนิค</option>
+                        <option value="ส่งสินค้าแล้ว">ส่งสินค้าแล้ว</option>
+                        <option value="ถึงสาขา">ถึงสาขา</option>
+                        <option value="ยกเลิก">ยกเลิก</option>
+                    </select>
+                </div>
+
+                <!-- Expected Date -->
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-2">สินค้าคาดว่าจะถึง (Expected Date)</label>
+                    <input type="date" id="modal-edit-req-expected-date"
+                        class="w-full px-4 py-3 bg-white border border-gray-200 text-gray-800 rounded-xl focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all">
+                </div>
+
+                <!-- Items -->
+                <div>
+                    <div class="flex items-center justify-between mb-2">
+                        <label class="block text-sm font-bold text-gray-700">รายการสินค้าที่ต้องการเบิก</label>
+                        <button type="button" onclick="addEditRequisitionItemRow()" class="hidden">
+                            <i class="fa-solid fa-circle-plus"></i> เพิ่มแถว
+                        </button>
+                    </div>
+                    <div id="modal-edit-req-items-container"
+                        class="space-y-2 bg-slate-50 p-4 rounded-xl border border-slate-100">
+                        <!-- Items will be injected here -->
+                    </div>
+                </div>
+
+                <!-- Notes -->
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-2">หมายเหตุเพิ่มเติม</label>
+                    <textarea id="modal-edit-req-notes" rows="3" readonly class="w-full px-4 py-3 bg-slate-100 border border-slate-200 text-slate-800 font-medium rounded-xl cursor-not-allowed focus:outline-none resize-none"></textarea>
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <div class="bg-white px-6 py-4 border-t border-gray-100 flex items-center justify-end gap-3 rounded-b-2xl">
+                <button onclick="closeEditRequisitionModal()"
+                    class="px-5 py-2.5 text-gray-600 hover:text-gray-800 font-medium transition-all">
+                    ยกเลิก
+                </button>
+                <button onclick="submitEditRequisition()"
+                    class="px-6 py-2.5 bg-amber-400 hover:bg-amber-500 text-white font-bold rounded-xl transition-all shadow-md shadow-amber-500/20">
+                    บันทึกการแก้ไข
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- Mobile POS Cart Overlay -->
     <div id="pos-mobile-cart-overlay"></div>
     <div id="pos-mobile-cart-panel">
@@ -10398,7 +10836,73 @@
             }
         });
     </script>
-    <script src="script.js?v=po_history_fix_v1"></script>
+    <script src="script.js?v=manage_req_v17"></script>
+    <!-- User Edit Requisition Modal (For history view) -->
+    <div id="modal-user-edit-requisition"
+        class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm hidden">
+        <div
+            class="modal-content relative w-[95%] max-w-2xl bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col transform scale-95 transition-all duration-300 max-h-[90vh]">
+            <!-- Header -->
+            <div class="bg-white px-6 py-4 flex items-center justify-between border-b border-gray-100">
+                <h3 class="text-xl font-bold text-gray-800 flex items-center gap-2">
+                    <i class="fa-solid fa-pen-to-square text-indigo-600"></i> แก้ไขรายการแจ้งเบิกสินค้า
+                </h3>
+                <button onclick="closeUserEditRequisitionModal()"
+                    class="text-gray-400 hover:text-gray-600 transition-all">
+                    <i class="fa-solid fa-xmark text-xl"></i>
+                </button>
+            </div>
+
+            <!-- Body -->
+            <div class="p-6 overflow-y-auto bg-white flex-1 space-y-6">
+                <!-- ID Hidden -->
+                <input type="hidden" id="modal-user-edit-req-id">
+
+                <!-- Title -->
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-2">ชื่อรายการ (เช่น เบิกเคส iPhone 15, เบิกสายชาร์จ)</label>
+                    <input type="text" id="modal-user-edit-req-title"
+                        class="w-full px-4 py-3 bg-white border border-gray-200 text-gray-800 rounded-xl focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all">
+                </div>
+
+                <!-- Items -->
+                <div>
+                    <div class="flex items-center justify-between mb-2">
+                        <label class="block text-sm font-bold text-gray-700">รายการสินค้าที่ต้องการเบิก</label>
+                        <button type="button" onclick="addUserEditRequisitionItemRow()"
+                            class="text-amber-500 hover:text-amber-600 bg-amber-50 hover:bg-amber-100 px-3 py-1 rounded-lg text-sm font-bold transition-all flex items-center gap-1 border border-amber-200">
+                            <i class="fa-solid fa-circle-plus"></i> เพิ่มแถว
+                        </button>
+                    </div>
+                    <div id="modal-user-edit-req-items-container"
+                        class="space-y-2 bg-slate-50 p-4 rounded-xl border border-slate-100">
+                        <!-- Items will be injected here -->
+                    </div>
+                </div>
+
+                <!-- Notes -->
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-2">หมายเหตุเพิ่มเติม</label>
+                    <textarea id="modal-user-edit-req-notes" rows="3"
+                        class="w-full px-4 py-3 bg-white border border-gray-200 text-gray-800 rounded-xl focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all resize-none"
+                        placeholder="ระบุรายละเอียด เช่น สี, ขนาด, หรือเหตุผลการเบิก..."></textarea>
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <div class="bg-white px-6 py-4 border-t border-gray-100 flex items-center justify-end gap-3 rounded-b-2xl">
+                <button onclick="closeUserEditRequisitionModal()"
+                    class="px-5 py-2.5 text-gray-600 hover:text-gray-800 font-medium transition-all">
+                    ยกเลิก
+                </button>
+                <button onclick="submitUserEditRequisition()"
+                    class="px-6 py-2.5 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-xl transition-all shadow-md shadow-amber-500/20">
+                    บันทึกการแก้ไข
+                </button>
+            </div>
+        </div>
+    </div>
+
 </body>
 
 </html>

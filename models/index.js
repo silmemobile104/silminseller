@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const Member = require('./member');
+const Requisition = require('./requisition');
 
 // 1. Branch (สาขา)
 const branchSchema = new mongoose.Schema({
@@ -34,7 +35,8 @@ const roleSchema = new mongoose.Schema({
         view_daily_summary: { type: Boolean, default: true }, // อนุญาตให้ดูรายงานสรุปยอดขายรายวัน
         manage_stock_audit: { type: Boolean, default: false }, // อนุญาตให้ตรวจสอบและอนุมัติผลการตรวจนับสต็อกประจำวัน
         do_stock_audit: { type: Boolean, default: false }, // อนุญาตให้ตรวจนับสต็อกประจำวัน
-        manage_deposits: { type: Boolean, default: false } // อนุญาตให้จัดการมัดจำสินค้า
+        manage_deposits: { type: Boolean, default: false }, // อนุญาตให้จัดการมัดจำสินค้า
+        manage_requisitions: { type: Boolean, default: false } // อนุญาตให้จัดการคำขอเบิกสินค้า (แอดมิน, ผู้จัดการ, สต็อก, จัดซื้อ)
     }
 }, { timestamps: true });
 const Role = mongoose.model('Role', roleSchema, 'role');
@@ -50,7 +52,8 @@ const seedDefaultRoles = async () => {
                 manage_settings: true, manage_roles: true, filter_stock_branch: true, cancel_sale: true,
                 report_arrival: true, approve_import: true, manage_po: true, receive_po: true,
                 manage_transfers: true, manage_finance: true, view_audit_logs: true, view_branch_inventory: true,
-                view_daily_summary: true, manage_stock_audit: true, do_stock_audit: true, manage_deposits: true
+                view_daily_summary: true, manage_stock_audit: true, do_stock_audit: true, manage_deposits: true,
+                manage_requisitions: true
             }
         },
         {
@@ -61,7 +64,8 @@ const seedDefaultRoles = async () => {
                 manage_settings: true, manage_roles: false, filter_stock_branch: true, cancel_sale: true,
                 report_arrival: true, approve_import: false, manage_po: true, receive_po: true,
                 manage_transfers: true, manage_finance: true, view_audit_logs: true, view_branch_inventory: true,
-                view_daily_summary: true, manage_stock_audit: true, do_stock_audit: true, manage_deposits: true
+                view_daily_summary: true, manage_stock_audit: true, do_stock_audit: true, manage_deposits: true,
+                manage_requisitions: true
             }
         },
         {
@@ -105,6 +109,7 @@ const seedDefaultRoles = async () => {
                 existing.permissions.manage_stock_audit = true;
                 existing.permissions.do_stock_audit = true;
                 existing.permissions.manage_deposits = true;
+                existing.permissions.manage_requisitions = true;
                 changed = true;
             }
             // Ensure ผู้จัดการ gets manage_stock_audit & do_stock_audit
@@ -122,6 +127,10 @@ const seedDefaultRoles = async () => {
                     existing.permissions.manage_deposits = true;
                     changed = true;
                 }
+                if (!existing.permissions.manage_requisitions) {
+                    existing.permissions.manage_requisitions = true;
+                    changed = true;
+                }
             }
             // Ensure พนักงานขาย gets manage_deposits
             if (r.name === 'พนักงานขาย') {
@@ -136,6 +145,17 @@ const seedDefaultRoles = async () => {
             }
         }
     }
+
+    // Explicitly update other roles if they were created manually
+    const extraRoles = await Role.find({ name: { $in: ['ฝ่ายจัดซื้อ', 'พนักงานสต็อก'] } });
+    for (const r of extraRoles) {
+        if (!r.permissions.manage_requisitions) {
+            r.permissions.manage_requisitions = true;
+            await r.save();
+            updated++;
+        }
+    }
+
     if (inserted > 0 || updated > 0) {
         console.log(`[SEED] จัดการข้อมูลระดับสิทธิ์เริ่มต้นสำเร็จ (เพิ่ม: ${inserted}, อัพเดท: ${updated})`);
     }
@@ -524,6 +544,7 @@ module.exports = {
     StockAuditSession,
     StockAuditItem,
     Deposit,
+    Requisition,
     seedDefaultRoles,
     migrateProductsToERP
 };

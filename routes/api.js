@@ -31,7 +31,8 @@ const {
     FinanceReceivable,
     StockAuditSession,
     StockAuditItem,
-    Deposit
+    Deposit,
+    Requisition
 } = require('../models');
 
 const { uploadBufferToDriveInFolder } = require('../utils/googleDrive');
@@ -5187,6 +5188,153 @@ router.put('/deposits/:id/cancel', async (req, res) => {
     } catch (error) {
         console.error('API Error PUT /api/deposits/:id/cancel:', error);
         res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการยกเลิกรายการมัดจำ' });
+    }
+});
+
+// ==========================================
+// Requisition (แจ้งเบิกสินค้า) Routes
+// ==========================================
+
+// GET /api/requisitions - ดึงข้อมูลแจ้งเบิกสินค้า
+router.get('/requisitions', async (req, res) => {
+    try {
+        let query = {};
+        const { date, search, status, branch } = req.query;
+
+        // Security / Filter:
+        const canManage = ['แอดมิน', 'ผู้จัดการ', 'ฝ่ายจัดซื้อ', 'พนักงานสต็อก'].includes(req.user.role) || (req.user.permissions && req.user.permissions.manage_requisitions);
+        
+        if (!canManage) {
+            query.requested_by = req.user.employee_id;
+        } else if (branch && branch !== 'all') {
+            const employeesInBranch = await Employee.find({ branch_id: branch }).select('_id');
+            const employeeIds = employeesInBranch.map(emp => emp._id);
+            query.requested_by = { $in: employeeIds };
+        }
+
+        if (date) {
+            const startDate = new Date(date);
+            startDate.setHours(0, 0, 0, 0);
+            const endDate = new Date(date);
+            endDate.setHours(23, 59, 59, 999);
+            query.createdAt = { $gte: startDate, $lte: endDate };
+        }
+
+        if (search) {
+            query.$or = [
+                { title: { $regex: search, $options: 'i' } },
+                { 'items.name': { $regex: search, $options: 'i' } }
+            ];
+        }
+
+        if (status && status !== 'all') {
+            query.status = status;
+        }
+
+        const requisitions = await Requisition.find(query)
+            .populate({
+                path: 'requested_by',
+                select: 'name branch_id',
+                populate: { path: 'branch_id', select: 'name' }
+            })
+            .sort({ createdAt: -1 });
+
+        res.json({ success: true, data: requisitions });
+    } catch (error) {
+        console.error('API Error GET /api/requisitions:', error);
+        res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการดึงข้อมูลแจ้งเบิกสินค้า' });
+    }
+});
+
+// POST /api/requisitions - สร้างรายการแจ้งเบิกใหม่
+router.post('/requisitions', async (req, res) => {
+    try {
+        const { title, items, notes } = req.body;
+        const requested_by = req.user.employee_id;
+
+        if (!title || !items || items.length === 0) {
+            return res.status(400).json({ success: false, message: 'ข้อมูลไม่ครบถ้วน กรุณาระบุชื่อรายการและรายการสินค้า' });
+        }
+
+        const newReq = new Requisition({
+            title,
+            items,
+            notes,
+            requested_by,
+            status: 'รอตรวจสอบ'
+        });
+
+        await newReq.save();
+        await logActivity(req, 'CREATE', 'REQUISITION', `สร้างรายการแจ้งเบิกสินค้า: ${title}`, null, newReq._id);
+
+        res.json({ success: true, message: 'สร้างรายการแจ้งเบิกสำเร็จ', data: newReq });
+    } catch (error) {
+        console.error('API Error POST /api/requisitions:', error);
+        res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการสร้างรายการแจ้งเบิก' });
+    }
+});
+
+// PUT /api/requisitions/:id - อัปเดตรายการแจ้งเบิกสินค้า
+router.put('/requisitions/:id', async (req, res) => {
+    try {
+        const canManage = ['แอดมิน', 'ผู้จัดการ', 'ฝ่ายจัดซื้อ', 'พนักงานสต็อก'].includes(req.user.role) || (req.user.permissions && req.user.permissions.manage_requisitions);
+        
+        const reqDoc = await Requisition.findById(req.params.id);
+        if (!reqDoc) {
+            return res.status(404).json({ success: false, message: 'ไม่พบรายการที่ต้องการแก้ไข' });
+        }
+
+        if (!canManage) {
+            // Check if it's the user's own requisition and it's still waiting
+            if (reqDoc.requested_by.toString() !== req.user.employee_id.toString()) {
+                return res.status(403).json({ success: false, message: 'ไม่มีสิทธิ์แก้ไขรายการเบิกสินค้านี้' });
+            }
+            if (reqDoc.status !== 'รอตรวจสอบ') {
+                return res.status(400).json({ success: false, message: 'ไม่สามารถแก้ไขรายการที่ถูกดำเนินการไปแล้วได้' });
+            }
+        }
+
+        const { title, items, notes, status, expected_date } = req.body;
+
+        if (title) reqDoc.title = title;
+        if (items) reqDoc.items = items;
+        if (notes !== undefined) reqDoc.notes = notes;
+        if (status) reqDoc.status = status;
+        if (expected_date !== undefined) reqDoc.expected_date = expected_date;
+
+        await reqDoc.save();
+        await logActivity(req, 'UPDATE', 'REQUISITION', `อัปเดตรายการเบิกสินค้า: ${reqDoc.title}`, null, reqDoc._id);
+
+        res.json({ success: true, message: 'บันทึกการแก้ไขเรียบร้อยแล้ว', data: reqDoc });
+    } catch (error) {
+        console.error('API Error PUT /api/requisitions/:id:', error);
+        res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการอัปเดตรายการเบิกสินค้า' });
+    }
+});
+
+// DELETE /api/requisitions/:id - ลบรายการแจ้งเบิก
+router.delete('/requisitions/:id', async (req, res) => {
+    try {
+        const reqId = req.params.id;
+        const requisition = await Requisition.findById(reqId);
+
+        if (!requisition) {
+            return res.status(404).json({ success: false, message: 'ไม่พบรายการแจ้งเบิก' });
+        }
+
+        const canManage = ['แอดมิน', 'ผู้จัดการ', 'ฝ่ายจัดซื้อ', 'พนักงานสต็อก'].includes(req.user.role) || (req.user.permissions && req.user.permissions.manage_requisitions);
+        // Only allow delete if can manage OR if it's the user's own requisition and it's still waiting
+        if (!canManage && (requisition.requested_by.toString() !== req.user.employee_id || requisition.status !== 'รอตรวจสอบ')) {
+            return res.status(403).json({ success: false, message: 'ไม่มีสิทธิ์ลบรายการแจ้งเบิกสินค้านี้' });
+        }
+
+        await Requisition.findByIdAndDelete(reqId);
+        await logActivity(req, 'DELETE', 'REQUISITION', `ลบรายการแจ้งเบิกสินค้า: ${requisition.title}`, null, reqId);
+
+        res.json({ success: true, message: 'ลบรายการแจ้งเบิกสำเร็จ' });
+    } catch (error) {
+        console.error('API Error DELETE /api/requisitions/:id:', error);
+        res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการลบรายการแจ้งเบิก' });
     }
 });
 
