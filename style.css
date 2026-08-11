@@ -1,0 +1,176 @@
+* {
+    font-family: 'Prompt', sans-serif;
+}
+
+/* ==========================================
+   SIDEBAR TOGGLE — EXPANDED / COLLAPSED
+   ========================================== */
+
+/* Expanded (default) */
+#sidebar {
+    width: auto;
+    transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    overflow: hidden;
+}
+
+/* Collapsed — เหลือแค่ไอคอน */
+#sidebar.collapsed {
+    width: 64px;
+}
+
+/* ซ่อน text และ badge ตอน collapsed */
+#sidebar.collapsed .sidebar-text {
+    opacity: 0;
+    width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    margin: 0 !important;
+    transition: opacity 0.2s ease, width 0.3s ease;
+}
+
+/* แสดงตอน expanded */
+#sidebar:not(.collapsed) .sidebar-text {
+    opacity: 1;
+    transition: opacity 0.25s ease 0.1s;
+}
+
+/* จัดไอคอนให้กึ่งกลางตอน collapsed */
+#sidebar.collapsed .nav-menu-item {
+    justify-content: center;
+    padding-left: 0;
+    padding-right: 0;
+}
+
+#sidebar.collapsed .nav-menu-item img {
+    margin: 0 auto;
+}
+
+/* ซ่อน logo / header text ตอน collapsed */
+#sidebar.collapsed img[alt=""] {
+    max-width: 36px;
+    object-fit: contain;
+}
+
+/* ซ่อน logout span ตอน collapsed */
+#sidebar.collapsed #logout-btn {
+    justify-content: center;
+    padding-left: 0;
+    padding-right: 0;
+}
+
+/* ซ่อน section header "การตั้งค่า" */
+#sidebar.collapsed #nav-settings-header {
+    display: none;
+}
+
+/* Tooltip เมื่อ collapsed — แสดงชื่อเมนูเมื่อ hover */
+#sidebar.collapsed .nav-menu-item {
+    position: relative;
+}
+
+#sidebar.collapsed .nav-menu-item:hover::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    left: calc(100% + 12px);
+    top: 50%;
+    transform: translateY(-50%);
+    background: #1e293b;
+    color: #fff;
+    font-size: 12px;
+    padding: 4px 10px;
+    border-radius: 8px;
+    white-space: nowrap;
+    pointer-events: none;
+    border: 1px solid #334155;
+    z-index: 999;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+
+/* ==========================================
+   SIDEBAR MENU: ACTIVE & INACTIVE STYLES
+   ========================================== */
+
+/* 1. สีข้อความเมื่อไม่ได้ Active (Inactive) */
+.nav-menu-item {
+    color: #ffffff !important;
+    background-color: transparent !important;
+    border-color: transparent !important;
+}
+
+.nav-menu-item:hover {
+    color: #ffffff !important;
+    background-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+.nav-menu-item .sidebar-text {
+    color: #ffffff !important;
+}
+
+/* ทำให้รูปภาพ (Icon) เป็นสีขาวเมื่อ Inactive */
+.nav-menu-item:not(.active) img {
+    opacity: 1;
+    filter: brightness(0) invert(1);
+}
+
+/* 2. สีพื้นหลัง, สีข้อความ และปรับรูปภาพให้เข้มขึ้นเมื่อ Active */
+.nav-menu-item.active {
+    background-color: #FFE169 !important;
+    /* พื้นหลังสีเหลือง */
+    color: #4D4D4D !important;
+    /* ข้อความสีเทาเข้ม */
+    border-color: transparent !important;
+    /* ซ่อนกรอบ */
+}
+
+.nav-menu-item.active .sidebar-text {
+    color: #4D4D4D !important;
+    /* บังคับสีข้อความด้านใน */
+}
+
+/* 3. ปรับฟิลเตอร์รูปภาพให้เป็นสีเข้มขึ้นเมื่อ Active */
+.nav-menu-item.active img {
+    opacity: 1 !important;
+    /* ลด brightness เพื่อให้ภาพมืด/เข้มขึ้น และเพิ่ม contrast ให้ขอบชัดเจน */
+    filter: brightness(0.2) contrast(1.5) !important;
+}
+
+/* ==========================================
+   SCROLLBAR STYLING (DARK THEME)
+   ========================================== */
+
+/* สำหรับเบราว์เซอร์ Chrome, Safari, Edge */
+::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #334155;
+    /* สีเทาเข้ม (slate-700) */
+    border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #475569;
+    /* สีเทาสว่างขึ้นเมื่อเอาเมาส์ชี้ (slate-600) */
+}
+
+/* สำหรับ Firefox */
+html {
+    scrollbar-width: thin;
+    scrollbar-color: #334155 transparent;
+}
+
+.hide-scrollbar::-webkit-scrollbar {
+    display: none;
+}
+
+.hide-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}

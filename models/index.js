@@ -486,7 +486,7 @@ const depositSchema = new mongoose.Schema({
     cash_amount: { type: Number, default: 0 },
     transfer_amount: { type: Number, default: 0 },
     status: { type: String, default: 'รอดำเนินการ', enum: ['รอดำเนินการ', 'สำเร็จ', 'ยกเลิก'] },
-    stage: { type: String, default: 'รอลูกค้ารับเครื่อง', enum: ['รอลูกค้ารับเครื่อง', 'รอโอนย้ายจากสาขาอื่น', 'รอสินค้าเข้า'] },
+    stage: { type: String, default: 'รอลูกค้ารับเครื่อง', enum: ['รอลูกค้ารับเครื่อง', 'รอโอนย้ายจากสาขาอื่น', 'รอสินค้าเข้า', 'รอฝ่ายจัดซื้อสั่งสินค้า'] },
     bill_number: { type: String, default: '' }, // เลขที่ใบเสร็จขายจริงเมื่อมารับเครื่องสำเร็จ
     created_by: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee', required: true },
     completed_by: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee', default: null },

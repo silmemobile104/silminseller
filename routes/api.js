@@ -147,14 +147,17 @@ const injectBranchStockVirtuals = (product, branchId) => {
 
 const ensureBranchBalance = (productDoc, branchId) => {
     if (!productDoc.stock_balances) productDoc.stock_balances = [];
-    if (!branchId) {
-        throw new Error('ไม่พบข้อมูลรหัสสาขาสำหรับการบันทึกยอดสินค้าในคลัง');
+    if (!branchId || branchId === 'ALL') {
+        throw new Error('กรุณาระบุรหัสสาขาเฉพาะเจาะจงสำหรับการบันทึกยอดสินค้า (ไม่สามารถใช้ "ทุกสาขา" ได้)');
     }
     const bId = branchId.toString();
+    if (!mongoose.Types.ObjectId.isValid(bId)) {
+        throw new Error('รหัสสาขาไม่ถูกต้อง: ' + bId);
+    }
     let bal = productDoc.stock_balances.find(x => x.branch_id && x.branch_id.toString() === bId);
     if (!bal) {
         productDoc.stock_balances.push({ branch_id: branchId, quantity: 0, imeis: [] });
-        bal = productDoc.stock_balances.find(x => x.branch_id && x.branch_id.toString() === bId);
+        bal = productDoc.stock_balances[productDoc.stock_balances.length - 1];
     }
     return bal;
 };
@@ -634,9 +637,9 @@ router.post('/products', async (req, res) => {
         });
     } catch (error) {
         console.error('API Error /api/products:', error);
-        res.status(500).json({
+        res.status(400).json({
             success: false,
-            message: 'ไม่สามารถบันทึกข้อมูลสินค้าได้ กรุณาตรวจสอบข้อมูลอีกครั้ง'
+            message: error.message || 'ไม่สามารถบันทึกข้อมูลสินค้าได้ กรุณาตรวจสอบข้อมูลอีกครั้ง'
         });
     }
 });
@@ -854,6 +857,7 @@ router.get('/products', async (req, res) => {
         });
     } catch (error) {
         console.error('API Error GET /api/products:', error);
+        require('fs').writeFileSync('api_products_error.txt', error.stack || error.toString());
         res.status(500).json({
             success: false,
             message: 'เกิดข้อผิดพลาดในการดึงข้อมูลสินค้า'

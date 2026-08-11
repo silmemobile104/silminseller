@@ -656,7 +656,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const updateStockPaginationControls = (totalItems, totalPages) => {
         if (!stockPaginationContainer) return;
-        
+
         if (totalItems <= stockItemsPerPage) {
             stockPaginationContainer.classList.add('hidden');
         } else {
@@ -665,7 +665,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const startItem = (currentStockPage - 1) * stockItemsPerPage + 1;
         const endItem = Math.min(currentStockPage * stockItemsPerPage, totalItems);
-        
+
         if (stockPaginationInfo) {
             stockPaginationInfo.textContent = `แสดง ${totalItems > 0 ? startItem : 0} ถึง ${endItem} จาก ${totalItems} รายการ (หน้า ${currentStockPage} จาก ${totalPages})`;
         }
@@ -673,7 +673,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (btnStockPrevPage) {
             btnStockPrevPage.disabled = currentStockPage <= 1;
         }
-        
+
         if (btnStockNextPage) {
             btnStockNextPage.disabled = currentStockPage >= totalPages;
         }
@@ -905,7 +905,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // Reset Title
             const modalTitle = document.getElementById('modal-title');
-            if (modalTitle) modalTitle.innerHTML = `<i class="fa-solid fa-box-open text-cyan-400"></i> เพิ่มสินค้าใหม่`;
+            if (modalTitle) modalTitle.innerHTML = `<img src="icons_img/box (1) 5.png" alt="">เพิ่มสินค้าใหม่`;
 
             // Show Excel Button in modal header
             const btnExcelOpen = document.getElementById('btn-add-product-excel');
@@ -942,13 +942,13 @@ document.addEventListener('DOMContentLoaded', () => {
             if (json.success) {
                 window.masterDataCache = json.data;
 
-                populateDropdown(productCategory, json.data.productTypes, 'เลือกหมวดหมู่');
-                populateDropdown(productName, json.data.productNames, 'เลือกชื่อสินค้า');
-                populateDropdown(productColor, json.data.productColors, 'เลือกสี');
-                populateDropdown(productCapacity, json.data.productCapacities, 'เลือกความจุ');
-                populateDropdown(productCondition, json.data.productConditions, 'เลือกสภาพเครื่อง');
-                populateDropdown(productUnit, json.data.productUnits, 'เลือกหน่วยนับ');
-                populateDropdown(productSupplier, json.data.suppliers, 'เลือกผู้จัดจำหน่าย');
+                // Render Custom Pills for Add Product Modal
+                renderCustomSelectPills('product-category-container', 'product-category', json.data.productTypes);
+                renderCustomColorSwatches('product-color-container', 'product-color', json.data.productColors);
+                renderCustomSelectPills('product-capacity-container', 'product-capacity', json.data.productCapacities);
+                renderCustomSelectPills('product-supplier-container', 'product-supplier', json.data.suppliers);
+                renderCustomSelectPills('product-unit-container', 'product-unit', json.data.productUnits);
+
                 populateDropdown(modalFinanceCompany, json.data.financeCompanies, 'เลือกบริษัทจัดไฟแนนซ์');
 
                 // โหลดสาขาสำหรับ dropdown ที่จัดเก็บสินค้า
@@ -984,6 +984,126 @@ document.addEventListener('DOMContentLoaded', () => {
             selectElement.appendChild(option);
         });
     };
+
+    // Custom UI Renderers for Add Product Modal
+    const renderCustomSelectPills = (containerId, hiddenInputId, dataArray) => {
+        const container = document.getElementById(containerId);
+        const hiddenInput = document.getElementById(hiddenInputId);
+        if (!container || !hiddenInput) return;
+
+        container.innerHTML = '';
+        if (!dataArray) return;
+
+        dataArray.forEach(item => {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'custom-pill flex-shrink-0 px-4 py-2.5 bg-[#27272A] border border-[#3F3F46] rounded-xl text-slate-300 text-sm hover:border-[#FFE169] hover:text-white transition-colors';
+            btn.dataset.value = item._id;
+            btn.textContent = item.code ? `${item.name} (${item.code})` : item.name;
+
+            btn.addEventListener('click', () => {
+                // Remove active from all
+                Array.from(container.children).forEach(child => {
+                    child.classList.remove('border-[#FFE169]', 'text-[#FFE169]');
+                    child.classList.add('border-slate-600', 'text-slate-300');
+                });
+                // Set active to clicked
+                btn.classList.remove('border-slate-600', 'text-slate-300');
+                btn.classList.add('border-[#FFE169]', 'text-[#FFE169]');
+                // Update hidden input
+                hiddenInput.value = item._id;
+            });
+
+            container.appendChild(btn);
+        });
+    };
+
+    const renderCustomColorSwatches = (containerId, hiddenInputId, dataArray) => {
+        const container = document.getElementById(containerId);
+        const hiddenInput = document.getElementById(hiddenInputId);
+        if (!container || !hiddenInput) return;
+
+        container.innerHTML = '';
+        if (!dataArray) return;
+
+        dataArray.forEach(item => {
+            const wrapper = document.createElement('div');
+            wrapper.className = 'flex flex-col items-center gap-1 cursor-pointer custom-swatch-wrapper';
+            wrapper.dataset.value = item._id;
+
+            const swatch = document.createElement('div');
+            swatch.className = 'w-7 h-7 rounded-full border-2 border-transparent transition-all custom-swatch';
+
+            const colorMap = {
+                'ดำ': '#000000', 'black': '#000000', 'midnight': '#1C1C1E', 'มิดไนท์': '#1C1C1E',
+                'ขาว': '#FFFFFF', 'white': '#FFFFFF', 'starlight': '#F9F6EF', 'สตาร์ไลท์': '#F9F6EF',
+                'แดง': '#FF3B30', 'red': '#FF3B30',
+                'ฟ้า': '#32ADE6', 'blue': '#2E5C92', 'sierra blue': '#9BB5CE', 'เซียร์ร่าบลู': '#9BB5CE',
+                'น้ำเงิน': '#007AFF', 'navy': '#000080', 'กรม': '#000080', 'pacific blue': '#2E475D',
+                'เหลือง': '#FFCC00', 'yellow': '#FFCC00',
+                'ส้ม': '#FF9500', 'orange': '#FF9500',
+                'ม่วง': '#AF52DE', 'purple': '#AF52DE', 'deep purple': '#594F63',
+                'เขียว': '#34C759', 'green': '#34C759', 'alpine green': '#576856', 'midnight green': '#4E5851',
+                'เงิน': '#C0C0C0', 'silver': '#C0C0C0', 'ซิลเวอร์': '#C0C0C0',
+                'เทา': '#8E8E93', 'gray': '#8E8E93', 'space gray': '#535150', 'สเปซเกรย์': '#535150',
+                'ทอง': '#FFD700', 'gold': '#FFD700', 'rose gold': '#B76E79', 'โรสโกลด์': '#B76E79',
+                'ชมพู': '#FF2D55', 'pink': '#FF2D55',
+                'ไทเทเนียม': '#878681', 'titanium': '#878681', 'natural titanium': '#878681', 'เนเชอรัล': '#878681',
+                'เหลืองอ่อน': '#FFF3B0', 'เหลืองเข้ม': '#FFC300', 'บรอนซ์': '#CD7F32',
+                'ทะเลทราย': '#EDC9AF', 'บลู': '#00B7EB', 'ไวท์ไทเทเนียม': '#ECE9E3', 'กราไฟต์': '#3E3F43'
+
+            };
+
+            let bgCol = '#8E8E93';
+            Object.keys(colorMap).forEach(k => {
+                if (item.name && item.name.toLowerCase().includes(k.toLowerCase())) bgCol = colorMap[k];
+            });
+            if (item.color_code) bgCol = item.color_code;
+
+            swatch.style.backgroundColor = bgCol;
+
+            const label = document.createElement('span');
+            label.className = 'text-[10px] text-slate-400 whitespace-nowrap custom-swatch-label transition-colors';
+            label.textContent = item.name;
+
+            wrapper.appendChild(swatch);
+            wrapper.appendChild(label);
+
+            wrapper.addEventListener('click', () => {
+                // Remove active from all
+                Array.from(container.children).forEach(child => {
+                    child.querySelector('.custom-swatch').classList.remove('border-white', 'scale-110');
+                    child.querySelector('.custom-swatch').classList.add('border-transparent');
+                    child.querySelector('.custom-swatch-label').classList.remove('text-white');
+                    child.querySelector('.custom-swatch-label').classList.add('text-slate-400');
+                });
+                // Set active to clicked
+                swatch.classList.remove('border-transparent');
+                swatch.classList.add('border-white', 'scale-110');
+                label.classList.remove('text-slate-400');
+                label.classList.add('text-white');
+                // Update hidden input
+                hiddenInput.value = item._id;
+            });
+
+            container.appendChild(wrapper);
+        });
+    };
+
+    // Initialize Quick Price Buttons
+    document.addEventListener('DOMContentLoaded', () => {
+        document.querySelectorAll('.btn-quick-price').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const targetId = btn.dataset.target;
+                const val = btn.dataset.val;
+                if (targetId && val) {
+                    const input = document.getElementById(targetId);
+                    if (input) input.value = val;
+                }
+            });
+        });
+    });
+
 
     const populateApproveImportBranchFilter = () => {
         const select = document.getElementById('approve-import-filter-branch');
@@ -1434,7 +1554,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const topbarUserBranchMobile = document.getElementById('topbar-user-branch-mobile');
             if (topbarUserNameMobile) topbarUserNameMobile.textContent = userNameFallback;
             if (topbarUserBranchMobile) {
-                topbarUserBranchMobile.innerHTML = `<i class="fa-solid fa-store text-[9px]"></i> <span>${branchNameFallback}</span>`;
+                topbarUserBranchMobile.innerHTML = `<i class="fa-solid fa-store text-[9px]"></i> <span> ${branchNameFallback}</span>`;
             }
 
             if (topbarUserAvatar) topbarUserAvatar.src = avatarUrlFallback;
@@ -2290,15 +2410,13 @@ document.addEventListener('DOMContentLoaded', () => {
             const originalBtnText = submitBtn ? submitBtn.innerHTML : 'บันทึกสินค้า';
 
             try {
-                // Collect branch from dropdown
+                // Collect branch from input
                 const branch_id = productBranch ? productBranch.value : null;
 
                 // Build payload
-                const selectedIndex = productName ? productName.selectedIndex : -1;
-                const selectedNameOption = (productName && selectedIndex >= 0) ? productName.options[selectedIndex] : null;
-                const nameValue = (selectedNameOption && !selectedNameOption.disabled) ? selectedNameOption.textContent : '';
+                const nameValue = productName ? productName.value.trim() : '';
 
-                // Manual Validation for Searchable Dropdowns & Required inputs
+                // Manual Validation for Required inputs
                 if (productCode && !productCode.value.trim()) {
                     showToast('กรุณาระบุรหัสสินค้า (Product Code)', 'error');
                     productCode.focus();
@@ -2309,11 +2427,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     return;
                 }
                 if (productBranch && !productBranch.value) {
-                    showToast('กรุณาเลือกสาขาที่จัดเก็บ (Branch)', 'error');
+                    showToast('กรุณาระบุสาขาที่จัดเก็บ (Branch)', 'error');
                     return;
                 }
-                if (productName && (!productName.value || !nameValue)) {
-                    showToast('กรุณาเลือกชื่อสินค้า (Product Name)', 'error');
+                if (!nameValue) {
+                    showToast('กรุณาระบุชื่อสินค้า (Product Name)', 'error');
+                    productName.focus();
                     return;
                 }
                 if (productCategory && !productCategory.value) {
@@ -2325,20 +2444,33 @@ document.addEventListener('DOMContentLoaded', () => {
                     return;
                 }
 
-                const isDeviceVisible = deviceFields && !deviceFields.classList.contains('hidden');
-                if (isDeviceVisible) {
-                    if (productCapacity && !productCapacity.value) {
-                        showToast('กรุณาเลือกความจุอุปกรณ์ (Capacity)', 'error');
-                        return;
-                    }
-                    if (productCondition && !productCondition.value) {
-                        showToast('กรุณาเลือกสภาพเครื่อง (Condition)', 'error');
-                        return;
-                    }
+                // For custom UI, we might always validate these if they are relevant
+                if (productCapacity && !productCapacity.value) {
+                    showToast('กรุณาเลือกความจุอุปกรณ์ (Capacity)', 'error');
+                    return;
                 }
 
                 if (productUnit && !productUnit.value) {
                     showToast('กรุณาเลือกหน่วยนับสินค้า (Unit)', 'error');
+                    return;
+                }
+
+                const costPriceElement = document.getElementById('cost-price');
+                const sellingPriceElement = document.getElementById('selling-price');
+
+                if (costPriceElement && costPriceElement.value.trim() === '') {
+                    showToast('กรุณาระบุราคาต้นทุน (Cost Price)', 'error');
+                    costPriceElement.focus();
+                    return;
+                }
+                if (sellingPriceElement && sellingPriceElement.value.trim() === '') {
+                    showToast('กรุณาระบุราคาขาย (Selling Price)', 'error');
+                    sellingPriceElement.focus();
+                    return;
+                }
+                if (productQuantity && productQuantity.value.trim() === '') {
+                    showToast('กรุณาระบุจำนวนสินค้า (Quantity)', 'error');
+                    productQuantity.focus();
                     return;
                 }
 
@@ -2359,15 +2491,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     import_source: 'MANUAL'
                 };
 
-                if (isDeviceVisible) {
-                    // product-imeis is not used during initial product creation, but checking in case it's in the DOM
-                    const productImeis = document.getElementById('product-imeis');
-                    if (productImeis) {
-                        payload.imeis = productImeis.value.split('\n').filter(i => i.trim() !== '');
-                        if (payload.imeis.length === 0) {
-                            showToast('กรุณาระบุ IMEI อย่างน้อย 1 รายการ', 'error');
-                            return;
-                        }
+                // product-imeis is not used during initial product creation, but checking in case it's in the DOM
+                const productImeis = document.getElementById('product-imeis');
+                if (productImeis && !productImeis.closest('.hidden')) {
+                    payload.imeis = productImeis.value.split('\n').filter(i => i.trim() !== '');
+                    if (payload.imeis.length === 0) {
+                        showToast('กรุณาระบุ IMEI อย่างน้อย 1 รายการ', 'error');
+                        return;
                     }
                 }
 
@@ -2574,6 +2704,13 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             if (nav) {
                 nav.classList.add('active');
+
+                // Update topbar page name based on nav text
+                const topbarPageName = document.getElementById('topbar-current-page');
+                const sidebarTextEl = nav.querySelector('.sidebar-text');
+                if (topbarPageName && sidebarTextEl) {
+                    topbarPageName.textContent = sidebarTextEl.textContent.trim();
+                }
             }
         };
 
@@ -4176,7 +4313,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const typeName = product.type_id ? (product.type_id.name || '') : '';
         const unitName = product.unit_id ? (product.unit_id.name || '') : '';
         const isDeviceLike = unitName.includes('เครื่อง') || typeName.toLowerCase().includes('iphone') || typeName.toLowerCase().includes('ipad');
-        const shouldUseImeiFlow = hasImeis || (isDeviceLike && product.product_code);
+        const shouldUseImeiFlow = hasImeis;
 
         if (shouldUseImeiFlow) {
             // Filter out IMEIs already in cart
@@ -4241,7 +4378,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     quantity: 1,
                     price: product.selling_price,
                     subtotal: product.selling_price,
-                    _isDevice: false,
+                    _isDevice: isDeviceLike,
                     is_gift: false,
                     unit_name: product.unit_id ? (product.unit_id.name || '') : 'ชิ้น',
                     original_price: product.selling_price
@@ -4398,7 +4535,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         <p class="text-slate-300 font-semibold font-mono text-sm">฿${item.price.toLocaleString()}</p>
                     </div>
                     <p class="cart-line-subtotal font-bold text-cyan-400 font-mono text-sm mt-0.5">฿${item.subtotal.toLocaleString()}</p>
-                    ${!item._isDevice ? `
+                    ${!item.imei_sold ? `
                         <div class="flex items-center gap-1 mt-1 justify-end">
                             <button class="cart-qty-minus w-6 h-6 rounded bg-slate-700 text-slate-300 hover:bg-slate-600 text-xs flex items-center justify-center transition-colors" data-index="${index}">
                                 <i class="fa-solid fa-minus text-[10px]"></i>
@@ -4756,7 +4893,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Additional fees & Deposit inclusion
         const contractFee = (checkboxContractFee && checkboxContractFee.checked) ? (parseFloat(inputContractFee.value) || 0) : 0;
         const icloudFee = (checkboxIcloudFee && checkboxIcloudFee.checked) ? (parseFloat(inputIcloudFee.value) || 0) : 0;
-        
+
         const depositVal = appliedDepositAmount ? (parseFloat(appliedDepositAmount.value) || 0) : 0;
         const grandTotal = Math.max(0, subtotal - discount - depositVal + contractFee + icloudFee);
         updateFinancingAmount();
@@ -4815,7 +4952,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const netDevicesTotal = Math.max(0, devicesTotal - discount - depositVal);
                 const totalDown = parseFloat(modalFinanceDownTotal ? modalFinanceDownTotal.value : 0) || 0;
                 const financingAmount = Math.max(0, netDevicesTotal - totalDown);
-                
+
                 // ยอดที่ต้องรับเงินเพิ่มหน้าร้าน = ยอดเงินดาวน์เพิ่ม + ค่าบริการสัญญา + ค่า iCloud (เนื่องจากค่ามัดจำจ่ายไปก่อนหน้านี้แล้ว)
                 const totalUpfrontToCollect = Math.max(0, totalDown + contractFee + icloudFee);
 
@@ -5741,6 +5878,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (selectedMemberDisplay) selectedMemberDisplay.classList.add('hidden');
                 if (posMemberSearch && posMemberSearch.parentElement) posMemberSearch.parentElement.classList.remove('hidden');
             } else {
+                console.error('Checkout failed:', result.message);
                 showToast('เกิดข้อผิดพลาด: ' + result.message, 'error');
             }
         } catch (error) {
@@ -5862,7 +6000,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const applyDepositDiscount = (dep) => {
         if (appliedDepositId) appliedDepositId.value = dep._id;
         if (appliedDepositAmount) appliedDepositAmount.value = dep.deposit_amount;
-        
+
         if (appliedDepositNumber) appliedDepositNumber.textContent = dep.deposit_number;
         if (appliedDepositInfo) appliedDepositInfo.textContent = `จองโดย: ${dep.customer_name} (${dep.customer_phone})`;
         if (appliedDepositAmountText) appliedDepositAmountText.textContent = `ยอดมัดจำ: ฿${dep.deposit_amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
@@ -5899,7 +6037,7 @@ document.addEventListener('DOMContentLoaded', () => {
         btnRemoveAppliedDeposit.addEventListener('click', () => {
             if (appliedDepositId) appliedDepositId.value = '';
             if (appliedDepositAmount) appliedDepositAmount.value = '0';
-            
+
             const searchWrapper = document.getElementById('pos-deposit-search-wrapper');
             if (searchWrapper) {
                 searchWrapper.classList.remove('hidden');
@@ -11246,7 +11384,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                        min="0" 
                                        max="${remainingQty}" 
                                        value="${remainingQty}" 
-                                       class="po-arrival-accessory-qty w-24 bg-slate-950 border border-slate-850 focus:border-cyan-500  font-mono text-sm font-bold text-center py-2 rounded-xl focus:outline-none focus:ring-1 focus:ring-cyan-500/30 transition-colors">
+                                       class="po-arrival-accessory-qty w-24 bg-white border border-slate-850 focus:border-cyan-500  font-mono text-sm font-bold text-center py-2 rounded-xl focus:outline-none focus:ring-1 focus:ring-cyan-500/30 transition-colors">
                             </div>
                         ` : `
                             <span class="text-xs text-emerald-400 font-bold flex items-center gap-1">
@@ -13010,15 +13148,7 @@ document.addEventListener('DOMContentLoaded', () => {
         syncUI();
     }
 
-    // Initialize Searchable Dropdowns for Add Product Form
-    makeSelectSearchable(productSupplier, 'เลือกผู้จัดจำหน่าย *');
-    makeSelectSearchable(productBranch, 'เลือกสาขาที่จัดเก็บ *');
-    makeSelectSearchable(productName, 'เลือกชื่อสินค้า *');
-    makeSelectSearchable(productCategory, 'เลือกหมวดหมู่ *');
-    makeSelectSearchable(productColor, 'เลือกสี *');
-    makeSelectSearchable(productCapacity, 'เลือกความจุ *');
-    makeSelectSearchable(productCondition, 'เลือกสภาพเครื่อง *');
-    makeSelectSearchable(productUnit, 'เลือกหน่วยนับ *');
+    // Initialize Searchable Dropdowns for Add Product Form (REMOVED: Custom UI is now used)
 
     // ==========================================
     // EXCEL PRODUCT IMPORT SYSTEM
@@ -13717,7 +13847,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const currentBranchId = getLoggedUserBranchId();
         const matchingProducts = allProductsCache.filter(p => p.name === productName);
-        
+
         matchingProducts.forEach(product => {
             if (!product.stock_balances) return;
             const bal = product.stock_balances.find(b => b.branch_id && (b.branch_id._id || b.branch_id) === currentBranchId);
@@ -13760,14 +13890,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function loadDeposits() {
         if (!depositTableBody) return;
-        
+
         const branchVal = depositFilterBranch ? depositFilterBranch.value : 'ALL';
         const statusVal = depositFilterStatus ? depositFilterStatus.value : 'รอดำเนินการ';
         const stageVal = depositFilterStage ? depositFilterStage.value : 'ALL';
         const startVal = depositFilterStartDate ? depositFilterStartDate.value : '';
         const endVal = depositFilterEndDate ? depositFilterEndDate.value : '';
         const searchVal = depositFilterSearch ? depositFilterSearch.value : '';
-        
+
         let params = [];
         if (statusVal !== 'ALL') params.push(`status=${statusVal}`);
         if (branchVal !== 'ALL') params.push(`branch_id=${branchVal}`);
@@ -13776,11 +13906,11 @@ document.addEventListener('DOMContentLoaded', () => {
         if (endVal) params.push(`endDate=${endVal}`);
         if (searchVal) params.push(`search=${encodeURIComponent(searchVal)}`);
         let url = `/api/deposits?` + params.join('&');
-        
+
         const user = JSON.parse(localStorage.getItem('silmin_user') || '{}');
         const userRole = user.role || '';
         const canFilterBranch = user.permissions && (user.permissions.filter_stock_branch || userRole === 'Administrator' || userRole === 'ผู้จัดการ');
-        
+
         if (!canFilterBranch) {
             const userBranchId = getLoggedUserBranchId();
             if (depositFilterBranch) {
@@ -13799,28 +13929,28 @@ document.addEventListener('DOMContentLoaded', () => {
                 depositBranchHeader.textContent = `สาขา: ${selectedText}`;
             }
         }
-        
+
         try {
             const token = localStorage.getItem('silmin_token');
             const response = await fetch(url, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             const result = await response.json();
-            
+
             depositTableBody.innerHTML = '';
             if (result.success && result.data && result.data.length > 0) {
                 depositEmpty.classList.add('hidden');
                 result.data.forEach(item => {
                     const row = document.createElement('tr');
                     row.className = 'hover:bg-slate-700/20 transition-colors border-b border-slate-700/50 cursor-pointer';
-                    
+
                     const dateStr = new Date(item.createdAt).toLocaleDateString('th-TH', { hour: '2-digit', minute: '2-digit' }) + ' น.';
                     const apptStr = item.appointment_date ? new Date(item.appointment_date).toLocaleDateString('th-TH') : 'ไม่ระบุ';
-                    
+
                     let statusClass = 'bg-amber-500/10 text-amber-400 border border-amber-500/20';
                     if (item.status === 'สำเร็จ') statusClass = 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20';
                     else if (item.status === 'ยกเลิก') statusClass = 'bg-rose-500/10 text-rose-400 border border-rose-500/20';
-                    
+
                     row.innerHTML = `
                         <td class="px-1.5 py-2 font-medium text-slate-400">${dateStr}</td>
                         <td class="px-1.5 py-2 text-white font-medium">${item.customer_name}</td>
@@ -13844,16 +13974,16 @@ document.addEventListener('DOMContentLoaded', () => {
                             </button>
                         </td>
                     `;
-                    
+
                     row.querySelector('.btn-print-deposit').addEventListener('click', (e) => {
                         e.stopPropagation();
                         printDepositSlip(item._id);
                     });
-                    
+
                     row.addEventListener('click', () => {
                         openDepositDetailsModal(item);
                     });
-                    
+
                     depositTableBody.appendChild(row);
                 });
             } else {
@@ -13872,10 +14002,10 @@ document.addEventListener('DOMContentLoaded', () => {
         depositModalTitle.innerHTML = '<i class="fa-solid fa-wallet text-emerald-400"></i> บันทึกรายการจองมัดจำใหม่';
         depositSplitRow.classList.add('hidden');
         modalDepositRemaining.value = '0';
-        
+
         populateDepositProducts();
         populateDepositColorAndCapacity();
-        
+
         modalCreateDeposit.classList.remove('opacity-0', 'pointer-events-none');
         const content = modalCreateDeposit.querySelector('.modal-content');
         if (content) {
@@ -13895,10 +14025,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const openDepositDetailsModal = (deposit) => {
         activeDeposit = deposit;
-        
+
         detailDepositNumber.textContent = deposit.deposit_number;
         detailDepositStatus.textContent = deposit.status;
-        
+
         detailDepositStatus.className = 'px-2 py-0.5 rounded text-[10px] font-bold border';
         if (deposit.status === 'รอดำเนินการ') {
             detailDepositStatus.classList.add('bg-amber-500/10', 'text-amber-400', 'border-amber-500/20');
@@ -13907,7 +14037,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             detailDepositStatus.classList.add('bg-rose-500/10', 'text-rose-400', 'border-rose-500/20');
         }
-        
+
         detailDepositCustomer.textContent = deposit.customer_name;
         detailDepositPhone.textContent = deposit.customer_phone;
         detailDepositProduct.textContent = deposit.product_name;
@@ -13915,25 +14045,25 @@ document.addEventListener('DOMContentLoaded', () => {
         detailDepositPrice.textContent = '฿' + deposit.product_price.toLocaleString();
         detailDepositPaid.textContent = '฿' + deposit.deposit_amount.toLocaleString() + ' (' + deposit.payment_method + ')';
         detailDepositRemaining.textContent = '฿' + deposit.remaining_amount.toLocaleString();
-        
+
         const createdDate = new Date(deposit.createdAt).toLocaleDateString('th-TH', { hour: '2-digit', minute: '2-digit' }) + ' น.';
         const apptDate = deposit.appointment_date ? new Date(deposit.appointment_date).toLocaleDateString('th-TH') : 'ไม่ระบุ';
         detailDepositDates.innerHTML = `วันที่ทำจอง: <span class="text-white font-medium">${createdDate}</span><br/>นัดรับเครื่อง: <span class="text-white font-medium">${apptDate}</span>`;
-        
+
         detailDepositSender.textContent = `${deposit.created_by?.name || '-'} / สาขา: ${deposit.branch_id?.name || '-'}`;
-        
+
         detailPickupToPay.value = '฿' + deposit.remaining_amount.toLocaleString();
         detailPickupPaymentMethod.value = 'เงินสด';
         detailPickupSplitRow.classList.add('hidden');
         detailPickupCashAmount.value = '';
         detailPickupTransferAmount.value = '';
         detailCancelReason.value = '';
-        
+
         if (deposit.status === 'รอดำเนินการ') {
             detailActionCompleteSection.classList.remove('hidden');
             detailActionCancelSection.classList.remove('hidden');
             detailHistoryInfoSection.classList.add('hidden');
-            
+
             if (deposit.imei && deposit.imei.trim() !== '') {
                 detailAssignImeiRow.classList.add('hidden');
             } else {
@@ -13946,7 +14076,7 @@ document.addEventListener('DOMContentLoaded', () => {
             detailActionCompleteSection.classList.add('hidden');
             detailActionCancelSection.classList.add('hidden');
             detailHistoryInfoSection.classList.remove('hidden');
-            
+
             if (deposit.status === 'สำเร็จ') {
                 detailHistoryCompletedByLabel.textContent = 'ผู้ส่งมอบสินค้า';
                 detailHistoryCompletedAtLabel.textContent = 'วันเวลาที่ส่งมอบ';
@@ -13965,7 +14095,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 detailHistoryReason.textContent = deposit.cancel_reason || 'ไม่ระบุ';
             }
         }
-        
+
         modalDepositDetails.classList.remove('opacity-0', 'pointer-events-none');
         const content = modalDepositDetails.querySelector('.modal-content');
         if (content) {
@@ -13996,10 +14126,10 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             const deposit = d.data[0];
             const printWindow = window.open('', '_blank', 'width=800,height=600');
-            
+
             const dateStr = new Date(deposit.createdAt).toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' }) + ' น.';
             const apptStr = deposit.appointment_date ? new Date(deposit.appointment_date).toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' }) : 'ไม่ระบุ';
-            
+
             printWindow.document.write(`
                 <html>
                 <head>
@@ -14119,17 +14249,17 @@ document.addEventListener('DOMContentLoaded', () => {
     if (modalDepositProductId) {
         modalDepositProductId.addEventListener('change', (e) => {
             const productName = e.target.value.trim();
-            
+
             const matched = window.masterDataCache && Array.isArray(window.masterDataCache.productNames)
                 ? window.masterDataCache.productNames.find(x => x.name.toLowerCase() === productName.toLowerCase())
                 : null;
-            
+
             if (!matched && productName !== '') {
                 showToast('ไม่พบสินค้า "' + productName + '" ในการตั้งค่าระบบ', 'error');
                 e.target.value = '';
                 return;
             }
-            
+
             modalDepositProductPrice.value = '';
             populateDepositColorAndCapacity();
             updateDepositRemaining(modalDepositProductPrice, modalDepositAmount, modalDepositRemaining);
@@ -14140,17 +14270,17 @@ document.addEventListener('DOMContentLoaded', () => {
         const productName = modalDepositProductId.value.trim();
         const colorName = modalDepositColor ? modalDepositColor.value.trim() : '';
         const capacityName = modalDepositCapacity ? modalDepositCapacity.value.trim() : '';
-        
+
         if (!productName || !colorName || !capacityName) return;
         if (typeof allProductsCache === 'undefined' || !Array.isArray(allProductsCache)) return;
-        
+
         const matchedProduct = allProductsCache.find(p => {
             if (p.name !== productName) return false;
             const pColorName = p.color_id && (typeof p.color_id === 'object' ? p.color_id.name : p.color_id);
             const pCapName = p.capacity_id && (typeof p.capacity_id === 'object' ? p.capacity_id.name : p.capacity_id);
             return pColorName === colorName && pCapName === capacityName;
         });
-        
+
         if (matchedProduct) {
             modalDepositProductPrice.value = matchedProduct.price || 0;
             updateDepositRemaining(modalDepositProductPrice, modalDepositAmount, modalDepositRemaining);
@@ -14209,24 +14339,24 @@ document.addEventListener('DOMContentLoaded', () => {
     if (depositForm) {
         depositForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-            
+
             const customer_name = modalDepositCustomerName.value.trim();
             const customer_phone = modalDepositCustomerPhone.value.trim();
-            
+
             const productNameInput = modalDepositProductId.value.trim();
             const colorNameInput = modalDepositColor ? modalDepositColor.value.trim() : '';
             const capacityNameInput = modalDepositCapacity ? modalDepositCapacity.value.trim() : '';
-            
+
             if (!productNameInput) {
                 showToast('กรุณาระบุชื่อสินค้า', 'error');
                 return;
             }
-            
+
             if (typeof allProductsCache === 'undefined' || !Array.isArray(allProductsCache)) {
                 showToast('ระบบขัดข้อง กรุณาลองใหม่อีกครั้ง', 'error');
                 return;
             }
-            
+
             // จับคู่ SKU จาก ชื่อสินค้า + สี + ความจุ (ใช้ชื่อแทน _id เพราะ input เป็น text)
             let matchedProduct = allProductsCache.find(p => {
                 if (p.name !== productNameInput) return false;
@@ -14234,22 +14364,22 @@ document.addEventListener('DOMContentLoaded', () => {
                 const pCapName = p.capacity_id && (typeof p.capacity_id === 'object' ? p.capacity_id.name : p.capacity_id);
                 return pColorName === colorNameInput && pCapName === capacityNameInput;
             });
-            
+
             // หากไม่พบ SKU ที่ตรง ให้หา fallback จากชื่อสินค้าเท่านั้น
             if (!matchedProduct) {
                 matchedProduct = allProductsCache.find(p => p.name === productNameInput);
             }
-            
+
             if (!matchedProduct) {
                 showToast('ไม่พบสินค้า "' + productNameInput + '" ในระบบ กรุณาตรวจสอบการตั้งค่าสินค้า', 'error');
                 return;
             }
-            
+
             const product_id = matchedProduct._id;
             const colorName = colorNameInput;
             const capacityName = capacityNameInput;
             const product_name = [productNameInput, capacityName, colorName].filter(Boolean).join(' ').trim();
-            
+
             const product_price = Number(modalDepositProductPrice.value) || 0;
             const deposit_amount = Number(modalDepositAmount.value) || 0;
             const appointment_date = modalDepositAppointment.value;
@@ -14259,16 +14389,16 @@ document.addEventListener('DOMContentLoaded', () => {
             const transfer_amount = Number(modalDepositTransferAmount.value) || 0;
             const stage = modalDepositStage.value;
             const notes = modalDepositNotes.value.trim();
-            
+
             if (payment_method === 'ผสม' && (cash_amount + transfer_amount !== deposit_amount)) {
                 showToast('ยอดเงินสดและยอดเงินโอนต้องรวมกันได้เท่ากับยอดมัดจำ', 'error');
                 return;
             }
-            
+
             const submitBtn = document.getElementById('btn-submit-deposit');
             submitBtn.disabled = true;
             submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> กำลังบันทึก...';
-            
+
             try {
                 let body = {
                     customer_name, customer_phone, product_id, product_name, product_price,
@@ -14284,7 +14414,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     body.cash_amount = 0;
                     body.transfer_amount = deposit_amount;
                 }
-                
+
                 const token = localStorage.getItem('silmin_token');
                 const response = await fetch('/api/deposits', {
                     method: 'POST',
@@ -14294,7 +14424,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     },
                     body: JSON.stringify(body)
                 });
-                
+
                 const result = await response.json();
                 if (result.success) {
                     showToast('บันทึกใบมัดจำสินค้าสำเร็จเรียบร้อยแล้ว!');
@@ -14317,7 +14447,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (btnSubmitCompleteDeposit) {
         btnSubmitCompleteDeposit.addEventListener('click', async () => {
             if (!activeDeposit) return;
-            
+
             const imeiSelect = document.getElementById('detail-assign-imei-select');
             let imeiValue = activeDeposit.imei;
             if ((!imeiValue || imeiValue.trim() === '') && imeiSelect) {
@@ -14327,20 +14457,20 @@ document.addEventListener('DOMContentLoaded', () => {
                     return;
                 }
             }
-            
+
             const method = detailPickupPaymentMethod.value;
             const cash = Number(detailPickupCashAmount.value) || 0;
             const transfer = Number(detailPickupTransferAmount.value) || 0;
             const remaining = activeDeposit.remaining_amount;
-            
+
             if (method === 'ผสม' && (cash + transfer !== remaining)) {
                 showToast('ยอดเงินสดและยอดเงินโอนต้องรวมกันเท่ากับยอดค้างชำระ: ฿' + remaining.toLocaleString(), 'error');
                 return;
             }
-            
+
             btnSubmitCompleteDeposit.disabled = true;
             btnSubmitCompleteDeposit.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> กำลังส่งมอบ...';
-            
+
             try {
                 let body = {
                     final_payment_method: method,
@@ -14356,7 +14486,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     body.final_cash_amount = 0;
                     body.final_transfer_amount = remaining;
                 }
-                
+
                 const token = localStorage.getItem('silmin_token');
                 const response = await fetch(`/api/deposits/${activeDeposit._id}/complete`, {
                     method: 'PUT',
@@ -14366,7 +14496,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     },
                     body: JSON.stringify(body)
                 });
-                
+
                 const result = await response.json();
                 if (result.success) {
                     showToast('ดำเนินการส่งมอบเครื่องและตัดสต็อกสำเร็จเรียบร้อยแล้ว!');
@@ -14394,12 +14524,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 showToast('กรุณาระบุเหตุผลในการยกเลิกใบมัดจำ', 'error');
                 return;
             }
-            
+
             if (!confirm('ยืนยันในการยกเลิกใบมัดจำสินค้าใบนี้?')) return;
-            
+
             btnSubmitCancelDeposit.disabled = true;
             btnSubmitCancelDeposit.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> กำลังดำเนินการ...';
-            
+
             try {
                 const token = localStorage.getItem('silmin_token');
                 const response = await fetch(`/api/deposits/${activeDeposit._id}/cancel`, {
@@ -14438,498 +14568,498 @@ document.addEventListener('DOMContentLoaded', () => {
     window.loadBranchesForDeposits = loadBranchesForDeposits;
 
 
-// ============================================================================
-// GLOBAL UX: ป้องกันการเลื่อนลูกกลิ้งเมาส์เปลี่ยนค่าในช่องกรอกตัวเลข (Number Inputs)
-// ============================================================================
-document.addEventListener('wheel', function (e) {
-    if (document.activeElement && document.activeElement.type === 'number') {
-        e.preventDefault();
-    }
-}, { passive: false });
+    // ============================================================================
+    // GLOBAL UX: ป้องกันการเลื่อนลูกกลิ้งเมาส์เปลี่ยนค่าในช่องกรอกตัวเลข (Number Inputs)
+    // ============================================================================
+    document.addEventListener('wheel', function (e) {
+        if (document.activeElement && document.activeElement.type === 'number') {
+            e.preventDefault();
+        }
+    }, { passive: false });
 
-// ============================================================================
-// STOCK AUDIT MODULE — ระบบตรวจนับสต็อกประจำวัน
-// ============================================================================
+    // ============================================================================
+    // STOCK AUDIT MODULE — ระบบตรวจนับสต็อกประจำวัน
+    // ============================================================================
 
-// -------------------------------------------------------------------
-// พนักงานขาย: สแกน IMEI + เด้งป๊อปอัพยืนยันพร้อมถ่ายรูปกล่อง
-// -------------------------------------------------------------------
-let _auditSessionId = null;
-let _auditPhotoBase64 = null;
-let _auditSessionData = null;
-let _expectedImeiData = [];
-let _scannedImeiSet = new Set();
+    // -------------------------------------------------------------------
+    // พนักงานขาย: สแกน IMEI + เด้งป๊อปอัพยืนยันพร้อมถ่ายรูปกล่อง
+    // -------------------------------------------------------------------
+    let _auditSessionId = null;
+    let _auditPhotoBase64 = null;
+    let _auditSessionData = null;
+    let _expectedImeiData = [];
+    let _scannedImeiSet = new Set();
 
-function initStockAudit() {
-    // โหลดสถานะ session วันนี้
-    loadTodayAuditSession();
+    function initStockAudit() {
+        // โหลดสถานะ session วันนี้
+        loadTodayAuditSession();
 
-    // ปุ่มเปิดรอบ
-    const btnOpen = document.getElementById('btn-open-audit-session');
-    if (btnOpen) {
-        btnOpen.onclick = async () => {
-            btnOpen.disabled = true;
-            btnOpen.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> กำลังเปิด...';
-            try {
-                const token = localStorage.getItem('silmin_token');
-                const r = await fetch('/api/stock-audit/sessions', {
-                    method: 'POST',
-                    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
-                });
-                const d = await r.json();
-                if (d.success) {
-                    showToast('เปิดรอบตรวจนับสต็อกสำเร็จ');
-                    loadTodayAuditSession();
-                } else {
-                    showToast(d.message || 'เกิดข้อผิดพลาด', 'error');
+        // ปุ่มเปิดรอบ
+        const btnOpen = document.getElementById('btn-open-audit-session');
+        if (btnOpen) {
+            btnOpen.onclick = async () => {
+                btnOpen.disabled = true;
+                btnOpen.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> กำลังเปิด...';
+                try {
+                    const token = localStorage.getItem('silmin_token');
+                    const r = await fetch('/api/stock-audit/sessions', {
+                        method: 'POST',
+                        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
+                    });
+                    const d = await r.json();
+                    if (d.success) {
+                        showToast('เปิดรอบตรวจนับสต็อกสำเร็จ');
+                        loadTodayAuditSession();
+                    } else {
+                        showToast(d.message || 'เกิดข้อผิดพลาด', 'error');
+                        btnOpen.disabled = false;
+                        btnOpen.innerHTML = '<i class="fa-solid fa-plus"></i> เปิดรอบตรวจนับวันนี้';
+                    }
+                } catch (e) {
+                    showToast('ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้', 'error');
                     btnOpen.disabled = false;
                     btnOpen.innerHTML = '<i class="fa-solid fa-plus"></i> เปิดรอบตรวจนับวันนี้';
                 }
-            } catch (e) {
-                showToast('ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้', 'error');
-                btnOpen.disabled = false;
-                btnOpen.innerHTML = '<i class="fa-solid fa-plus"></i> เปิดรอบตรวจนับวันนี้';
-            }
-        };
-    }
-
-    // การสแกน IMEI (Step 1)
-    const imeiInput = document.getElementById('audit-imei-input');
-    const btnImeiVerify = document.getElementById('btn-audit-imei-verify');
-
-    if (imeiInput) {
-        imeiInput.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                verifyAuditImei();
-            }
-        });
-    }
-    if (btnImeiVerify) btnImeiVerify.onclick = verifyAuditImei;
-
-    // การถ่ายรูป/เลือกรูปในหน้าต่างเด้ง (Modal Photo Input)
-    const modalPhotoInput = document.getElementById('audit-modal-photo-input');
-    if (modalPhotoInput) {
-        modalPhotoInput.addEventListener('change', (e) => {
-            const file = e.target.files[0];
-            if (!file) return;
-            const reader = new FileReader();
-            reader.onload = async (ev) => {
-                const rawBase64 = ev.target.result;
-                const preview = document.getElementById('audit-modal-photo-preview');
-                const btnCamera = document.getElementById('btn-audit-modal-camera');
-
-                // Show a loading/compressing state
-                if (btnCamera) {
-                    btnCamera.disabled = true;
-                    btnCamera.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> กำลังย่อภาพถ่าย...';
-                }
-
-                try {
-                    // Compress the box photo to speed up uploads and save bandwidth
-                    _auditPhotoBase64 = await compressImage(rawBase64, 1024, 1024, 0.7);
-                } catch (err) {
-                    console.error('Image compression error:', err);
-                    _auditPhotoBase64 = rawBase64; // Fallback
-                } finally {
-                    if (btnCamera) {
-                        btnCamera.disabled = false;
-                        btnCamera.innerHTML = '<i class="fa-solid fa-rotate"></i> <span>ถ่ายภาพใหม่ / เปลี่ยนรูป</span>';
-                    }
-                }
-
-                if (preview) {
-                    preview.src = _auditPhotoBase64;
-                    preview.classList.remove('hidden');
-                }
             };
-            reader.readAsDataURL(file);
-        });
+        }
+
+        // การสแกน IMEI (Step 1)
+        const imeiInput = document.getElementById('audit-imei-input');
+        const btnImeiVerify = document.getElementById('btn-audit-imei-verify');
+
+        if (imeiInput) {
+            imeiInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    verifyAuditImei();
+                }
+            });
+        }
+        if (btnImeiVerify) btnImeiVerify.onclick = verifyAuditImei;
+
+        // การถ่ายรูป/เลือกรูปในหน้าต่างเด้ง (Modal Photo Input)
+        const modalPhotoInput = document.getElementById('audit-modal-photo-input');
+        if (modalPhotoInput) {
+            modalPhotoInput.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = async (ev) => {
+                    const rawBase64 = ev.target.result;
+                    const preview = document.getElementById('audit-modal-photo-preview');
+                    const btnCamera = document.getElementById('btn-audit-modal-camera');
+
+                    // Show a loading/compressing state
+                    if (btnCamera) {
+                        btnCamera.disabled = true;
+                        btnCamera.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> กำลังย่อภาพถ่าย...';
+                    }
+
+                    try {
+                        // Compress the box photo to speed up uploads and save bandwidth
+                        _auditPhotoBase64 = await compressImage(rawBase64, 1024, 1024, 0.7);
+                    } catch (err) {
+                        console.error('Image compression error:', err);
+                        _auditPhotoBase64 = rawBase64; // Fallback
+                    } finally {
+                        if (btnCamera) {
+                            btnCamera.disabled = false;
+                            btnCamera.innerHTML = '<i class="fa-solid fa-rotate"></i> <span>ถ่ายภาพใหม่ / เปลี่ยนรูป</span>';
+                        }
+                    }
+
+                    if (preview) {
+                        preview.src = _auditPhotoBase64;
+                        preview.classList.remove('hidden');
+                    }
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+
     }
 
-}
+    function verifyAuditImei() {
+        if (!_auditSessionId) { showToast('กรุณาเปิดรอบตรวจนับก่อนทำการสแกน', 'error'); return; }
+        const imeiInput = document.getElementById('audit-imei-input');
+        const imei = imeiInput ? imeiInput.value.trim() : '';
+        if (!imei) { showToast('กรุณาระบุหมายเลข IMEI', 'error'); if (imeiInput) imeiInput.focus(); return; }
 
-function verifyAuditImei() {
-    if (!_auditSessionId) { showToast('กรุณาเปิดรอบตรวจนับก่อนทำการสแกน', 'error'); return; }
-    const imeiInput = document.getElementById('audit-imei-input');
-    const imei = imeiInput ? imeiInput.value.trim() : '';
-    if (!imei) { showToast('กรุณาระบุหมายเลข IMEI', 'error'); if (imeiInput) imeiInput.focus(); return; }
-
-    // 1. ตรวจสอบว่าเคยสแกนเครื่องนี้บันทึกเสร็จไปหรือยัง
-    if (_scannedImeiSet && _scannedImeiSet.has(imei)) {
-        showToast(`หมายเลข IMEI ${imei} ถูกสแกนและบันทึกข้อมูลไปแล้วในรอบนี้`, 'error');
-        if (imeiInput) { imeiInput.value = ''; imeiInput.focus(); }
-        return;
-    }
-
-    // 2. ตรวจสอบว่าพบในสินค้าที่ระบบคาดหวังในสาขานี้ไหม
-    const foundExpected = _expectedImeiData.find(e => e.imei === imei);
-
-    // ตั้งค่าข้อความและสีภายในหน้าต่างเด้ง (Modal)
-    const modal = document.getElementById('modal-audit-verify');
-    const modalTitle = document.getElementById('audit-modal-title');
-    const modalIndicator = document.getElementById('audit-modal-status-indicator');
-    const modalImeiDisplay = document.getElementById('audit-modal-imei-display');
-    const modalProductName = document.getElementById('audit-modal-product-name');
-
-    if (modalImeiDisplay) modalImeiDisplay.textContent = imei;
-
-    if (foundExpected) {
-        if (modalTitle) modalTitle.textContent = 'พบสินค้าในระบบ';
-        if (modalIndicator) {
-            modalIndicator.className = 'w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-sm shadow-emerald-500/50';
+        // 1. ตรวจสอบว่าเคยสแกนเครื่องนี้บันทึกเสร็จไปหรือยัง
+        if (_scannedImeiSet && _scannedImeiSet.has(imei)) {
+            showToast(`หมายเลข IMEI ${imei} ถูกสแกนและบันทึกข้อมูลไปแล้วในรอบนี้`, 'error');
+            if (imeiInput) { imeiInput.value = ''; imeiInput.focus(); }
+            return;
         }
-        if (modalProductName) {
-            modalProductName.className = 'text-emerald-400 text-sm mt-1 font-medium';
-            modalProductName.innerHTML = `<i class="fa-solid fa-check-double mr-1"></i> ${foundExpected.product_name}`;
-        }
-    } else {
-        if (modalTitle) modalTitle.textContent = 'ไม่พบสินค้าในระบบคลัง';
-        if (modalIndicator) {
-            modalIndicator.className = 'w-2.5 h-2.5 rounded-full bg-rose-500 shadow-sm shadow-rose-500/50';
-        }
-        if (modalProductName) {
-            modalProductName.className = 'text-rose-400 text-sm mt-1 font-medium';
-            modalProductName.innerHTML = `<i class="fa-solid fa-triangle-exclamation mr-1"></i> สินค้านอกแผน/ไม่พบในคลังสาขานี้`;
-        }
-    }
 
-    // เคลียร์ค่าค้างเก่าใน Modal
-    _auditPhotoBase64 = null;
-    const preview = document.getElementById('audit-modal-photo-preview');
-    const btnCamera = document.getElementById('btn-audit-modal-camera');
-    const notesInput = document.getElementById('audit-modal-notes');
-    const photoInput = document.getElementById('audit-modal-photo-input');
+        // 2. ตรวจสอบว่าพบในสินค้าที่ระบบคาดหวังในสาขานี้ไหม
+        const foundExpected = _expectedImeiData.find(e => e.imei === imei);
 
-    if (preview) { preview.src = ''; preview.classList.add('hidden'); }
-    if (btnCamera) btnCamera.innerHTML = '<i class="fa-solid fa-camera text-base"></i> <span>เปิดกล้อง / เลือกรูป</span>';
-    if (notesInput) notesInput.value = '';
-    if (photoInput) photoInput.value = '';
+        // ตั้งค่าข้อความและสีภายในหน้าต่างเด้ง (Modal)
+        const modal = document.getElementById('modal-audit-verify');
+        const modalTitle = document.getElementById('audit-modal-title');
+        const modalIndicator = document.getElementById('audit-modal-status-indicator');
+        const modalImeiDisplay = document.getElementById('audit-modal-imei-display');
+        const modalProductName = document.getElementById('audit-modal-product-name');
 
-    // แสดง Modal
-    if (modal) {
-        modal.classList.remove('hidden');
-        modal.classList.add('flex');
-        const content = modal.querySelector('.modal-content');
-        if (content) {
-            content.classList.remove('scale-95');
-            content.classList.add('scale-100');
+        if (modalImeiDisplay) modalImeiDisplay.textContent = imei;
+
+        if (foundExpected) {
+            if (modalTitle) modalTitle.textContent = 'พบสินค้าในระบบ';
+            if (modalIndicator) {
+                modalIndicator.className = 'w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-sm shadow-emerald-500/50';
+            }
+            if (modalProductName) {
+                modalProductName.className = 'text-emerald-400 text-sm mt-1 font-medium';
+                modalProductName.innerHTML = `<i class="fa-solid fa-check-double mr-1"></i> ${foundExpected.product_name}`;
+            }
+        } else {
+            if (modalTitle) modalTitle.textContent = 'ไม่พบสินค้าในระบบคลัง';
+            if (modalIndicator) {
+                modalIndicator.className = 'w-2.5 h-2.5 rounded-full bg-rose-500 shadow-sm shadow-rose-500/50';
+            }
+            if (modalProductName) {
+                modalProductName.className = 'text-rose-400 text-sm mt-1 font-medium';
+                modalProductName.innerHTML = `<i class="fa-solid fa-triangle-exclamation mr-1"></i> สินค้านอกแผน/ไม่พบในคลังสาขานี้`;
+            }
         }
-    }
-}
 
-function closeAuditVerifyModal(instant = false) {
-    const modal = document.getElementById('modal-audit-verify');
-    const cleanFields = () => {
+        // เคลียร์ค่าค้างเก่าใน Modal
         _auditPhotoBase64 = null;
         const preview = document.getElementById('audit-modal-photo-preview');
         const btnCamera = document.getElementById('btn-audit-modal-camera');
         const notesInput = document.getElementById('audit-modal-notes');
         const photoInput = document.getElementById('audit-modal-photo-input');
+
         if (preview) { preview.src = ''; preview.classList.add('hidden'); }
         if (btnCamera) btnCamera.innerHTML = '<i class="fa-solid fa-camera text-base"></i> <span>เปิดกล้อง / เลือกรูป</span>';
         if (notesInput) notesInput.value = '';
         if (photoInput) photoInput.value = '';
 
-        const imeiInput = document.getElementById('audit-imei-input');
-        if (imeiInput) {
-            imeiInput.value = '';
-            imeiInput.focus();
-            imeiInput.select();
+        // แสดง Modal
+        if (modal) {
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            const content = modal.querySelector('.modal-content');
+            if (content) {
+                content.classList.remove('scale-95');
+                content.classList.add('scale-100');
+            }
         }
-    };
+    }
 
-    if (modal) {
-        const content = modal.querySelector('.modal-content');
-        if (instant) {
-            modal.classList.add('hidden');
-            modal.classList.remove('flex');
-            if (content) {
-                content.classList.remove('scale-100');
-                content.classList.add('scale-95');
+    function closeAuditVerifyModal(instant = false) {
+        const modal = document.getElementById('modal-audit-verify');
+        const cleanFields = () => {
+            _auditPhotoBase64 = null;
+            const preview = document.getElementById('audit-modal-photo-preview');
+            const btnCamera = document.getElementById('btn-audit-modal-camera');
+            const notesInput = document.getElementById('audit-modal-notes');
+            const photoInput = document.getElementById('audit-modal-photo-input');
+            if (preview) { preview.src = ''; preview.classList.add('hidden'); }
+            if (btnCamera) btnCamera.innerHTML = '<i class="fa-solid fa-camera text-base"></i> <span>เปิดกล้อง / เลือกรูป</span>';
+            if (notesInput) notesInput.value = '';
+            if (photoInput) photoInput.value = '';
+
+            const imeiInput = document.getElementById('audit-imei-input');
+            if (imeiInput) {
+                imeiInput.value = '';
+                imeiInput.focus();
+                imeiInput.select();
             }
-            cleanFields();
-        } else {
-            if (content) {
-                content.classList.remove('scale-100');
-                content.classList.add('scale-95');
-            }
-            setTimeout(() => {
+        };
+
+        if (modal) {
+            const content = modal.querySelector('.modal-content');
+            if (instant) {
                 modal.classList.add('hidden');
                 modal.classList.remove('flex');
-                cleanFields();
-            }, 150);
-        }
-    } else {
-        cleanFields();
-    }
-}
-
-async function submitModalAuditItem() {
-    if (!_auditSessionId) return;
-    const imeiDisplay = document.getElementById('audit-modal-imei-display');
-    const imei = imeiDisplay ? imeiDisplay.textContent.trim() : '';
-    if (!imei) { showToast('ไม่พบข้อมูล IMEI', 'error'); closeAuditVerifyModal(); return; }
-
-    // บังคับแนบภาพถ่ายหลักฐานกล่องสินค้าก่อนบันทึก
-    if (!_auditPhotoBase64) {
-        showToast('⚠️ กรุณาถ่ายรูปกล่องสินค้าหรือเลือกรูปภาพหลักฐานก่อนบันทึก', 'error');
-        return;
-    }
-
-    const btn = document.getElementById('btn-audit-modal-submit');
-    if (btn) {
-        btn.disabled = true;
-        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> กำลังบันทึกข้อมูล...';
-    }
-
-    try {
-        const token = localStorage.getItem('silmin_token');
-        const notes = document.getElementById('audit-modal-notes')?.value || '';
-        const body = { imei, scan_notes: notes, box_photo_base64: _auditPhotoBase64 };
-
-        const r = await fetch(`/api/stock-audit/sessions/${_auditSessionId}/scan`, {
-            method: 'POST',
-            headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-            body: JSON.stringify(body)
-        });
-        const d = await r.json();
-        if (d.success) {
-            showToast(d.message || 'ยืนยันการตรวจสอบสำเร็จ', 'success');
-            closeAuditVerifyModal(true); // ปิด popup อัตโนมัติทันทีหลังสำเร็จ
-            loadTodayAuditSession();
-        } else {
-            showToast(d.message || 'เกิดข้อผิดพลาดในการบันทึกข้อมูล', 'error');
-        }
-    } catch (err) {
-        console.error(err);
-        showToast('ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้', 'error');
-    } finally {
-        if (btn) {
-            btn.disabled = false;
-            btn.innerHTML = '<i class="fa-solid fa-circle-check"></i> ยืนยันการตรวจสอบ';
-        }
-    }
-}
-
-let _autoCreatingAudit = false;
-
-async function autoCreateAuditSession() {
-    try {
-        const token = localStorage.getItem('silmin_token');
-        const r = await fetch('/api/stock-audit/sessions', {
-            method: 'POST',
-            headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
-        });
-        const d = await r.json();
-        return !!d.success;
-    } catch (e) {
-        console.error('[AUDIT] autoCreateAuditSession connection error:', e);
-        return false;
-    }
-}
-
-async function loadTodayAuditSession() {
-    try {
-        const token = localStorage.getItem('silmin_token');
-        const r = await fetch('/api/stock-audit/sessions/today', {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
-        const d = await r.json();
-        if (!d.success) return;
-
-        const panel = document.getElementById('audit-session-panel');
-        const btnOpen = document.getElementById('btn-open-audit-session');
-        const badge = document.getElementById('audit-session-status-badge');
-
-        if (!d.data) {
-            if (_autoCreatingAudit) return;
-            _autoCreatingAudit = true;
-
-            if (panel) panel.classList.add('hidden');
-            if (btnOpen) {
-                btnOpen.style.removeProperty('display');
-                btnOpen.disabled = true;
-                btnOpen.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> กำลังสร้างรอบตรวจนับอัตโนมัติ...';
-            }
-            if (badge) badge.classList.add('hidden');
-
-            const autoSuccess = await autoCreateAuditSession();
-            _autoCreatingAudit = false;
-            if (autoSuccess) {
-                await loadTodayAuditSession();
-            } else {
-                if (btnOpen) {
-                    btnOpen.style.removeProperty('display');
-                    btnOpen.disabled = false;
-                    btnOpen.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i> ไม่สามารถเปิดรอบอัตโนมัติได้ (คลิกเพื่อลองใหม่)';
+                if (content) {
+                    content.classList.remove('scale-100');
+                    content.classList.add('scale-95');
                 }
+                cleanFields();
+            } else {
+                if (content) {
+                    content.classList.remove('scale-100');
+                    content.classList.add('scale-95');
+                }
+                setTimeout(() => {
+                    modal.classList.add('hidden');
+                    modal.classList.remove('flex');
+                    cleanFields();
+                }, 150);
             }
+        } else {
+            cleanFields();
+        }
+    }
+
+    async function submitModalAuditItem() {
+        if (!_auditSessionId) return;
+        const imeiDisplay = document.getElementById('audit-modal-imei-display');
+        const imei = imeiDisplay ? imeiDisplay.textContent.trim() : '';
+        if (!imei) { showToast('ไม่พบข้อมูล IMEI', 'error'); closeAuditVerifyModal(); return; }
+
+        // บังคับแนบภาพถ่ายหลักฐานกล่องสินค้าก่อนบันทึก
+        if (!_auditPhotoBase64) {
+            showToast('⚠️ กรุณาถ่ายรูปกล่องสินค้าหรือเลือกรูปภาพหลักฐานก่อนบันทึก', 'error');
             return;
         }
 
-        const { session, items, expectedImeis } = d.data;
-        _auditSessionId = session._id;
-        _auditSessionData = d.data;
-
-        if (panel) panel.classList.remove('hidden');
-        if (btnOpen) btnOpen.style.setProperty('display', 'none', 'important');
-
-        // อัพเดต badge
-        if (badge) {
-            badge.classList.remove('hidden');
-            const statusColors = {
-                'กำลังตรวจนับ': 'bg-violet-500/20 text-violet-400 border-violet-500/30',
-                'รอการอนุมัติ': 'bg-amber-500/20 text-amber-400 border-amber-500/30',
-                'อนุมัติแล้ว': 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
-                'ปิดโดยอัตโนมัติ': 'bg-slate-500/20 text-slate-400 border-slate-500/30'
-            };
-            badge.className = `px-3 py-1.5 rounded-full text-xs font-bold border ${statusColors[session.status] || 'bg-slate-500/20 text-slate-400 border-slate-500/30'}`;
-            badge.textContent = session.status;
+        const btn = document.getElementById('btn-audit-modal-submit');
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> กำลังบันทึกข้อมูล...';
         }
 
-        // อัพเดต progress
-        const scannedCount = document.getElementById('audit-scanned-count');
-        const expectedCount = document.getElementById('audit-expected-count');
-        const progressBar = document.getElementById('audit-progress-bar');
-        const progressPct = document.getElementById('audit-progress-pct');
-        const branchName = document.getElementById('audit-branch-name');
-        const sessionDate = document.getElementById('audit-session-date');
+        try {
+            const token = localStorage.getItem('silmin_token');
+            const notes = document.getElementById('audit-modal-notes')?.value || '';
+            const body = { imei, scan_notes: notes, box_photo_base64: _auditPhotoBase64 };
 
-        const scannedImeiSet = new Set((items || []).map(i => i.imei));
-        const total = expectedImeis.length;
-        const resolved = expectedImeis.filter(e => scannedImeiSet.has(e.imei) || e.sold).length;
-        const pct = total > 0 ? Math.min(100, Math.round((resolved / total) * 100)) : 0;
-
-        if (scannedCount) scannedCount.textContent = resolved;
-        if (expectedCount) expectedCount.textContent = total;
-        if (progressBar) progressBar.style.width = `${pct}%`;
-        if (progressPct) progressPct.textContent = `${pct}% สำเร็จ`;
-        if (branchName) branchName.textContent = session.branch_id?.name || '—';
-        if (sessionDate) sessionDate.textContent = new Date(session.session_date).toLocaleDateString('th-TH', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-
-        // แสดง scan area หรือแสดงสถานะ
-        const scanArea = document.getElementById('audit-scan-area');
-        const submitArea = document.getElementById('audit-submit-area');
-        const submittedMsg = document.getElementById('audit-submitted-msg');
-        const approvedMsg = document.getElementById('audit-approved-msg');
-
-        if (session.status === 'กำลังตรวจนับ' || session.status === 'รอการอนุมัติ') {
-            if (scanArea) scanArea.classList.remove('hidden');
-            if (submitArea) submitArea.classList.add('hidden');
-            if (submittedMsg) submittedMsg.classList.add('hidden');
-            if (approvedMsg) approvedMsg.classList.add('hidden');
-        } else if (session.status === 'อนุมัติแล้ว') {
-            if (scanArea) scanArea.classList.add('hidden');
-            if (submitArea) submitArea.classList.add('hidden');
-            if (submittedMsg) submittedMsg.classList.add('hidden');
-            if (approvedMsg) approvedMsg.classList.remove('hidden');
-        }
-
-        // render scan lists
-        renderAuditScanList(items);
-        renderExpectedList(expectedImeis, items);
-
-    } catch (err) {
-        console.error('[AUDIT] loadTodayAuditSession error:', err);
-    }
-}
-
-// -------------------------------------------------------------------
-// ตารางสินค้าที่ต้องตรวจนับวันนี้
-// -------------------------------------------------------------------
-function renderExpectedList(expectedImeis, scannedItems) {
-    _expectedImeiData = expectedImeis || [];
-    _scannedImeiSet = new Set((scannedItems || []).map(i => i.imei));
-
-    const pill = document.getElementById('expected-list-pill');
-    const summaryEl = document.getElementById('expected-list-summary');
-    const total = _expectedImeiData.length;
-    const resolved = _expectedImeiData.filter(e => _scannedImeiSet.has(e.imei) || e.sold).length;
-    const pending = total - resolved;
-
-    if (pill) {
-        if (pending === 0 && total > 0) {
-            pill.className = 'px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/20';
-            pill.textContent = `✓ ครบ ${total} เครื่อง`;
-        } else {
-            pill.className = 'px-2.5 py-0.5 rounded-full text-xs font-bold bg-indigo-500/20 text-indigo-400 border border-indigo-500/20';
-            pill.textContent = `${total} เครื่อง`;
+            const r = await fetch(`/api/stock-audit/sessions/${_auditSessionId}/scan`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            });
+            const d = await r.json();
+            if (d.success) {
+                showToast(d.message || 'ยืนยันการตรวจสอบสำเร็จ', 'success');
+                closeAuditVerifyModal(true); // ปิด popup อัตโนมัติทันทีหลังสำเร็จ
+                loadTodayAuditSession();
+            } else {
+                showToast(d.message || 'เกิดข้อผิดพลาดในการบันทึกข้อมูล', 'error');
+            }
+        } catch (err) {
+            console.error(err);
+            showToast('ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้', 'error');
+        } finally {
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fa-solid fa-circle-check"></i> ยืนยันการตรวจสอบ';
+            }
         }
     }
-    if (summaryEl) {
-        summaryEl.textContent = total > 0
-            ? `✓ สำเร็จ ${resolved} | ⏳ รอสแกน ${pending}`
-            : '';
+
+    let _autoCreatingAudit = false;
+
+    async function autoCreateAuditSession() {
+        try {
+            const token = localStorage.getItem('silmin_token');
+            const r = await fetch('/api/stock-audit/sessions', {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
+            });
+            const d = await r.json();
+            return !!d.success;
+        } catch (e) {
+            console.error('[AUDIT] autoCreateAuditSession connection error:', e);
+            return false;
+        }
     }
 
-    // เรียง IMEI ตามชื่อสินค้า แล้วค่า (รอสแกนก่อน)
-    const sorted = [..._expectedImeiData].sort((a, b) => {
-        const aScanned = (_scannedImeiSet.has(a.imei) || a.sold) ? 1 : 0;
-        const bScanned = (_scannedImeiSet.has(b.imei) || b.sold) ? 1 : 0;
-        if (aScanned !== bScanned) return aScanned - bScanned;
-        return a.product_name.localeCompare(b.product_name, 'th');
-    });
+    async function loadTodayAuditSession() {
+        try {
+            const token = localStorage.getItem('silmin_token');
+            const r = await fetch('/api/stock-audit/sessions/today', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const d = await r.json();
+            if (!d.success) return;
 
-    _renderExpectedTable(sorted);
-}
+            const panel = document.getElementById('audit-session-panel');
+            const btnOpen = document.getElementById('btn-open-audit-session');
+            const badge = document.getElementById('audit-session-status-badge');
 
-function _renderExpectedTable(rows) {
-    const tbody = document.getElementById('expected-items-tbody');
-    if (!tbody) return;
+            if (!d.data) {
+                if (_autoCreatingAudit) return;
+                _autoCreatingAudit = true;
 
-    if (!rows.length) {
-        tbody.innerHTML = `
+                if (panel) panel.classList.add('hidden');
+                if (btnOpen) {
+                    btnOpen.style.removeProperty('display');
+                    btnOpen.disabled = true;
+                    btnOpen.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> กำลังสร้างรอบตรวจนับอัตโนมัติ...';
+                }
+                if (badge) badge.classList.add('hidden');
+
+                const autoSuccess = await autoCreateAuditSession();
+                _autoCreatingAudit = false;
+                if (autoSuccess) {
+                    await loadTodayAuditSession();
+                } else {
+                    if (btnOpen) {
+                        btnOpen.style.removeProperty('display');
+                        btnOpen.disabled = false;
+                        btnOpen.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i> ไม่สามารถเปิดรอบอัตโนมัติได้ (คลิกเพื่อลองใหม่)';
+                    }
+                }
+                return;
+            }
+
+            const { session, items, expectedImeis } = d.data;
+            _auditSessionId = session._id;
+            _auditSessionData = d.data;
+
+            if (panel) panel.classList.remove('hidden');
+            if (btnOpen) btnOpen.style.setProperty('display', 'none', 'important');
+
+            // อัพเดต badge
+            if (badge) {
+                badge.classList.remove('hidden');
+                const statusColors = {
+                    'กำลังตรวจนับ': 'bg-violet-500/20 text-violet-400 border-violet-500/30',
+                    'รอการอนุมัติ': 'bg-amber-500/20 text-amber-400 border-amber-500/30',
+                    'อนุมัติแล้ว': 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
+                    'ปิดโดยอัตโนมัติ': 'bg-slate-500/20 text-slate-400 border-slate-500/30'
+                };
+                badge.className = `px-3 py-1.5 rounded-full text-xs font-bold border ${statusColors[session.status] || 'bg-slate-500/20 text-slate-400 border-slate-500/30'}`;
+                badge.textContent = session.status;
+            }
+
+            // อัพเดต progress
+            const scannedCount = document.getElementById('audit-scanned-count');
+            const expectedCount = document.getElementById('audit-expected-count');
+            const progressBar = document.getElementById('audit-progress-bar');
+            const progressPct = document.getElementById('audit-progress-pct');
+            const branchName = document.getElementById('audit-branch-name');
+            const sessionDate = document.getElementById('audit-session-date');
+
+            const scannedImeiSet = new Set((items || []).map(i => i.imei));
+            const total = expectedImeis.length;
+            const resolved = expectedImeis.filter(e => scannedImeiSet.has(e.imei) || e.sold).length;
+            const pct = total > 0 ? Math.min(100, Math.round((resolved / total) * 100)) : 0;
+
+            if (scannedCount) scannedCount.textContent = resolved;
+            if (expectedCount) expectedCount.textContent = total;
+            if (progressBar) progressBar.style.width = `${pct}%`;
+            if (progressPct) progressPct.textContent = `${pct}% สำเร็จ`;
+            if (branchName) branchName.textContent = session.branch_id?.name || '—';
+            if (sessionDate) sessionDate.textContent = new Date(session.session_date).toLocaleDateString('th-TH', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+
+            // แสดง scan area หรือแสดงสถานะ
+            const scanArea = document.getElementById('audit-scan-area');
+            const submitArea = document.getElementById('audit-submit-area');
+            const submittedMsg = document.getElementById('audit-submitted-msg');
+            const approvedMsg = document.getElementById('audit-approved-msg');
+
+            if (session.status === 'กำลังตรวจนับ' || session.status === 'รอการอนุมัติ') {
+                if (scanArea) scanArea.classList.remove('hidden');
+                if (submitArea) submitArea.classList.add('hidden');
+                if (submittedMsg) submittedMsg.classList.add('hidden');
+                if (approvedMsg) approvedMsg.classList.add('hidden');
+            } else if (session.status === 'อนุมัติแล้ว') {
+                if (scanArea) scanArea.classList.add('hidden');
+                if (submitArea) submitArea.classList.add('hidden');
+                if (submittedMsg) submittedMsg.classList.add('hidden');
+                if (approvedMsg) approvedMsg.classList.remove('hidden');
+            }
+
+            // render scan lists
+            renderAuditScanList(items);
+            renderExpectedList(expectedImeis, items);
+
+        } catch (err) {
+            console.error('[AUDIT] loadTodayAuditSession error:', err);
+        }
+    }
+
+    // -------------------------------------------------------------------
+    // ตารางสินค้าที่ต้องตรวจนับวันนี้
+    // -------------------------------------------------------------------
+    function renderExpectedList(expectedImeis, scannedItems) {
+        _expectedImeiData = expectedImeis || [];
+        _scannedImeiSet = new Set((scannedItems || []).map(i => i.imei));
+
+        const pill = document.getElementById('expected-list-pill');
+        const summaryEl = document.getElementById('expected-list-summary');
+        const total = _expectedImeiData.length;
+        const resolved = _expectedImeiData.filter(e => _scannedImeiSet.has(e.imei) || e.sold).length;
+        const pending = total - resolved;
+
+        if (pill) {
+            if (pending === 0 && total > 0) {
+                pill.className = 'px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/20';
+                pill.textContent = `✓ ครบ ${total} เครื่อง`;
+            } else {
+                pill.className = 'px-2.5 py-0.5 rounded-full text-xs font-bold bg-indigo-500/20 text-indigo-400 border border-indigo-500/20';
+                pill.textContent = `${total} เครื่อง`;
+            }
+        }
+        if (summaryEl) {
+            summaryEl.textContent = total > 0
+                ? `✓ สำเร็จ ${resolved} | ⏳ รอสแกน ${pending}`
+                : '';
+        }
+
+        // เรียง IMEI ตามชื่อสินค้า แล้วค่า (รอสแกนก่อน)
+        const sorted = [..._expectedImeiData].sort((a, b) => {
+            const aScanned = (_scannedImeiSet.has(a.imei) || a.sold) ? 1 : 0;
+            const bScanned = (_scannedImeiSet.has(b.imei) || b.sold) ? 1 : 0;
+            if (aScanned !== bScanned) return aScanned - bScanned;
+            return a.product_name.localeCompare(b.product_name, 'th');
+        });
+
+        _renderExpectedTable(sorted);
+    }
+
+    function _renderExpectedTable(rows) {
+        const tbody = document.getElementById('expected-items-tbody');
+        if (!tbody) return;
+
+        if (!rows.length) {
+            tbody.innerHTML = `
             <tr><td colspan="6" class="text-center py-10 text-slate-500">
                 <i class="fa-solid fa-inbox text-2xl mb-2 block"></i>
                 ไม่พบสินค้าในสาขา
             </td></tr>`;
-        return;
-    }
-
-    tbody.innerHTML = rows.map((e, idx) => {
-        const isScanned = _scannedImeiSet.has(e.imei);
-        const isSold = e.sold;
-
-        let rowBg = 'hover:bg-slate-700/20';
-        if (isScanned) rowBg = 'bg-emerald-500/5';
-        else if (isSold) rowBg = 'bg-slate-800/80 opacity-70';
-
-        let statusBadge = '';
-        if (isScanned) {
-            statusBadge = `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/20">
-                               <i class="fa-solid fa-check"></i>สแกนแล้ว
-                           </span>`;
-        } else if (isSold) {
-            statusBadge = `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-500/20 text-slate-400 border border-slate-500/20">
-                               <i class="fa-solid fa-cart-shopping"></i>ขายแล้ว
-                           </span>`;
-        } else {
-            statusBadge = `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-400 border border-amber-500/20">
-                               <i class="fa-solid fa-clock"></i>รอสแกน
-                           </span>`;
+            return;
         }
 
-        let imeiHighlight = '';
-        if (isScanned) {
-            imeiHighlight = `<span class="font-mono text-xs text-emerald-400 line-through opacity-60">${e.imei}</span>`;
-        } else if (isSold) {
-            imeiHighlight = `<span class="font-mono text-xs text-slate-400 line-through opacity-60">${e.imei}</span>`;
-        } else {
-            imeiHighlight = `<span class="font-mono text-xs text-white">${e.imei}</span>
+        tbody.innerHTML = rows.map((e, idx) => {
+            const isScanned = _scannedImeiSet.has(e.imei);
+            const isSold = e.sold;
+
+            let rowBg = 'hover:bg-slate-700/20';
+            if (isScanned) rowBg = 'bg-emerald-500/5';
+            else if (isSold) rowBg = 'bg-slate-800/80 opacity-70';
+
+            let statusBadge = '';
+            if (isScanned) {
+                statusBadge = `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/20">
+                               <i class="fa-solid fa-check"></i>สแกนแล้ว
+                           </span>`;
+            } else if (isSold) {
+                statusBadge = `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-500/20 text-slate-400 border border-slate-500/20">
+                               <i class="fa-solid fa-cart-shopping"></i>ขายแล้ว
+                           </span>`;
+            } else {
+                statusBadge = `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-400 border border-amber-500/20">
+                               <i class="fa-solid fa-clock"></i>รอสแกน
+                           </span>`;
+            }
+
+            let imeiHighlight = '';
+            if (isScanned) {
+                imeiHighlight = `<span class="font-mono text-xs text-emerald-400 line-through opacity-60">${e.imei}</span>`;
+            } else if (isSold) {
+                imeiHighlight = `<span class="font-mono text-xs text-slate-400 line-through opacity-60">${e.imei}</span>`;
+            } else {
+                imeiHighlight = `<span class="font-mono text-xs text-white">${e.imei}</span>
                <button onclick="fillImeiInput('${e.imei}')" title="กรอก IMEI"
                    class="ml-1.5 p-0.5 rounded text-slate-500 hover:text-violet-400 hover:bg-violet-500/10 transition-all">
                    <i class="fa-solid fa-arrow-up-from-bracket text-[10px]"></i>
                </button>`;
-        }
+            }
 
-        const colorHtml = e.color
-            ? `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-pink-500/15 text-pink-300 border border-pink-500/20">${e.color}</span>`
-            : `<span class="text-slate-600 text-xs">—</span>`;
-        const capacityHtml = e.capacity
-            ? `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-sky-500/15 text-sky-300 border border-sky-500/20">${e.capacity}</span>`
-            : `<span class="text-slate-600 text-xs">—</span>`;
-        return `
+            const colorHtml = e.color
+                ? `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-pink-500/15 text-pink-300 border border-pink-500/20">${e.color}</span>`
+                : `<span class="text-slate-600 text-xs">—</span>`;
+            const capacityHtml = e.capacity
+                ? `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-sky-500/15 text-sky-300 border border-sky-500/20">${e.capacity}</span>`
+                : `<span class="text-slate-600 text-xs">—</span>`;
+            return `
             <tr class="${rowBg} border-b border-slate-700/40 transition-all" data-imei="${e.imei}" data-name="${e.product_name}" data-status="${isScanned ? 'scanned' : (isSold ? 'sold' : 'pending')}">
                 <td class="px-4 py-2.5 text-slate-500 text-xs">${idx + 1}</td>
                 <td class="px-4 py-2.5">
@@ -14940,93 +15070,93 @@ function _renderExpectedTable(rows) {
                 <td class="px-4 py-2.5">${imeiHighlight}</td>
                 <td class="px-4 py-2.5 text-center">${statusBadge}</td>
             </tr>`;
-    }).join('');
-}
-
-function toggleExpectedList() {
-    const body = document.getElementById('expected-list-body');
-    const chevron = document.getElementById('expected-list-chevron');
-    if (!body) return;
-    const isHidden = body.classList.toggle('hidden');
-    if (chevron) {
-        chevron.style.transform = isHidden ? 'rotate(180deg)' : 'rotate(0deg)';
+        }).join('');
     }
-}
 
-function filterExpectedList(searchVal) {
-    const tbody = document.getElementById('expected-items-tbody');
-    if (!tbody) return;
-    const q = (searchVal || '').toLowerCase().trim();
-    const statusFilter = document.getElementById('expected-list-filter')?.value || 'all';
-
-    let filtered = _expectedImeiData.filter(e => {
-        const matchText = !q || e.imei.toLowerCase().includes(q) || e.product_name.toLowerCase().includes(q);
-        const isScanned = _scannedImeiSet.has(e.imei);
-        const matchStatus = statusFilter === 'all'
-            || (statusFilter === 'scanned' && isScanned)
-            || (statusFilter === 'pending' && !isScanned);
-        return matchText && matchStatus;
-    });
-
-    // re-sort: รอสแกนก่อน
-    filtered.sort((a, b) => {
-        const aS = _scannedImeiSet.has(a.imei) ? 1 : 0;
-        const bS = _scannedImeiSet.has(b.imei) ? 1 : 0;
-        if (aS !== bS) return aS - bS;
-        return a.product_name.localeCompare(b.product_name, 'th');
-    });
-
-    _renderExpectedTable(filtered);
-}
-
-function fillImeiInput(imei) {
-    const input = document.getElementById('audit-imei-input');
-    if (input) {
-        input.value = imei;
-        input.focus();
-        // เลื่อนไปที่ scan area
-        const scanArea = document.getElementById('audit-scan-area');
-        if (scanArea) scanArea.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    function toggleExpectedList() {
+        const body = document.getElementById('expected-list-body');
+        const chevron = document.getElementById('expected-list-chevron');
+        if (!body) return;
+        const isHidden = body.classList.toggle('hidden');
+        if (chevron) {
+            chevron.style.transform = isHidden ? 'rotate(180deg)' : 'rotate(0deg)';
+        }
     }
-}
 
-function renderAuditScanList(items) {
-    const list = document.getElementById('audit-scan-list');
-    const countEl = document.getElementById('audit-scan-list-count');
-    if (!list) return;
-    if (countEl) countEl.textContent = `${items.length} รายการ`;
+    function filterExpectedList(searchVal) {
+        const tbody = document.getElementById('expected-items-tbody');
+        if (!tbody) return;
+        const q = (searchVal || '').toLowerCase().trim();
+        const statusFilter = document.getElementById('expected-list-filter')?.value || 'all';
 
-    if (items.length === 0) {
-        list.innerHTML = `
+        let filtered = _expectedImeiData.filter(e => {
+            const matchText = !q || e.imei.toLowerCase().includes(q) || e.product_name.toLowerCase().includes(q);
+            const isScanned = _scannedImeiSet.has(e.imei);
+            const matchStatus = statusFilter === 'all'
+                || (statusFilter === 'scanned' && isScanned)
+                || (statusFilter === 'pending' && !isScanned);
+            return matchText && matchStatus;
+        });
+
+        // re-sort: รอสแกนก่อน
+        filtered.sort((a, b) => {
+            const aS = _scannedImeiSet.has(a.imei) ? 1 : 0;
+            const bS = _scannedImeiSet.has(b.imei) ? 1 : 0;
+            if (aS !== bS) return aS - bS;
+            return a.product_name.localeCompare(b.product_name, 'th');
+        });
+
+        _renderExpectedTable(filtered);
+    }
+
+    function fillImeiInput(imei) {
+        const input = document.getElementById('audit-imei-input');
+        if (input) {
+            input.value = imei;
+            input.focus();
+            // เลื่อนไปที่ scan area
+            const scanArea = document.getElementById('audit-scan-area');
+            if (scanArea) scanArea.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+    }
+
+    function renderAuditScanList(items) {
+        const list = document.getElementById('audit-scan-list');
+        const countEl = document.getElementById('audit-scan-list-count');
+        if (!list) return;
+        if (countEl) countEl.textContent = `${items.length} รายการ`;
+
+        if (items.length === 0) {
+            list.innerHTML = `
             <div class="flex flex-col items-center justify-center py-12 text-center">
                 <div class="w-16 h-16 rounded-2xl bg-slate-700/50 flex items-center justify-center mb-4">
                     <i class="fa-solid fa-qrcode text-slate-500 text-2xl"></i>
                 </div>
                 <p class="text-slate-400">ยังไม่มีรายการ เริ่มสแกน IMEI เลย</p>
             </div>`;
-        return;
-    }
+            return;
+        }
 
-    list.innerHTML = items.map((item, idx) => {
-        const statusColor = item.is_expected
-            ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
-            : 'bg-red-500/10 border-red-500/20 text-red-400';
-        const statusIcon = item.is_expected ? 'fa-circle-check' : 'fa-triangle-exclamation';
-        const statusText = item.is_expected ? 'พบในระบบ' : 'ไม่พบในระบบ';
-        const photoHtml = item.box_photo_url
-            ? `<a href="${item.box_photo_url}" target="_blank" class="shrink-0 w-12 h-12 rounded-lg overflow-hidden border border-slate-600 hover:border-violet-400 transition-all">
+        list.innerHTML = items.map((item, idx) => {
+            const statusColor = item.is_expected
+                ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
+                : 'bg-red-500/10 border-red-500/20 text-red-400';
+            const statusIcon = item.is_expected ? 'fa-circle-check' : 'fa-triangle-exclamation';
+            const statusText = item.is_expected ? 'พบในระบบ' : 'ไม่พบในระบบ';
+            const photoHtml = item.box_photo_url
+                ? `<a href="${item.box_photo_url}" target="_blank" class="shrink-0 w-12 h-12 rounded-lg overflow-hidden border border-slate-600 hover:border-violet-400 transition-all">
                  <img src="${item.box_photo_url}" referrerpolicy="no-referrer" class="w-full h-full object-cover" loading="lazy" alt="box" />
                </a>`
-            : `<div class="shrink-0 w-12 h-12 rounded-lg bg-slate-700 border border-slate-600 flex items-center justify-center">
+                : `<div class="shrink-0 w-12 h-12 rounded-lg bg-slate-700 border border-slate-600 flex items-center justify-center">
                  <i class="fa-solid fa-image text-slate-500 text-sm"></i>
                </div>`;
-        const canDelete = _auditSessionData?.session?.status === 'กำลังตรวจนับ';
-        const deleteBtn = canDelete
-            ? `<button onclick="deleteAuditItem('${item.imei}')" class="shrink-0 p-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 transition-all text-xs">
+            const canDelete = _auditSessionData?.session?.status === 'กำลังตรวจนับ';
+            const deleteBtn = canDelete
+                ? `<button onclick="deleteAuditItem('${item.imei}')" class="shrink-0 p-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 transition-all text-xs">
                  <i class="fa-solid fa-trash"></i>
                </button>`
-            : '';
-        return `
+                : '';
+            return `
             <div class="flex items-center gap-3 p-3 border-b border-slate-700/60 hover:bg-slate-700/20 transition-all">
                 <span class="text-slate-500 text-xs font-mono w-6 shrink-0">${idx + 1}</span>
                 ${photoHtml}
@@ -15040,84 +15170,84 @@ function renderAuditScanList(items) {
                 </span>
                 ${deleteBtn}
             </div>`;
-    }).join('');
-}
+        }).join('');
+    }
 
-async function deleteAuditItem(imei) {
-    if (!_auditSessionId) return;
+    async function deleteAuditItem(imei) {
+        if (!_auditSessionId) return;
 
-    showConfirm('ยืนยันลบรายการ', `คุณต้องการลบ IMEI ${imei} ออกจากรอบตรวจนับนี้ใช่หรือไม่?`, async () => {
+        showConfirm('ยืนยันลบรายการ', `คุณต้องการลบ IMEI ${imei} ออกจากรอบตรวจนับนี้ใช่หรือไม่?`, async () => {
+            try {
+                const token = localStorage.getItem('silmin_token');
+                const r = await fetch(`/api/stock-audit/sessions/${_auditSessionId}/scan/${encodeURIComponent(imei)}`, {
+                    method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const d = await r.json();
+                if (d.success) { showToast(d.message); loadTodayAuditSession(); }
+                else showToast(d.message || 'เกิดข้อผิดพลาด', 'error');
+            } catch (e) { showToast('ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้', 'error'); }
+        });
+    }
+
+    // -------------------------------------------------------------------
+    // พนักงานสต็อก: ตรวจสอบและอนุมัติผล
+    // -------------------------------------------------------------------
+    let _reviewCurrentSessionId = null;
+    let _reviewCurrentSessionStatus = '';
+    let _reviewCurrentSessionItems = [];
+    let _reviewActiveFilter = 'รอตรวจสอบ';
+
+    async function loadAuditReviewSessions() {
+        const container = document.getElementById('audit-review-sessions-list');
+        const detailPanel = document.getElementById('audit-review-detail-panel');
+        const listPanel = container;
+        if (detailPanel) detailPanel.classList.add('hidden');
+        if (listPanel) listPanel.classList.remove('hidden');
+        _reviewCurrentSessionId = null;
+        _reviewCurrentSessionStatus = '';
+        _reviewCurrentSessionItems = [];
+        _reviewActiveFilter = 'รอตรวจสอบ';
+
+        const filter = document.getElementById('audit-review-filter-status')?.value || '';
+        const dateType = document.getElementById('audit-review-filter-date-type')?.value || 'today';
+        const startDateVal = document.getElementById('audit-review-start-date')?.value || '';
+        const endDateVal = document.getElementById('audit-review-end-date')?.value || '';
+
+        const token = localStorage.getItem('silmin_token');
         try {
-            const token = localStorage.getItem('silmin_token');
-            const r = await fetch(`/api/stock-audit/sessions/${_auditSessionId}/scan/${encodeURIComponent(imei)}`, {
-                method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` }
-            });
+            const params = new URLSearchParams();
+            if (filter) params.set('status', filter);
+
+            if (dateType === 'today') {
+                const todayStr = new Date().toLocaleDateString('en-CA');
+                params.set('startDate', todayStr);
+                params.set('endDate', todayStr);
+            } else if (dateType === 'custom') {
+                if (startDateVal) params.set('startDate', startDateVal);
+                if (endDateVal) params.set('endDate', endDateVal);
+            }
+
+            const r = await fetch(`/api/stock-audit/sessions?${params}`, { headers: { 'Authorization': `Bearer ${token}` } });
             const d = await r.json();
-            if (d.success) { showToast(d.message); loadTodayAuditSession(); }
-            else showToast(d.message || 'เกิดข้อผิดพลาด', 'error');
-        } catch (e) { showToast('ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้', 'error'); }
-    });
-}
-
-// -------------------------------------------------------------------
-// พนักงานสต็อก: ตรวจสอบและอนุมัติผล
-// -------------------------------------------------------------------
-let _reviewCurrentSessionId = null;
-let _reviewCurrentSessionStatus = '';
-let _reviewCurrentSessionItems = [];
-let _reviewActiveFilter = 'รอตรวจสอบ';
-
-async function loadAuditReviewSessions() {
-    const container = document.getElementById('audit-review-sessions-list');
-    const detailPanel = document.getElementById('audit-review-detail-panel');
-    const listPanel = container;
-    if (detailPanel) detailPanel.classList.add('hidden');
-    if (listPanel) listPanel.classList.remove('hidden');
-    _reviewCurrentSessionId = null;
-    _reviewCurrentSessionStatus = '';
-    _reviewCurrentSessionItems = [];
-    _reviewActiveFilter = 'รอตรวจสอบ';
-
-    const filter = document.getElementById('audit-review-filter-status')?.value || '';
-    const dateType = document.getElementById('audit-review-filter-date-type')?.value || 'today';
-    const startDateVal = document.getElementById('audit-review-start-date')?.value || '';
-    const endDateVal = document.getElementById('audit-review-end-date')?.value || '';
-
-    const token = localStorage.getItem('silmin_token');
-    try {
-        const params = new URLSearchParams();
-        if (filter) params.set('status', filter);
-
-        if (dateType === 'today') {
-            const todayStr = new Date().toLocaleDateString('en-CA');
-            params.set('startDate', todayStr);
-            params.set('endDate', todayStr);
-        } else if (dateType === 'custom') {
-            if (startDateVal) params.set('startDate', startDateVal);
-            if (endDateVal) params.set('endDate', endDateVal);
-        }
-
-        const r = await fetch(`/api/stock-audit/sessions?${params}`, { headers: { 'Authorization': `Bearer ${token}` } });
-        const d = await r.json();
-        if (!d.success || !d.data?.length) {
-            if (container) container.innerHTML = `
+            if (!d.success || !d.data?.length) {
+                if (container) container.innerHTML = `
                 <div class="flex flex-col items-center justify-center py-16 text-center">
                     <div class="w-20 h-20 rounded-3xl bg-slate-700/50 flex items-center justify-center mb-4">
                         <i class="fa-solid fa-clipboard-check text-slate-500 text-3xl"></i>
                     </div>
                     <p class="text-slate-400">ไม่พบรอบการตรวจนับสต็อก</p>
                 </div>`;
-            return;
-        }
+                return;
+            }
 
-        const statusColors = {
-            'กำลังตรวจนับ': 'bg-violet-500/20 text-violet-400 border-violet-500/30',
-            'รอการอนุมัติ': 'bg-amber-500/20 text-amber-400 border-amber-500/30 animate-pulse',
-            'อนุมัติแล้ว': 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
-            'ปิดโดยอัตโนมัติ': 'bg-slate-500/20 text-slate-400 border-slate-500/30'
-        };
+            const statusColors = {
+                'กำลังตรวจนับ': 'bg-violet-500/20 text-violet-400 border-violet-500/30',
+                'รอการอนุมัติ': 'bg-amber-500/20 text-amber-400 border-amber-500/30 animate-pulse',
+                'อนุมัติแล้ว': 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
+                'ปิดโดยอัตโนมัติ': 'bg-slate-500/20 text-slate-400 border-slate-500/30'
+            };
 
-        if (container) container.innerHTML = d.data.map(session => `
+            if (container) container.innerHTML = d.data.map(session => `
             <div class="bg-slate-800/60 rounded-2xl border border-slate-700 p-5 hover:border-amber-500/30 transition-all cursor-pointer"
                  onclick="openAuditReviewDetail('${session._id}')">
                 <div class="flex items-center justify-between mb-3">
@@ -15133,104 +15263,104 @@ async function loadAuditReviewSessions() {
                 </div>
             </div>`).join('');
 
-        // Wire up filter & refresh
-        const filterSel = document.getElementById('audit-review-filter-status');
-        const btnRefresh = document.getElementById('btn-refresh-audit-review');
-        if (filterSel) filterSel.onchange = loadAuditReviewSessions;
-        if (btnRefresh) btnRefresh.onclick = loadAuditReviewSessions;
+            // Wire up filter & refresh
+            const filterSel = document.getElementById('audit-review-filter-status');
+            const btnRefresh = document.getElementById('btn-refresh-audit-review');
+            if (filterSel) filterSel.onchange = loadAuditReviewSessions;
+            if (btnRefresh) btnRefresh.onclick = loadAuditReviewSessions;
 
-        const filterDateType = document.getElementById('audit-review-filter-date-type');
-        const customStartDate = document.getElementById('audit-review-start-date');
-        const customEndDate = document.getElementById('audit-review-end-date');
-        const todayStr = new Date().toLocaleDateString('en-CA');
+            const filterDateType = document.getElementById('audit-review-filter-date-type');
+            const customStartDate = document.getElementById('audit-review-start-date');
+            const customEndDate = document.getElementById('audit-review-end-date');
+            const todayStr = new Date().toLocaleDateString('en-CA');
 
-        if (customStartDate && !customStartDate.value) customStartDate.value = todayStr;
-        if (customEndDate && !customEndDate.value) customEndDate.value = todayStr;
+            if (customStartDate && !customStartDate.value) customStartDate.value = todayStr;
+            if (customEndDate && !customEndDate.value) customEndDate.value = todayStr;
 
-        if (filterDateType) {
-            filterDateType.onchange = () => {
-                const rangeContainer = document.getElementById('audit-review-date-range-container');
-                if (rangeContainer) {
-                    if (filterDateType.value === 'custom') {
-                        rangeContainer.classList.remove('hidden');
-                    } else {
-                        rangeContainer.classList.add('hidden');
+            if (filterDateType) {
+                filterDateType.onchange = () => {
+                    const rangeContainer = document.getElementById('audit-review-date-range-container');
+                    if (rangeContainer) {
+                        if (filterDateType.value === 'custom') {
+                            rangeContainer.classList.remove('hidden');
+                        } else {
+                            rangeContainer.classList.add('hidden');
+                        }
                     }
-                }
-                loadAuditReviewSessions();
-            };
-        }
-        if (customStartDate) customStartDate.onchange = loadAuditReviewSessions;
-        if (customEndDate) customEndDate.onchange = loadAuditReviewSessions;
-
-    } catch (e) {
-        console.error('[AUDIT REVIEW] loadAuditReviewSessions:', e);
-        if (container) container.innerHTML = '<p class="text-red-400 p-4">เกิดข้อผิดพลาดในการดึงข้อมูล</p>';
-    }
-}
-
-async function openAuditReviewDetail(sessionId) {
-    _reviewCurrentSessionId = sessionId;
-    const listPanel = document.getElementById('audit-review-sessions-list');
-    const detailPanel = document.getElementById('audit-review-detail-panel');
-    if (listPanel) listPanel.classList.add('hidden');
-    if (detailPanel) detailPanel.classList.remove('hidden');
-
-    // back button
-    const btnBack = document.getElementById('btn-audit-review-back');
-    if (btnBack) btnBack.onclick = loadAuditReviewSessions;
-
-    const token = localStorage.getItem('silmin_token');
-    try {
-        const r = await fetch(`/api/stock-audit/sessions/${sessionId}`, { headers: { 'Authorization': `Bearer ${token}` } });
-        const d = await r.json();
-        if (!d.success) { showToast('ไม่สามารถดึงรายละเอียดได้', 'error'); return false; }
-
-        const { session, items, summary } = d.data;
-        _reviewCurrentSessionItems = items;
-        _reviewCurrentSessionStatus = session.status;
-
-        // Title
-        const title = document.getElementById('audit-review-detail-title');
-        if (title) title.textContent = `ตรวจนับ ${new Date(session.session_date).toLocaleDateString('th-TH')} — สาขา ${session.branch_id?.name || ''}`;
-
-        // Render summary and items
-        renderReviewSummaryBar(summary);
-        renderReviewItemsGrid();
-
-        // Close button (only if all reviewed)
-        const closeArea = document.getElementById('audit-review-close-area');
-        if (closeArea) {
-            if ((session.status === 'รอการอนุมัติ' || session.status === 'กำลังตรวจนับ') && summary.pending === 0) {
-                closeArea.classList.remove('hidden');
-                const btnClose = document.getElementById('btn-audit-close-session');
-                if (btnClose) btnClose.onclick = () => closeAuditSession(sessionId);
-            } else {
-                closeArea.classList.add('hidden');
+                    loadAuditReviewSessions();
+                };
             }
+            if (customStartDate) customStartDate.onchange = loadAuditReviewSessions;
+            if (customEndDate) customEndDate.onchange = loadAuditReviewSessions;
+
+        } catch (e) {
+            console.error('[AUDIT REVIEW] loadAuditReviewSessions:', e);
+            if (container) container.innerHTML = '<p class="text-red-400 p-4">เกิดข้อผิดพลาดในการดึงข้อมูล</p>';
         }
-        return true;
-
-    } catch (e) {
-        console.error('[AUDIT REVIEW] openAuditReviewDetail:', e);
-        showToast('เกิดข้อผิดพลาด', 'error');
-        return false;
     }
-}
 
-function renderReviewSummaryBar(summary) {
-    const summaryBar = document.getElementById('audit-review-summary-bar');
-    if (!summaryBar) return;
+    async function openAuditReviewDetail(sessionId) {
+        _reviewCurrentSessionId = sessionId;
+        const listPanel = document.getElementById('audit-review-sessions-list');
+        const detailPanel = document.getElementById('audit-review-detail-panel');
+        if (listPanel) listPanel.classList.add('hidden');
+        if (detailPanel) detailPanel.classList.remove('hidden');
 
-    // Highlight styles depending on the active filter
-    const activeClass = 'ring-2 ring-amber-500 ring-offset-2 ring-offset-slate-900 scale-105 font-bold';
+        // back button
+        const btnBack = document.getElementById('btn-audit-review-back');
+        if (btnBack) btnBack.onclick = loadAuditReviewSessions;
 
-    const cardAllActive = _reviewActiveFilter === 'all' ? activeClass : '';
-    const cardPendingActive = _reviewActiveFilter === 'รอตรวจสอบ' ? activeClass : '';
-    const cardPassedActive = _reviewActiveFilter === 'ผ่าน' ? activeClass : '';
-    const cardFailedActive = _reviewActiveFilter === 'ไม่ผ่าน' ? activeClass : '';
+        const token = localStorage.getItem('silmin_token');
+        try {
+            const r = await fetch(`/api/stock-audit/sessions/${sessionId}`, { headers: { 'Authorization': `Bearer ${token}` } });
+            const d = await r.json();
+            if (!d.success) { showToast('ไม่สามารถดึงรายละเอียดได้', 'error'); return false; }
 
-    summaryBar.innerHTML = `
+            const { session, items, summary } = d.data;
+            _reviewCurrentSessionItems = items;
+            _reviewCurrentSessionStatus = session.status;
+
+            // Title
+            const title = document.getElementById('audit-review-detail-title');
+            if (title) title.textContent = `ตรวจนับ ${new Date(session.session_date).toLocaleDateString('th-TH')} — สาขา ${session.branch_id?.name || ''}`;
+
+            // Render summary and items
+            renderReviewSummaryBar(summary);
+            renderReviewItemsGrid();
+
+            // Close button (only if all reviewed)
+            const closeArea = document.getElementById('audit-review-close-area');
+            if (closeArea) {
+                if ((session.status === 'รอการอนุมัติ' || session.status === 'กำลังตรวจนับ') && summary.pending === 0) {
+                    closeArea.classList.remove('hidden');
+                    const btnClose = document.getElementById('btn-audit-close-session');
+                    if (btnClose) btnClose.onclick = () => closeAuditSession(sessionId);
+                } else {
+                    closeArea.classList.add('hidden');
+                }
+            }
+            return true;
+
+        } catch (e) {
+            console.error('[AUDIT REVIEW] openAuditReviewDetail:', e);
+            showToast('เกิดข้อผิดพลาด', 'error');
+            return false;
+        }
+    }
+
+    function renderReviewSummaryBar(summary) {
+        const summaryBar = document.getElementById('audit-review-summary-bar');
+        if (!summaryBar) return;
+
+        // Highlight styles depending on the active filter
+        const activeClass = 'ring-2 ring-amber-500 ring-offset-2 ring-offset-slate-900 scale-105 font-bold';
+
+        const cardAllActive = _reviewActiveFilter === 'all' ? activeClass : '';
+        const cardPendingActive = _reviewActiveFilter === 'รอตรวจสอบ' ? activeClass : '';
+        const cardPassedActive = _reviewActiveFilter === 'ผ่าน' ? activeClass : '';
+        const cardFailedActive = _reviewActiveFilter === 'ไม่ผ่าน' ? activeClass : '';
+
+        summaryBar.innerHTML = `
         <div onclick="filterReviewItemsByStatus('all')" 
              class="bg-slate-700/40 rounded-xl p-3 text-center cursor-pointer transition-all hover:bg-slate-700/60 active:scale-95 ${cardAllActive}">
             <p class="text-2xl font-black text-white">${summary.total}</p>
@@ -15251,53 +15381,53 @@ function renderReviewSummaryBar(summary) {
             <p class="text-2xl font-black text-red-400">${summary.failed}</p>
             <p class="text-[10px] text-red-300 mt-0.5">ไม่ผ่าน</p>
         </div>`;
-}
-
-function renderReviewItemsGrid() {
-    const grid = document.getElementById('audit-review-items-grid');
-    if (!grid) return;
-
-    let filteredItems = _reviewCurrentSessionItems;
-    if (_reviewActiveFilter !== 'all') {
-        filteredItems = _reviewCurrentSessionItems.filter(item => item.scan_status === _reviewActiveFilter);
     }
 
-    if (!filteredItems.length) {
-        grid.innerHTML = `<p class="text-slate-400 text-center py-8">ไม่มีรายการในสถานะนี้</p>`;
-        return;
-    }
+    function renderReviewItemsGrid() {
+        const grid = document.getElementById('audit-review-items-grid');
+        if (!grid) return;
 
-    grid.innerHTML = filteredItems.map(item => {
-        let cardBorder = 'border-slate-700/60';
-        let badgeClass = 'bg-slate-500/10 text-slate-400 border-slate-500/20';
-        if (item.scan_status === 'ผ่าน') {
-            cardBorder = 'border-emerald-500/20';
-            badgeClass = 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
-        } else if (item.scan_status === 'ไม่ผ่าน') {
-            cardBorder = 'border-red-500/20';
-            badgeClass = 'bg-red-500/10 text-red-400 border-red-500/20';
-        } else if (item.scan_status === 'ตรวจใหม่') {
-            cardBorder = 'border-violet-500/20';
-            badgeClass = 'bg-violet-500/10 text-violet-400 border-violet-500/20';
-        } else if (item.scan_status === 'รอตรวจสอบ') {
-            cardBorder = 'border-amber-500/20';
-            badgeClass = 'bg-amber-500/10 text-amber-400 border-amber-500/20';
+        let filteredItems = _reviewCurrentSessionItems;
+        if (_reviewActiveFilter !== 'all') {
+            filteredItems = _reviewCurrentSessionItems.filter(item => item.scan_status === _reviewActiveFilter);
         }
 
-        const btnLabel = item.scan_status === 'รอตรวจสอบ' ? 'ตรวจสอบสินค้า' : 'ดูรายละเอียด';
-        const btnColorClass = item.scan_status === 'รอตรวจสอบ'
-            ? 'from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 shadow-amber-500/10'
-            : 'from-slate-700 to-slate-650 hover:from-slate-650 hover:to-slate-600 shadow-slate-700/10';
-        const btnIcon = item.scan_status === 'รอตรวจสอบ' ? 'fa-magnifying-glass' : 'fa-circle-info';
+        if (!filteredItems.length) {
+            grid.innerHTML = `<p class="text-slate-400 text-center py-8">ไม่มีรายการในสถานะนี้</p>`;
+            return;
+        }
 
-        const checkBtnHtml = `<div class="mt-3">
+        grid.innerHTML = filteredItems.map(item => {
+            let cardBorder = 'border-slate-700/60';
+            let badgeClass = 'bg-slate-500/10 text-slate-400 border-slate-500/20';
+            if (item.scan_status === 'ผ่าน') {
+                cardBorder = 'border-emerald-500/20';
+                badgeClass = 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
+            } else if (item.scan_status === 'ไม่ผ่าน') {
+                cardBorder = 'border-red-500/20';
+                badgeClass = 'bg-red-500/10 text-red-400 border-red-500/20';
+            } else if (item.scan_status === 'ตรวจใหม่') {
+                cardBorder = 'border-violet-500/20';
+                badgeClass = 'bg-violet-500/10 text-violet-400 border-violet-500/20';
+            } else if (item.scan_status === 'รอตรวจสอบ') {
+                cardBorder = 'border-amber-500/20';
+                badgeClass = 'bg-amber-500/10 text-amber-400 border-amber-500/20';
+            }
+
+            const btnLabel = item.scan_status === 'รอตรวจสอบ' ? 'ตรวจสอบสินค้า' : 'ดูรายละเอียด';
+            const btnColorClass = item.scan_status === 'รอตรวจสอบ'
+                ? 'from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 shadow-amber-500/10'
+                : 'from-slate-700 to-slate-650 hover:from-slate-650 hover:to-slate-600 shadow-slate-700/10';
+            const btnIcon = item.scan_status === 'รอตรวจสอบ' ? 'fa-magnifying-glass' : 'fa-circle-info';
+
+            const checkBtnHtml = `<div class="mt-3">
             <button onclick="openAuditReviewItemModal('${item._id}')"
                 class="w-full py-2 bg-gradient-to-r ${btnColorClass} text-white rounded-lg font-bold text-xs transition-all flex items-center justify-center gap-1 shadow-md active:scale-[0.98] cursor-pointer">
                 <i class="fa-solid ${btnIcon}"></i> ${btnLabel}
             </button>
         </div>`;
 
-        return `
+            return `
             <div class="bg-slate-800/60 rounded-2xl border ${cardBorder} p-4">
                 <div class="flex items-start justify-between gap-3 mb-3">
                     <div class="flex-1 min-w-0">
@@ -15309,73 +15439,73 @@ function renderReviewItemsGrid() {
                 </div>
                 ${checkBtnHtml}
             </div>`;
-    }).join('');
-}
-
-function filterReviewItemsByStatus(status) {
-    _reviewActiveFilter = status;
-    const summary = {
-        total: _reviewCurrentSessionItems.length,
-        passed: _reviewCurrentSessionItems.filter(i => i.scan_status === 'ผ่าน').length,
-        failed: _reviewCurrentSessionItems.filter(i => i.scan_status === 'ไม่ผ่าน').length,
-        pending: _reviewCurrentSessionItems.filter(i => i.scan_status === 'รอตรวจสอบ').length
-    };
-    renderReviewSummaryBar(summary);
-    renderReviewItemsGrid();
-}
-window.filterReviewItemsByStatus = filterReviewItemsByStatus;
-
-function openAuditReviewItemModal(itemId) {
-    const item = _reviewCurrentSessionItems.find(i => i._id === itemId);
-    if (!item) return;
-
-    // Populating details
-    const elImei = document.getElementById('audit-review-modal-imei');
-    const elProduct = document.getElementById('audit-review-modal-product');
-    const elScanner = document.getElementById('audit-review-modal-scanner');
-
-    if (elImei) elImei.textContent = item.imei;
-    if (elProduct) elProduct.textContent = item.product_name;
-    if (elScanner) elScanner.textContent = `${item.scanned_by?.name || '—'} ${item.scan_notes ? `(${item.scan_notes})` : ''}`;
-
-    // Populating indicator color
-    const elIndicator = document.getElementById('audit-review-modal-indicator');
-    const statusColors = { 'รอตรวจสอบ': 'bg-amber-500', 'ผ่าน': 'bg-emerald-500', 'ไม่ผ่าน': 'bg-red-500', 'ตรวจใหม่': 'bg-violet-500' };
-    if (elIndicator) {
-        elIndicator.className = `w-2.5 h-2.5 rounded-full ${statusColors[item.scan_status] || 'bg-slate-500'}`;
+        }).join('');
     }
 
-    // Photo container
-    const elPhotoContainer = document.getElementById('audit-review-modal-photo-container');
-    if (elPhotoContainer) {
-        elPhotoContainer.innerHTML = item.box_photo_url
-            ? `<a href="${item.box_photo_url}" target="_blank" class="block w-full h-56 rounded-2xl overflow-hidden border border-slate-700 hover:border-amber-500 transition-all">
+    function filterReviewItemsByStatus(status) {
+        _reviewActiveFilter = status;
+        const summary = {
+            total: _reviewCurrentSessionItems.length,
+            passed: _reviewCurrentSessionItems.filter(i => i.scan_status === 'ผ่าน').length,
+            failed: _reviewCurrentSessionItems.filter(i => i.scan_status === 'ไม่ผ่าน').length,
+            pending: _reviewCurrentSessionItems.filter(i => i.scan_status === 'รอตรวจสอบ').length
+        };
+        renderReviewSummaryBar(summary);
+        renderReviewItemsGrid();
+    }
+    window.filterReviewItemsByStatus = filterReviewItemsByStatus;
+
+    function openAuditReviewItemModal(itemId) {
+        const item = _reviewCurrentSessionItems.find(i => i._id === itemId);
+        if (!item) return;
+
+        // Populating details
+        const elImei = document.getElementById('audit-review-modal-imei');
+        const elProduct = document.getElementById('audit-review-modal-product');
+        const elScanner = document.getElementById('audit-review-modal-scanner');
+
+        if (elImei) elImei.textContent = item.imei;
+        if (elProduct) elProduct.textContent = item.product_name;
+        if (elScanner) elScanner.textContent = `${item.scanned_by?.name || '—'} ${item.scan_notes ? `(${item.scan_notes})` : ''}`;
+
+        // Populating indicator color
+        const elIndicator = document.getElementById('audit-review-modal-indicator');
+        const statusColors = { 'รอตรวจสอบ': 'bg-amber-500', 'ผ่าน': 'bg-emerald-500', 'ไม่ผ่าน': 'bg-red-500', 'ตรวจใหม่': 'bg-violet-500' };
+        if (elIndicator) {
+            elIndicator.className = `w-2.5 h-2.5 rounded-full ${statusColors[item.scan_status] || 'bg-slate-500'}`;
+        }
+
+        // Photo container
+        const elPhotoContainer = document.getElementById('audit-review-modal-photo-container');
+        if (elPhotoContainer) {
+            elPhotoContainer.innerHTML = item.box_photo_url
+                ? `<a href="${item.box_photo_url}" target="_blank" class="block w-full h-56 rounded-2xl overflow-hidden border border-slate-700 hover:border-amber-500 transition-all">
                    <img src="${item.box_photo_url}" referrerpolicy="no-referrer" class="w-full h-full object-cover" alt="กล่อง" />
                </a>`
-            : `<div class="w-full h-48 rounded-2xl bg-slate-950 border border-slate-800 flex flex-col items-center justify-center gap-2">
+                : `<div class="w-full h-48 rounded-2xl bg-slate-950 border border-slate-800 flex flex-col items-center justify-center gap-2">
                    <i class="fa-solid fa-image text-slate-600 text-3xl"></i>
                    <p class="text-slate-500 text-xs">ไม่มีรูปกล่อง</p>
                </div>`;
-    }
+        }
 
-    // Notes area
-    const isReviewable = (_reviewCurrentSessionStatus === 'รอการอนุมัติ' || _reviewCurrentSessionStatus === 'กำลังตรวจนับ') && item.scan_status === 'รอตรวจสอบ';
-    const elNotesArea = document.getElementById('audit-review-modal-notes-area');
-    if (elNotesArea) {
-        elNotesArea.innerHTML = isReviewable
-            ? `<label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">
+        // Notes area
+        const isReviewable = (_reviewCurrentSessionStatus === 'รอการอนุมัติ' || _reviewCurrentSessionStatus === 'กำลังตรวจนับ') && item.scan_status === 'รอตรวจสอบ';
+        const elNotesArea = document.getElementById('audit-review-modal-notes-area');
+        if (elNotesArea) {
+            elNotesArea.innerHTML = isReviewable
+                ? `<label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">
                    หมายเหตุ (ต้องระบุหาก ไม่ผ่าน/ตรวจใหม่)
                </label>
                <input id="modal-review-notes-${item._id}" type="text" placeholder="ระบุหมายเหตุ..."
                    class="w-full px-4 py-2.5 bg-slate-950 border border-slate-700 rounded-xl placeholder-slate-500 focus:outline-none focus:border-amber-500 text-sm transition-all" />`
-            : ``;
-    }
+                : ``;
+        }
 
-    // Actions area
-    const elActionsArea = document.getElementById('audit-review-modal-actions-area');
-    if (elActionsArea) {
-        if (isReviewable) {
-            elActionsArea.innerHTML = `
+        // Actions area
+        const elActionsArea = document.getElementById('audit-review-modal-actions-area');
+        if (elActionsArea) {
+            if (isReviewable) {
+                elActionsArea.innerHTML = `
                 <button onclick="submitModalItemReview(this, '${item._id}', 'ผ่าน')"
                     class="flex-1 py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/10 cursor-pointer">
                     <i class="fa-solid fa-check"></i> ผ่าน
@@ -15388,122 +15518,122 @@ function openAuditReviewItemModal(itemId) {
                     class="flex-1 py-3 bg-red-600 hover:bg-red-500 text-white rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 shadow-lg shadow-red-500/10 cursor-pointer">
                     <i class="fa-solid fa-xmark"></i> ไม่ผ่าน
                 </button>`;
-        } else {
-            // Already reviewed, show status details
-            let resultTextClass = 'text-slate-400';
-            if (item.scan_status === 'ผ่าน') resultTextClass = 'text-emerald-400';
-            else if (item.scan_status === 'ไม่ผ่าน') resultTextClass = 'text-red-400';
-            else if (item.scan_status === 'ตรวจใหม่') resultTextClass = 'text-violet-400';
+            } else {
+                // Already reviewed, show status details
+                let resultTextClass = 'text-slate-400';
+                if (item.scan_status === 'ผ่าน') resultTextClass = 'text-emerald-400';
+                else if (item.scan_status === 'ไม่ผ่าน') resultTextClass = 'text-red-400';
+                else if (item.scan_status === 'ตรวจใหม่') resultTextClass = 'text-violet-400';
 
-            elActionsArea.innerHTML = `
+                elActionsArea.innerHTML = `
                 <div class="w-full p-4 bg-slate-950 rounded-2xl border border-slate-800 text-center">
                     <p class="text-sm text-slate-400">สถานะ: <span class="font-black ${resultTextClass}">${item.scan_status}</span>${item.reviewed_by ? ` โดย ${item.reviewed_by.name}` : ''}</p>
                     ${item.review_notes ? `<p class="text-xs text-slate-500 mt-1 italic">"${item.review_notes}"</p>` : ''}
                 </div>`;
+            }
+        }
+
+        // Open Modal
+        const modal = document.getElementById('modal-audit-review-item');
+        if (modal) {
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            setTimeout(() => {
+                const content = modal.querySelector('.modal-content');
+                if (content) {
+                    content.classList.remove('scale-95');
+                    content.classList.add('scale-100');
+                }
+            }, 50);
         }
     }
 
-    // Open Modal
-    const modal = document.getElementById('modal-audit-review-item');
-    if (modal) {
-        modal.classList.remove('hidden');
-        modal.classList.add('flex');
-        setTimeout(() => {
+    function closeAuditReviewItemModal() {
+        const modal = document.getElementById('modal-audit-review-item');
+        if (modal) {
             const content = modal.querySelector('.modal-content');
             if (content) {
-                content.classList.remove('scale-95');
-                content.classList.add('scale-100');
+                content.classList.remove('scale-100');
+                content.classList.add('scale-95');
             }
-        }, 50);
-    }
-}
-
-function closeAuditReviewItemModal() {
-    const modal = document.getElementById('modal-audit-review-item');
-    if (modal) {
-        const content = modal.querySelector('.modal-content');
-        if (content) {
-            content.classList.remove('scale-100');
-            content.classList.add('scale-95');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+            }, 150);
         }
-        setTimeout(() => {
-            modal.classList.add('hidden');
-            modal.classList.remove('flex');
-        }, 150);
-    }
-}
-
-async function submitModalItemReview(btnEl, itemId, status) {
-    const notesEl = document.getElementById(`modal-review-notes-${itemId}`);
-    const notes = notesEl ? notesEl.value.trim() : '';
-    if ((status === 'ไม่ผ่าน' || status === 'ตรวจใหม่') && !notes) {
-        showToast('กรุณาระบุหมายเหตุ/เหตุผลประกอบการตรวจสอบสำหรับสถานะนี้', 'error');
-        if (notesEl) notesEl.focus();
-        return;
     }
 
-    // Disable all buttons in this review group
-    const parentRow = btnEl.closest('.flex');
-    let originalHtml = btnEl.innerHTML;
-    if (parentRow) {
-        parentRow.querySelectorAll('button').forEach(b => b.disabled = true);
-    }
-    btnEl.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> กำลังส่ง...';
+    async function submitModalItemReview(btnEl, itemId, status) {
+        const notesEl = document.getElementById(`modal-review-notes-${itemId}`);
+        const notes = notesEl ? notesEl.value.trim() : '';
+        if ((status === 'ไม่ผ่าน' || status === 'ตรวจใหม่') && !notes) {
+            showToast('กรุณาระบุหมายเหตุ/เหตุผลประกอบการตรวจสอบสำหรับสถานะนี้', 'error');
+            if (notesEl) notesEl.focus();
+            return;
+        }
 
-    try {
-        const token = localStorage.getItem('silmin_token');
-        const r = await fetch(`/api/stock-audit/items/${itemId}/review`, {
-            method: 'POST',
-            headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ scan_status: status, review_notes: notes })
-        });
-        const d = await r.json();
-        if (d.success) {
-            showToast(d.message);
-            closeAuditReviewItemModal(); // Close modal immediately
-            if (_reviewCurrentSessionId) openAuditReviewDetail(_reviewCurrentSessionId);
-        } else {
-            showToast(d.message || 'เกิดข้อผิดพลาด', 'error');
+        // Disable all buttons in this review group
+        const parentRow = btnEl.closest('.flex');
+        let originalHtml = btnEl.innerHTML;
+        if (parentRow) {
+            parentRow.querySelectorAll('button').forEach(b => b.disabled = true);
+        }
+        btnEl.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> กำลังส่ง...';
+
+        try {
+            const token = localStorage.getItem('silmin_token');
+            const r = await fetch(`/api/stock-audit/items/${itemId}/review`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ scan_status: status, review_notes: notes })
+            });
+            const d = await r.json();
+            if (d.success) {
+                showToast(d.message);
+                closeAuditReviewItemModal(); // Close modal immediately
+                if (_reviewCurrentSessionId) openAuditReviewDetail(_reviewCurrentSessionId);
+            } else {
+                showToast(d.message || 'เกิดข้อผิดพลาด', 'error');
+                if (parentRow) parentRow.querySelectorAll('button').forEach(b => b.disabled = false);
+                btnEl.innerHTML = originalHtml;
+            }
+        } catch (e) {
+            showToast('ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้', 'error');
             if (parentRow) parentRow.querySelectorAll('button').forEach(b => b.disabled = false);
             btnEl.innerHTML = originalHtml;
         }
-    } catch (e) {
-        showToast('ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้', 'error');
-        if (parentRow) parentRow.querySelectorAll('button').forEach(b => b.disabled = false);
-        btnEl.innerHTML = originalHtml;
     }
-}
 
-async function closeAuditSession(sessionId) {
-    const notes = document.getElementById('audit-close-notes')?.value.trim() || '';
-    if (!confirm('ยืนยันปิดรอบและอนุมัติผลการตรวจนับ?')) return;
-    try {
-        const token = localStorage.getItem('silmin_token');
-        const r = await fetch(`/api/stock-audit/sessions/${sessionId}/close`, {
-            method: 'POST',
-            headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ notes })
-        });
-        const d = await r.json();
-        if (d.success) {
-            showToast(`ปิดรอบสำเร็จ! ผ่าน ${d.summary?.passed || 0} / ไม่ผ่าน ${d.summary?.failed || 0} รายการ`);
-            loadAuditReviewSessions();
-        } else showToast(d.message || 'เกิดข้อผิดพลาด', 'error');
-    } catch (e) { showToast('ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้', 'error'); }
-}
+    async function closeAuditSession(sessionId) {
+        const notes = document.getElementById('audit-close-notes')?.value.trim() || '';
+        if (!confirm('ยืนยันปิดรอบและอนุมัติผลการตรวจนับ?')) return;
+        try {
+            const token = localStorage.getItem('silmin_token');
+            const r = await fetch(`/api/stock-audit/sessions/${sessionId}/close`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ notes })
+            });
+            const d = await r.json();
+            if (d.success) {
+                showToast(`ปิดรอบสำเร็จ! ผ่าน ${d.summary?.passed || 0} / ไม่ผ่าน ${d.summary?.failed || 0} รายการ`);
+                loadAuditReviewSessions();
+            } else showToast(d.message || 'เกิดข้อผิดพลาด', 'error');
+        } catch (e) { showToast('ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้', 'error'); }
+    }
 
-// Expose Stock Audit functions to the window object for inline HTML event handlers
-window.closeAuditVerifyModal = closeAuditVerifyModal;
-window.submitModalAuditItem = submitModalAuditItem;
-window.fillImeiInput = fillImeiInput;
-window.deleteAuditItem = deleteAuditItem;
-window.toggleExpectedList = toggleExpectedList;
-window.filterExpectedList = filterExpectedList;
-window.closeAuditSession = closeAuditSession;
-window.openAuditReviewDetail = openAuditReviewDetail;
-window.verifyAuditImei = verifyAuditImei;
-window.openAuditReviewItemModal = openAuditReviewItemModal;
-window.closeAuditReviewItemModal = closeAuditReviewItemModal;
-window.submitModalItemReview = submitModalItemReview;
+    // Expose Stock Audit functions to the window object for inline HTML event handlers
+    window.closeAuditVerifyModal = closeAuditVerifyModal;
+    window.submitModalAuditItem = submitModalAuditItem;
+    window.fillImeiInput = fillImeiInput;
+    window.deleteAuditItem = deleteAuditItem;
+    window.toggleExpectedList = toggleExpectedList;
+    window.filterExpectedList = filterExpectedList;
+    window.closeAuditSession = closeAuditSession;
+    window.openAuditReviewDetail = openAuditReviewDetail;
+    window.verifyAuditImei = verifyAuditImei;
+    window.openAuditReviewItemModal = openAuditReviewItemModal;
+    window.closeAuditReviewItemModal = closeAuditReviewItemModal;
+    window.submitModalItemReview = submitModalItemReview;
 
 }); // End of DOMContentLoaded
