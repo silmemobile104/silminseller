@@ -499,6 +499,163 @@ const depositSchema = new mongoose.Schema({
 
 const Deposit = mongoose.model('Deposit', depositSchema, 'deposit');
 
+// ============================================
+// Chart of Accounts (COA) System
+// ============================================
+
+// AccountCategory (หมวดหมู่บัญชี)
+const accountCategorySchema = new mongoose.Schema({
+    category_code: { type: String, required: true, unique: true },
+    category_name: { type: String, required: true, enum: ['สินทรัพย์', 'หนี้สิน', 'ทุน', 'รายได้', 'ค่าใช้จ่าย'] }
+}, { timestamps: true });
+const AccountCategory = mongoose.model('AccountCategory', accountCategorySchema, 'accountcategory');
+
+// AccountGroup (กลุ่มบัญชี)
+const accountGroupSchema = new mongoose.Schema({
+    group_code: { type: String, required: true, unique: true },
+    group_name: { type: String, required: true },
+    category_id: { type: mongoose.Schema.Types.ObjectId, ref: 'AccountCategory', required: true }
+}, { timestamps: true });
+const AccountGroup = mongoose.model('AccountGroup', accountGroupSchema, 'accountgroup');
+
+// AccountChart (ผังบัญชี)
+const accountChartSchema = new mongoose.Schema({
+    account_code: { type: String, required: true, unique: true },
+    account_name: { type: String, required: true },
+    category_id: { type: mongoose.Schema.Types.ObjectId, ref: 'AccountCategory', required: true },
+    group_id: { type: mongoose.Schema.Types.ObjectId, ref: 'AccountGroup', required: true },
+    level: { type: Number, default: 1, min: 1, max: 3 },
+    is_system: { type: Boolean, default: false },
+    is_active: { type: Boolean, default: true }
+}, { timestamps: true });
+const AccountChart = mongoose.model('AccountChart', accountChartSchema, 'accountchart');
+
+// PnLConfig (ตั้งค่างบกำไรขาดทุน)
+const pnlConfigSchema = new mongoose.Schema({
+    sort_order: { type: Number, required: true },
+    display_name: { type: String, required: true },
+    section: { type: String, enum: ['revenue', 'expense'], required: true },
+    category_id: { type: mongoose.Schema.Types.ObjectId, ref: 'AccountCategory' },
+    group_id: { type: mongoose.Schema.Types.ObjectId, ref: 'AccountGroup' },
+    account_ids: [{ type: mongoose.Schema.Types.ObjectId, ref: 'AccountChart' }],
+    is_bold: { type: Boolean, default: false },
+    is_total_line: { type: Boolean, default: false }
+}, { timestamps: true });
+const PnLConfig = mongoose.model('PnLConfig', pnlConfigSchema, 'pnlconfig');
+
+// DisbursementVoucher (ใบสำคัญจ่าย)
+const disbursementVoucherSchema = new mongoose.Schema({
+    voucher_no: { type: String, required: true, unique: true },
+    payment_date: { type: Date, required: true, default: Date.now },
+    branch_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Branch' },
+    debit_account_id: { type: mongoose.Schema.Types.ObjectId, ref: 'AccountChart', required: true },
+    credit_account_id: { type: mongoose.Schema.Types.ObjectId, ref: 'AccountChart', required: true },
+    amount: { type: Number, required: true },
+    vat_type: { type: String, enum: ['NO_VAT', 'VAT_INCLUDED', 'VAT_EXCLUDED'], default: 'NO_VAT' },
+    net_amount: { type: Number, default: 0 },
+    vat_amount: { type: Number, default: 0 },
+    payee_name: { type: String, default: '' },
+    remark: { type: String, default: '' },
+    proof_image_url: { type: String, default: '' },
+    reference_id: { type: mongoose.Schema.Types.ObjectId, default: null },
+    reference_type: { type: String, default: '' },
+    created_by: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee', required: true },
+    created_at: { type: Date, default: Date.now }
+}, { timestamps: true });
+const DisbursementVoucher = mongoose.model('DisbursementVoucher', disbursementVoucherSchema, 'disbursementvoucher');
+
+// Seed default COA data
+async function seedDefaultCOA() {
+    try {
+        let categories = await AccountCategory.find();
+        if (categories.length === 0) {
+            console.log('กำลังสร้างหมวดหมู่บัญชีเริ่มต้น (Account Categories)...');
+            categories = await AccountCategory.insertMany([
+                { category_code: '1', category_name: 'สินทรัพย์' },
+                { category_code: '2', category_name: 'หนี้สิน' },
+                { category_code: '3', category_name: 'ทุน' },
+                { category_code: '4', category_name: 'รายได้' },
+                { category_code: '5', category_name: 'ค่าใช้จ่าย' }
+            ]);
+        }
+
+        const catMap = {};
+        categories.forEach(c => { catMap[c.category_code] = c._id; });
+
+        const defaultGroups = [
+            { group_code: '11', group_name: 'สินทรัพย์หมุนเวียน', category_code: '1' },
+            { group_code: '12', group_name: 'สินทรัพย์ไม่หมุนเวียน', category_code: '1' },
+            { group_code: '21', group_name: 'หนี้สินหมุนเวียน', category_code: '2' },
+            { group_code: '31', group_name: 'ทุนเจ้าของ', category_code: '3' },
+            { group_code: '41', group_name: 'รายได้จากการขาย', category_code: '4' },
+            { group_code: '42', group_name: 'รายได้อื่น', category_code: '4' },
+            { group_code: '51', group_name: 'ค่าใช้จ่ายในการดำเนินงาน', category_code: '5' },
+            { group_code: '52', group_name: 'ต้นทุนสินค้าที่ขาย', category_code: '5' }
+        ];
+
+        for (const dg of defaultGroups) {
+            let g = await AccountGroup.findOne({ group_code: dg.group_code });
+            if (!g) {
+                console.log(`กำลังสร้างกลุ่มบัญชีเริ่มต้น: ${dg.group_code} - ${dg.group_name}`);
+                await AccountGroup.create({
+                    group_code: dg.group_code,
+                    group_name: dg.group_name,
+                    category_id: catMap[dg.category_code]
+                });
+            }
+        }
+
+        const allGroups = await AccountGroup.find();
+        const grpMap = {};
+        allGroups.forEach(g => { grpMap[g.group_code] = g._id; });
+
+        const defaultAccounts = [
+            // สินทรัพย์
+            { account_code: '110101', account_name: 'เงินสดหน้าร้าน', category_code: '1', group_code: '11', level: 3, is_system: true },
+            { account_code: '110201', account_name: 'ธนาคาร (เงินโอน)', category_code: '1', group_code: '11', level: 3, is_system: true },
+            { account_code: '110301', account_name: 'ลูกหนี้การค้า/ไฟแนนซ์', category_code: '1', group_code: '11', level: 3, is_system: true },
+            { account_code: '110401', account_name: 'สินค้าคงเหลือ', category_code: '1', group_code: '11', level: 3, is_system: true },
+            // หนี้สิน
+            { account_code: '210101', account_name: 'เจ้าหนี้การค้า (PO)', category_code: '2', group_code: '21', level: 3, is_system: true },
+            { account_code: '210201', account_name: 'ภาษีมูลค่าเพิ่มค้างจ่าย', category_code: '2', group_code: '21', level: 3, is_system: true },
+            // ทุน
+            { account_code: '310101', account_name: 'ทุนเจ้าของกิจการ', category_code: '3', group_code: '31', level: 3, is_system: true },
+            // รายได้
+            { account_code: '410101', account_name: 'รายได้จากการขายสินค้า', category_code: '4', group_code: '41', level: 3, is_system: true },
+            { account_code: '410102', account_name: 'รายได้ค่าธรรมเนียมสัญญา', category_code: '4', group_code: '41', level: 3, is_system: true },
+            { account_code: '410103', account_name: 'รายได้ค่าปลด iCloud', category_code: '4', group_code: '41', level: 3, is_system: true },
+            { account_code: '420101', account_name: 'รายได้อื่นๆ', category_code: '4', group_code: '42', level: 3, is_system: true },
+            // ค่าใช้จ่าย
+            { account_code: '510101', account_name: 'ค่าเช่าพื้นที่สาขา', category_code: '5', group_code: '51', level: 3, is_system: true },
+            { account_code: '510102', account_name: 'เงินเดือนและค่าตอบแทน', category_code: '5', group_code: '51', level: 3, is_system: true },
+            { account_code: '510201', account_name: 'ค่าสาธารณูปโภค (น้ำ/ไฟ/เน็ต)', category_code: '5', group_code: '51', level: 3, is_system: true },
+            { account_code: '510301', account_name: 'ค่าส่งสินค้า/ไปรษณีย์', category_code: '5', group_code: '51', level: 3, is_system: true },
+            { account_code: '510401', account_name: 'ค่าโฆษณาและการตลาด', category_code: '5', group_code: '51', level: 3, is_system: true },
+            { account_code: '510501', account_name: 'ค่าใช้จ่ายเบ็ดเตล็ด', category_code: '5', group_code: '51', level: 3, is_system: true },
+            { account_code: '520101', account_name: 'ต้นทุนสินค้าที่ขาย', category_code: '5', group_code: '52', level: 3, is_system: true }
+        ];
+
+        for (const da of defaultAccounts) {
+            let a = await AccountChart.findOne({ account_code: da.account_code });
+            if (!a) {
+                console.log(`กำลังสร้างผังบัญชีเริ่มต้น: ${da.account_code} - ${da.account_name}`);
+                await AccountChart.create({
+                    account_code: da.account_code,
+                    account_name: da.account_name,
+                    category_id: catMap[da.category_code],
+                    group_id: grpMap[da.group_code],
+                    level: da.level,
+                    is_system: da.is_system
+                });
+            }
+        }
+
+        console.log('✅ ตรวจสอบและสร้างผังบัญชีเริ่มต้นเรียบร้อย');
+    } catch (err) {
+        console.error('❌ เกิดข้อผิดพลาดในการสร้างผังบัญชี:', err.message);
+    }
+}
+
 module.exports = {
     Branch,
     Role,
@@ -524,6 +681,12 @@ module.exports = {
     StockAuditSession,
     StockAuditItem,
     Deposit,
+    AccountCategory,
+    AccountGroup,
+    AccountChart,
+    PnLConfig,
+    DisbursementVoucher,
     seedDefaultRoles,
-    migrateProductsToERP
+    migrateProductsToERP,
+    seedDefaultCOA
 };

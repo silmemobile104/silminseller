@@ -31,7 +31,9 @@ const {
     FinanceReceivable,
     StockAuditSession,
     StockAuditItem,
-    Deposit
+    Deposit,
+    AccountChart,
+    DisbursementVoucher
 } = require('../models');
 
 const { uploadBufferToDriveInFolder } = require('../utils/googleDrive');
@@ -2553,6 +2555,20 @@ router.get('/sales/daily-summary', async (req, res) => {
             }
         }
 
+        const cashAccount = await AccountChart.findOne({ account_code: '110101' });
+        let cashDisbursed = 0;
+        if (cashAccount) {
+            const dvQuery = {
+                payment_date: { $gte: todayStart, $lte: todayEnd },
+                credit_account_id: cashAccount._id
+            };
+            if (branchId) {
+                dvQuery.branch_id = branchId;
+            }
+            const todayDisbursements = await DisbursementVoucher.find(dvQuery);
+            cashDisbursed = todayDisbursements.reduce((sum, v) => sum + (v.amount || 0), 0);
+        }
+
         res.json({
             success: true,
             data: {
@@ -2560,6 +2576,7 @@ router.get('/sales/daily-summary', async (req, res) => {
                 cash_received: cashReceived,
                 finance_downpayment: financeDownpayment,
                 devices_sold: devicesSold,
+                cash_disbursed: cashDisbursed,
                 bills: todayTransactions
             }
         });
