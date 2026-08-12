@@ -516,10 +516,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const addChip = (key, label) => {
             const chip = document.createElement('button');
             chip.type = 'button';
-            chip.className = 'px-2.5 py-1 bg-slate-700/60 hover:bg-slate-600 text-slate-200 rounded-full text-xs font-medium border border-slate-600 transition-colors flex items-center gap-2';
+            chip.className = 'px-4 py-2.5 rounded-xl bg-[#4D4D4D]/40 border border-[#3F3F46] text-white text-sm font-medium transition-colors flex items-center gap-2';
             chip.dataset.key = key;
             chip.innerHTML = `<span>${label}</span><i class="fa-solid fa-xmark text-[10px] opacity-80"></i>`;
-            chip.addEventListener('click', () => {
+            chip.addEventListener('click', (e) => {
+                if (!e.target.closest('i.fa-xmark')) return;
+
                 if (key === 'search') {
                     stockSearchQuery = '';
                     if (stockSearchInput) stockSearchInput.value = '';
@@ -881,6 +883,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const openModal = () => {
         if (addProductModal) {
             addProductModal.classList.remove('opacity-0', 'pointer-events-none');
+
+            // Removed restoring drafted prices per user request
         }
     };
 
@@ -909,7 +913,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // Reset Title
             const modalTitle = document.getElementById('modal-title');
-            if (modalTitle) modalTitle.innerHTML = `<img src="icons_img/box (1) 5.png" alt="">เพิ่มสินค้าใหม่`;
+            if (modalTitle) modalTitle.innerHTML = `<img src="icons_img/box (1) 5.png" alt="" width="22" height="22">เพิ่มสินค้าใหม่`;
 
             // Show Excel Button in modal header
             const btnExcelOpen = document.getElementById('btn-add-product-excel');
@@ -950,8 +954,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 renderCustomSelectPills('product-category-container', 'product-category', json.data.productTypes);
                 renderCustomColorSwatches('product-color-container', 'product-color', json.data.productColors);
                 renderCustomSelectPills('product-capacity-container', 'product-capacity', json.data.productCapacities);
-                renderCustomSelectPills('product-supplier-container', 'product-supplier', json.data.suppliers);
+                populateDropdown(document.getElementById('product-supplier'), json.data.suppliers, '-- เลือก Supplier --');
                 renderCustomSelectPills('product-unit-container', 'product-unit', json.data.productUnits);
+
+                const pnSelect = document.getElementById('product-name');
+                if (pnSelect && json.data.productNames) {
+                    pnSelect.innerHTML = '<option value="">-- เลือกชื่อสินค้า --</option>';
+                    json.data.productNames.forEach(item => {
+                        const opt = document.createElement('option');
+                        opt.value = item.name;
+                        opt.textContent = item.name;
+                        pnSelect.appendChild(opt);
+                    });
+                }
 
                 populateDropdown(modalFinanceCompany, json.data.financeCompanies, 'เลือกบริษัทจัดไฟแนนซ์');
 
@@ -1076,16 +1091,16 @@ document.addEventListener('DOMContentLoaded', () => {
             wrapper.addEventListener('click', () => {
                 // Remove active from all
                 Array.from(container.children).forEach(child => {
-                    child.querySelector('.custom-swatch').classList.remove('border-white', 'scale-110');
+                    child.querySelector('.custom-swatch').classList.remove('border-[#FFE169]', 'scale-110');
                     child.querySelector('.custom-swatch').classList.add('border-transparent');
-                    child.querySelector('.custom-swatch-label').classList.remove('text-white');
-                    child.querySelector('.custom-swatch-label').classList.add('text-slate-400');
+                    child.querySelector('.custom-swatch-label').classList.remove('text-[#FFE169]', 'text-[13px]');
+                    child.querySelector('.custom-swatch-label').classList.add('text-slate-400', 'text-[10px]');
                 });
                 // Set active to clicked
                 swatch.classList.remove('border-transparent');
-                swatch.classList.add('border-white', 'scale-110');
-                label.classList.remove('text-slate-400');
-                label.classList.add('text-white');
+                swatch.classList.add('border-[#FFE169]', 'scale-110');
+                label.classList.remove('text-slate-400', 'text-[10px]');
+                label.classList.add('text-[#FFE169]', 'text-[13px]');
                 // Update hidden input
                 hiddenInput.value = item._id;
             });
@@ -1094,19 +1109,103 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     };
 
-    // Initialize Quick Price Buttons
-    document.addEventListener('DOMContentLoaded', () => {
-        document.querySelectorAll('.btn-quick-price').forEach(btn => {
-            btn.addEventListener('click', () => {
-                const targetId = btn.dataset.target;
-                const val = btn.dataset.val;
-                if (targetId && val) {
-                    const input = document.getElementById(targetId);
-                    if (input) input.value = val;
+    // Dynamic Quick Prices from sessionStorage
+    const loadQuickPrices = () => {
+        let costPrices = [];
+        let sellingPrices = [];
+        try {
+            const savedCost = sessionStorage.getItem('silmin_frequent_cost_prices');
+            if (savedCost) costPrices = JSON.parse(savedCost);
+            const savedSelling = sessionStorage.getItem('silmin_frequent_selling_prices');
+            if (savedSelling) sellingPrices = JSON.parse(savedSelling);
+        } catch (e) {
+            console.error('Error loading frequent prices', e);
+        }
+
+        const defaultPrices = [15999, 25999, 32999, 45999];
+
+        const getTopPrices = (pricesArray) => {
+            // Robust parsing: extract numbers even if legacy format [{price:..., count:...}] was used
+            let recent = Array.isArray(pricesArray)
+                ? pricesArray.map(x => typeof x === 'object' && x !== null ? Number(x.price) : Number(x)).filter(x => !isNaN(x) && x > 0)
+                : [];
+
+            for (let def of defaultPrices) {
+                if (recent.length >= 4) break;
+                if (!recent.includes(def)) {
+                    recent.push(def);
                 }
+            }
+            return recent.slice(0, 4);
+        };
+
+        const topCostPrices = getTopPrices(costPrices);
+        const topSellingPrices = getTopPrices(sellingPrices);
+
+        const renderButtons = (containerId, targetId, topPricesArray) => {
+            const container = document.getElementById(containerId);
+            if (!container) return;
+            container.innerHTML = '';
+            topPricesArray.forEach(price => {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'btn-quick-price px-2.5 py-1 bg-[#333] text-slate-300 rounded-full text-[11px] hover:text-[#FFE169] border border-transparent hover:border-[#FFE169] transition-all';
+                btn.textContent = Number(price).toLocaleString();
+                btn.addEventListener('click', () => {
+                    const input = document.getElementById(targetId);
+                    if (input) {
+                        input.value = price;
+                        input.dispatchEvent(new Event('input', { bubbles: true }));
+                    }
+                });
+                container.appendChild(btn);
             });
+        };
+
+        renderButtons('quick-price-cost-container', 'cost-price', topCostPrices);
+        renderButtons('quick-price-selling-container', 'selling-price', topSellingPrices);
+    };
+
+    window.recordFrequentPrice = (price, type) => {
+        if (!price || isNaN(price) || price <= 0) return;
+        const p = Number(price);
+        const storageKey = type === 'cost' ? 'silmin_frequent_cost_prices' : 'silmin_frequent_selling_prices';
+        let prices = [];
+        try {
+            const saved = sessionStorage.getItem(storageKey);
+            if (saved) prices = JSON.parse(saved);
+        } catch (e) { }
+
+        // Remove if exists to move it to the front
+        prices = prices.filter(x => x !== p);
+        prices.unshift(p);
+
+        // Keep only top 10 recent
+        prices = prices.slice(0, 10);
+        sessionStorage.setItem(storageKey, JSON.stringify(prices));
+        loadQuickPrices();
+    };
+
+    loadQuickPrices();
+
+    // Auto record on blur
+    const costInput = document.getElementById('cost-price');
+    if (costInput) {
+        costInput.addEventListener('change', (e) => {
+            if (e.target.value) {
+                window.recordFrequentPrice(e.target.value, 'cost');
+            }
         });
-    });
+    }
+
+    const sellingInput = document.getElementById('selling-price');
+    if (sellingInput) {
+        sellingInput.addEventListener('change', (e) => {
+            if (e.target.value) {
+                window.recordFrequentPrice(e.target.value, 'selling');
+            }
+        });
+    }
 
 
     const populateApproveImportBranchFilter = () => {
@@ -1736,7 +1835,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         products.forEach(product => {
             const row = document.createElement('tr');
-            row.className = 'hover:bg-slate-700/20 transition-colors';
+            row.className = 'hover:bg-[#464646] transition-colors';
 
             const categoryName = product.type_id ? product.type_id.name : 'ทั่วไป';
             const unitName = product.unit_id ? product.unit_id.name : '';
@@ -1746,8 +1845,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const isDevice = checkIsDevice(categoryName, product);
             const stockDisplay = isDevice
-                ? `${product.quantity || product.imeis.length} <span class="text-xs text-slate-500 font-normal">เครื่อง</span>`
-                : `${product.quantity} <span class="text-xs text-slate-500 font-normal">${unitName}</span>`;
+                ? `${product.quantity || product.imeis.length} <span class="text-xs text-white font-normal">เครื่อง</span>`
+                : `${product.quantity} <span class="text-xs text-white font-normal">${unitName}</span>`;
 
             let statusColor = (product.quantity) > 0 ? 'bg-emerald-500' : 'bg-red-500';
             let statusText = (product.quantity) > 0 ? 'มีสินค้า' : 'สินค้าหมด';
@@ -1776,10 +1875,10 @@ document.addEventListener('DOMContentLoaded', () => {
                         </div>
                     </div>
                 </td>
-                <td class="px-6 py-4 text-slate-400 text-sm">${product.branch_id ? product.branch_id.name : '-'}</td>
-                <td class="px-6 py-4 text-slate-400 text-sm">${product.supplier_id ? product.supplier_id.name : '-'}</td>
+                <td class="px-6 py-4 text-white text-sm">${product.branch_id ? product.branch_id.name : '-'}</td>
+                <td class="px-6 py-4 text-white text-sm">${product.supplier_id ? product.supplier_id.name : '-'}</td>
                 <td class="px-6 py-4"><span class="px-2.5 py-1 bg-slate-700 text-slate-300 rounded-md text-xs font-medium">${categoryName}</span></td>
-                <td class="px-6 py-4 text-right text-slate-300 font-mono">฿${product.selling_price.toLocaleString()}</td>
+                <td class="px-6 py-4 text-right text-white font-mono">฿${product.selling_price.toLocaleString()}</td>
                 <td class="px-6 py-4 text-center text-white font-medium">${stockDisplay}</td>
                 <td class="px-6 py-4">
                     <div class="inline-flex items-center gap-2 px-2.5 py-1 rounded-md ${statusBadge}">
@@ -1789,9 +1888,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 </td>
                 <td class="px-6 py-4 text-right">
                     <div class="flex items-center justify-end gap-1">
-                        <button class="print-barcode-btn text-slate-400 hover:text-amber-400 transition-colors p-2" data-id="${product._id}" title="พิมพ์บาร์โค้ด"><i class="fa-solid fa-print"></i></button>
-                        <button class="view-product-btn text-slate-400 hover:text-indigo-400 transition-colors p-2" data-id="${product._id}" title="ดูรายละเอียด"><i class="fa-solid fa-eye"></i></button>
-                        ${window.__userPermissions && window.__userPermissions.delete_stock ? `<button class="delete-product-btn text-slate-400 hover:text-red-400 transition-colors p-2" data-id="${product._id}"><i class="fa-solid fa-trash"></i></button>` : ''}
+                        <button class="print-barcode-btn text-white hover:text-amber-400 transition-colors p-2" data-id="${product._id}" title="พิมพ์บาร์โค้ด"><i class="fa-solid fa-print"></i></button>
+                        <button class="view-product-btn text-white hover:text-indigo-400 transition-colors p-2" data-id="${product._id}" title="ดูรายละเอียด"><i class="fa-solid fa-eye"></i></button>
+                        ${window.__userPermissions && window.__userPermissions.delete_stock ? `<button class="delete-product-btn text-white hover:text-red-400 transition-colors p-2" data-id="${product._id}"><i class="fa-solid fa-trash"></i></button>` : ''}
                     </div>
                 </td>
             `;
@@ -2420,42 +2519,88 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Build payload
                 const nameValue = productName ? productName.value.trim() : '';
 
-                // Manual Validation for Required inputs
-                if (productCode && !productCode.value.trim()) {
-                    showToast('กรุณาระบุรหัสสินค้า (Product Code)', 'error');
-                    productCode.focus();
-                    return;
-                }
-                if (productSupplier && !productSupplier.value) {
-                    showToast('กรุณาเลือกผู้จัดจำหน่าย (Supplier)', 'error');
-                    return;
-                }
-                if (productBranch && !productBranch.value) {
-                    showToast('กรุณาระบุสาขาที่จัดเก็บ (Branch)', 'error');
-                    return;
-                }
+                // Highlight helper function
+                const highlightInvalidInput = (element, message) => {
+                    if (!element) return;
+                    showToast(message, 'error');
+
+                    let displayElement = element;
+                    let isButton = false;
+
+                    if (element.tagName === 'SELECT' || element.type === 'hidden') {
+                        isButton = true;
+                    }
+
+                    // If input is hidden (e.g. category, color), highlight its container instead
+                    if (element.type === 'hidden') {
+                        const container = document.getElementById(element.id + '-container');
+                        if (container) displayElement = container;
+                    }
+
+                    if (element.focus && typeof element.focus === 'function' && element.type !== 'hidden') {
+                        element.focus();
+                    } else if (displayElement.scrollIntoView) {
+                        displayElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+
+                    // Remove any existing highlights first
+                    document.querySelectorAll('.invalid-highlight').forEach(el => {
+                        // Do not remove p-2 or rounded-xl to avoid stripping them from elements that inherently have them
+                        el.classList.remove('!border-red-500', '!ring-2', '!ring-red-500/20', 'invalid-highlight');
+                    });
+
+                    // Remove any existing inline text messages
+                    document.querySelectorAll('.invalid-inline-msg').forEach(el => el.remove());
+
+                    // Highlight current element
+                    displayElement.classList.add('!border-red-500', '!ring-2', '!ring-red-500/20', 'invalid-highlight');
+                    if (displayElement !== element) {
+                        displayElement.classList.add('p-2', 'rounded-xl'); // Add padding for pill containers
+                    }
+
+                    // Create inline error text
+                    const errorText = document.createElement('p');
+                    errorText.className = 'invalid-inline-msg text-red-500 text-[11px] mt-1.5 ml-1 font-medium animate-pulse';
+                    const prefixMsg = isButton ? 'กรุณาเลือกข้อมูล' : 'กรุณากรอกข้อมูล';
+                    errorText.innerHTML = `<i class="fa-solid fa-circle-exclamation mr-1"></i> ${prefixMsg}`;
+
+                    // Insert the error text right after the display element
+                    displayElement.parentNode.insertBefore(errorText, displayElement.nextSibling);
+
+                    // Remove highlight when user types or selects
+                    const removeHighlight = () => {
+                        displayElement.classList.remove('!border-red-500', '!ring-2', '!ring-red-500/20', 'invalid-highlight');
+                        if (errorText.parentNode) errorText.remove();
+                        element.removeEventListener('input', removeHighlight);
+                        element.removeEventListener('change', removeHighlight);
+                        displayElement.removeEventListener('click', removeHighlight);
+                    };
+                    element.addEventListener('input', removeHighlight);
+                    element.addEventListener('change', removeHighlight);
+                    displayElement.addEventListener('click', removeHighlight);
+                };
+
+                // Manual Validation for Required inputs (in visual order)
                 if (!nameValue) {
-                    showToast('กรุณาระบุชื่อสินค้า (Product Name)', 'error');
-                    productName.focus();
+                    highlightInvalidInput(productName, 'กรุณาระบุชื่อสินค้า (Product Name)');
+                    return;
+                }
+                if (productCode && !productCode.value.trim()) {
+                    highlightInvalidInput(productCode, 'กรุณาระบุรหัสสินค้า (Product Code)');
                     return;
                 }
                 if (productCategory && !productCategory.value) {
-                    showToast('กรุณาเลือกหมวดหมู่สินค้า (Category)', 'error');
+                    highlightInvalidInput(productCategory, 'กรุณาเลือกหมวดหมู่สินค้า (Category)');
                     return;
                 }
                 if (productColor && !productColor.value) {
-                    showToast('กรุณาเลือกสีสินค้า (Color)', 'error');
+                    highlightInvalidInput(productColor, 'กรุณาเลือกสีสินค้า (Color)');
                     return;
                 }
 
                 // For custom UI, we might always validate these if they are relevant
                 if (productCapacity && !productCapacity.value) {
-                    showToast('กรุณาเลือกความจุอุปกรณ์ (Capacity)', 'error');
-                    return;
-                }
-
-                if (productUnit && !productUnit.value) {
-                    showToast('กรุณาเลือกหน่วยนับสินค้า (Unit)', 'error');
+                    highlightInvalidInput(productCapacity, 'กรุณาเลือกความจุอุปกรณ์ (Capacity)');
                     return;
                 }
 
@@ -2463,18 +2608,27 @@ document.addEventListener('DOMContentLoaded', () => {
                 const sellingPriceElement = document.getElementById('selling-price');
 
                 if (costPriceElement && costPriceElement.value.trim() === '') {
-                    showToast('กรุณาระบุราคาต้นทุน (Cost Price)', 'error');
-                    costPriceElement.focus();
+                    highlightInvalidInput(costPriceElement, 'กรุณาระบุราคาต้นทุน (Cost Price)');
                     return;
                 }
                 if (sellingPriceElement && sellingPriceElement.value.trim() === '') {
-                    showToast('กรุณาระบุราคาขาย (Selling Price)', 'error');
-                    sellingPriceElement.focus();
+                    highlightInvalidInput(sellingPriceElement, 'กรุณาระบุราคาขาย (Selling Price)');
                     return;
                 }
-                if (productQuantity && productQuantity.value.trim() === '') {
-                    showToast('กรุณาระบุจำนวนสินค้า (Quantity)', 'error');
-                    productQuantity.focus();
+                if (productQuantity && (productQuantity.value.trim() === '' || Number(productQuantity.value) <= 0)) {
+                    highlightInvalidInput(productQuantity, 'กรุณากรอกจำนวนสินค้าให้มากกว่า 0');
+                    return;
+                }
+                if (productBranch && !productBranch.value) {
+                    highlightInvalidInput(productBranch, 'กรุณาระบุสาขาที่จัดเก็บ (Branch)');
+                    return;
+                }
+                if (productSupplier && !productSupplier.value) {
+                    highlightInvalidInput(productSupplier, 'กรุณาเลือกผู้จัดจำหน่าย (Supplier)');
+                    return;
+                }
+                if (productUnit && !productUnit.value) {
+                    highlightInvalidInput(productUnit, 'กรุณาเลือกหน่วยนับสินค้า (Unit)');
                     return;
                 }
 
@@ -2528,6 +2682,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 if (result.success) {
                     showToast(isEditing ? 'แก้ไขข้อมูลสินค้าสำเร็จ' : 'บันทึกข้อมูลสินค้าใหม่สำเร็จ');
+                    if (window.recordFrequentPrice) {
+                        window.recordFrequentPrice(payload.cost_price, 'cost');
+                        window.recordFrequentPrice(payload.selling_price, 'selling');
+                    }
                     closeModal();
                     await fetchProducts(); // Refresh Table
                 } else {
@@ -2987,6 +3145,123 @@ document.addEventListener('DOMContentLoaded', () => {
         if (stockFilterSort) stockFilters.sortBy = stockFilterSort.value || 'newest';
     };
 
+    // Custom Filter Pills Logic
+    document.querySelectorAll('.filter-pill').forEach(pill => {
+        pill.addEventListener('click', function() {
+            const targetId = this.getAttribute('data-target');
+            const value = this.getAttribute('data-value');
+            const targetSelect = document.getElementById(targetId);
+            
+            const isActive = this.classList.contains('active');
+            
+            // Remove active from all siblings
+            this.parentElement.querySelectorAll('.filter-pill').forEach(s => {
+                s.classList.remove('active', 'border-[#FFE169]', 'text-[#FFE169]');
+                s.classList.add('border-[#3F3F46]', 'text-slate-300');
+            });
+            
+            if (isActive && value !== '') {
+                // If it was active and not the "all" option, toggle off to "all"
+                const allOption = this.parentElement.querySelector('.filter-pill[data-value=""]');
+                if(allOption) {
+                    allOption.classList.remove('border-[#3F3F46]', 'text-slate-300');
+                    allOption.classList.add('active', 'border-[#FFE169]', 'text-[#FFE169]');
+                }
+                if (targetSelect) {
+                    targetSelect.value = '';
+                    targetSelect.dispatchEvent(new Event('change'));
+                }
+            } else {
+                // Toggle on
+                this.classList.remove('border-[#3F3F46]', 'text-slate-300');
+                this.classList.add('active', 'border-[#FFE169]', 'text-[#FFE169]');
+                if (targetSelect) {
+                    targetSelect.value = value;
+                    targetSelect.dispatchEvent(new Event('change'));
+                }
+            }
+        });
+    });
+
+    // Custom Filter Swatches Logic
+    document.querySelectorAll('.filter-swatch').forEach(swatch => {
+        swatch.addEventListener('click', function() {
+            const targetId = this.getAttribute('data-target');
+            const value = this.getAttribute('data-value');
+            const targetSelect = document.getElementById(targetId);
+            
+            const isActive = this.classList.contains('active');
+            
+            // Remove active from all siblings
+            this.parentElement.querySelectorAll('.filter-swatch').forEach(s => {
+                s.classList.remove('active');
+                const indicator = s.querySelector('.swatch-indicator');
+                if (indicator) {
+                    indicator.classList.remove('border-[#FFE169]', 'scale-110');
+                    indicator.classList.add('border-transparent');
+                }
+                const label = s.querySelector('.swatch-text');
+                if (label) {
+                    label.classList.remove('text-[#FFE169]', 'text-[13px]');
+                    label.classList.add('text-slate-400', 'text-[10px]');
+                }
+            });
+            
+            if (isActive) {
+                // Toggle off
+                if (targetSelect) {
+                    targetSelect.value = '';
+                    targetSelect.dispatchEvent(new Event('change'));
+                }
+            } else {
+                // Toggle on
+                this.classList.add('active');
+                const indicator = this.querySelector('.swatch-indicator');
+                if (indicator) {
+                    indicator.classList.remove('border-transparent');
+                    indicator.classList.add('border-[#FFE169]', 'scale-110');
+                }
+                const label = this.querySelector('.swatch-text');
+                if (label) {
+                    label.classList.remove('text-slate-400', 'text-[10px]');
+                    label.classList.add('text-[#FFE169]', 'text-[13px]');
+                }
+                if (targetSelect) {
+                    targetSelect.value = value;
+                    targetSelect.dispatchEvent(new Event('change'));
+                }
+            }
+        });
+    });
+
+    const resetCustomFilterUI = () => {
+        // Reset pills to "all"
+        document.querySelectorAll('.filter-pill[data-value=""]').forEach(allPill => {
+            const siblings = allPill.parentElement.querySelectorAll('.filter-pill');
+            siblings.forEach(s => {
+                s.classList.remove('active', 'border-[#FFE169]', 'text-[#FFE169]');
+                s.classList.add('border-[#3F3F46]', 'text-slate-300');
+            });
+            allPill.classList.remove('border-[#3F3F46]', 'text-slate-300');
+            allPill.classList.add('active', 'border-[#FFE169]', 'text-[#FFE169]');
+        });
+        
+        // Reset swatches
+        document.querySelectorAll('.filter-swatch').forEach(s => {
+            s.classList.remove('active');
+            const indicator = s.querySelector('.swatch-indicator');
+            if (indicator) {
+                indicator.classList.remove('border-[#FFE169]', 'scale-110');
+                indicator.classList.add('border-transparent');
+            }
+            const label = s.querySelector('.swatch-text');
+            if (label) {
+                label.classList.remove('text-[#FFE169]', 'text-[13px]');
+                label.classList.add('text-slate-400', 'text-[10px]');
+            }
+        });
+    };
+
     if (btnStockFilterApply) {
         btnStockFilterApply.addEventListener('click', () => {
             syncFiltersFromPanel();
@@ -2998,6 +3273,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (btnStockFilterReset) {
         btnStockFilterReset.addEventListener('click', () => {
             resetStockFiltersToDefault();
+            resetCustomFilterUI(); // Added to reset pills and swatches
             applyStockSearchAndFilters();
         });
     }

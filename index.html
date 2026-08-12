@@ -970,9 +970,11 @@
                         </div>
                         <div class="flex items-center gap-3">
                             <button id="btn-add-product"
-                                class="px-4 py-2 bg-[#FFE169] cursor-pointer hover:bg-[#E2B93C] text-[#333333] font-medium rounded-xl shadow-lg shadow-cyan-500/20 transition-all flex items-center gap-2 w-fit glow-button">
+                                class="px-4 py-2 bg-[#FFE169] relative cursor-pointer hover:bg-[#E2B93C] text-[#333333] font-medium rounded-xl shadow-lg shadow-cyan-500/20 transition-all flex items-center gap-2 w-fit glow-button">
                                 <i class="fa-solid fa-plus"></i>
-                                เพิ่มสินค้าในสต็อก(กรณีไม่มีใบสั่งซื้อ)
+                                <p>เพิ่มสินค้าในสต็อก</p>
+                                <p class="text-xs absolute -top-3 right-0 px-2 py-1 bg-white rounded-full">
+                                    (กรณีไม่มีใบสั่งซื้อ) </p>
                             </button>
                         </div>
                     </div>
@@ -1028,25 +1030,25 @@
                         <div class="px-6 py-4 ">
                             <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                                 <div id="stock-active-filters" class="flex flex-wrap gap-2"></div>
-                                <div id="stock-result-count" class="text-xs text-slate-300 font-medium"></div>
+                                <div id="stock-result-count" class="text-xs text-white font-medium"></div>
                             </div>
                         </div>
                         <div class="overflow-x-auto">
                             <table class="w-full text-left text-sm whitespace-nowrap border-collapse">
-                                <thead class="bg-black/20 text-slate-300 border-b border-slate-600">
+                                <thead class="bg-[#4D4D4D]/40 text-white ">
                                     <tr>
-                                        <th class="px-6 py-4 font-bold text-[15px]">รหัสสินค้า</th>
-                                        <th class="px-6 py-4 font-bold text-[15px]">ชื่อสินค้า</th>
-                                        <th class="px-6 py-4 font-bold text-[15px]">ที่จัดเก็บ</th>
-                                        <th class="px-6 py-4 font-bold text-[15px]">Supplier</th>
-                                        <th class="px-6 py-4 font-bold text-[15px]">หมวดหมู่</th>
-                                        <th class="px-6 py-4 font-bold text-[15px] text-right">ราคา</th>
-                                        <th class="px-6 py-4 font-bold text-[15px] text-center">คงเหลือ</th>
-                                        <th class="px-6 py-4 font-bold text-[15px]">สถานะ</th>
-                                        <th class="px-6 py-4 font-bold text-[15px] text-right">จัดการ</th>
+                                        <th class="px-6 py-4 font-semibold text-[15px]">รหัสสินค้า</th>
+                                        <th class="px-6 py-4 font-semibold text-[15px]">ชื่อสินค้า</th>
+                                        <th class="px-6 py-4 font-semibold text-[15px]">ที่จัดเก็บ</th>
+                                        <th class="px-6 py-4 font-semibold text-[15px]">Supplier</th>
+                                        <th class="px-6 py-4 font-semibold text-[15px]">หมวดหมู่</th>
+                                        <th class="px-6 py-4 font-semibold text-[15px] text-right">ราคา</th>
+                                        <th class="px-6 py-4 font-semibold text-[15px] text-center">คงเหลือ</th>
+                                        <th class="px-6 py-4 font-semibold text-[15px]">สถานะ</th>
+                                        <th class="px-6 py-4 font-semibold text-[15px] text-right">จัดการ</th>
                                     </tr>
                                 </thead>
-                                <tbody id="product-table-body" class="divide-y divide-slate-600/50">
+                                <tbody id="product-table-body" class="divide-y divide-[#464646]">
                                     <!-- Data will be loaded here -->
                                 </tbody>
                             </table>
@@ -3857,11 +3859,11 @@
     <div id="add-product-modal"
         class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm opacity-0 pointer-events-none transition-opacity duration-300 p-4">
         <div
-            class="modal-content relative w-[95%] md:w-[650px] max-h-[90vh] overflow-y-auto p-8 bg-[#18181B] rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.5)] border border-slate-800 custom-scrollbar">
+            class="modal-content relative w-[95%] md:w-[650px] max-h-[90vh] overflow-y-auto p-8 bg-[#18181B] rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.5)] border border-[#4D4D4D] custom-scrollbar">
             <!-- Modal Header -->
             <div class="flex items-center justify-between mb-6 pb-2 border-b border-[#333333]">
                 <h3 id="modal-title" class="text-lg font-medium text-white flex items-center gap-2">
-                    <img src="icons_img/box (1) 5.png" alt="">เพิ่มสินค้าใหม่
+                    <!-- <img src="icons_img/box (1) 5.png" alt="" width="19" height="19">เพิ่มสินค้าใหม่ -->
                 </h3>
                 <div class="flex items-center gap-4">
                     <button id="btn-add-product-excel" type="button"
@@ -3887,9 +3889,15 @@
                             <i class="fa-solid fa-mobile-screen text-white"></i> ชื่อสินค้า <span
                                 class="text-red-500">*</span>
                         </label>
-                        <input type="text" id="product-name" required
-                            class="w-full px-4 py-2.5 rounded-xl bg-[#27272A] border border-[#3F3F46] text-white focus:border-[#FFE169] focus:outline-none transition-all placeholder-slate-500 text-sm"
-                            placeholder="ระบุชื่อ">
+                        <div class="relative">
+                            <select id="product-name" required
+                                class="w-full px-4 py-2.5 rounded-xl bg-[#27272A] border border-[#3F3F46] text-white focus:border-[#FFE169] focus:outline-none transition-all text-sm appearance-none">
+                                <option value="">-- เลือกชื่อสินค้า --</option>
+                            </select>
+                            <div class="absolute right-4 top-[14px] pointer-events-none text-slate-400">
+                                <i class="fa-solid fa-chevron-down text-xs"></i>
+                            </div>
+                        </div>
                     </div>
                     <div class="space-y-2">
                         <label class="text-slate-200 font-medium flex items-center gap-2 text-xs">
@@ -3921,7 +3929,7 @@
                     </label>
                     <input type="hidden" id="product-color" required>
                     <div id="product-color-container"
-                        class="flex items-center gap-3 overflow-x-auto hide-scrollbar pb-2 px-8">
+                        class="flex items-center gap-3 overflow-x-auto hide-scrollbar py-2 px-8">
                         <!-- Swatches injected by JS -->
                     </div>
                     <button type="button"
@@ -3966,19 +3974,8 @@
                         <input type="number" id="cost-price" required min="0" step="any"
                             class="w-full px-4 py-2.5 rounded-xl bg-[#27272A] border border-[#3F3F46] text-white focus:border-[#FFE169] focus:outline-none transition-all placeholder-slate-500 text-sm"
                             placeholder="0">
-                        <div class="flex gap-1.5 flex-wrap pt-1">
-                            <button type="button"
-                                class="btn-quick-price px-2.5 py-1 bg-[#333] text-slate-300 rounded-full text-[11px] hover:text-[#FFE169] border border-transparent hover:border-[#FFE169] transition-all"
-                                data-target="cost-price" data-val="15999">15,999</button>
-                            <button type="button"
-                                class="btn-quick-price px-2.5 py-1 bg-[#333] text-slate-300 rounded-full text-[11px] hover:text-[#FFE169] border border-transparent hover:border-[#FFE169] transition-all"
-                                data-target="cost-price" data-val="25999">25,999</button>
-                            <button type="button"
-                                class="btn-quick-price px-2.5 py-1 bg-[#333] text-slate-300 rounded-full text-[11px] hover:text-[#FFE169] border border-transparent hover:border-[#FFE169] transition-all"
-                                data-target="cost-price" data-val="32999">32,999</button>
-                            <button type="button"
-                                class="btn-quick-price px-2.5 py-1 bg-[#333] text-slate-300 rounded-full text-[11px] hover:text-[#FFE169] border border-transparent hover:border-[#FFE169] transition-all"
-                                data-target="cost-price" data-val="45999">45,999</button>
+                        <div id="quick-price-cost-container" class="flex gap-1.5 flex-wrap pt-1">
+                            <!-- Quick price buttons injected by JS -->
                         </div>
                     </div>
                     <div class="space-y-2">
@@ -3988,19 +3985,8 @@
                         <input type="number" id="selling-price" required min="0" step="any"
                             class="w-full px-4 py-2.5 rounded-xl bg-[#27272A] border border-[#3F3F46] text-white focus:border-[#FFE169] focus:outline-none transition-all placeholder-slate-500 text-sm"
                             placeholder="0">
-                        <div class="flex gap-1.5 flex-wrap pt-1">
-                            <button type="button"
-                                class="btn-quick-price px-2.5 py-1 bg-[#333] text-slate-300 rounded-full text-[11px] hover:text-[#FFE169] border border-transparent hover:border-[#FFE169] transition-all"
-                                data-target="selling-price" data-val="15999">15,999</button>
-                            <button type="button"
-                                class="btn-quick-price px-2.5 py-1 bg-[#333] text-slate-300 rounded-full text-[11px] hover:text-[#FFE169] border border-transparent hover:border-[#FFE169] transition-all"
-                                data-target="selling-price" data-val="25999">25,999</button>
-                            <button type="button"
-                                class="btn-quick-price px-2.5 py-1 bg-[#333] text-slate-300 rounded-full text-[11px] hover:text-[#FFE169] border border-transparent hover:border-[#FFE169] transition-all"
-                                data-target="selling-price" data-val="32999">32,999</button>
-                            <button type="button"
-                                class="btn-quick-price px-2.5 py-1 bg-[#333] text-slate-300 rounded-full text-[11px] hover:text-[#FFE169] border border-transparent hover:border-[#FFE169] transition-all"
-                                data-target="selling-price" data-val="45999">45,999</button>
+                        <div id="quick-price-selling-container" class="flex gap-1.5 flex-wrap pt-1">
+                            <!-- Quick price buttons injected by JS -->
                         </div>
                     </div>
                 </div>
@@ -4012,7 +3998,7 @@
                             <i class="fa-solid fa-boxes-stacked text-white"></i> จำนวน <span
                                 class="text-red-500">*</span>
                         </label>
-                        <input type="number" id="product-quantity" required min="1" value="1"
+                        <input type="number" id="product-quantity" required min="0" value="0"
                             class="w-full px-4 py-2.5 rounded-xl bg-[#27272A] border border-[#3F3F46] text-white focus:border-[#FFE169] focus:outline-none transition-all placeholder-slate-500 text-sm"
                             placeholder="ต่ำสุด">
                     </div>
@@ -4036,32 +4022,18 @@
 
                 <!-- Supplier & Unit -->
                 <div class="grid grid-cols-2 gap-5">
-                    <div class="space-y-2 relative group">
+                    <div class="space-y-2 relative">
                         <label class="text-slate-200 font-medium flex items-center gap-2 text-xs">
                             <i class="fa-solid fa-truck text-white"></i> Supplier / แหล่งที่มา <span
                                 class="text-red-500">*</span>
                         </label>
-                        <input type="hidden" id="product-supplier" required>
-                        <div id="product-supplier-container"
-                            class="flex items-center gap-2 overflow-x-auto hide-scrollbar pb-1 px-8">
-                            <!-- Pills injected by JS -->
+                        <select id="product-supplier" required
+                            class="w-full px-4 py-3 rounded-xl bg-[#2a2a2a] border border-gray-700 text-slate-200 focus:border-[#FFE169] focus:ring-1 focus:ring-[#FFE169] focus:outline-none transition-all text-sm appearance-none">
+                            <option value="">-- เลือก Supplier --</option>
+                        </select>
+                        <div class="absolute right-4 top-[38px] pointer-events-none text-slate-400">
+                            <i class="fa-solid fa-chevron-down text-xs"></i>
                         </div>
-                        <button type="button"
-                            onclick="document.getElementById('product-supplier-container').scrollBy({left: -150, behavior: 'smooth'})"
-                            class="absolute left-0 top-6 bottom-1 w-10 flex items-center justify-start bg-gradient-to-r from-[#18181B] via-[#18181B]/90 to-transparent pointer-events-none">
-                            <div
-                                class="w-5 h-5 bg-[#3F3F46] hover:bg-[#FFE169] rounded-full flex items-center justify-center pointer-events-auto cursor-pointer shadow-md text-white hover:text-[#333333] transition-colors hover:scale-110 transition-transform">
-                                <i class="fa-solid fa-chevron-left text-[10px]"></i>
-                            </div>
-                        </button>
-                        <button type="button"
-                            onclick="document.getElementById('product-supplier-container').scrollBy({left: 150, behavior: 'smooth'})"
-                            class="absolute right-0 top-6 bottom-1 w-10 flex items-center justify-end bg-gradient-to-l from-[#18181B] via-[#18181B]/90 to-transparent pointer-events-none">
-                            <div
-                                class="w-5 h-5 bg-[#FFE169] rounded-full flex items-center justify-center pointer-events-auto cursor-pointer shadow-md text-[#333333] hover:scale-110 transition-transform">
-                                <i class="fa-solid fa-chevron-right text-[10px]"></i>
-                            </div>
-                        </button>
                     </div>
                     <div class="space-y-2">
                         <label class="text-slate-200 font-medium flex items-center gap-2 text-xs">
@@ -4094,121 +4066,266 @@
 
     <!-- STOCK FILTER MODAL -->
     <div id="stock-filter-panel"
-        class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 backdrop-blur-sm opacity-0 pointer-events-none transition-all duration-300 p-4">
+        class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm opacity-0 pointer-events-none transition-opacity duration-300 p-4">
         <div
-            class="relative w-[95%] md:w-[450px] max-h-[90vh] overflow-y-auto p-6 bg-slate-800 rounded-2xl shadow-2xl border border-slate-700 custom-scrollbar">
-            <div class="flex items-center justify-between mb-4 pb-2 border-b border-slate-700">
-                <h4 class="text-sm font-bold  flex items-center gap-2">
-                    <i class="fa-solid fa-sliders text-cyan-400"></i> ตัวกรองคลังสินค้าอย่างละเอียด
-                </h4>
-                <button id="btn-stock-filter-close" type="button" class="text-slate-400 hover: transition-colors p-1">
+            class="modal-content relative w-[95%] md:w-[650px] max-h-[90vh] overflow-y-auto p-8 bg-[#18181B] rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.5)] border border-[#4D4D4D] custom-scrollbar">
+            <!-- Modal Header -->
+            <div class="flex items-center justify-between mb-6 pb-2 border-b border-[#333333]">
+                <h3 class="text-lg font-medium text-white flex items-center gap-2">
+                    <i class="fa-solid fa-filter text-slate-400"></i> ตัวกรองคลังสินค้าอย่างละเอียด
+                </h3>
+                <button id="btn-stock-filter-close" type="button" class="text-red-500 hover:text-red-400 transition-colors">
                     <i class="fa-solid fa-xmark text-xl"></i>
                 </button>
             </div>
-            <div class="space-y-4">
-                <!-- Section: ข้อมูลลักษณะสินค้า -->
-                <div>
-                    <label class="text-xs font-semibold text-slate-400 block mb-1">ประเภทสินค้า</label>
-                    <select id="stock-filter-prod-type"
-                        class="w-full bg-white border border-slate-300 text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-cyan-500">
+
+            <!-- Form/Filters -->
+            <div class="space-y-5 text-sm">
+                <!-- Section: ชื่อสินค้า -->
+                <div class="space-y-2">
+                    <label class="text-slate-200 font-medium flex items-center gap-2 text-xs">
+                        <i class="fa-solid fa-mobile-screen text-white"></i> ชื่อสินค้า <span class="text-red-500">*</span>
+                    </label>
+                    <input type="text" id="stock-filter-product-name"
+                        class="w-full px-4 py-2.5 rounded-xl bg-[#27272A] border border-[#3F3F46] text-white focus:border-[#FFE169] focus:outline-none transition-all placeholder-slate-500 text-sm"
+                        placeholder="ระบุชื่อ">
+                </div>
+
+                <!-- Section: ประเภทสินค้า -->
+                <div class="space-y-2">
+                    <label class="text-slate-200 font-medium flex items-center gap-2 text-xs">
+                        <i class="fa-solid fa-tag text-white"></i> ประเภทสินค้า
+                    </label>
+                    <select id="stock-filter-prod-type" class="hidden">
                         <option value="">ทุกประเภท</option>
                     </select>
+                    <div id="stock-filter-category-container"
+                        class="flex items-center gap-2 overflow-x-auto hide-scrollbar pb-1">
+                        <!-- Pills -->
+                        <button type="button" class="custom-pill flex-shrink-0 px-4 py-2.5 bg-[#27272A] border border-[#FFE169] rounded-xl text-[#FFE169] text-sm hover:border-[#FFE169] hover:text-white transition-colors filter-pill active" data-target="stock-filter-prod-type" data-value="">ทั้งหมด</button>
+                        <button type="button" class="custom-pill flex-shrink-0 px-4 py-2.5 bg-[#27272A] border border-[#3F3F46] rounded-xl text-slate-300 text-sm hover:border-[#FFE169] hover:text-white transition-colors filter-pill" data-target="stock-filter-prod-type" data-value="iPad">iPad</button>
+                        <button type="button" class="custom-pill flex-shrink-0 px-4 py-2.5 bg-[#27272A] border border-[#3F3F46] rounded-xl text-slate-300 text-sm hover:border-[#FFE169] hover:text-white transition-colors filter-pill" data-target="stock-filter-prod-type" data-value="iPhone">iPhone</button>
+                        <button type="button" class="custom-pill flex-shrink-0 px-4 py-2.5 bg-[#27272A] border border-[#3F3F46] rounded-xl text-slate-300 text-sm hover:border-[#FFE169] hover:text-white transition-colors filter-pill" data-target="stock-filter-prod-type" data-value="Accessories">Accessories</button>
+                        <button type="button" class="custom-pill flex-shrink-0 px-4 py-2.5 bg-[#27272A] border border-[#3F3F46] rounded-xl text-slate-300 text-sm hover:border-[#FFE169] hover:text-white transition-colors filter-pill" data-target="stock-filter-prod-type" data-value="มือถือ">มือถือ</button>
+                        <button type="button" class="custom-pill flex-shrink-0 px-4 py-2.5 bg-[#27272A] border border-[#3F3F46] rounded-xl text-slate-300 text-sm hover:border-[#FFE169] hover:text-white transition-colors filter-pill" data-target="stock-filter-prod-type" data-value="อุปกรณ์เสริม">อุปกรณ์เสริม</button>
+                    </div>
                 </div>
 
-                <div>
-                    <label class="text-xs font-semibold text-slate-400 block mb-1">ชื่อสินค้า</label>
-                    <select id="stock-filter-product-name"
-                        class="w-full bg-white border border-slate-300 text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-cyan-500">
-                        <option value="">ทุกชื่อสินค้า</option>
+                <!-- Section: สภาพ -->
+                <div class="space-y-2">
+                    <label class="text-slate-200 font-medium flex items-center gap-2 text-xs">
+                        สภาพ
+                    </label>
+                    <select id="stock-filter-condition" class="hidden">
+                        <option value="">ทุกสภาพ</option>
                     </select>
-                </div>
-
-                <div class="grid grid-cols-2 gap-3">
-                    <div>
-                        <label class="text-xs font-semibold text-slate-400 block mb-1">สี</label>
-                        <select id="stock-filter-color"
-                            class="w-full bg-white border border-slate-300 text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-cyan-500">
-                            <option value="">ทุกสี</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="text-xs font-semibold text-slate-400 block mb-1">ความจุ</label>
-                        <select id="stock-filter-capacity"
-                            class="w-full bg-white border border-slate-300 text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-cyan-500">
-                            <option value="">ทุกความจุ</option>
-                        </select>
+                    <div id="stock-filter-condition-container"
+                        class="flex items-center gap-2 overflow-x-auto hide-scrollbar pb-1">
+                        <button type="button" class="custom-pill flex-shrink-0 px-4 py-2.5 bg-[#27272A] border border-[#FFE169] rounded-xl text-[#FFE169] text-sm hover:border-[#FFE169] hover:text-white transition-colors filter-pill active" data-target="stock-filter-condition" data-value="">ทั้งหมด</button>
+                        <button type="button" class="custom-pill flex-shrink-0 px-4 py-2.5 bg-[#27272A] border border-[#3F3F46] rounded-xl text-slate-300 text-sm hover:border-[#FFE169] hover:text-white transition-colors filter-pill" data-target="stock-filter-condition" data-value="มือ1">มือ1</button>
+                        <button type="button" class="custom-pill flex-shrink-0 px-4 py-2.5 bg-[#27272A] border border-[#3F3F46] rounded-xl text-slate-300 text-sm hover:border-[#FFE169] hover:text-white transition-colors filter-pill" data-target="stock-filter-condition" data-value="มือ2">มือ2</button>
+                        <button type="button" class="custom-pill flex-shrink-0 px-4 py-2.5 bg-[#27272A] border border-[#3F3F46] rounded-xl text-slate-300 text-sm hover:border-[#FFE169] hover:text-white transition-colors filter-pill" data-target="stock-filter-condition" data-value="มือ2 TH">มือ2 TH</button>
+                        <button type="button" class="custom-pill flex-shrink-0 px-4 py-2.5 bg-[#27272A] border border-[#3F3F46] rounded-xl text-slate-300 text-sm hover:border-[#FFE169] hover:text-white transition-colors filter-pill" data-target="stock-filter-condition" data-value="มือ2 ZP">มือ2 ZP</button>
+                        <button type="button" class="custom-pill flex-shrink-0 px-4 py-2.5 bg-[#27272A] border border-[#3F3F46] rounded-xl text-slate-300 text-sm hover:border-[#FFE169] hover:text-white transition-colors filter-pill" data-target="stock-filter-condition" data-value="มือ2 JP">มือ2 JP</button>
                     </div>
                 </div>
 
-                <div class="grid grid-cols-2 gap-3">
-                    <div>
-                        <label class="text-xs font-semibold text-slate-400 block mb-1">สภาพสินค้า</label>
-                        <select id="stock-filter-condition"
-                            class="w-full bg-white border border-slate-300 text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-cyan-500">
-                            <option value="">ทุกสภาพ</option>
-                        </select>
+                <!-- Section: สี (Swatches) -->
+                <div class="space-y-2 relative group">
+                    <label class="text-slate-200 font-medium flex items-center gap-2 text-xs">
+                        <i class="fa-solid fa-palette text-white"></i> สี
+                    </label>
+                    <select id="stock-filter-color" class="hidden">
+                        <option value="">ทุกสี</option>
+                    </select>
+                    <div id="stock-filter-color-container"
+                        class="flex items-center gap-3 overflow-x-auto hide-scrollbar py-2 px-8">
+                        <div class="flex flex-col items-center gap-1 cursor-pointer filter-swatch custom-swatch-wrapper" data-target="stock-filter-color" data-value="ดำ">
+                            <div class="w-7 h-7 rounded-full border-2 border-transparent transition-all custom-swatch swatch-indicator" style="background-color: #000000"></div>
+                            <span class="text-[10px] text-slate-400 whitespace-nowrap swatch-text transition-colors">ดำ</span>
+                        </div>
+                        <div class="flex flex-col items-center gap-1 cursor-pointer filter-swatch custom-swatch-wrapper" data-target="stock-filter-color" data-value="เหลืองอ่อน">
+                            <div class="w-7 h-7 rounded-full border-2 border-transparent transition-all custom-swatch swatch-indicator" style="background-color: #FFF3B0"></div>
+                            <span class="text-[10px] text-slate-400 whitespace-nowrap swatch-text transition-colors">เหลืองอ่อน</span>
+                        </div>
+                        <div class="flex flex-col items-center gap-1 cursor-pointer filter-swatch custom-swatch-wrapper" data-target="stock-filter-color" data-value="ฟ้า">
+                            <div class="w-7 h-7 rounded-full border-2 border-transparent transition-all custom-swatch swatch-indicator" style="background-color: #32ADE6"></div>
+                            <span class="text-[10px] text-slate-400 whitespace-nowrap swatch-text transition-colors">ฟ้า</span>
+                        </div>
+                        <div class="flex flex-col items-center gap-1 cursor-pointer filter-swatch custom-swatch-wrapper" data-target="stock-filter-color" data-value="เขียว">
+                            <div class="w-7 h-7 rounded-full border-2 border-transparent transition-all custom-swatch swatch-indicator" style="background-color: #34C759"></div>
+                            <span class="text-[10px] text-slate-400 whitespace-nowrap swatch-text transition-colors">เขียว</span>
+                        </div>
+                        <div class="flex flex-col items-center gap-1 cursor-pointer filter-swatch custom-swatch-wrapper" data-target="stock-filter-color" data-value="ม่วง">
+                            <div class="w-7 h-7 rounded-full border-2 border-transparent transition-all custom-swatch swatch-indicator" style="background-color: #AF52DE"></div>
+                            <span class="text-[10px] text-slate-400 whitespace-nowrap swatch-text transition-colors">ม่วง</span>
+                        </div>
+                        <div class="flex flex-col items-center gap-1 cursor-pointer filter-swatch custom-swatch-wrapper" data-target="stock-filter-color" data-value="แดง">
+                            <div class="w-7 h-7 rounded-full border-2 border-transparent transition-all custom-swatch swatch-indicator" style="background-color: #FF3B30"></div>
+                            <span class="text-[10px] text-slate-400 whitespace-nowrap swatch-text transition-colors">แดง</span>
+                        </div>
+                        <div class="flex flex-col items-center gap-1 cursor-pointer filter-swatch custom-swatch-wrapper" data-target="stock-filter-color" data-value="เหลืองเข้ม">
+                            <div class="w-7 h-7 rounded-full border-2 border-transparent transition-all custom-swatch swatch-indicator" style="background-color: #FFC300"></div>
+                            <span class="text-[10px] text-slate-400 whitespace-nowrap swatch-text transition-colors">เหลืองเข้ม</span>
+                        </div>
+                        <div class="flex flex-col items-center gap-1 cursor-pointer filter-swatch custom-swatch-wrapper" data-target="stock-filter-color" data-value="ส้ม">
+                            <div class="w-7 h-7 rounded-full border-2 border-transparent transition-all custom-swatch swatch-indicator" style="background-color: #FF9500"></div>
+                            <span class="text-[10px] text-slate-400 whitespace-nowrap swatch-text transition-colors">ส้ม</span>
+                        </div>
+                        <div class="flex flex-col items-center gap-1 cursor-pointer filter-swatch custom-swatch-wrapper" data-target="stock-filter-color" data-value="เทา">
+                            <div class="w-7 h-7 rounded-full border-2 border-transparent transition-all custom-swatch swatch-indicator" style="background-color: #8E8E93"></div>
+                            <span class="text-[10px] text-slate-400 whitespace-nowrap swatch-text transition-colors">เทา</span>
+                        </div>
+                        <div class="flex flex-col items-center gap-1 cursor-pointer filter-swatch custom-swatch-wrapper" data-target="stock-filter-color" data-value="ซิลเวอร์">
+                            <div class="w-7 h-7 rounded-full border-2 border-transparent transition-all custom-swatch swatch-indicator" style="background-color: #C0C0C0"></div>
+                            <span class="text-[10px] text-slate-400 whitespace-nowrap swatch-text transition-colors">ซิลเวอร์</span>
+                        </div>
                     </div>
-                    <div>
-                        <label class="text-xs font-semibold text-slate-400 block mb-1">หน่วยนับ</label>
-                        <select id="stock-filter-unit"
-                            class="w-full bg-white border border-slate-300 text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-cyan-500">
-                            <option value="">ทุกหน่วยนับ</option>
-                        </select>
+                    <button type="button"
+                        onclick="document.getElementById('stock-filter-color-container').scrollBy({left: -150, behavior: 'smooth'})"
+                        class="absolute left-0 top-6 bottom-2 w-10 flex items-center justify-start bg-gradient-to-r from-[#18181B] via-[#18181B]/90 to-transparent pointer-events-none">
+                        <div
+                            class="w-5 h-5 bg-[#3F3F46] hover:bg-[#FFE169] rounded-full flex items-center justify-center pointer-events-auto cursor-pointer shadow-md text-white hover:text-[#333333] transition-colors hover:scale-110 transition-transform">
+                            <i class="fa-solid fa-chevron-left text-[10px]"></i>
+                        </div>
+                    </button>
+                    <button type="button"
+                        onclick="document.getElementById('stock-filter-color-container').scrollBy({left: 150, behavior: 'smooth'})"
+                        class="absolute right-0 top-6 bottom-2 w-10 flex items-center justify-end bg-gradient-to-l from-[#18181B] via-[#18181B]/90 to-transparent pointer-events-none">
+                        <div
+                            class="w-5 h-5 bg-[#FFE169] rounded-full flex items-center justify-center pointer-events-auto cursor-pointer shadow-md text-[#333333] hover:scale-110 transition-transform">
+                            <i class="fa-solid fa-chevron-right text-[10px]"></i>
+                        </div>
+                    </button>
+                </div>
+
+                <!-- Section: ความจุ -->
+                <div class="space-y-2">
+                    <label class="text-slate-200 font-medium flex items-center gap-2 text-xs">
+                        <i class="fa-solid fa-microchip text-white"></i> ความจุ
+                    </label>
+                    <select id="stock-filter-capacity" class="hidden">
+                        <option value="">ทุกความจุ</option>
+                    </select>
+                    <div id="stock-filter-capacity-container"
+                        class="flex items-center gap-2 overflow-x-auto hide-scrollbar pb-1">
+                        <button type="button" class="custom-pill flex-shrink-0 px-4 py-2.5 bg-[#27272A] border border-[#FFE169] rounded-xl text-[#FFE169] text-sm hover:border-[#FFE169] hover:text-white transition-colors filter-pill active" data-target="stock-filter-capacity" data-value="">ทั้งหมด</button>
+                        <button type="button" class="custom-pill flex-shrink-0 px-4 py-2.5 bg-[#27272A] border border-[#3F3F46] rounded-xl text-slate-300 text-sm hover:border-[#FFE169] hover:text-white transition-colors filter-pill" data-target="stock-filter-capacity" data-value="64 GB">64 GB</button>
+                        <button type="button" class="custom-pill flex-shrink-0 px-4 py-2.5 bg-[#27272A] border border-[#3F3F46] rounded-xl text-slate-300 text-sm hover:border-[#FFE169] hover:text-white transition-colors filter-pill" data-target="stock-filter-capacity" data-value="128 GB">128 GB</button>
+                        <button type="button" class="custom-pill flex-shrink-0 px-4 py-2.5 bg-[#27272A] border border-[#3F3F46] rounded-xl text-slate-300 text-sm hover:border-[#FFE169] hover:text-white transition-colors filter-pill" data-target="stock-filter-capacity" data-value="256 GB">256 GB</button>
+                        <button type="button" class="custom-pill flex-shrink-0 px-4 py-2.5 bg-[#27272A] border border-[#3F3F46] rounded-xl text-slate-300 text-sm hover:border-[#FFE169] hover:text-white transition-colors filter-pill" data-target="stock-filter-capacity" data-value="512 GB">512 GB</button>
+                        <button type="button" class="custom-pill flex-shrink-0 px-4 py-2.5 bg-[#27272A] border border-[#3F3F46] rounded-xl text-slate-300 text-sm hover:border-[#FFE169] hover:text-white transition-colors filter-pill" data-target="stock-filter-capacity" data-value="1 T">1 T</button>
+                        <button type="button" class="custom-pill flex-shrink-0 px-4 py-2.5 bg-[#27272A] border border-[#3F3F46] rounded-xl text-slate-300 text-sm hover:border-[#FFE169] hover:text-white transition-colors filter-pill" data-target="stock-filter-capacity" data-value="2 T">2 T</button>
+                    </div>
+                </div>
+                
+                <select id="stock-filter-unit" class="hidden">
+                    <option value="">ทุกหน่วยนับ</option>
+                </select>
+
+                <!-- Section: ช่วงราคาต้นทุน (บาท) -->
+                <div class="space-y-2 pt-2">
+                    <label class="text-slate-200 font-medium flex items-center gap-2 text-xs">
+                        <i class="fa-solid fa-money-bill text-white"></i> ช่วงราคาต้นทุน (บาท)
+                    </label>
+                    <div class="grid grid-cols-2 gap-5">
+                        <div class="space-y-1">
+                            <input id="stock-filter-cost-min" type="number" inputmode="numeric" placeholder="ต่ำสุด"
+                                class="w-full px-4 py-2.5 rounded-xl bg-[#27272A] border border-[#3F3F46] text-white focus:border-[#FFE169] focus:outline-none transition-all placeholder-slate-500 text-sm" />
+                            <div class="flex gap-1 flex-wrap pt-1">
+                                <button type="button" class="px-2 py-0.5 bg-[#3F3F46] rounded text-[10px] text-slate-300 hover:text-white hover:bg-slate-600" onclick="document.getElementById('stock-filter-cost-min').value=15000">15,000</button>
+                                <button type="button" class="px-2 py-0.5 bg-[#3F3F46] rounded text-[10px] text-slate-300 hover:text-white hover:bg-slate-600" onclick="document.getElementById('stock-filter-cost-min').value=25000">25,000</button>
+                                <button type="button" class="px-2 py-0.5 bg-[#3F3F46] rounded text-[10px] text-slate-300 hover:text-white hover:bg-slate-600" onclick="document.getElementById('stock-filter-cost-min').value=32900">32,900</button>
+                                <button type="button" class="px-2 py-0.5 bg-[#3F3F46] rounded text-[10px] text-slate-300 hover:text-white hover:bg-slate-600" onclick="document.getElementById('stock-filter-cost-min').value=45900">45,900</button>
+                            </div>
+                        </div>
+                        <div class="space-y-1">
+                            <input id="stock-filter-cost-max" type="number" inputmode="numeric" placeholder="สูงสุด"
+                                class="w-full px-4 py-2.5 rounded-xl bg-[#27272A] border border-[#3F3F46] text-white focus:border-[#FFE169] focus:outline-none transition-all placeholder-slate-500 text-sm" />
+                            <div class="flex gap-1 flex-wrap pt-1">
+                                <button type="button" class="px-2 py-0.5 bg-[#3F3F46] rounded text-[10px] text-slate-300 hover:text-white hover:bg-slate-600" onclick="document.getElementById('stock-filter-cost-max').value=17900">17,900</button>
+                                <button type="button" class="px-2 py-0.5 bg-[#3F3F46] rounded text-[10px] text-slate-300 hover:text-white hover:bg-slate-600" onclick="document.getElementById('stock-filter-cost-max').value=30900">30,900</button>
+                                <button type="button" class="px-2 py-0.5 bg-[#3F3F46] rounded text-[10px] text-slate-300 hover:text-white hover:bg-slate-600" onclick="document.getElementById('stock-filter-cost-max').value=38900">38,900</button>
+                                <button type="button" class="px-2 py-0.5 bg-[#3F3F46] rounded text-[10px] text-slate-300 hover:text-white hover:bg-slate-600" onclick="document.getElementById('stock-filter-cost-max').value=48900">48,900</button>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
-                <!-- Section: ราคา -->
-                <div class="border-t border-slate-700/60 pt-3">
-                    <span class="text-xs font-bold text-slate-300 block mb-2">ช่วงราคาขาย (บาท)</span>
-                    <div class="grid grid-cols-2 gap-2">
-                        <input id="stock-filter-price-min" type="number" inputmode="numeric" placeholder="ต่ำสุด"
-                            class="w-full bg-white border border-slate-300 text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-cyan-500 placeholder-slate-400" />
-                        <input id="stock-filter-price-max" type="number" inputmode="numeric" placeholder="สูงสุด"
-                            class="w-full bg-white border border-slate-300 text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-cyan-500 placeholder-slate-400" />
+                <!-- Section: ช่วงราคาขาย (บาท) -->
+                <div class="space-y-2 pt-2">
+                    <label class="text-slate-200 font-medium flex items-center gap-2 text-xs">
+                        <i class="fa-solid fa-tag text-white"></i> ช่วงราคาขาย (บาท)
+                    </label>
+                    <div class="grid grid-cols-2 gap-5">
+                        <div class="space-y-1">
+                            <input id="stock-filter-price-min" type="number" inputmode="numeric" placeholder="ต่ำสุด"
+                                class="w-full px-4 py-2.5 rounded-xl bg-[#27272A] border border-[#3F3F46] text-white focus:border-[#FFE169] focus:outline-none transition-all placeholder-slate-500 text-sm" />
+                            <div class="flex gap-1 flex-wrap pt-1">
+                                <button type="button" class="px-2 py-0.5 bg-[#3F3F46] rounded text-[10px] text-slate-300 hover:text-white hover:bg-slate-600" onclick="document.getElementById('stock-filter-price-min').value=15900">15,900</button>
+                                <button type="button" class="px-2 py-0.5 bg-[#3F3F46] rounded text-[10px] text-slate-300 hover:text-white hover:bg-slate-600" onclick="document.getElementById('stock-filter-price-min').value=25990">25,990</button>
+                                <button type="button" class="px-2 py-0.5 bg-[#3F3F46] rounded text-[10px] text-slate-300 hover:text-white hover:bg-slate-600" onclick="document.getElementById('stock-filter-price-min').value=32900">32,900</button>
+                                <button type="button" class="px-2 py-0.5 bg-[#3F3F46] rounded text-[10px] text-slate-300 hover:text-white hover:bg-slate-600" onclick="document.getElementById('stock-filter-price-min').value=45990">45,990</button>
+                            </div>
+                        </div>
+                        <div class="space-y-1">
+                            <input id="stock-filter-price-max" type="number" inputmode="numeric" placeholder="สูงสุด"
+                                class="w-full px-4 py-2.5 rounded-xl bg-[#27272A] border border-[#3F3F46] text-white focus:border-[#FFE169] focus:outline-none transition-all placeholder-slate-500 text-sm" />
+                            <div class="flex gap-1 flex-wrap pt-1">
+                                <button type="button" class="px-2 py-0.5 bg-[#3F3F46] rounded text-[10px] text-slate-300 hover:text-white hover:bg-slate-600" onclick="document.getElementById('stock-filter-price-max').value=17900">17,900</button>
+                                <button type="button" class="px-2 py-0.5 bg-[#3F3F46] rounded text-[10px] text-slate-300 hover:text-white hover:bg-slate-600" onclick="document.getElementById('stock-filter-price-max').value=30990">30,990</button>
+                                <button type="button" class="px-2 py-0.5 bg-[#3F3F46] rounded text-[10px] text-slate-300 hover:text-white hover:bg-slate-600" onclick="document.getElementById('stock-filter-price-max').value=38990">38,990</button>
+                                <button type="button" class="px-2 py-0.5 bg-[#3F3F46] rounded text-[10px] text-slate-300 hover:text-white hover:bg-slate-600" onclick="document.getElementById('stock-filter-price-max').value=48990">48,990</button>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
-                <div class="border-t border-slate-700/60 pt-3">
-                    <span class="text-xs font-bold text-slate-300 block mb-2">ช่วงราคาต้นทุน (บาท)</span>
-                    <div class="grid grid-cols-2 gap-2">
-                        <input id="stock-filter-cost-min" type="number" inputmode="numeric" placeholder="ต่ำสุด"
-                            class="w-full bg-white border border-slate-300 text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-cyan-500 placeholder-slate-400" />
-                        <input id="stock-filter-cost-max" type="number" inputmode="numeric" placeholder="สูงสุด"
-                            class="w-full bg-white border border-slate-300 text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-cyan-500 placeholder-slate-400" />
-                    </div>
-                </div>
-
-                <!-- Section: จำนวนสินค้าคงเหลือ -->
-                <div class="border-t border-slate-700/60 pt-3">
-                    <span class="text-xs font-bold text-slate-300 block mb-2">จำนวนคงเหลือในคลัง</span>
-                    <div class="grid grid-cols-2 gap-2">
+                <!-- Section: จำนวนคงเหลือในคลัง -->
+                <div class="space-y-2 pt-2">
+                    <label class="text-slate-200 font-medium flex items-center gap-2 text-xs">
+                        <i class="fa-solid fa-boxes-stacked text-white"></i> จำนวนคงเหลือในคลัง
+                    </label>
+                    <div class="grid grid-cols-2 gap-5">
                         <input id="stock-filter-qty-min" type="number" inputmode="numeric" placeholder="ต่ำสุด"
-                            class="w-full bg-white border border-slate-300 text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-cyan-500 placeholder-slate-400" />
+                            class="w-full px-4 py-2.5 rounded-xl bg-[#27272A] border border-[#3F3F46] text-white focus:border-[#FFE169] focus:outline-none transition-all placeholder-slate-500 text-sm" />
                         <input id="stock-filter-qty-max" type="number" inputmode="numeric" placeholder="สูงสุด"
-                            class="w-full bg-white border border-slate-300 text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-cyan-500 placeholder-slate-400" />
+                            class="w-full px-4 py-2.5 rounded-xl bg-[#27272A] border border-[#3F3F46] text-white focus:border-[#FFE169] focus:outline-none transition-all placeholder-slate-500 text-sm" />
                     </div>
                 </div>
 
                 <!-- Section: เรียงลำดับ -->
-                <div class="border-t border-slate-700/60 pt-3">
-                    <label class="text-xs font-semibold text-slate-400 block mb-1">การเรียงลำดับ</label>
-                    <select id="stock-filter-sort"
-                        class="w-full bg-white border border-slate-300 text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-cyan-500">
-                        <option value="newest">อัปเดตล่าสุด / วันที่นำเข้า</option>
-                        <option value="name_asc">ชื่อสินค้า (ก-ฮ)</option>
-                        <option value="price_asc">ราคาขาย: ต่ำ -> สูง</option>
-                        <option value="price_desc">ราคาขาย: สูง -> ต่ำ</option>
-                        <option value="qty_asc">จำนวนสินค้า: น้อย -> มาก</option>
-                        <option value="qty_desc">จำนวนสินค้า: มาก -> น้อย</option>
-                    </select>
+                <div class="space-y-2 pt-2 pb-4">
+                    <label class="text-slate-200 font-medium flex items-center gap-2 text-xs">
+                        <i class="fa-solid fa-arrow-up-z-a text-white"></i> การเรียงลำดับ
+                    </label>
+                    <div class="relative">
+                        <select id="stock-filter-sort"
+                            class="w-full px-4 py-3 rounded-xl bg-[#27272A] border border-[#3F3F46] text-white focus:border-[#FFE169] focus:outline-none transition-all text-sm appearance-none">
+                            <option value="newest">อัพเดตล่าสุด / วันนำเข้า</option>
+                            <option value="name_asc">ชื่อสินค้า (ก-ฮ)</option>
+                            <option value="price_asc">ราคาขาย: ต่ำ -> สูง</option>
+                            <option value="price_desc">ราคาขาย: สูง -> ต่ำ</option>
+                            <option value="qty_asc">จำนวนสินค้า: น้อย -> มาก</option>
+                            <option value="qty_desc">จำนวนสินค้า: มาก -> น้อย</option>
+                        </select>
+                        <div class="absolute right-4 top-[14px] pointer-events-none text-slate-400">
+                            <i class="fa-solid fa-chevron-down text-xs"></i>
+                        </div>
+                    </div>
                 </div>
-            </div>
 
-            <div class="flex items-center justify-between gap-2 mt-5 pt-3 border-t border-slate-700">
-                <button id="btn-stock-filter-reset" type="button"
-                    class="px-3 py-2 bg-slate-700 text-slate-200 rounded-lg text-sm hover:bg-slate-600 transition-colors w-1/2">ล้างทั้งหมด</button>
-                <button id="btn-stock-filter-apply" type="button"
-                    class="px-3 py-2 bg-cyan-500 text-slate-900 font-medium rounded-lg hover:bg-cyan-400 transition-colors w-1/2">ตกลง</button>
+                <!-- Actions -->
+                <div class="flex items-center justify-center gap-4 pt-4 border-t border-[#333333]">
+                    <button type="button" id="btn-stock-filter-reset"
+                        class="px-10 py-2.5 rounded-xl bg-[#E4E4E7] text-[#18181B] text-[15px] font-bold hover:bg-white transition-colors w-1/2">
+                        ล้างทั้งหมด
+                    </button>
+                    <button type="button" id="btn-stock-filter-apply"
+                        class="px-12 py-2.5 rounded-xl bg-[#FFE169] text-[#333333] text-[15px] font-bold hover:bg-[#E2B93C] transition-colors flex items-center justify-center gap-2 w-1/2">
+                        ตกลง
+                    </button>
+                </div>
             </div>
         </div>
     </div>
