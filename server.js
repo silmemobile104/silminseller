@@ -3,6 +3,8 @@ const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const path = require('path');
+const fs = require('fs');
+const compression = require('compression');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -10,12 +12,28 @@ const PORT = process.env.PORT || 5000;
 // ==========================================
 // Middleware
 // ==========================================
+app.use(compression()); // บีบอัด response ด้วย gzip/brotli ก่อนส่งออก ลดขนาด HTML/JS/CSS ที่โอนจริง
 app.use(cors());
 app.use(express.json({ limit: '10mb' })); // Allows parsing of JSON request bodies (up to 10MB for photos)
 app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
+// ถ้ามีไฟล์ที่ minify แล้วใน dist/ ให้เสิร์ฟตัวนั้นแทนซอร์สเดิม (URL ที่ client ขอไม่เปลี่ยน)
+// ออกแบบให้ "ตกกลับ" ไปใช้ซอร์สเดิมอัตโนมัติถ้ายังไม่ได้รัน `npm run build:js`
+// จึงไม่มีทางที่ระบบจะพังเพราะลืม build — แค่ได้ไฟล์ที่ใหญ่กว่าเดิมเท่านั้น
+app.use((req, res, next) => {
+    if (req.method !== 'GET' && req.method !== 'HEAD') return next();
+    const p = req.path;
+    const isBuildable = p === '/script.js' || p === '/script.js.map' || p.startsWith('/js/');
+    if (isBuildable && fs.existsSync(path.join(__dirname, 'dist', p))) {
+        req.url = '/dist' + req.url; // คง query string (?v=...) ไว้ตามเดิม
+    }
+    next();
+});
+
 // Serve static files (images, etc.)
-app.use(express.static(__dirname));
+// maxAge: 1y ปลอดภัยเพราะไฟล์ที่แก้บ่อย (js/page-*.js, views/*.html, style.css) ใช้ query string
+// version-busting อยู่แล้ว (PAGE_SCRIPT_VERSION / VIEW_FRAGMENT_VERSION ใน script.js, ?v= ของ style.css)
+app.use(express.static(__dirname, { maxAge: '1y' }));
 
 // ==========================================
 // Database Connection (MongoDB Atlas)

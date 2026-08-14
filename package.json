@@ -4,7 +4,12 @@
   "main": "server.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node server.js"
+    "start": "node server.js",
+    "build:css": "tailwindcss -i ./src/tailwind-input.css -o ./tailwind.css --minify",
+    "watch:css": "tailwindcss -i ./src/tailwind-input.css -o ./tailwind.css --watch",
+    "build:icons": "node tools/build-icons.js",
+    "build:js": "node tools/build-js.js",
+    "build": "npm run build:css && npm run build:icons && npm run build:js"
   },
   "keywords": [],
   "author": "",
@@ -13,6 +18,8 @@
   "dependencies": {
     "axios": "^1.16.0",
     "bcryptjs": "^3.0.3",
+    "bootstrap-icons": "^1.13.1",
+    "compression": "^1.8.1",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
@@ -22,6 +29,8 @@
   },
   "devDependencies": {
     "@tailwindcss/cli": "^4.3.1",
+    "esbuild": "^0.28.2",
+    "subset-font": "^2.5.0",
     "tailwindcss": "^4.3.1"
   }
 }

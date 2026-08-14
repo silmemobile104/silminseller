@@ -1,0 +1,67 @@
+<div id="view-settings">
+                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                        <div>
+                            <h3 class="text-2xl font-bold text-white">ตั้งค่าข้อมูลพื้นฐาน</h3>
+                            <p class="text-slate-400 mt-1">จัดการตัวเลือก หมวดหมู่ และคุณสมบัติของสินค้า</p>
+                        </div>
+                    </div>
+
+                    <!-- Settings Tabs -->
+                    <div class="flex space-x-2 border-b border-slate-700 overflow-x-auto pb-px">
+                        <button
+                            class="settings-tab-btn active px-4 py-3 text-cyan-400 border-b-2 border-cyan-400 font-medium whitespace-nowrap transition-colors"
+                            data-tab="productname">ชื่อสินค้า</button>
+                        <button
+                            class="settings-tab-btn px-4 py-3 text-slate-400 border-b-2 border-transparent hover:text-slate-300 hover:border-slate-500 font-medium whitespace-nowrap transition-colors"
+                            data-tab="producttype">ประเภทสินค้า</button>
+                        <button
+                            class="settings-tab-btn px-4 py-3 text-slate-400 border-b-2 border-transparent hover:text-slate-300 hover:border-slate-500 font-medium whitespace-nowrap transition-colors"
+                            data-tab="productunit">หน่วยนับ</button>
+                        <button
+                            class="settings-tab-btn px-4 py-3 text-slate-400 border-b-2 border-transparent hover:text-slate-300 hover:border-slate-500 font-medium whitespace-nowrap transition-colors"
+                            data-tab="productcolor">สี</button>
+                        <button
+                            class="settings-tab-btn px-4 py-3 text-slate-400 border-b-2 border-transparent hover:text-slate-300 hover:border-slate-500 font-medium whitespace-nowrap transition-colors"
+                            data-tab="productcapacity">ความจุ</button>
+                        <button
+                            class="settings-tab-btn px-4 py-3 text-slate-400 border-b-2 border-transparent hover:text-slate-300 hover:border-slate-500 font-medium whitespace-nowrap transition-colors"
+                            data-tab="productcondition">สภาพเครื่อง</button>
+                        <button
+                            class="settings-tab-btn px-4 py-3 text-slate-400 border-b-2 border-transparent hover:text-slate-300 hover:border-slate-500 font-medium whitespace-nowrap transition-colors"
+                            data-tab="supplier">ผู้จัดจำหน่าย</button>
+                        <button
+                            class="settings-tab-btn px-4 py-3 text-slate-400 border-b-2 border-transparent hover:text-slate-300 hover:border-slate-500 font-medium whitespace-nowrap transition-colors"
+                            data-tab="financecompany">บริษัทจัดไฟแนนซ์</button>
+                    </div>
+
+                    <!-- Settings Content -->
+                    <div class="bg-slate-800 rounded-2xl border border-slate-700 shadow-lg p-6">
+                        <div class="flex flex-col sm:flex-row gap-4 mb-8">
+                            <input type="text" id="master-data-input" placeholder="พิมพ์ข้อมูลใหม่..."
+                                class="flex-1 px-4 py-2.5 rounded-xl bg-white border border-slate-300 text-slate-900 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all">
+                            <input type="text" id="master-data-code-input"
+                                placeholder="รหัสชื่อสินค้า (ไม่จำเป็นต้องระบุก็ได้)..."
+                                class="hidden px-4 py-2.5 rounded-xl bg-white border border-slate-300 text-slate-900 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all sm:w-64">
+                            <button id="btn-add-master-data"
+                                class="px-6 py-2.5 bg-cyan-500 hover:bg-cyan-400 text-slate-900 font-bold rounded-xl glow-button flex items-center justify-center gap-2 whitespace-nowrap">
+                                <i class="fa-solid fa-plus"></i> เพิ่ม
+                            </button>
+                        </div>
+
+                        <!-- Data List Container -->
+                        <div id="master-data-list"
+                            class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                            <!-- Items will be injected here via JS -->
+                        </div>
+
+                        <!-- Empty State (Hidden by default) -->
+                        <div id="master-data-empty" class="hidden text-center py-12">
+                            <div
+                                class="w-16 h-16 rounded-full bg-slate-700/50 flex items-center justify-center text-slate-400 mx-auto mb-4">
+                                <i class="fa-solid fa-inbox text-2xl"></i>
+                            </div>
+                            <h4 class="text-white font-medium">ไม่มีข้อมูล</h4>
+                            <p class="text-sm text-slate-400 mt-1">ยังไม่มีข้อมูลในหมวดหมู่นี้ กรุณาเพิ่มข้อมูลใหม่</p>
+                        </div>
+                    </div>
+</div>

@@ -113,6 +113,11 @@
     filter: brightness(0) invert(1);
 }
 
+/* ทำให้ไอคอน Bootstrap Icons เป็นสีขาวเมื่อ Inactive */
+.nav-menu-item:not(.active) i {
+    color: #ffffff !important;
+}
+
 /* 2. สีพื้นหลัง, สีข้อความ และปรับรูปภาพให้เข้มขึ้นเมื่อ Active */
 .nav-menu-item.active {
     background-color: #FFE169 !important;
@@ -133,6 +138,11 @@
     opacity: 1 !important;
     /* ลด brightness เพื่อให้ภาพมืด/เข้มขึ้น และเพิ่ม contrast ให้ขอบชัดเจน */
     filter: brightness(0.2) contrast(1.5) !important;
+}
+
+/* ปรับสีไอคอน Bootstrap Icons เป็น #4D4D4D เมื่อ Active */
+.nav-menu-item.active i {
+    color: #4D4D4D !important;
 }
 
 /* ==========================================

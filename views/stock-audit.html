@@ -1,0 +1,313 @@
+<div id="view-stock-audit">
+
+                    <!-- Header + Status Badge -->
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div>
+                            <h3 class="text-2xl font-bold text-white flex items-center gap-3">
+                                <div
+                                    class="w-12 h-12 rounded-2xl bg-violet-500/10 flex items-center justify-center border border-violet-500/20 shadow-lg shadow-violet-500/5">
+                                    <i class="fa-solid fa-qrcode text-violet-400 text-xl"></i>
+                                </div>
+                                ตรวจนับสต็อกประจำวัน
+                            </h3>
+                            <p class="text-sm text-slate-400 mt-1.5">สแกน IMEI และถ่ายรูปกล่องสินค้าทุกเครื่องในสาขา</p>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <span id="audit-session-status-badge"
+                                class="hidden px-3 py-1.5 rounded-full text-xs font-bold border">—</span>
+                            <button id="btn-open-audit-session"
+                                class="px-5 py-2.5 bg-violet-600 hover:bg-violet-500 text-white rounded-xl font-bold transition-all shadow-lg shadow-violet-500/20 flex items-center gap-2">
+                                <i class="fa-solid fa-plus"></i>
+                                เปิดรอบตรวจนับวันนี้
+                            </button>
+                        </div>
+                    </div>
+
+                    <div id="audit-session-panel" class="hidden">
+
+                        <!-- Scan Input Area -->
+                        <div id="audit-scan-area"
+                            class="bg-slate-800/60 rounded-2xl border border-violet-500/20 p-5 mb-5">
+                            <h4 class="text-white font-bold mb-4 flex items-center gap-2">
+                                <i class="fa-solid fa-barcode text-violet-400"></i>
+                                สแกน IMEI เพื่อตรวจนับ
+                            </h4>
+
+                            <!-- Step 1: IMEI Input & Verify -->
+                            <div>
+                                <label
+                                    class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">หมายเลข
+                                    IMEI *</label>
+                                <div class="flex gap-2">
+                                    <input id="audit-imei-input" type="text" inputmode="numeric"
+                                        placeholder="สแกนหรือพิมพ์ IMEI..."
+                                        class="flex-1 px-4 py-3 bg-white border border-slate-300 rounded-xl text-slate-900 placeholder-slate-500 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500 font-mono text-sm transition-all" />
+                                    <button id="btn-audit-imei-verify"
+                                        class="px-5 py-3 bg-violet-600 hover:bg-violet-500 rounded-xl text-white font-bold text-sm transition-all whitespace-nowrap">
+                                        ยืนยัน IMEI
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Progress Bar -->
+                        <div class="bg-slate-800/60 rounded-2xl border border-slate-700/60 p-5 mb-5">
+                            <div class="flex items-center justify-between mb-3">
+                                <div>
+                                    <span class="text-slate-300 text-sm font-medium">ความคืบหน้าการสแกน</span>
+                                    <div class="flex items-center gap-2 mt-1">
+                                        <span id="audit-scanned-count"
+                                            class="text-3xl font-black text-violet-400">0</span>
+                                        <span class="text-slate-400 text-xl font-bold">/</span>
+                                        <span id="audit-expected-count"
+                                            class="text-3xl font-black text-slate-300">0</span>
+                                        <span class="text-slate-400 text-sm ml-1">เครื่อง</span>
+                                    </div>
+                                </div>
+                                <div class="text-right">
+                                    <p class="text-xs text-slate-400">สาขา</p>
+                                    <p id="audit-branch-name" class="text-white font-bold">—</p>
+                                    <p id="audit-session-date" class="text-xs text-slate-400 mt-0.5">—</p>
+                                </div>
+                            </div>
+                            <div class="w-full bg-slate-700 rounded-full h-2.5 overflow-hidden">
+                                <div id="audit-progress-bar"
+                                    class="h-2.5 rounded-full bg-gradient-to-r from-violet-500 to-purple-400 transition-all duration-500"
+                                    style="width:0%"></div>
+                            </div>
+                            <p class="text-xs text-slate-400 mt-2" id="audit-progress-pct">0% สำเร็จ</p>
+                        </div>
+
+                        <!-- Expected Inventory Panel (สินค้าที่ต้องตรวจนับ) -->
+                        <div class="bg-slate-800/60 rounded-2xl border border-slate-700/60 overflow-hidden mb-5">
+                            <!-- Header (toggle) -->
+                            <button id="btn-toggle-expected-list"
+                                class="w-full flex items-center justify-between px-5 py-4 hover:bg-slate-700/30 transition-all text-left"
+                                onclick="toggleExpectedList()">
+                                <div class="flex items-center gap-3">
+                                    <div
+                                        class="w-8 h-8 rounded-lg bg-indigo-500/20 flex items-center justify-center border border-indigo-500/20">
+                                        <i class="fa-solid fa-boxes-stacking text-indigo-400 text-sm"></i>
+                                    </div>
+                                    <div>
+                                        <span class="text-white font-bold text-sm">สินค้าที่ต้องตรวจนับวันนี้</span>
+                                        <span id="expected-list-summary" class="ml-2 text-xs text-slate-400"></span>
+                                    </div>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <span id="expected-list-pill"
+                                        class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-indigo-500/20 text-indigo-400 border border-indigo-500/20">
+                                        0 เครื่อง
+                                    </span>
+                                    <i id="expected-list-chevron"
+                                        class="fa-solid fa-chevron-up text-slate-400 text-sm transition-transform duration-200"></i>
+                                </div>
+                            </button>
+                            <!-- Filter + Search -->
+                            <div id="expected-list-body">
+                                <div class="px-5 pb-3 flex items-center gap-2 border-t border-slate-700/60 pt-3">
+                                    <input id="expected-list-search" type="text"
+                                        placeholder="ค้นหา IMEI หรือชื่อสินค้า..."
+                                        class="flex-1 px-3 py-2 bg-white border border-slate-300 rounded-lg text-slate-900 placeholder-slate-500 focus:outline-none focus:border-indigo-500 text-xs font-mono transition-all"
+                                        oninput="filterExpectedList(this.value)" />
+                                    <select id="expected-list-filter"
+                                        class="px-3 py-2 bg-white border border-slate-300 text-slate-900 rounded-lg text-xs focus:outline-none focus:border-indigo-500"
+                                        onchange="filterExpectedList(document.getElementById('expected-list-search').value)">
+                                        <option value="all">ทั้งหมด</option>
+                                        <option value="pending">รอสแกน</option>
+                                        <option value="scanned">สแกนแล้ว</option>
+                                    </select>
+                                </div>
+                                <!-- Table -->
+                                <div class="overflow-x-auto max-h-[420px] overflow-y-auto">
+                                    <table class="w-full text-sm" id="expected-items-table">
+                                        <thead class="sticky top-0 z-10">
+                                            <tr class="bg-slate-900/90 backdrop-blur-sm">
+                                                <th
+                                                    class="text-left px-4 py-2.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider w-8">
+                                                    #</th>
+                                                <th
+                                                    class="text-left px-4 py-2.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                                                    ชื่อสินค้า</th>
+                                                <th
+                                                    class="text-left px-4 py-2.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                                                    สี</th>
+                                                <th
+                                                    class="text-left px-4 py-2.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                                                    ความจุ</th>
+                                                <th
+                                                    class="text-left px-4 py-2.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider font-mono">
+                                                    หมายเลข IMEI</th>
+                                                <th
+                                                    class="text-center px-4 py-2.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider w-24">
+                                                    สถานะ</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="expected-items-tbody">
+                                            <!-- render โดย JS -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+
+
+                        <!-- Scanned List -->
+                        <div class="bg-slate-800/60 rounded-2xl border border-slate-700/60 overflow-hidden">
+                            <div class="px-5 py-4 border-b border-slate-700 flex items-center justify-between">
+                                <h4 class="text-white font-bold flex items-center gap-2">
+                                    <i class="fa-solid fa-list-check text-violet-400"></i>
+                                    รายการที่สแกนแล้ว
+                                </h4>
+                                <span id="audit-scan-list-count" class="text-xs text-slate-400">0 รายการ</span>
+                            </div>
+                            <div class="w-full overflow-x-auto">
+                                <div id="audit-scan-list" class="min-w-full">
+                                    <!-- จะถูก render โดย JS -->
+                                    <div class="flex flex-col items-center justify-center py-12 text-center">
+                                        <div
+                                            class="w-16 h-16 rounded-2xl bg-slate-700/50 flex items-center justify-center mb-4">
+                                            <i class="fa-solid fa-qrcode text-slate-400 text-2xl"></i>
+                                        </div>
+                                        <p class="text-slate-400">ยังไม่มีรายการ เริ่มสแกน IMEI เลย</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Submit Button -->
+                        <div id="audit-submit-area" class="mt-5 hidden">
+                            <button id="btn-audit-submit"
+                                class="w-full py-4 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500 text-white rounded-2xl font-black text-lg transition-all shadow-xl shadow-violet-500/25 flex items-center justify-center gap-3">
+                                <i class="fa-solid fa-paper-plane"></i>
+                                ส่งผลการตรวจนับให้ตรวจสอบ
+                            </button>
+                            <p class="text-center text-xs text-slate-400 mt-2">หลังส่งแล้ว
+                                พนักงานสต็อกจะตรวจสอบและอนุมัติ</p>
+                        </div>
+
+                        <!-- Submitted Message -->
+                        <div id="audit-submitted-msg"
+                            class="hidden mt-5 p-5 bg-amber-500/10 border border-amber-500/30 rounded-2xl flex items-center gap-4">
+                            <div
+                                class="w-12 h-12 rounded-full bg-amber-500/20 flex items-center justify-center shrink-0">
+                                <i class="fa-solid fa-hourglass-half text-amber-400 text-xl"></i>
+                            </div>
+                            <div>
+                                <p class="text-amber-400 font-bold">ส่งผลการตรวจนับสำเร็จแล้ว</p>
+                                <p class="text-slate-400 text-sm mt-0.5">รอพนักงานสต็อกตรวจสอบและอนุมัติผล</p>
+                            </div>
+                        </div>
+
+                        <!-- Approved Message -->
+                        <div id="audit-approved-msg"
+                            class="hidden mt-5 p-5 bg-emerald-500/10 border border-emerald-500/30 rounded-2xl flex items-center gap-4">
+                            <div
+                                class="w-12 h-12 rounded-full bg-emerald-500/20 flex items-center justify-center shrink-0">
+                                <i class="fa-solid fa-circle-check text-emerald-400 text-xl"></i>
+                            </div>
+                            <div>
+                                <p class="text-emerald-400 font-bold">รอบการตรวจนับสต็อกวันนี้อนุมัติแล้ว</p>
+                                <p class="text-slate-400 text-sm mt-0.5">
+                                    ผลการตรวจนับได้รับการอนุมัติจากพนักงานสต็อกเรียบร้อย</p>
+                            </div>
+                        </div>
+                    </div>
+</div>
+
+<div id="view-stock-audit-review">
+
+                    <!-- Header -->
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div>
+                            <h3 class="text-2xl font-bold text-white flex items-center gap-3">
+                                <div
+                                    class="w-12 h-12 rounded-2xl bg-amber-500/10 flex items-center justify-center border border-amber-500/20 shadow-lg shadow-amber-500/5">
+                                    <i class="fa-solid fa-clipboard-check text-amber-400 text-xl"></i>
+                                </div>
+                                ตรวจสอบผลการตรวจนับสต็อก
+                            </h3>
+                            <p class="text-sm text-slate-400 mt-1.5">ตรวจสอบ IMEI และรูปกล่องที่พนักงานขายส่งมา</p>
+                        </div>
+                        <div class="flex flex-wrap items-center gap-2">
+                            <!-- Filter Date Type -->
+                            <select id="audit-review-filter-date-type"
+                                class="px-3 py-2 bg-white border border-slate-300 text-slate-900 rounded-xl text-sm focus:outline-none focus:border-amber-500">
+                                <option value="today" selected>วันนี้</option>
+                                <option value="custom">กำหนดช่วงวัน</option>
+                            </select>
+
+                            <!-- Custom Date Range Inputs -->
+                            <div id="audit-review-date-range-container" class="hidden flex items-center gap-1.5">
+                                <input type="date" id="audit-review-start-date"
+                                    class="px-3 py-2 bg-white border border-slate-300 text-slate-900 rounded-xl text-sm focus:outline-none focus:border-amber-500">
+                                <span class="text-xs text-slate-400">ถึง</span>
+                                <input type="date" id="audit-review-end-date"
+                                    class="px-3 py-2 bg-white border border-slate-300 text-slate-900 rounded-xl text-sm focus:outline-none focus:border-amber-500">
+                            </div>
+
+                            <select id="audit-review-filter-status"
+                                class="px-3 py-2 bg-white border border-slate-300 text-slate-900 rounded-xl text-sm focus:outline-none focus:border-amber-500">
+                                <option value="">สถานะทั้งหมด</option>
+                                <option value="กำลังตรวจนับ">กำลังตรวจนับ</option>
+                                <option value="รอการอนุมัติ">รอการอนุมัติ</option>
+                                <option value="อนุมัติแล้ว">อนุมัติแล้ว</option>
+                            </select>
+                            <button id="btn-refresh-audit-review"
+                                class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-xl font-bold transition-all border border-slate-700 flex items-center gap-2">
+                                <i class="fa-solid fa-arrows-rotate"></i>
+                                รีเฟรช
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Sessions List -->
+                    <div id="audit-review-sessions-list" class="space-y-4">
+                        <!-- จะถูก render โดย JS -->
+                        <div class="flex flex-col items-center justify-center py-16 text-center">
+                            <div class="w-20 h-20 rounded-3xl bg-slate-700/50 flex items-center justify-center mb-4">
+                                <i class="fa-solid fa-clipboard-check text-slate-400 text-3xl"></i>
+                            </div>
+                            <p class="text-slate-400">ไม่พบรอบการตรวจนับสต็อก</p>
+                        </div>
+                    </div>
+
+                    <!-- Detail Panel (แสดงเมื่อเลือก session) -->
+                    <div id="audit-review-detail-panel" class="hidden">
+                        <div class="flex items-center gap-3 mb-4">
+                            <button aria-label="ย้อนกลับ" id="btn-audit-review-back"
+                                class="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-all border border-slate-700">
+                                <i class="fa-solid fa-arrow-left"></i>
+                            </button>
+                            <h4 id="audit-review-detail-title" class="text-xl font-bold text-white">รายละเอียดการตรวจนับ
+                            </h4>
+                        </div>
+
+                        <!-- Summary Bar -->
+                        <div id="audit-review-summary-bar" class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
+                            <!-- ถูก render โดย JS -->
+                        </div>
+
+                        <!-- Items Grid -->
+                        <div id="audit-review-items-grid" class="space-y-3">
+                            <!-- ถูก render โดย JS -->
+                        </div>
+
+                        <!-- Close Session Button -->
+                        <div id="audit-review-close-area" class="mt-5 hidden">
+                            <div class="bg-slate-800/60 rounded-2xl border border-slate-700 p-5">
+                                <label
+                                    class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">หมายเหตุรวม
+                                    (ถ้ามี)</label>
+                                <input id="audit-close-notes" type="text" placeholder="ระบุหมายเหตุ..."
+                                    class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-xl text-slate-900 placeholder-slate-500 focus:outline-none focus:border-amber-500 text-sm mb-4" />
+                                <button id="btn-audit-close-session"
+                                    class="w-full py-3.5 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white rounded-xl font-black text-base transition-all shadow-lg shadow-amber-500/20 flex items-center justify-center gap-2">
+                                    <i class="fa-solid fa-check-double"></i>
+                                    ปิดรอบและอนุมัติผลการตรวจนับ
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+</div>

@@ -71,7 +71,7 @@ const verifyToken = (req, res, next) => {
         next();
     } catch (error) {
         console.error('JWT verification failed:', error.message);
-        return res.status(403).json({
+        return res.status(401).json({
             success: false,
             message: 'เซสชั่นหมดอายุ กรุณาเข้าสู่ระบบใหม่'
         });
@@ -130,6 +130,14 @@ const getRequestedBranchId = (req) => {
 
     // พนักงานขาย/คนไม่มีสิทธิ์: บังคับสาขาตามตัวเอง
     return userBranchId;
+};
+
+// แอดมิน/ผู้จัดการ (หรือคนที่มีสิทธิ์ filter_stock_branch) ทำงานข้ามสาขาได้
+const canAccessAllBranches = (req) => {
+    const userRole = req.user && req.user.role ? req.user.role : '';
+    const userPermissions = req.user && req.user.permissions ? req.user.permissions : {};
+    return !!userPermissions.filter_stock_branch
+        || userRole === 'Administrator' || userRole === 'แอดมิน' || userRole === 'ผู้จัดการ';
 };
 
 const injectBranchStockVirtuals = (product, branchId) => {
@@ -1834,6 +1842,8 @@ router.post('/transfers', async (req, res) => {
             return res.status(403).json({ success: false, message: 'ไม่มีสิทธิ์ในการสร้างรายการโอนย้ายสินค้า' });
         }
         const { to_branch, items } = req.body;
+
+        // สาขาต้นทางยึดตามสาขาของผู้ใช้ที่ล็อกอินเสมอ (ไม่รับค่าจาก client)
         const fromBranch = req.user && req.user.branch_id ? req.user.branch_id : null;
         if (!fromBranch) return res.status(400).json({ success: false, message: 'ไม่พบข้อมูลสาขาต้นทางของผู้ใช้งาน' });
         if (!to_branch) return res.status(400).json({ success: false, message: 'กรุณาเลือกสาขาปลายทาง' });
@@ -1959,11 +1969,10 @@ router.put('/transfers/:id/receive', async (req, res) => {
 
         const userBranchId = req.user && req.user.branch_id ? req.user.branch_id.toString() : '';
         const toBranchId = transfer.to_branch ? transfer.to_branch.toString() : '';
-        const userRole = req.user && req.user.role ? req.user.role : '';
 
-        // ตรวจสอบสิทธิ์: Admin/ผู้จัดการ สามารถรับเข้าได้จากทุกสาขา
+        // ตรวจสอบสิทธิ์: แอดมิน/ผู้จัดการ สามารถรับเข้าได้จากทุกสาขา
         // พนักงานทั่วไปต้องอยู่ที่สาขาปลายทาง
-        if (userRole !== 'Administrator' && userRole !== 'ผู้จัดการ') {
+        if (!canAccessAllBranches(req)) {
             if (!userBranchId || userBranchId !== toBranchId) {
                 return res.status(403).json({ success: false, message: 'คุณไม่มีสิทธิ์รับเข้าสินค้ารายการนี้' });
             }
@@ -2566,7 +2575,10 @@ router.get('/sales/daily-summary', async (req, res) => {
                 dvQuery.branch_id = branchId;
             }
             const todayDisbursements = await DisbursementVoucher.find(dvQuery);
-            cashDisbursed = todayDisbursements.reduce((sum, v) => sum + (v.amount || 0), 0);
+            // Use net_amount + vat_amount (== voucher total_amount), not the raw `amount`
+            // field — for VAT_EXCLUDED vouchers `amount` is only the net portion, so
+            // summing it alone understates actual cash paid out by the VAT amount.
+            cashDisbursed = todayDisbursements.reduce((sum, v) => sum + ((v.net_amount || 0) + (v.vat_amount || 0)), 0);
         }
 
         res.json({
