@@ -76,7 +76,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // โหลดสคริปต์เฉพาะหน้า (js/page-<name>.js) แบบ dynamic ครั้งเดียว แล้ว cache ไว้
     // PAGE_SCRIPT_VERSION: บัมพ์เลขนี้ทุกครั้งที่แก้ไฟล์ใน js/ เพื่อไม่ให้เบราว์เซอร์ใช้ของเก่าที่ cache ไว้
-    const PAGE_SCRIPT_VERSION = 'a11y_contrast_v3';
+    const PAGE_SCRIPT_VERSION = 'dark_yellow_redesign_v1';
     const __loadedPageScripts = {};
     function loadPageScript(name) {
         if (__loadedPageScripts[name]) return __loadedPageScripts[name];
@@ -129,7 +129,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // ไม่ได้รอ init function ถ้า HTML ยังไม่ถูกแทรกเข้า DOM ก่อน ตัวแปรที่ query ไว้จะเป็น null ถาวร
     // ชื่อ name ต้องตรงกับชื่อที่ใช้ใน loadPageScript — ไฟล์เดียวอาจมีหลาย <div id="view-XXX"> รวมกัน
     // ถ้าหน้านั้นถูก share โดยสคริปต์เดียวกันหลาย view (ดูตาราง mapping ในแผน)
-    const VIEW_FRAGMENT_VERSION = 'v2'; // บัมพ์เลขนี้ทุกครั้งที่แก้ไฟล์ใน views/
+    const VIEW_FRAGMENT_VERSION = 'v3'; // บัมพ์เลขนี้ทุกครั้งที่แก้ไฟล์ใน views/
     const __loadedPageViews = {};
     function loadPageView(name) {
         if (__loadedPageViews[name]) return __loadedPageViews[name];
@@ -1520,20 +1520,20 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         const toast = document.createElement('div');
-        toast.className = 'bg-slate-800 border border-orange-500/50 shadow-[0_0_15px_rgba(249,115,22,0.15)] px-4 py-3 rounded-xl flex items-center justify-between gap-3 toast-animate min-w-[300px] pointer-events-auto transfer-toast';
+        toast.className = 'bg-canvas-elevated border border-hairline border-l-4 border-l-amber-500 px-4 py-3 rounded-lg flex items-center justify-between gap-3 toast-animate min-w-[300px] pointer-events-auto transfer-toast';
         toast.innerHTML = `
             <div class="flex items-center gap-3">
-                <div class="w-8 h-8 rounded-full bg-orange-500/10 flex items-center justify-center text-orange-400 shrink-0">
+                <div class="w-8 h-8 rounded-full bg-surface-chip flex items-center justify-center text-amber-400 shrink-0">
                     <i class="fa-solid fa-box text-sm"></i>
                 </div>
                 <div class="flex flex-col">
-                    <span class="text-white text-sm font-medium">📦 มีสินค้าโอนเข้าใหม่</span>
-                    <span class="text-slate-400 text-xs">จาก ${sourceBranch} จำนวน ${count} รายการ</span>
+                    <span class="text-ink text-sm font-medium">📦 มีสินค้าโอนเข้าใหม่</span>
+                    <span class="text-body-muted text-xs">จาก ${sourceBranch} จำนวน ${count} รายการ</span>
                 </div>
             </div>
             <div class="flex items-center gap-2">
-                <button class="view-transfer-btn text-xs bg-orange-500/20 text-orange-400 px-2 py-1 rounded hover:bg-orange-500/30 transition-colors">ดูรายละเอียด</button>
-                <button class="close-transfer-btn text-slate-400 hover:text-white transition-colors p-1"><i class="fa-solid fa-xmark"></i></button>
+                <button class="view-transfer-btn text-xs bg-primary/20 text-primary px-2 py-1 rounded hover:bg-primary/30 transition-colors">ดูรายละเอียด</button>
+                <button class="close-transfer-btn text-body-muted hover:text-ink transition-colors p-1"><i class="fa-solid fa-xmark"></i></button>
             </div>
         `;
 
@@ -1587,11 +1587,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     pendingCard.classList.remove('hidden');
                     statPending.textContent = count;
                     if (count > 0) {
-                        statPending.classList.add('text-orange-400');
-                        statPending.classList.remove('text-white');
+                        statPending.classList.add('text-amber-400');
+                        statPending.classList.remove('text-ink');
                     } else {
-                        statPending.classList.add('text-white');
-                        statPending.classList.remove('text-orange-400');
+                        statPending.classList.add('text-ink');
+                        statPending.classList.remove('text-amber-400');
                     }
                 }
 
@@ -1644,44 +1644,36 @@ document.addEventListener('DOMContentLoaded', () => {
     const showToast = (message, type = 'success') => {
         const toast = document.createElement('div');
 
-        let bgColor = 'bg-blue-600';
-        let borderColor = 'border-blue-700';
-        let iconColor = 'text-white';
+        // สีสถานะ (เขียว/แดง/ส้ม/ฟ้า) เป็นข้อยกเว้นที่ตั้งใจไว้จากกฎ single-accent ของ DESIGN.md
+        // เก็บไว้เฉพาะ toast/badge สถานะเท่านั้น ใช้เป็นสีไอคอน + เส้นขอบซ้าย ไม่ใช้เป็นพื้นทึบ
+        let accentBorder = 'border-l-blue-500';
+        let iconColor = 'text-blue-400';
         let icon = 'fa-circle-info';
-        let shadow = 'shadow-[0_4px_20px_rgba(0,0,0,0.15)]';
 
         if (type === 'success' || type === 'confirm') {
-            bgColor = 'bg-emerald-600';
-            borderColor = 'border-emerald-700';
-            iconColor = 'text-white';
+            accentBorder = 'border-l-emerald-500';
+            iconColor = 'text-emerald-400';
             icon = 'fa-circle-check';
-            shadow = 'shadow-[0_4px_20px_rgba(16,185,129,0.25)]';
         } else if (type === 'error' || type === 'danger') {
-            bgColor = 'bg-rose-600';
-            borderColor = 'border-rose-700';
-            iconColor = 'text-white';
+            accentBorder = 'border-l-rose-500';
+            iconColor = 'text-rose-400';
             icon = 'fa-circle-xmark';
-            shadow = 'shadow-[0_4px_20px_rgba(244,63,94,0.25)]';
         } else if (type === 'warning') {
-            bgColor = 'bg-amber-600';
-            borderColor = 'border-amber-700';
-            iconColor = 'text-white';
+            accentBorder = 'border-l-amber-500';
+            iconColor = 'text-amber-400';
             icon = 'fa-triangle-exclamation';
-            shadow = 'shadow-[0_4px_20px_rgba(245,158,11,0.25)]';
         } else { // info
-            bgColor = 'bg-blue-600';
-            borderColor = 'border-blue-700';
-            iconColor = 'text-white';
+            accentBorder = 'border-l-blue-500';
+            iconColor = 'text-blue-400';
             icon = 'fa-circle-info';
-            shadow = 'shadow-[0_4px_20px_rgba(37,99,235,0.25)]';
         }
 
-        toast.className = `${bgColor} border ${borderColor} ${shadow} px-4 py-3 rounded-2xl flex items-center gap-3 toast-animate min-w-[240px] pointer-events-auto transition-all duration-300`;
+        toast.className = `bg-canvas-elevated border border-hairline border-l-4 ${accentBorder} px-4 py-3 rounded-lg flex items-center gap-3 toast-animate min-w-[240px] pointer-events-auto transition-all duration-300`;
         toast.innerHTML = `
-            <div class="flex items-center justify-center w-8 h-8 rounded-xl bg-white/15 border border-white/10 flex-shrink-0">
+            <div class="flex items-center justify-center w-8 h-8 rounded-sm bg-surface-chip flex-shrink-0">
                 <i class="fa-solid ${icon} ${iconColor} text-base"></i>
             </div>
-            <span class="text-white text-sm font-medium pr-2 leading-tight">${message}</span>
+            <span class="text-ink text-sm font-medium pr-2 leading-tight">${message}</span>
         `;
 
         const container = toastContainer || document.getElementById('toast-container');
@@ -1709,7 +1701,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (cancelBtn) {
             cancelBtn.style.display = 'block';
             cancelBtn.textContent = 'ยกเลิก';
-            cancelBtn.className = "flex-1 py-2.5 rounded-xl text-sm font-bold text-black bg-slate-700 hover:bg-slate-600 transition-all active:scale-[0.98]";
+            cancelBtn.className = "flex-1 py-2.5 rounded-pill text-sm font-bold text-body-muted bg-surface-chip hover:bg-surface-tile-2 hover:text-ink transition-all active:scale-[0.98]";
         }
 
         // Auto-detect type if not provided
@@ -1729,31 +1721,27 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Apply styles based on detectedType
         // Reset old dynamic classes first
-        card.className = `modal-content bg-slate-900/95 border rounded-3xl w-full ${widthClass} p-6 text-center modal-animate-in shadow-2xl transition-all duration-300`;
-        iconContainer.className = "w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 border transition-all duration-300";
+        card.className = `modal-content bg-canvas-elevated border border-hairline rounded-lg w-full ${widthClass} p-6 text-center modal-animate-in transition-all duration-300`;
+        iconContainer.className = "w-16 h-16 rounded-lg flex items-center justify-center mx-auto mb-4 border transition-all duration-300";
         iconEl.className = "text-2xl transition-transform duration-300 hover:scale-110";
-        okBtn.className = "flex-1 py-2.5 rounded-xl text-sm font-bold text-white transition-all active:scale-[0.98]";
+        okBtn.className = "flex-1 py-2.5 rounded-pill text-sm font-bold transition-all active:scale-[0.98]";
 
         if (detectedType === 'danger') {
-            card.classList.add('border-rose-500/30', 'shadow-[0_0_50px_rgba(244,63,94,0.15)]');
             iconContainer.classList.add('bg-rose-500/10', 'text-rose-400', 'border-rose-500/20');
             iconEl.classList.add('fa-solid', 'fa-trash-can');
-            okBtn.classList.add('bg-gradient-to-r', 'from-rose-600', 'to-red-500', 'hover:from-rose-500', 'hover:to-red-400', 'shadow-lg', 'shadow-red-500/20');
+            okBtn.classList.add('bg-red-500', 'hover:bg-red-600', 'text-white');
         } else if (detectedType === 'success') {
-            card.classList.add('border-emerald-500/30', 'shadow-[0_0_50px_rgba(16,185,129,0.15)]');
             iconContainer.classList.add('bg-emerald-500/10', 'text-emerald-400', 'border-emerald-500/20');
             iconEl.classList.add('fa-solid', 'fa-circle-check');
-            okBtn.classList.add('bg-gradient-to-r', 'from-emerald-600', 'to-teal-500', 'hover:from-emerald-500', 'hover:to-teal-400', 'shadow-lg', 'shadow-emerald-500/20');
+            okBtn.classList.add('bg-primary', 'hover:bg-primary-pressed', 'text-on-primary');
         } else if (detectedType === 'warning') {
-            card.classList.add('border-amber-500/30', 'shadow-[0_0_50px_rgba(245,158,11,0.15)]');
             iconContainer.classList.add('bg-amber-500/10', 'text-amber-400', 'border-amber-500/20');
             iconEl.classList.add('fa-solid', 'fa-triangle-exclamation');
-            okBtn.classList.add('bg-gradient-to-r', 'from-amber-600', 'to-orange-500', 'hover:from-amber-500', 'hover:to-orange-400', 'shadow-lg', 'shadow-amber-500/20');
+            okBtn.classList.add('bg-primary', 'hover:bg-primary-pressed', 'text-on-primary');
         } else { // info
-            card.classList.add('border-cyan-500/30', 'shadow-[0_0_50px_rgba(6,182,212,0.15)]');
-            iconContainer.classList.add('bg-cyan-500/10', 'text-cyan-400', 'border-cyan-500/20');
+            iconContainer.classList.add('bg-surface-chip', 'text-ink', 'border-hairline');
             iconEl.classList.add('fa-solid', 'fa-circle-info');
-            okBtn.classList.add('bg-gradient-to-r', 'from-cyan-600', 'to-blue-500', 'hover:from-cyan-500', 'hover:to-blue-400', 'shadow-lg', 'shadow-cyan-500/20');
+            okBtn.classList.add('bg-primary', 'hover:bg-primary-pressed', 'text-on-primary');
         }
 
         document.getElementById('confirm-title').textContent = title;
@@ -2176,11 +2164,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 </td>
                 <td class="px-6 py-4 text-white text-sm">${product.branch_id ? product.branch_id.name : '-'}</td>
                 <td class="px-6 py-4 text-white text-sm">${product.supplier_id ? product.supplier_id.name : '-'}</td>
-                <td class="px-6 py-4"><span class="px-2.5 py-1 bg-slate-700 text-slate-300 rounded-md text-xs font-medium">${categoryName}</span></td>
+                <td class="px-6 py-4"><span class="px-2.5 py-1 bg-slate-700 text-slate-300 rounded-[0.375rem] text-xs font-medium">${categoryName}</span></td>
                 <td class="px-6 py-4 text-right text-white font-mono">฿${product.selling_price.toLocaleString()}</td>
                 <td class="px-6 py-4 text-center text-white font-medium">${stockDisplay}</td>
                 <td class="px-6 py-4">
-                    <div class="inline-flex items-center gap-2 px-2.5 py-1 rounded-md ${statusBadge}">
+                    <div class="inline-flex items-center gap-2 px-2.5 py-1 rounded-[0.375rem] ${statusBadge}">
                         <div class="w-2 h-2 rounded-full ${statusColor}"></div>
                         <span class="${statusClass} font-medium text-xs">${statusText}</span>
                     </div>
@@ -2292,7 +2280,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (isDevice && product.imeis && product.imeis.length > 0) {
                 imeisSection.classList.remove('hidden');
                 imeisList.innerHTML = product.imeis.map(imei => `
-                    <span class="px-2.5 py-1 bg-slate-900 border border-slate-800 text-cyan-400 font-mono text-[11px] rounded-lg flex items-center gap-1.5 shadow-sm">
+                    <span class="px-2.5 py-1 bg-slate-900 border border-slate-800 text-cyan-400 font-mono text-[11px] rounded-[0.5rem] flex items-center gap-1.5 shadow-sm">
                         <i class="fa-solid fa-barcode text-cyan-500/70"></i> ${imei}
                     </span>
                 `).join('');
@@ -3177,8 +3165,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const mobileNavItems = [mobileNavTransactions, mobileNavStock, mobileNavAccountingPO, mobileNavMembers];
         mobileNavItems.forEach(item => {
             if (item) {
-                item.classList.remove('text-cyan-400', 'scale-105', 'font-semibold');
-                item.classList.add('text-slate-400');
+                item.classList.remove('text-primary', 'scale-105', 'font-semibold');
+                item.classList.add('text-body-muted');
             }
         });
 
@@ -3235,8 +3223,8 @@ document.addEventListener('DOMContentLoaded', () => {
         // Helper to activate mobile nav item
         const activateMobileNav = (mobileNav) => {
             if (mobileNav) {
-                mobileNav.classList.remove('text-slate-400');
-                mobileNav.classList.add('text-cyan-400', 'scale-105', 'font-semibold');
+                mobileNav.classList.remove('text-body-muted');
+                mobileNav.classList.add('text-primary', 'scale-105', 'font-semibold');
             }
         };
 
@@ -4036,39 +4024,39 @@ document.addEventListener('DOMContentLoaded', () => {
             const qtyInCart = typeof cart !== 'undefined' ? cart.filter(item => item.product_id === product._id).reduce((sum, item) => sum + item.quantity, 0) : 0;
 
             const card = document.createElement('div');
-            card.className = `pos-card bg-white border rounded-2xl p-4 transition-all shadow-sm ${isOutOfStock ? 'border-red-300 opacity-60' : 'border-gray-200 hover:border-[#f5b11a] hover:shadow-md'}`;
+            card.className = `pos-card bg-canvas-elevated border rounded-lg p-4 transition-all ${isOutOfStock ? 'border-red-500/30 opacity-60' : 'border-hairline hover:border-primary/40'}`;
             card.setAttribute('data-product-id', product._id);
             card.innerHTML = `
                 <div class="flex items-start gap-3 mb-3">
-                    <div class="w-12 h-12 rounded-xl ${isDevice ? 'bg-[#fdf9f1] text-[#f5b11a]' : 'bg-gray-100 text-gray-500'} border border-gray-100 flex items-center justify-center flex-shrink-0">
+                    <div class="w-12 h-12 rounded-sm bg-surface-chip text-ink flex items-center justify-center flex-shrink-0">
                         <i class="fa-solid ${isDevice ? 'fa-mobile-screen' : 'fa-box'} text-xl"></i>
                     </div>
                     <div class="min-w-0 flex-1">
-                        <h4 class="font-bold text-slate-800 text-sm leading-tight">${productNameFull}</h4>
-                        <p class="text-sm font-bold font-mono text-[#f5b11a] mt-1 tracking-wider">${product.product_code || '-'}</p>
+                        <h4 class="font-bold text-ink text-sm leading-tight">${productNameFull}</h4>
+                        <p class="text-sm font-bold font-mono text-body-muted mt-1 tracking-wider">${product.product_code || '-'}</p>
                         <div class="flex items-center justify-between mt-1.5 pr-1">
-                            <span class="text-[12px] font-bold ${isOutOfStock ? 'text-red-500' : 'text-orange-500'}">${isOutOfStock ? 'สินค้าหมด' : `คงเหลือ: ${stockQty}`}</span>
-                            <span class="text-[12px] text-gray-500 text-right truncate pl-2">${product.branch_id && product.branch_id.name ? product.branch_id.name : ''}</span>
+                            <span class="text-[12px] font-bold ${isOutOfStock ? 'text-red-400' : 'text-body-muted'}">${isOutOfStock ? 'สินค้าหมด' : `คงเหลือ: ${stockQty}`}</span>
+                            <span class="text-[12px] text-ink-muted-48 text-right truncate pl-2">${product.branch_id && product.branch_id.name ? product.branch_id.name : ''}</span>
                         </div>
                     </div>
                 </div>
-                <div class="border-t border-gray-100 mt-3 pt-3">
+                <div class="border-t border-hairline mt-3 pt-3">
                     <div class="flex items-center justify-between mb-3">
-                        <span class="font-black font-mono text-xl"><span class="text-red-500">฿</span><span class="text-gray-900">${(product.selling_price || 0).toLocaleString()}</span></span>
-                        
+                        <span class="font-black font-mono text-xl text-ink">฿${(product.selling_price || 0).toLocaleString()}</span>
+
                         <!-- Quantity Controls -->
                         <div class="pos-qty-controls flex items-center gap-3 ${qtyInCart > 0 ? '' : 'hidden'}">
-                             <button class="pos-card-qty-minus w-7 h-7 rounded-full border border-gray-300 flex items-center justify-center text-gray-500 hover:bg-gray-50 transition-colors" data-product-id="${product._id}">
+                             <button class="pos-card-qty-minus w-7 h-7 rounded-full border border-hairline flex items-center justify-center text-body-muted hover:bg-surface-chip transition-colors" data-product-id="${product._id}">
                                  <i class="fa-solid fa-minus text-[10px]"></i>
                              </button>
-                             <span class="pos-card-qty-display font-bold font-mono text-lg text-black w-4 text-center">${qtyInCart}</span>
-                             <button class="pos-card-qty-plus w-7 h-7 rounded-full border border-gray-300 flex items-center justify-center text-gray-500 hover:bg-gray-50 transition-colors" data-product-id="${product._id}">
+                             <span class="pos-card-qty-display font-bold font-mono text-lg text-ink w-4 text-center">${qtyInCart}</span>
+                             <button class="pos-card-qty-plus w-7 h-7 rounded-full border border-hairline flex items-center justify-center text-body-muted hover:bg-surface-chip transition-colors" data-product-id="${product._id}">
                                  <i class="fa-solid fa-plus text-[10px]"></i>
                              </button>
                         </div>
                     </div>
-                    
-                    <button class="pos-add-btn w-full py-2.5 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 ${isOutOfStock ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-[#f5b11a] hover:bg-[#e0a015] text-white shadow-lg shadow-amber-500/20'}" data-product-id="${product._id}" ${isOutOfStock ? 'disabled' : ''}>
+
+                    <button class="pos-add-btn w-full py-2.5 rounded-pill text-sm font-bold transition-all flex items-center justify-center gap-2 ${isOutOfStock ? 'bg-surface-chip text-ink-muted-48 cursor-not-allowed' : 'bg-primary hover:bg-primary-pressed text-on-primary'}" data-product-id="${product._id}" ${isOutOfStock ? 'disabled' : ''}>
                         <i class="fa-solid fa-plus"></i> เพิ่ม
                     </button>
                 </div>
@@ -4144,27 +4132,27 @@ document.addEventListener('DOMContentLoaded', () => {
 
         let paginationHTML = '';
 
-        paginationHTML += `<button class="pos-page-btn px-3 py-1.5 rounded-lg text-sm font-medium flex items-center gap-1.5 ${posCurrentPage === 1 ? 'text-slate-400 bg-slate-100 cursor-not-allowed' : 'text-slate-700 bg-slate-100 hover:bg-slate-200 transition-colors'}" data-page="${posCurrentPage - 1}" ${posCurrentPage === 1 ? 'disabled' : ''}><i class="fa-solid fa-chevron-left text-xs"></i> ย้อนกลับ</button>`;
+        paginationHTML += `<button class="pos-page-btn px-3 py-1.5 rounded-sm text-sm font-medium flex items-center gap-1.5 ${posCurrentPage === 1 ? 'text-ink-muted-48 bg-surface-chip cursor-not-allowed' : 'text-body-muted bg-surface-chip hover:bg-surface-tile-2 transition-colors'}" data-page="${posCurrentPage - 1}" ${posCurrentPage === 1 ? 'disabled' : ''}><i class="fa-solid fa-chevron-left text-xs"></i> ย้อนกลับ</button>`;
 
         let startPage = Math.max(1, posCurrentPage - 2);
         let endPage = Math.min(totalPages, posCurrentPage + 2);
 
         if (startPage > 1) {
-            paginationHTML += `<button class="pos-page-btn px-3 py-1.5 rounded-lg text-sm font-medium text-slate-400 hover:bg-slate-200 transition-colors" data-page="1">1</button>`;
-            if (startPage > 2) paginationHTML += `<span class="px-2 text-slate-400">...</span>`;
+            paginationHTML += `<button class="pos-page-btn px-3 py-1.5 rounded-sm text-sm font-medium text-ink-muted-48 hover:bg-surface-tile-2 transition-colors" data-page="1">1</button>`;
+            if (startPage > 2) paginationHTML += `<span class="px-2 text-ink-muted-48">...</span>`;
         }
 
         for (let i = startPage; i <= endPage; i++) {
             const isActive = i === posCurrentPage;
-            paginationHTML += `<button class="pos-page-btn px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${isActive ? 'bg-[#eab308] text-white shadow-md shadow-yellow-500/20' : 'text-slate-400 hover:bg-slate-200'}" data-page="${i}">${i}</button>`;
+            paginationHTML += `<button class="pos-page-btn px-3 py-1.5 rounded-sm text-sm font-medium transition-colors ${isActive ? 'bg-primary text-on-primary' : 'text-ink-muted-48 hover:bg-surface-tile-2'}" data-page="${i}">${i}</button>`;
         }
 
         if (endPage < totalPages) {
-            if (endPage < totalPages - 1) paginationHTML += `<span class="px-2 text-slate-400">...</span>`;
-            paginationHTML += `<button class="pos-page-btn px-3 py-1.5 rounded-lg text-sm font-medium text-slate-400 hover:bg-slate-200 transition-colors" data-page="${totalPages}">${totalPages}</button>`;
+            if (endPage < totalPages - 1) paginationHTML += `<span class="px-2 text-ink-muted-48">...</span>`;
+            paginationHTML += `<button class="pos-page-btn px-3 py-1.5 rounded-sm text-sm font-medium text-ink-muted-48 hover:bg-surface-tile-2 transition-colors" data-page="${totalPages}">${totalPages}</button>`;
         }
 
-        paginationHTML += `<button class="pos-page-btn px-3 py-1.5 rounded-lg text-sm font-medium flex items-center gap-1.5 ${posCurrentPage === totalPages ? 'text-slate-400 bg-slate-100 cursor-not-allowed' : 'text-slate-400 bg-slate-100 hover:bg-slate-200 transition-colors'}" data-page="${posCurrentPage + 1}" ${posCurrentPage === totalPages ? 'disabled' : ''}>ถัดไป <i class="fa-solid fa-chevron-right text-xs"></i></button>`;
+        paginationHTML += `<button class="pos-page-btn px-3 py-1.5 rounded-sm text-sm font-medium flex items-center gap-1.5 ${posCurrentPage === totalPages ? 'text-ink-muted-48 bg-surface-chip cursor-not-allowed' : 'text-ink-muted-48 bg-surface-chip hover:bg-surface-tile-2 transition-colors'}" data-page="${posCurrentPage + 1}" ${posCurrentPage === totalPages ? 'disabled' : ''}>ถัดไป <i class="fa-solid fa-chevron-right text-xs"></i></button>`;
 
         controlsEl.innerHTML = paginationHTML;
 
@@ -4399,7 +4387,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (filtered.length === 0) {
                 imeiListContainer.innerHTML = `
-                    <div class="text-center py-8 text-slate-400">
+                    <div class="text-center py-8 text-body-muted">
                         <i class="fa-solid fa-search text-2xl mb-2"></i>
                         <p class="text-sm">ไม่พบ IMEI ที่ค้นหา</p>
                     </div>
@@ -4409,16 +4397,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
             filtered.forEach(imei => {
                 const item = document.createElement('button');
-                item.className = 'w-full text-left px-4 py-3 rounded-xl bg-slate-900 border border-slate-700 hover:border-cyan-500/50 hover:bg-slate-800 transition-all flex items-center gap-3 group';
+                item.className = 'w-full text-left px-4 py-3 rounded-md bg-canvas border border-hairline hover:border-primary/40 hover:bg-surface-chip transition-all flex items-center gap-3 group';
                 item.innerHTML = `
-                    <div class="w-8 h-8 rounded-lg bg-cyan-500/10 flex items-center justify-center text-cyan-400 flex-shrink-0 group-hover:bg-cyan-500/20 transition-colors">
+                    <div class="w-8 h-8 rounded-sm bg-surface-chip flex items-center justify-center text-ink flex-shrink-0">
                         <i class="fa-solid fa-sim-card text-sm"></i>
                     </div>
                     <div class="flex-1 min-w-0">
-                        <p class="font-mono text-white text-sm font-medium">${imei}</p>
-                        <p class="text-xs text-slate-400">${product.name}</p>
+                        <p class="font-mono text-ink text-sm font-medium">${imei}</p>
+                        <p class="text-xs text-body-muted">${product.name}</p>
                     </div>
-                    <i class="fa-solid fa-plus text-cyan-500 opacity-0 group-hover:opacity-100 transition-opacity"></i>
+                    <i class="fa-solid fa-plus text-primary opacity-0 group-hover:opacity-100 transition-opacity"></i>
                 `;
                 item.addEventListener('click', () => {
                     // Add specific IMEI to cart
@@ -4488,47 +4476,47 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (cart.length === 0) {
             if (cartEmptyState) cartEmptyState.classList.remove('hidden');
-            if (cartCountBadge) cartCountBadge.innerHTML = '<span class="text-yellow-600 font-extrabold text-lg">0</span> รายการ';
-            if (cartSubtotal) cartSubtotal.innerHTML = '<span class="text-red-500">฿</span>0.00';
+            if (cartCountBadge) cartCountBadge.innerHTML = '<span class="text-ink font-extrabold text-lg">0</span> รายการ';
+            if (cartSubtotal) cartSubtotal.innerHTML = '฿0.00';
             if (typeof renderMobileCart === 'function') renderMobileCart();
             return;
         }
 
         if (cartEmptyState) cartEmptyState.classList.add('hidden');
-        if (cartCountBadge) cartCountBadge.innerHTML = `<span class="text-yellow-600 font-extrabold text-lg">${cart.length}</span> รายการ`;
+        if (cartCountBadge) cartCountBadge.innerHTML = `<span class="text-ink font-extrabold text-lg">${cart.length}</span> รายการ`;
 
         cart.forEach((item, index) => {
             const cartEl = document.createElement('div');
-            cartEl.className = 'cart-item bg-slate-900 border border-slate-700 rounded-xl p-3 flex items-center gap-3 hover:border-slate-600 transition-colors animate-fade-in';
+            cartEl.className = 'cart-item bg-canvas border border-hairline rounded-md p-3 flex items-center gap-3 transition-colors animate-fade-in';
             cartEl.innerHTML = `
-                <div class="w-10 h-10 rounded-lg ${item._isDevice ? 'bg-cyan-500/10 text-cyan-400' : 'bg-orange-500/10 text-orange-400'} flex items-center justify-center flex-shrink-0">
+                <div class="w-10 h-10 rounded-sm bg-surface-chip text-ink flex items-center justify-center flex-shrink-0">
                     <i class="fa-solid ${item._isDevice ? 'fa-mobile-screen' : 'fa-box'} text-lg"></i>
                 </div>
                 <div class="flex-1 min-w-0">
-                    <p class="font-medium text-white text-sm truncate">${item.product_name}</p>
-                    <p class="text-xs text-slate-400 mt-0.5 truncate">
+                    <p class="font-medium text-ink text-sm truncate">${item.product_name}</p>
+                    <p class="text-xs text-body-muted mt-0.5 truncate">
                         ${item.imei_sold ? `IMEI: ...${item.imei_sold.slice(-6)}` : `จำนวน: ${item.quantity}`}
                     </p>
                 </div>
                 <div class="text-right flex-shrink-0">
                     <div class="flex flex-col items-end justify-center">
-                        <span class="text-[10px] text-slate-400 uppercase font-bold tracking-wider">ราคา/หน่วย</span>
-                        <p class="text-slate-300 font-semibold font-mono text-sm">฿${item.price.toLocaleString()}</p>
+                        <span class="text-[10px] text-ink-muted-48 uppercase font-bold tracking-wider">ราคา/หน่วย</span>
+                        <p class="text-body-muted font-semibold font-mono text-sm">฿${item.price.toLocaleString()}</p>
                     </div>
-                    <p class="cart-line-subtotal font-bold text-cyan-400 font-mono text-sm mt-0.5">฿${item.subtotal.toLocaleString()}</p>
+                    <p class="cart-line-subtotal font-bold text-ink font-mono text-sm mt-0.5">฿${item.subtotal.toLocaleString()}</p>
                     ${!item.imei_sold ? `
                         <div class="flex items-center gap-1 mt-1 justify-end">
-                            <button class="cart-qty-minus w-6 h-6 rounded bg-slate-700 text-slate-300 hover:bg-slate-600 text-xs flex items-center justify-center transition-colors" data-index="${index}">
+                            <button class="cart-qty-minus w-6 h-6 rounded-sm bg-surface-chip text-body-muted hover:bg-surface-tile-2 text-xs flex items-center justify-center transition-colors" data-index="${index}">
                                 <i class="fa-solid fa-minus text-[10px]"></i>
                             </button>
-                            <span class="text-xs text-slate-400 font-mono w-6 text-center">${item.quantity}</span>
-                            <button class="cart-qty-plus w-6 h-6 rounded bg-slate-700 text-slate-300 hover:bg-slate-600 text-xs flex items-center justify-center transition-colors" data-index="${index}">
+                            <span class="text-xs text-body-muted font-mono w-6 text-center">${item.quantity}</span>
+                            <button class="cart-qty-plus w-6 h-6 rounded-sm bg-surface-chip text-body-muted hover:bg-surface-tile-2 text-xs flex items-center justify-center transition-colors" data-index="${index}">
                                 <i class="fa-solid fa-plus text-[10px]"></i>
                             </button>
                         </div>
                     ` : ''}
                 </div>
-                <button class="cart-remove-btn text-slate-400 hover:text-red-400 transition-colors p-1.5 rounded-lg hover:bg-red-500/10 flex-shrink-0" data-index="${index}">
+                <button class="cart-remove-btn text-body-muted hover:text-red-400 transition-colors p-1.5 rounded-sm hover:bg-red-500/10 flex-shrink-0" data-index="${index}">
                     <i class="fa-solid fa-trash-can text-sm"></i>
                 </button>
             `;
@@ -4580,7 +4568,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const updateCartTotals = () => {
         const subtotal = cart.reduce((sum, item) => sum + item.subtotal, 0);
-        if (cartSubtotal) cartSubtotal.innerHTML = `<span class="text-red-500">฿</span>${subtotal.toLocaleString()}`;
+        if (cartSubtotal) cartSubtotal.innerHTML = `฿${subtotal.toLocaleString()}`;
     };
 
     // ==========================================
@@ -4669,44 +4657,44 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (cart.length === 0) {
             const emptyDiv = document.createElement('div');
-            emptyDiv.className = 'mobile-cart-empty';
-            emptyDiv.innerHTML = '<i class="fa-solid fa-cart-shopping"></i><p>\u0e44\u0e21\u0e48\u0e21\u0e35\u0e2a\u0e34\u0e19\u0e04\u0e49\u0e32\u0e43\u0e19\u0e15\u0e30\u0e01\u0e23\u0e49\u0e32</p>';
+            emptyDiv.className = 'mobile-cart-empty flex flex-col items-center justify-center gap-2 py-10 text-body-muted';
+            emptyDiv.innerHTML = '<i class="fa-solid fa-cart-shopping text-2xl"></i><p class="text-sm">\u0e44\u0e21\u0e48\u0e21\u0e35\u0e2a\u0e34\u0e19\u0e04\u0e49\u0e32\u0e43\u0e19\u0e15\u0e30\u0e01\u0e23\u0e49\u0e32</p>';
             mobileCartItemsList.appendChild(emptyDiv);
             return;
         }
 
         cart.forEach((item, index) => {
             const el = document.createElement('div');
-            el.className = 'mobile-cart-item';
+            el.className = 'mobile-cart-item flex items-center gap-3 bg-canvas border border-hairline rounded-md p-3';
 
             const iconDiv = document.createElement('div');
-            iconDiv.className = 'item-icon';
+            iconDiv.className = 'item-icon w-10 h-10 rounded-sm bg-surface-chip text-ink flex items-center justify-center flex-shrink-0';
             iconDiv.innerHTML = '<i class="fa-solid ' + (item._isDevice ? 'fa-mobile-screen' : 'fa-box') + '"></i>';
 
             const infoDiv = document.createElement('div');
-            infoDiv.className = 'item-info';
+            infoDiv.className = 'item-info flex-1 min-w-0';
             const nameDiv = document.createElement('div');
-            nameDiv.className = 'item-name';
+            nameDiv.className = 'item-name font-medium text-ink text-sm truncate';
             nameDiv.textContent = item.product_name;
             const detailDiv = document.createElement('div');
-            detailDiv.className = 'item-detail';
+            detailDiv.className = 'item-detail text-xs text-body-muted mt-0.5 truncate';
             detailDiv.textContent = item.imei_sold ? 'IMEI: ...' + item.imei_sold.slice(-6) : '\u0e08\u0e33\u0e19\u0e27\u0e19: ' + item.quantity;
             infoDiv.appendChild(nameDiv);
             infoDiv.appendChild(detailDiv);
 
             const pricesDiv = document.createElement('div');
-            pricesDiv.className = 'item-prices';
+            pricesDiv.className = 'item-prices text-right flex-shrink-0 flex flex-col items-end gap-0.5';
             const unitPrice = document.createElement('div');
-            unitPrice.className = 'unit-price';
+            unitPrice.className = 'unit-price text-xs text-ink-muted-48 font-mono';
             unitPrice.textContent = '\u0e3f' + item.price.toLocaleString();
             const subtotalPrice = document.createElement('div');
-            subtotalPrice.className = 'subtotal-price';
+            subtotalPrice.className = 'subtotal-price text-sm font-bold text-ink font-mono';
             subtotalPrice.textContent = '\u0e3f' + item.subtotal.toLocaleString();
             pricesDiv.appendChild(unitPrice);
             pricesDiv.appendChild(subtotalPrice);
 
             const removeDiv = document.createElement('div');
-            removeDiv.className = 'item-remove';
+            removeDiv.className = 'item-remove text-body-muted hover:text-red-400 p-1.5 rounded-sm hover:bg-red-500/10 cursor-pointer flex-shrink-0 transition-colors';
             removeDiv.dataset.index = index;
             removeDiv.innerHTML = '<i class="fa-solid fa-trash-can" style="font-size:12px;"></i>';
             removeDiv.addEventListener('click', () => {
@@ -4765,13 +4753,13 @@ document.addEventListener('DOMContentLoaded', () => {
             if (input) {
                 if (item.is_gift || item.unit_name !== 'เครื่อง') {
                     input.setAttribute('disabled', 'true');
-                    input.classList.add('opacity-60', 'bg-slate-800/50');
+                    input.classList.add('opacity-60', 'bg-surface-tile-3/50');
                 } else if (isFinancing) {
                     input.removeAttribute('disabled');
-                    input.classList.remove('opacity-60', 'bg-slate-800/50');
+                    input.classList.remove('opacity-60', 'bg-surface-tile-3/50');
                 } else {
                     input.setAttribute('disabled', 'true');
-                    input.classList.add('opacity-60', 'bg-slate-800/50');
+                    input.classList.add('opacity-60', 'bg-surface-tile-3/50');
                 }
             }
 
@@ -5230,8 +5218,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (tabSearch && tabScan) {
         tabSearch.addEventListener('click', () => {
             posActiveTab = 'search';
-            tabSearch.className = 'px-4 py-2 rounded-md text-sm font-semibold bg-slate-700 text-white shadow-sm transition-all';
-            tabScan.className = 'px-4 py-2 rounded-md text-sm font-semibold text-slate-400 hover:text-white hover:bg-slate-800 transition-all';
+            tabSearch.className = 'px-4 py-2 rounded-md text-sm font-semibold bg-primary text-on-primary transition-all';
+            tabScan.className = 'px-4 py-2 rounded-md text-sm font-semibold text-body-muted hover:text-ink hover:bg-surface-chip transition-all';
             if (posSearchInput) {
                 posSearchInput.placeholder = 'ค้นหาสินค้า / สแกนบาร์โค้ด / สแกน IMEI...';
                 posSearchInput.focus();
@@ -5240,8 +5228,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         tabScan.addEventListener('click', () => {
             posActiveTab = 'scan';
-            tabScan.className = 'px-4 py-2 rounded-md text-sm font-semibold bg-slate-700 text-white shadow-sm transition-all';
-            tabSearch.className = 'px-4 py-2 rounded-md text-sm font-semibold text-slate-400 hover:text-white hover:bg-slate-800 transition-all';
+            tabScan.className = 'px-4 py-2 rounded-md text-sm font-semibold bg-primary text-on-primary transition-all';
+            tabSearch.className = 'px-4 py-2 rounded-md text-sm font-semibold text-body-muted hover:text-ink hover:bg-surface-chip transition-all';
             if (posSearchInput) {
                 posSearchInput.placeholder = 'สแกนบาร์โค้ด / IMEI และกด Enter...';
                 posSearchInput.focus();
@@ -5273,7 +5261,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const remaining = totalUpfrontToCollect - actualPaid;
 
         if (totalUpfrontToCollect <= 0) {
-            modalFinanceTotalDownLabel.className = 'text-sm font-bold text-slate-400 font-mono';
+            modalFinanceTotalDownLabel.className = 'text-sm font-bold text-body-muted font-mono';
             modalFinanceTotalDownLabel.textContent = 'ยอดต้องรับ: ฿0.00';
             if (btnConfirmCheckout) {
                 btnConfirmCheckout.disabled = false;
@@ -5499,19 +5487,19 @@ document.addEventListener('DOMContentLoaded', () => {
             confirmPriceList.innerHTML = '';
             cart.forEach((item, index) => {
                 const div = document.createElement('div');
-                div.className = 'flex justify-between items-center py-3 text-sm hover:bg-slate-800/20 px-2 rounded-lg transition-colors';
+                div.className = 'flex justify-between items-center py-3 text-sm hover:bg-surface-chip/40 px-2 rounded-md transition-colors';
                 div.innerHTML = `
                     <div>
-                        <p class="font-bold text-white">${item.product_name}</p>
+                        <p class="font-bold text-ink">${item.product_name}</p>
                         <div class="mt-1 flex flex-col gap-1.5">
                             ${item.imei_sold ?
-                        `<span class="w-fit bg-slate-800 text-slate-300 border border-slate-700 px-1.5 py-0.5 rounded text-[10px] font-mono">IMEI: ${item.imei_sold}</span>`
-                        : `<span class="w-fit bg-slate-800/60 px-1.5 py-0.5 rounded text-slate-400 text-[10px]">จำนวน: ${item.quantity} ${item.unit_name || 'ชิ้น'}</span>`
+                        `<span class="w-fit bg-surface-chip text-body-muted border border-hairline px-1.5 py-0.5 rounded text-[10px] font-mono">IMEI: ${item.imei_sold}</span>`
+                        : `<span class="w-fit bg-surface-chip/60 px-1.5 py-0.5 rounded text-body-muted text-[10px]">จำนวน: ${item.quantity} ${item.unit_name || 'ชิ้น'}</span>`
                     }
                             ${(item._isDevice || item.imei_sold) ? `
                                 <div class="flex items-center gap-2 mt-1">
-                                    <span class="text-[10px] text-slate-400">ระยะประกัน:</span>
-                                    <select class="modal-warranty-select bg-slate-800 border border-slate-700 text-cyan-400 text-[10px] font-bold rounded px-2 py-0.5 focus:outline-none focus:border-cyan-500" data-index="${index}">
+                                    <span class="text-[10px] text-body-muted">ระยะประกัน:</span>
+                                    <select class="modal-warranty-select bg-surface-chip border border-hairline text-ink text-[10px] font-bold rounded px-2 py-0.5 focus:outline-none focus:border-primary-focus" data-index="${index}">
                                         <option value="1 เดือน" ${(!item.warranty_period || item.warranty_period === '1 เดือน') ? 'selected' : ''}>1 เดือน</option>
                                         <option value="2 เดือน" ${(item.warranty_period === '2 เดือน') ? 'selected' : ''}>2 เดือน</option>
                                         <option value="3 เดือน" ${(item.warranty_period === '3 เดือน') ? 'selected' : ''}>3 เดือน</option>
@@ -5521,14 +5509,14 @@ document.addEventListener('DOMContentLoaded', () => {
                             ` : ''}
                             ${(item.unit_name === 'ชิ้น') ? `
                                 <div class="flex items-center gap-2 mt-1.5">
-                                    <span class="text-[10px] text-slate-400">การขาย:</span>
-                                    <div class="inline-flex rounded-lg overflow-hidden border border-slate-700" role="group">
-                                        <button type="button" data-index="${index}" data-type="normal" 
-                                            class="gift-toggle-btn px-2.5 py-0.5 text-[10px] font-semibold transition-all ${!item.is_gift ? 'bg-cyan-500/20 text-cyan-400 border-r border-slate-700' : 'bg-slate-800/40 text-slate-400 hover:text-white border-r border-slate-700'}">
+                                    <span class="text-[10px] text-body-muted">การขาย:</span>
+                                    <div class="inline-flex rounded-md overflow-hidden border border-hairline" role="group">
+                                        <button type="button" data-index="${index}" data-type="normal"
+                                            class="gift-toggle-btn px-2.5 py-0.5 text-[10px] font-semibold transition-all ${!item.is_gift ? 'bg-primary/20 text-primary border-r border-hairline' : 'bg-surface-chip/40 text-body-muted hover:text-ink border-r border-hairline'}">
                                             ขายปกติ
                                         </button>
-                                        <button type="button" data-index="${index}" data-type="gift" 
-                                            class="gift-toggle-btn px-2.5 py-0.5 text-[10px] font-semibold transition-all ${item.is_gift ? 'bg-amber-500/20 text-amber-400' : 'bg-slate-800/40 text-slate-400 hover:text-white'}">
+                                        <button type="button" data-index="${index}" data-type="gift"
+                                            class="gift-toggle-btn px-2.5 py-0.5 text-[10px] font-semibold transition-all ${item.is_gift ? 'bg-amber-500/20 text-amber-400' : 'bg-surface-chip/40 text-body-muted hover:text-ink'}">
                                             ของแถม
                                         </button>
                                     </div>
@@ -5539,17 +5527,17 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>
                     <div class="flex items-center gap-3 text-right">
                         <div class="flex flex-col items-end">
-                            <span class="text-[10px] text-slate-400 uppercase font-bold mb-1 tracking-wider">แก้ไขราคา</span>
+                            <span class="text-[10px] text-body-muted uppercase font-bold mb-1 tracking-wider">แก้ไขราคา</span>
                             <div class="relative">
-                                <span class="absolute left-2 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-mono">฿</span>
+                                <span class="absolute left-2 top-1/2 -translate-y-1/2 text-ink-muted-48 text-xs font-mono">฿</span>
                                 <input type="number" value="${item.price}" min="0" step="1" data-index="${index}"
-                                    class="modal-item-price-input w-28 pl-5 pr-2 py-1 rounded bg-slate-900 border border-slate-700 text-white text-right font-mono text-sm focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all"
+                                    class="modal-item-price-input w-28 pl-5 pr-2 py-1 rounded bg-surface-chip border border-divider-soft text-ink text-right font-mono text-sm focus:border-primary-focus focus:ring-1 focus:ring-primary-focus/40 focus:outline-none transition-all"
                                     ${(paymentMethod && paymentMethod.value === 'จัดไฟแนนซ์' && !item.is_gift && item.unit_name === 'เครื่อง') ? '' : 'disabled'}>
                             </div>
                         </div>
                         <div class="w-24 flex flex-col items-end pt-3.5 font-mono">
-                            <span class="text-slate-400 text-[10px] uppercase font-bold mb-0.5">รวม</span>
-                            <p class="text-emerald-400 font-bold text-sm modal-item-subtotal" data-index="${index}">฿${(item.price * item.quantity).toLocaleString()}</p>
+                            <span class="text-body-muted text-[10px] uppercase font-bold mb-0.5">รวม</span>
+                            <p class="text-ink font-bold text-sm modal-item-subtotal" data-index="${index}">฿${(item.price * item.quantity).toLocaleString()}</p>
                         </div>
                     </div>
                 `;
@@ -5622,9 +5610,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     buttons.forEach(b => {
                         const bType = b.dataset.type;
                         if (bType === 'normal') {
-                            b.className = `gift-toggle-btn px-2.5 py-0.5 text-[10px] font-semibold transition-all ${!isGift ? 'bg-cyan-500/20 text-cyan-400 border-r border-slate-700' : 'bg-slate-800/40 text-slate-400 hover:text-white border-r border-slate-700'}`;
+                            b.className = `gift-toggle-btn px-2.5 py-0.5 text-[10px] font-semibold transition-all ${!isGift ? 'bg-primary/20 text-primary border-r border-hairline' : 'bg-surface-chip/40 text-body-muted hover:text-ink border-r border-hairline'}`;
                         } else if (bType === 'gift') {
-                            b.className = `gift-toggle-btn px-2.5 py-0.5 text-[10px] font-semibold transition-all ${isGift ? 'bg-amber-500/20 text-amber-400' : 'bg-slate-800/40 text-slate-400 hover:text-white'}`;
+                            b.className = `gift-toggle-btn px-2.5 py-0.5 text-[10px] font-semibold transition-all ${isGift ? 'bg-amber-500/20 text-amber-400' : 'bg-surface-chip/40 text-body-muted hover:text-ink'}`;
                         }
                     });
 
@@ -5959,16 +5947,16 @@ document.addEventListener('DOMContentLoaded', () => {
         posDepositSearchResults.innerHTML = '';
         deposits.forEach(dep => {
             const div = document.createElement('div');
-            div.className = 'p-3 hover:bg-slate-700 cursor-pointer transition-colors flex flex-col gap-0.5 text-left';
+            div.className = 'p-3 hover:bg-surface-chip cursor-pointer transition-colors flex flex-col gap-0.5 text-left';
             div.innerHTML = `
                 <div class="flex justify-between items-center">
-                    <span class="text-xs font-bold text-cyan-400 font-mono">${dep.deposit_number}</span>
-                    <span class="text-xs font-bold text-emerald-400 font-mono">฿${dep.deposit_amount.toLocaleString()}</span>
+                    <span class="text-xs font-bold text-ink font-mono">${dep.deposit_number}</span>
+                    <span class="text-xs font-bold text-ink font-mono">฿${dep.deposit_amount.toLocaleString()}</span>
                 </div>
-                <div class="text-[11px] text-slate-300">
+                <div class="text-[11px] text-body-muted">
                     ลูกค้า: ${dep.customer_name} (${dep.customer_phone})
                 </div>
-                <div class="text-[10px] text-slate-400 truncate">
+                <div class="text-[10px] text-ink-muted-48 truncate">
                     สินค้ามัดจำ: ${dep.product_name}
                 </div>
             `;
@@ -6036,14 +6024,14 @@ document.addEventListener('DOMContentLoaded', () => {
         posMemberResults.innerHTML = '';
         members.forEach(member => {
             const div = document.createElement('div');
-            div.className = 'p-3 hover:bg-slate-700 cursor-pointer transition-colors flex items-center gap-3';
+            div.className = 'p-3 hover:bg-surface-chip cursor-pointer transition-colors flex items-center gap-3';
             div.innerHTML = `
-                <div class="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center text-slate-400">
+                <div class="w-8 h-8 rounded-full bg-surface-chip flex items-center justify-center text-body-muted">
                     <i class="fa-solid fa-user text-sm"></i>
                 </div>
                 <div class="flex-1 overflow-hidden">
-                    <p class="text-sm font-bold  truncate">${member.prefix}${member.first_name} ${member.last_name}</p>
-                    <p class="text-xs text-slate-400 truncate">${member.phone || 'ไม่มีเบอร์โทร'} | ${member.member_number || '-'}</p>
+                    <p class="text-sm font-bold text-ink truncate">${member.prefix}${member.first_name} ${member.last_name}</p>
+                    <p class="text-xs text-body-muted truncate">${member.phone || 'ไม่มีเบอร์โทร'} | ${member.member_number || '-'}</p>
                 </div>
             `;
             div.addEventListener('click', () => selectMember(member));
@@ -6564,19 +6552,19 @@ document.addEventListener('DOMContentLoaded', () => {
             if (data.success) {
                 myArrivalReports.innerHTML = '';
                 if (data.data.length === 0) {
-                    myArrivalReports.innerHTML = '<div class="text-center py-8 text-slate-400">ไม่มีประวัติการแจ้ง</div>';
+                    myArrivalReports.innerHTML = '<div class="text-center py-8 text-body-muted">ไม่มีประวัติการแจ้ง</div>';
                     return;
                 }
                 data.data.forEach(item => {
                     const statusColor = item.status === 'รอดำเนินการ' ? 'text-amber-400' : (item.status === 'อนุมัติแล้ว' ? 'text-emerald-400' : 'text-red-400');
                     const html = `
-                        <div class="bg-slate-900/50 p-3 rounded-xl border border-slate-700/50 text-sm">
+                        <div class="bg-surface-tile-3 p-3 rounded-md border border-hairline text-sm">
                             <div class="flex justify-between items-start mb-1">
-                                <span class="font-bold text-white">${item.product_name}</span>
+                                <span class="font-bold text-ink">${item.product_name}</span>
                                 <span class="${statusColor} text-xs font-bold">${item.status}</span>
                             </div>
-                            <div class="text-xs text-slate-400">IMEI: ${item.imeis.length} รายการ</div>
-                            <div class="text-[10px] text-slate-400 mt-1">${new Date(item.created_at).toLocaleString('th-TH')}</div>
+                            <div class="text-xs text-body-muted">IMEI: ${item.imeis.length} รายการ</div>
+                            <div class="text-[10px] text-body-muted mt-1">${new Date(item.created_at).toLocaleString('th-TH')}</div>
                         </div>
                     `;
                     myArrivalReports.innerHTML += html;
@@ -6594,7 +6582,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!tbody) return;
 
         try {
-            tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-slate-400"><i class="fa-solid fa-spinner fa-spin mr-2"></i>กำลังโหลด...</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-body-muted"><i class="fa-solid fa-spinner fa-spin mr-2"></i>กำลังโหลด...</td></tr>';
             let url = `${API_BASE_URL}/import-notifications?status=รอดำเนินการ`;
             if (filterBranch && filterBranch.value) {
                 url += `&branch_id=${filterBranch.value}`;
@@ -6606,7 +6594,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (data.success) {
                 tbody.innerHTML = '';
                 if (data.data.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="7" class="text-center py-8 text-slate-400">ไม่มีรายการรออนุมัติ</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="7" class="text-center py-8 text-body-muted">ไม่มีรายการรออนุมัติ</td></tr>';
                     if (approveImportBadge) approveImportBadge.classList.add('hidden');
                     return;
                 }
@@ -6618,16 +6606,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 data.data.forEach(item => {
                     const tr = document.createElement('tr');
-                    tr.className = 'border-b border-slate-700/50 hover:bg-slate-700/20 transition-colors';
+                    tr.className = 'border-b border-hairline hover:bg-surface-chip/40 transition-colors';
                     tr.innerHTML = `
-                        <td class="px-6 py-4 text-sm text-slate-300">${new Date(item.created_at).toLocaleString('th-TH')}</td>
-                        <td class="px-6 py-4 text-sm text-slate-300">${item.branch_id ? item.branch_id.name : '-'}</td>
-                        <td class="px-6 py-4 text-sm text-slate-300">${item.reported_by ? item.reported_by.name : '-'}</td>
-                        <td class="px-6 py-4 text-sm font-medium text-white">${item.product_name}</td>
-                        <td class="px-6 py-4 text-sm text-cyan-400 font-mono">${item.imeis.length}</td>
-                        <td class="px-6 py-4 text-sm text-slate-400">${item.notes || '-'}</td>
+                        <td class="px-6 py-4 text-sm text-body-muted">${new Date(item.created_at).toLocaleString('th-TH')}</td>
+                        <td class="px-6 py-4 text-sm text-body-muted">${item.branch_id ? item.branch_id.name : '-'}</td>
+                        <td class="px-6 py-4 text-sm text-body-muted">${item.reported_by ? item.reported_by.name : '-'}</td>
+                        <td class="px-6 py-4 text-sm font-medium text-ink">${item.product_name}</td>
+                        <td class="px-6 py-4 text-sm text-ink font-mono">${item.imeis.length}</td>
+                        <td class="px-6 py-4 text-sm text-body-muted">${item.notes || '-'}</td>
                         <td class="px-6 py-4 text-sm text-right">
-                            <button onclick="approveImport('${item._id}')" class="px-3 py-1.5 bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 rounded-lg text-xs font-medium transition-colors">
+                            <button onclick="approveImport('${item._id}')" class="px-3 py-1.5 bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 rounded-pill text-xs font-medium transition-colors">
                                 <i class="fa-solid fa-check mr-1"></i> อนุมัติ
                             </button>
                         </td>

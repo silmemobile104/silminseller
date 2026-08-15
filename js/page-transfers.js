@@ -107,7 +107,7 @@
 
         filteredTransfers.forEach(transfer => {
             const row = document.createElement('tr');
-            row.className = 'hover:bg-slate-700/30 transition-colors';
+            row.className = 'hover:bg-surface-chip/40 transition-colors';
 
             const dateStr = new Date(transfer.created_at).toLocaleString('th-TH');
             const fromBranch = transfer.from_branch?.name || '-';
@@ -117,16 +117,16 @@
                 : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20';
 
             const actionButtons = `<div class="flex items-center justify-end gap-2">
-                    <button onclick="openTransferDetailModal('${transfer._id}')" class="px-3 py-1.5 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-slate-900 text-xs font-bold transition-all">
+                    <button onclick="openTransferDetailModal('${transfer._id}')" class="px-3 py-1.5 rounded-pill bg-primary hover:bg-primary-pressed text-on-primary text-xs font-bold transition-all">
                         ดูรายละเอียด
                     </button>
                    </div>`;
 
             row.innerHTML = `
-                <td class="px-6 py-4 text-slate-300">${dateStr}</td>
-                <td class="px-6 py-4 text-cyan-400 font-mono">${transfer.transfer_number}</td>
-                <td class="px-6 py-4 text-slate-300">${fromBranch}</td>
-                <td class="px-6 py-4 text-slate-300">${toBranch}</td>
+                <td class="px-6 py-4 text-body-muted">${dateStr}</td>
+                <td class="px-6 py-4 text-ink font-mono">${transfer.transfer_number}</td>
+                <td class="px-6 py-4 text-body-muted">${fromBranch}</td>
+                <td class="px-6 py-4 text-body-muted">${toBranch}</td>
                 <td class="px-6 py-4">
                     <span class="px-2.5 py-1 rounded-lg text-xs font-bold ${statusClass}">${transfer.status}</span>
                 </td>
@@ -173,7 +173,7 @@
             itemsBody.innerHTML = '';
             (transfer.items || []).forEach(item => {
                 const tr = document.createElement('tr');
-                tr.className = 'border-b border-slate-700/50';
+                tr.className = 'border-b border-hairline';
 
                 const colorStr = item.color ? `สี: ${item.color}` : '';
                 const capStr = item.capacity ? `ความจุ: ${item.capacity}` : '';
@@ -181,18 +181,18 @@
 
                 const imeiHtml = item.imeis && item.imeis.length > 0
                     ? `<div class="flex flex-wrap gap-1 mt-1.5">
-                        ${item.imeis.map(imei => `<span class="bg-cyan-500/10 text-cyan-400 px-1.5 py-0.5 rounded text-[10px] font-mono border border-cyan-500/20">${imei}</span>`).join('')}
+                        ${item.imeis.map(imei => `<span class="bg-surface-chip text-ink px-1.5 py-0.5 rounded text-[10px] font-mono border border-hairline">${imei}</span>`).join('')}
                        </div>`
                     : '';
 
                 tr.innerHTML = `
                     <td class="px-4 py-3">
-                        <div class="font-medium">${item.product_name}</div>
-                        <div class="text-slate-400 text-xs font-mono">${item.product_code}</div>
+                        <div class="font-medium text-ink">${item.product_name}</div>
+                        <div class="text-body-muted text-xs font-mono">${item.product_code}</div>
                         ${imeiHtml}
                     </td>
-                    <td class="px-4 py-3 text-slate-400 text-xs">${details}</td>
-                    <td class="px-4 py-3 text-right text-white font-bold font-mono">${item.quantity} ${item.unit || 'ชิ้น'}</td>
+                    <td class="px-4 py-3 text-body-muted text-xs">${details}</td>
+                    <td class="px-4 py-3 text-right text-ink font-bold font-mono">${item.quantity} ${item.unit || 'ชิ้น'}</td>
                 `;
                 itemsBody.appendChild(tr);
             });
@@ -238,11 +238,11 @@
         currentTransferTab = tab;
         if (transferTabIncoming && transferTabHistory) {
             if (tab === 'incoming') {
-                transferTabIncoming.className = 'px-4 py-2 rounded-xl text-sm font-bold bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 transition-all';
-                transferTabHistory.className = 'px-4 py-2 rounded-xl text-sm font-bold bg-slate-900/40 text-slate-300 border border-slate-700 hover:border-slate-600 transition-all';
+                transferTabIncoming.className = 'px-4 py-2 rounded-pill text-sm font-bold bg-primary/10 text-primary border border-primary/20 transition-all';
+                transferTabHistory.className = 'px-4 py-2 rounded-pill text-sm font-bold bg-surface-tile-3 text-body-muted border border-hairline hover:border-primary/30 transition-all';
             } else {
-                transferTabHistory.className = 'px-4 py-2 rounded-xl text-sm font-bold bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 transition-all';
-                transferTabIncoming.className = 'px-4 py-2 rounded-xl text-sm font-bold bg-slate-900/40 text-slate-300 border border-slate-700 hover:border-slate-600 transition-all';
+                transferTabHistory.className = 'px-4 py-2 rounded-pill text-sm font-bold bg-primary/10 text-primary border border-primary/20 transition-all';
+                transferTabIncoming.className = 'px-4 py-2 rounded-pill text-sm font-bold bg-surface-tile-3 text-body-muted border border-hairline hover:border-primary/30 transition-all';
             }
         }
         renderTransfersTable();
@@ -464,15 +464,15 @@
         transferCartItems.innerHTML = '';
         transferCart.forEach((item, index) => {
             const div = document.createElement('div');
-            div.className = 'flex items-center justify-between bg-slate-900/40 rounded-xl p-3 border border-slate-700';
+            div.className = 'flex items-center justify-between bg-surface-tile-3 rounded-md p-3 border border-hairline';
             div.innerHTML = `
                 <div class="flex-1">
-                    <div class="text-white font-medium">${item.product_name}</div>
-                    <div class="text-slate-400 text-xs">${item.product_code} | จำนวน: ${item.quantity}</div>
+                    <div class="text-ink font-medium">${item.product_name}</div>
+                    <div class="text-body-muted text-xs">${item.product_code} | จำนวน: ${item.quantity}</div>
                     ${item.imeis && item.imeis.length > 0 ? `
                         <div class="flex flex-wrap gap-1 mt-1.5">
                             ${item.imeis.map(imei => `
-                                <span class="bg-cyan-500/10 text-cyan-400 px-2 py-0.5 rounded text-[10px] font-mono border border-cyan-500/20">${imei}</span>
+                                <span class="bg-surface-chip text-ink px-2 py-0.5 rounded text-[10px] font-mono border border-hairline">${imei}</span>
                             `).join('')}
                         </div>
                     ` : ''}

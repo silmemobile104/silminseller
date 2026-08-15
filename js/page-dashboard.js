@@ -41,10 +41,10 @@
             // Low stock warning glow
             if (elLow && d.lowStockCount > 0) {
                 elLow.classList.add('text-amber-400');
-                elLow.classList.remove('text-white');
+                elLow.classList.remove('text-ink');
             } else if (elLow) {
                 elLow.classList.remove('text-amber-400');
-                elLow.classList.add('text-white');
+                elLow.classList.add('text-ink');
             }
 
             // Render Recent Transactions Table
@@ -55,9 +55,9 @@
                 if (d.recentTransactions.length === 0) {
                     tbody.innerHTML = `
                         <tr>
-                            <td colspan="6" class="px-6 py-8 text-center text-slate-400 italic">
+                            <td colspan="6" class="px-6 py-8 text-center text-body-muted italic">
                                 <div class="flex flex-col items-center gap-2">
-                                    <i class="fa-solid fa-receipt text-3xl text-slate-400"></i>
+                                    <i class="fa-solid fa-receipt text-3xl text-ink-muted-48"></i>
                                     <span>ยังไม่มีรายการขาย</span>
                                 </div>
                             </td>
@@ -68,7 +68,7 @@
 
                 d.recentTransactions.forEach(txn => {
                     const row = document.createElement('tr');
-                    row.className = 'hover:bg-slate-700/20 transition-colors';
+                    row.className = 'hover:bg-surface-chip/40 transition-colors';
 
                     // Format date/time
                     const txnDate = new Date(txn.created_at);
@@ -87,15 +87,15 @@
 
                     row.innerHTML = `
                         <td class="px-6 py-4">
-                            <span class="text-cyan-400 font-mono text-sm bg-cyan-500/10 px-2.5 py-1 rounded-lg border border-cyan-500/20">${txn.receipt_number}</span>
+                            <span class="text-ink font-mono text-sm bg-surface-chip px-2.5 py-1 rounded-sm border border-hairline">${txn.receipt_number}</span>
                         </td>
-                        <td class="px-6 py-4 text-slate-400">${txn.branch_name}</td>
+                        <td class="px-6 py-4 text-body-muted">${txn.branch_name}</td>
                         <td class="px-6 py-4 text-center">
-                            <span class="bg-slate-700 text-slate-300 text-xs font-bold px-2 py-1 rounded-full">${txn.items_count} ชิ้น</span>
+                            <span class="bg-surface-chip text-body-muted text-xs font-bold px-2 py-1 rounded-pill">${txn.items_count} ชิ้น</span>
                         </td>
-                        <td class="px-6 py-4 text-slate-300">${payIcon} ${txn.payment_method}</td>
-                        <td class="px-6 py-4 text-right font-mono font-semibold text-white">฿${thaiCurrency.format(txn.total_amount)}</td>
-                        <td class="px-6 py-4 text-right text-slate-400 text-xs">${timeStr}</td>
+                        <td class="px-6 py-4 text-body-muted">${payIcon} ${txn.payment_method}</td>
+                        <td class="px-6 py-4 text-right font-mono font-semibold text-ink">฿${thaiCurrency.format(txn.total_amount)}</td>
+                        <td class="px-6 py-4 text-right text-ink-muted-48 text-xs">${timeStr}</td>
                     `;
                     tbody.appendChild(row);
                 });

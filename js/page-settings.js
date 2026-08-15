@@ -47,24 +47,24 @@
 
             dataArray.forEach(item => {
                 const card = document.createElement('div');
-                card.className = 'bg-slate-900 border border-slate-700 rounded-xl p-4 flex items-center justify-between group hover:border-cyan-500/50 transition-colors';
+                card.className = 'bg-surface-tile-3 border border-hairline rounded-sm p-4 flex items-center justify-between group hover:border-primary/40 transition-colors';
 
                 let displayName = item.name;
                 let dataCodeAttr = '';
                 if (currentSettingsTab === 'productname') {
                     dataCodeAttr = `data-code="${item.code || ''}"`;
                     if (item.code) {
-                        displayName = `${item.name} <span class="text-xs text-slate-400 font-mono ml-1 bg-slate-800 px-1.5 py-0.5 rounded border border-slate-700/50">[${item.code}]</span>`;
+                        displayName = `${item.name} <span class="text-xs text-body-muted font-mono ml-1 bg-surface-chip px-1.5 py-0.5 rounded border border-hairline">[${item.code}]</span>`;
                     }
                 }
 
                 card.innerHTML = `
-                    <span class="text-white font-medium truncate pr-2">${displayName}</span>
+                    <span class="text-ink font-medium truncate pr-2">${displayName}</span>
                     <div class="flex items-center gap-1">
-                        <button class="btn-edit-master text-slate-400 hover:text-cyan-400 transition-colors opacity-50 group-hover:opacity-100 p-2 rounded-lg hover:bg-cyan-500/10" data-id="${item._id}" data-name="${item.name}" ${dataCodeAttr}>
+                        <button class="btn-edit-master text-body-muted hover:text-primary transition-colors opacity-50 group-hover:opacity-100 p-2 rounded-sm hover:bg-surface-chip" data-id="${item._id}" data-name="${item.name}" ${dataCodeAttr}>
                             <i class="fa-solid fa-pen"></i>
                         </button>
-                        <button class="btn-delete-master text-slate-400 hover:text-red-400 transition-colors opacity-50 group-hover:opacity-100 p-2 rounded-lg hover:bg-red-500/10" data-id="${item._id}">
+                        <button class="btn-delete-master text-body-muted hover:text-red-400 transition-colors opacity-50 group-hover:opacity-100 p-2 rounded-sm hover:bg-red-500/10" data-id="${item._id}">
                             <i class="fa-solid fa-trash-can"></i>
                         </button>
                     </div>
@@ -119,12 +119,12 @@
             btn.addEventListener('click', (e) => {
                 // Update active tab styling
                 settingsTabBtns.forEach(b => {
-                    b.classList.remove('active', 'text-cyan-400', 'border-cyan-400');
-                    b.classList.add('text-slate-400', 'border-transparent');
+                    b.classList.remove('active', 'text-primary', 'border-primary');
+                    b.classList.add('text-body-muted', 'border-transparent');
                 });
 
-                e.currentTarget.classList.remove('text-slate-400', 'border-transparent');
-                e.currentTarget.classList.add('active', 'text-cyan-400', 'border-cyan-400');
+                e.currentTarget.classList.remove('text-body-muted', 'border-transparent');
+                e.currentTarget.classList.add('active', 'text-primary', 'border-primary');
 
                 currentSettingsTab = e.currentTarget.getAttribute('data-tab');
                 if (masterDataInput) masterDataInput.value = ''; // clear input

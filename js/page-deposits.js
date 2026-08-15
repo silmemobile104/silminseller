@@ -259,7 +259,7 @@
                 depositEmpty.classList.add('hidden');
                 result.data.forEach(item => {
                     const row = document.createElement('tr');
-                    row.className = 'hover:bg-slate-700/20 transition-colors border-b border-slate-700/50 cursor-pointer';
+                    row.className = 'hover:bg-surface-chip/40 transition-colors border-b border-hairline cursor-pointer';
 
                     const dateStr = new Date(item.createdAt).toLocaleDateString('th-TH', { hour: '2-digit', minute: '2-digit' }) + ' น.';
                     const apptStr = item.appointment_date ? new Date(item.appointment_date).toLocaleDateString('th-TH') : 'ไม่ระบุ';
@@ -269,24 +269,24 @@
                     else if (item.status === 'ยกเลิก') statusClass = 'bg-rose-500/10 text-rose-400 border border-rose-500/20';
 
                     row.innerHTML = `
-                        <td class="px-1.5 py-2 font-medium text-slate-400">${dateStr}</td>
-                        <td class="px-1.5 py-2 text-white font-medium">${item.customer_name}</td>
-                        <td class="px-1.5 py-2 font-mono text-slate-300">${item.customer_phone}</td>
-                        <td class="px-1.5 py-2 font-mono font-semibold text-emerald-400">฿${item.deposit_amount.toLocaleString()}</td>
-                        <td class="px-1.5 py-2 text-slate-300">${apptStr}</td>
-                        <td class="px-1.5 py-2 text-center font-mono font-bold border-r border-slate-750/30 text-slate-400">${item.bill_number || '-'}</td>
-                        <td class="px-1.5 py-2 font-mono border-r border-slate-750/30 text-slate-300 break-words">${item.imei || '<span class="text-slate-400 italic">ไม่ระบุ</span>'}</td>
-                        <td class="px-1.5 py-2 border-r border-slate-750/30 text-cyan-400 font-medium break-words" title="${item.product_name}">${item.product_name}</td>
-                        <td class="px-1.5 py-2 font-mono border-r border-slate-750/30 text-slate-300">฿${item.product_price.toLocaleString()}</td>
+                        <td class="px-1.5 py-2 font-medium text-ink-muted-48">${dateStr}</td>
+                        <td class="px-1.5 py-2 text-ink font-medium">${item.customer_name}</td>
+                        <td class="px-1.5 py-2 font-mono text-body-muted">${item.customer_phone}</td>
+                        <td class="px-1.5 py-2 font-mono font-semibold text-ink">฿${item.deposit_amount.toLocaleString()}</td>
+                        <td class="px-1.5 py-2 text-body-muted">${apptStr}</td>
+                        <td class="px-1.5 py-2 text-center font-mono font-bold border-r border-hairline text-body-muted">${item.bill_number || '-'}</td>
+                        <td class="px-1.5 py-2 font-mono border-r border-hairline text-body-muted break-words">${item.imei || '<span class="text-ink-muted-48 italic">ไม่ระบุ</span>'}</td>
+                        <td class="px-1.5 py-2 border-r border-hairline text-ink font-medium break-words" title="${item.product_name}">${item.product_name}</td>
+                        <td class="px-1.5 py-2 font-mono border-r border-hairline text-body-muted">฿${item.product_price.toLocaleString()}</td>
                         <td class="px-1.5 py-2 font-mono font-bold text-red-400">฿${item.remaining_amount.toLocaleString()}</td>
                         <td class="px-1.5 py-2">
                             <span class="px-1.5 py-0.5 rounded text-[9px] font-bold ${statusClass}">${item.status}</span>
-                            <div class="text-[9px] text-slate-400 mt-1">${item.stage}</div>
+                            <div class="text-[9px] text-ink-muted-48 mt-1">${item.stage}</div>
                         </td>
-                        <td class="px-1.5 py-2 text-slate-400">${item.created_by?.name || '-'}</td>
-                        <td class="px-1.5 py-2 text-slate-400">${item.branch_id?.name || '-'}</td>
+                        <td class="px-1.5 py-2 text-body-muted">${item.created_by?.name || '-'}</td>
+                        <td class="px-1.5 py-2 text-body-muted">${item.branch_id?.name || '-'}</td>
                         <td class="px-1.5 py-2 text-center">
-                            <button class="btn-print-deposit w-7 h-7 mx-auto rounded-lg bg-slate-700/50 flex items-center justify-center text-slate-400 hover:text-emerald-400 hover:bg-emerald-400/10 transition-colors" data-id="${item._id}" title="พิมพ์ใบมัดจำ">
+                            <button class="btn-print-deposit w-7 h-7 mx-auto rounded-sm bg-surface-chip flex items-center justify-center text-body-muted hover:text-primary hover:bg-primary/10 transition-colors" data-id="${item._id}" title="พิมพ์ใบมัดจำ">
                                 <i class="fa-solid fa-print"></i>
                             </button>
                         </td>
@@ -316,7 +316,7 @@
         if (!depositForm) return;
         depositForm.reset();
         editDepositId.value = '';
-        depositModalTitle.innerHTML = '<i class="fa-solid fa-wallet text-emerald-400"></i> บันทึกรายการจองมัดจำใหม่';
+        depositModalTitle.innerHTML = '<i class="fa-solid fa-wallet text-primary"></i> บันทึกรายการจองมัดจำใหม่';
         depositSplitRow.classList.add('hidden');
         modalDepositRemaining.value = '0';
 
@@ -365,7 +365,7 @@
 
         const createdDate = new Date(deposit.createdAt).toLocaleDateString('th-TH', { hour: '2-digit', minute: '2-digit' }) + ' น.';
         const apptDate = deposit.appointment_date ? new Date(deposit.appointment_date).toLocaleDateString('th-TH') : 'ไม่ระบุ';
-        detailDepositDates.innerHTML = `วันที่ทำจอง: <span class="text-white font-medium">${createdDate}</span><br/>นัดรับเครื่อง: <span class="text-white font-medium">${apptDate}</span>`;
+        detailDepositDates.innerHTML = `วันที่ทำจอง: <span class="text-ink font-medium">${createdDate}</span><br/>นัดรับเครื่อง: <span class="text-ink font-medium">${apptDate}</span>`;
 
         detailDepositSender.textContent = `${deposit.created_by?.name || '-'} / สาขา: ${deposit.branch_id?.name || '-'}`;
 

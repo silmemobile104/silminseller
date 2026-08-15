@@ -177,7 +177,7 @@
                     if (!data.bills || data.bills.length === 0) {
                         tbody.innerHTML = `
                             <tr>
-                                <td colspan="7" class="text-center py-12 text-slate-400">
+                                <td colspan="7" class="text-center py-12 text-body-muted">
                                     ไม่มีบิลขายสำหรับวันนี้
                                 </td>
                             </tr>
@@ -193,19 +193,19 @@
                             const totalAmount = `฿${(txn.total_amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
 
                             return `
-                                <tr class="hover:bg-slate-700/30 transition-colors">
-                                    <td class="px-6 py-4 font-medium text-slate-300 font-mono">${timeStr}</td>
-                                    <td class="px-6 py-4 font-bold text-white">${txn.receipt_number}</td>
-                                    <td class="px-6 py-4 text-slate-300">${empName}</td>
-                                    <td class="px-6 py-4 text-slate-300">${memberName}</td>
-                                    <td class="px-6 py-4 text-right text-emerald-400 font-bold font-mono">${totalAmount}</td>
+                                <tr class="hover:bg-surface-chip/40 transition-colors">
+                                    <td class="px-6 py-4 font-medium text-body-muted font-mono">${timeStr}</td>
+                                    <td class="px-6 py-4 font-bold text-ink">${txn.receipt_number}</td>
+                                    <td class="px-6 py-4 text-body-muted">${empName}</td>
+                                    <td class="px-6 py-4 text-body-muted">${memberName}</td>
+                                    <td class="px-6 py-4 text-right text-ink font-bold font-mono">${totalAmount}</td>
                                     <td class="px-6 py-4">
-                                        <span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-900 border border-slate-700 text-slate-300">
+                                        <span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-surface-chip border border-hairline text-body-muted">
                                             ${paymentType}
                                         </span>
                                     </td>
                                     <td class="px-6 py-4 text-center">
-                                        <button type="button" class="view-daily-txn-btn px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-lg text-xs font-medium transition-all" data-id="${txn._id}">
+                                        <button type="button" class="view-daily-txn-btn px-3 py-1.5 bg-surface-chip hover:bg-surface-tile-2 text-ink rounded-pill text-xs font-medium transition-all" data-id="${txn._id}">
                                             <i class="fa-solid fa-eye mr-1"></i> ดูรายละเอียด
                                         </button>
                                     </td>
@@ -254,7 +254,7 @@
             const row = document.createElement('tr');
             const isCancelled = txn.status === 'ยกเลิกแล้ว';
 
-            row.className = `border-b border-slate-700 hover:bg-slate-700/30 transition-colors ${isCancelled ? 'opacity-70 bg-red-900/10' : ''}`;
+            row.className = `border-b border-hairline hover:bg-surface-chip/40 transition-colors ${isCancelled ? 'opacity-70 bg-red-900/10' : ''}`;
 
             const dateStr = new Date(txn.created_at).toLocaleString('th-TH', {
                 day: '2-digit',
@@ -265,35 +265,35 @@
             });
 
             row.innerHTML = `
-                <td class="px-4 py-4 md:px-6 text-slate-300 whitespace-nowrap ${isCancelled ? 'line-through text-red-400/70' : ''}">${dateStr}</td>
-                <td class="px-4 py-4 md:px-6 text-slate-300 whitespace-nowrap">
+                <td class="px-4 py-4 md:px-6 text-body-muted whitespace-nowrap ${isCancelled ? 'line-through text-red-400/70' : ''}">${dateStr}</td>
+                <td class="px-4 py-4 md:px-6 text-body-muted whitespace-nowrap">
                     <span class="${isCancelled ? 'line-through text-red-400' : ''}">${txn.receipt_number}</span>
                     ${isCancelled ? '<span class="px-2 py-0.5 text-[10px] font-bold bg-red-500 text-white rounded-full shrink-0">ยกเลิกแล้ว</span>' : ''}
                 </td>
-                <td class="px-4 py-4 md:px-6 text-slate-300 whitespace-nowrap ${isCancelled ? 'line-through text-red-400/70' : ''}">${txn.branch_id ? txn.branch_id.name : '-'}</td>
-                <td class="px-4 py-4 md:px-6 text-slate-300 whitespace-nowrap ${isCancelled ? 'line-through text-red-400/70' : ''}">${txn.employee_id ? txn.employee_id.name : '-'}</td>
-                <td class="px-4 py-4 md:px-6 text-slate-300 whitespace-nowrap ${isCancelled ? 'line-through text-red-400/70' : ''}">
-                    ${txn.member_id ? `<span class="font-bold text-white">${txn.member_id.first_name} ${txn.member_id.last_name}</span><br><span class="text-xs text-slate-400">${txn.member_id.phone || ''}</span>` : '<span class="text-slate-400">-</span>'}
+                <td class="px-4 py-4 md:px-6 text-body-muted whitespace-nowrap ${isCancelled ? 'line-through text-red-400/70' : ''}">${txn.branch_id ? txn.branch_id.name : '-'}</td>
+                <td class="px-4 py-4 md:px-6 text-body-muted whitespace-nowrap ${isCancelled ? 'line-through text-red-400/70' : ''}">${txn.employee_id ? txn.employee_id.name : '-'}</td>
+                <td class="px-4 py-4 md:px-6 text-body-muted whitespace-nowrap ${isCancelled ? 'line-through text-red-400/70' : ''}">
+                    ${txn.member_id ? `<span class="font-bold text-ink">${txn.member_id.first_name} ${txn.member_id.last_name}</span><br><span class="text-xs text-body-muted">${txn.member_id.phone || ''}</span>` : '<span class="text-ink-muted-48">-</span>'}
                 </td>
-                <td class="px-4 py-4 md:px-6 text-right whitespace-nowrap ${isCancelled ? 'text-red-400/70 line-through' : 'text-cyan-400 font-bold'} font-mono">฿${txn.total_amount.toLocaleString()}</td>
-                <td class="px-4 py-4 md:px-6 text-slate-300 whitespace-nowrap ${isCancelled ? 'line-through text-red-400/70' : ''}">
+                <td class="px-4 py-4 md:px-6 text-right whitespace-nowrap ${isCancelled ? 'text-red-400/70 line-through' : 'text-ink font-bold'} font-mono">฿${txn.total_amount.toLocaleString()}</td>
+                <td class="px-4 py-4 md:px-6 text-body-muted whitespace-nowrap ${isCancelled ? 'line-through text-red-400/70' : ''}">
                     ${(() => {
                     const pt = txn.payment_type || txn.payment_method || '-';
-                    let colorClass = 'bg-gray-100 text-gray-700 border border-gray-200';
+                    let colorClass = 'bg-surface-chip text-body-muted border border-hairline';
                     if (pt === 'จัดไฟแนนซ์') {
-                        colorClass = 'bg-orange-100 text-orange-600 border border-orange-200';
+                        colorClass = 'bg-amber-500/10 text-amber-400 border border-amber-500/20';
                     } else if (pt === 'ซื้อสด' || pt === 'เงินสด' || pt === 'สด') {
-                        colorClass = 'bg-emerald-100 text-emerald-600 border border-emerald-200';
+                        colorClass = 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20';
                     } else if (pt.includes('โอน')) {
-                        colorClass = 'bg-blue-100 text-blue-600 border border-blue-200';
+                        colorClass = 'bg-blue-500/10 text-blue-400 border border-blue-500/20';
                     } else if (pt.includes('บัตรเครดิต')) {
-                        colorClass = 'bg-purple-100 text-purple-600 border border-purple-200';
+                        colorClass = 'bg-purple-500/10 text-purple-400 border border-purple-500/20';
                     }
                     return `<span class="px-2 py-1 rounded-md text-[11px] font-bold whitespace-nowrap ${colorClass}">${pt}</span>`;
                 })()}
                 </td>
                 <td class="px-4 py-4 md:px-6 text-center whitespace-nowrap">
-                    <button class="view-transaction-btn px-4 py-2 ${isCancelled ? 'bg-red-500/10 text-red-400 hover:bg-red-500/20' : 'bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 hover:text-amber-300'} rounded-lg transition-all font-medium whitespace-nowrap"
+                    <button class="view-transaction-btn px-4 py-2 ${isCancelled ? 'bg-red-500/10 text-red-400 hover:bg-red-500/20' : 'bg-primary/10 hover:bg-primary/20 text-primary'} rounded-pill transition-all font-medium whitespace-nowrap"
                             data-id="${txn._id}">
                         <i class="fa-solid fa-eye mr-2"></i>รายละเอียด
                     </button>
@@ -376,8 +376,8 @@
                 const m = txn.member_id;
                 transactionDetailMember.innerHTML = `
                     <div class="flex flex-col">
-                        <span class="text-white text-base">${m.prefix || ''}${m.first_name} ${m.last_name}</span>
-                        <span class="text-slate-400 text-xs font-mono">${m.phone || 'ไม่ทราบเบอร์'} | ${m.member_number || 'ไม่มีเลขสมาชิก'}</span>
+                        <span class="text-ink text-base">${m.prefix || ''}${m.first_name} ${m.last_name}</span>
+                        <span class="text-body-muted text-xs font-mono">${m.phone || 'ไม่ทราบเบอร์'} | ${m.member_number || 'ไม่มีเลขสมาชิก'}</span>
                     </div>
                 `;
             } else {
@@ -398,8 +398,8 @@
                 const cash = isFinancing ? (txn.finance_down_payment_cash || 0) : (txn.cash_amount || 0);
                 const transfer = isFinancing ? (txn.finance_down_payment_transfer || 0) : (txn.transfer_amount || 0);
 
-                if (cash > 0) breakdownHTML += `<div class="flex justify-between text-xs text-slate-400 italic"><span>- เงินสด:</span><span>฿${cash.toLocaleString()}</span></div>`;
-                if (transfer > 0) breakdownHTML += `<div class="flex justify-between text-xs text-slate-400 italic"><span>- เงินโอน:</span><span>฿${transfer.toLocaleString()}</span></div>`;
+                if (cash > 0) breakdownHTML += `<div class="flex justify-between text-xs text-body-muted italic"><span>- เงินสด:</span><span>฿${cash.toLocaleString()}</span></div>`;
+                if (transfer > 0) breakdownHTML += `<div class="flex justify-between text-xs text-body-muted italic"><span>- เงินโอน:</span><span>฿${transfer.toLocaleString()}</span></div>`;
 
                 transactionDetailPaymentBreakdown.innerHTML = breakdownHTML;
                 transactionDetailPaymentBreakdown.classList.toggle('hidden', breakdownHTML === '');
@@ -437,16 +437,16 @@
             (txn.items || []).forEach(item => {
                 const imeiValue = item.imei_sold || item.imei || item.serial || item.serial_number || '';
                 const itemRow = document.createElement('tr');
-                itemRow.className = 'border-b border-slate-700';
+                itemRow.className = 'border-b border-hairline';
                 const isGift = item.is_gift === true;
                 itemRow.innerHTML = `
-                    <td class="px-4 py-3 text-white">
+                    <td class="px-4 py-3 text-ink">
                         ${item.product_name}
                         ${isGift ? '<span class="ml-2 px-1.5 py-0.5 text-[10px] font-bold bg-amber-500/20 text-amber-400 rounded">ของแถม</span>' : ''}
                     </td>
-                    <td class="px-4 py-3 text-center text-slate-400">${imeiValue ? imeiValue : '-'}</td>
-                    <td class="px-4 py-3 text-center text-slate-300">${item.quantity}</td>
-                    <td class="px-4 py-3 text-right text-cyan-400 font-mono">${isGift ? '<span class="text-amber-400 font-bold">ของแถม</span>' : `฿${item.price.toLocaleString()}`}</td>
+                    <td class="px-4 py-3 text-center text-body-muted">${imeiValue ? imeiValue : '-'}</td>
+                    <td class="px-4 py-3 text-center text-body-muted">${item.quantity}</td>
+                    <td class="px-4 py-3 text-right text-ink font-mono">${isGift ? '<span class="text-amber-400 font-bold">ของแถม</span>' : `฿${item.price.toLocaleString()}`}</td>
                 `;
                 transactionDetailItems.appendChild(itemRow);
             });

@@ -42,28 +42,28 @@
         manage_deposits: 'จัดการมัดจำสินค้า'
     };
     const permIcons = {
-        view_dashboard: 'fa-chart-pie text-blue-400',
-        manage_stock: 'fa-box-open text-cyan-400',
-        delete_stock: 'fa-trash text-red-400',
-        do_pos: 'fa-money-bill-transfer text-green-400',
-        manage_personnel: 'fa-users text-purple-400',
-        manage_branches: 'fa-store text-orange-400',
-        manage_settings: 'fa-gear text-slate-400',
-        manage_roles: 'fa-shield-halved text-amber-400',
-        view_audit_logs: 'fa-clock-rotate-left text-indigo-400',
-        filter_stock_branch: 'fa-filter text-teal-400',
-        cancel_sale: 'fa-ban text-red-500',
-        report_arrival: 'fa-truck-ramp-box text-cyan-400',
-        approve_import: 'fa-clipboard-check text-violet-400',
-        manage_po: 'fa-file-invoice-dollar text-pink-400',
-        receive_po: 'fa-boxes-packing text-indigo-400',
-        manage_transfers: 'fa-right-left text-cyan-400',
-        manage_finance: 'fa-chart-line text-amber-400',
-        view_branch_inventory: 'fa-store text-emerald-400',
-        view_daily_summary: 'fa-chart-line text-emerald-400',
-        do_stock_audit: 'fa-qrcode text-violet-400',
-        manage_stock_audit: 'fa-clipboard-check text-amber-400',
-        manage_deposits: 'fa-wallet text-emerald-400'
+        view_dashboard: 'fa-chart-pie',
+        manage_stock: 'fa-box-open',
+        delete_stock: 'fa-trash',
+        do_pos: 'fa-money-bill-transfer',
+        manage_personnel: 'fa-users',
+        manage_branches: 'fa-store',
+        manage_settings: 'fa-gear',
+        manage_roles: 'fa-shield-halved',
+        view_audit_logs: 'fa-clock-rotate-left',
+        filter_stock_branch: 'fa-filter',
+        cancel_sale: 'fa-ban',
+        report_arrival: 'fa-truck-ramp-box',
+        approve_import: 'fa-clipboard-check',
+        manage_po: 'fa-file-invoice-dollar',
+        receive_po: 'fa-boxes-packing',
+        manage_transfers: 'fa-right-left',
+        manage_finance: 'fa-chart-line',
+        view_branch_inventory: 'fa-store',
+        view_daily_summary: 'fa-chart-line',
+        do_stock_audit: 'fa-qrcode',
+        manage_stock_audit: 'fa-clipboard-check',
+        manage_deposits: 'fa-wallet'
     };
 
     const openRoleModal = () => {
@@ -79,7 +79,7 @@
 
     if (btnAddRole) btnAddRole.addEventListener('click', () => {
         if (editRoleId) editRoleId.value = '';
-        if (roleModalTitle) roleModalTitle.innerHTML = '<i class="fa-solid fa-shield-halved text-amber-400"></i> เพิ่มบทบาทใหม่';
+        if (roleModalTitle) roleModalTitle.innerHTML = '<i class="fa-solid fa-shield-halved text-ink"></i> เพิ่มบทบาทใหม่';
         if (roleForm) roleForm.reset();
         openRoleModal();
     });
@@ -113,9 +113,9 @@
             const p = role.permissions || {};
             listContainer.innerHTML = permKeys.map(key => {
                 const active = p[key];
-                return `<div class="flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-medium transition-all ${active
-                    ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                    : 'bg-slate-700/30 text-slate-400 border border-slate-700/50 opacity-60'
+                return `<div class="flex items-center gap-2 px-3 py-1.5 rounded-pill text-xs font-medium transition-all ${active
+                    ? 'bg-primary/10 text-primary border border-primary/20'
+                    : 'bg-surface-chip text-ink-muted-48 border border-hairline opacity-60'
                     }">
                     <i class="fa-solid ${permIcons[key].split(' ')[0]} ${active ? '' : 'grayscale'}"></i>
                     <span>${permLabels[key]}</span>
@@ -141,7 +141,7 @@
             editBtn.onclick = () => {
                 closeDetailModal('modal-role-view');
                 editRoleId.value = role._id;
-                roleModalTitle.innerHTML = '<i class="fa-solid fa-pen-to-square text-amber-400"></i> แก้ไขบทบาท';
+                roleModalTitle.innerHTML = '<i class="fa-solid fa-pen-to-square text-ink"></i> แก้ไขบทบาท';
                 roleNameInput.value = role.name;
                 permKeys.forEach(key => {
                     const el = document.getElementById(`perm-${key}`);
@@ -164,44 +164,41 @@
 
         const permBadges = permKeys.map(key => {
             const active = p[key];
-            return `<div class="flex items-center gap-2 px-3 py-2 rounded-xl text-[13px] font-semibold transition-all ${active
-                ? 'bg-amber-50 text-amber-700 border border-amber-200 shadow-sm'
-                : 'bg-slate-100 text-slate-500 border border-slate-200'
+            return `<div class="flex items-center gap-2 px-3 py-2 rounded-pill text-[13px] font-semibold transition-all ${active
+                ? 'bg-primary/10 text-primary border border-primary/20'
+                : 'bg-surface-chip text-ink-muted-48 border border-hairline'
                 }">
-                <i class="fa-solid ${permIcons[key].split(' ')[0]} ${active ? 'text-amber-500' : 'text-slate-400'}"></i>
+                <i class="fa-solid ${permIcons[key].split(' ')[0]} ${active ? 'text-primary' : 'text-ink-muted-48'}"></i>
                 <span>${permLabels[key]}</span>
             </div>`;
         }).join('');
 
         const card = document.createElement('div');
-        card.className = 'bg-slate-800/80 backdrop-blur-sm rounded-3xl border border-slate-700/50 p-6 hover:border-amber-500/40 hover:shadow-2xl hover:shadow-amber-500/10 transition-all duration-300 group relative overflow-hidden';
+        card.className = 'bg-canvas-elevated rounded-lg border border-hairline p-6 hover:border-primary/40 transition-all duration-300 group relative overflow-hidden';
         card.innerHTML = `
-            <!-- Decor -->
-            <div class="absolute -right-4 -top-4 w-24 h-24 bg-amber-500/5 rounded-full blur-2xl group-hover:bg-amber-500/10 transition-all"></div>
-            
             <div class="relative flex items-start justify-between mb-6">
                 <div class="flex items-center gap-4">
-                    <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-500/20 to-orange-600/10 flex items-center justify-center border border-amber-500/20 shadow-inner group-hover:scale-110 transition-transform duration-500">
-                        <i class="fa-solid fa-shield-halved text-amber-400 text-xl"></i>
+                    <div class="w-12 h-12 rounded-lg bg-surface-chip flex items-center justify-center group-hover:scale-110 transition-transform duration-500">
+                        <i class="fa-solid fa-shield-halved text-ink text-xl"></i>
                     </div>
                     <div>
-                        <h4 class="text-white text-lg font-bold tracking-tight">${role.name}</h4>
+                        <h4 class="text-ink text-lg font-bold tracking-tight">${role.name}</h4>
                         <div class="flex items-center gap-2 mt-0.5">
                             <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                            <p class="text-xs text-slate-400 font-medium">${enabledCount}/${permKeys.length} สิทธิ์เปิดใช้งาน</p>
+                            <p class="text-xs text-body-muted font-medium">${enabledCount}/${permKeys.length} สิทธิ์เปิดใช้งาน</p>
                         </div>
                     </div>
                 </div>
                 <div class="flex gap-1">
-                    <button class="view-role-btn w-9 h-9 flex items-center justify-center rounded-xl bg-slate-700/50 text-slate-400 hover:bg-indigo-500 hover:text-white transition-all duration-300 shadow-sm" title="ดูรายละเอียด">
+                    <button class="view-role-btn w-9 h-9 flex items-center justify-center rounded-sm bg-surface-chip text-body-muted hover:bg-primary hover:text-on-primary transition-all duration-300" title="ดูรายละเอียด">
                         <i class="fa-solid fa-eye text-sm"></i>
                     </button>
-                    <button class="delete-role-btn w-9 h-9 flex items-center justify-center rounded-xl bg-slate-700/50 text-slate-400 hover:bg-red-500/80 hover:text-white transition-all duration-300 shadow-sm" data-id="${role._id}" data-name="${role.name}" title="ลบ">
+                    <button class="delete-role-btn w-9 h-9 flex items-center justify-center rounded-sm bg-surface-chip text-body-muted hover:bg-red-500 hover:text-white transition-all duration-300" data-id="${role._id}" data-name="${role.name}" title="ลบ">
                         <i class="fa-solid fa-trash text-sm"></i>
                     </button>
                 </div>
             </div>
-            
+
             <div class="grid grid-cols-2 gap-2 relative">
                 ${permBadges}
             </div>

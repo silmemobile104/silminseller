@@ -15,11 +15,11 @@
             const contentGlobalStock = document.getElementById('content-branch-globalstock');
 
             const activateTab = (activeTab, inactiveTab, activeContent, inactiveContent) => {
-                activeTab.classList.add('text-slate-900', 'bg-[#f5b11a]', 'border-transparent');
-                activeTab.classList.remove('text-slate-400', 'border-slate-700', 'bg-transparent', 'hover:text-slate-200');
+                activeTab.classList.add('text-on-primary', 'bg-primary', 'border-transparent');
+                activeTab.classList.remove('text-body-muted', 'border-hairline', 'bg-transparent', 'hover:text-ink');
 
-                inactiveTab.classList.remove('text-slate-900', 'bg-[#f5b11a]', 'border-transparent');
-                inactiveTab.classList.add('text-slate-400', 'border-slate-700', 'bg-transparent', 'hover:text-slate-200');
+                inactiveTab.classList.remove('text-on-primary', 'bg-primary', 'border-transparent');
+                inactiveTab.classList.add('text-body-muted', 'border-hairline', 'bg-transparent', 'hover:text-ink');
 
                 activeContent.classList.remove('hidden');
                 inactiveContent.classList.add('hidden');
@@ -191,7 +191,7 @@
     window.loadBranchInventoryMyStock = async () => {
         const tbody = document.getElementById('table-body-branch-mystock');
         if (!tbody) return;
-        tbody.innerHTML = '<tr><td colspan="5" class="text-center py-8"><div class="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-emerald-400"></div></td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5" class="text-center py-8"><div class="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div></td></tr>';
 
         try {
             const res = await authFetch(`${API_BASE_URL}/products`); // Normal endpoint defaults to current branch
@@ -220,7 +220,7 @@
                 }
 
                 if (items.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="5" class="text-center py-6 text-slate-400">ไม่พบสินค้าคงเหลือในสาขาของคุณ</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="5" class="text-center py-6 text-body-muted">ไม่พบสินค้าคงเหลือในสาขาของคุณ</td></tr>';
                     return;
                 }
 
@@ -257,7 +257,7 @@
                     const nameRowId = `mystock-group-${nameIndex}`;
 
                     const trName = document.createElement('tr');
-                    trName.className = `name-row ${nameRowId} bg-slate-800/80 hover:bg-slate-700/50 transition-colors cursor-pointer border-l-4 border-emerald-500`;
+                    trName.className = `name-row ${nameRowId} bg-canvas-elevated hover:bg-surface-chip/40 transition-colors cursor-pointer border-l-4 border-primary`;
                     trName.onclick = () => {
                         const icon = document.getElementById(`icon-${nameRowId}`);
                         const isExpanded = icon.classList.contains('fa-chevron-down');
@@ -281,12 +281,12 @@
                     trName.innerHTML = `
                         <td class="px-3 py-4 md:px-6">
                             <div class="flex items-center gap-2 md:gap-3">
-                                <i id="icon-${nameRowId}" class="fa-solid fa-chevron-right text-emerald-400 w-4 text-center shrink-0"></i>
-                                <span class="font-bold text-white text-base">${name}</span>
+                                <i id="icon-${nameRowId}" class="fa-solid fa-chevron-right text-body-muted w-4 text-center shrink-0"></i>
+                                <span class="font-bold text-ink text-base">${name}</span>
                             </div>
                         </td>
                         <td class="px-3 py-4 md:px-6 text-center whitespace-nowrap">
-                            <span class="bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-3 py-1 rounded-full font-bold text-sm whitespace-nowrap">
+                            <span class="bg-surface-chip text-ink border border-hairline px-3 py-1 rounded-pill font-bold text-sm whitespace-nowrap">
                                 ${nameGroup.total} ${nameGroup.unit || 'ชิ้น'}
                             </span>
                         </td>
@@ -300,7 +300,7 @@
                         const colorRowId = `${nameRowId}-color-${colorIndex}`;
 
                         const trColor = document.createElement('tr');
-                        trColor.className = `color-row ${colorRowId} hidden child-of-${nameRowId} level2-of-${nameRowId} bg-slate-800/40 hover:bg-slate-700/30 transition-colors cursor-pointer border-l-4 border-slate-600`;
+                        trColor.className = `color-row ${colorRowId} hidden child-of-${nameRowId} level2-of-${nameRowId} bg-surface-tile-3 hover:bg-surface-chip/30 transition-colors cursor-pointer border-l-4 border-hairline`;
                         trColor.onclick = (e) => {
                             e.stopPropagation();
                             const icon = document.getElementById(`icon-${colorRowId}`);
@@ -320,12 +320,12 @@
                         trColor.innerHTML = `
                             <td class="px-3 py-3 md:px-6 pl-8 md:pl-12">
                                 <div class="flex items-center gap-2">
-                                    <i id="icon-${colorRowId}" class="fa-solid fa-chevron-right text-slate-400 w-4 text-center text-xs color-icon-of-${nameRowId} shrink-0"></i>
-                                    <span class="font-bold text-slate-200 text-sm">สี: ${color}</span>
+                                    <i id="icon-${colorRowId}" class="fa-solid fa-chevron-right text-body-muted w-4 text-center text-xs color-icon-of-${nameRowId} shrink-0"></i>
+                                    <span class="font-bold text-ink text-sm">สี: ${color}</span>
                                 </div>
                             </td>
                             <td class="px-3 py-3 md:px-6 text-center whitespace-nowrap">
-                                <span class="text-slate-300 font-bold text-sm whitespace-nowrap">${colorGroup.total} ${colorGroup.unit || 'ชิ้น'}</span>
+                                <span class="text-body-muted font-bold text-sm whitespace-nowrap">${colorGroup.total} ${colorGroup.unit || 'ชิ้น'}</span>
                             </td>
                             <td class="px-3 py-3 md:px-6"></td>
                         `;
@@ -335,20 +335,20 @@
                             const capacity = (p.capacity_id && p.capacity_id.name) ? p.capacity_id.name : 'ไม่ระบุความจุ';
                             const condition = (p.condition_id && p.condition_id.name) ? p.condition_id.name : '';
                             const trItem = document.createElement('tr');
-                            trItem.className = `item-row hidden child-of-${nameRowId} child-of-${colorRowId} hover:bg-slate-700/20 transition-colors border-l-4 border-slate-700`;
+                            trItem.className = `item-row hidden child-of-${nameRowId} child-of-${colorRowId} hover:bg-surface-chip/40 transition-colors border-l-4 border-hairline`;
                             trItem.innerHTML = `
                                 <td class="px-3 py-3 md:px-6 pl-14 md:pl-20">
                                     <div class="flex flex-col">
-                                        <span class="text-sm text-slate-300">ความจุ: <span class="font-bold text-white">${capacity}</span> ${condition ? `/ ${condition}` : ''}</span>
-                                        <span class="text-xs text-slate-400 font-mono mt-0.5">รหัส: ${p.product_code || '-'}</span>
+                                        <span class="text-sm text-body-muted">ความจุ: <span class="font-bold text-ink">${capacity}</span> ${condition ? `/ ${condition}` : ''}</span>
+                                        <span class="text-xs text-ink-muted-48 font-mono mt-0.5">รหัส: ${p.product_code || '-'}</span>
                                     </div>
                                 </td>
                                 <td class="px-3 py-3 md:px-6 text-center whitespace-nowrap">
-                                    <span class="text-sm text-emerald-400 font-bold whitespace-nowrap">${p.qtyToDisplay} ${p.unit || 'ชิ้น'}</span>
+                                    <span class="text-sm text-ink font-bold whitespace-nowrap">${p.qtyToDisplay} ${p.unit || 'ชิ้น'}</span>
                                     ${p.is_transferring ? '<span class="text-[10px] bg-amber-500/20 text-amber-400 px-1 rounded ml-1 mt-1 block whitespace-nowrap">กำลังโอน</span>' : ''}
                                 </td>
                                 <td class="px-3 py-3 md:px-6 text-right whitespace-nowrap">
-                                    <span class="text-sm text-cyan-400 font-mono font-bold whitespace-nowrap">฿${(p.selling_price || 0).toLocaleString()}</span>
+                                    <span class="text-sm text-ink font-mono font-bold whitespace-nowrap">฿${(p.selling_price || 0).toLocaleString()}</span>
                                 </td>
                             `;
                             tbody.appendChild(trItem);
@@ -365,7 +365,7 @@
     window.loadBranchInventoryGlobalStock = async () => {
         const tbody = document.getElementById('table-body-branch-globalstock');
         if (!tbody) return;
-        tbody.innerHTML = '<tr><td colspan="4" class="text-center py-8"><div class="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-emerald-400"></div></td></tr>';
+        tbody.innerHTML = '<tr><td colspan="4" class="text-center py-8"><div class="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div></td></tr>';
 
         try {
             const res = await authFetch(`${API_BASE_URL}/products/global-stock`);
@@ -393,7 +393,7 @@
                 }
 
                 if (items.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="4" class="text-center py-6 text-slate-400">ไม่พบข้อมูลสินค้าในระบบ</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="4" class="text-center py-6 text-body-muted">ไม่พบข้อมูลสินค้าในระบบ</td></tr>';
                     return;
                 }
 
@@ -434,7 +434,7 @@
                     const nameRowId = `globalstock-group-${nameIndex}`;
 
                     const trName = document.createElement('tr');
-                    trName.className = `name-row ${nameRowId} bg-slate-800/80 hover:bg-slate-700/50 transition-colors cursor-pointer border-l-4 border-cyan-500`;
+                    trName.className = `name-row ${nameRowId} bg-canvas-elevated hover:bg-surface-chip/40 transition-colors cursor-pointer border-l-4 border-primary`;
                     trName.onclick = () => {
                         const icon = document.getElementById(`icon-${nameRowId}`);
                         const isExpanded = icon.classList.contains('fa-chevron-down');
@@ -456,12 +456,12 @@
                     trName.innerHTML = `
                         <td class="px-3 py-4 md:px-6">
                             <div class="flex items-center gap-2 md:gap-3">
-                                <i id="icon-${nameRowId}" class="fa-solid fa-chevron-right text-cyan-400 w-4 text-center shrink-0"></i>
-                                <span class="font-bold text-white text-base">${name}</span>
+                                <i id="icon-${nameRowId}" class="fa-solid fa-chevron-right text-body-muted w-4 text-center shrink-0"></i>
+                                <span class="font-bold text-ink text-base">${name}</span>
                             </div>
                         </td>
                         <td class="px-3 py-4 md:px-6 text-center whitespace-nowrap">
-                            <span class="bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 px-3 py-1 rounded-full font-bold text-sm whitespace-nowrap">
+                            <span class="bg-surface-chip text-ink border border-hairline px-3 py-1 rounded-pill font-bold text-sm whitespace-nowrap">
                                 ${nameGroup.total} ${nameGroup.unit || 'ชิ้น'}
                             </span>
                         </td>
@@ -475,7 +475,7 @@
                         const branchRowId = `${nameRowId}-branch-${branchIndex}`;
 
                         const trBranch = document.createElement('tr');
-                        trBranch.className = `branch-row ${branchRowId} hidden child-of-${nameRowId} level2-of-${nameRowId} bg-slate-800/40 hover:bg-slate-700/30 transition-colors cursor-pointer border-l-4 border-slate-600`;
+                        trBranch.className = `branch-row ${branchRowId} hidden child-of-${nameRowId} level2-of-${nameRowId} bg-surface-tile-3 hover:bg-surface-chip/30 transition-colors cursor-pointer border-l-4 border-hairline`;
                         trBranch.onclick = (e) => {
                             e.stopPropagation();
                             const icon = document.getElementById(`icon-${branchRowId}`);
@@ -495,12 +495,12 @@
                         trBranch.innerHTML = `
                             <td class="px-3 py-3 md:px-6 pl-8 md:pl-12">
                                 <div class="flex items-center gap-2">
-                                    <i id="icon-${branchRowId}" class="fa-solid fa-chevron-right text-slate-400 w-4 text-center text-xs branch-icon-of-${nameRowId} shrink-0"></i>
-                                    <span class="font-bold text-slate-200 text-sm whitespace-nowrap"><i class="fa-solid fa-store text-emerald-400 mr-1"></i> สาขา: ${branchName}</span>
+                                    <i id="icon-${branchRowId}" class="fa-solid fa-chevron-right text-body-muted w-4 text-center text-xs branch-icon-of-${nameRowId} shrink-0"></i>
+                                    <span class="font-bold text-ink text-sm whitespace-nowrap"><i class="fa-solid fa-store text-body-muted mr-1"></i> สาขา: ${branchName}</span>
                                 </div>
                             </td>
                             <td class="px-3 py-3 md:px-6 text-center whitespace-nowrap">
-                                <span class="text-slate-300 font-bold text-sm whitespace-nowrap">${branchGroup.total} ${branchGroup.unit || 'ชิ้น'}</span>
+                                <span class="text-body-muted font-bold text-sm whitespace-nowrap">${branchGroup.total} ${branchGroup.unit || 'ชิ้น'}</span>
                             </td>
                             <td class="px-3 py-3 md:px-6"></td>
                         `;
@@ -513,24 +513,24 @@
 
                             let imeiDisplay = '';
                             if (p.branchImeis && p.branchImeis.length > 0) {
-                                imeiDisplay = `<div class="mt-1 flex flex-wrap gap-1 text-[10px] text-slate-400">IMEI: ${p.branchImeis.map(i => `<span class="bg-slate-700/50 px-1 rounded border border-slate-600">${i}</span>`).join('')}</div>`;
+                                imeiDisplay = `<div class="mt-1 flex flex-wrap gap-1 text-[10px] text-body-muted">IMEI: ${p.branchImeis.map(i => `<span class="bg-surface-chip px-1 rounded border border-hairline">${i}</span>`).join('')}</div>`;
                             }
 
                             const trItem = document.createElement('tr');
-                            trItem.className = `item-row hidden child-of-${nameRowId} child-of-${branchRowId} hover:bg-slate-700/20 transition-colors border-l-4 border-slate-700`;
+                            trItem.className = `item-row hidden child-of-${nameRowId} child-of-${branchRowId} hover:bg-surface-chip/40 transition-colors border-l-4 border-hairline`;
                             trItem.innerHTML = `
                                 <td class="px-3 py-3 md:px-6 pl-14 md:pl-20">
                                     <div class="flex flex-col">
-                                        <span class="text-sm text-slate-300">สี: <span class="font-bold text-white">${color}</span> / ความจุ: <span class="font-bold text-white">${capacity}</span> ${condition ? `/ ${condition}` : ''}</span>
-                                        <span class="text-xs text-slate-400 font-mono mt-0.5">รหัส: ${p.product_code || '-'}</span>
+                                        <span class="text-sm text-body-muted">สี: <span class="font-bold text-ink">${color}</span> / ความจุ: <span class="font-bold text-ink">${capacity}</span> ${condition ? `/ ${condition}` : ''}</span>
+                                        <span class="text-xs text-ink-muted-48 font-mono mt-0.5">รหัส: ${p.product_code || '-'}</span>
                                         ${imeiDisplay}
                                     </div>
                                 </td>
                                 <td class="px-3 py-3 md:px-6 text-center whitespace-nowrap">
-                                    <span class="text-sm text-cyan-400 font-bold whitespace-nowrap">${p.qtyToDisplay} ${p.unit || 'ชิ้น'}</span>
+                                    <span class="text-sm text-ink font-bold whitespace-nowrap">${p.qtyToDisplay} ${p.unit || 'ชิ้น'}</span>
                                 </td>
                                 <td class="px-3 py-3 md:px-6 text-right whitespace-nowrap">
-                                    <span class="text-sm text-cyan-400 font-mono font-bold whitespace-nowrap">฿${(p.selling_price || 0).toLocaleString()}</span>
+                                    <span class="text-sm text-ink font-mono font-bold whitespace-nowrap">฿${(p.selling_price || 0).toLocaleString()}</span>
                                 </td>
                             `;
                             tbody.appendChild(trItem);

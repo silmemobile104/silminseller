@@ -30,10 +30,10 @@
             tbody.innerHTML = `
                 <tr>
                     <td colspan="8" class="px-6 py-12 text-center">
-                        <div class="flex flex-col items-center text-slate-400">
-                            <i class="fa-solid fa-users text-4xl mb-3 text-slate-400"></i>
-                            <p class="font-medium text-slate-400">ยังไม่มีข้อมูลสมาชิก</p>
-                            <p class="text-sm text-slate-400 mt-1">กดปุ่ม "เพิ่มสมาชิก" เพื่อเริ่มต้น</p>
+                        <div class="flex flex-col items-center text-body-muted">
+                            <i class="fa-solid fa-users text-4xl mb-3 text-ink-muted-48"></i>
+                            <p class="font-medium text-body-muted">ยังไม่มีข้อมูลสมาชิก</p>
+                            <p class="text-sm text-ink-muted-48 mt-1">กดปุ่ม "เพิ่มสมาชิก" เพื่อเริ่มต้น</p>
                         </div>
                     </td>
                 </tr>
@@ -43,35 +43,35 @@
 
         members.forEach(m => {
             const row = document.createElement('tr');
-            row.className = 'hover:bg-slate-700/20 transition-colors';
+            row.className = 'hover:bg-surface-chip/40 transition-colors';
 
             const fullName = `${m.prefix || ''} ${m.first_name || ''} ${m.last_name || ''}`.trim();
             const citizenDisplay = m.citizen_id ? m.citizen_id.replace(/(\d{1})(\d{4})(\d{5})(\d{2})(\d{1})/, '$1-$2-$3-$4-$5') : '-';
             const dateStr = m.createdAt ? new Date(m.createdAt).toLocaleDateString('th-TH', { year: 'numeric', month: 'short', day: 'numeric' }) : '-';
 
             const photoHtml = m.photo
-                ? `<img src="data:image/jpeg;base64,${m.photo}" class="w-10 h-10 rounded-lg object-cover border border-slate-600">`
-                : `<div class="w-10 h-10 rounded-lg bg-slate-700 flex items-center justify-center text-slate-400"><i class="fa-solid fa-user"></i></div>`;
+                ? `<img src="data:image/jpeg;base64,${m.photo}" class="w-10 h-10 rounded-sm object-cover border border-hairline">`
+                : `<div class="w-10 h-10 rounded-sm bg-surface-chip flex items-center justify-center text-body-muted"><i class="fa-solid fa-user"></i></div>`;
 
             const referralBadge = m.referral_source
-                ? `<span class="px-2 py-1 bg-teal-500/10 text-teal-400 rounded-md text-xs font-medium border border-teal-500/20">${m.referral_source}</span>`
-                : '<span class="text-slate-400">-</span>';
+                ? `<span class="px-2 py-1 bg-surface-chip text-body-muted rounded-md text-xs font-medium border border-hairline">${m.referral_source}</span>`
+                : '<span class="text-ink-muted-48">-</span>';
 
             row.innerHTML = `
                 <td class="px-6 py-4">${photoHtml}</td>
-                <td class="px-6 py-4 font-bold text-cyan-400 font-mono">${m.member_number || '-'}</td>
+                <td class="px-6 py-4 font-bold text-ink font-mono">${m.member_number || '-'}</td>
                 <td class="px-6 py-4">
-                    <p class="font-medium text-white">${fullName}</p>
-                    ${m.first_name_en || m.last_name_en ? `<p class="text-xs text-slate-400">${(m.first_name_en || '')} ${(m.last_name_en || '')}</p>` : ''}
+                    <p class="font-medium text-ink">${fullName}</p>
+                    ${m.first_name_en || m.last_name_en ? `<p class="text-xs text-body-muted">${(m.first_name_en || '')} ${(m.last_name_en || '')}</p>` : ''}
                 </td>
-                <td class="px-6 py-4 text-slate-300 font-mono text-xs">${citizenDisplay}</td>
-                <td class="px-6 py-4 text-slate-300">${m.phone || '-'}</td>
+                <td class="px-6 py-4 text-body-muted font-mono text-xs">${citizenDisplay}</td>
+                <td class="px-6 py-4 text-body-muted">${m.phone || '-'}</td>
                 <td class="px-6 py-4">${referralBadge}</td>
-                <td class="px-6 py-4 text-slate-400 text-sm">${dateStr}</td>
+                <td class="px-6 py-4 text-ink-muted-48 text-sm">${dateStr}</td>
                 <td class="px-6 py-4 text-right">
                     <div class="flex items-center justify-end gap-1">
-                        <button class="view-member-btn text-slate-400 hover:text-indigo-400 transition-colors p-2" data-id="${m._id}" title="ดูรายละเอียด"><i class="fa-solid fa-eye"></i></button>
-                        <button class="delete-member-btn text-slate-400 hover:text-red-400 transition-colors p-2" data-id="${m._id}"><i class="fa-solid fa-trash"></i></button>
+                        <button class="view-member-btn text-body-muted hover:text-primary transition-colors p-2" data-id="${m._id}" title="ดูรายละเอียด"><i class="fa-solid fa-eye"></i></button>
+                        <button class="delete-member-btn text-body-muted hover:text-red-400 transition-colors p-2" data-id="${m._id}"><i class="fa-solid fa-trash"></i></button>
                     </div>
                 </td>
             `;
@@ -137,7 +137,7 @@
         // Reset photo preview
         const photoPreview = document.getElementById('member-photo-preview');
         if (photoPreview) {
-            photoPreview.innerHTML = `<div class="text-center text-slate-400 p-2"><i class="fa-solid fa-user-large text-2xl mb-2 block opacity-50"></i><p class="text-[10px]">รูปหลังอ่านบัตร</p></div>`;
+            photoPreview.innerHTML = `<div class="text-center text-body-muted p-2"><i class="fa-solid fa-user-large text-2xl mb-2 block opacity-50"></i><p class="text-[10px]">รูปหลังอ่านบัตร</p></div>`;
         }
 
         // Reset Card Front Photo state and preview
@@ -145,14 +145,14 @@
         currentCardFrontPhotoUrl = '';
         const cardFrontContainer = document.getElementById('member-card-front-container');
         if (cardFrontContainer) {
-            cardFrontContainer.innerHTML = `<div id="member-card-front-placeholder" class="text-center text-slate-400 p-3 group-hover:text-cyan-400 transition-colors duration-300"><i class="fa-solid fa-cloud-arrow-up text-3xl mb-2 block opacity-60 group-hover:opacity-100 transform group-hover:-translate-y-1 transition-all duration-300"></i><p class="text-xs font-medium leading-tight">คลิกเลือกรูปหน้าบัตร</p></div>`;
+            cardFrontContainer.innerHTML = `<div id="member-card-front-placeholder" class="text-center text-body-muted p-3 group-hover:text-primary transition-colors duration-300"><i class="fa-solid fa-cloud-arrow-up text-3xl mb-2 block opacity-60 group-hover:opacity-100 transform group-hover:-translate-y-1 transition-all duration-300"></i><p class="text-xs font-medium leading-tight">คลิกเลือกรูปหน้าบัตร</p></div>`;
         }
         const cardFrontInput = document.getElementById('member-card-front-input');
         if (cardFrontInput) cardFrontInput.value = '';
 
         // Reset modal title
         const title = document.getElementById('member-modal-title');
-        if (title) title.innerHTML = `<div class="w-10 h-10 rounded-xl bg-teal-500/10 flex items-center justify-center border border-teal-500/20"><i class="fa-solid fa-address-card text-teal-400"></i></div> เพิ่มสมาชิกใหม่`;
+        if (title) title.innerHTML = `<div class="w-10 h-10 rounded-sm bg-surface-chip flex items-center justify-center"><i class="fa-solid fa-address-card text-ink"></i></div> เพิ่มสมาชิกใหม่`;
     };
 
     // Store the current member's photo for saving
@@ -192,7 +192,7 @@
             if (m.photo) {
                 photoContainer.innerHTML = `<img src="data:image/jpeg;base64,${m.photo}" class="w-full h-full object-cover">`;
             } else {
-                photoContainer.innerHTML = `<i class="fa-solid fa-user text-4xl text-slate-400"></i>`;
+                photoContainer.innerHTML = `<i class="fa-solid fa-user text-4xl text-body-muted"></i>`;
             }
         }
 
@@ -228,8 +228,8 @@
         resetMemberForm();
         const title = document.getElementById('member-modal-title');
         if (title) {
-            const memberTag = member.member_number ? `<span class="text-xs bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 px-2.5 py-1 rounded-lg font-mono font-bold ml-2 tracking-wider">${member.member_number}</span>` : '';
-            title.innerHTML = `<div class="w-10 h-10 rounded-xl bg-teal-500/10 flex items-center justify-center border border-teal-500/20"><i class="fa-solid fa-pen text-teal-400"></i></div> แก้ไขข้อมูลสมาชิก ${memberTag}`;
+            const memberTag = member.member_number ? `<span class="text-xs bg-surface-chip border border-hairline text-ink px-2.5 py-1 rounded-md font-mono font-bold ml-2 tracking-wider">${member.member_number}</span>` : '';
+            title.innerHTML = `<div class="w-10 h-10 rounded-sm bg-surface-chip flex items-center justify-center"><i class="fa-solid fa-pen text-ink"></i></div> แก้ไขข้อมูลสมาชิก ${memberTag}`;
         }
 
         document.getElementById('edit-member-id').value = member._id;

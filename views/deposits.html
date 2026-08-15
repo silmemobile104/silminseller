@@ -1,13 +1,13 @@
 <div id="view-deposits">
                     <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                         <div>
-                            <h3 class="text-2xl font-bold text-white flex items-center gap-2">
-                                <i class="fa-solid fa-wallet text-emerald-400"></i> การมัดจำและจองสินค้า
+                            <h3 class="text-2xl font-bold text-ink flex items-center gap-2">
+                                <i class="fa-solid fa-wallet text-body-muted"></i> การมัดจำและจองสินค้า
                             </h3>
-                            <p class="text-slate-400 mt-1" id="deposit-branch-header">สาขา: ทุกสาขา</p>
+                            <p class="text-body-muted mt-1" id="deposit-branch-header">สาขา: ทุกสาขา</p>
                         </div>
                         <button id="btn-open-create-deposit"
-                            class="px-5 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold transition-all shadow-lg shadow-emerald-500/20 flex items-center gap-2">
+                            class="px-5 py-3 rounded-pill bg-primary hover:bg-primary-pressed text-on-primary font-bold transition-all flex items-center gap-2">
                             <i class="fa-solid fa-plus"></i>
                             บันทึกเงินมัดจำใหม่
                         </button>
@@ -15,19 +15,19 @@
 
                     <!-- Filters Panel -->
                     <div
-                        class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4 bg-white p-5 rounded-2xl border border-slate-200 shadow-lg">
+                        class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4 bg-canvas-elevated p-5 rounded-lg border border-hairline">
                         <div class="space-y-1.5">
-                            <label class="text-[10px] font-bold uppercase tracking-wider text-slate-400">สาขา</label>
+                            <label class="text-[10px] font-bold uppercase tracking-wider text-body-muted">สาขา</label>
                             <select id="deposit-filter-branch"
-                                class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2.5 text-xs text-slate-800 focus:outline-none focus:border-emerald-500 font-medium">
+                                class="w-full bg-surface-chip border border-divider-soft rounded-sm px-3 py-2.5 text-xs text-ink focus:outline-none focus:border-primary-focus font-medium">
                                 <option value="ALL">ทุกสาขา</option>
                             </select>
                         </div>
                         <div class="space-y-1.5">
                             <label
-                                class="text-[10px] font-bold uppercase tracking-wider text-slate-400">สถานะรายการ</label>
+                                class="text-[10px] font-bold uppercase tracking-wider text-body-muted">สถานะรายการ</label>
                             <select id="deposit-filter-status"
-                                class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2.5 text-xs text-slate-800 focus:outline-none focus:border-emerald-500 font-medium">
+                                class="w-full bg-surface-chip border border-divider-soft rounded-sm px-3 py-2.5 text-xs text-ink focus:outline-none focus:border-primary-focus font-medium">
                                 <option value="ALL">สถานะทั้งหมด</option>
                                 <option value="รอดำเนินการ" selected>รอดำเนินการ (จองอยู่)</option>
                                 <option value="สำเร็จ">สำเร็จ (รับเครื่องแล้ว)</option>
@@ -36,9 +36,9 @@
                         </div>
                         <div class="space-y-1.5">
                             <label
-                                class="text-[10px] font-bold uppercase tracking-wider text-slate-400">ขั้นตอนการดำเนินงาน</label>
+                                class="text-[10px] font-bold uppercase tracking-wider text-body-muted">ขั้นตอนการดำเนินงาน</label>
                             <select id="deposit-filter-stage"
-                                class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2.5 text-xs text-slate-800 focus:outline-none focus:border-emerald-500 font-medium">
+                                class="w-full bg-surface-chip border border-divider-soft rounded-sm px-3 py-2.5 text-xs text-ink focus:outline-none focus:border-primary-focus font-medium">
                                 <option value="ALL" selected>ขั้นตอนทั้งหมด</option>
                                 <option value="รอลูกค้ารับเครื่อง">รอลูกค้ารับเครื่อง</option>
                                 <option value="รอโอนย้ายจากสาขาอื่น">รอโอนย้ายจากสาขาอื่น</option>
@@ -46,30 +46,30 @@
                             </select>
                         </div>
                         <div class="space-y-1.5">
-                            <label class="text-[10px] font-bold uppercase tracking-wider text-slate-400">จากวันที่
+                            <label class="text-[10px] font-bold uppercase tracking-wider text-body-muted">จากวันที่
                                 (นัดรับ)</label>
                             <input type="date" id="deposit-filter-start-date"
-                                class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-800 focus:outline-none focus:border-emerald-500 font-medium" />
+                                class="w-full bg-surface-chip border border-divider-soft rounded-sm px-3 py-2 text-xs text-ink focus:outline-none focus:border-primary-focus font-medium" />
                         </div>
                         <div class="space-y-1.5">
-                            <label class="text-[10px] font-bold uppercase tracking-wider text-slate-400">ถึงวันที่
+                            <label class="text-[10px] font-bold uppercase tracking-wider text-body-muted">ถึงวันที่
                                 (นัดรับ)</label>
                             <input type="date" id="deposit-filter-end-date"
-                                class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-800 focus:outline-none focus:border-emerald-500 font-medium" />
+                                class="w-full bg-surface-chip border border-divider-soft rounded-sm px-3 py-2 text-xs text-ink focus:outline-none focus:border-primary-focus font-medium" />
                         </div>
                         <div class="space-y-1.5">
                             <label
-                                class="text-[10px] font-bold uppercase tracking-wider text-slate-400">ค้นหาด่วน</label>
+                                class="text-[10px] font-bold uppercase tracking-wider text-body-muted">ค้นหาด่วน</label>
                             <input type="text" id="deposit-filter-search" placeholder="ค้นหาลูกค้า/เบอร์โทร..."
-                                class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2.5 text-xs text-slate-800 placeholder-slate-500 focus:outline-none focus:border-emerald-500 font-medium" />
+                                class="w-full bg-surface-chip border border-divider-soft rounded-sm px-3 py-2.5 text-xs text-ink placeholder-ink-muted-48 focus:outline-none focus:border-primary-focus font-medium" />
                         </div>
                     </div>
 
                     <!-- Table List -->
-                    <div class="bg-slate-800 rounded-2xl border border-slate-700 shadow-lg overflow-hidden">
+                    <div class="bg-canvas-elevated rounded-lg border border-hairline overflow-hidden">
                         <div class="w-full">
                             <table class="w-full text-left text-[10px] leading-tight table-fixed break-words">
-                                <thead class="bg-slate-900/50 text-slate-400 font-bold uppercase text-[9px]">
+                                <thead class="bg-surface-tile-3 text-body-muted font-bold uppercase text-[9px]">
                                     <tr>
                                         <th class="px-1.5 py-2 font-semibold w-16">วันที่มัดจำ</th>
                                         <th class="px-1.5 py-2 font-semibold w-20">ลูกค้า</th>
@@ -77,17 +77,17 @@
                                         <th class="px-1.5 py-2 font-semibold w-16">ยอดมัดจำ</th>
                                         <th class="px-1.5 py-2 font-semibold w-16">นัดรับเครื่อง</th>
                                         <th
-                                            class="px-1.5 py-2 font-semibold text-center border-r border-slate-700/50 w-20">
+                                            class="px-1.5 py-2 font-semibold text-center border-r border-hairline w-20">
                                             เลขที่บิล POS</th>
-                                        <th class="px-1.5 py-2 font-semibold border-r border-slate-700/50 w-20">IMEI
+                                        <th class="px-1.5 py-2 font-semibold border-r border-hairline w-20">IMEI
                                             ที่จอง
                                         </th>
-                                        <th class="px-1.5 py-2 font-semibold border-r border-slate-700/50 w-28">
+                                        <th class="px-1.5 py-2 font-semibold border-r border-hairline w-28">
                                             สินค้าจอง
                                         </th>
-                                        <th class="px-1.5 py-2 font-semibold border-r border-slate-700/50 w-16">ราคาเต็ม
+                                        <th class="px-1.5 py-2 font-semibold border-r border-hairline w-16">ราคาเต็ม
                                         </th>
-                                        <th class="px-1.5 py-2 font-semibold border-r border-slate-700/50 w-16">ค้างชำระ
+                                        <th class="px-1.5 py-2 font-semibold border-r border-hairline w-16">ค้างชำระ
                                         </th>
                                         <th class="px-1.5 py-2 font-semibold w-20">สถานะ / ขั้นตอน</th>
                                         <th class="px-1.5 py-2 font-semibold w-16">ผู้ทำรายการ</th>
@@ -95,10 +95,10 @@
                                         <th class="px-1.5 py-2 font-semibold text-center w-12">พิมพ์</th>
                                     </tr>
                                 </thead>
-                                <tbody id="deposit-table-body" class="divide-y divide-slate-700/50"></tbody>
+                                <tbody id="deposit-table-body" class="divide-y divide-hairline"></tbody>
                             </table>
                         </div>
-                        <div id="deposit-empty" class="hidden p-12 text-center text-slate-400 italic text-sm">
+                        <div id="deposit-empty" class="hidden p-12 text-center text-body-muted italic text-sm">
                             ไม่พบข้อมูลใบมัดจำสินค้าตามตัวเลือก
                         </div>
                     </div>

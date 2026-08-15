@@ -131,7 +131,7 @@
 
         tbody.innerHTML = '';
         if (!accountsToRender || accountsToRender.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="7" class="text-center text-gray-500 py-4">ไม่พบข้อมูล</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="7" class="text-center text-body-muted py-4">ไม่พบข้อมูล</td></tr>';
             return;
         }
 
@@ -142,7 +142,7 @@
             const grp = _coaCache.groups.find(g => g._id === accGrpId) || {};
 
             const tr = document.createElement('tr');
-            tr.className = 'border-b border-gray-700 hover:bg-gray-700 text-white';
+            tr.className = 'border-b border-hairline hover:bg-surface-chip/40 text-ink';
             tr.innerHTML = `
                 <td class="px-4 py-3 font-mono">${escapeHtml(acc.account_code)}</td>
                 <td class="px-4 py-3">${escapeHtml(acc.account_name)}</td>
@@ -150,11 +150,11 @@
                 <td class="px-4 py-3">${escapeHtml(grp.group_name) || '-'}</td>
                 <td class="px-4 py-3 text-center">${acc.level || ''}</td>
                 <td class="px-4 py-3 text-center">
-                    ${acc.is_system ? '<span class="bg-violet-900 text-violet-200 text-xs px-2 py-0.5 rounded-md font-semibold">ระบบ</span>' : ''}
+                    ${acc.is_system ? '<span class="bg-surface-chip text-body-muted text-xs px-2 py-0.5 rounded-md font-semibold">ระบบ</span>' : ''}
                 </td>
                 <td class="px-4 py-3 text-center space-x-2">
                     ${!acc.is_system ? `
-                    <button type="button" class="text-amber-400 hover:text-amber-300 transition-colors" onclick="editAccountChart('${acc._id}')">
+                    <button type="button" class="text-body-muted hover:text-primary transition-colors" onclick="editAccountChart('${acc._id}')">
                         <i class="fas fa-edit"></i>
                     </button>
                     <button type="button" class="text-rose-400 hover:text-rose-300 transition-colors" onclick="deleteAccountChart('${acc._id}')">
@@ -188,7 +188,7 @@
 
         tbody.innerHTML = '';
         if (!groups || groups.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="4" class="text-center text-gray-500 py-4">ไม่พบข้อมูล</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="4" class="text-center text-body-muted py-4">ไม่พบข้อมูล</td></tr>';
             return;
         }
 
@@ -201,12 +201,12 @@
             }).length;
 
             const tr = document.createElement('tr');
-            tr.className = 'border-b border-gray-700 hover:bg-gray-700 text-white';
+            tr.className = 'border-b border-hairline hover:bg-surface-chip/40 text-ink';
             tr.innerHTML = `
                 <td class="px-4 py-3 font-mono">${escapeHtml(grp.group_code)}</td>
                 <td class="px-4 py-3">${escapeHtml(grp.group_name)}</td>
                 <td class="px-4 py-3">${escapeHtml(cat.category_name) || '-'}</td>
-                <td class="px-4 py-3 text-center font-bold text-white">${accCount}</td>
+                <td class="px-4 py-3 text-center font-bold text-ink">${accCount}</td>
             `;
             tbody.appendChild(tr);
         });
@@ -218,9 +218,9 @@
             const content = document.getElementById(`coa-content-${t}`);
             if (btn) {
                 if (t === tabName) {
-                    btn.className = "px-4 py-2.5 text-sm font-medium rounded-t-lg bg-slate-700/80 text-white border-b-2 border-violet-500";
+                    btn.className = "px-4 py-2.5 text-sm font-medium rounded-t-lg bg-surface-tile-3 text-ink border-b-2 border-primary";
                 } else {
-                    btn.className = "px-4 py-2.5 text-sm font-medium rounded-t-lg text-slate-400 hover:text-white hover:bg-slate-700/40 transition-all";
+                    btn.className = "px-4 py-2.5 text-sm font-medium rounded-t-lg text-body-muted hover:text-ink hover:bg-surface-chip/40 transition-all";
                 }
             }
             if (content) {
@@ -472,7 +472,7 @@
 
     function createPnLRow(conf = {}, idx = 0) {
         const tr = document.createElement('tr');
-        tr.className = 'border-b border-gray-700 hover:bg-gray-700 pnl-row';
+        tr.className = 'border-b border-hairline hover:bg-surface-chip/40 pnl-row';
 
         let accOptions = '<option value="">เลือกบัญชี (ออโต้รวม)</option>';
         _coaCache.accounts.forEach(a => {
@@ -496,23 +496,23 @@
 
         tr.innerHTML = `
             <td class="px-4 py-2">
-                <input type="number" class="pnl-sort w-16 bg-slate-900 border border-slate-600 rounded p-1 text-white text-center font-mono text-sm" value="${conf.sort_order ?? (idx + 1) * 10}">
+                <input type="number" class="pnl-sort w-16 bg-surface-chip border border-divider-soft rounded-sm p-1 text-ink text-center font-mono text-sm" value="${conf.sort_order ?? (idx + 1) * 10}">
             </td>
             <td class="px-4 py-2">
-                <input type="text" class="pnl-name w-full bg-slate-900 border border-slate-600 rounded p-1 text-white text-sm" value="${conf.display_name || ''}" placeholder="ชื่อรายการ">
+                <input type="text" class="pnl-name w-full bg-surface-chip border border-divider-soft rounded-sm p-1 text-ink text-sm" value="${conf.display_name || ''}" placeholder="ชื่อรายการ">
             </td>
             <td class="px-4 py-2">
-                <select class="pnl-section w-full bg-slate-900 border border-slate-600 rounded p-1 text-white text-sm">
+                <select class="pnl-section w-full bg-surface-chip border border-divider-soft rounded-sm p-1 text-ink text-sm">
                     ${secOptions}
                 </select>
             </td>
             <td class="px-4 py-2">
-                <select class="pnl-account w-full bg-slate-900 border border-slate-600 rounded p-1 text-white text-sm">
+                <select class="pnl-account w-full bg-surface-chip border border-divider-soft rounded-sm p-1 text-ink text-sm">
                     ${accOptions}
                 </select>
             </td>
             <td class="px-4 py-2 text-center">
-                <input type="checkbox" class="pnl-bold w-4 h-4 rounded border-slate-600 bg-slate-900 text-violet-600 focus:ring-violet-500" ${conf.is_bold ? 'checked' : ''}>
+                <input type="checkbox" class="pnl-bold w-4 h-4 rounded border-divider-soft bg-surface-chip text-primary focus:ring-primary-focus" ${conf.is_bold ? 'checked' : ''}>
             </td>
             <td class="px-4 py-2 text-center">
                 <button type="button" class="text-rose-400 hover:text-rose-300 transition-colors" onclick="removePnLLine(this)">
@@ -743,26 +743,26 @@
 
             tbody.innerHTML = '';
             if (!data.success || !data.vouchers || data.vouchers.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="7" class="text-center text-slate-400 py-4">ไม่พบข้อมูล</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="7" class="text-center text-body-muted py-4">ไม่พบข้อมูล</td></tr>';
                 return;
             }
 
             data.vouchers.forEach(v => {
                 const tr = document.createElement('tr');
-                tr.className = 'border-b border-gray-700 hover:bg-gray-700';
+                tr.className = 'border-b border-hairline hover:bg-surface-chip/40';
 
                 const dt = new Date(v.payment_date).toLocaleDateString('th-TH');
                 const amt = (v.total_amount || v.amount || 0).toLocaleString('th-TH', { minimumFractionDigits: 2 });
 
                 tr.innerHTML = `
-                    <td class="px-4 py-2.5 font-mono font-bold text-white">${escapeHtml(v.voucher_no) || '-'}</td>
+                    <td class="px-4 py-2.5 font-mono font-bold text-ink">${escapeHtml(v.voucher_no) || '-'}</td>
                     <td class="px-4 py-2.5 font-mono">${dt}</td>
-                    <td class="px-4 py-2.5 font-semibold text-slate-200">${escapeHtml(v.payee_name) || '-'}</td>
-                    <td class="px-4 py-2.5 text-xs text-slate-300">${escapeHtml(v.debit_account_id?.account_code) || '-'} - ${escapeHtml(v.debit_account_id?.account_name) || '-'}</td>
-                    <td class="px-4 py-2.5 text-xs text-slate-300">${escapeHtml(v.credit_account_id?.account_code) || '-'} - ${escapeHtml(v.credit_account_id?.account_name) || '-'}</td>
+                    <td class="px-4 py-2.5 font-semibold text-ink">${escapeHtml(v.payee_name) || '-'}</td>
+                    <td class="px-4 py-2.5 text-xs text-body-muted">${escapeHtml(v.debit_account_id?.account_code) || '-'} - ${escapeHtml(v.debit_account_id?.account_name) || '-'}</td>
+                    <td class="px-4 py-2.5 text-xs text-body-muted">${escapeHtml(v.credit_account_id?.account_code) || '-'} - ${escapeHtml(v.credit_account_id?.account_name) || '-'}</td>
                     <td class="px-4 py-2.5 text-right font-mono font-bold text-emerald-400">฿${amt}</td>
                     <td class="px-4 py-2.5 text-center">
-                        <button type="button" class="text-cyan-400 hover:text-cyan-300 transition-colors" onclick="printDisbursementVoucher('${v._id}')">
+                        <button type="button" class="text-body-muted hover:text-primary transition-colors" onclick="printDisbursementVoucher('${v._id}')">
                             <i class="fas fa-print"></i>
                         </button>
                     </td>

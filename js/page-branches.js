@@ -35,22 +35,22 @@
 
                 json.data.forEach(branch => {
                     const card = document.createElement('div');
-                    card.className = 'bg-slate-800 rounded-2xl border border-slate-700 p-6 shadow-lg hover:border-slate-500 transition-colors group relative overflow-hidden';
+                    card.className = 'bg-canvas-elevated rounded-lg border border-hairline p-6 hover:border-primary/40 transition-colors group relative overflow-hidden';
                     card.innerHTML = `
                         <div class="absolute top-0 right-0 p-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button class="btn-view-branch w-8 h-8 rounded-lg bg-slate-700/50 flex items-center justify-center text-slate-400 hover:text-indigo-400 hover:bg-indigo-400/10 transition-colors" data-id="${branch._id}" title="ดูรายละเอียด">
+                            <button class="btn-view-branch w-8 h-8 rounded-sm bg-surface-chip flex items-center justify-center text-body-muted hover:text-primary hover:bg-primary/10 transition-colors" data-id="${branch._id}" title="ดูรายละเอียด">
                                 <i class="fa-solid fa-eye text-sm"></i>
                             </button>
-                            <button class="btn-delete-branch w-8 h-8 rounded-lg bg-slate-700/50 flex items-center justify-center text-slate-400 hover:text-red-400 hover:bg-red-400/10 transition-colors" data-id="${branch._id}">
+                            <button class="btn-delete-branch w-8 h-8 rounded-sm bg-surface-chip flex items-center justify-center text-body-muted hover:text-red-400 hover:bg-red-400/10 transition-colors" data-id="${branch._id}">
                                 <i class="fa-solid fa-trash-can text-sm"></i>
                             </button>
                         </div>
-                        <div class="w-12 h-12 rounded-xl bg-cyan-500/10 flex items-center justify-center text-cyan-400 mb-4 border border-cyan-500/20">
+                        <div class="w-12 h-12 rounded-sm bg-surface-chip flex items-center justify-center text-ink mb-4">
                             <i class="fa-solid fa-store text-xl"></i>
                         </div>
-                        <h4 class="text-xl font-bold text-white mb-2">${branch.name}</h4>
-                        ${branch.phone ? `<p class="text-xs text-cyan-400 font-mono mb-2 flex items-center gap-1.5"><i class="fa-solid fa-phone text-[10px]"></i> ${branch.phone}</p>` : ''}
-                        <p class="text-sm text-slate-400 line-clamp-2">${branch.address || 'ไม่มีรายละเอียดที่อยู่'}</p>
+                        <h4 class="text-xl font-bold text-ink mb-2">${branch.name}</h4>
+                        ${branch.phone ? `<p class="text-xs text-body-muted font-mono mb-2 flex items-center gap-1.5"><i class="fa-solid fa-phone text-[10px]"></i> ${branch.phone}</p>` : ''}
+                        <p class="text-sm text-body-muted line-clamp-2">${branch.address || 'ไม่มีรายละเอียดที่อยู่'}</p>
                     `;
                     branchGrid.appendChild(card);
                 });
@@ -135,9 +135,9 @@
         if (branchPhoneInput) branchPhoneInput.value = phone;
 
         if (id) {
-            branchModalTitle.innerHTML = `<i class="fa-solid fa-pen-to-square text-cyan-400"></i> แก้ไขสาขา`;
+            branchModalTitle.innerHTML = `<i class="fa-solid fa-pen-to-square text-body-muted"></i> แก้ไขสาขา`;
         } else {
-            branchModalTitle.innerHTML = `<i class="fa-solid fa-store text-cyan-400"></i> เพิ่มสาขาใหม่`;
+            branchModalTitle.innerHTML = `<i class="fa-solid fa-store text-body-muted"></i> เพิ่มสาขาใหม่`;
         }
 
         branchModal.classList.remove('opacity-0', 'pointer-events-none');

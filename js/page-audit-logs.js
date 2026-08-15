@@ -45,26 +45,26 @@
                 titleText = 'ลบข้อมูล (DELETE)';
                 break;
             case 'LOGIN':
-                bgClass = 'bg-sky-500/10 border border-sky-500/20';
-                textClass = 'text-sky-400';
+                bgClass = 'bg-surface-chip border border-hairline';
+                textClass = 'text-body-muted';
                 iconClass = 'fa-solid fa-right-to-bracket';
                 titleText = 'ล็อกอิน (LOGIN)';
                 break;
             case 'CANCEL':
-                bgClass = 'bg-orange-500/10 border border-orange-500/20';
-                textClass = 'text-orange-400';
+                bgClass = 'bg-rose-500/10 border border-rose-500/20';
+                textClass = 'text-rose-400';
                 iconClass = 'fa-solid fa-ban';
                 titleText = 'ยกเลิก (CANCEL)';
                 break;
             case 'APPROVE':
-                bgClass = 'bg-violet-500/10 border border-violet-500/20';
-                textClass = 'text-violet-400';
+                bgClass = 'bg-emerald-500/10 border border-emerald-500/20';
+                textClass = 'text-emerald-400';
                 iconClass = 'fa-solid fa-circle-check';
                 titleText = 'อนุมัติ (APPROVE)';
                 break;
             default:
-                bgClass = 'bg-slate-500/10 border border-slate-500/20';
-                textClass = 'text-slate-400';
+                bgClass = 'bg-surface-chip border border-hairline';
+                textClass = 'text-body-muted';
                 iconClass = 'fa-solid fa-gear';
         }
         return `
@@ -77,49 +77,41 @@
 
     // Render module badges with custom icons
     const getModuleBadgeHtml = (module) => {
-        let bgClass = '', textClass = '', iconClass = '', thaiName = module;
+        let iconClass = '', thaiName = module;
         switch (module) {
             case 'AUTH':
-                bgClass = 'bg-slate-700/30 text-slate-300 border-slate-700/50';
                 iconClass = 'fa-solid fa-lock';
                 thaiName = 'เข้าสู่ระบบ';
                 break;
             case 'PO':
-                bgClass = 'bg-amber-500/10 text-amber-400 border-amber-500/20';
                 iconClass = 'fa-solid fa-file-invoice-dollar';
                 thaiName = 'ใบสั่งซื้อ (PO)';
                 break;
             case 'STOCK':
-                bgClass = 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
                 iconClass = 'fa-solid fa-box';
                 thaiName = 'คลังสินค้า';
                 break;
             case 'POS':
-                bgClass = 'bg-sky-500/10 text-sky-400 border-sky-500/20';
                 iconClass = 'fa-solid fa-cash-register';
                 thaiName = 'ขายสินค้า (POS)';
                 break;
             case 'TRANSFER':
-                bgClass = 'bg-violet-500/10 text-violet-400 border-violet-500/20';
                 iconClass = 'fa-solid fa-truck-ramp-box';
                 thaiName = 'โอนย้ายสาขา';
                 break;
             case 'PERSONNEL':
-                bgClass = 'bg-rose-500/10 text-rose-400 border-rose-500/20';
                 iconClass = 'fa-solid fa-users';
                 thaiName = 'จัดการพนักงาน';
                 break;
             case 'ROLE':
-                bgClass = 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20';
                 iconClass = 'fa-solid fa-shield-halved';
                 thaiName = 'จัดการสิทธิ์';
                 break;
             default:
-                bgClass = 'bg-slate-800 text-slate-400 border-slate-700';
                 iconClass = 'fa-solid fa-bars-progress';
         }
         return `
-            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-semibold bg-slate-900/40 border ${bgClass}" title="${module}">
+            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-surface-chip text-body-muted border border-hairline" title="${module}">
                 <i class="${iconClass} text-[10px]"></i>
                 ${thaiName}
             </span>
@@ -141,9 +133,9 @@
         // Render skeleton loading
         tableBody.innerHTML = `
             <tr>
-                <td colspan="7" class="py-12 text-center text-slate-400">
+                <td colspan="7" class="py-12 text-center text-body-muted">
                     <div class="flex flex-col items-center justify-center gap-3">
-                        <i class="fa-solid fa-circle-notch fa-spin text-3xl text-indigo-500"></i>
+                        <i class="fa-solid fa-circle-notch fa-spin text-3xl text-body-muted"></i>
                         <span class="text-sm font-medium tracking-wide">กำลังโหลดข้อมูลประวัติความปลอดภัย...</span>
                     </div>
                 </td>
@@ -190,26 +182,26 @@
                 logs.forEach((log, index) => {
                     const timeStr = formatThaiDateTime(log.createdAt);
                     const refBadge = log.reference_no
-                        ? `<span class="px-2 py-0.5 rounded bg-slate-700/40 border border-slate-700 text-slate-300 font-mono text-[11px]">${log.reference_no}</span>`
-                        : `<span class="text-slate-400">-</span>`;
+                        ? `<span class="px-2 py-0.5 rounded bg-surface-chip border border-hairline text-body-muted font-mono text-[11px]">${log.reference_no}</span>`
+                        : `<span class="text-body-muted">-</span>`;
 
                     rowsHtml += `
-                        <tr class="hover:bg-slate-800/20 transition-colors">
-                            <td class="py-4 px-6 text-xs text-slate-400 font-mono">${timeStr}</td>
+                        <tr class="hover:bg-surface-chip/40 transition-colors">
+                            <td class="py-4 px-6 text-xs text-body-muted font-mono">${timeStr}</td>
                             <td class="py-4 px-6">
                                 <div class="flex items-center gap-2">
-                                    <div class="w-7 h-7 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 flex items-center justify-center font-bold text-xs">
+                                    <div class="w-7 h-7 rounded-full bg-surface-chip border border-hairline text-ink flex items-center justify-center font-bold text-xs">
                                         ${(log.user_name || 'U').charAt(0).toUpperCase()}
                                     </div>
-                                    <span class="text-sm font-bold text-slate-200">${log.user_name || 'ระบบ'}</span>
+                                    <span class="text-sm font-bold text-ink">${log.user_name || 'ระบบ'}</span>
                                 </div>
                             </td>
                             <td class="py-4 px-6">${getActionBadgeHtml(log.action)}</td>
                             <td class="py-4 px-6">${getModuleBadgeHtml(log.module)}</td>
-                            <td class="py-4 px-6 text-sm text-slate-300 font-medium">${log.description || '-'}</td>
+                            <td class="py-4 px-6 text-sm text-body-muted font-medium">${log.description || '-'}</td>
                             <td class="py-4 px-6">${refBadge}</td>
                             <td class="py-4 px-6 text-right">
-                                <button onclick="window.viewAuditLogDetail('${log._id}')" class="p-2 bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 hover:bg-indigo-500/20 hover:text-white rounded-xl transition-all active:scale-95 shadow-md shadow-indigo-500/5 hover:shadow-indigo-500/10" title="ตรวจสอบเชิงลึก">
+                                <button onclick="window.viewAuditLogDetail('${log._id}')" class="p-2 bg-surface-chip border border-hairline text-body-muted hover:text-primary hover:bg-primary/10 rounded-md transition-all active:scale-95" title="ตรวจสอบเชิงลึก">
                                     <i class="fa-solid fa-circle-info text-sm"></i>
                                 </button>
                             </td>
@@ -261,15 +253,15 @@
             if (log.details) {
                 try {
                     payloadContainer.textContent = JSON.stringify(log.details, null, 2);
-                    payloadContainer.classList.remove('text-slate-400');
-                    payloadContainer.classList.add('text-indigo-300');
+                    payloadContainer.classList.remove('text-body-muted');
+                    payloadContainer.classList.add('text-ink');
                 } catch (e) {
                     payloadContainer.textContent = String(log.details);
                 }
             } else {
                 payloadContainer.textContent = 'ไม่มีข้อมูลเพิ่มเติม (No details payload provided)';
-                payloadContainer.classList.add('text-slate-400');
-                payloadContainer.classList.remove('text-indigo-300');
+                payloadContainer.classList.add('text-body-muted');
+                payloadContainer.classList.remove('text-ink');
             }
         }
 

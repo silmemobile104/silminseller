@@ -337,9 +337,9 @@
                     'กำลังตรวจนับ': 'bg-violet-500/20 text-violet-400 border-violet-500/30',
                     'รอการอนุมัติ': 'bg-amber-500/20 text-amber-400 border-amber-500/30',
                     'อนุมัติแล้ว': 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
-                    'ปิดโดยอัตโนมัติ': 'bg-slate-500/20 text-slate-400 border-slate-500/30'
+                    'ปิดโดยอัตโนมัติ': 'bg-surface-chip text-body-muted border-hairline'
                 };
-                badge.className = `px-3 py-1.5 rounded-full text-xs font-bold border ${statusColors[session.status] || 'bg-slate-500/20 text-slate-400 border-slate-500/30'}`;
+                badge.className = `px-3 py-1.5 rounded-full text-xs font-bold border ${statusColors[session.status] || 'bg-surface-chip text-body-muted border-hairline'}`;
                 badge.textContent = session.status;
             }
 
@@ -408,7 +408,7 @@
                 pill.className = 'px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/20';
                 pill.textContent = `✓ ครบ ${total} เครื่อง`;
             } else {
-                pill.className = 'px-2.5 py-0.5 rounded-full text-xs font-bold bg-indigo-500/20 text-indigo-400 border border-indigo-500/20';
+                pill.className = 'px-2.5 py-0.5 rounded-full text-xs font-bold bg-surface-chip text-body-muted border border-hairline';
                 pill.textContent = `${total} เครื่อง`;
             }
         }
@@ -435,7 +435,7 @@
 
         if (!rows.length) {
             tbody.innerHTML = `
-            <tr><td colspan="6" class="text-center py-10 text-slate-400">
+            <tr><td colspan="6" class="text-center py-10 text-body-muted">
                 <i class="fa-solid fa-inbox text-2xl mb-2 block"></i>
                 ไม่พบสินค้าในสาขา
             </td></tr>`;
@@ -446,9 +446,9 @@
             const isScanned = _scannedImeiSet.has(e.imei);
             const isSold = e.sold;
 
-            let rowBg = 'hover:bg-slate-700/20';
+            let rowBg = 'hover:bg-surface-chip/40';
             if (isScanned) rowBg = 'bg-emerald-500/5';
-            else if (isSold) rowBg = 'bg-slate-800/80 opacity-70';
+            else if (isSold) rowBg = 'bg-surface-chip/60 opacity-70';
 
             let statusBadge = '';
             if (isScanned) {
@@ -456,7 +456,7 @@
                                <i class="fa-solid fa-check"></i>สแกนแล้ว
                            </span>`;
             } else if (isSold) {
-                statusBadge = `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-500/20 text-slate-400 border border-slate-500/20">
+                statusBadge = `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-surface-chip text-body-muted border border-hairline">
                                <i class="fa-solid fa-cart-shopping"></i>ขายแล้ว
                            </span>`;
             } else {
@@ -469,26 +469,26 @@
             if (isScanned) {
                 imeiHighlight = `<span class="font-mono text-xs text-emerald-400 line-through opacity-60">${e.imei}</span>`;
             } else if (isSold) {
-                imeiHighlight = `<span class="font-mono text-xs text-slate-400 line-through opacity-60">${e.imei}</span>`;
+                imeiHighlight = `<span class="font-mono text-xs text-body-muted line-through opacity-60">${e.imei}</span>`;
             } else {
-                imeiHighlight = `<span class="font-mono text-xs text-white">${e.imei}</span>
+                imeiHighlight = `<span class="font-mono text-xs text-ink">${e.imei}</span>
                <button onclick="fillImeiInput('${e.imei}')" title="กรอก IMEI"
-                   class="ml-1.5 p-0.5 rounded text-slate-400 hover:text-violet-400 hover:bg-violet-500/10 transition-all">
+                   class="ml-1.5 p-0.5 rounded text-body-muted hover:text-primary hover:bg-primary/10 transition-all">
                    <i class="fa-solid fa-arrow-up-from-bracket text-[10px]"></i>
                </button>`;
             }
 
             const colorHtml = e.color
-                ? `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-pink-500/15 text-pink-300 border border-pink-500/20">${e.color}</span>`
-                : `<span class="text-slate-400 text-xs">—</span>`;
+                ? `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-surface-chip text-body-muted border border-hairline">${e.color}</span>`
+                : `<span class="text-ink-muted-48 text-xs">—</span>`;
             const capacityHtml = e.capacity
-                ? `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-sky-500/15 text-sky-300 border border-sky-500/20">${e.capacity}</span>`
-                : `<span class="text-slate-400 text-xs">—</span>`;
+                ? `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-surface-chip text-body-muted border border-hairline">${e.capacity}</span>`
+                : `<span class="text-ink-muted-48 text-xs">—</span>`;
             return `
-            <tr class="${rowBg} border-b border-slate-700/40 transition-all" data-imei="${e.imei}" data-name="${e.product_name}" data-status="${isScanned ? 'scanned' : (isSold ? 'sold' : 'pending')}">
-                <td class="px-4 py-2.5 text-slate-400 text-xs">${idx + 1}</td>
+            <tr class="${rowBg} border-b border-hairline transition-all" data-imei="${e.imei}" data-name="${e.product_name}" data-status="${isScanned ? 'scanned' : (isSold ? 'sold' : 'pending')}">
+                <td class="px-4 py-2.5 text-body-muted text-xs">${idx + 1}</td>
                 <td class="px-4 py-2.5">
-                    <span class="text-slate-300 text-xs">${e.product_name}</span>
+                    <span class="text-body-muted text-xs">${e.product_name}</span>
                 </td>
                 <td class="px-4 py-2.5">${colorHtml}</td>
                 <td class="px-4 py-2.5">${capacityHtml}</td>
@@ -554,10 +554,10 @@
         if (items.length === 0) {
             list.innerHTML = `
             <div class="flex flex-col items-center justify-center py-12 text-center">
-                <div class="w-16 h-16 rounded-2xl bg-slate-700/50 flex items-center justify-center mb-4">
-                    <i class="fa-solid fa-qrcode text-slate-400 text-2xl"></i>
+                <div class="w-16 h-16 rounded-lg bg-surface-chip flex items-center justify-center mb-4">
+                    <i class="fa-solid fa-qrcode text-body-muted text-2xl"></i>
                 </div>
-                <p class="text-slate-400">ยังไม่มีรายการ เริ่มสแกน IMEI เลย</p>
+                <p class="text-body-muted">ยังไม่มีรายการ เริ่มสแกน IMEI เลย</p>
             </div>`;
             return;
         }
@@ -569,26 +569,26 @@
             const statusIcon = item.is_expected ? 'fa-circle-check' : 'fa-triangle-exclamation';
             const statusText = item.is_expected ? 'พบในระบบ' : 'ไม่พบในระบบ';
             const photoHtml = item.box_photo_url
-                ? `<a href="${item.box_photo_url}" target="_blank" class="shrink-0 w-12 h-12 rounded-lg overflow-hidden border border-slate-600 hover:border-violet-400 transition-all">
+                ? `<a href="${item.box_photo_url}" target="_blank" class="shrink-0 w-12 h-12 rounded-sm overflow-hidden border border-hairline hover:border-primary/40 transition-all">
                  <img src="${item.box_photo_url}" referrerpolicy="no-referrer" class="w-full h-full object-cover" loading="lazy" alt="box" />
                </a>`
-                : `<div class="shrink-0 w-12 h-12 rounded-lg bg-slate-700 border border-slate-600 flex items-center justify-center">
-                 <i class="fa-solid fa-image text-slate-400 text-sm"></i>
+                : `<div class="shrink-0 w-12 h-12 rounded-sm bg-surface-chip border border-hairline flex items-center justify-center">
+                 <i class="fa-solid fa-image text-body-muted text-sm"></i>
                </div>`;
             const canDelete = _auditSessionData?.session?.status === 'กำลังตรวจนับ';
             const deleteBtn = canDelete
-                ? `<button onclick="deleteAuditItem('${item.imei}')" class="shrink-0 p-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 transition-all text-xs">
+                ? `<button onclick="deleteAuditItem('${item.imei}')" class="shrink-0 p-1.5 rounded-sm bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 transition-all text-xs">
                  <i class="fa-solid fa-trash"></i>
                </button>`
                 : '';
             return `
-            <div class="flex items-center gap-3 p-3 border-b border-slate-700/60 hover:bg-slate-700/20 transition-all">
-                <span class="text-slate-400 text-xs font-mono w-6 shrink-0">${idx + 1}</span>
+            <div class="flex items-center gap-3 p-3 border-b border-hairline hover:bg-surface-chip/40 transition-all">
+                <span class="text-body-muted text-xs font-mono w-6 shrink-0">${idx + 1}</span>
                 ${photoHtml}
                 <div class="flex-1 min-w-0">
-                    <p class="text-white font-mono text-sm font-bold truncate">${item.imei}</p>
-                    <p class="text-slate-400 text-xs truncate">${item.product_name}</p>
-                    ${item.scan_notes ? `<p class="text-slate-400 text-xs italic">"${item.scan_notes}"</p>` : ''}
+                    <p class="text-ink font-mono text-sm font-bold truncate">${item.imei}</p>
+                    <p class="text-body-muted text-xs truncate">${item.product_name}</p>
+                    ${item.scan_notes ? `<p class="text-body-muted text-xs italic">"${item.scan_notes}"</p>` : ''}
                 </div>
                 <span class="shrink-0 px-2 py-0.5 rounded-full text-[10px] font-bold border ${statusColor} flex items-center gap-1">
                     <i class="fa-solid ${statusIcon}"></i>${statusText}
@@ -657,10 +657,10 @@
             if (!d.success || !d.data?.length) {
                 if (container) container.innerHTML = `
                 <div class="flex flex-col items-center justify-center py-16 text-center">
-                    <div class="w-20 h-20 rounded-3xl bg-slate-700/50 flex items-center justify-center mb-4">
-                        <i class="fa-solid fa-clipboard-check text-slate-400 text-3xl"></i>
+                    <div class="w-20 h-20 rounded-lg bg-surface-chip flex items-center justify-center mb-4">
+                        <i class="fa-solid fa-clipboard-check text-body-muted text-3xl"></i>
                     </div>
-                    <p class="text-slate-400">ไม่พบรอบการตรวจนับสต็อก</p>
+                    <p class="text-body-muted">ไม่พบรอบการตรวจนับสต็อก</p>
                 </div>`;
                 return;
             }
@@ -669,22 +669,22 @@
                 'กำลังตรวจนับ': 'bg-violet-500/20 text-violet-400 border-violet-500/30',
                 'รอการอนุมัติ': 'bg-amber-500/20 text-amber-400 border-amber-500/30 animate-pulse',
                 'อนุมัติแล้ว': 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
-                'ปิดโดยอัตโนมัติ': 'bg-slate-500/20 text-slate-400 border-slate-500/30'
+                'ปิดโดยอัตโนมัติ': 'bg-surface-chip text-body-muted border-hairline'
             };
 
             if (container) container.innerHTML = d.data.map(session => `
-            <div class="bg-slate-800/60 rounded-2xl border border-slate-700 p-5 hover:border-amber-500/30 transition-all cursor-pointer"
+            <div class="bg-canvas-elevated rounded-lg border border-hairline p-5 hover:border-primary/40 transition-all cursor-pointer"
                  onclick="openAuditReviewDetail('${session._id}')">
                 <div class="flex items-center justify-between mb-3">
                     <div>
-                        <p class="text-white font-bold text-lg">${new Date(session.session_date).toLocaleDateString('th-TH', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
-                        <p class="text-slate-400 text-sm mt-0.5">สาขา: ${session.branch_id?.name || '—'} | ผู้เปิดรอบ: ${session.created_by?.name || 'ระบบอัตโนมัติ'}</p>
+                        <p class="text-ink font-bold text-lg">${new Date(session.session_date).toLocaleDateString('th-TH', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
+                        <p class="text-body-muted text-sm mt-0.5">สาขา: ${session.branch_id?.name || '—'} | ผู้เปิดรอบ: ${session.created_by?.name || 'ระบบอัตโนมัติ'}</p>
                     </div>
-                    <span class="px-3 py-1.5 rounded-full text-xs font-bold border ${statusColors[session.status] || 'bg-slate-500/20 text-slate-400 border-slate-500/30'}">${session.status}</span>
+                    <span class="px-3 py-1.5 rounded-full text-xs font-bold border ${statusColors[session.status] || 'bg-surface-chip text-body-muted border-hairline'}">${session.status}</span>
                 </div>
                 <div class="flex items-center gap-4 text-sm">
-                    <span class="text-slate-400"><i class="fa-solid fa-qrcode text-violet-400 mr-1"></i> สแกน ${session.total_items_scanned}/${session.total_items_expected} เครื่อง</span>
-                    <span class="text-slate-400 ml-auto text-xs">คลิกเพื่อดูรายละเอียด <i class="fa-solid fa-chevron-right ml-1"></i></span>
+                    <span class="text-body-muted"><i class="fa-solid fa-qrcode text-body-muted mr-1"></i> สแกน ${session.total_items_scanned}/${session.total_items_expected} เครื่อง</span>
+                    <span class="text-body-muted ml-auto text-xs">คลิกเพื่อดูรายละเอียด <i class="fa-solid fa-chevron-right ml-1"></i></span>
                 </div>
             </div>`).join('');
 
@@ -778,7 +778,7 @@
         if (!summaryBar) return;
 
         // Highlight styles depending on the active filter
-        const activeClass = 'ring-2 ring-amber-500 ring-offset-2 ring-offset-slate-900 scale-105 font-bold';
+        const activeClass = 'ring-2 ring-primary ring-offset-2 ring-offset-canvas scale-105 font-bold';
 
         const cardAllActive = _reviewActiveFilter === 'all' ? activeClass : '';
         const cardPendingActive = _reviewActiveFilter === 'รอตรวจสอบ' ? activeClass : '';
@@ -786,10 +786,10 @@
         const cardFailedActive = _reviewActiveFilter === 'ไม่ผ่าน' ? activeClass : '';
 
         summaryBar.innerHTML = `
-        <div onclick="filterReviewItemsByStatus('all')" 
-             class="bg-slate-700/40 rounded-xl p-3 text-center cursor-pointer transition-all hover:bg-slate-700/60 active:scale-95 ${cardAllActive}">
-            <p class="text-2xl font-black text-white">${summary.total}</p>
-            <p class="text-[10px] text-slate-400 mt-0.5">ทั้งหมด</p>
+        <div onclick="filterReviewItemsByStatus('all')"
+             class="bg-surface-chip rounded-lg p-3 text-center cursor-pointer transition-all hover:bg-surface-tile-2 active:scale-95 ${cardAllActive}">
+            <p class="text-2xl font-black text-ink">${summary.total}</p>
+            <p class="text-[10px] text-body-muted mt-0.5">ทั้งหมด</p>
         </div>
         <div onclick="filterReviewItemsByStatus('รอตรวจสอบ')" 
              class="bg-amber-500/10 border border-amber-500/20 rounded-xl p-3 text-center cursor-pointer transition-all hover:bg-amber-500/20 active:scale-95 ${cardPendingActive}">
@@ -818,13 +818,13 @@
         }
 
         if (!filteredItems.length) {
-            grid.innerHTML = `<p class="text-slate-400 text-center py-8">ไม่มีรายการในสถานะนี้</p>`;
+            grid.innerHTML = `<p class="text-body-muted text-center py-8">ไม่มีรายการในสถานะนี้</p>`;
             return;
         }
 
         grid.innerHTML = filteredItems.map(item => {
-            let cardBorder = 'border-slate-700/60';
-            let badgeClass = 'bg-slate-500/10 text-slate-400 border-slate-500/20';
+            let cardBorder = 'border-hairline';
+            let badgeClass = 'bg-surface-chip text-body-muted border-hairline';
             if (item.scan_status === 'ผ่าน') {
                 cardBorder = 'border-emerald-500/20';
                 badgeClass = 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
@@ -841,24 +841,24 @@
 
             const btnLabel = item.scan_status === 'รอตรวจสอบ' ? 'ตรวจสอบสินค้า' : 'ดูรายละเอียด';
             const btnColorClass = item.scan_status === 'รอตรวจสอบ'
-                ? 'from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 shadow-amber-500/10'
-                : 'from-slate-700 to-slate-650 hover:from-slate-650 hover:to-slate-600 shadow-slate-700/10';
+                ? 'bg-primary hover:bg-primary-pressed text-on-primary'
+                : 'bg-surface-chip hover:bg-surface-tile-2 text-body-muted';
             const btnIcon = item.scan_status === 'รอตรวจสอบ' ? 'fa-magnifying-glass' : 'fa-circle-info';
 
             const checkBtnHtml = `<div class="mt-3">
             <button onclick="openAuditReviewItemModal('${item._id}')"
-                class="w-full py-2 bg-gradient-to-r ${btnColorClass} text-white rounded-lg font-bold text-xs transition-all flex items-center justify-center gap-1 shadow-md active:scale-[0.98] cursor-pointer">
+                class="w-full py-2 ${btnColorClass} rounded-pill font-bold text-xs transition-all flex items-center justify-center gap-1 active:scale-[0.98] cursor-pointer">
                 <i class="fa-solid ${btnIcon}"></i> ${btnLabel}
             </button>
         </div>`;
 
             return `
-            <div class="bg-slate-800/60 rounded-2xl border ${cardBorder} p-4">
+            <div class="bg-canvas-elevated rounded-lg border ${cardBorder} p-4">
                 <div class="flex items-start justify-between gap-3 mb-3">
                     <div class="flex-1 min-w-0">
-                        <p class="text-white font-mono font-bold">${item.imei}</p>
-                        <p class="text-slate-400 text-sm truncate">${item.product_name}</p>
-                        <p class="text-slate-400 text-xs">สแกนโดย: ${item.scanned_by?.name || '—'} ${item.scan_notes ? `| "${item.scan_notes}"` : ''}</p>
+                        <p class="text-ink font-mono font-bold">${item.imei}</p>
+                        <p class="text-body-muted text-sm truncate">${item.product_name}</p>
+                        <p class="text-body-muted text-xs">สแกนโดย: ${item.scanned_by?.name || '—'} ${item.scan_notes ? `| "${item.scan_notes}"` : ''}</p>
                     </div>
                     <span class="shrink-0 px-2.5 py-1 rounded-full text-[10px] font-bold border ${badgeClass}">${item.scan_status}</span>
                 </div>
@@ -897,19 +897,19 @@
         const elIndicator = document.getElementById('audit-review-modal-indicator');
         const statusColors = { 'รอตรวจสอบ': 'bg-amber-500', 'ผ่าน': 'bg-emerald-500', 'ไม่ผ่าน': 'bg-red-500', 'ตรวจใหม่': 'bg-violet-500' };
         if (elIndicator) {
-            elIndicator.className = `w-2.5 h-2.5 rounded-full ${statusColors[item.scan_status] || 'bg-slate-500'}`;
+            elIndicator.className = `w-2.5 h-2.5 rounded-full ${statusColors[item.scan_status] || 'bg-body-muted'}`;
         }
 
         // Photo container
         const elPhotoContainer = document.getElementById('audit-review-modal-photo-container');
         if (elPhotoContainer) {
             elPhotoContainer.innerHTML = item.box_photo_url
-                ? `<a href="${item.box_photo_url}" target="_blank" class="block w-full h-56 rounded-2xl overflow-hidden border border-slate-700 hover:border-amber-500 transition-all">
+                ? `<a href="${item.box_photo_url}" target="_blank" class="block w-full h-56 rounded-lg overflow-hidden border border-hairline hover:border-primary/40 transition-all">
                    <img src="${item.box_photo_url}" referrerpolicy="no-referrer" class="w-full h-full object-cover" alt="กล่อง" />
                </a>`
-                : `<div class="w-full h-48 rounded-2xl bg-slate-950 border border-slate-800 flex flex-col items-center justify-center gap-2">
-                   <i class="fa-solid fa-image text-slate-400 text-3xl"></i>
-                   <p class="text-slate-400 text-xs">ไม่มีรูปกล่อง</p>
+                : `<div class="w-full h-48 rounded-lg bg-canvas border border-hairline flex flex-col items-center justify-center gap-2">
+                   <i class="fa-solid fa-image text-body-muted text-3xl"></i>
+                   <p class="text-body-muted text-xs">ไม่มีรูปกล่อง</p>
                </div>`;
         }
 
@@ -918,11 +918,11 @@
         const elNotesArea = document.getElementById('audit-review-modal-notes-area');
         if (elNotesArea) {
             elNotesArea.innerHTML = isReviewable
-                ? `<label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">
+                ? `<label class="block text-xs font-bold text-body-muted uppercase tracking-wider mb-2">
                    หมายเหตุ (ต้องระบุหาก ไม่ผ่าน/ตรวจใหม่)
                </label>
                <input id="modal-review-notes-${item._id}" type="text" placeholder="ระบุหมายเหตุ..."
-                   class="w-full px-4 py-2.5 bg-slate-950 border border-slate-700 rounded-xl placeholder-slate-500 focus:outline-none focus:border-amber-500 text-sm transition-all" />`
+                   class="w-full px-4 py-2.5 bg-canvas border border-hairline rounded-sm placeholder-ink-muted-48 focus:outline-none focus:border-primary-focus text-sm transition-all" />`
                 : ``;
         }
 
@@ -932,28 +932,28 @@
             if (isReviewable) {
                 elActionsArea.innerHTML = `
                 <button onclick="submitModalItemReview(this, '${item._id}', 'ผ่าน')"
-                    class="flex-1 py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/10 cursor-pointer">
+                    class="flex-1 py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-pill font-bold text-sm transition-all flex items-center justify-center gap-2 cursor-pointer">
                     <i class="fa-solid fa-check"></i> ผ่าน
                 </button>
                 <button onclick="submitModalItemReview(this, '${item._id}', 'ตรวจใหม่')"
-                    class="flex-1 py-3 bg-violet-600 hover:bg-violet-500 text-white rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 shadow-lg shadow-violet-500/10 cursor-pointer">
+                    class="flex-1 py-3 bg-violet-600 hover:bg-violet-500 text-white rounded-pill font-bold text-sm transition-all flex items-center justify-center gap-2 cursor-pointer">
                     <i class="fa-solid fa-rotate"></i> ตรวจใหม่
                 </button>
                 <button onclick="submitModalItemReview(this, '${item._id}', 'ไม่ผ่าน')"
-                    class="flex-1 py-3 bg-red-600 hover:bg-red-500 text-white rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 shadow-lg shadow-red-500/10 cursor-pointer">
+                    class="flex-1 py-3 bg-red-600 hover:bg-red-500 text-white rounded-pill font-bold text-sm transition-all flex items-center justify-center gap-2 cursor-pointer">
                     <i class="fa-solid fa-xmark"></i> ไม่ผ่าน
                 </button>`;
             } else {
                 // Already reviewed, show status details
-                let resultTextClass = 'text-slate-400';
+                let resultTextClass = 'text-body-muted';
                 if (item.scan_status === 'ผ่าน') resultTextClass = 'text-emerald-400';
                 else if (item.scan_status === 'ไม่ผ่าน') resultTextClass = 'text-red-400';
                 else if (item.scan_status === 'ตรวจใหม่') resultTextClass = 'text-violet-400';
 
                 elActionsArea.innerHTML = `
-                <div class="w-full p-4 bg-slate-950 rounded-2xl border border-slate-800 text-center">
-                    <p class="text-sm text-slate-400">สถานะ: <span class="font-black ${resultTextClass}">${item.scan_status}</span>${item.reviewed_by ? ` โดย ${item.reviewed_by.name}` : ''}</p>
-                    ${item.review_notes ? `<p class="text-xs text-slate-400 mt-1 italic">"${item.review_notes}"</p>` : ''}
+                <div class="w-full p-4 bg-canvas rounded-lg border border-hairline text-center">
+                    <p class="text-sm text-body-muted">สถานะ: <span class="font-black ${resultTextClass}">${item.scan_status}</span>${item.reviewed_by ? ` โดย ${item.reviewed_by.name}` : ''}</p>
+                    ${item.review_notes ? `<p class="text-xs text-body-muted mt-1 italic">"${item.review_notes}"</p>` : ''}
                 </div>`;
             }
         }

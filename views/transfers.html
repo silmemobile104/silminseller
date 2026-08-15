@@ -1,33 +1,33 @@
 <div id="view-transfers">
                     <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                         <div>
-                            <h3 class="text-2xl font-bold text-white">โอนย้ายสินค้า</h3>
-                            <p class="text-slate-400 mt-1">สร้างรายการโอนย้าย และรับเข้าสินค้าระหว่างสาขา</p>
+                            <h3 class="text-2xl font-bold text-ink">โอนย้ายสินค้า</h3>
+                            <p class="text-body-muted mt-1">สร้างรายการโอนย้าย และรับเข้าสินค้าระหว่างสาขา</p>
                         </div>
                         <button id="btn-open-create-transfer"
-                            class="px-5 py-3 rounded-xl bg-cyan-500 hover:bg-cyan-400 font-bold transition-all shadow-lg shadow-cyan-500/20 flex items-center gap-2">
+                            class="px-5 py-3 rounded-pill bg-primary hover:bg-primary-pressed text-on-primary font-bold transition-all flex items-center gap-2">
                             <i class="fa-solid fa-plus"></i>
                             สร้างรายการโอนย้าย
                         </button>
                     </div>
 
-                    <div class="bg-slate-800 rounded-2xl border border-slate-700 shadow-lg overflow-hidden">
-                        <div class="p-4 border-b border-slate-700 flex items-center gap-3">
+                    <div class="bg-canvas-elevated rounded-lg border border-hairline overflow-hidden">
+                        <div class="p-4 border-b border-hairline flex items-center gap-3">
                             <button id="transfer-tab-incoming"
-                                class="px-4 py-2 rounded-xl text-sm font-bold bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 transition-all">
+                                class="px-4 py-2 rounded-pill text-sm font-bold bg-primary/10 text-primary border border-primary/20 transition-all">
                                 รายการรอรับเข้า
                             </button>
                             <button id="transfer-tab-history"
-                                class="px-4 py-2 rounded-xl text-sm font-bold bg-slate-900/40 text-slate-300 border border-slate-700 hover:border-slate-600 transition-all">
+                                class="px-4 py-2 rounded-pill text-sm font-bold bg-surface-tile-3 text-body-muted border border-hairline hover:border-primary/30 transition-all">
                                 ประวัติการโอนย้าย
                             </button>
-                            <div class="ml-auto text-xs text-slate-400" id="transfer-branch-hint">
+                            <div class="ml-auto text-xs text-body-muted" id="transfer-branch-hint">
                                 แสดงเฉพาะรายการที่เกี่ยวข้องกับสาขาของคุณ</div>
                         </div>
 
                         <div class="overflow-x-auto">
                             <table class="w-full text-left text-sm whitespace-nowrap">
-                                <thead class="bg-slate-900/50 text-slate-400">
+                                <thead class="bg-surface-tile-3 text-body-muted">
                                     <tr>
                                         <th class="px-6 py-4 font-medium">วันที่</th>
                                         <th class="px-6 py-4 font-medium">เลขที่โอน</th>
@@ -37,11 +37,11 @@
                                         <th class="px-6 py-4 font-medium text-right">การทำงาน</th>
                                     </tr>
                                 </thead>
-                                <tbody id="transfer-table-body" class="divide-y divide-slate-700/50"></tbody>
+                                <tbody id="transfer-table-body" class="divide-y divide-hairline"></tbody>
                             </table>
                         </div>
 
-                        <div id="transfer-empty" class="hidden p-10 text-center text-slate-400">
+                        <div id="transfer-empty" class="hidden p-10 text-center text-body-muted">
                             ไม่พบรายการโอนย้าย
                         </div>
                     </div>

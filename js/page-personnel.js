@@ -59,7 +59,7 @@
             }
             employeeTableBody.innerHTML = `
                 <tr>
-                    <td colspan="6" class="px-6 py-8 text-center text-slate-400 italic">
+                    <td colspan="6" class="px-6 py-8 text-center text-body-muted italic">
                         ยังไม่มีข้อมูลพนักงานในระบบ
                     </td>
                 </tr>
@@ -74,47 +74,47 @@
 
         employees.forEach(emp => {
             const row = document.createElement('tr');
-            row.className = 'hover:bg-slate-700/20 transition-colors';
+            row.className = 'hover:bg-surface-chip/40 transition-colors';
 
             const branchName = emp.branch_id ? emp.branch_id.name : '-';
             const nameForAvatar = encodeURIComponent(emp.name || 'User');
 
             // Role badge colors
-            let roleClass = 'bg-slate-500/10 text-slate-400 border-slate-500/20';
+            let roleClass = 'bg-surface-chip text-body-muted border-hairline';
             if (emp.role === 'แอดมิน') roleClass = 'bg-red-500/10 text-red-400 border-red-500/20';
-            else if (emp.role === 'ผู้จัดการ') roleClass = 'bg-purple-500/10 text-purple-400 border-purple-500/20';
+            else if (emp.role === 'ผู้จัดการ') roleClass = 'bg-violet-500/10 text-violet-400 border-violet-500/20';
             else if (emp.role === 'พนักงานขาย') roleClass = 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
 
             // Status badge colors
             const isSuspended = emp.status === 'ระงับ';
             const statusClass = isSuspended
                 ? 'bg-red-500/10 text-red-400 border-red-500/20'
-                : 'bg-green-500/10 text-green-400 border-green-500/20';
+                : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
             const statusText = isSuspended ? 'ระงับ' : 'ปกติ';
             const statusBadge = `<span class="px-2.5 py-1 ${statusClass} rounded-md text-xs font-medium border">${statusText}</span>`;
 
             row.innerHTML = `
                 <td class="px-6 py-4">
                     <div class="flex items-center gap-3">
-                        <div class="w-8 h-8 rounded-full bg-slate-700 overflow-hidden flex-shrink-0">
+                        <div class="w-8 h-8 rounded-full bg-surface-chip overflow-hidden flex-shrink-0">
                             <img src="https://ui-avatars.com/api/?name=${nameForAvatar}&background=0D8ABC&color=fff"
                                 alt="${emp.name}" class="w-full h-full object-cover">
                         </div>
-                        <p class="font-medium text-white">${emp.name}</p>
+                        <p class="font-medium text-ink">${emp.name}</p>
                     </div>
                 </td>
                 <td class="px-6 py-4">
-                    <span class="text-slate-300 font-mono text-sm bg-slate-800 px-2 py-1 rounded border border-slate-700">${emp.emp_id}</span>
+                    <span class="text-body-muted font-mono text-sm bg-surface-chip px-2 py-1 rounded border border-hairline">${emp.emp_id}</span>
                 </td>
                 <td class="px-6 py-4">
                     <span class="px-2.5 py-1 ${roleClass} rounded-md text-xs font-medium border">${emp.role}</span>
                 </td>
-                <td class="px-6 py-4 text-slate-400">${branchName}</td>
+                <td class="px-6 py-4 text-body-muted">${branchName}</td>
                 <td class="px-6 py-4 text-center">${statusBadge}</td>
                 <td class="px-6 py-4 text-right">
                     <div class="flex items-center justify-end gap-1">
-                        <button class="view-emp-btn text-slate-400 hover:text-indigo-400 transition-colors p-2" data-id="${emp._id}" title="ดูรายละเอียด"><i class="fa-solid fa-eye"></i></button>
-                        <button class="delete-emp-btn text-slate-400 hover:text-red-400 transition-colors p-2" data-id="${emp._id}"><i class="fa-solid fa-trash"></i></button>
+                        <button class="view-emp-btn text-body-muted hover:text-primary transition-colors p-2" data-id="${emp._id}" title="ดูรายละเอียด"><i class="fa-solid fa-eye"></i></button>
+                        <button class="delete-emp-btn text-body-muted hover:text-red-400 transition-colors p-2" data-id="${emp._id}"><i class="fa-solid fa-trash"></i></button>
                     </div>
                 </td>
             `;
@@ -168,9 +168,9 @@
         document.getElementById('v-employee-branch').textContent = branchName;
 
         // Role badge colors
-        let roleClass = 'bg-slate-500/10 text-slate-400 border-slate-500/20';
+        let roleClass = 'bg-surface-chip text-body-muted border-hairline';
         if (emp.role === 'แอดมิน') roleClass = 'bg-red-500/10 text-red-400 border-red-500/20';
-        else if (emp.role === 'ผู้จัดการ') roleClass = 'bg-purple-500/10 text-purple-400 border-purple-500/20';
+        else if (emp.role === 'ผู้จัดการ') roleClass = 'bg-violet-500/10 text-violet-400 border-violet-500/20';
         else if (emp.role === 'พนักงานขาย') roleClass = 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
 
         const roleContainer = document.getElementById('v-employee-role');
@@ -183,7 +183,7 @@
             const isSuspended = emp.status === 'ระงับ';
             const statusClass = isSuspended
                 ? 'bg-red-500/10 text-red-400 border-red-500/20'
-                : 'bg-green-500/10 text-green-400 border-green-500/20';
+                : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
             const statusText = isSuspended ? 'ระงับ (Suspended)' : 'ปกติ (Active)';
             statusContainer.innerHTML = `<span class="px-2.5 py-1 ${statusClass} border rounded-lg text-xs font-bold">${statusText}</span>`;
         }
@@ -225,7 +225,7 @@
                 const statusContainer = document.getElementById('emp-status-container');
                 if (emp) {
                     // Edit mode
-                    employeeModalTitle.innerHTML = `<i class="fa-solid fa-pen-to-square text-cyan-400"></i> แก้ไขข้อมูลพนักงาน`;
+                    employeeModalTitle.innerHTML = `<i class="fa-solid fa-pen-to-square text-primary"></i> แก้ไขข้อมูลพนักงาน`;
                     employeeEditId.value = emp._id;
                     empNameInput.value = emp.name;
                     empIdInput.value = emp.emp_id;
@@ -242,7 +242,7 @@
                     if (statusContainer) statusContainer.classList.remove('hidden'); // Show status toggle on edit
                 } else {
                     // Add mode
-                    employeeModalTitle.innerHTML = `<i class="fa-solid fa-user-plus text-cyan-400"></i> เพิ่มพนักงานใหม่`;
+                    employeeModalTitle.innerHTML = `<i class="fa-solid fa-user-plus text-primary"></i> เพิ่มพนักงานใหม่`;
                     employeeEditId.value = '';
                     employeeForm.reset();
                     empPasswordInput.setAttribute('required', '');

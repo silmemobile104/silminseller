@@ -1,49 +1,39 @@
 <div id="view-movements">
-                    <!-- Header with premium gradient text -->
+                    <!-- Header -->
                     <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                         <div class="relative">
-                            <div
-                                class="absolute -inset-1 bg-gradient-to-r from-rose-500 to-amber-500 rounded-lg blur opacity-25">
-                            </div>
-                            <h2
-                                class="relative text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-rose-400 to-amber-400 drop-shadow-md">
-                                <i class="fa-solid fa-route text-rose-500 mr-2"></i> ประวัติการเคลื่อนไหวสินค้า
+                            <h2 class="relative text-3xl font-bold text-ink">
+                                <i class="fa-solid fa-route text-body-muted mr-2"></i> ประวัติการเคลื่อนไหวสินค้า
                             </h2>
-                            <p class="text-slate-400 mt-2 font-medium flex items-center gap-2">
-                                <span class="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse"></span>
+                            <p class="text-body-muted mt-2 font-medium flex items-center gap-2">
+                                <span class="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></span>
                                 ติดตามเส้นทางและตรวจสอบประวัติของสินค้ารายชิ้น หรือ IMEI แบบ Real-time
                             </p>
                         </div>
                     </div>
 
-                    <!-- Premium Search Panel -->
+                    <!-- Search Panel -->
                     <div class="relative group">
                         <div
-                            class="absolute -inset-0.5 bg-gradient-to-r from-rose-500/50 to-pink-500/50 rounded-3xl blur opacity-30 group-hover:opacity-60 transition duration-500">
-                        </div>
-                        <div
-                            class="relative bg-slate-800/90 backdrop-blur-xl border border-slate-700/50 rounded-3xl p-8 shadow-2xl">
+                            class="relative bg-canvas-elevated border border-hairline rounded-lg p-8">
                             <form id="form-search-movement" class="flex flex-col md:flex-row gap-5">
                                 <div class="flex-1 relative">
                                     <div class="absolute inset-y-0 left-5 flex items-center pointer-events-none">
                                         <i
-                                            class="fa-solid fa-barcode text-xl text-slate-400 group-focus-within:text-rose-400 transition-colors duration-300"></i>
+                                            class="fa-solid fa-barcode text-xl text-body-muted group-focus-within:text-primary transition-colors duration-300"></i>
                                     </div>
                                     <input type="text" id="movement-search-input"
                                         placeholder="สแกนหรือพิมพ์เลข IMEI / รหัสสินค้าที่นี่..."
-                                        class="w-full bg-white/60 border-2 border-slate-300 rounded-2xl py-4 pl-14 pr-6 text-lg text-white placeholder-slate-500 focus:outline-none focus:border-rose-500/80 focus:ring-4 focus:ring-rose-500/20 transition-all font-mono tracking-wider shadow-inner"
+                                        class="w-full bg-surface-chip border border-divider-soft rounded-pill py-4 pl-14 pr-6 text-lg text-ink placeholder-ink-muted-48 focus:outline-none focus:border-primary-focus focus:ring-1 focus:ring-primary-focus/40 transition-all font-mono tracking-wider"
                                         required autocomplete="off">
                                 </div>
                                 <button type="submit" id="btn-search-movement"
-                                    class="relative overflow-hidden bg-gradient-to-r from-rose-500 to-pink-600 hover:from-rose-400 hover:to-pink-500 text-white font-bold py-4 px-10 rounded-2xl shadow-[0_0_20px_rgba(244,63,94,0.4)] hover:shadow-[0_0_30px_rgba(244,63,94,0.6)] hover:-translate-y-0.5 transition-all duration-300 group/btn">
+                                    class="relative overflow-hidden bg-primary hover:bg-primary-pressed text-on-primary font-bold py-4 px-10 rounded-pill transition-all duration-300 group/btn">
                                     <span class="relative z-10 flex items-center text-lg">
                                         <i
                                             class="fa-solid fa-magnifying-glass mr-2 group-hover/btn:rotate-12 transition-transform duration-300"></i>
                                         ค้นหา
                                     </span>
-                                    <div
-                                        class="absolute inset-0 h-full w-full bg-white/20 translate-y-full group-hover/btn:translate-y-0 transition-transform duration-300 ease-in-out">
-                                    </div>
                                 </button>
                             </form>
                         </div>
@@ -51,61 +41,52 @@
 
                     <!-- Result Area -->
                     <div id="movement-result-area" class="hidden space-y-8 animate-fade-in-up">
-                        <!-- Premium Product Info Card -->
+                        <!-- Product Info Card -->
                         <div
-                            class="bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700/60 rounded-3xl p-1 shadow-xl">
+                            class="bg-canvas-elevated border border-hairline rounded-lg p-6 flex flex-col md:flex-row items-center gap-6">
                             <div
-                                class="bg-slate-800/80 backdrop-blur-md rounded-[23px] p-6 flex flex-col md:flex-row items-center gap-6">
-                                <div
-                                    class="w-24 h-24 rounded-2xl bg-gradient-to-br from-slate-700 to-slate-800 flex items-center justify-center border border-slate-600 shadow-[inset_0_2px_4px_rgba(0,0,0,0.3)] relative overflow-hidden group/icon">
-                                    <div
-                                        class="absolute inset-0 bg-rose-500/10 opacity-0 group-hover/icon:opacity-100 transition-opacity duration-300">
-                                    </div>
-                                    <i
-                                        class="fa-solid fa-mobile-screen-button text-4xl text-transparent bg-clip-text bg-gradient-to-br from-rose-400 to-pink-300 transform group-hover/icon:scale-110 transition-transform duration-300"></i>
-                                </div>
-                                <div class="flex-1 text-center md:text-left">
-                                    <h3 id="mov-product-name" class="text-2xl font-bold text-white tracking-wide"></h3>
-                                    <div class="mt-4 flex flex-wrap justify-center md:justify-start gap-3 text-sm">
-                                        <span
-                                            class="bg-slate-900/90 border border-slate-700/80 px-4 py-1.5 rounded-xl text-slate-300 shadow-sm flex items-center">
-                                            <i class="fa-solid fa-barcode text-slate-400 mr-2"></i> <span
-                                                id="mov-product-code"
-                                                class="font-mono text-cyan-300 font-medium tracking-wider"></span>
-                                        </span>
-                                        <span id="mov-query-badge"
-                                            class="hidden bg-gradient-to-r from-rose-500/20 to-pink-500/20 border border-rose-500/40 px-4 py-1.5 rounded-xl text-rose-300 shadow-[0_0_10px_rgba(244,63,94,0.1)] flex items-center">
-                                            <i class="fa-solid fa-tag mr-2"></i> <span
-                                                class="text-slate-300 mr-1">IMEI:</span> <span id="mov-query-text"
-                                                class="font-mono font-bold tracking-wider text-rose-200"></span>
-                                        </span>
-                                        <span
-                                            class="bg-slate-900/90 border border-slate-700/80 px-4 py-1.5 rounded-xl text-slate-400 flex items-center"><i
-                                                class="fa-solid fa-layer-group text-slate-400 mr-2 text-xs"></i><span
-                                                id="mov-type"></span></span>
-                                        <span
-                                            class="bg-slate-900/90 border border-slate-700/80 px-4 py-1.5 rounded-xl text-slate-400 flex items-center"><i
-                                                class="fa-solid fa-palette text-slate-400 mr-2 text-xs"></i><span
-                                                id="mov-color"></span></span>
-                                        <span
-                                            class="bg-slate-900/90 border border-slate-700/80 px-4 py-1.5 rounded-xl text-slate-400 flex items-center"><i
-                                                class="fa-solid fa-hard-drive text-slate-400 mr-2 text-xs"></i><span
-                                                id="mov-capacity"></span></span>
-                                    </div>
+                                class="w-24 h-24 rounded-lg bg-surface-chip flex items-center justify-center border border-hairline relative overflow-hidden">
+                                <i
+                                    class="fa-solid fa-mobile-screen-button text-4xl text-ink"></i>
+                            </div>
+                            <div class="flex-1 text-center md:text-left">
+                                <h3 id="mov-product-name" class="text-2xl font-bold text-ink tracking-wide"></h3>
+                                <div class="mt-4 flex flex-wrap justify-center md:justify-start gap-3 text-sm">
+                                    <span
+                                        class="bg-surface-chip border border-hairline px-4 py-1.5 rounded-md text-body-muted flex items-center">
+                                        <i class="fa-solid fa-barcode text-body-muted mr-2"></i> <span
+                                            id="mov-product-code"
+                                            class="font-mono text-ink font-medium tracking-wider"></span>
+                                    </span>
+                                    <span id="mov-query-badge"
+                                        class="hidden bg-surface-chip border border-hairline px-4 py-1.5 rounded-md text-ink flex items-center">
+                                        <i class="fa-solid fa-tag mr-2"></i> <span
+                                            class="text-body-muted mr-1">IMEI:</span> <span id="mov-query-text"
+                                            class="font-mono font-bold tracking-wider text-ink"></span>
+                                    </span>
+                                    <span
+                                        class="bg-surface-chip border border-hairline px-4 py-1.5 rounded-md text-body-muted flex items-center"><i
+                                            class="fa-solid fa-layer-group text-body-muted mr-2 text-xs"></i><span
+                                            id="mov-type"></span></span>
+                                    <span
+                                        class="bg-surface-chip border border-hairline px-4 py-1.5 rounded-md text-body-muted flex items-center"><i
+                                            class="fa-solid fa-palette text-body-muted mr-2 text-xs"></i><span
+                                            id="mov-color"></span></span>
+                                    <span
+                                        class="bg-surface-chip border border-hairline px-4 py-1.5 rounded-md text-body-muted flex items-center"><i
+                                            class="fa-solid fa-hard-drive text-body-muted mr-2 text-xs"></i><span
+                                            id="mov-capacity"></span></span>
                                 </div>
                             </div>
                         </div>
 
-                        <!-- Modern Timeline -->
+                        <!-- Timeline -->
                         <div class="relative">
                             <div
-                                class="absolute inset-0 bg-gradient-to-b from-slate-800/80 to-transparent rounded-3xl blur-xl opacity-50">
-                            </div>
-                            <div
-                                class="relative bg-slate-800/60 backdrop-blur-xl border border-slate-700/50 rounded-3xl p-8 shadow-2xl">
+                                class="relative bg-canvas-elevated border border-hairline rounded-lg p-8">
                                 <h3
-                                    class="text-xl font-bold text-white mb-8 border-b border-slate-700/80 pb-4 flex items-center">
-                                    <i class="fa-solid fa-timeline text-rose-400 mr-3 text-2xl"></i>
+                                    class="text-xl font-bold text-ink mb-8 border-b border-hairline pb-4 flex items-center">
+                                    <i class="fa-solid fa-timeline text-body-muted mr-3 text-2xl"></i>
                                     เส้นทางการเคลื่อนไหว (Ledger Timeline)
                                 </h3>
                                 <div class="relative pl-10 space-y-10" id="movement-timeline">
@@ -117,19 +98,16 @@
 
                     <!-- Empty State -->
                     <div id="movement-empty-state"
-                        class="bg-slate-800/40 border-2 border-slate-700/50 border-dashed rounded-3xl p-16 text-center transition-all hover:bg-slate-800/60 hover:border-slate-600/50">
+                        class="bg-canvas-elevated border-2 border-hairline border-dashed rounded-lg p-16 text-center transition-all hover:border-primary/30">
                         <div class="relative w-28 h-28 mx-auto mb-6 group">
                             <div
-                                class="absolute inset-0 bg-rose-500/20 rounded-full blur-xl group-hover:bg-rose-500/30 transition-colors duration-500">
-                            </div>
-                            <div
-                                class="relative w-full h-full bg-gradient-to-br from-slate-700 to-slate-800 rounded-full flex items-center justify-center border border-slate-600 shadow-inner">
+                                class="relative w-full h-full bg-surface-chip rounded-full flex items-center justify-center border border-hairline">
                                 <i
-                                    class="fa-solid fa-satellite-dish text-5xl text-slate-400 group-hover:text-rose-400 transition-colors duration-500"></i>
+                                    class="fa-solid fa-satellite-dish text-5xl text-ink-muted-48 group-hover:text-primary transition-colors duration-500"></i>
                             </div>
                         </div>
-                        <h3 class="text-2xl font-bold text-slate-200 mb-2">พร้อมสำหรับการค้นหา</h3>
-                        <p class="text-slate-400 mt-2 max-w-lg mx-auto text-lg">สแกนบาร์โค้ด หรือพิมพ์เลข IMEI
+                        <h3 class="text-2xl font-bold text-ink mb-2">พร้อมสำหรับการค้นหา</h3>
+                        <p class="text-body-muted mt-2 max-w-lg mx-auto text-lg">สแกนบาร์โค้ด หรือพิมพ์เลข IMEI
                             ของเครื่อง เพื่อติดตามประวัติการรับเข้า โอนย้าย หรือการขายออกอย่างละเอียด</p>
                     </div>
 </div>

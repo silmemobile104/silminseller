@@ -40,13 +40,13 @@
         const container = document.getElementById('po-items-container');
 
         const row = document.createElement('div');
-        row.className = 'p-5  border border-gray-800 rounded-xl relative po-item-row shadow-sm hover:border-cyan-500/30 transition-colors group';
+        row.className = 'p-5  border border-hairline rounded-xl relative po-item-row hover:border-primary/30 transition-colors group';
         row.innerHTML = `
-            <button type="button" class="btn-delete-row absolute -top-3 -right-3 w-8 h-8 rounded-full bg-slate-800 border border-slate-700 text-slate-400 hover:text-white hover:bg-red-500 flex items-center justify-center shadow-lg transition-all opacity-0 group-hover:opacity-100 z-10"><i class="fa-solid fa-trash text-xs"></i></button>
+            <button type="button" class="btn-delete-row absolute -top-3 -right-3 w-8 h-8 rounded-full bg-surface-chip border border-hairline text-body-muted hover:text-ink hover:bg-red-500 flex items-center justify-center transition-all opacity-0 group-hover:opacity-100 z-10"><i class="fa-solid fa-trash text-xs"></i></button>
             <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
                 <div class="md:col-span-2">
-                    <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wide">ชื่อสินค้า <span class="text-red-400">*</span></label>
-                    <select name="po_item_name" required class="w-full px-3 py-2.5 text-sm rounded-lg bg-[#2a2a2a] border border-gray-700 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all">
+                    <label class="text-[10px] font-bold text-body-muted uppercase tracking-wide">ชื่อสินค้า <span class="text-red-400">*</span></label>
+                    <select name="po_item_name" required class="w-full px-3 py-2.5 text-sm rounded-lg bg-surface-chip border border-divider-soft text-ink focus:border-primary-focus focus:ring-1 focus:ring-primary-focus/40 focus:outline-none transition-all">
                         <option value="" disabled selected>-- เลือกชื่อสินค้า --</option>
                         ${(window.masterDataCache?.productNames || []).map(x => {
             const val = x.name || x;
@@ -56,12 +56,12 @@
                     </select>
                 </div>
                 <div>
-                    <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wide">รหัส/SKU</label>
-                    <input type="text" name="po_item_code" readonly placeholder="ระบบรันให้อัตโนมัติ หากเป็นชื่อที่ไม่มีรหัส" class="w-full px-3 py-2.5 text-sm rounded-lg bg-[#1f1f1f] border border-gray-800 text-slate-400 focus:outline-none placeholder-slate-500 transition-all font-mono cursor-not-allowed opacity-80">
+                    <label class="text-[10px] font-bold text-body-muted uppercase tracking-wide">รหัส/SKU</label>
+                    <input type="text" name="po_item_code" readonly placeholder="ระบบรันให้อัตโนมัติ หากเป็นชื่อที่ไม่มีรหัส" class="w-full px-3 py-2.5 text-sm rounded-lg bg-surface-tile-3 border border-hairline text-body-muted focus:outline-none placeholder-ink-muted-48 transition-all font-mono cursor-not-allowed opacity-80">
                 </div>
                 <div>
-                    <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wide">หมวดหมู่</label>
-                    <select name="po_item_category" class="w-full px-3 py-2.5 text-sm rounded-lg bg-[#2a2a2a] border border-gray-700 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all">
+                    <label class="text-[10px] font-bold text-body-muted uppercase tracking-wide">หมวดหมู่</label>
+                    <select name="po_item_category" class="w-full px-3 py-2.5 text-sm rounded-lg bg-surface-chip border border-divider-soft text-ink focus:border-primary-focus focus:ring-1 focus:ring-primary-focus/40 focus:outline-none transition-all">
                         <option value="">-- เลือก --</option>
                         ${(window.masterDataCache?.productTypes || []).map(t => `<option value="${t.name}">${t.name}</option>`).join('')}
                     </select>
@@ -69,46 +69,46 @@
             </div>
             <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-4 items-end">
                 <div>
-                    <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wide">สี</label>
-                    <select name="po_item_color" class="w-full px-3 py-2.5 text-sm rounded-lg bg-[#2a2a2a] border border-gray-700 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all">
+                    <label class="text-[10px] font-bold text-body-muted uppercase tracking-wide">สี</label>
+                    <select name="po_item_color" class="w-full px-3 py-2.5 text-sm rounded-lg bg-surface-chip border border-divider-soft text-ink focus:border-primary-focus focus:ring-1 focus:ring-primary-focus/40 focus:outline-none transition-all">
                         <option value="">-- เลือกสี --</option>
                         ${(window.masterDataCache?.productColors || []).map(x => `<option value="${x.name || x}">${x.name || x}</option>`).join('')}
                     </select>
                 </div>
                 <div>
-                    <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wide">ความจุ</label>
-                    <select name="po_item_capacity" class="w-full px-3 py-2.5 text-sm rounded-lg bg-[#2a2a2a] border border-gray-700 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all">
+                    <label class="text-[10px] font-bold text-body-muted uppercase tracking-wide">ความจุ</label>
+                    <select name="po_item_capacity" class="w-full px-3 py-2.5 text-sm rounded-lg bg-surface-chip border border-divider-soft text-ink focus:border-primary-focus focus:ring-1 focus:ring-primary-focus/40 focus:outline-none transition-all">
                         <option value="">-- เลือกความจุ --</option>
                         ${(window.masterDataCache?.productCapacities || []).map(x => `<option value="${x.name || x}">${x.name || x}</option>`).join('')}
                     </select>
                 </div>
                 <div>
-                    <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wide">หน่วยนับ <span class="text-red-400">*</span></label>
-                    <select name="po_item_unit" required class="w-full px-3 py-2.5 text-sm rounded-lg bg-[#2a2a2a] border border-gray-700 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all">
+                    <label class="text-[10px] font-bold text-body-muted uppercase tracking-wide">หน่วยนับ <span class="text-red-400">*</span></label>
+                    <select name="po_item_unit" required class="w-full px-3 py-2.5 text-sm rounded-lg bg-surface-chip border border-divider-soft text-ink focus:border-primary-focus focus:ring-1 focus:ring-primary-focus/40 focus:outline-none transition-all">
                         <option value="">-- เลือก --</option>
                         ${(window.masterDataCache?.productUnits || []).map(u => `<option value="${u.name}">${u.name}</option>`).join('')}
                     </select>
                 </div>
                 <div>
-                    <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wide">จำนวน <span class="text-red-400">*</span></label>
-                    <input type="number" name="po_item_qty" required min="1" value="1" class="w-full px-3 py-2.5 text-sm rounded-lg bg-[#2a2a2a] border border-gray-700 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none font-bold text-center transition-all">
+                    <label class="text-[10px] font-bold text-body-muted uppercase tracking-wide">จำนวน <span class="text-red-400">*</span></label>
+                    <input type="number" name="po_item_qty" required min="1" value="1" class="w-full px-3 py-2.5 text-sm rounded-lg bg-surface-chip border border-divider-soft text-ink focus:border-primary-focus focus:ring-1 focus:ring-primary-focus/40 focus:outline-none font-bold text-center transition-all">
                 </div>
                 <div>
-                    <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wide">ราคาทุน <span class="text-red-400">*</span></label>
-                    <input type="number" name="po_item_cost" required min="0" placeholder="0" step="any" class="w-full px-3 py-2.5 text-sm rounded-lg bg-[#2a2a2a] border border-gray-700 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none font-mono placeholder-slate-500 transition-all">
+                    <label class="text-[10px] font-bold text-body-muted uppercase tracking-wide">ราคาทุน <span class="text-red-400">*</span></label>
+                    <input type="number" name="po_item_cost" required min="0" placeholder="0" step="any" class="w-full px-3 py-2.5 text-sm rounded-lg bg-surface-chip border border-divider-soft text-ink focus:border-primary-focus focus:ring-1 focus:ring-primary-focus/40 focus:outline-none font-mono placeholder-ink-muted-48 transition-all">
                 </div>
                 <div>
-                    <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wide">ราคาขาย <span class="text-red-400">*</span></label>
-                    <input type="number" name="po_item_sell" required min="0" placeholder="0" step="any" class="w-full px-3 py-2.5 text-sm rounded-lg bg-[#2a2a2a] border border-gray-700 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none font-mono placeholder-slate-500 transition-all">
+                    <label class="text-[10px] font-bold text-body-muted uppercase tracking-wide">ราคาขาย <span class="text-red-400">*</span></label>
+                    <input type="number" name="po_item_sell" required min="0" placeholder="0" step="any" class="w-full px-3 py-2.5 text-sm rounded-lg bg-surface-chip border border-divider-soft text-ink focus:border-primary-focus focus:ring-1 focus:ring-primary-focus/40 focus:outline-none font-mono placeholder-ink-muted-48 transition-all">
                 </div>
             </div>
-            <div class="mt-4 pt-3 border-t border-slate-700/50 flex items-center justify-between">
+            <div class="mt-4 pt-3 border-t border-hairline/50 flex items-center justify-between">
                 <div class="flex items-center gap-2">
-                    <input type="checkbox" name="po_item_track_imei" id="track_imei_${id}" class="w-4 h-4 rounded border-gray-600 bg-slate-900 text-cyan-500 focus:ring-cyan-500 focus:ring-offset-slate-800">
-                    <label for="track_imei_${id}" class="text-xs text-slate-300 cursor-pointer hover:text-white transition-colors">สินค้านี้ต้องบันทึก IMEI (เช่น โทรศัพท์/แท็บเล็ต)</label>
+                    <input type="checkbox" name="po_item_track_imei" id="track_imei_${id}" class="w-4 h-4 rounded border-hairline bg-surface-chip text-primary focus:ring-primary-focus focus:ring-offset-canvas-elevated">
+                    <label for="track_imei_${id}" class="text-xs text-body-muted cursor-pointer hover:text-ink transition-colors">สินค้านี้ต้องบันทึก IMEI (เช่น โทรศัพท์/แท็บเล็ต)</label>
                 </div>
-                <div class="text-right text-xs text-slate-400">
-                     รวม: <span class="po-row-total text-cyan-400 font-bold font-mono">฿0</span>
+                <div class="text-right text-xs text-body-muted">
+                     รวม: <span class="po-row-total text-ink font-bold font-mono">฿0</span>
                 </div>
             </div>
         `;
@@ -359,14 +359,14 @@
             contentCreate.classList.remove('hidden');
             contentHistory.classList.add('hidden');
 
-            btnCreate.className = 'px-5 py-2.5 rounded-lg text-sm font-semibold transition-all duration-200 bg-cyan-500 text-slate-900 shadow-lg shadow-cyan-500/10';
-            btnHistory.className = 'px-5 py-2.5 rounded-lg text-sm font-semibold transition-all duration-200 text-slate-400 hover:text-white hover:bg-slate-800/50';
+            btnCreate.className = 'px-5 py-2.5 rounded-lg text-sm font-semibold transition-all duration-200 bg-primary text-on-primary';
+            btnHistory.className = 'px-5 py-2.5 rounded-lg text-sm font-semibold transition-all duration-200 text-body-muted hover:text-ink hover:bg-surface-chip/50';
         } else {
             contentCreate.classList.add('hidden');
             contentHistory.classList.remove('hidden');
 
-            btnHistory.className = 'px-5 py-2.5 rounded-lg text-sm font-semibold transition-all duration-200 bg-cyan-500 text-slate-900 shadow-lg shadow-cyan-500/10';
-            btnCreate.className = 'px-5 py-2.5 rounded-lg text-sm font-semibold transition-all duration-200 text-slate-400 hover:text-white hover:bg-slate-800/50';
+            btnHistory.className = 'px-5 py-2.5 rounded-lg text-sm font-semibold transition-all duration-200 bg-primary text-on-primary';
+            btnCreate.className = 'px-5 py-2.5 rounded-lg text-sm font-semibold transition-all duration-200 text-body-muted hover:text-ink hover:bg-surface-chip/50';
 
             loadPOHistory();
         }
@@ -393,7 +393,7 @@
     const loadPOHistory = async () => {
         const tbody = document.getElementById('table-body-po-history');
         if (!tbody) return;
-        tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4"><i class="fa-solid fa-circle-notch fa-spin text-slate-400"></i></td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4"><i class="fa-solid fa-circle-notch fa-spin text-body-muted"></i></td></tr>';
 
         try {
             const res = await authFetch(`${API_BASE_URL}/purchase-orders`);
@@ -422,13 +422,13 @@
         });
 
         if (filtered.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="7" class="text-center py-6 text-slate-400">ไม่มีรายการใบสั่งซื้อ</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="7" class="text-center py-6 text-body-muted">ไม่มีรายการใบสั่งซื้อ</td></tr>';
             return;
         }
 
         filtered.forEach(po => {
             const tr = document.createElement('tr');
-            tr.className = 'border-b border-gray-800 hover:bg-gray-800/30 transition-colors';
+            tr.className = 'border-b border-hairline hover:bg-surface-chip/30 transition-colors';
 
             // Format date
             let dateStr = '-';
@@ -454,29 +454,29 @@
 
             // Status Badge
             const statusColors = {
-                'รอจัดส่ง': 'border-cyan-500/30 bg-cyan-500/10 text-cyan-400',
-                'สั่งซื้อแล้ว': 'border-cyan-500/30 bg-cyan-500/10 text-cyan-400',
+                'รอจัดส่ง': 'border-hairline bg-surface-chip text-ink',
+                'สั่งซื้อแล้ว': 'border-hairline bg-surface-chip text-ink',
                 'กำลังตรวจรับ': 'border-amber-500/30 bg-amber-500/10 text-amber-400',
                 'รับของบางส่วน': 'border-amber-500/30 bg-amber-500/10 text-amber-400',
                 'รับของครบแล้ว': 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400',
                 'ยกเลิก': 'border-red-500/30 bg-red-500/10 text-red-400'
             };
-            const badgeClass = statusColors[po.status] || 'border-slate-700 bg-slate-800 text-slate-400';
+            const badgeClass = statusColors[po.status] || 'border-hairline bg-surface-chip text-body-muted';
 
             tr.innerHTML = `
-                <td class="px-4 py-4 md:px-6 font-mono font-bold text-slate-300 whitespace-nowrap">${po.po_number || '-'}</td>
-                <td class="px-4 py-4 md:px-6 text-slate-400 text-sm whitespace-nowrap">${dateStr}</td>
-                <td class="px-4 py-4 md:px-6 text-white font-medium whitespace-nowrap">${po.supplier_name || '-'}</td>
-                <td class="px-4 py-4 md:px-6 text-slate-400 text-sm whitespace-nowrap">${branchName}</td>
+                <td class="px-4 py-4 md:px-6 font-mono font-bold text-body-muted whitespace-nowrap">${po.po_number || '-'}</td>
+                <td class="px-4 py-4 md:px-6 text-body-muted text-sm whitespace-nowrap">${dateStr}</td>
+                <td class="px-4 py-4 md:px-6 text-ink font-medium whitespace-nowrap">${po.supplier_name || '-'}</td>
+                <td class="px-4 py-4 md:px-6 text-body-muted text-sm whitespace-nowrap">${branchName}</td>
                 <td class="px-4 py-4 md:px-6 text-center whitespace-nowrap">
                     <span class="inline-flex px-2.5 py-0.5 rounded-full text-xs font-semibold border ${badgeClass} whitespace-nowrap">
                         ${po.status || '-'}
                     </span>
                 </td>
-                <td class="px-4 py-4 md:px-6 text-right font-mono font-bold text-cyan-400 whitespace-nowrap">฿${totalAmount.toLocaleString()}</td>
+                <td class="px-4 py-4 md:px-6 text-right font-mono font-bold text-ink whitespace-nowrap">฿${totalAmount.toLocaleString()}</td>
                 <td class="px-4 py-4 md:px-6 text-right whitespace-nowrap">
                     <div class="flex items-center justify-end gap-1.5 whitespace-nowrap">
-                        <button class="btn-view-po px-2.5 py-1.5 bg-indigo-500/10 text-indigo-400 hover:bg-indigo-500/25 border border-indigo-500/30 rounded-lg transition-all text-[11px] font-bold whitespace-nowrap shrink-0" title="รายละเอียดใบ PO">
+                        <button class="btn-view-po px-2.5 py-1.5 bg-surface-chip text-ink hover:bg-surface-tile-2 border border-hairline rounded-lg transition-all text-[11px] font-bold whitespace-nowrap shrink-0" title="รายละเอียดใบ PO">
                             <i class="fa-solid fa-eye"></i> รายละเอียด
                         </button>
                         ${po.status === 'รอจัดส่ง' || po.status === 'สั่งซื้อแล้ว' ? `
@@ -484,7 +484,7 @@
                                 <i class="fa-solid fa-trash-can"></i> ยกเลิก
                             </button>
                         ` : ''}
-                        <button class="btn-print-po px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg border border-slate-700 transition-all text-[11px] font-bold whitespace-nowrap shrink-0" title="พิมพ์ใบ PO">
+                        <button class="btn-print-po px-2.5 py-1.5 bg-surface-chip hover:bg-surface-tile-2 text-body-muted rounded-lg border border-hairline transition-all text-[11px] font-bold whitespace-nowrap shrink-0" title="พิมพ์ใบ PO">
                             <i class="fa-solid fa-print"></i> พิมพ์
                         </button>
                     </div>
@@ -505,7 +505,7 @@
                 cancelBtn.addEventListener('click', () => {
                     showConfirm(
                         'ยืนยันการยกเลิกใบสั่งซื้อ',
-                        `คุณแน่ใจหรือไม่ว่าต้องการยกเลิกใบสั่งซื้อ <strong class="text- font-mono">${po.po_number}</strong>?<br><span class="text-slate-400 text-xs">การดำเนินการนี้จะไม่สามารถแก้ไขกลับมาใช้งานได้อีก</span>`,
+                        `คุณแน่ใจหรือไม่ว่าต้องการยกเลิกใบสั่งซื้อ <strong class="text- font-mono">${po.po_number}</strong>?<br><span class="text-body-muted text-xs">การดำเนินการนี้จะไม่สามารถแก้ไขกลับมาใช้งานได้อีก</span>`,
                         async () => {
                             try {
                                 const res = await authFetch(`${API_BASE_URL}/purchase-orders/${po._id}/cancel`, {
@@ -683,25 +683,25 @@
 
         if (tabAp && tabPl && tabAr && secAp && secPl && secAr) {
             tabAp.onclick = () => {
-                tabAp.className = "px-6 py-3.5 border-b-2 border-amber-500 text-amber-400 text-sm font-bold flex items-center gap-2 transition-all duration-200 focus:outline-none";
-                tabPl.className = "px-6 py-3.5 border-b-2 border-transparent text-slate-400 hover:text-slate-200 text-sm font-semibold flex items-center gap-2 transition-all duration-200 focus:outline-none";
-                tabAr.className = "px-6 py-3.5 border-b-2 border-transparent text-slate-400 hover:text-slate-200 text-sm font-semibold flex items-center gap-2 transition-all duration-200 focus:outline-none";
+                tabAp.className = "px-6 py-3.5 border-b-2 border-primary text-primary text-sm font-bold flex items-center gap-2 transition-all duration-200 focus:outline-none";
+                tabPl.className = "px-6 py-3.5 border-b-2 border-transparent text-body-muted hover:text-ink text-sm font-semibold flex items-center gap-2 transition-all duration-200 focus:outline-none";
+                tabAr.className = "px-6 py-3.5 border-b-2 border-transparent text-body-muted hover:text-ink text-sm font-semibold flex items-center gap-2 transition-all duration-200 focus:outline-none";
                 secAp.classList.remove('hidden');
                 secPl.classList.add('hidden');
                 secAr.classList.add('hidden');
             };
             tabPl.onclick = () => {
-                tabPl.className = "px-6 py-3.5 border-b-2 border-amber-500 text-amber-400 text-sm font-bold flex items-center gap-2 transition-all duration-200 focus:outline-none";
-                tabAp.className = "px-6 py-3.5 border-b-2 border-transparent text-slate-400 hover:text-slate-200 text-sm font-semibold flex items-center gap-2 transition-all duration-200 focus:outline-none";
-                tabAr.className = "px-6 py-3.5 border-b-2 border-transparent text-slate-400 hover:text-slate-200 text-sm font-semibold flex items-center gap-2 transition-all duration-200 focus:outline-none";
+                tabPl.className = "px-6 py-3.5 border-b-2 border-primary text-primary text-sm font-bold flex items-center gap-2 transition-all duration-200 focus:outline-none";
+                tabAp.className = "px-6 py-3.5 border-b-2 border-transparent text-body-muted hover:text-ink text-sm font-semibold flex items-center gap-2 transition-all duration-200 focus:outline-none";
+                tabAr.className = "px-6 py-3.5 border-b-2 border-transparent text-body-muted hover:text-ink text-sm font-semibold flex items-center gap-2 transition-all duration-200 focus:outline-none";
                 secPl.classList.remove('hidden');
                 secAp.classList.add('hidden');
                 secAr.classList.add('hidden');
             };
             tabAr.onclick = () => {
-                tabAr.className = "px-6 py-3.5 border-b-2 border-amber-500 text-amber-400 text-sm font-bold flex items-center gap-2 transition-all duration-200 focus:outline-none";
-                tabAp.className = "px-6 py-3.5 border-b-2 border-transparent text-slate-400 hover:text-slate-200 text-sm font-semibold flex items-center gap-2 transition-all duration-200 focus:outline-none";
-                tabPl.className = "px-6 py-3.5 border-b-2 border-transparent text-slate-400 hover:text-slate-200 text-sm font-semibold flex items-center gap-2 transition-all duration-200 focus:outline-none";
+                tabAr.className = "px-6 py-3.5 border-b-2 border-primary text-primary text-sm font-bold flex items-center gap-2 transition-all duration-200 focus:outline-none";
+                tabAp.className = "px-6 py-3.5 border-b-2 border-transparent text-body-muted hover:text-ink text-sm font-semibold flex items-center gap-2 transition-all duration-200 focus:outline-none";
+                tabPl.className = "px-6 py-3.5 border-b-2 border-transparent text-body-muted hover:text-ink text-sm font-semibold flex items-center gap-2 transition-all duration-200 focus:outline-none";
                 secAr.classList.remove('hidden');
                 secAp.classList.add('hidden');
                 secPl.classList.add('hidden');
@@ -746,11 +746,11 @@
                 if (plTbody) {
                     plTbody.innerHTML = '';
                     if (data.ledger.length === 0) {
-                        plTbody.innerHTML = '<tr><td colspan="6" class="text-center py-8 text-slate-400 text-sm"><i class="fa-solid fa-inbox text-slate-650 text-xl block mb-2"></i>ไม่มีรายการเดินบัญชีในช่วงเวลานี้</td></tr>';
+                        plTbody.innerHTML = '<tr><td colspan="6" class="text-center py-8 text-body-muted text-sm"><i class="fa-solid fa-inbox text-slate-650 text-xl block mb-2"></i>ไม่มีรายการเดินบัญชีในช่วงเวลานี้</td></tr>';
                     } else {
                         data.ledger.forEach(item => {
                             const tr = document.createElement('tr');
-                            tr.className = 'border-b border-slate-800/40 hover:bg-slate-700/5 transition-all duration-150';
+                            tr.className = 'border-b border-hairline hover:bg-surface-chip/20 transition-all duration-150';
 
                             const badgeType = item.type === 'รายรับ'
                                 ? `<span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 whitespace-nowrap inline-block"><i class="fa-solid fa-arrow-down text-[10px] mr-1"></i>รายรับ</span>`
@@ -761,12 +761,12 @@
                                 : `<span class="text-rose-400 font-bold font-mono whitespace-nowrap">-฿${item.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>`;
 
                             tr.innerHTML = `
-                                <td class="px-4 py-4 md:px-6 font-mono font-bold text-slate-300 text-sm whitespace-nowrap">${item.transaction_id}</td>
-                                <td class="px-4 py-4 md:px-6 text-sm text-slate-400 whitespace-nowrap">${new Date(item.created_at).toLocaleString('th-TH')}</td>
+                                <td class="px-4 py-4 md:px-6 font-mono font-bold text-body-muted text-sm whitespace-nowrap">${item.transaction_id}</td>
+                                <td class="px-4 py-4 md:px-6 text-sm text-body-muted whitespace-nowrap">${new Date(item.created_at).toLocaleString('th-TH')}</td>
                                 <td class="px-4 py-4 md:px-6 whitespace-nowrap">${badgeType}</td>
-                                <td class="px-4 py-4 md:px-6 text-sm text-slate-355 whitespace-nowrap">${item.category}</td>
+                                <td class="px-4 py-4 md:px-6 text-sm text-body-muted whitespace-nowrap">${item.category}</td>
                                 <td class="px-4 py-4 md:px-6 text-right whitespace-nowrap">${amountVal}</td>
-                                <td class="px-4 py-4 md:px-6 text-sm text-slate-400 whitespace-nowrap">${item.recorded_by || 'Admin'}</td>
+                                <td class="px-4 py-4 md:px-6 text-sm text-body-muted whitespace-nowrap">${item.recorded_by || 'Admin'}</td>
                             `;
                             plTbody.appendChild(tr);
                         });
@@ -814,7 +814,7 @@
                     const filteredList = filterVal ? poList.filter(po => po.supplier_name === filterVal) : poList;
 
                     if (filteredList.length === 0) {
-                        apTbody.innerHTML = '<tr><td colspan="9" class="text-center py-8 text-slate-400 text-sm"><i class="fa-solid fa-check-double text-slate-650 text-xl block mb-2"></i>ไม่มีหนี้สินใบสั่งซื้อค้างจ่าย</td></tr>';
+                        apTbody.innerHTML = '<tr><td colspan="9" class="text-center py-8 text-body-muted text-sm"><i class="fa-solid fa-check-double text-slate-650 text-xl block mb-2"></i>ไม่มีหนี้สินใบสั่งซื้อค้างจ่าย</td></tr>';
                     } else {
                         filteredList.forEach(po => {
                             const totalCost = po.items.reduce((sum, item) => sum + (item.cost_price * item.ordered_qty), 0);
@@ -823,7 +823,7 @@
                             const outstanding = Math.max(0, totalCost - paidAmount - discount);
 
                             const tr = document.createElement('tr');
-                            tr.className = 'border-b border-slate-800/40 hover:bg-slate-700/5 transition-all duration-150';
+                            tr.className = 'border-b border-hairline hover:bg-surface-chip/20 transition-all duration-150';
 
                             let statusBadge = '';
                             if (po.payment_status === 'ชำระเงินแล้ว') {
@@ -835,23 +835,23 @@
                             }
 
                             const payAction = po.payment_status !== 'ชำระเงินแล้ว'
-                                ? `<button class="btn-pay-po px-3 py-1.5 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 border border-amber-500/35 hover:border-amber-500/60 rounded-xl text-xs font-bold transition-all inline-flex items-center gap-1.5 shadow-sm active:scale-95 whitespace-nowrap shrink-0" data-id="${po._id}" data-no="${po.po_number}" data-amount="${totalCost}" data-paid="${paidAmount}" data-discount="${discount}" data-outstanding="${outstanding}">
+                                ? `<button class="btn-pay-po px-3 py-1.5 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 border border-amber-500/35 hover:border-amber-500/60 rounded-xl text-xs font-bold transition-all inline-flex items-center gap-1.5 active:scale-95 whitespace-nowrap shrink-0" data-id="${po._id}" data-no="${po.po_number}" data-amount="${totalCost}" data-paid="${paidAmount}" data-discount="${discount}" data-outstanding="${outstanding}">
                                      <i class="fa-solid fa-money-bill-wave"></i> กดจ่ายเงิน
                                    </button>`
                                 : `<span class="text-xs text-emerald-400 font-bold bg-emerald-500/10 border border-emerald-500/25 px-2.5 py-1.5 rounded-xl inline-flex items-center gap-1 whitespace-nowrap"><i class="fa-solid fa-circle-check text-[10px]"></i> จ่ายแล้ว วันที่ ${new Date(po.paid_at || po.updatedAt).toLocaleDateString('th-TH')}</span>`;
 
                             tr.innerHTML = `
-                                <td class="px-4 py-4 md:px-6 font-mono font-bold text-slate-300 text-sm whitespace-nowrap">${po.po_number}</td>
-                                <td class="px-4 py-4 md:px-6 text-sm text-slate-400 whitespace-nowrap">${new Date(po.createdAt).toLocaleDateString('th-TH')}</td>
-                                <td class="px-4 py-4 md:px-6 text-sm text-slate-300 whitespace-nowrap">${po.supplier_name}</td>
-                                <td class="px-4 py-4 md:px-6 font-mono text-sm text-slate-300 text-right whitespace-nowrap">฿${totalCost.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                                <td class="px-4 py-4 md:px-6 font-mono font-bold text-body-muted text-sm whitespace-nowrap">${po.po_number}</td>
+                                <td class="px-4 py-4 md:px-6 text-sm text-body-muted whitespace-nowrap">${new Date(po.createdAt).toLocaleDateString('th-TH')}</td>
+                                <td class="px-4 py-4 md:px-6 text-sm text-body-muted whitespace-nowrap">${po.supplier_name}</td>
+                                <td class="px-4 py-4 md:px-6 font-mono text-sm text-body-muted text-right whitespace-nowrap">฿${totalCost.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
                                 <td class="px-4 py-4 md:px-6 font-mono text-sm text-emerald-400 text-right whitespace-nowrap">฿${paidAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
                                 <td class="px-4 py-4 md:px-6 font-mono text-sm text-rose-400 text-right cursor-help whitespace-nowrap" title="${po.discount_remark || 'ไม่มีส่วนลด'}">฿${discount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
                                 <td class="px-4 py-4 md:px-6 font-mono text-sm text-amber-400 font-bold text-right whitespace-nowrap">฿${outstanding.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
                                 <td class="px-4 py-4 md:px-6 text-center whitespace-nowrap">${statusBadge}</td>
                                 <td class="px-4 py-4 md:px-6 text-right whitespace-nowrap">
                                     <div class="flex items-center justify-end gap-2 whitespace-nowrap">
-                                        <button class="btn-view-po-detail px-3 py-1.5 bg-sky-500/10 text-sky-400 hover:bg-sky-500/20 border border-sky-500/30 hover:border-sky-500/50 rounded-xl text-xs font-bold transition-all inline-flex items-center gap-1.5 shadow-sm active:scale-95 whitespace-nowrap shrink-0">
+                                        <button class="btn-view-po-detail px-3 py-1.5 bg-surface-chip text-ink hover:bg-surface-tile-2 border border-hairline hover:border-primary/40 rounded-xl text-xs font-bold transition-all inline-flex items-center gap-1.5 active:scale-95 whitespace-nowrap shrink-0">
                                             <i class="fa-solid fa-eye"></i> ดูรายละเอียด
                                         </button>
                                         ${payAction}
@@ -884,38 +884,38 @@
                                         `บันทึกจ่ายเงินใบสั่งซื้อ (${poNo})`,
                                         `<div class="text-left space-y-4">
                                             <!-- Financial Summary -->
-                                            <div class="grid grid-cols-2 gap-2 bg-slate-950/60 p-4 rounded-2xl border border-slate-800 text-xs text-slate-400">
+                                            <div class="grid grid-cols-2 gap-2 bg-surface-tile-3 p-4 rounded-2xl border border-hairline text-xs text-body-muted">
                                                 <div>ยอดรวม PO:</div>
-                                                <div class="text-right font-mono text-slate-200">฿${poAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
+                                                <div class="text-right font-mono text-ink">฿${poAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
                                                 <div>ชำระก่อนหน้า:</div>
                                                 <div class="text-right font-mono text-emerald-400">฿${poPaid.toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
                                                 <div>ส่วนลดสะสม:</div>
                                                 <div class="text-right font-mono text-rose-400">฿${poDiscount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
-                                                <div class="font-bold text-slate-200 border-t border-slate-800/80 pt-1 mt-1">ยอดค้างชำระ:</div>
-                                                <div class="text-right font-mono text-amber-400 font-bold border-t border-slate-800/80 pt-1 mt-1">฿${poOutstanding.toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
+                                                <div class="font-bold text-ink border-t border-hairline pt-1 mt-1">ยอดค้างชำระ:</div>
+                                                <div class="text-right font-mono text-amber-400 font-bold border-t border-hairline pt-1 mt-1">฿${poOutstanding.toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
                                             </div>
 
                                             <!-- Form Inputs -->
-                                            <div class="space-y-3 bg-slate-900/30 p-4 rounded-2xl border border-slate-800/40">
+                                            <div class="space-y-3 bg-surface-tile-3 p-4 rounded-2xl border border-hairline">
                                                 <div>
-                                                    <label class="text-xs font-semibold text-slate-400 block mb-1">วันที่ชำระเงิน:</label>
-                                                    <input type="date" id="ap-pay-date-input" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2  focus:outline-none focus:border-amber-500 text-sm" value="${todayStr}">
+                                                    <label class="text-xs font-semibold text-body-muted block mb-1">วันที่ชำระเงิน:</label>
+                                                    <input type="date" id="ap-pay-date-input" class="w-full bg-surface-tile-3 border border-hairline rounded-xl px-3 py-2  focus:outline-none focus:border-primary-focus text-sm" value="${todayStr}">
                                                 </div>
                                                 <div class="grid grid-cols-2 gap-3">
                                                     <div>
-                                                        <label class="text-xs font-semibold text-slate-400 block mb-1">จำนวนเงินที่จ่ายรอบนี้:</label>
-                                                        <input type="number" id="ap-pay-amount-input" step="any" min="0" max="${poOutstanding}" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2  focus:outline-none focus:border-amber-500 text-sm font-mono text-right" value="${poOutstanding.toFixed(2)}">
+                                                        <label class="text-xs font-semibold text-body-muted block mb-1">จำนวนเงินที่จ่ายรอบนี้:</label>
+                                                        <input type="number" id="ap-pay-amount-input" step="any" min="0" max="${poOutstanding}" class="w-full bg-surface-tile-3 border border-hairline rounded-xl px-3 py-2  focus:outline-none focus:border-primary-focus text-sm font-mono text-right" value="${poOutstanding.toFixed(2)}">
                                                     </div>
                                                     <div>
-                                                        <label class="text-xs font-semibold text-slate-400 block mb-1">ส่วนลดรอบนี้:</label>
-                                                        <input type="number" id="ap-pay-discount-input" step="any" min="0" max="${poOutstanding}" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2  focus:outline-none focus:border-amber-500 text-sm font-mono text-right" value="0.00">
+                                                        <label class="text-xs font-semibold text-body-muted block mb-1">ส่วนลดรอบนี้:</label>
+                                                        <input type="number" id="ap-pay-discount-input" step="any" min="0" max="${poOutstanding}" class="w-full bg-surface-tile-3 border border-hairline rounded-xl px-3 py-2  focus:outline-none focus:border-primary-focus text-sm font-mono text-right" value="0.00">
                                                     </div>
                                                 </div>
                                                 <div>
-                                                    <label class="text-xs font-semibold text-slate-400 block mb-1">หมายเหตุส่วนลด (ระบุหากได้ส่วนลด):</label>
-                                                    <input type="text" id="ap-pay-discount-remark-input" placeholder="เช่น ชำระก่อนครบกำหนดรับส่วนลด 2%" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2  focus:outline-none focus:border-amber-500 text-sm">
+                                                    <label class="text-xs font-semibold text-body-muted block mb-1">หมายเหตุส่วนลด (ระบุหากได้ส่วนลด):</label>
+                                                    <input type="text" id="ap-pay-discount-remark-input" placeholder="เช่น ชำระก่อนครบกำหนดรับส่วนลด 2%" class="w-full bg-surface-tile-3 border border-hairline rounded-xl px-3 py-2  focus:outline-none focus:border-primary-focus text-sm">
                                                 </div>
-                                                <div id="ap-pay-calc-result" class="text-[11px] font-bold text-slate-400 text-right pt-1">
+                                                <div id="ap-pay-calc-result" class="text-[11px] font-bold text-body-muted text-right pt-1">
                                                     คงเหลือหลังชำระ: ฿0.00
                                                 </div>
                                             </div>
@@ -1013,18 +1013,18 @@
                     if (summaryContainer) {
                         summaryContainer.innerHTML = '';
                         if (apSummaries.length === 0) {
-                            summaryContainer.innerHTML = '<div class="col-span-full text-center py-6 text-slate-400 text-sm border border-dashed border-slate-800 rounded-2xl">ไม่มีหนี้สินค้างจ่ายกับ Supplier</div>';
+                            summaryContainer.innerHTML = '<div class="col-span-full text-center py-6 text-body-muted text-sm border border-dashed border-hairline rounded-2xl">ไม่มีหนี้สินค้างจ่ายกับ Supplier</div>';
                         } else {
                             apSummaries.forEach(sum => {
                                 const card = document.createElement('div');
-                                card.className = 'bg-slate-900/40 border border-slate-800/80 rounded-2xl p-4 flex flex-col justify-between hover:border-slate-750 transition-all duration-200';
+                                card.className = 'bg-surface-tile-3 border border-hairline rounded-2xl p-4 flex flex-col justify-between hover:border-primary/40 transition-all duration-200';
                                 card.innerHTML = `
                                     <div class="flex items-center justify-between mb-2">
-                                        <span class="text-sm font-bold text-slate-200">${sum.supplier_name}</span>
+                                        <span class="text-sm font-bold text-ink">${sum.supplier_name}</span>
                                         <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20">${sum.pending_bill_count} ใบ</span>
                                     </div>
                                     <div class="flex justify-between text-xs items-center mt-2">
-                                        <span class="text-slate-400">ยอดค้างจ่ายรวมทั้งหมด:</span>
+                                        <span class="text-body-muted">ยอดค้างจ่ายรวมทั้งหมด:</span>
                                         <span class="font-mono text-amber-400 font-bold">฿${(sum.total_outstanding || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                                     </div>
                                 `;
@@ -1046,11 +1046,11 @@
                 if (arTbody) {
                     arTbody.innerHTML = '';
                     if (receivables.length === 0) {
-                        arTbody.innerHTML = '<tr><td colspan="6" class="text-center py-8 text-slate-400 text-sm"><i class="fa-solid fa-check-double text-slate-650 text-xl block mb-2"></i>ไม่มีรายการค้างโอนจากไฟแนนซ์</td></tr>';
+                        arTbody.innerHTML = '<tr><td colspan="6" class="text-center py-8 text-body-muted text-sm"><i class="fa-solid fa-check-double text-slate-650 text-xl block mb-2"></i>ไม่มีรายการค้างโอนจากไฟแนนซ์</td></tr>';
                     } else {
                         receivables.forEach(rec => {
                             const tr = document.createElement('tr');
-                            tr.className = 'border-b border-slate-800/40 hover:bg-slate-700/5 transition-all duration-150';
+                            tr.className = 'border-b border-hairline hover:bg-surface-chip/20 transition-all duration-150';
 
                             const isSettled = rec.status === 'ชำระแล้ว' || rec.status === 'ได้รับเงินครบแล้ว';
                             const settledDateVal = isSettled && rec.settled_at
@@ -1060,12 +1060,12 @@
                             let payAction = '';
                             if (!isSettled && rec.status !== 'ยกเลิก') {
                                 payAction = `
-                                    <button class="btn-settle-ar px-3 py-1.5 bg-green-500/10 text-green-400 hover:bg-green-500/20 border border-green-500/35 hover:border-green-500/60 rounded-xl text-xs font-bold transition-all inline-flex items-center gap-1.5 shadow-sm active:scale-95 whitespace-nowrap shrink-0" data-id="${rec._id}" data-no="${rec.transaction_id ? rec.transaction_id.receipt_number : ''}" data-amount="${rec.financed_amount}">
+                                    <button class="btn-settle-ar px-3 py-1.5 bg-green-500/10 text-green-400 hover:bg-green-500/20 border border-green-500/35 hover:border-green-500/60 rounded-xl text-xs font-bold transition-all inline-flex items-center gap-1.5 active:scale-95 whitespace-nowrap shrink-0" data-id="${rec._id}" data-no="${rec.transaction_id ? rec.transaction_id.receipt_number : ''}" data-amount="${rec.financed_amount}">
                                         <i class="fa-solid fa-circle-check"></i> บันทึกยอดรับเงิน
                                     </button>
                                 `;
                             } else if (isSettled) {
-                                payAction = `<span class="text-xs text-slate-400 italic whitespace-nowrap">ผ่านรายการสำเร็จ (${new Date(rec.settled_at).toLocaleDateString('th-TH')})</span>`;
+                                payAction = `<span class="text-xs text-body-muted italic whitespace-nowrap">ผ่านรายการสำเร็จ (${new Date(rec.settled_at).toLocaleDateString('th-TH')})</span>`;
                             } else {
                                 payAction = `<span class="text-xs text-rose-500 italic whitespace-nowrap">ยกเลิกแล้ว</span>`;
                             }
@@ -1076,11 +1076,11 @@
                                 : new Date(rec.createdAt).toLocaleDateString('th-TH', { day: '2-digit', month: '2-digit', year: '2-digit' });
 
                             tr.innerHTML = `
-                                <td class="px-4 py-4 md:px-6 font-mono font-bold text-slate-300 text-sm whitespace-nowrap">${receiptNum}</td>
-                                <td class="px-4 py-4 md:px-6 text-sm text-slate-300 whitespace-nowrap">${rec.finance_company}</td>
-                                <td class="px-4 py-4 md:px-6 text-sm text-slate-400 whitespace-nowrap">${createdDate}</td>
+                                <td class="px-4 py-4 md:px-6 font-mono font-bold text-body-muted text-sm whitespace-nowrap">${receiptNum}</td>
+                                <td class="px-4 py-4 md:px-6 text-sm text-body-muted whitespace-nowrap">${rec.finance_company}</td>
+                                <td class="px-4 py-4 md:px-6 text-sm text-body-muted whitespace-nowrap">${createdDate}</td>
                                 <td class="px-4 py-4 md:px-6 text-sm whitespace-nowrap">${settledDateVal}</td>
-                                <td class="px-4 py-4 md:px-6 font-mono text-sm text-cyan-400 font-bold whitespace-nowrap">฿${rec.financed_amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                                <td class="px-4 py-4 md:px-6 font-mono text-sm text-ink font-bold whitespace-nowrap">฿${rec.financed_amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                                 <td class="px-4 py-4 md:px-6 text-right whitespace-nowrap">${payAction}</td>
                             `;
                             arTbody.appendChild(tr);
@@ -1095,10 +1095,10 @@
                                     const todayStr = new Date().toLocaleDateString('en-CA');
                                     showConfirm(
                                         `ยืนยันการรับเงินโอน`,
-                                        `คุณต้องการยืนยันการได้รับยอดเงินโอนจากบริษัทไฟแนนซ์ สำหรับใบเสร็จเลขที่ <strong class="font-mono text-white">${recNo}</strong><br>เป็นจำนวนเงินค้างโอน <strong class="text-green-400 font-mono">฿${amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</strong> หรือไม่?<br><br>
-                                         <div class="text-left bg-slate-950/45 p-4 rounded-2xl border border-slate-800 space-y-2 mt-3">
-                                             <label class="text-xs font-semibold text-slate-400 block">ระบุวันที่ได้รับเงิน (รับจากไฟแนนซ์):</label>
-                                             <input type="date" id="ar-pay-date-input" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 focus:outline-none focus:border-green-500 text-sm" value="${todayStr}">
+                                        `คุณต้องการยืนยันการได้รับยอดเงินโอนจากบริษัทไฟแนนซ์ สำหรับใบเสร็จเลขที่ <strong class="font-mono text-ink">${recNo}</strong><br>เป็นจำนวนเงินค้างโอน <strong class="text-green-400 font-mono">฿${amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</strong> หรือไม่?<br><br>
+                                         <div class="text-left bg-surface-tile-3 p-4 rounded-2xl border border-hairline space-y-2 mt-3">
+                                             <label class="text-xs font-semibold text-body-muted block">ระบุวันที่ได้รับเงิน (รับจากไฟแนนซ์):</label>
+                                             <input type="date" id="ar-pay-date-input" class="w-full bg-surface-chip border border-hairline rounded-xl px-3 py-2 focus:outline-none focus:border-primary-focus text-sm" value="${todayStr}">
                                          </div>`,
                                         async () => {
                                             try {
@@ -1140,23 +1140,23 @@
                     if (summaryContainer) {
                         summaryContainer.innerHTML = '';
                         if (summaries.length === 0) {
-                            summaryContainer.innerHTML = '<div class="col-span-full text-center py-6 text-slate-400 text-sm border border-dashed border-slate-800 rounded-2xl">ไม่มีข้อมูลสรุปสำหรับบริษัทไฟแนนซ์</div>';
+                            summaryContainer.innerHTML = '<div class="col-span-full text-center py-6 text-body-muted text-sm border border-dashed border-hairline rounded-2xl">ไม่มีข้อมูลสรุปสำหรับบริษัทไฟแนนซ์</div>';
                         } else {
                             summaries.forEach(sum => {
                                 const card = document.createElement('div');
-                                card.className = 'bg-slate-900/40 border border-slate-800/80 rounded-2xl p-4 flex flex-col justify-between hover:border-slate-750 transition-all duration-200';
+                                card.className = 'bg-surface-tile-3 border border-hairline rounded-2xl p-4 flex flex-col justify-between hover:border-primary/40 transition-all duration-200';
                                 card.innerHTML = `
                                     <div class="flex items-center justify-between mb-2">
-                                        <span class="text-sm font-bold text-slate-200">${sum.finance_partner_name}</span>
-                                        <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">จัดไฟแนนซ์</span>
+                                        <span class="text-sm font-bold text-ink">${sum.finance_partner_name}</span>
+                                        <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-surface-chip text-ink border border-hairline">จัดไฟแนนซ์</span>
                                     </div>
                                     <div class="space-y-1.5 mt-2">
                                         <div class="flex justify-between text-xs items-center">
-                                            <span class="text-slate-400">ยอดรวมค้างโอน:</span>
+                                            <span class="text-body-muted">ยอดรวมค้างโอน:</span>
                                             <span class="font-mono text-amber-400 font-bold">฿${(sum.total_pending || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                                         </div>
                                         <div class="flex justify-between text-xs items-center">
-                                            <span class="text-slate-400">ยอดโอนสำเร็จแล้ว:</span>
+                                            <span class="text-body-muted">ยอดโอนสำเร็จแล้ว:</span>
                                             <span class="font-mono text-green-400 font-bold">฿${(sum.payout_received || sum.total_settled || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                                         </div>
                                     </div>
@@ -1255,20 +1255,20 @@
         if (!modal) return;
 
         document.getElementById('view-po-number').textContent = po.po_number;
-        document.getElementById('view-po-supplier').innerHTML = `<i class="fa-solid fa-building text-slate-400 text-xs"></i> ${po.supplier_name}`;
+        document.getElementById('view-po-supplier').innerHTML = `<i class="fa-solid fa-building text-body-muted text-xs"></i> ${po.supplier_name}`;
 
         const branchName = po.branch_id ? po.branch_id.name : '-';
-        document.getElementById('view-po-branch').innerHTML = `<i class="fa-solid fa-location-dot text-slate-400 text-xs"></i> ${branchName}`;
+        document.getElementById('view-po-branch').innerHTML = `<i class="fa-solid fa-location-dot text-body-muted text-xs"></i> ${branchName}`;
 
         const statusColors = {
-            'รอจัดส่ง': 'bg-amber-500/10 text-amber-400 border-amber-500/20 shadow-[0_0_10px_rgba(245,158,11,0.05)]',
-            'ของถึงสาขาแล้ว': 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20 shadow-[0_0_10px_rgba(16,185,129,0.05)]',
-            'กำลังตรวจรับ': 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20 shadow-[0_0_10px_rgba(6,182,212,0.05)]',
-            'นำเข้าสำเร็จ': 'bg-violet-500/10 text-violet-400 border-violet-500/20 shadow-[0_0_10px_rgba(139,92,246,0.05)]',
-            'รับของครบแล้ว': 'bg-violet-500/10 text-violet-400 border-violet-500/20 shadow-[0_0_10px_rgba(139,92,246,0.05)]',
+            'รอจัดส่ง': 'bg-amber-500/10 text-amber-400 border-amber-500/20',
+            'ของถึงสาขาแล้ว': 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+            'กำลังตรวจรับ': 'bg-surface-chip text-ink border-hairline',
+            'นำเข้าสำเร็จ': 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+            'รับของครบแล้ว': 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
             'ยกเลิก': 'bg-red-500/10 text-red-400 border-red-500/20'
         };
-        const statusClass = statusColors[po.status] || 'bg-slate-800 text-slate-400 border-slate-700';
+        const statusClass = statusColors[po.status] || 'bg-surface-chip text-body-muted border-hairline';
         const displayStatus = po.status === 'นำเข้าสำเร็จ' || po.status === 'รับของครบแล้ว' ? 'นำเข้าสำเร็จ' : po.status;
 
         const statusBadge = document.getElementById('view-po-status');
@@ -1289,7 +1289,7 @@
 
         const payStatusEl = document.getElementById('view-po-pay-status');
         if (payStatusEl) {
-            payStatusEl.className = `${payStatusColors[po.payment_status || 'ยังไม่ได้ชำระ'] || 'text-slate-400'} font-semibold text-sm`;
+            payStatusEl.className = `${payStatusColors[po.payment_status || 'ยังไม่ได้ชำระ'] || 'text-body-muted'} font-semibold text-sm`;
             payStatusEl.textContent = po.payment_status || 'ยังไม่ได้ชำระ';
         }
 
@@ -1316,11 +1316,11 @@
         itemsContainer.innerHTML = '';
 
         if (!po.items || po.items.length === 0) {
-            itemsContainer.innerHTML = '<div class="text-center py-6 text-slate-400 text-xs">ไม่มีรายการสินค้าในใบสั่งซื้อนี้</div>';
+            itemsContainer.innerHTML = '<div class="text-center py-6 text-body-muted text-xs">ไม่มีรายการสินค้าในใบสั่งซื้อนี้</div>';
         } else {
             po.items.forEach(item => {
                 const el = document.createElement('div');
-                el.className = 'p-5 bg-slate-950/80 border border-slate-850 rounded-2xl space-y-4 hover:border-slate-800 transition-all';
+                el.className = 'p-5 bg-surface-tile-3 border border-hairline rounded-2xl space-y-4 hover:border-hairline transition-all';
 
                 const received = item.received_qty || 0;
                 const ordered = item.ordered_qty || 0;
@@ -1332,14 +1332,14 @@
                 let imeisHtml = '';
                 if (item.track_imei && item.imeis_scanned && item.imeis_scanned.length > 0) {
                     const chips = item.imeis_scanned.map(imei => `
-                        <span class="px-2.5 py-1 bg-slate-900 border border-slate-800 text-cyan-400 font-mono text-[10px] rounded-lg flex items-center gap-1 shadow-sm">
-                            <i class="fa-solid fa-barcode text-[8px] text-cyan-500/70"></i> ${imei}
+                        <span class="px-2.5 py-1 bg-surface-chip border border-hairline text-ink font-mono text-[10px] rounded-lg flex items-center gap-1">
+                            <i class="fa-solid fa-barcode text-[8px] text-ink-muted-48"></i> ${imei}
                         </span>
                     `).join('');
                     imeisHtml = `
-                        <div class="pt-3 border-t border-slate-800/80 space-y-2">
-                            <span class="text-xs text-slate-400 font-bold flex items-center gap-1"><i class="fa-solid fa-qrcode text-[10px]"></i> หมายเลข IMEI ที่สแกนนำเข้าคลังแล้ว (${item.imeis_scanned.length}):</span>
-                            <div class="flex flex-wrap gap-1.5 max-h-[120px] overflow-y-auto p-1 bg-slate-900/30 border border-slate-900 rounded-lg modal-scrollable-content">${chips}</div>
+                        <div class="pt-3 border-t border-hairline space-y-2">
+                            <span class="text-xs text-body-muted font-bold flex items-center gap-1"><i class="fa-solid fa-qrcode text-[10px]"></i> หมายเลข IMEI ที่สแกนนำเข้าคลังแล้ว (${item.imeis_scanned.length}):</span>
+                            <div class="flex flex-wrap gap-1.5 max-h-[120px] overflow-y-auto p-1 bg-surface-tile-3 border border-hairline rounded-lg modal-scrollable-content">${chips}</div>
                         </div>
                     `;
                 }
@@ -1347,27 +1347,27 @@
                 el.innerHTML = `
                     <div class="flex justify-between items-start gap-4">
                         <div>
-                            <span class="text-white font-bold text-sm md:text-base flex items-center gap-2">
+                            <span class="text-ink font-bold text-sm md:text-base flex items-center gap-2">
                                 ${item.product_name}
-                                <span class="text-xs text-slate-400 font-mono font-normal">(${item.product_code})</span>
+                                <span class="text-xs text-body-muted font-mono font-normal">(${item.product_code})</span>
                             </span>
-                            <p class="text-xs text-slate-400 mt-1">
-                                ยอดสั่งซื้อ: <span class="text-white font-bold">${ordered}</span> | 
+                            <p class="text-xs text-body-muted mt-1">
+                                ยอดสั่งซื้อ: <span class="text-ink font-bold">${ordered}</span> | 
                                 ยอดรับจริง: <span class="text-emerald-400 font-bold">${received}</span> ชิ้น
                             </p>
                         </div>
                         <div class="text-right shrink-0">
-                            <span class="text-[10px] font-semibold px-2 py-0.5 rounded-lg ${item.track_imei ? 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20' : 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20'} border">
+                            <span class="text-[10px] font-semibold px-2 py-0.5 rounded-lg ${item.track_imei ? 'bg-surface-chip text-ink border border-hairline' : 'bg-surface-chip text-ink border border-hairline'} border">
                                 ${item.track_imei ? 'เก็บซีเรียล IMEI' : 'นับจำนวนชิ้น'}
                             </span>
                         </div>
                     </div>
                     
                     <div class="space-y-1">
-                        <div class="w-full bg-slate-900 rounded-full h-2 overflow-hidden border border-slate-850 progress-bar-glow">
-                            <div class="bg-gradient-to-r from-emerald-500 to-teal-400 h-full rounded-full transition-all duration-500" style="width: ${itemPercent}%"></div>
+                        <div class="w-full bg-surface-chip rounded-full h-2 overflow-hidden border border-hairline progress-bar-glow">
+                            <div class="bg-emerald-500 h-full rounded-full transition-all duration-500" style="width: ${itemPercent}%"></div>
                         </div>
-                        <div class="flex justify-between text-[10px] font-bold text-slate-400">
+                        <div class="flex justify-between text-[10px] font-bold text-body-muted">
                             <span>สถานะตรวจรับเข้า</span>
                             <span class="font-mono text-emerald-400">${itemPercent}%</span>
                         </div>
@@ -1384,7 +1384,7 @@
         const historyTbody = document.getElementById('view-po-payments-history-rows');
 
         if (historyContainer && historyTbody) {
-            historyTbody.innerHTML = '<tr><td colspan="5" class="text-center p-3 text-slate-400 font-bold">กำลังโหลดประวัติการจ่ายเงิน...</td></tr>';
+            historyTbody.innerHTML = '<tr><td colspan="5" class="text-center p-3 text-body-muted font-bold">กำลังโหลดประวัติการจ่ายเงิน...</td></tr>';
             historyContainer.classList.remove('hidden');
 
             try {
@@ -1400,12 +1400,12 @@
                         const txnId = item.transaction_id || '-';
 
                         return `
-                            <tr class="border-b border-slate-800/40 hover:bg-slate-700/5 transition-colors">
-                                <td class="p-3 font-bold text-slate-400">${round}</td>
-                                <td class="p-3 text-slate-300">${dateStr}</td>
-                                <td class="p-3 font-mono font-semibold text-slate-400">${txnId}</td>
+                            <tr class="border-b border-hairline hover:bg-surface-chip/20 transition-colors">
+                                <td class="p-3 font-bold text-body-muted">${round}</td>
+                                <td class="p-3 text-body-muted">${dateStr}</td>
+                                <td class="p-3 font-mono font-semibold text-body-muted">${txnId}</td>
                                 <td class="p-3 font-mono font-bold text-emerald-400 text-right">${amount}</td>
-                                <td class="p-3 text-right text-slate-400">${recordedBy}</td>
+                                <td class="p-3 text-right text-body-muted">${recordedBy}</td>
                             </tr>
                         `;
                     }).join('');
@@ -1489,8 +1489,8 @@
 
         tbody.innerHTML = '';
         if (filtered.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="6" class="text-center py-10 text-slate-400 text-sm font-medium">
-                <i class="fa-solid fa-folder-open text-slate-400 text-2xl block mb-2"></i>
+            tbody.innerHTML = `<tr><td colspan="6" class="text-center py-10 text-body-muted text-sm font-medium">
+                <i class="fa-solid fa-folder-open text-body-muted text-2xl block mb-2"></i>
                 ไม่พบข้อมูลใบสั่งซื้อตามที่ค้นหา
             </td></tr>`;
             return;
@@ -1505,7 +1505,7 @@
                 'รับของครบแล้ว': { icon: 'fa-circle-check', class: 'bg-[#15803D]/20 text-[#22C55E] ' },
                 'ยกเลิก': { icon: 'fa-xmark', class: 'bg-[#991B1B]/20 text-[#EF4444] ' }
             };
-            const style = statusStyles[po.status] || { icon: 'fa-circle-info', class: 'bg-slate-500/20 text-slate-400 ' };
+            const style = statusStyles[po.status] || { icon: 'fa-circle-info', class: 'bg-slate-500/20 text-body-muted ' };
             const displayStatus = po.status === 'นำเข้าสำเร็จ' || po.status === 'รับของครบแล้ว' ? 'นำเข้าสำเร็จ' : po.status;
             const branchName = po.branch_id ? po.branch_id.name : '-';
 
@@ -1521,21 +1521,21 @@
             }
 
             const tr = document.createElement('tr');
-            tr.className = 'hover:bg-[#4D4D4D]/50 transition-colors group duration-200 text-sm';
+            tr.className = 'hover:bg-surface-chip/40 transition-colors group duration-200 text-sm';
             tr.innerHTML = `
-                <td class="px-6 py-4 font-normal whitespace-nowrap text-slate-300">
+                <td class="px-6 py-4 font-normal whitespace-nowrap text-body-muted">
                     <i class="fa-regular fa-clock mr-1"></i> ${new Date(po.createdAt).toLocaleDateString('th-TH')}
                 </td>
-                <td class="px-6 py-4 font-normal whitespace-nowrap text-white">
+                <td class="px-6 py-4 font-normal whitespace-nowrap text-ink">
                     ${po.po_number}
                 </td>
-                <td class="px-6 py-4 text-slate-300 font-normal whitespace-nowrap">
+                <td class="px-6 py-4 text-body-muted font-normal whitespace-nowrap">
                     ${po.supplier_name}
                 </td>
-                <td class="px-6 py-4 text-slate-300 font-normal whitespace-nowrap">
-                    <div class="flex items-center gap-1.5"><i class="fa-solid fa-location-dot text-slate-400 text-xs"></i> ${branchName}</div>
+                <td class="px-6 py-4 text-body-muted font-normal whitespace-nowrap">
+                    <div class="flex items-center gap-1.5"><i class="fa-solid fa-location-dot text-body-muted text-xs"></i> ${branchName}</div>
                 </td>
-                <td class="px-6 py-4 text-center whitespace-nowrap text-slate-300">
+                <td class="px-6 py-4 text-center whitespace-nowrap text-body-muted">
                     ${totalReceived}/${totalOrdered} ชิ้น
                 </td>
                 <td class="px-6 py-4 text-center whitespace-nowrap">
@@ -1545,16 +1545,16 @@
                 </td>
                 <td class="px-6 py-4 text-right whitespace-nowrap shrink-0">
                     ${po.status === 'รอจัดส่ง' ? `
-                        <button class="btn-action-arrival text-xs px-4 py-1.5 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors flex items-center justify-center gap-2 ml-auto shrink-0" data-id="${po._id}">
-                            <i class="fa-solid fa-truck text-amber-500"></i> ของถึงสาขา
+                        <button class="btn-action-arrival text-xs px-4 py-1.5 bg-slate-700 hover:bg-slate-600 text-ink rounded-lg transition-colors flex items-center justify-center gap-2 ml-auto shrink-0" data-id="${po._id}">
+                            <i class="fa-solid fa-truck text-body-muted"></i> ของถึงสาขา
                         </button>
                     ` : (po.status === 'ของถึงสาขาแล้ว' || po.status === 'กำลังตรวจรับ') ? `
-                        <button class="btn-open-receive text-xs px-4 py-1.5 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors flex items-center justify-center gap-2 ml-auto shrink-0" data-id="${po._id}">
-                            <i class="fa-solid fa-boxes-packing text-slate-300"></i> ตรวจรับของ
+                        <button class="btn-open-receive text-xs px-4 py-1.5 bg-slate-700 hover:bg-slate-600 text-ink rounded-lg transition-colors flex items-center justify-center gap-2 ml-auto shrink-0" data-id="${po._id}">
+                            <i class="fa-solid fa-boxes-packing text-body-muted"></i> ตรวจรับของ
                         </button>
                     ` : `
-                        <button class="btn-view-po text-xs px-4 py-1.5 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors flex items-center justify-center gap-2 ml-auto shrink-0" data-id="${po._id}">
-                            <i class="fa-solid fa-eye text-slate-300"></i> ดูข้อมูล
+                        <button class="btn-view-po text-xs px-4 py-1.5 bg-slate-700 hover:bg-slate-600 text-ink rounded-lg transition-colors flex items-center justify-center gap-2 ml-auto shrink-0" data-id="${po._id}">
+                            <i class="fa-solid fa-eye text-body-muted"></i> ดูข้อมูล
                         </button>
                     `}
                 </td>
@@ -1582,7 +1582,7 @@
     const loadPOs = async () => {
         const tbody = document.getElementById('table-body-receive-po');
         if (!tbody) return;
-        tbody.innerHTML = '<tr><td colspan="6" class="text-center py-10"><i class="fa-solid fa-circle-notch fa-spin text-slate-400 text-xl"></i><span class="text-xs text-slate-400 block mt-2">กำลังดึงข้อมูลใบสั่งซื้อ...</span></td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center py-10"><i class="fa-solid fa-circle-notch fa-spin text-body-muted text-xl"></i><span class="text-xs text-body-muted block mt-2">กำลังดึงข้อมูลใบสั่งซื้อ...</span></td></tr>';
 
         try {
             const res = await authFetch(`${API_BASE_URL}/purchase-orders`);
@@ -1646,7 +1646,7 @@
             if (bannerDesc) bannerDesc.textContent = 'คุณกำลังแก้ไขข้อมูลหมายเลข IMEI และรายการสินค้าที่ได้รับสำหรับใบสั่งซื้อนี้ กรุณาแก้ไขข้อมูลให้ถูกต้องก่อนบันทึก';
             if (btnSubmit) {
                 btnSubmit.textContent = 'บันทึกการแก้ไขข้อมูล';
-                btnSubmit.className = "w-full py-4 bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-white font-bold rounded-xl shadow-lg shadow-amber-500/25 active:scale-[0.98] transition-all";
+                btnSubmit.className = "w-full py-4 bg-primary hover:bg-primary-pressed text-on-primary font-bold rounded-pill active:scale-[0.98] transition-all";
             }
         } else {
             if (titlePrefix) titlePrefix.textContent = 'ยืนยันสินค้าถึงสาขาและบันทึก IMEI:';
@@ -1660,7 +1660,7 @@
             if (bannerDesc) bannerDesc.textContent = 'กรุณาตรวจสอบสินค้าที่จัดส่งมาถึงสาขา หากสินค้าประเภทใดต้องมีการบันทึก IMEI (เช่น โทรศัพท์มือถือ/แท็บเล็ต) กรุณาสแกนหรือระบุ IMEI ให้ครบตามจำนวนที่ส่งมาให้เรียบร้อยก่อนทำการบันทึก';
             if (btnSubmit) {
                 btnSubmit.textContent = 'ยืนยันรายการและแจ้งของถึงสาขา';
-                btnSubmit.className = "w-full py-4 bg-gradient-to-r from-green-600 to-green-500 hover:from-green-500 hover:to-green-400 text-white font-bold rounded-xl shadow-lg shadow-green-500/25 active:scale-[0.98] transition-all";
+                btnSubmit.className = "w-full py-4 bg-primary hover:bg-primary-pressed text-on-primary font-bold rounded-pill active:scale-[0.98] transition-all";
             }
         }
 
@@ -1670,7 +1670,7 @@
 
         po.items.forEach(item => {
             const card = document.createElement('div');
-            card.className = 'bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3 po-arrival-row';
+            card.className = 'bg-surface-tile-2 border border-hairline rounded-2xl p-4 space-y-3 po-arrival-row';
             card.dataset.itemId = item._id;
             card.dataset.trackImei = item.track_imei ? 'true' : 'false';
             card.dataset.productName = item.product_name;
@@ -1681,9 +1681,9 @@
                 const importedList = Array.isArray(item.imported_imeis) ? item.imported_imeis : [];
 
                 card.innerHTML = `
-                    <div class="flex justify-between items-center border-b border-slate-800 pb-2">
-                        <span class="font-bold text-white text-base flex items-center gap-2">
-                            <i class="fa-solid fa-mobile-screen text-cyan-400"></i> ${item.product_name}
+                    <div class="flex justify-between items-center border-b border-hairline pb-2">
+                        <span class="font-bold text-ink text-base flex items-center gap-2">
+                            <i class="fa-solid fa-mobile-screen text-ink"></i> ${item.product_name}
                         </span>
                         <span id="badge-count-${item._id}" class="text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20">
                             สแกนแล้ว 0 / ${item.ordered_qty} เครื่อง
@@ -1691,7 +1691,7 @@
                     </div>
                     <div class="space-y-2.5">
                         <div class="flex justify-between items-center text-xs">
-                            <label class="font-medium text-slate-400 flex items-center gap-1">
+                            <label class="font-medium text-body-muted flex items-center gap-1">
                                 <i class="fa-solid fa-barcode text-green-400"></i> ระบุหมายเลข IMEI สำหรับแต่ละเครื่อง (แสดงลำดับเลขด้านหน้า)
                             </label>
                             ${importedList.length > 0 ? `<span class="text-slate-505 font-bold text-emerald-400">(นำเข้าสต็อกแล้ว ${importedList.length} เครื่อง)</span>` : ''}
@@ -1701,14 +1701,14 @@
                     const savedImei = scannedList[idx] || '';
                     const isImported = importedList.includes(savedImei) && savedImei !== '';
                     return `
-                                    <div class="flex items-center gap-3 bg-slate-950 px-3 py-2.5 rounded-xl border border-slate-850 focus-within:border-cyan-500/50 transition-all ${isImported ? 'opacity-60 bg-slate-950/40 border-slate-900' : ''}">
-                                        <span class="text-xs font-bold text-slate-400 font-mono w-5 text-right">${idx + 1}.</span>
+                                    <div class="flex items-center gap-3 bg-surface-tile-3 px-3 py-2.5 rounded-xl border border-hairline focus-within:border-primary/50 transition-all ${isImported ? 'opacity-60 bg-surface-tile-3 border-hairline' : ''}">
+                                        <span class="text-xs font-bold text-body-muted font-mono w-5 text-right">${idx + 1}.</span>
                                         <input type="text" 
                                                data-index="${idx}"
                                                value="${savedImei}"
                                                ${isImported ? 'readonly disabled' : ''}
                                                placeholder="${isImported ? 'นำเข้าสต็อกแล้ว' : `สแกนหรือพิมพ์หมายเลข IMEI เครื่องที่ ${idx + 1}`}"
-                                               class="imei-indiv-input w-full bg-transparent ${isImported ? 'text-slate-400 cursor-not-allowed font-mono text-sm uppercase focus:outline-none' : 'text-white focus:outline-none placeholder-slate-700 font-mono text-sm uppercase'}">
+                                               class="imei-indiv-input w-full bg-transparent ${isImported ? 'text-body-muted cursor-not-allowed font-mono text-sm uppercase focus:outline-none' : 'text-ink focus:outline-none placeholder-slate-700 font-mono text-sm uppercase'}">
                                     </div>
                                 `;
                 }).join('')}
@@ -1887,12 +1887,12 @@
                 const remainingQty = item.ordered_qty - importedQty;
 
                 card.innerHTML = `
-                    <div class="flex justify-between items-center border-b border-slate-800 pb-2.5">
-                        <span class="font-bold text-white text-base flex items-center gap-2">
-                            <i class="fa-solid fa-plug text-violet-400"></i> ${item.product_name}
+                    <div class="flex justify-between items-center border-b border-hairline pb-2.5">
+                        <span class="font-bold text-ink text-base flex items-center gap-2">
+                            <i class="fa-solid fa-plug text-ink"></i> ${item.product_name}
                         </span>
                         <div class="text-xs space-x-2">
-                            <span class="font-semibold px-2 py-0.5 rounded-full bg-slate-800 text-slate-400">
+                            <span class="font-semibold px-2 py-0.5 rounded-full bg-surface-chip text-body-muted">
                                 สั่งซื้อ: ${item.ordered_qty} ชิ้น
                             </span>
                             <span class="font-semibold px-2 py-0.5 rounded-full bg-green-500/10 text-green-400 border border-green-500/20">
@@ -1901,17 +1901,17 @@
                         </div>
                     </div>
                     <div class="flex justify-between items-center pt-1">
-                        <span class="text-xs text-slate-400">
+                        <span class="text-xs text-body-muted">
                             อุปกรณ์ทั่วไป (ไม่มี IMEI) ค้างส่ง: <strong class="text-amber-400 font-mono text-sm">${remainingQty}</strong> ชิ้น
                         </span>
                         ${remainingQty > 0 ? `
                             <div class="flex items-center gap-2">
-                                <label class="text-xs text-slate-400 font-medium">ส่งมาเพิ่มรอบนี้:</label>
+                                <label class="text-xs text-body-muted font-medium">ส่งมาเพิ่มรอบนี้:</label>
                                 <input type="number" 
                                        min="0" 
                                        max="${remainingQty}" 
                                        value="${remainingQty}" 
-                                       class="po-arrival-accessory-qty w-24 bg-white border border-slate-850 focus:border-cyan-500  font-mono text-sm font-bold text-center py-2 rounded-xl focus:outline-none focus:ring-1 focus:ring-cyan-500/30 transition-colors">
+                                       class="po-arrival-accessory-qty w-24 bg-surface-chip text-ink border border-divider-soft focus:border-primary-focus font-mono text-sm font-bold text-center py-2 rounded-xl focus:outline-none focus:ring-1 focus:ring-primary-focus/30 transition-colors">
                             </div>
                         ` : `
                             <span class="text-xs text-emerald-400 font-bold flex items-center gap-1">
@@ -2006,26 +2006,26 @@
 
             // สร้าง HTML สำหรับแสดงข้อมูลให้พนักงานตรวจสอบก่อนยืนยันจริง (เวอร์ชันขนาดใหญ่/อ่านง่ายชัดเจน)
             let confirmHtml = `
-                <div class="text-left bg-slate-950/40 rounded-2xl p-5 border border-slate-800 space-y-5 max-h-[350px] overflow-y-auto mb-2 text-base mt-3 scrollbar-thin">
+                <div class="text-left bg-surface-tile-3 rounded-2xl p-5 border border-hairline space-y-5 max-h-[350px] overflow-y-auto mb-2 text-base mt-3 scrollbar-thin">
                     <!-- PO Details Summary -->
-                    <div class="space-y-2.5 border-b border-slate-800/80 pb-4 text-sm">
+                    <div class="space-y-2.5 border-b border-hairline pb-4 text-sm">
                         <div class="flex justify-between items-center">
-                            <span class="text-slate-400 font-medium">เลขที่ PO:</span>
-                            <span class="font-mono font-bold text-white text-base">${po.po_number}</span>
+                            <span class="text-body-muted font-medium">เลขที่ PO:</span>
+                            <span class="font-mono font-bold text-ink text-base">${po.po_number}</span>
                         </div>
                         <div class="flex justify-between items-center">
-                            <span class="text-slate-400 font-medium">คู่ค้า / Supplier:</span>
-                            <span class="text-white font-bold text-sm">${po.supplier_name || '-'}</span>
+                            <span class="text-body-muted font-medium">คู่ค้า / Supplier:</span>
+                            <span class="text-ink font-bold text-sm">${po.supplier_name || '-'}</span>
                         </div>
                         <div class="flex justify-between items-center">
-                            <span class="text-slate-400 font-medium">สาขา:</span>
-                            <span class="text-white font-bold text-sm">${branchName}</span>
+                            <span class="text-body-muted font-medium">สาขา:</span>
+                            <span class="text-ink font-bold text-sm">${branchName}</span>
                         </div>
                     </div>
                     
                     <!-- Items List -->
                     <div class="space-y-4">
-                        <span class="text-slate-400 font-bold text-xs uppercase tracking-wider block">รายการที่จะแจ้งของถึงสาขาในรอบนี้:</span>
+                        <span class="text-body-muted font-bold text-xs uppercase tracking-wider block">รายการที่จะแจ้งของถึงสาขาในรอบนี้:</span>
             `;
 
             po.items.forEach(item => {
@@ -2037,19 +2037,19 @@
                     const newImeisThisRound = receivedInfo.imeis.filter(imei => !importedList.includes(imei));
                     if (newImeisThisRound.length > 0) {
                         confirmHtml += `
-                            <div class="border-b border-slate-900/80 pb-3.5 last:border-0 last:pb-0 space-y-2">
+                            <div class="border-b border-hairline pb-3.5 last:border-0 last:pb-0 space-y-2">
                                 <div class="flex justify-between items-start">
-                                    <span class="font-bold text-white text-sm flex items-center gap-2">
-                                        <i class="fa-solid fa-mobile-screen text-cyan-400 text-xs"></i> ${item.product_name}
+                                    <span class="font-bold text-ink text-sm flex items-center gap-2">
+                                        <i class="fa-solid fa-mobile-screen text-ink text-xs"></i> ${item.product_name}
                                     </span>
-                                    <span class="text-xs bg-cyan-500/10 text-cyan-400 border border-cyan-500/25 px-2.5 py-0.5 rounded-full font-bold font-mono">
+                                    <span class="text-xs bg-surface-chip text-ink border border-hairline px-2.5 py-0.5 rounded-full font-bold font-mono">
                                         ส่งมาเพิ่ม ${newImeisThisRound.length} เครื่อง (รวมรับแล้ว ${receivedInfo.imeis.length}/${item.ordered_qty})
                                     </span>
                                 </div>
                                 <!-- IMEI Pills -->
                                 <div class="flex flex-wrap gap-1.5 mt-2">
                                     ${newImeisThisRound.map(imei => `
-                                        <span class="px-2.5 py-1 bg-slate-900/90 text-slate-200 rounded-lg border border-slate-800 font-mono text-xs tracking-wider font-semibold">${imei}</span>
+                                        <span class="px-2.5 py-1 bg-surface-chip text-body-muted rounded-lg border border-hairline font-mono text-xs tracking-wider font-semibold">${imei}</span>
                                     `).join('')}
                                 </div>
                             </div>
@@ -2059,11 +2059,11 @@
                     const newQtyThisRound = receivedInfo.qty - importedQty;
                     if (newQtyThisRound > 0) {
                         confirmHtml += `
-                            <div class="border-b border-slate-900/80 pb-3.5 last:border-0 last:pb-0 flex justify-between items-center">
-                                <span class="font-bold text-white text-sm flex items-center gap-2">
-                                    <i class="fa-solid fa-plug text-violet-400 text-xs"></i> ${item.product_name}
+                            <div class="border-b border-hairline pb-3.5 last:border-0 last:pb-0 flex justify-between items-center">
+                                <span class="font-bold text-ink text-sm flex items-center gap-2">
+                                    <i class="fa-solid fa-plug text-ink text-xs"></i> ${item.product_name}
                                 </span>
-                                <span class="text-xs bg-violet-500/10 text-violet-400 border border-violet-500/25 px-2.5 py-0.5 rounded-full font-bold font-mono">
+                                <span class="text-xs bg-surface-chip text-ink border border-hairline px-2.5 py-0.5 rounded-full font-bold font-mono">
                                     ส่งมาเพิ่ม ${newQtyThisRound} ชิ้น (รวมรับแล้ว ${receivedInfo.qty}/${item.ordered_qty})
                                 </span>
                             </div>
@@ -2075,7 +2075,7 @@
             confirmHtml += `
                     </div>
                 </div>
-                <p class="text-xs text-slate-400 text-center mt-3">โปรดตรวจสอบรายละเอียดข้อมูลด้านบนอีกครั้งเพื่อความถูกต้องก่อนกดยืนยัน</p>
+                <p class="text-xs text-body-muted text-center mt-3">โปรดตรวจสอบรายละเอียดข้อมูลด้านบนอีกครั้งเพื่อความถูกต้องก่อนกดยืนยัน</p>
             `;
 
             showConfirm(
@@ -2130,7 +2130,7 @@
             if (pendingQty <= 0) return; // Full received already
 
             const el = document.createElement('div');
-            el.className = 'p-5  border border-gray-800 rounded-xl po-receive-row shadow-sm';
+            el.className = 'p-5  border border-hairline rounded-xl po-receive-row';
             el.dataset.itemId = item._id;
             el.dataset.trackImei = item.track_imei;
             el.dataset.importedImeis = JSON.stringify(item.imported_imeis || []);
@@ -2141,21 +2141,21 @@
                 inputHtml = `
                     <div class="mt-4 space-y-3">
                         <div class="flex items-center justify-between">
-                            <label class="text-xs font-bold text-slate-400 block flex items-center gap-1.5">
-                                <i class="fa-solid fa-barcode text-cyan-400 text-sm"></i>
+                            <label class="text-xs font-bold text-body-muted block flex items-center gap-1.5">
+                                <i class="fa-solid fa-barcode text-ink text-sm"></i>
                                 สแกนหรือพิมพ์ IMEI (ยิงบาร์โค้ดแล้วกด Enter)
                             </label>
-                            <span class="text-xs bg-slate-800 text-slate-400 px-2.5 py-1 rounded-full font-bold">
-                                สแกนแล้ว <span class="scanned-count font-mono text-cyan-400 font-black">0</span> / <span class="pending-count font-mono">${pendingQty}</span> เครื่อง
+                            <span class="text-xs bg-surface-chip text-body-muted px-2.5 py-1 rounded-full font-bold">
+                                สแกนแล้ว <span class="scanned-count font-mono text-ink font-black">0</span> / <span class="pending-count font-mono">${pendingQty}</span> เครื่อง
                             </span>
                         </div>
                         <input type="text" 
-                            class="scan-imei-input w-full  border border-gray-700  focus:border-cyan-500 text-lg rounded-xl px-4 py-3.5 text-[#00000] focus:outline-none focus:ring-2 focus:ring-cyan-500/20 transition-all font-mono placeholder-slate-600" 
+                            class="scan-imei-input w-full bg-surface-chip border border-divider-soft focus:border-primary-focus text-lg rounded-xl px-4 py-3.5 text-ink focus:outline-none focus:ring-2 focus:ring-primary-focus/20 transition-all font-mono placeholder-ink-muted-48"
                             placeholder="ยิงบาร์โค้ด หรือพิมพ์ IMEI ที่นี่..." 
                             autocomplete="off">
                         
-                        <div class="scanned-imeis-container flex flex-wrap gap-2 min-h-[50px] p-3  border border-gray-800 rounded-xl">
-                            <div class="no-imeis-placeholder text-xs text-slate-400 flex items-center justify-center w-full py-2">
+                        <div class="scanned-imeis-container flex flex-wrap gap-2 min-h-[50px] p-3  border border-hairline rounded-xl">
+                            <div class="no-imeis-placeholder text-xs text-body-muted flex items-center justify-center w-full py-2">
                                 <i class="fa-solid fa-info-circle mr-1"></i> ยังไม่มีการสแกน IMEI
                             </div>
                         </div>
@@ -2165,8 +2165,8 @@
                 const defaultQty = Math.max(0, (item.received_qty || 0) - importedQty);
                 inputHtml = `
                     <div class="mt-4 max-w-[200px]">
-                        <label class="text-xs font-bold text-slate-400 mb-1.5 block">จำนวนที่รับเข้า (รอรับ ${pendingQty} ชิ้น)</label>
-                        <input type="number" class="receive-qty w-full px-3 py-2.5 text-sm border border-gray-700 text-[#2a2a2a] rounded-lg focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:outline-none font-bold text-center" min="0" max="${pendingQty}" value="${defaultQty}">
+                        <label class="text-xs font-bold text-body-muted mb-1.5 block">จำนวนที่รับเข้า (รอรับ ${pendingQty} ชิ้น)</label>
+                        <input type="number" class="receive-qty w-full px-3 py-2.5 text-sm bg-surface-chip border border-divider-soft text-ink rounded-lg focus:border-primary-focus focus:ring-1 focus:ring-primary-focus focus:outline-none font-bold text-center" min="0" max="${pendingQty}" value="${defaultQty}">
                     </div>
                 `;
             }
@@ -2176,13 +2176,13 @@
                     <div>
                         <h5 class=" font-bold text-base flex items-center gap-2">
                             <span>${item.product_name}</span>
-                            <span class="text-xs text-slate-400 font-mono font-normal">(${item.product_code})</span>
+                            <span class="text-xs text-body-muted font-mono font-normal">(${item.product_code})</span>
                         </h5>
-                        <p class="text-xs text-slate-400 mt-1">สั่ง: <span class="text-white font-bold">${item.ordered_qty}</span> | นำเข้าคลังแล้ว: <span class="text-emerald-400 font-bold">${importedQty}</span> | <span class="text-amber-400 font-bold">ค้างรับ: ${pendingQty}</span></p>
+                        <p class="text-xs text-body-muted mt-1">สั่ง: <span class="text-ink font-bold">${item.ordered_qty}</span> | นำเข้าคลังแล้ว: <span class="text-emerald-400 font-bold">${importedQty}</span> | <span class="text-amber-400 font-bold">ค้างรับ: ${pendingQty}</span></p>
                     </div>
                     ${item.track_imei ?
-                    `<span class="text-xs font-semibold px-2.5 py-1 bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 rounded-lg flex items-center gap-1"><i class="fa-solid fa-barcode text-xs"></i> เก็บ IMEI</span>` :
-                    `<span class="text-xs font-semibold px-2.5 py-1 bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 rounded-lg flex items-center gap-1"><i class="fa-solid fa-calculator text-xs"></i> นับจำนวน</span>`
+                    `<span class="text-xs font-semibold px-2.5 py-1 bg-surface-chip text-ink border border-hairline rounded-lg flex items-center gap-1"><i class="fa-solid fa-barcode text-xs"></i> เก็บ IMEI</span>` :
+                    `<span class="text-xs font-semibold px-2.5 py-1 bg-surface-chip text-ink border border-hairline rounded-lg flex items-center gap-1"><i class="fa-solid fa-calculator text-xs"></i> นับจำนวน</span>`
                 }
                 </div>
                 ${inputHtml}
@@ -2244,10 +2244,10 @@
                 if (newImeis.length > 0) {
                     newImeis.forEach(val => {
                         const tag = document.createElement('div');
-                        tag.className = 'imei-tag inline-flex items-center gap-1.5 bg-cyan-950/80 border border-cyan-800/60 text-cyan-300 px-3 py-1.5 rounded-lg text-sm transition-all hover:bg-cyan-900/80 animate-fade-in font-mono shadow-sm';
+                        tag.className = 'imei-tag inline-flex items-center gap-1.5 bg-surface-chip border border-hairline text-ink px-3 py-1.5 rounded-lg text-sm transition-all hover:bg-surface-tile-2 animate-fade-in font-mono';
                         tag.innerHTML = `
                             <span class="imei-tag-text font-bold tracking-wide">${val}</span>
-                            <button type="button" class="btn-remove-imei text-cyan-500 hover:text-red-400 font-bold ml-0.5 focus:outline-none transition-colors text-base leading-none">&times;</button>
+                            <button type="button" class="btn-remove-imei text-primary hover:text-red-400 font-bold ml-0.5 focus:outline-none transition-colors text-base leading-none">&times;</button>
                         `;
 
                         tag.querySelector('.btn-remove-imei').addEventListener('click', () => {
@@ -2301,10 +2301,10 @@
 
                         // Add tag
                         const tag = document.createElement('div');
-                        tag.className = 'imei-tag inline-flex items-center gap-1.5 bg-cyan-950/80 border border-cyan-800/60 text-cyan-300 px-3 py-1.5 rounded-lg text-sm transition-all hover:bg-cyan-900/80 animate-fade-in font-mono shadow-sm';
+                        tag.className = 'imei-tag inline-flex items-center gap-1.5 bg-surface-chip border border-hairline text-ink px-3 py-1.5 rounded-lg text-sm transition-all hover:bg-surface-tile-2 animate-fade-in font-mono';
                         tag.innerHTML = `
                             <span class="imei-tag-text font-bold tracking-wide">${val}</span>
-                            <button type="button" class="btn-remove-imei text-cyan-500 hover:text-red-400 font-bold ml-0.5 focus:outline-none transition-colors text-base leading-none">&times;</button>
+                            <button type="button" class="btn-remove-imei text-primary hover:text-red-400 font-bold ml-0.5 focus:outline-none transition-colors text-base leading-none">&times;</button>
                         `;
 
                         tag.querySelector('.btn-remove-imei').addEventListener('click', () => {
@@ -2320,7 +2320,7 @@
         });
 
         if (container.children.length === 0) {
-            container.innerHTML = '<div class="text-center text-slate-400 py-6">รับสินค้าครบทุกรายการแล้ว</div>';
+            container.innerHTML = '<div class="text-center text-body-muted py-6">รับสินค้าครบทุกรายการแล้ว</div>';
             document.getElementById('btn-submit-po-receive').style.display = 'none';
         } else {
             document.getElementById('btn-submit-po-receive').style.display = 'block';
@@ -2432,15 +2432,15 @@
 
         if (!isArrivalTabsInitialized && tabArrivalPending && tabArrivalCompleted) {
             tabArrivalPending.addEventListener('click', () => {
-                tabArrivalPending.className = "px-6 py-3.5 border-b-2 border-green-500 text-green-400 text-sm font-bold flex items-center gap-2 transition-all duration-200 focus:outline-none";
-                tabArrivalCompleted.className = "px-6 py-3.5 border-b-2 border-transparent text-slate-400 hover:text-slate-200 text-sm font-semibold flex items-center gap-2 transition-all duration-200 focus:outline-none";
+                tabArrivalPending.className = "px-6 py-3.5 border-b-2 border-primary text-primary text-sm font-bold flex items-center gap-2 transition-all duration-200 focus:outline-none";
+                tabArrivalCompleted.className = "px-6 py-3.5 border-b-2 border-transparent text-body-muted hover:text-ink text-sm font-semibold flex items-center gap-2 transition-all duration-200 focus:outline-none";
                 if (sectionArrivalPending) sectionArrivalPending.classList.remove('hidden');
                 if (sectionArrivalCompleted) sectionArrivalCompleted.classList.add('hidden');
             });
 
             tabArrivalCompleted.addEventListener('click', () => {
-                tabArrivalCompleted.className = "px-6 py-3.5 border-b-2 border-green-500 text-green-400 text-sm font-bold flex items-center gap-2 transition-all duration-200 focus:outline-none";
-                tabArrivalPending.className = "px-6 py-3.5 border-b-2 border-transparent text-slate-400 hover:text-slate-200 text-sm font-semibold flex items-center gap-2 transition-all duration-200 focus:outline-none";
+                tabArrivalCompleted.className = "px-6 py-3.5 border-b-2 border-primary text-primary text-sm font-bold flex items-center gap-2 transition-all duration-200 focus:outline-none";
+                tabArrivalPending.className = "px-6 py-3.5 border-b-2 border-transparent text-body-muted hover:text-ink text-sm font-semibold flex items-center gap-2 transition-all duration-200 focus:outline-none";
                 if (sectionArrivalCompleted) sectionArrivalCompleted.classList.remove('hidden');
                 if (sectionArrivalPending) sectionArrivalPending.classList.add('hidden');
             });
@@ -2448,9 +2448,9 @@
         }
 
         if (!tbody) return;
-        tbody.innerHTML = '<tr><td colspan="6" class="text-center py-6 text-slate-400"><i class="fa-solid fa-spinner fa-spin mr-2 text-green-400"></i>กำลังโหลดข้อมูลใบสั่งซื้อ...</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center py-6 text-body-muted"><i class="fa-solid fa-spinner fa-spin mr-2 text-green-400"></i>กำลังโหลดข้อมูลใบสั่งซื้อ...</td></tr>';
         if (tbodyCompleted) {
-            tbodyCompleted.innerHTML = '<tr><td colspan="6" class="text-center py-6 text-slate-400"><i class="fa-solid fa-spinner fa-spin mr-2 text-green-400"></i>กำลังโหลดข้อมูลใบสั่งซื้อ...</td></tr>';
+            tbodyCompleted.innerHTML = '<tr><td colspan="6" class="text-center py-6 text-body-muted"><i class="fa-solid fa-spinner fa-spin mr-2 text-green-400"></i>กำลังโหลดข้อมูลใบสั่งซื้อ...</td></tr>';
         }
 
         try {
@@ -2501,23 +2501,23 @@
 
                 // 1. Render Pending POs
                 if (pendingPOs.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="6" class="text-center py-8 text-slate-400 text-sm"><i class="fa-solid fa-inbox text-slate-650 text-xl block mb-2"></i>ไม่มีใบสั่งซื้อที่อยู่ระหว่างจัดส่งถึงสาขานี้</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="6" class="text-center py-8 text-body-muted text-sm"><i class="fa-solid fa-inbox text-slate-650 text-xl block mb-2"></i>ไม่มีใบสั่งซื้อที่อยู่ระหว่างจัดส่งถึงสาขานี้</td></tr>';
                 } else {
                     pendingPOs.forEach(po => {
                         const tr = document.createElement('tr');
-                        tr.className = 'border-b border-slate-800/40 hover:bg-slate-700/10 transition-all duration-150';
+                        tr.className = 'border-b border-hairline hover:bg-surface-chip/30 transition-all duration-150';
                         const itemsDesc = po.items.map(item => `${item.product_name} (${item.ordered_qty} ชิ้น)`).join(', ');
 
                         tr.innerHTML = `
-                            <td class="px-4 py-4 md:px-6 font-mono font-bold text-white whitespace-nowrap">${po.po_number}</td>
-                            <td class="px-4 py-4 md:px-6 text-sm text-slate-350 whitespace-nowrap">${new Date(po.createdAt).toLocaleDateString('th-TH')}</td>
-                            <td class="px-4 py-4 md:px-6 text-sm text-slate-300 whitespace-nowrap">${po.supplier_name}</td>
-                            <td class="px-4 py-4 md:px-6 text-sm text-slate-400 max-w-[250px] truncate font-medium whitespace-nowrap" title="${itemsDesc}">${itemsDesc}</td>
+                            <td class="px-4 py-4 md:px-6 font-mono font-bold text-ink whitespace-nowrap">${po.po_number}</td>
+                            <td class="px-4 py-4 md:px-6 text-sm text-body-muted whitespace-nowrap">${new Date(po.createdAt).toLocaleDateString('th-TH')}</td>
+                            <td class="px-4 py-4 md:px-6 text-sm text-body-muted whitespace-nowrap">${po.supplier_name}</td>
+                            <td class="px-4 py-4 md:px-6 text-sm text-body-muted max-w-[250px] truncate font-medium whitespace-nowrap" title="${itemsDesc}">${itemsDesc}</td>
                             <td class="px-4 py-4 md:px-6 text-center whitespace-nowrap">
                                 <span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20 whitespace-nowrap inline-block">${po.status}</span>
                             </td>
                             <td class="px-4 py-4 md:px-6 text-right whitespace-nowrap">
-                                <button class="btn-confirm-arrival px-3 py-1.5 bg-green-500/10 text-green-400 hover:bg-green-500/20 border border-green-500/35 hover:border-green-500/60 rounded-xl text-xs font-bold transition-all inline-flex items-center gap-1.5 shadow-sm active:scale-95 whitespace-nowrap shrink-0" data-id="${po._id}">
+                                <button class="btn-confirm-arrival px-3 py-1.5 bg-green-500/10 text-green-400 hover:bg-green-500/20 border border-green-500/35 hover:border-green-500/60 rounded-xl text-xs font-bold transition-all inline-flex items-center gap-1.5 active:scale-95 whitespace-nowrap shrink-0" data-id="${po._id}">
                                     <i class="fa-solid fa-truck-circle-check"></i> ยืนยันของถึงร้าน
                                 </button>
                             </td>
@@ -2533,11 +2533,11 @@
                 // 2. Render Completed POs
                 if (tbodyCompleted) {
                     if (completedPOs.length === 0) {
-                        tbodyCompleted.innerHTML = '<tr><td colspan="6" class="text-center py-8 text-slate-400 text-sm"><i class="fa-solid fa-clipboard-check text-slate-650 text-xl block mb-2"></i>ไม่มีใบสั่งซื้อที่ดำเนินการเสร็จสมบูรณ์</td></tr>';
+                        tbodyCompleted.innerHTML = '<tr><td colspan="6" class="text-center py-8 text-body-muted text-sm"><i class="fa-solid fa-clipboard-check text-slate-650 text-xl block mb-2"></i>ไม่มีใบสั่งซื้อที่ดำเนินการเสร็จสมบูรณ์</td></tr>';
                     } else {
                         completedPOs.forEach(po => {
                             const tr = document.createElement('tr');
-                            tr.className = 'border-b border-slate-800/40 hover:bg-slate-700/5 transition-all duration-150 opacity-90 hover:opacity-100';
+                            tr.className = 'border-b border-hairline hover:bg-surface-chip/20 transition-all duration-150 opacity-90 hover:opacity-100';
                             const itemsDesc = po.items.map(item => `${item.product_name} (${item.ordered_qty} ชิ้น)`).join(', ');
 
                             let statusBadge = '';
@@ -2548,15 +2548,15 @@
                             }
 
                             tr.innerHTML = `
-                                <td class="px-4 py-4 md:px-6 font-mono font-bold text-slate-300 whitespace-nowrap">${po.po_number}</td>
-                                <td class="px-4 py-4 md:px-6 text-sm text-slate-400 whitespace-nowrap">${new Date(po.updatedAt || po.createdAt).toLocaleDateString('th-TH')}</td>
-                                <td class="px-4 py-4 md:px-6 text-sm text-slate-400 whitespace-nowrap">${po.supplier_name}</td>
-                                <td class="px-4 py-4 md:px-6 text-sm text-slate-400 max-w-[250px] truncate whitespace-nowrap" title="${itemsDesc}">${itemsDesc}</td>
+                                <td class="px-4 py-4 md:px-6 font-mono font-bold text-body-muted whitespace-nowrap">${po.po_number}</td>
+                                <td class="px-4 py-4 md:px-6 text-sm text-body-muted whitespace-nowrap">${new Date(po.updatedAt || po.createdAt).toLocaleDateString('th-TH')}</td>
+                                <td class="px-4 py-4 md:px-6 text-sm text-body-muted whitespace-nowrap">${po.supplier_name}</td>
+                                <td class="px-4 py-4 md:px-6 text-sm text-body-muted max-w-[250px] truncate whitespace-nowrap" title="${itemsDesc}">${itemsDesc}</td>
                                 <td class="px-4 py-4 md:px-6 text-center whitespace-nowrap">
                                     ${statusBadge}
                                 </td>
                                 <td class="px-4 py-4 md:px-6 text-right whitespace-nowrap">
-                                    <button class="btn-view-arrival-details px-3 py-1.5 bg-slate-900/60 text-slate-400 hover:bg-slate-800 hover:text-slate-200 border border-slate-800 hover:border-slate-700 rounded-xl text-xs font-semibold transition-all inline-flex items-center gap-1.5 shadow-sm active:scale-95 whitespace-nowrap shrink-0" data-id="${po._id}">
+                                    <button class="btn-view-arrival-details px-3 py-1.5 bg-surface-chip text-body-muted hover:bg-surface-tile-2 hover:text-ink border border-hairline hover:border-primary/40 rounded-xl text-xs font-semibold transition-all inline-flex items-center gap-1.5 active:scale-95 whitespace-nowrap shrink-0" data-id="${po._id}">
                                         <i class="fa-solid fa-eye"></i> ดูรายละเอียด
                                     </button>
                                 </td>
@@ -2581,22 +2581,22 @@
     const showCompletedPODetails = (po) => {
         let itemsHtml = `
             <div class="text-left space-y-3 font-sans max-h-[350px] overflow-y-auto pr-1">
-                <div class="flex justify-between items-center border-b border-slate-800 pb-2 mb-2">
-                    <span class="text-slate-400 text-xs">เลขที่สั่งซื้อ: <strong class="text-white font-mono text-sm">${po.po_number}</strong></span>
-                    <span class="text-slate-400 text-xs">ซัพพลายเออร์: <strong class="text-slate-200">${po.supplier_name}</strong></span>
+                <div class="flex justify-between items-center border-b border-hairline pb-2 mb-2">
+                    <span class="text-body-muted text-xs">เลขที่สั่งซื้อ: <strong class="text-ink font-mono text-sm">${po.po_number}</strong></span>
+                    <span class="text-body-muted text-xs">ซัพพลายเออร์: <strong class="text-ink">${po.supplier_name}</strong></span>
                 </div>
         `;
 
         po.items.forEach(item => {
             const hasImeis = item.track_imei && Array.isArray(item.imeis_scanned) && item.imeis_scanned.length > 0;
             itemsHtml += `
-                <div class="bg-slate-950/60 border border-slate-850/80 rounded-xl p-3 space-y-2">
+                <div class="bg-surface-tile-3 border border-hairline rounded-xl p-3 space-y-2">
                     <div class="flex justify-between items-center">
-                        <span class="text-sm font-bold text-slate-200 flex items-center gap-1.5 font-sans">
-                            <i class="${item.track_imei ? 'fa-solid fa-mobile-screen text-cyan-400' : 'fa-solid fa-plug text-violet-400'} text-xs"></i>
+                        <span class="text-sm font-bold text-ink flex items-center gap-1.5 font-sans">
+                            <i class="${item.track_imei ? 'fa-solid fa-mobile-screen text-ink' : 'fa-solid fa-plug text-ink'} text-xs"></i>
                             ${item.product_name}
                         </span>
-                        <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-slate-900 text-emerald-400 border border-slate-800">
+                        <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-surface-chip text-emerald-400 border border-hairline">
                             ครบ ${item.ordered_qty} ชิ้น
                         </span>
                     </div>
@@ -2608,7 +2608,7 @@
                 `;
                 item.imeis_scanned.forEach(imei => {
                     itemsHtml += `
-                        <span class="bg-slate-900 border border-slate-800 text-slate-350 px-2 py-0.5 rounded text-[10px] font-mono select-all tracking-tight hover:text-white transition-colors">${imei}</span>
+                        <span class="bg-surface-chip border border-hairline text-body-muted px-2 py-0.5 rounded text-[10px] font-mono select-all tracking-tight hover:text-ink transition-colors">${imei}</span>
                     `;
                 });
                 itemsHtml += `
@@ -2620,7 +2620,7 @@
                 `;
             } else {
                 itemsHtml += `
-                    <div class="text-[11px] text-slate-400 italic font-sans">สินค้าอุปกรณ์เสริม/ทั่วไป ไม่ต้องสแกน IMEI</div>
+                    <div class="text-[11px] text-body-muted italic font-sans">สินค้าอุปกรณ์เสริม/ทั่วไป ไม่ต้องสแกน IMEI</div>
                 `;
             }
 
@@ -2646,7 +2646,7 @@
         if (isEditable && cancelBtn) {
             cancelBtn.style.display = 'block';
             cancelBtn.textContent = 'แก้ไขข้อมูลการรับ';
-            cancelBtn.className = "flex-1 py-2.5 rounded-xl text-sm font-bold text-amber-400 bg-amber-500/10 border border-amber-500/25 hover:bg-amber-500/20 hover:border-amber-500/40 transition-all active:scale-[0.98]";
+            cancelBtn.className = "flex-1 py-2.5 rounded-xl text-sm font-bold text-body-muted bg-surface-chip border border-hairline hover:bg-surface-tile-2 hover:text-ink transition-all active:scale-[0.98]";
 
             cancelBtn.onclick = () => {
                 // Close confirm modal
@@ -2683,7 +2683,7 @@
         const tbody = document.getElementById('table-body-approve-po');
         const badgeCount = document.getElementById('po-approve-pending-count');
         if (!tbody) return;
-        tbody.innerHTML = '<tr><td colspan="7" class="text-center py-6 text-slate-400"><i class="fa-solid fa-spinner fa-spin mr-2 text-violet-400"></i>กำลังโหลดรายการใบสั่งซื้อ...</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center py-6 text-body-muted"><i class="fa-solid fa-spinner fa-spin mr-2 text-ink"></i>กำลังโหลดรายการใบสั่งซื้อ...</td></tr>';
 
         try {
             const res = await authFetch(`${API_BASE_URL}/purchase-orders`);
@@ -2703,13 +2703,13 @@
                 }
 
                 if (pendingApprovePOs.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="7" class="text-center py-8 text-slate-400 text-sm">ไม่มีใบสั่งซื้อที่สแกนรออนุมัตินำเข้าคลังในขณะนี้</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="7" class="text-center py-8 text-body-muted text-sm">ไม่มีใบสั่งซื้อที่สแกนรออนุมัตินำเข้าคลังในขณะนี้</td></tr>';
                     return;
                 }
 
                 pendingApprovePOs.forEach(po => {
                     const tr = document.createElement('tr');
-                    tr.className = 'border-b border-slate-700/50 hover:bg-slate-700/20 transition-colors';
+                    tr.className = 'border-b border-hairline/50 hover:bg-slate-700/20 transition-colors';
                     const branchName = po.branch_id ? po.branch_id.name : '-';
 
                     // Count scanned items vs total items ordered
@@ -2723,16 +2723,16 @@
                     });
 
                     tr.innerHTML = `
-                        <td class="px-6 py-4 font-mono font-bold text-white">${po.po_number}</td>
-                        <td class="px-6 py-4 text-sm text-slate-350">${new Date(po.createdAt).toLocaleDateString('th-TH')}</td>
-                        <td class="px-6 py-4 text-sm text-slate-300">${po.supplier_name}</td>
-                        <td class="px-6 py-4 text-sm text-slate-300">${branchName}</td>
+                        <td class="px-6 py-4 font-mono font-bold text-ink">${po.po_number}</td>
+                        <td class="px-6 py-4 text-sm text-body-muted">${new Date(po.createdAt).toLocaleDateString('th-TH')}</td>
+                        <td class="px-6 py-4 text-sm text-body-muted">${po.supplier_name}</td>
+                        <td class="px-6 py-4 text-sm text-body-muted">${branchName}</td>
                         <td class="px-6 py-4 text-center text-sm font-mono font-semibold">
-                            <span class="text-cyan-400 font-bold">${totalScanned}</span> <span class="text-slate-400">/</span> <span class="text-slate-400">${totalOrdered}</span>
+                            <span class="text-ink font-bold">${totalScanned}</span> <span class="text-body-muted">/</span> <span class="text-body-muted">${totalOrdered}</span>
                         </td>
-                        <td class="px-6 py-4 text-right font-mono text-sm font-bold text-white">฿${(po.grand_total || grandTotal).toLocaleString()}</td>
+                        <td class="px-6 py-4 text-right font-mono text-sm font-bold text-ink">฿${(po.grand_total || grandTotal).toLocaleString()}</td>
                         <td class="px-6 py-4 text-right">
-                            <button class="btn-finalize-import px-3 py-1.5 bg-violet-500/20 text-violet-400 hover:bg-violet-500/30 rounded-lg text-xs font-bold transition-all inline-flex items-center gap-1" data-id="${po._id}">
+                            <button class="btn-finalize-import px-3 py-1.5 bg-surface-chip text-ink hover:bg-surface-tile-2 rounded-lg text-xs font-bold transition-all inline-flex items-center gap-1" data-id="${po._id}">
                                 <i class="fa-solid fa-clipboard-check"></i> อนุมัตินำเข้าสต็อก
                             </button>
                         </td>
@@ -2786,10 +2786,10 @@
         const selectedBranchId = filterBranch ? filterBranch.value : '';
 
         if (tbodyPo) {
-            tbodyPo.innerHTML = '<tr><td colspan="7" class="text-center py-6 text-slate-400"><i class="fa-solid fa-spinner fa-spin mr-2 text-violet-400"></i>กำลังโหลดประวัติ PO...</td></tr>';
+            tbodyPo.innerHTML = '<tr><td colspan="7" class="text-center py-6 text-body-muted"><i class="fa-solid fa-spinner fa-spin mr-2 text-ink"></i>กำลังโหลดประวัติ PO...</td></tr>';
         }
         if (tbodyNonPo) {
-            tbodyNonPo.innerHTML = '<tr><td colspan="7" class="text-center py-6 text-slate-400"><i class="fa-solid fa-spinner fa-spin mr-2 text-teal-400"></i>กำลังโหลดประวัติพิเศษ...</td></tr>';
+            tbodyNonPo.innerHTML = '<tr><td colspan="7" class="text-center py-6 text-body-muted"><i class="fa-solid fa-spinner fa-spin mr-2 text-body-muted"></i>กำลังโหลดประวัติพิเศษ...</td></tr>';
         }
 
         try {
@@ -2803,11 +2803,11 @@
                 }
 
                 if (approvedPOs.length === 0) {
-                    tbodyPo.innerHTML = '<tr><td colspan="7" class="text-center py-8 text-slate-400 text-sm">ไม่มีประวัติการอนุมัติ PO</td></tr>';
+                    tbodyPo.innerHTML = '<tr><td colspan="7" class="text-center py-8 text-body-muted text-sm">ไม่มีประวัติการอนุมัติ PO</td></tr>';
                 } else {
                     approvedPOs.forEach(po => {
                         const tr = document.createElement('tr');
-                        tr.className = 'border-b border-slate-700/50 hover:bg-slate-700/20 transition-colors';
+                        tr.className = 'border-b border-hairline/50 hover:bg-slate-700/20 transition-colors';
                         const branchName = po.branch_id ? po.branch_id.name : '-';
                         const approverName = po.received_by ? po.received_by.name : '-';
 
@@ -2823,15 +2823,15 @@
                         const approvalDate = po.updatedAt ? new Date(po.updatedAt).toLocaleString('th-TH') : '-';
 
                         tr.innerHTML = `
-                            <td class="px-6 py-4 font-mono font-bold text-white">${po.po_number}</td>
-                            <td class="px-6 py-4 text-sm text-slate-350">${approvalDate}</td>
-                            <td class="px-6 py-4 text-sm text-slate-300">${po.supplier_name}</td>
-                            <td class="px-6 py-4 text-sm text-slate-300">${branchName}</td>
+                            <td class="px-6 py-4 font-mono font-bold text-ink">${po.po_number}</td>
+                            <td class="px-6 py-4 text-sm text-body-muted">${approvalDate}</td>
+                            <td class="px-6 py-4 text-sm text-body-muted">${po.supplier_name}</td>
+                            <td class="px-6 py-4 text-sm text-body-muted">${branchName}</td>
                             <td class="px-6 py-4 text-center text-sm font-mono font-semibold">
-                                <span class="text-cyan-400 font-bold">${totalScanned}</span> <span class="text-slate-400">/</span> <span class="text-slate-400">${totalOrdered}</span>
+                                <span class="text-ink font-bold">${totalScanned}</span> <span class="text-body-muted">/</span> <span class="text-body-muted">${totalOrdered}</span>
                             </td>
-                            <td class="px-6 py-4 text-right font-mono text-sm font-bold text-white">฿${(po.grand_total || grandTotal).toLocaleString()}</td>
-                            <td class="px-6 py-4 text-sm text-slate-300">${approverName}</td>
+                            <td class="px-6 py-4 text-right font-mono text-sm font-bold text-ink">฿${(po.grand_total || grandTotal).toLocaleString()}</td>
+                            <td class="px-6 py-4 text-sm text-body-muted">${approverName}</td>
                         `;
                         tbodyPo.appendChild(tr);
                     });
@@ -2854,24 +2854,24 @@
                 const approvedNonPOs = json.data || [];
 
                 if (approvedNonPOs.length === 0) {
-                    tbodyNonPo.innerHTML = '<tr><td colspan="7" class="text-center py-8 text-slate-400 text-sm">ไม่มีประวัติการอนุมัติสินค้านอกระบบ PO</td></tr>';
+                    tbodyNonPo.innerHTML = '<tr><td colspan="7" class="text-center py-8 text-body-muted text-sm">ไม่มีประวัติการอนุมัติสินค้านอกระบบ PO</td></tr>';
                 } else {
                     approvedNonPOs.forEach(item => {
                         const tr = document.createElement('tr');
-                        tr.className = 'border-b border-slate-700/50 hover:bg-slate-700/20 transition-colors';
+                        tr.className = 'border-b border-hairline/50 hover:bg-slate-700/20 transition-colors';
                         const branchName = item.branch_id ? item.branch_id.name : '-';
                         const reporterName = item.reported_by ? item.reported_by.name : '-';
                         const approverName = item.approved_by ? item.approved_by.name : '-';
                         const approvalDate = item.approved_at ? new Date(item.approved_at).toLocaleString('th-TH') : '-';
 
                         tr.innerHTML = `
-                            <td class="px-6 py-4 text-sm text-slate-350">${approvalDate}</td>
-                            <td class="px-6 py-4 text-sm text-slate-300">${branchName}</td>
-                            <td class="px-6 py-4 text-sm text-slate-300">${reporterName}</td>
-                            <td class="px-6 py-4 text-sm font-medium text-white">${item.product_name}</td>
-                            <td class="px-6 py-4 text-sm text-cyan-400 font-mono">${item.imeis ? item.imeis.length : 0}</td>
-                            <td class="px-6 py-4 text-sm text-slate-300">${approverName}</td>
-                            <td class="px-6 py-4 text-sm text-slate-400">${item.notes || '-'}</td>
+                            <td class="px-6 py-4 text-sm text-body-muted">${approvalDate}</td>
+                            <td class="px-6 py-4 text-sm text-body-muted">${branchName}</td>
+                            <td class="px-6 py-4 text-sm text-body-muted">${reporterName}</td>
+                            <td class="px-6 py-4 text-sm font-medium text-ink">${item.product_name}</td>
+                            <td class="px-6 py-4 text-sm text-ink font-mono">${item.imeis ? item.imeis.length : 0}</td>
+                            <td class="px-6 py-4 text-sm text-body-muted">${approverName}</td>
+                            <td class="px-6 py-4 text-sm text-body-muted">${item.notes || '-'}</td>
                         `;
                         tbodyNonPo.appendChild(tr);
                     });
@@ -2884,7 +2884,7 @@
 
         const tbodyDirect = document.getElementById('table-body-history-direct-imports');
         if (tbodyDirect) {
-            tbodyDirect.innerHTML = '<tr><td colspan="8" class="text-center py-6 text-slate-400"><i class="fa-solid fa-spinner fa-spin mr-2 text-emerald-400"></i>กำลังโหลดประวัตินำเข้าโดยตรง...</td></tr>';
+            tbodyDirect.innerHTML = '<tr><td colspan="8" class="text-center py-6 text-body-muted"><i class="fa-solid fa-spinner fa-spin mr-2 text-emerald-400"></i>กำลังโหลดประวัตินำเข้าโดยตรง...</td></tr>';
         }
 
         try {
@@ -2900,11 +2900,11 @@
                 }
 
                 if (directLogs.length === 0) {
-                    tbodyDirect.innerHTML = '<tr><td colspan="8" class="text-center py-8 text-slate-400 text-sm">ไม่มีประวัติการนำเข้าคลังสินค้าโดยตรง</td></tr>';
+                    tbodyDirect.innerHTML = '<tr><td colspan="8" class="text-center py-8 text-body-muted text-sm">ไม่มีประวัติการนำเข้าคลังสินค้าโดยตรง</td></tr>';
                 } else {
                     directLogs.forEach(log => {
                         const tr = document.createElement('tr');
-                        tr.className = 'border-b border-slate-700/50 hover:bg-slate-700/20 transition-colors';
+                        tr.className = 'border-b border-hairline/50 hover:bg-slate-700/20 transition-colors';
 
                         const importDate = log.createdAt ? new Date(log.createdAt).toLocaleString('th-TH') : '-';
                         const details = log.details || {};
@@ -2920,17 +2920,17 @@
 
                         let imeiStr = '-';
                         if (Array.isArray(details.imeis) && details.imeis.length > 0) {
-                            imeiStr = `<div class="max-w-xs truncate font-mono text-xs text-slate-400" title="${details.imeis.join(', ')}">${details.imeis.join(', ')}</div>`;
+                            imeiStr = `<div class="max-w-xs truncate font-mono text-xs text-body-muted" title="${details.imeis.join(', ')}">${details.imeis.join(', ')}</div>`;
                         }
 
                         tr.innerHTML = `
-                            <td class="px-6 py-4 text-sm text-slate-355">${importDate}</td>
+                            <td class="px-6 py-4 text-sm text-body-muted">${importDate}</td>
                             <td class="px-6 py-4 text-sm">${typeText}</td>
-                            <td class="px-6 py-4 text-sm text-slate-300">${branchName}</td>
-                            <td class="px-6 py-4 text-sm font-medium text-white">${productName}</td>
-                            <td class="px-6 py-4 text-sm text-slate-300 font-mono">${productCode}</td>
-                            <td class="px-6 py-4 text-sm text-center text-cyan-400 font-mono font-bold">${qty}</td>
-                            <td class="px-6 py-4 text-sm text-slate-300">${importer}</td>
+                            <td class="px-6 py-4 text-sm text-body-muted">${branchName}</td>
+                            <td class="px-6 py-4 text-sm font-medium text-ink">${productName}</td>
+                            <td class="px-6 py-4 text-sm text-body-muted font-mono">${productCode}</td>
+                            <td class="px-6 py-4 text-sm text-center text-ink font-mono font-bold">${qty}</td>
+                            <td class="px-6 py-4 text-sm text-body-muted">${importer}</td>
                             <td class="px-6 py-4 text-sm">${imeiStr}</td>
                         `;
                         tbodyDirect.appendChild(tr);
@@ -2954,9 +2954,9 @@
 
     if (tabBtnApprovePO && tabBtnApproveNonPO && tabBtnApproveHistory && tabContentApprovePO && tabContentApproveNonPO && tabContentApproveHistory) {
         tabBtnApprovePO.addEventListener('click', () => {
-            tabBtnApprovePO.className = 'flex-1 py-2.5 px-4 rounded-xl text-sm font-bold transition-all bg-violet-500/20 text-violet-300 border border-violet-500/30';
-            tabBtnApproveNonPO.className = 'flex-1 py-2.5 px-4 rounded-xl text-sm font-bold transition-all text-slate-400 hover:text-white hover:bg-slate-700';
-            tabBtnApproveHistory.className = 'flex-1 py-2.5 px-4 rounded-xl text-sm font-bold transition-all text-slate-400 hover:text-white hover:bg-slate-700';
+            tabBtnApprovePO.className = 'flex-1 py-2.5 px-4 rounded-xl text-sm font-bold transition-all bg-surface-chip text-ink border border-hairline';
+            tabBtnApproveNonPO.className = 'flex-1 py-2.5 px-4 rounded-xl text-sm font-bold transition-all text-body-muted hover:text-ink hover:bg-slate-700';
+            tabBtnApproveHistory.className = 'flex-1 py-2.5 px-4 rounded-xl text-sm font-bold transition-all text-body-muted hover:text-ink hover:bg-slate-700';
             tabContentApprovePO.classList.remove('hidden');
             tabContentApproveNonPO.classList.add('hidden');
             tabContentApproveHistory.classList.add('hidden');
@@ -2964,9 +2964,9 @@
         });
 
         tabBtnApproveNonPO.addEventListener('click', () => {
-            tabBtnApproveNonPO.className = 'flex-1 py-2.5 px-4 rounded-xl text-sm font-bold transition-all bg-violet-500/20 text-violet-300 border border-violet-500/30';
-            tabBtnApprovePO.className = 'flex-1 py-2.5 px-4 rounded-xl text-sm font-bold transition-all text-slate-400 hover:text-white hover:bg-slate-700';
-            tabBtnApproveHistory.className = 'flex-1 py-2.5 px-4 rounded-xl text-sm font-bold transition-all text-slate-400 hover:text-white hover:bg-slate-700';
+            tabBtnApproveNonPO.className = 'flex-1 py-2.5 px-4 rounded-xl text-sm font-bold transition-all bg-surface-chip text-ink border border-hairline';
+            tabBtnApprovePO.className = 'flex-1 py-2.5 px-4 rounded-xl text-sm font-bold transition-all text-body-muted hover:text-ink hover:bg-slate-700';
+            tabBtnApproveHistory.className = 'flex-1 py-2.5 px-4 rounded-xl text-sm font-bold transition-all text-body-muted hover:text-ink hover:bg-slate-700';
             tabContentApproveNonPO.classList.remove('hidden');
             tabContentApprovePO.classList.add('hidden');
             tabContentApproveHistory.classList.add('hidden');
@@ -2974,9 +2974,9 @@
         });
 
         tabBtnApproveHistory.addEventListener('click', () => {
-            tabBtnApproveHistory.className = 'flex-1 py-2.5 px-4 rounded-xl text-sm font-bold transition-all bg-violet-500/20 text-violet-300 border border-violet-500/30';
-            tabBtnApprovePO.className = 'flex-1 py-2.5 px-4 rounded-xl text-sm font-bold transition-all text-slate-400 hover:text-white hover:bg-slate-700';
-            tabBtnApproveNonPO.className = 'flex-1 py-2.5 px-4 rounded-xl text-sm font-bold transition-all text-slate-400 hover:text-white hover:bg-slate-700';
+            tabBtnApproveHistory.className = 'flex-1 py-2.5 px-4 rounded-xl text-sm font-bold transition-all bg-surface-chip text-ink border border-hairline';
+            tabBtnApprovePO.className = 'flex-1 py-2.5 px-4 rounded-xl text-sm font-bold transition-all text-body-muted hover:text-ink hover:bg-slate-700';
+            tabBtnApproveNonPO.className = 'flex-1 py-2.5 px-4 rounded-xl text-sm font-bold transition-all text-body-muted hover:text-ink hover:bg-slate-700';
             tabContentApproveHistory.classList.remove('hidden');
             tabContentApprovePO.classList.add('hidden');
             tabContentApproveNonPO.classList.add('hidden');

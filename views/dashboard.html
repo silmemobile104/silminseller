@@ -1,91 +1,91 @@
 <div id="view-dashboard">
                     <div>
-                        <h3 class="text-2xl font-bold text-white">แดชบอร์ด</h3>
-                        <p class="text-slate-400 mt-1">ภาพรวมยอดขายและสถานะคลังสินค้า — อัพเดตอัตโนมัติ</p>
+                        <h3 class="text-2xl font-bold text-ink">แดชบอร์ด</h3>
+                        <p class="text-body-muted mt-1">ภาพรวมยอดขายและสถานะคลังสินค้า — อัพเดตอัตโนมัติ</p>
                     </div>
 
                     <!-- Stat Cards -->
                     <div class="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 md:gap-6">
-                        <!-- Card 1: ยอดขายวันนี้ (Cyan) -->
+                        <!-- Card 1: ยอดขายวันนี้ -->
                         <div
-                            class="bg-slate-800 rounded-2xl p-6 border border-slate-700 shadow-[0_0_15px_rgba(6,182,212,0.15)] hover:border-cyan-500/50 hover:shadow-[0_0_25px_rgba(6,182,212,0.25)] transition-all duration-300">
+                            class="bg-canvas-elevated rounded-lg p-6 border border-hairline hover:border-primary/40 transition-all duration-300">
                             <div class="flex items-center justify-between mb-4">
-                                <h4 class="text-slate-400 font-medium text-sm">ยอดขายวันนี้</h4>
+                                <h4 class="text-body-muted font-medium text-sm">ยอดขายวันนี้</h4>
                                 <div
-                                    class="w-10 h-10 rounded-full bg-cyan-500/10 flex items-center justify-center text-cyan-400">
+                                    class="w-10 h-10 rounded-full bg-surface-chip flex items-center justify-center text-ink">
                                     <i class="fa-solid fa-baht-sign text-lg"></i>
                                 </div>
                             </div>
-                            <p id="stat-today-sales" class="text-3xl font-bold text-white font-mono">฿0</p>
-                            <p class="text-xs text-cyan-400/80 mt-2 flex items-center gap-1">
+                            <p id="stat-today-sales" class="text-3xl font-bold text-ink font-mono">฿0</p>
+                            <p class="text-xs text-ink-muted-48 mt-2 flex items-center gap-1">
                                 <i class="fa-solid fa-receipt"></i>
                                 <span id="stat-today-txn-count">0</span> รายการวันนี้
                             </p>
                         </div>
 
-                        <!-- Card 2: กำไรสุทธิวันนี้ (Green) -->
+                        <!-- Card 2: กำไรสุทธิวันนี้ -->
                         <div
-                            class="bg-slate-800 rounded-2xl p-6 border border-slate-700 shadow-[0_0_15px_rgba(16,185,129,0.15)] hover:border-emerald-500/50 hover:shadow-[0_0_25px_rgba(16,185,129,0.25)] transition-all duration-300">
+                            class="bg-canvas-elevated rounded-lg p-6 border border-hairline hover:border-primary/40 transition-all duration-300">
                             <div class="flex items-center justify-between mb-4">
-                                <h4 class="text-slate-400 font-medium text-sm">กำไรสุทธิวันนี้</h4>
+                                <h4 class="text-body-muted font-medium text-sm">กำไรสุทธิวันนี้</h4>
                                 <div
-                                    class="w-10 h-10 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-400">
+                                    class="w-10 h-10 rounded-full bg-surface-chip flex items-center justify-center text-ink">
                                     <i class="fa-solid fa-chart-line text-lg"></i>
                                 </div>
                             </div>
-                            <p id="stat-today-profit" class="text-3xl font-bold text-white font-mono">฿0</p>
-                            <p class="text-xs text-emerald-400/80 mt-2 flex items-center gap-1">
+                            <p id="stat-today-profit" class="text-3xl font-bold text-ink font-mono">฿0</p>
+                            <p class="text-xs text-ink-muted-48 mt-2 flex items-center gap-1">
                                 <i class="fa-solid fa-arrow-trend-up"></i>
                                 คำนวณจากต้นทุนสินค้า
                             </p>
                         </div>
 
-                        <!-- Card 3: สินค้าในสต็อกทั้งหมด (Purple) -->
+                        <!-- Card 3: สินค้าในสต็อกทั้งหมด -->
                         <div
-                            class="bg-slate-800 rounded-2xl p-6 border border-slate-700 shadow-[0_0_15px_rgba(168,85,247,0.15)] hover:border-purple-500/50 hover:shadow-[0_0_25px_rgba(168,85,247,0.25)] transition-all duration-300">
+                            class="bg-canvas-elevated rounded-lg p-6 border border-hairline hover:border-primary/40 transition-all duration-300">
                             <div class="flex items-center justify-between mb-4">
-                                <h4 class="text-slate-400 font-medium text-sm">สินค้าในสต็อกทั้งหมด</h4>
+                                <h4 class="text-body-muted font-medium text-sm">สินค้าในสต็อกทั้งหมด</h4>
                                 <div
-                                    class="w-10 h-10 rounded-full bg-purple-500/10 flex items-center justify-center text-purple-400">
+                                    class="w-10 h-10 rounded-full bg-surface-chip flex items-center justify-center text-ink">
                                     <i class="fa-solid fa-boxes-stacked text-lg"></i>
                                 </div>
                             </div>
-                            <p id="stat-total-stock" class="text-3xl font-bold text-white font-mono">0</p>
-                            <p class="text-xs text-purple-400/80 mt-2 flex items-center gap-1">
+                            <p id="stat-total-stock" class="text-3xl font-bold text-ink font-mono">0</p>
+                            <p class="text-xs text-ink-muted-48 mt-2 flex items-center gap-1">
                                 <i class="fa-solid fa-cube"></i>
                                 <span id="stat-total-products">0</span> รายการ รวมทุกหมวดหมู่
                             </p>
                         </div>
 
-                        <!-- Card 4: สินค้าใกล้หมด (Red/Amber) -->
+                        <!-- Card 4: สินค้าใกล้หมด -->
                         <div
-                            class="bg-slate-800 rounded-2xl p-6 border border-slate-700 shadow-[0_0_15px_rgba(245,158,11,0.15)] hover:border-amber-500/50 hover:shadow-[0_0_25px_rgba(245,158,11,0.25)] transition-all duration-300">
+                            class="bg-canvas-elevated rounded-lg p-6 border border-hairline hover:border-primary/40 transition-all duration-300">
                             <div class="flex items-center justify-between mb-4">
-                                <h4 class="text-slate-400 font-medium text-sm">สินค้าใกล้หมด</h4>
+                                <h4 class="text-body-muted font-medium text-sm">สินค้าใกล้หมด</h4>
                                 <div
-                                    class="w-10 h-10 rounded-full bg-amber-500/10 flex items-center justify-center text-amber-400">
+                                    class="w-10 h-10 rounded-full bg-surface-chip flex items-center justify-center text-ink">
                                     <i class="fa-solid fa-triangle-exclamation text-lg"></i>
                                 </div>
                             </div>
-                            <p id="stat-low-stock" class="text-3xl font-bold text-white font-mono">0</p>
-                            <p class="text-xs text-amber-400/80 mt-2 flex items-center gap-1">
+                            <p id="stat-low-stock" class="text-3xl font-bold text-ink font-mono">0</p>
+                            <p class="text-xs text-ink-muted-48 mt-2 flex items-center gap-1">
                                 <i class="fa-solid fa-circle-exclamation"></i>
                                 สินค้าคงเหลือน้อยกว่า 5 ชิ้น
                             </p>
                         </div>
 
-                        <!-- Card 5: รายการรอรับสินค้า (Orange) -->
+                        <!-- Card 5: รายการรอรับสินค้า -->
                         <div id="card-pending-transfer"
-                            class="bg-slate-800 rounded-2xl p-6 border border-slate-700 shadow-[0_0_15px_rgba(249,115,22,0.15)] hover:border-orange-500/50 hover:shadow-[0_0_25px_rgba(249,115,22,0.25)] transition-all duration-300 cursor-pointer hidden">
+                            class="bg-canvas-elevated rounded-lg p-6 border border-hairline hover:border-primary/40 transition-all duration-300 cursor-pointer hidden">
                             <div class="flex items-center justify-between mb-4">
-                                <h4 class="text-slate-400 font-medium text-sm">รายการรอรับสินค้า</h4>
+                                <h4 class="text-body-muted font-medium text-sm">รายการรอรับสินค้า</h4>
                                 <div
-                                    class="w-10 h-10 rounded-full bg-orange-500/10 flex items-center justify-center text-orange-400">
+                                    class="w-10 h-10 rounded-full bg-surface-chip flex items-center justify-center text-ink">
                                     <i class="fa-solid fa-box text-lg"></i>
                                 </div>
                             </div>
-                            <p id="stat-pending-transfers" class="text-3xl font-bold text-white font-mono">0</p>
-                            <p class="text-xs text-orange-400/80 mt-2 flex items-center gap-1">
+                            <p id="stat-pending-transfers" class="text-3xl font-bold text-ink font-mono">0</p>
+                            <p class="text-xs text-ink-muted-48 mt-2 flex items-center gap-1">
                                 <i class="fa-solid fa-truck-fast"></i>
                                 รอการตรวจสอบและรับเข้า
                             </p>
@@ -93,20 +93,20 @@
                     </div>
 
                     <!-- Recent Transactions Table -->
-                    <div class="bg-slate-800 rounded-2xl border border-slate-700 shadow-lg overflow-hidden">
-                        <div class="p-6 border-b border-slate-700 flex items-center justify-between">
-                            <h3 class="text-lg font-bold text-white flex items-center gap-2">
-                                <i class="fa-solid fa-clock-rotate-left text-cyan-400"></i>
+                    <div class="bg-canvas-elevated rounded-lg border border-hairline overflow-hidden">
+                        <div class="p-6 border-b border-hairline flex items-center justify-between">
+                            <h3 class="text-lg font-bold text-ink flex items-center gap-2">
+                                <i class="fa-solid fa-clock-rotate-left text-body-muted"></i>
                                 รายการขายล่าสุด
                             </h3>
                             <span id="stat-recent-badge"
-                                class="bg-cyan-500/20 text-cyan-400 text-xs font-bold px-3 py-1 rounded-full border border-cyan-500/30">
+                                class="bg-surface-chip text-body-muted text-xs font-bold px-3 py-1 rounded-pill border border-hairline">
                                 10 รายการล่าสุด
                             </span>
                         </div>
                         <div class="overflow-x-auto">
                             <table class="w-full text-left text-sm whitespace-nowrap">
-                                <thead class="bg-slate-900/50 text-slate-400">
+                                <thead class="bg-surface-tile-3 text-body-muted">
                                     <tr>
                                         <th class="px-6 py-4 font-medium">เลขที่ใบเสร็จ</th>
                                         <th class="px-6 py-4 font-medium">สาขา</th>
@@ -116,7 +116,7 @@
                                         <th class="px-6 py-4 font-medium text-right">เวลา</th>
                                     </tr>
                                 </thead>
-                                <tbody id="recent-txn-table-body" class="divide-y divide-slate-700/50">
+                                <tbody id="recent-txn-table-body" class="divide-y divide-hairline">
                                     <!-- Data loaded by JS -->
                                 </tbody>
                             </table>

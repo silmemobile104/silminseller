@@ -1,53 +1,53 @@
 <div id="view-accounting-settings">
                     <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                         <div>
-                            <h3 class="text-2xl font-bold text-white flex items-center gap-3">
+                            <h3 class="text-2xl font-bold text-ink flex items-center gap-3">
                                 <div
-                                    class="w-10 h-10 rounded-xl bg-violet-500/20 flex items-center justify-center border border-violet-500/30">
-                                    <i class="fa-solid fa-sitemap text-violet-400"></i>
+                                    class="w-10 h-10 rounded-sm bg-surface-chip flex items-center justify-center">
+                                    <i class="fa-solid fa-sitemap text-ink"></i>
                                 </div>
                                 ตั้งค่าผังบัญชี (Chart of Accounts)
                             </h3>
-                            <p class="text-slate-400 mt-1">จัดการหมวดหมู่บัญชี กลุ่มบัญชี และรหัสบัญชีทั้งหมดของกิจการ
+                            <p class="text-body-muted mt-1">จัดการหมวดหมู่บัญชี กลุ่มบัญชี และรหัสบัญชีทั้งหมดของกิจการ
                             </p>
                         </div>
                         <button onclick="if(typeof openAddAccountModal==='function') openAddAccountModal()"
-                            class="px-4 py-2.5 bg-violet-600 hover:bg-violet-700 text-white rounded-xl font-medium transition-all flex items-center gap-2 text-sm">
+                            class="px-4 py-2.5 bg-primary hover:bg-primary-pressed text-on-primary rounded-pill font-medium transition-all flex items-center gap-2 text-sm">
                             <i class="fa-solid fa-plus"></i> เพิ่มรหัสบัญชี
                         </button>
                     </div>
 
                     <!-- Tabs -->
-                    <div class="flex gap-2 border-b border-slate-700 pb-0">
+                    <div class="flex gap-2 border-b border-hairline pb-0">
                         <button id="coa-tab-accounts" onclick="if(typeof switchCOATab==='function') switchCOATab('accounts')"
-                            class="px-4 py-2.5 text-sm font-medium rounded-t-lg bg-slate-700/80 text-white border-b-2 border-violet-500">
+                            class="px-4 py-2.5 text-sm font-medium rounded-t-lg bg-surface-chip text-ink border-b-2 border-primary">
                             <i class="fa-solid fa-list-ol mr-1"></i> ผังบัญชีทั้งหมด
                         </button>
                         <button id="coa-tab-groups" onclick="if(typeof switchCOATab==='function') switchCOATab('groups')"
-                            class="px-4 py-2.5 text-sm font-medium rounded-t-lg text-slate-400 hover:text-white hover:bg-slate-700/40 transition-all">
+                            class="px-4 py-2.5 text-sm font-medium rounded-t-lg text-body-muted hover:text-ink hover:bg-surface-chip/40 transition-all">
                             <i class="fa-solid fa-layer-group mr-1"></i> ประเภทบัญชี
                         </button>
                         <button id="coa-tab-pnl" onclick="if(typeof switchCOATab==='function') switchCOATab('pnl')"
-                            class="px-4 py-2.5 text-sm font-medium rounded-t-lg text-slate-400 hover:text-white hover:bg-slate-700/40 transition-all">
+                            class="px-4 py-2.5 text-sm font-medium rounded-t-lg text-body-muted hover:text-ink hover:bg-surface-chip/40 transition-all">
                             <i class="fa-solid fa-chart-pie mr-1"></i> ตั้งค่างบกำไรขาดทุน
                         </button>
                     </div>
 
                     <!-- Tab Content: ผังบัญชี -->
-                    <div id="coa-content-accounts" class="bg-slate-800/50 rounded-2xl border border-slate-700/50 p-5">
+                    <div id="coa-content-accounts" class="bg-canvas-elevated rounded-lg border border-hairline p-5">
                         <div class="flex flex-col md:flex-row gap-3 mb-4">
                             <input type="text" id="coa-search" placeholder="ค้นหาด้วยรหัสหรือชื่อบัญชี..."
                                 oninput="filterCOATable()"
-                                class="flex-1 px-4 py-2.5 rounded-xl bg-slate-900/60 border border-slate-600 text-white placeholder-slate-500 focus:border-violet-500 outline-none text-sm">
+                                class="flex-1 px-4 py-2.5 rounded-sm bg-surface-chip border border-divider-soft text-ink placeholder-ink-muted-48 focus:border-primary-focus outline-none text-sm">
                             <select id="coa-filter-category" onchange="filterCOATable()"
-                                class="px-4 py-2.5 rounded-xl bg-slate-900/60 border border-slate-600 text-white text-sm">
+                                class="px-4 py-2.5 rounded-sm bg-surface-chip border border-divider-soft text-ink text-sm">
                                 <option value="">ทุกหมวดหมู่</option>
                             </select>
                         </div>
                         <div class="w-full overflow-x-auto">
                             <table class="w-full text-sm">
                                 <thead>
-                                    <tr class="bg-slate-900/40 text-slate-400 text-xs uppercase tracking-wider">
+                                    <tr class="bg-surface-tile-3 text-body-muted text-xs uppercase tracking-wider">
                                         <th class="px-4 py-3 text-left rounded-tl-lg">รหัสบัญชี</th>
                                         <th class="px-4 py-3 text-left">ชื่อบัญชี</th>
                                         <th class="px-4 py-3 text-left">หมวดหมู่</th>
@@ -57,7 +57,7 @@
                                         <th class="px-4 py-3 text-center rounded-tr-lg">จัดการ</th>
                                     </tr>
                                 </thead>
-                                <tbody id="coa-table-body" class="divide-y divide-slate-700/30">
+                                <tbody id="coa-table-body" class="divide-y divide-hairline">
                                     <!-- Dynamic rows -->
                                 </tbody>
                             </table>
@@ -66,41 +66,41 @@
 
                     <!-- Tab Content: กลุ่มบัญชี -->
                     <div id="coa-content-groups"
-                        class="hidden bg-slate-800/50 rounded-2xl border border-slate-700/50 p-5">
+                        class="hidden bg-canvas-elevated rounded-lg border border-hairline p-5">
                         <div class="flex justify-between items-center mb-4">
-                            <h4 class="text-white font-semibold">กลุ่มบัญชีทั้งหมด</h4>
+                            <h4 class="text-ink font-semibold">กลุ่มบัญชีทั้งหมด</h4>
                             <button onclick="if(typeof openAddGroupModal==='function') openAddGroupModal()"
-                                class="px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-medium transition-all flex items-center gap-1">
+                                class="px-3 py-2 bg-surface-chip hover:bg-surface-tile-2 text-ink rounded-md text-xs font-medium transition-all flex items-center gap-1">
                                 <i class="fa-solid fa-plus"></i> เพิ่มกลุ่ม
                             </button>
                         </div>
                         <div class="w-full overflow-x-auto">
                             <table class="w-full text-sm">
                                 <thead>
-                                    <tr class="bg-slate-900/40 text-slate-400 text-xs uppercase tracking-wider">
+                                    <tr class="bg-surface-tile-3 text-body-muted text-xs uppercase tracking-wider">
                                         <th class="px-4 py-3 text-left rounded-tl-lg">รหัสกลุ่ม</th>
                                         <th class="px-4 py-3 text-left">ชื่อกลุ่ม</th>
                                         <th class="px-4 py-3 text-left">หมวดหมู่</th>
                                         <th class="px-4 py-3 text-center rounded-tr-lg">จำนวนบัญชี</th>
                                     </tr>
                                 </thead>
-                                <tbody id="coa-groups-table-body" class="divide-y divide-slate-700/30">
+                                <tbody id="coa-groups-table-body" class="divide-y divide-hairline">
                                 </tbody>
                             </table>
                         </div>
                     </div>
 
                     <!-- Tab Content: ตั้งค่างบกำไรขาดทุน -->
-                    <div id="coa-content-pnl" class="hidden bg-slate-800/50 rounded-2xl border border-slate-700/50 p-5">
+                    <div id="coa-content-pnl" class="hidden bg-canvas-elevated rounded-lg border border-hairline p-5">
                         <div class="flex justify-between items-center mb-4">
-                            <h4 class="text-white font-semibold">จัดลำดับรายการงบกำไรขาดทุน</h4>
+                            <h4 class="text-ink font-semibold">จัดลำดับรายการงบกำไรขาดทุน</h4>
                             <div class="flex gap-2">
                                 <button onclick="if(typeof addPnLLine==='function') addPnLLine()"
-                                    class="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-medium transition-all flex items-center gap-1">
+                                    class="px-3 py-2 bg-surface-chip hover:bg-surface-tile-2 text-ink rounded-md text-xs font-medium transition-all flex items-center gap-1">
                                     <i class="fa-solid fa-plus"></i> เพิ่มรายการ
                                 </button>
                                 <button onclick="if(typeof savePnLConfig==='function') savePnLConfig()"
-                                    class="px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-medium transition-all flex items-center gap-1">
+                                    class="px-3 py-2 bg-primary hover:bg-primary-pressed text-on-primary rounded-pill text-xs font-medium transition-all flex items-center gap-1">
                                     <i class="fa-solid fa-save"></i> บันทึก
                                 </button>
                             </div>
@@ -108,7 +108,7 @@
                         <div class="w-full overflow-x-auto">
                             <table class="w-full text-sm">
                                 <thead>
-                                    <tr class="bg-slate-900/40 text-slate-400 text-xs uppercase tracking-wider">
+                                    <tr class="bg-surface-tile-3 text-body-muted text-xs uppercase tracking-wider">
                                         <th class="px-3 py-3 text-center w-12 rounded-tl-lg">ลำดับ</th>
                                         <th class="px-3 py-3 text-left">ชื่อรายการ</th>
                                         <th class="px-3 py-3 text-left">ส่วน</th>
@@ -117,7 +117,7 @@
                                         <th class="px-3 py-3 text-center rounded-tr-lg">ลบ</th>
                                     </tr>
                                 </thead>
-                                <tbody id="pnl-config-table-body" class="divide-y divide-slate-700/30">
+                                <tbody id="pnl-config-table-body" class="divide-y divide-hairline">
                                 </tbody>
                             </table>
                         </div>
@@ -127,58 +127,58 @@
 <div id="view-disbursement">
                     <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                         <div>
-                            <h3 class="text-2xl font-bold text-white flex items-center gap-3">
+                            <h3 class="text-2xl font-bold text-ink flex items-center gap-3">
                                 <div
-                                    class="w-10 h-10 rounded-xl bg-rose-500/20 flex items-center justify-center border border-rose-500/30">
-                                    <i class="fa-solid fa-file-invoice-dollar text-rose-400"></i>
+                                    class="w-10 h-10 rounded-sm bg-surface-chip flex items-center justify-center">
+                                    <i class="fa-solid fa-file-invoice-dollar text-ink"></i>
                                 </div>
                                 ใบสำคัญจ่าย (Disbursement Voucher)
                             </h3>
-                            <p class="text-slate-400 mt-1">บันทึกรายจ่ายพร้อมระบุบัญชีเดบิต-เครดิต คำนวณภาษี
+                            <p class="text-body-muted mt-1">บันทึกรายจ่ายพร้อมระบุบัญชีเดบิต-เครดิต คำนวณภาษี
                                 และพิมพ์ใบสำคัญจ่าย</p>
                         </div>
                     </div>
 
                     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                         <!-- Left: Form -->
-                        <div class="lg:col-span-1 bg-slate-800/50 rounded-2xl border border-slate-700/50 p-5 space-y-4">
-                            <h4 class="text-white font-semibold text-lg flex items-center gap-2">
-                                <i class="fa-solid fa-pen-to-square text-rose-400"></i> สร้างใบสำคัญจ่าย
+                        <div class="lg:col-span-1 bg-canvas-elevated rounded-lg border border-hairline p-5 space-y-4">
+                            <h4 class="text-ink font-semibold text-lg flex items-center gap-2">
+                                <i class="fa-solid fa-pen-to-square text-body-muted"></i> สร้างใบสำคัญจ่าย
                             </h4>
 
                             <div>
-                                <label class="block text-slate-400 text-xs mb-1">วันที่จ่าย</label>
+                                <label class="block text-body-muted text-xs mb-1">วันที่จ่าย</label>
                                 <input type="date" id="dv-payment-date"
-                                    class="w-full px-3 py-2.5 rounded-xl bg-slate-900/60 border border-slate-600 text-white text-sm focus:border-rose-500 outline-none">
+                                    class="w-full px-3 py-2.5 rounded-sm bg-surface-chip border border-divider-soft text-ink text-sm focus:border-primary-focus outline-none">
                             </div>
 
                             <div>
-                                <label class="block text-slate-400 text-xs mb-1">บัญชีเดบิต (ค่าใช้จ่าย/หนี้สิน)</label>
+                                <label class="block text-body-muted text-xs mb-1">บัญชีเดบิต (ค่าใช้จ่าย/หนี้สิน)</label>
                                 <select id="dv-debit-account"
-                                    class="w-full px-3 py-2.5 rounded-xl bg-slate-900/60 border border-slate-600 text-white text-sm focus:border-rose-500 outline-none">
+                                    class="w-full px-3 py-2.5 rounded-sm bg-surface-chip border border-divider-soft text-ink text-sm focus:border-primary-focus outline-none">
                                     <option value="">-- เลือกบัญชีเดบิต --</option>
                                 </select>
                             </div>
 
                             <div>
-                                <label class="block text-slate-400 text-xs mb-1">บัญชีเครดิต (เงินสด/ธนาคาร)</label>
+                                <label class="block text-body-muted text-xs mb-1">บัญชีเครดิต (เงินสด/ธนาคาร)</label>
                                 <select id="dv-credit-account"
-                                    class="w-full px-3 py-2.5 rounded-xl bg-slate-900/60 border border-slate-600 text-white text-sm focus:border-rose-500 outline-none">
+                                    class="w-full px-3 py-2.5 rounded-sm bg-surface-chip border border-divider-soft text-ink text-sm focus:border-primary-focus outline-none">
                                     <option value="">-- เลือกบัญชีเครดิต --</option>
                                 </select>
                             </div>
 
                             <div>
-                                <label class="block text-slate-400 text-xs mb-1">จำนวนเงิน (บาท)</label>
+                                <label class="block text-body-muted text-xs mb-1">จำนวนเงิน (บาท)</label>
                                 <input type="number" id="dv-amount" placeholder="0.00" step="0.01" min="0"
                                     oninput="calcDVVat()"
-                                    class="w-full px-3 py-2.5 rounded-xl bg-slate-900/60 border border-slate-600 text-white text-sm focus:border-rose-500 outline-none">
+                                    class="w-full px-3 py-2.5 rounded-sm bg-surface-chip border border-divider-soft text-ink text-sm focus:border-primary-focus outline-none">
                             </div>
 
                             <div>
-                                <label class="block text-slate-400 text-xs mb-1">ประเภท VAT</label>
+                                <label class="block text-body-muted text-xs mb-1">ประเภท VAT</label>
                                 <select id="dv-vat-type" onchange="calcDVVat()"
-                                    class="w-full px-3 py-2.5 rounded-xl bg-slate-900/60 border border-slate-600 text-white text-sm focus:border-rose-500 outline-none">
+                                    class="w-full px-3 py-2.5 rounded-sm bg-surface-chip border border-divider-soft text-ink text-sm focus:border-primary-focus outline-none">
                                     <option value="NO_VAT">ไม่มี VAT</option>
                                     <option value="VAT_INCLUDED">VAT รวมใน (7% included)</option>
                                     <option value="VAT_EXCLUDED">VAT แยก (7% excluded)</option>
@@ -186,59 +186,59 @@
                             </div>
 
                             <!-- VAT Summary -->
-                            <div id="dv-vat-summary" class="hidden bg-slate-900/40 rounded-xl p-3 space-y-1 text-xs">
-                                <div class="flex justify-between text-slate-400"><span>ยอดก่อน VAT</span><span
-                                        id="dv-net-display" class="text-white">฿0.00</span></div>
-                                <div class="flex justify-between text-slate-400"><span>VAT 7%</span><span
+                            <div id="dv-vat-summary" class="hidden bg-surface-tile-3 rounded-sm p-3 space-y-1 text-xs">
+                                <div class="flex justify-between text-body-muted"><span>ยอดก่อน VAT</span><span
+                                        id="dv-net-display" class="text-ink">฿0.00</span></div>
+                                <div class="flex justify-between text-body-muted"><span>VAT 7%</span><span
                                         id="dv-vat-display" class="text-amber-400">฿0.00</span></div>
                                 <div
-                                    class="flex justify-between text-slate-300 font-semibold border-t border-slate-700 pt-1 mt-1">
+                                    class="flex justify-between text-body-muted font-semibold border-t border-hairline pt-1 mt-1">
                                     <span>ยอดรวมทั้งสิ้น</span><span id="dv-total-display">฿0.00</span>
                                 </div>
                             </div>
 
                             <div>
-                                <label class="block text-slate-400 text-xs mb-1">ชื่อผู้รับเงิน</label>
+                                <label class="block text-body-muted text-xs mb-1">ชื่อผู้รับเงิน</label>
                                 <input type="text" id="dv-payee" placeholder="ระบุชื่อผู้รับเงิน"
-                                    class="w-full px-3 py-2.5 rounded-xl bg-slate-900/60 border border-slate-600 text-white text-sm focus:border-rose-500 outline-none">
+                                    class="w-full px-3 py-2.5 rounded-sm bg-surface-chip border border-divider-soft text-ink text-sm focus:border-primary-focus outline-none">
                             </div>
 
                             <div>
-                                <label class="block text-slate-400 text-xs mb-1">รายละเอียด/หมายเหตุ</label>
+                                <label class="block text-body-muted text-xs mb-1">รายละเอียด/หมายเหตุ</label>
                                 <textarea id="dv-remark" rows="2" placeholder="ระบุรายละเอียด..."
-                                    class="w-full px-3 py-2.5 rounded-xl bg-slate-900/60 border border-slate-600 text-white text-sm focus:border-rose-500 outline-none resize-none"></textarea>
+                                    class="w-full px-3 py-2.5 rounded-sm bg-surface-chip border border-divider-soft text-ink text-sm focus:border-primary-focus outline-none resize-none"></textarea>
                             </div>
 
                             <div>
-                                <label class="block text-slate-400 text-xs mb-1">แนบหลักฐาน (รูปภาพ)</label>
+                                <label class="block text-body-muted text-xs mb-1">แนบหลักฐาน (รูปภาพ)</label>
                                 <input type="file" id="dv-proof-image" accept="image/*"
-                                    class="w-full text-sm text-slate-400 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-slate-700 file:text-white hover:file:bg-slate-600">
+                                    class="w-full text-sm text-body-muted file:mr-3 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-surface-chip file:text-ink hover:file:bg-surface-tile-2">
                             </div>
 
                             <button onclick="if(typeof submitDisbursement==='function') submitDisbursement()"
-                                class="w-full py-3 bg-gradient-to-r from-rose-600 to-rose-700 hover:from-rose-700 hover:to-rose-800 text-white rounded-xl font-semibold text-sm transition-all flex items-center justify-center gap-2">
+                                class="w-full py-3 bg-primary hover:bg-primary-pressed text-on-primary rounded-pill font-semibold text-sm transition-all flex items-center justify-center gap-2">
                                 <i class="fa-solid fa-paper-plane"></i> บันทึกใบสำคัญจ่าย
                             </button>
                         </div>
 
                         <!-- Right: History table -->
-                        <div class="lg:col-span-2 bg-slate-800/50 rounded-2xl border border-slate-700/50 p-5">
+                        <div class="lg:col-span-2 bg-canvas-elevated rounded-lg border border-hairline p-5">
                             <div
                                 class="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 mb-4">
-                                <h4 class="text-white font-semibold">ประวัติใบสำคัญจ่าย</h4>
+                                <h4 class="text-ink font-semibold">ประวัติใบสำคัญจ่าย</h4>
                                 <div class="flex gap-2">
                                     <input type="date" id="dv-filter-start"
-                                        class="px-3 py-2 rounded-lg bg-slate-900/60 border border-slate-600 text-white text-xs"
+                                        class="px-3 py-2 rounded-md bg-surface-chip border border-divider-soft text-ink text-xs"
                                         onchange="loadDisbursements()">
                                     <input type="date" id="dv-filter-end"
-                                        class="px-3 py-2 rounded-lg bg-slate-900/60 border border-slate-600 text-white text-xs"
+                                        class="px-3 py-2 rounded-md bg-surface-chip border border-divider-soft text-ink text-xs"
                                         onchange="loadDisbursements()">
                                 </div>
                             </div>
                             <div class="w-full overflow-x-auto">
                                 <table class="w-full text-sm">
                                     <thead>
-                                        <tr class="bg-slate-900/40 text-slate-400 text-xs uppercase tracking-wider">
+                                        <tr class="bg-surface-tile-3 text-body-muted text-xs uppercase tracking-wider">
                                             <th class="px-3 py-3 text-left rounded-tl-lg">เลขที่</th>
                                             <th class="px-3 py-3 text-left">วันที่</th>
                                             <th class="px-3 py-3 text-left">บัญชีเดบิต</th>
@@ -248,7 +248,7 @@
                                             <th class="px-3 py-3 text-center rounded-tr-lg">พิมพ์</th>
                                         </tr>
                                     </thead>
-                                    <tbody id="dv-history-table-body" class="divide-y divide-slate-700/30">
+                                    <tbody id="dv-history-table-body" class="divide-y divide-hairline">
                                     </tbody>
                                 </table>
                             </div>
