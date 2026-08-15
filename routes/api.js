@@ -132,14 +132,6 @@ const getRequestedBranchId = (req) => {
     return userBranchId;
 };
 
-// แอดมิน/ผู้จัดการ (หรือคนที่มีสิทธิ์ filter_stock_branch) ทำงานข้ามสาขาได้
-const canAccessAllBranches = (req) => {
-    const userRole = req.user && req.user.role ? req.user.role : '';
-    const userPermissions = req.user && req.user.permissions ? req.user.permissions : {};
-    return !!userPermissions.filter_stock_branch
-        || userRole === 'Administrator' || userRole === 'แอดมิน' || userRole === 'ผู้จัดการ';
-};
-
 const injectBranchStockVirtuals = (product, branchId) => {
     const p = product.toObject ? product.toObject() : { ...product };
     const bId = branchId ? branchId.toString() : '';
@@ -1972,7 +1964,11 @@ router.put('/transfers/:id/receive', async (req, res) => {
 
         // ตรวจสอบสิทธิ์: แอดมิน/ผู้จัดการ สามารถรับเข้าได้จากทุกสาขา
         // พนักงานทั่วไปต้องอยู่ที่สาขาปลายทาง
-        if (!canAccessAllBranches(req)) {
+        // หมายเหตุ: ห้ามใช้สิทธิ์ filter_stock_branch แทน role เช็คตรงนี้ เพราะ filter_stock_branch
+        // คือสิทธิ์กรองสาขาในเมนูดูสต็อก (read-only) ไม่ใช่สิทธิ์ย้ายสต็อกเข้าข้ามสาขา
+        const userRole = req.user && req.user.role ? req.user.role : '';
+        const canReceiveAnyBranch = userRole === 'Administrator' || userRole === 'แอดมิน' || userRole === 'ผู้จัดการ';
+        if (!canReceiveAnyBranch) {
             if (!userBranchId || userBranchId !== toBranchId) {
                 return res.status(403).json({ success: false, message: 'คุณไม่มีสิทธิ์รับเข้าสินค้ารายการนี้' });
             }
@@ -2578,7 +2574,9 @@ router.get('/sales/daily-summary', async (req, res) => {
             // Use net_amount + vat_amount (== voucher total_amount), not the raw `amount`
             // field — for VAT_EXCLUDED vouchers `amount` is only the net portion, so
             // summing it alone understates actual cash paid out by the VAT amount.
-            cashDisbursed = todayDisbursements.reduce((sum, v) => sum + ((v.net_amount || 0) + (v.vat_amount || 0)), 0);
+            // Fall back to `amount` for legacy vouchers created before net_amount/vat_amount
+            // existed, so they don't silently contribute 0 to today's cash-out total.
+            cashDisbursed = todayDisbursements.reduce((sum, v) => sum + ((v.net_amount || v.amount || 0) + (v.vat_amount || 0)), 0);
         }
 
         res.json({

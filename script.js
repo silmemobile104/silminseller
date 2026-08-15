@@ -763,6 +763,13 @@ document.addEventListener('DOMContentLoaded', () => {
         const nextBatch = stockFilteredCache.slice(stockLoadedCount, stockLoadedCount + stockItemsPerPage);
         renderProductTable(nextBatch, true);
         stockLoadedCount += nextBatch.length;
+
+        // ถ้าโหลดแล้วเนื้อหายังไม่ล้นพื้นที่ที่มองเห็น (#main-content ไม่มี scrollbar)
+        // scroll event จะไม่มีวันยิงและรายการที่เหลือจะเข้าถึงไม่ได้ตลอดไป โหลดเพิ่มต่อจนกว่าจะล้นหรือหมด cache
+        const container = document.getElementById('main-content');
+        if (container && stockLoadedCount < totalItems && container.scrollHeight <= container.clientHeight) {
+            loadMoreStockProducts();
+        }
     };
 
     const renderStockPage = () => {
@@ -1544,7 +1551,8 @@ document.addEventListener('DOMContentLoaded', () => {
             toast.remove();
             if (navTransfers) {
                 await switchView('transfers');
-                if (transferTabIncoming) transferTabIncoming.click();
+                const tabIncoming = document.getElementById('transfer-tab-incoming');
+                if (tabIncoming) tabIncoming.click();
             }
         });
     };
@@ -3238,6 +3246,19 @@ document.addEventListener('DOMContentLoaded', () => {
             await loadPageView('dashboard');
             await loadPageScript('dashboard');
             if (typeof loadDashboardData === 'function') loadDashboardData();
+            if (!window.__isDashboardCardBound) {
+                window.__isDashboardCardBound = true;
+                const cardPendingTransfer = document.getElementById('card-pending-transfer');
+                if (cardPendingTransfer) {
+                    cardPendingTransfer.addEventListener('click', async () => {
+                        if (navTransfers) {
+                            await switchView('transfers');
+                            const tabIncoming = document.getElementById('transfer-tab-incoming');
+                            if (tabIncoming) tabIncoming.click();
+                        }
+                    });
+                }
+            }
         }
         else if (viewName === 'stock') {
             activateView(viewStock, navStock);
@@ -3326,20 +3347,22 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         else if (viewName === 'report-arrival') {
             activateView(viewReportArrival, navReportArrival);
-            if (typeof window.populateArrivalDropdowns === 'function') window.populateArrivalDropdowns();
-            if (typeof loadMyArrivalReports === 'function') loadMyArrivalReports();
             await loadPageView('po-accounting');
             await loadPageScript('po-accounting');
+            if (typeof window.initImportWorkflowPage === 'function') window.initImportWorkflowPage();
+            if (typeof window.populateArrivalDropdowns === 'function') window.populateArrivalDropdowns();
+            if (typeof loadMyArrivalReports === 'function') loadMyArrivalReports();
             if (typeof loadArrivalPOs === 'function') loadArrivalPOs();
         }
         else if (viewName === 'approve-import') {
             activateView(viewApproveImport, navApproveImport);
+            await loadPageView('po-accounting');
+            await loadPageScript('po-accounting');
+            if (typeof window.initImportWorkflowPage === 'function') window.initImportWorkflowPage();
             if (typeof populateApproveImportBranchFilter === 'function') populateApproveImportBranchFilter();
             if (typeof loadImportNotifications === 'function') {
                 loadImportNotifications();
             }
-            await loadPageView('po-accounting');
-            await loadPageScript('po-accounting');
             if (typeof loadApprovePOs === 'function') loadApprovePOs();
             if (typeof loadApproveHistory === 'function') loadApproveHistory();
         }
@@ -3450,16 +3473,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if (navStockAuditReview) navStockAuditReview.addEventListener('click', (e) => { e.preventDefault(); switchView('stock-audit-review'); });
     if (mobileNavStockAudit) mobileNavStockAudit.addEventListener('click', (e) => { e.preventDefault(); switchView('stock-audit'); });
 
-    // Dashboard card click to transfers
-    const cardPendingTransfer = document.getElementById('card-pending-transfer');
-    if (cardPendingTransfer) {
-        cardPendingTransfer.addEventListener('click', async () => {
-            if (navTransfers) {
-                await switchView('transfers');
-                if (transferTabIncoming) transferTabIncoming.click();
-            }
-        });
-    }
 
     // Auto-login check (JWT Token) - moved here after switchView is defined
     const savedToken = localStorage.getItem('silmin_token');
@@ -6291,20 +6304,14 @@ document.addEventListener('DOMContentLoaded', () => {
     // ==========================================
     // IMPORT WORKFLOW LOGIC (Report Arrival & Approve Import)
     // ==========================================
-    const btnSubmitArrival = document.getElementById('btn-submit-arrival');
-    const arrivalProductName = document.getElementById('arrival-product-name');
-    const arrivalTypeName = document.getElementById('arrival-type-name');
-    const arrivalConditionName = document.getElementById('arrival-condition-name');
-    const arrivalColorName = document.getElementById('arrival-color-name');
-    const arrivalCapacityName = document.getElementById('arrival-capacity-name');
-    const arrivalSupplierName = document.getElementById('arrival-supplier-name');
-    const arrivalUnitName = document.getElementById('arrival-unit-name');
-    const arrivalImeis = document.getElementById('arrival-imeis');
-    const arrivalImeiCount = document.getElementById('arrival-imei-count');
-    const arrivalNotes = document.getElementById('arrival-notes');
-    const myArrivalReports = document.getElementById('my-arrival-reports');
-    const importArrivalBadge = document.getElementById('import-arrival-badge');
-    const approveImportBadge = document.getElementById('approve-import-badge');
+    // หมายเหตุ: element เหล่านี้อยู่ใน views/po-accounting.html ซึ่งโหลดแบบ lazy
+    // ผ่าน loadPageView('po-accounting') จึงต้อง lookup ใหม่ทุกครั้งที่เข้าหน้านี้
+    // (ห้าม getElementById ตอน DOMContentLoaded เพราะตอนนั้น view ยังไม่ถูก inject)
+    let btnSubmitArrival, arrivalProductName, arrivalTypeName, arrivalConditionName,
+        arrivalColorName, arrivalCapacityName, arrivalSupplierName, arrivalUnitName,
+        arrivalImeis, arrivalImeiCount, arrivalNotes, myArrivalReports,
+        importArrivalBadge, approveImportBadge;
+    let isImportWorkflowBound = false;
 
     // Auto populate dropdowns when master data is loaded
     // This is handled by renderSettingsList/fetchMasterData implicitly or we can just populate here if needed
@@ -6451,69 +6458,102 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    if (arrivalImeis && arrivalImeiCount) {
-        arrivalImeis.addEventListener('paste', () => {
-            isPasting = true;
-        });
+    // เรียกจาก switchView หลัง loadPageView('po-accounting') เพราะ element เหล่านี้
+    // เพิ่งถูก inject เข้า DOM ตอนนั้น (getElementById ตอน DOMContentLoaded จะได้ null เสมอ)
+    window.initImportWorkflowPage = () => {
+        btnSubmitArrival = document.getElementById('btn-submit-arrival');
+        arrivalProductName = document.getElementById('arrival-product-name');
+        arrivalTypeName = document.getElementById('arrival-type-name');
+        arrivalConditionName = document.getElementById('arrival-condition-name');
+        arrivalColorName = document.getElementById('arrival-color-name');
+        arrivalCapacityName = document.getElementById('arrival-capacity-name');
+        arrivalSupplierName = document.getElementById('arrival-supplier-name');
+        arrivalUnitName = document.getElementById('arrival-unit-name');
+        arrivalImeis = document.getElementById('arrival-imeis');
+        arrivalImeiCount = document.getElementById('arrival-imei-count');
+        arrivalNotes = document.getElementById('arrival-notes');
+        myArrivalReports = document.getElementById('my-arrival-reports');
+        importArrivalBadge = document.getElementById('import-arrival-badge');
+        approveImportBadge = document.getElementById('approve-import-badge');
 
-        arrivalImeis.addEventListener('input', () => {
-            validateImeisInput(false);
-        });
+        if (isImportWorkflowBound) return; // loadPageView cache ผลลัพธ์ไว้ (__loadedPageViews) inject แค่ครั้งแรกครั้งเดียว จึงผูก listener ครั้งเดียวพอ
+        isImportWorkflowBound = true;
 
-        arrivalImeis.addEventListener('blur', () => {
-            validateImeisInput(true);
-        });
-    }
+        if (arrivalImeis && arrivalImeiCount) {
+            arrivalImeis.addEventListener('paste', () => {
+                isPasting = true;
+            });
 
-    if (btnSubmitArrival) {
-        btnSubmitArrival.addEventListener('click', async () => {
-            if (!arrivalProductName.value) {
-                showToast('กรุณาระบุชื่อสินค้า', 'error');
-                return;
-            }
-            try {
-                btnSubmitArrival.disabled = true;
-                btnSubmitArrival.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> กำลังส่ง...';
+            arrivalImeis.addEventListener('input', () => {
+                validateImeisInput(false);
+            });
 
-                const payload = {
-                    product_name: arrivalProductName.value,
-                    type_name: arrivalTypeName.value,
-                    condition_name: arrivalConditionName.value,
-                    color_name: arrivalColorName.value,
-                    capacity_name: arrivalCapacityName.value,
-                    supplier_name: arrivalSupplierName.value,
-                    unit_name: arrivalUnitName.value,
-                    notes: arrivalNotes.value,
-                    imeis: arrivalImeis.value
-                };
+            arrivalImeis.addEventListener('blur', () => {
+                validateImeisInput(true);
+            });
+        }
 
-                const res = await authFetch(`${API_BASE_URL}/import-notifications`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
-
-                const data = await res.json();
-                if (data.success) {
-                    showToast('ส่งแจ้งของถึงสาขาเรียบร้อยแล้ว รอการอนุมัติ', 'success');
-                    // Reset form
-                    arrivalProductName.value = '';
-                    arrivalImeis.value = '';
-                    arrivalNotes.value = '';
-                    if (arrivalImeiCount) arrivalImeiCount.textContent = 'จำนวน: 0 IMEI';
-                    loadMyArrivalReports();
-                } else {
-                    showToast(data.message, 'error');
+        if (btnSubmitArrival) {
+            btnSubmitArrival.addEventListener('click', async () => {
+                if (!arrivalProductName.value) {
+                    showToast('กรุณาระบุชื่อสินค้า', 'error');
+                    return;
                 }
-            } catch (err) {
-                console.error(err);
-                showToast('เกิดข้อผิดพลาดในการเชื่อมต่อ', 'error');
-            } finally {
-                btnSubmitArrival.disabled = false;
-                btnSubmitArrival.innerHTML = '<i class="fa-solid fa-paper-plane mr-2"></i> ส่งแจ้งของถึงสาขา';
-            }
-        });
-    }
+                try {
+                    btnSubmitArrival.disabled = true;
+                    btnSubmitArrival.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> กำลังส่ง...';
+
+                    const payload = {
+                        product_name: arrivalProductName.value,
+                        type_name: arrivalTypeName.value,
+                        condition_name: arrivalConditionName.value,
+                        color_name: arrivalColorName.value,
+                        capacity_name: arrivalCapacityName.value,
+                        supplier_name: arrivalSupplierName.value,
+                        unit_name: arrivalUnitName.value,
+                        notes: arrivalNotes.value,
+                        imeis: arrivalImeis.value
+                    };
+
+                    const res = await authFetch(`${API_BASE_URL}/import-notifications`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
+                    const data = await res.json();
+                    if (data.success) {
+                        showToast('ส่งแจ้งของถึงสาขาเรียบร้อยแล้ว รอการอนุมัติ', 'success');
+                        // Reset form
+                        arrivalProductName.value = '';
+                        arrivalImeis.value = '';
+                        arrivalNotes.value = '';
+                        if (arrivalImeiCount) arrivalImeiCount.textContent = 'จำนวน: 0 IMEI';
+                        loadMyArrivalReports();
+                    } else {
+                        showToast(data.message, 'error');
+                    }
+                } catch (err) {
+                    console.error(err);
+                    showToast('เกิดข้อผิดพลาดในการเชื่อมต่อ', 'error');
+                } finally {
+                    btnSubmitArrival.disabled = false;
+                    btnSubmitArrival.innerHTML = '<i class="fa-solid fa-paper-plane mr-2"></i> ส่งแจ้งของถึงสาขา';
+                }
+            });
+        }
+
+        const filterBranch = document.getElementById('approve-import-filter-branch');
+        if (filterBranch) {
+            filterBranch.addEventListener('change', () => {
+                if (typeof window.loadImportNotifications === 'function') {
+                    window.loadImportNotifications();
+                }
+                if (typeof loadApprovePOs === 'function') loadApprovePOs();
+                if (typeof loadApproveHistory === 'function') loadApproveHistory();
+            });
+        }
+    };
 
     const loadMyArrivalReports = async () => {
         if (!myArrivalReports) return;
@@ -6630,17 +6670,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Initialize triggers
     // หมายเหตุ: listener ของ #nav-report-arrival ผูกซ้ำกับ navReportArrival (ดูใกล้บรรทัด 218) จึงตัดออกจากตรงนี้
-
-    const filterBranch = document.getElementById('approve-import-filter-branch');
-    if (filterBranch) {
-        filterBranch.addEventListener('change', () => {
-            if (typeof window.loadImportNotifications === 'function') {
-                window.loadImportNotifications();
-            }
-            if (typeof loadApprovePOs === 'function') loadApprovePOs();
-            if (typeof loadApproveHistory === 'function') loadApproveHistory();
-        });
-    }
+    // หมายเหตุ: listener ของ #approve-import-filter-branch ถูกผูกใน window.initImportWorkflowPage() แล้ว (ดูใกล้บรรทัด 6535)
 
     // ==========================================
     // Branch Inventory Logic (สินค้าในสาขา)

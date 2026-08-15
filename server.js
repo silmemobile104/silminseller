@@ -19,21 +19,39 @@ app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
 // ถ้ามีไฟล์ที่ minify แล้วใน dist/ ให้เสิร์ฟตัวนั้นแทนซอร์สเดิม (URL ที่ client ขอไม่เปลี่ยน)
 // ออกแบบให้ "ตกกลับ" ไปใช้ซอร์สเดิมอัตโนมัติถ้ายังไม่ได้รัน `npm run build:js`
-// จึงไม่มีทางที่ระบบจะพังเพราะลืม build — แค่ได้ไฟล์ที่ใหญ่กว่าเดิมเท่านั้น
+// จึงไม่มีทางที่ระบบจะพังเพราะลืม build — แต่ถ้า dist/ เก่ากว่าซอร์ส (ลืม build ใหม่หลังแก้โค้ด)
+// ให้ตกกลับไปใช้ซอร์สเดิมเช่นกัน ไม่งั้นจะเสิร์ฟบันเดิลเก่าแบบเงียบๆ
 app.use((req, res, next) => {
     if (req.method !== 'GET' && req.method !== 'HEAD') return next();
     const p = req.path;
     const isBuildable = p === '/script.js' || p === '/script.js.map' || p.startsWith('/js/');
-    if (isBuildable && fs.existsSync(path.join(__dirname, 'dist', p))) {
-        req.url = '/dist' + req.url; // คง query string (?v=...) ไว้ตามเดิม
+    if (isBuildable) {
+        const distPath = path.join(__dirname, 'dist', p);
+        const srcPath = path.join(__dirname, p);
+        if (fs.existsSync(distPath)) {
+            const distStat = fs.statSync(distPath);
+            const srcStat = fs.existsSync(srcPath) ? fs.statSync(srcPath) : null;
+            if (!srcStat || distStat.mtimeMs >= srcStat.mtimeMs) {
+                req.url = '/dist' + req.url; // คง query string (?v=...) ไว้ตามเดิม
+            }
+        }
     }
     next();
 });
 
 // Serve static files (images, etc.)
-// maxAge: 1y ปลอดภัยเพราะไฟล์ที่แก้บ่อย (js/page-*.js, views/*.html, style.css) ใช้ query string
+// maxAge: 1y ปลอดภัยสำหรับไฟล์ที่แก้บ่อย (js/page-*.js, views/*.html, style.css) เพราะใช้ query string
 // version-busting อยู่แล้ว (PAGE_SCRIPT_VERSION / VIEW_FRAGMENT_VERSION ใน script.js, ?v= ของ style.css)
-app.use(express.static(__dirname, { maxAge: '1y' }));
+// แต่ index.html เองไม่มี query string ห่อไว้ (มันคือตัวที่ประกาศ ?v= ให้ไฟล์อื่น) จึงต้องกัน cache แยก
+// ไม่งั้น deploy ใหม่แล้ว browser เก่ายังเสิร์ฟ index.html เดิมจาก disk cache พร้อม ?v= เดิมตลอดไป
+app.use(express.static(__dirname, {
+    maxAge: '1y',
+    setHeaders: (res, filePath) => {
+        if (filePath === path.join(__dirname, 'index.html')) {
+            res.setHeader('Cache-Control', 'no-cache');
+        }
+    }
+}));
 
 // ==========================================
 // Database Connection (MongoDB Atlas)

@@ -172,11 +172,22 @@ router.post('/pnl-config', async (req, res) => {
         const { lines } = req.body;
         if (!Array.isArray(lines)) return res.status(400).json({ success: false, message: 'ข้อมูลไม่ถูกต้อง' });
 
-        // Build & validate docs BEFORE touching existing data, so a bad row
-        // (e.g. a blank display_name) never leaves the collection wiped out
-        // with nothing successfully re-inserted.
+        // Reject rows with a blank display_name instead of silently dropping them —
+        // a silent drop returns success:true while the line vanishes from the config,
+        // and would also shift every auto-assigned sort_order after it.
+        const invalidRowNumbers = lines
+            .map((line, idx) => (!line || typeof line.display_name !== 'string' || line.display_name.trim() === '') ? idx + 1 : null)
+            .filter(n => n !== null);
+        if (invalidRowNumbers.length > 0) {
+            return res.status(400).json({
+                success: false,
+                message: `กรุณากรอกชื่อรายการให้ครบ (แถวที่ ${invalidRowNumbers.join(', ')} ไม่มีชื่อ)`
+            });
+        }
+
+        // Build docs BEFORE touching existing data, so a bad row never leaves
+        // the collection wiped out with nothing successfully re-inserted.
         const docs = lines
-            .filter(line => line && typeof line.display_name === 'string' && line.display_name.trim() !== '')
             .map((line, idx) => {
             let sec = (line.section || '').toLowerCase();
             if (sec === 'cogs' || sec === 'tax' || sec === 'other_expense') sec = 'expense';
@@ -259,12 +270,7 @@ router.post('/disbursements', async (req, res) => {
         // payment_date can never cause a duplicate voucher_no.
         const today = new Date();
         const yearMonth = localYearMonth(today);
-        const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
-        const todayEnd = new Date(); todayEnd.setHours(23, 59, 59, 999);
-        const [countMonth, cmCount] = await Promise.all([
-            DisbursementVoucher.countDocuments({ voucher_no: { $regex: `^PV-${yearMonth}-` } }),
-            CashMovement.countDocuments({ created_at: { $gte: todayStart, $lte: todayEnd } })
-        ]);
+        const countMonth = await DisbursementVoucher.countDocuments({ voucher_no: { $regex: `^PV-${yearMonth}-` } });
         const voucher_no = `PV-${yearMonth}-${String(countMonth + 1).padStart(4, '0')}`;
 
         // Calculate VAT
@@ -316,7 +322,12 @@ router.post('/disbursements', async (req, res) => {
         });
 
         // Also record in CashMovement for backward compatibility with existing P&L
-        // (transaction_id count was fetched together with countMonth above, in parallel).
+        // นับ transaction_id ตรงนี้ (ใกล้ create ที่สุด) ไม่ใช่ตอนต้น request เพราะระหว่างนั้นมี
+        // การอัปโหลดรูปหลักฐานขึ้น Google Drive ซึ่งอาจใช้เวลาหลายวินาที นับไว้ก่อนหน้านั้นเสี่ยงชนกับ
+        // ธุรกรรมอื่นที่สร้าง TXN เลขเดียวกันในช่วงเวลานั้นพอดี (transaction_id เป็น unique index)
+        const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
+        const todayEnd = new Date(); todayEnd.setHours(23, 59, 59, 999);
+        const cmCount = await CashMovement.countDocuments({ created_at: { $gte: todayStart, $lte: todayEnd } });
         const cmTxnId = `TXN-${localYearMonthDay(today)}-${String(cmCount + 1).padStart(4, '0')}`;
 
         // Cash actually leaving the till is net_amount + vat_amount (the voucher's
