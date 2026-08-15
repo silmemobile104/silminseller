@@ -25,10 +25,8 @@
          ปกติเบราว์เซอร์ต้องรอ parse CSS จบก่อนถึงจะรู้ว่าต้องโหลดฟอนต์ -->
     <!-- ⚠️ ?v= ต้องตรงกับ FONT_VERSION ใน tools/build-icons.js เป๊ะๆ
          ถ้าไม่ตรง เบราว์เซอร์จะมองเป็นคนละไฟล์แล้วโหลดฟอนต์ซ้ำสองรอบ -->
-    <link rel="preload" as="font" type="font/woff2" crossorigin
-        href="vendor/icons/webfonts/fa-solid-900.woff2?v=3">
-    <link rel="preload" as="font" type="font/woff2" crossorigin
-        href="vendor/icons/webfonts/bootstrap-icons.woff2?v=3">
+    <link rel="preload" as="font" type="font/woff2" crossorigin href="vendor/icons/webfonts/fa-solid-900.woff2?v=3">
+    <link rel="preload" as="font" type="font/woff2" crossorigin href="vendor/icons/webfonts/bootstrap-icons.woff2?v=3">
     <!-- Prompt: โหลดเฉพาะน้ำหนักที่ใช้จริง (300-900 + italic 400) — ตัดจาก 18 variants เหลือ 8
          หมายเหตุ: ฟอนต์ Inter ถูกลบออกแล้ว เพราะ style.css บังคับ Prompt กับทุก element (* selector) จึงไม่เคยถูกใช้ -->
     <link
@@ -292,7 +290,8 @@
         <!-- MAIN CONTENT AREA -->
         <main class="flex-1 flex flex-col h-full min-w-0 bg-black">
             <!-- Top App Bar -->
-            <header class="h-24 bg-canvas/80 backdrop-blur-[20px] backdrop-saturate-[1.8] border-b border-hairline flex items-center justify-between px-4 sm:px-6 z-10">
+            <header
+                class="h-24 bg-canvas/80 backdrop-blur-[20px] backdrop-saturate-[1.8] border-b border-hairline flex items-center justify-between px-4 sm:px-6 z-10">
                 <div class="flex items-center gap-4">
                     <button aria-label="เปิดหรือปิดเมนู" id="toggle-sidebar"
                         class="text-ink hover:text-ink transition-colors focus:outline-none p-2 rounded-sm">
@@ -310,13 +309,15 @@
                     </button>
 
                     <!-- Notifications -->
-                    <button aria-label="การแจ้งเตือน" class="relative text-body-muted hover:text-ink transition-colors focus:outline-none">
+                    <button aria-label="การแจ้งเตือน"
+                        class="relative text-body-muted hover:text-ink transition-colors focus:outline-none">
                         <i class="fa-regular fa-bell text-2xl"></i> <span
                             class="absolute -top-0.5 -right-0.6 w-2.5 h-2.5 bg-red-500 rounded-full border border-canvas"></span>
                     </button>
 
                     <!-- Theme Toggle -->
-                    <button aria-label="สลับธีมสว่างหรือมืด" class="text-body-muted hover:text-ink transition-colors focus:outline-none">
+                    <button aria-label="สลับธีมสว่างหรือมืด"
+                        class="text-body-muted hover:text-ink transition-colors focus:outline-none">
                         <i class="bi bi-sun text-2xl"></i> </button>
 
                     <!-- User Profile Container -->
@@ -372,8 +373,7 @@
                                         <i class="fa-solid fa-store w-5 text-center text-body-muted"></i>
                                         สาขา
                                     </span>
-                                    <span id="popup-user-branch"
-                                        class="font-medium text-ink">กำลังโหลด...</span>
+                                    <span id="popup-user-branch" class="font-medium text-ink">กำลังโหลด...</span>
                                 </div>
                                 <div class="flex items-center justify-between">
                                     <span class="flex items-center gap-2 text-body-muted">
@@ -702,18 +702,21 @@
                                     <span class="text-xs font-semibold text-body-muted" id="detail-audit-time">-</span>
                                 </div>
                                 <div>
-                                    <span class="text-[10px] font-bold text-body-muted uppercase tracking-wider block">IP
+                                    <span
+                                        class="text-[10px] font-bold text-body-muted uppercase tracking-wider block">IP
                                         Address</span>
                                     <span class="text-xs font-semibold text-body-muted" id="detail-audit-ip">-</span>
                                 </div>
                                 <div>
-                                    <span class="text-[10px] font-bold text-body-muted uppercase tracking-wider block">ID
+                                    <span
+                                        class="text-[10px] font-bold text-body-muted uppercase tracking-wider block">ID
                                         เอกสารเป้าหมาย</span>
                                     <span class="text-xs font-semibold text-body-muted truncate block"
                                         id="detail-audit-target">-</span>
                                 </div>
                                 <div>
-                                    <span class="text-[10px] font-bold text-body-muted uppercase tracking-wider block">ID
+                                    <span
+                                        class="text-[10px] font-bold text-body-muted uppercase tracking-wider block">ID
                                         ผู้ใช้</span>
                                     <span class="text-xs font-semibold text-body-muted truncate block"
                                         id="detail-audit-user-id">-</span>
@@ -954,8 +957,7 @@
             <!-- Header -->
             <div class="p-6 border-b border-hairline flex items-center justify-between shrink-0">
                 <h3 id="member-modal-title" class="text-2xl font-bold text-ink flex items-center gap-3">
-                    <div
-                        class="w-10 h-10 rounded-sm bg-surface-chip flex items-center justify-center">
+                    <div class="w-10 h-10 rounded-sm bg-surface-chip flex items-center justify-center">
                         <i class="fa-solid fa-address-card text-ink"></i>
                     </div>
                     เพิ่มสมาชิกใหม่
@@ -1033,8 +1035,8 @@
                                         placeholder="First Name">
                                 </div>
                                 <div>
-                                    <label class="text-xs font-medium text-body-muted mb-1 block">นามสกุล (English) <span
-                                            class="text-red-400">*</span></label>
+                                    <label class="text-xs font-medium text-body-muted mb-1 block">นามสกุล (English)
+                                        <span class="text-red-400">*</span></label>
                                     <input type="text" id="member-last-name-en"
                                         class="w-full px-4 py-2.5 rounded-sm bg-surface-chip border border-divider-soft text-ink focus:border-primary-focus focus:ring-1 focus:ring-primary-focus/40 focus:outline-none transition-all"
                                         placeholder="Last Name">
@@ -1191,7 +1193,8 @@
                     <i class="fa-solid fa-right-left text-body-muted"></i>
                     สร้างรายการโอนย้ายสินค้า
                 </h4>
-                <button aria-label="ปิด" id="btn-close-create-transfer" class="modal-close-btn text-body-muted hover:text-red-400 transition-colors p-1">
+                <button aria-label="ปิด" id="btn-close-create-transfer"
+                    class="modal-close-btn text-body-muted hover:text-red-400 transition-colors p-1">
                     <i class="fa-solid fa-xmark text-lg"></i>
                 </button>
             </div>
@@ -1211,6 +1214,7 @@
                             class="w-full px-4 py-3 rounded-sm bg-surface-chip border border-divider-soft text-ink focus:border-primary-focus focus:ring-1 focus:ring-primary-focus/40 focus:outline-none transition-all">
                             <option value="" disabled selected>-- เลือกสาขาปลายทาง --</option>
                         </select>
+                        <p id="transfer-to-branch-error" class="hidden text-xs text-red-400"></p>
                     </div>
                 </div>
 
@@ -1223,7 +1227,7 @@
                             class="text-primary font-medium">สาขาต้นทางที่เลือก</span></p>
                 </div>
 
-                <div class="bg-surface-tile-3 border border-hairline rounded-lg overflow-hidden">
+                <div class="bg-surface-tile-3 border border-hairline rounded-lg overflow-hidden" id="transfer-cart-box">
                     <div class="p-4 border-b border-hairline flex items-center justify-between">
                         <div class="text-ink font-bold">รายการสินค้าในใบโอน</div>
                         <div class="text-xs text-body-muted" id="transfer-cart-count">0 รายการ</div>
@@ -1233,6 +1237,7 @@
                             ยังไม่มีสินค้าในรายการโอนย้าย</div>
                     </div>
                 </div>
+                <p id="transfer-cart-error" class="hidden text-xs text-red-400 -mt-2"></p>
             </div>
 
             <div class="p-5 border-t border-hairline bg-canvas-elevated flex items-center justify-end gap-3">
@@ -1526,7 +1531,7 @@
                 </div>
 
                 <!-- Section: ประเภทสินค้า -->
-                <div class="space-y-2">
+                <div class="space-y-2 relative group">
                     <label class="text-slate-200 font-medium flex items-center gap-2 text-xs">
                         <i class="fa-solid fa-tag text-white"></i> ประเภทสินค้า
                     </label>
@@ -1534,7 +1539,7 @@
                         <option value="">ทุกประเภท</option>
                     </select>
                     <div id="stock-filter-category-container"
-                        class="flex items-center gap-2 overflow-x-auto hide-scrollbar pb-1">
+                        class="flex items-center gap-2 overflow-x-auto hide-scrollbar pb-1 px-8">
                         <!-- Pills -->
                         <button type="button"
                             class="custom-pill flex-shrink-0 px-4 py-2.5 bg-[#27272A] border border-[#FFE169] rounded-xl text-[#FFE169] text-sm hover:border-[#FFE169] hover:text-white transition-colors filter-pill active"
@@ -1555,10 +1560,26 @@
                             class="custom-pill flex-shrink-0 px-4 py-2.5 bg-[#27272A] border border-[#3F3F46] rounded-xl text-slate-300 text-sm hover:border-[#FFE169] hover:text-white transition-colors filter-pill"
                             data-target="stock-filter-prod-type" data-value="อุปกรณ์เสริม">อุปกรณ์เสริม</button>
                     </div>
+                    <button aria-label="ก่อนหน้า" type="button"
+                        onclick="document.getElementById('stock-filter-category-container').scrollBy({left: -150, behavior: 'smooth'})"
+                        class="absolute left-0 top-6 bottom-2 w-10 flex items-center justify-start bg-gradient-to-r from-[#18181B] via-[#18181B]/90 to-transparent pointer-events-none">
+                        <div
+                            class="w-5 h-5 bg-[#3F3F46] hover:bg-[#FFE169] rounded-full flex items-center justify-center pointer-events-auto cursor-pointer shadow-md text-white hover:text-[#333333] transition-colors hover:scale-110 transition-transform">
+                            <i class="fa-solid fa-chevron-left text-[10px]"></i>
+                        </div>
+                    </button>
+                    <button aria-label="ถัดไป" type="button"
+                        onclick="document.getElementById('stock-filter-category-container').scrollBy({left: 150, behavior: 'smooth'})"
+                        class="absolute right-0 top-6 bottom-2 w-10 flex items-center justify-end bg-gradient-to-l from-[#18181B] via-[#18181B]/90 to-transparent pointer-events-none">
+                        <div
+                            class="w-5 h-5 bg-[#FFE169] rounded-full flex items-center justify-center pointer-events-auto cursor-pointer shadow-md text-[#333333] hover:scale-110 transition-transform">
+                            <i class="fa-solid fa-chevron-right text-[10px]"></i>
+                        </div>
+                    </button>
                 </div>
 
                 <!-- Section: สภาพ -->
-                <div class="space-y-2">
+                <div class="space-y-2 relative group">
                     <label class="text-slate-200 font-medium flex items-center gap-2 text-xs">
                         สภาพ
                     </label>
@@ -1566,7 +1587,7 @@
                         <option value="">ทุกสภาพ</option>
                     </select>
                     <div id="stock-filter-condition-container"
-                        class="flex items-center gap-2 overflow-x-auto hide-scrollbar pb-1">
+                        class="flex items-center gap-2 overflow-x-auto hide-scrollbar pb-1 px-8">
                         <button type="button"
                             class="custom-pill flex-shrink-0 px-4 py-2.5 bg-[#27272A] border border-[#FFE169] rounded-xl text-[#FFE169] text-sm hover:border-[#FFE169] hover:text-white transition-colors filter-pill active"
                             data-target="stock-filter-condition" data-value="">ทั้งหมด</button>
@@ -1586,6 +1607,22 @@
                             class="custom-pill flex-shrink-0 px-4 py-2.5 bg-[#27272A] border border-[#3F3F46] rounded-xl text-slate-300 text-sm hover:border-[#FFE169] hover:text-white transition-colors filter-pill"
                             data-target="stock-filter-condition" data-value="มือ2 JP">มือ2 JP</button>
                     </div>
+                    <button aria-label="ก่อนหน้า" type="button"
+                        onclick="document.getElementById('stock-filter-condition-container').scrollBy({left: -150, behavior: 'smooth'})"
+                        class="absolute left-0 top-6 bottom-2 w-10 flex items-center justify-start bg-gradient-to-r from-[#18181B] via-[#18181B]/90 to-transparent pointer-events-none">
+                        <div
+                            class="w-5 h-5 bg-[#3F3F46] hover:bg-[#FFE169] rounded-full flex items-center justify-center pointer-events-auto cursor-pointer shadow-md text-white hover:text-[#333333] transition-colors hover:scale-110 transition-transform">
+                            <i class="fa-solid fa-chevron-left text-[10px]"></i>
+                        </div>
+                    </button>
+                    <button aria-label="ถัดไป" type="button"
+                        onclick="document.getElementById('stock-filter-condition-container').scrollBy({left: 150, behavior: 'smooth'})"
+                        class="absolute right-0 top-6 bottom-2 w-10 flex items-center justify-end bg-gradient-to-l from-[#18181B] via-[#18181B]/90 to-transparent pointer-events-none">
+                        <div
+                            class="w-5 h-5 bg-[#FFE169] rounded-full flex items-center justify-center pointer-events-auto cursor-pointer shadow-md text-[#333333] hover:scale-110 transition-transform">
+                            <i class="fa-solid fa-chevron-right text-[10px]"></i>
+                        </div>
+                    </button>
                 </div>
 
                 <!-- Section: สี (Swatches) -->
@@ -1874,7 +1911,8 @@
                 <h3 class="text-2xl font-bold  flex items-center gap-2">
                     <i class="fa-solid fa-file-excel text-emerald-500"></i> นำเข้าสินค้าผ่าน Excel
                 </h3>
-                <button aria-label="ปิด" id="close-excel-modal-btn" type="button" class="text-slate-400 hover: transition-colors">
+                <button aria-label="ปิด" id="close-excel-modal-btn" type="button"
+                    class="text-slate-400 hover: transition-colors">
                     <i class="fa-solid fa-xmark text-xl"></i>
                 </button>
             </div>
@@ -2172,7 +2210,8 @@
                     <i class="fa-solid fa-file-lines text-white"></i>
                     รายละเอียดสินค้า : <span id="v-product-name" class="text-[#FFE169]"></span>
                 </h3>
-                <button aria-label="ปิด" id="close-product-view-btn" class="text-red-500 hover:text-red-400 transition-colors p-1">
+                <button aria-label="ปิด" id="close-product-view-btn"
+                    class="text-red-500 hover:text-red-400 transition-colors p-1">
                     <i class="fa-solid fa-xmark text-2xl"></i>
                 </button>
             </div>
@@ -2268,8 +2307,7 @@
             class="relative w-full max-w-md bg-canvas-elevated rounded-lg border border-hairline flex flex-col transform scale-95 transition-transform duration-300">
             <div class="p-6 border-b border-hairline flex items-center justify-between rounded-t-lg">
                 <h3 class="text-2xl font-bold text-ink flex items-center gap-3">
-                    <div
-                        class="w-10 h-10 rounded-sm bg-surface-chip flex items-center justify-center">
+                    <div class="w-10 h-10 rounded-sm bg-surface-chip flex items-center justify-center">
                         <i class="fa-solid fa-user-tie text-ink"></i>
                     </div>
                     รายละเอียดพนักงาน
@@ -2323,8 +2361,7 @@
             class="relative w-full max-w-2xl bg-canvas-elevated rounded-lg border border-hairline flex flex-col transform scale-95 transition-transform duration-300">
             <div class="p-6 border-b border-hairline flex items-center justify-between rounded-t-lg">
                 <h3 class="text-2xl font-bold text-ink flex items-center gap-3">
-                    <div
-                        class="w-10 h-10 rounded-sm bg-surface-chip flex items-center justify-center">
+                    <div class="w-10 h-10 rounded-sm bg-surface-chip flex items-center justify-center">
                         <i class="fa-solid fa-address-card text-ink"></i>
                     </div>
                     รายละเอียดสมาชิก: <span id="v-member-num" class="text-ink font-mono"></span>
@@ -2397,8 +2434,7 @@
             class="relative w-full max-w-md bg-canvas-elevated rounded-lg border border-hairline flex flex-col transform scale-95 transition-transform duration-300">
             <div class="p-6 border-b border-hairline flex items-center justify-between rounded-t-lg">
                 <h3 class="text-2xl font-bold text-ink flex items-center gap-3">
-                    <div
-                        class="w-10 h-10 rounded-sm bg-surface-chip flex items-center justify-center">
+                    <div class="w-10 h-10 rounded-sm bg-surface-chip flex items-center justify-center">
                         <i class="fa-solid fa-store text-ink"></i>
                     </div>
                     รายละเอียดสาขา
@@ -2443,8 +2479,7 @@
             class="relative w-full max-w-2xl bg-canvas-elevated rounded-lg border border-hairline flex flex-col transform scale-95 transition-transform duration-300">
             <div class="p-6 border-b border-hairline flex items-center justify-between rounded-t-lg">
                 <h3 class="text-2xl font-bold text-ink flex items-center gap-3">
-                    <div
-                        class="w-10 h-10 rounded-sm bg-surface-chip flex items-center justify-center">
+                    <div class="w-10 h-10 rounded-sm bg-surface-chip flex items-center justify-center">
                         <i class="fa-solid fa-shield-halved text-ink"></i>
                     </div>
                     รายละเอียดบทบาท: <span id="v-role-name" class="text-ink"></span>
@@ -2505,8 +2540,7 @@
         class="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-[20px] backdrop-saturate-[1.8] hidden opacity-0 transition-opacity duration-300 p-4">
         <div id="prompt-card"
             class="modal-content bg-canvas-elevated border border-hairline rounded-lg w-full max-w-md p-6 modal-animate-in transition-all duration-300">
-            <div
-                class="w-14 h-14 rounded-lg bg-surface-chip flex items-center justify-center text-ink mb-4">
+            <div class="w-14 h-14 rounded-lg bg-surface-chip flex items-center justify-center text-ink mb-4">
                 <i class="fa-solid fa-pen-to-square text-xl"></i>
             </div>
             <h4 id="prompt-title" class="text-xl font-bold text-ink mb-2 tracking-tight">แก้ไขข้อมูล</h4>
@@ -3020,7 +3054,8 @@
                                 </div>
                                 <div>
                                     <span class="text-sm font-medium text-ink">ตรวจนับสต็อกประจำวัน</span>
-                                    <p class="text-[10px] text-ink-muted-48 mt-0.5">สแกนบาร์โค้ด ตรวจนับ ถ่ายรูปกล่อง</p>
+                                    <p class="text-[10px] text-ink-muted-48 mt-0.5">สแกนบาร์โค้ด ตรวจนับ ถ่ายรูปกล่อง
+                                    </p>
                                 </div>
                             </div>
                             <label class="relative inline-flex items-center cursor-pointer">
@@ -3155,8 +3190,7 @@
             <!-- Header -->
             <div class="p-6 border-b border-hairline flex items-center justify-between bg-canvas-elevated rounded-t-lg">
                 <h3 class="text-2xl font-bold text-ink flex items-center gap-3">
-                    <div
-                        class="w-10 h-10 rounded-sm bg-surface-chip flex items-center justify-center">
+                    <div class="w-10 h-10 rounded-sm bg-surface-chip flex items-center justify-center">
                         <i class="fa-solid fa-cash-register text-ink"></i>
                     </div>
                     ข้อมูลการชำระเงิน & ออกใบเสร็จ
@@ -3174,8 +3208,7 @@
                 <div class="flex-1 flex flex-col space-y-6">
 
                     <!-- Member Selection Section -->
-                    <div
-                        class="space-y-4 bg-canvas-elevated border-2 border-primary/40 rounded-lg p-5 relative z-50">
+                    <div class="space-y-4 bg-canvas-elevated border-2 border-primary/40 rounded-lg p-5 relative z-50">
                         <div class="absolute top-0 left-0 w-1 h-full bg-primary rounded-l-lg"></div>
                         <div class="flex items-center justify-between">
                             <h4 class="text-sm font-bold text-ink tracking-wider uppercase flex items-center gap-2">
@@ -3341,7 +3374,8 @@
                             </div>
                             <div class="space-y-2">
                                 <label class="text-sm font-medium text-body-muted block flex items-center gap-1.5">
-                                    <i class="fa-solid fa-mobile-screen-button text-body-muted text-xs"></i> รับเงินโอนมา
+                                    <i class="fa-solid fa-mobile-screen-button text-body-muted text-xs"></i>
+                                    รับเงินโอนมา
                                 </label>
                                 <div class="relative">
                                     <span
@@ -3467,7 +3501,8 @@
                                         </div>
                                     </div>
                                     <div class="space-y-1.5">
-                                        <label class="text-xs font-medium text-body-muted block">รับเงินโอน (บาท)</label>
+                                        <label class="text-xs font-medium text-body-muted block">รับเงินโอน
+                                            (บาท)</label>
                                         <div class="relative">
                                             <span
                                                 class="absolute left-3 top-1/2 -translate-y-1/2 text-body-muted text-xs font-mono">฿</span>
@@ -3556,7 +3591,8 @@
                                     <div
                                         class="text-right space-y-0.5 border-l border-hairline pl-4 flex flex-col justify-center">
                                         <p id="verify-result-label"
-                                            class="text-[10px] font-bold text-body-muted uppercase tracking-wide">เงินทอน
+                                            class="text-[10px] font-bold text-body-muted uppercase tracking-wide">
+                                            เงินทอน
                                         </p>
                                         <p id="verify-change-display" class=" text-md font-black font-mono text-ink">
                                             ฿0.00</p>
@@ -3722,8 +3758,7 @@
             class="modal-content relative w-full max-w-md bg-canvas-elevated rounded-lg border border-hairline transform scale-95 transition-transform duration-300">
             <div class="p-6 border-b border-hairline flex justify-between items-center bg-canvas-elevated rounded-t-lg">
                 <h3 class="text-xl font-bold text-ink flex items-center gap-3">
-                    <div
-                        class="w-10 h-10 rounded-sm bg-surface-chip flex items-center justify-center">
+                    <div class="w-10 h-10 rounded-sm bg-surface-chip flex items-center justify-center">
                         <i class="fa-solid fa-file-invoice-dollar text-body-muted"></i>
                     </div>
                     บันทึกค่าใช้จ่ายทั่วไป
@@ -3772,8 +3807,7 @@
             class="modal-content relative w-full max-w-4xl max-h-[90vh] flex flex-col bg-canvas-elevated rounded-lg border border-hairline transform scale-95 transition-transform duration-300">
             <div class="p-6 border-b border-hairline flex justify-between items-center  rounded-t-lg">
                 <h3 class="text-xl font-bold  flex items-center gap-3">
-                    <div
-                        class="w-10 h-10 rounded-sm bg-surface-chip flex items-center justify-center">
+                    <div class="w-10 h-10 rounded-sm bg-surface-chip flex items-center justify-center">
                         <i class="fa-solid fa-boxes-packing text-body-muted"></i>
                     </div>
                     ตรวจรับสินค้า PO: <span id="receive-po-number" class="text-ink font-mono"></span>
@@ -3847,13 +3881,13 @@
             class="modal-content relative w-full max-w-4xl max-h-[90vh] flex flex-col bg-canvas-elevated rounded-lg border border-hairline transform scale-95 transition-transform duration-300">
             <div class="p-6 border-b border-hairline flex justify-between items-center bg-canvas-elevated rounded-t-lg">
                 <h3 class="text-xl font-bold text-ink flex items-center gap-3">
-                    <div
-                        class="w-10 h-10 rounded-md bg-surface-chip flex items-center justify-center">
+                    <div class="w-10 h-10 rounded-md bg-surface-chip flex items-center justify-center">
                         <i class="fa-solid fa-file-lines text-body-muted"></i>
                     </div>
                     รายละเอียดใบสั่งซื้อ PO: <span id="view-po-number" class="text-ink font-mono"></span>
                 </h3>
-                <button aria-label="ปิด" id="btn-close-po-view" class="modal-close-btn text-body-muted hover:text-ink transition-colors p-2 rounded-sm hover:bg-surface-chip cursor-pointer">
+                <button aria-label="ปิด" id="btn-close-po-view"
+                    class="modal-close-btn text-body-muted hover:text-ink transition-colors p-2 rounded-sm hover:bg-surface-chip cursor-pointer">
                     <i class="fa-solid fa-xmark text-xl"></i>
                 </button>
             </div>
@@ -3983,7 +4017,8 @@
                     <i class="fa-solid fa-file-invoice text-ink"></i>
                     รายละเอียดใบโอนย้ายสินค้า
                 </h4>
-                <button aria-label="ปิด" id="btn-close-transfer-view" class="text-body-muted hover:text-red-400 transition-colors p-1">
+                <button aria-label="ปิด" id="btn-close-transfer-view"
+                    class="text-body-muted hover:text-red-400 transition-colors p-1">
                     <i class="fa-solid fa-xmark text-lg"></i>
                 </button>
             </div>
@@ -4049,6 +4084,10 @@
                         class="px-4 py-2.5 rounded-md bg-surface-chip hover:bg-surface-tile-2 text-body-muted font-bold transition-all text-sm border border-hairline">
                         ปิดหน้าต่าง
                     </button>
+                    <button id="btn-transfer-view-cancel"
+                        class="px-5 py-2.5 rounded-md bg-surface-chip hover:bg-red-500 hover:text-white text-red-400 font-bold transition-all text-sm flex items-center gap-1.5 border border-hairline hidden">
+                        <i class="fa-solid fa-ban"></i> ยกเลิกการโอนย้าย
+                    </button>
                     <button id="btn-transfer-view-receive"
                         class="px-5 py-2.5 rounded-md bg-primary hover:bg-primary-pressed text-on-primary font-bold transition-all text-sm flex items-center gap-1.5 hidden">
                         <i class="fa-solid fa-circle-check"></i> ยืนยันรับเข้าสต็อก
@@ -4070,7 +4109,8 @@
                     <i class="fa-solid fa-wallet text-body-muted"></i>
                     บันทึกรายการจองมัดจำใหม่
                 </h4>
-                <button aria-label="ปิด" id="btn-close-create-deposit" class="text-body-muted hover:text-ink transition-colors p-1">
+                <button aria-label="ปิด" id="btn-close-create-deposit"
+                    class="text-body-muted hover:text-ink transition-colors p-1">
                     <i class="fa-solid fa-xmark text-lg"></i>
                 </button>
             </div>
@@ -4506,8 +4546,7 @@
                         <span class="text-body-muted">ยอดเงินดาวน์ / ชำระแล้ว:</span>
                         <span id="transaction-detail-downpayment" class="text-ink font-bold">฿0</span>
                     </div>
-                    <div id="transaction-detail-payment-breakdown"
-                        class="mt-2 pt-2 border-t border-hairline space-y-1">
+                    <div id="transaction-detail-payment-breakdown" class="mt-2 pt-2 border-t border-hairline space-y-1">
                         <!-- Breakdowns like Cash: 100, Transfer: 200 -->
                     </div>
                     <div class="flex justify-between mt-2 pt-2 border-t border-hairline">
@@ -4587,8 +4626,7 @@
             <!-- Header -->
             <div class="flex items-center justify-between pb-3 border-b border-hairline">
                 <h3 class="text-xl font-bold text-ink flex items-center gap-2.5">
-                    <div
-                        class="w-9 h-9 rounded-sm bg-surface-chip flex items-center justify-center">
+                    <div class="w-9 h-9 rounded-sm bg-surface-chip flex items-center justify-center">
                         <i class="fa-solid fa-print text-body-muted"></i>
                     </div>
                     ตัวเลือกการพิมพ์ใบเสร็จ
@@ -4649,7 +4687,8 @@
                             </div>
                             <div class="flex flex-col">
                                 <span class="text-sm font-semibold text-ink">แสดงค่าบริการ iCloud</span>
-                                <span class="text-[11px] text-body-muted">แสดงแถวยอดค่าบริการ iCloud ในส่วนสรุปบิล</span>
+                                <span class="text-[11px] text-body-muted">แสดงแถวยอดค่าบริการ iCloud
+                                    ในส่วนสรุปบิล</span>
                             </div>
                         </div>
                         <input type="checkbox" id="print-opt-icloud" checked
@@ -4680,7 +4719,9 @@
     <button id="pos-mobile-cart-fab" aria-label="เปิดตะกร้าสินค้า" style="display: none;"
         class="fixed bottom-20 right-4 z-[55] md:hidden w-14 h-14 rounded-full bg-surface-chip-translucent backdrop-blur-[20px] border border-hairline items-center justify-center text-ink text-xl">
         <i class="fa-solid fa-basket-shopping"></i>
-        <span class="cart-fab-badge absolute -top-1 -right-1 w-5 h-5 rounded-full bg-primary text-on-primary text-[11px] font-bold flex items-center justify-center" id="cart-fab-badge-count" style="display: none;">0</span>
+        <span
+            class="cart-fab-badge absolute -top-1 -right-1 w-5 h-5 rounded-full bg-primary text-on-primary text-[11px] font-bold flex items-center justify-center"
+            id="cart-fab-badge-count" style="display: none;">0</span>
     </button>
 
     <!-- Audit Verify Modal (หน้าต่างเด้งสำหรับยืนยันและถ่ายรูปกล่อง) -->
@@ -4692,9 +4733,10 @@
             <div class="flex items-center justify-between border-b border-hairline pb-3">
                 <div class="flex items-center gap-2">
                     <span id="audit-modal-status-indicator" class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
-                    <h3 id="audit-modal-title" class="font-bold text-base">พบสินค้าในระบบ</h3>
+                    <h3 id="audit-modal-title" class="font-bold text-base text-white">พบสินค้าในระบบ</h3>
                 </div>
-                <button aria-label="ปิด" onclick="closeAuditVerifyModal()" class="text-body-muted hover:text-red-500 transition-all">
+                <button aria-label="ปิด" onclick="closeAuditVerifyModal()"
+                    class="text-body-muted hover:text-red-500 transition-all">
                     <i class="fa-solid fa-xmark text-lg"></i>
                 </button>
             </div>
@@ -4762,7 +4804,8 @@
                     <span id="audit-review-modal-indicator" class="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
                     <h3 class="font-bold text-base">ตรวจสอบรายการสแกน</h3>
                 </div>
-                <button aria-label="ปิด" onclick="closeAuditReviewItemModal()" class="text-body-muted hover:text-ink transition-all">
+                <button aria-label="ปิด" onclick="closeAuditReviewItemModal()"
+                    class="text-body-muted hover:text-ink transition-all">
                     <i class="fa-solid fa-xmark text-lg"></i>
                 </button>
             </div>
@@ -4808,26 +4851,35 @@
 
     <!-- Mobile POS Cart Overlay -->
     <div id="pos-mobile-cart-overlay" style="display: none;"
-        class="fixed inset-0 z-[54] bg-black/60 backdrop-blur-sm opacity-0 pointer-events-none transition-opacity duration-300 [&.active]:opacity-100 [&.active]:pointer-events-auto"></div>
+        class="fixed inset-0 z-[54] bg-black/60 backdrop-blur-sm opacity-0 pointer-events-none transition-opacity duration-300 [&.active]:opacity-100 [&.active]:pointer-events-auto">
+    </div>
     <div id="pos-mobile-cart-panel" style="display: none;"
         class="fixed bottom-0 inset-x-0 z-[56] bg-canvas-elevated rounded-t-lg border-t border-hairline flex-col max-h-[80vh] translate-y-full transition-transform duration-300 [&.active]:translate-y-0">
         <div class="mobile-cart-header flex items-center justify-between px-5 py-4 border-b border-hairline">
-            <h3 class="flex items-center gap-2 text-ink font-bold text-base"><i class="fa-solid fa-basket-shopping"></i> ตะกร้าสินค้า</h3>
+            <h3 class="flex items-center gap-2 text-ink font-bold text-base"><i class="fa-solid fa-basket-shopping"></i>
+                ตะกร้าสินค้า</h3>
             <div style="display:flex; align-items:center; gap:12px;">
-                <div class="mobile-cart-count text-body-muted text-sm"><span id="mobile-cart-count-num">0</span> รายการ</div>
-                <button aria-label="ปิดตะกร้าสินค้า" class="mobile-cart-close w-9 h-9 rounded-full bg-surface-chip text-body-muted hover:text-ink flex items-center justify-center transition-colors" id="btn-close-mobile-cart"><i class="fa-solid fa-xmark"></i></button>
+                <div class="mobile-cart-count text-body-muted text-sm"><span id="mobile-cart-count-num">0</span> รายการ
+                </div>
+                <button aria-label="ปิดตะกร้าสินค้า"
+                    class="mobile-cart-close w-9 h-9 rounded-full bg-surface-chip text-body-muted hover:text-ink flex items-center justify-center transition-colors"
+                    id="btn-close-mobile-cart"><i class="fa-solid fa-xmark"></i></button>
             </div>
         </div>
-        <div class="mobile-cart-branch px-5 py-2 text-xs text-body-muted border-b border-hairline" id="mobile-cart-branch-name">คลังสินค้า : -</div>
+        <div class="mobile-cart-branch px-5 py-2 text-xs text-body-muted border-b border-hairline"
+            id="mobile-cart-branch-name">คลังสินค้า : -</div>
         <div class="mobile-cart-items flex-1 overflow-y-auto px-5 py-3 space-y-2" id="mobile-cart-items-list">
             <!-- Dynamic cart items rendered here -->
         </div>
         <div class="mobile-cart-footer border-t border-hairline px-5 py-4 space-y-3">
             <div class="total-row flex items-center justify-between">
                 <span class="total-label text-body-muted text-sm">ยอดรวมทั้งหมด</span>
-                <span class="total-amount text-ink text-xl font-bold font-mono" id="mobile-cart-total"><span class="baht">฿</span>0</span>
+                <span class="total-amount text-ink text-xl font-bold font-mono" id="mobile-cart-total"><span
+                        class="baht">฿</span>0</span>
             </div>
-            <button class="mobile-checkout-btn w-full py-3.5 bg-primary hover:bg-primary-pressed text-on-primary font-bold rounded-pill flex items-center justify-center gap-2" id="btn-mobile-checkout">
+            <button
+                class="mobile-checkout-btn w-full py-3.5 bg-primary hover:bg-primary-pressed text-on-primary font-bold rounded-pill flex items-center justify-center gap-2"
+                id="btn-mobile-checkout">
                 <i class="fa-solid fa-cash-register"></i> ชำระเงินและออกใบเสร็จ
             </button>
         </div>
@@ -4878,7 +4930,7 @@
     <!-- defer: ปล่อยให้ parse HTML จบก่อนค่อย execute
          ปลอดภัยเพราะทั้งไฟล์ห่ออยู่ใน DOMContentLoaded listener อยู่แล้ว
          และสคริปต์ defer จะ execute ก่อน event DOMContentLoaded ยิงเสมอ -->
-    <script defer src="script.js?v=dark_yellow_redesign_v1"></script>
+    <script defer src="script.js?v=colormap_fix_v1"></script>
 </body>
 
 </html>

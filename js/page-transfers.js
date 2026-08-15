@@ -20,6 +20,9 @@
     const transferTableBody = document.getElementById('transfer-table-body');
     const transferEmpty = document.getElementById('transfer-empty');
     const btnCloseCreateTransfer = document.getElementById('btn-close-create-transfer');
+    const transferToBranchError = document.getElementById('transfer-to-branch-error');
+    const transferCartError = document.getElementById('transfer-cart-error');
+    const transferCartBox = document.getElementById('transfer-cart-box');
 
     // Transfer State (ดึงมาจาก core เดิม — ย้ายมาเป็น local state ของไฟล์นี้)
     let transferCart = [];
@@ -40,6 +43,33 @@
     function getTransferSourceBranchId() {
         const user = getCurrentUser();
         return user.branch ? (user.branch._id || user.branch) : '';
+    }
+
+    // แสดง/ล้าง inline error message สีแดงใต้ฟิลด์ในฟอร์มสร้างใบโอนย้าย
+    function setFieldError(errorEl, inputEl, message) {
+        if (errorEl) {
+            errorEl.textContent = message;
+            errorEl.classList.remove('hidden');
+        }
+        if (inputEl) {
+            inputEl.classList.remove('border-divider-soft', 'border-hairline');
+            inputEl.classList.add('border-red-500');
+        }
+    }
+    function clearFieldError(errorEl, inputEl) {
+        if (errorEl) {
+            errorEl.textContent = '';
+            errorEl.classList.add('hidden');
+        }
+        if (inputEl) {
+            inputEl.classList.remove('border-red-500');
+            if (inputEl === transferCartBox) inputEl.classList.add('border-hairline');
+            else inputEl.classList.add('border-divider-soft');
+        }
+    }
+    function clearAllTransferFieldErrors() {
+        clearFieldError(transferToBranchError, transferToBranch);
+        clearFieldError(transferCartError, transferCartBox);
     }
 
     // แสดงผลการสแกนค้างไว้ในกล่องรายการ (toast เด้ง 3 วิแล้วหาย อาจมองไม่ทัน)
@@ -63,6 +93,13 @@
         setScanStatus(message, type);
     }
 
+    // แจ้งเตือนแบบ popup (ใช้ custom-confirm-modal เดิมของระบบ แต่ซ่อนปุ่มยกเลิก เหลือแค่ปุ่ม "ตกลง")
+    function showScanErrorPopup(title, message) {
+        showConfirm(title, message, () => {}, 'ตกลง', 'danger');
+        const cancelBtn = document.getElementById('confirm-cancel-btn');
+        if (cancelBtn) cancelBtn.style.display = 'none';
+    }
+
     // ==========================================
     // TRANSFERS MODULE (โอนย้ายสินค้าระหว่างสาขา)
     // ==========================================
@@ -84,6 +121,13 @@
         }
     }
     window.loadTransfers = loadTransfers;
+
+    // สีป้ายสถานะใบโอนย้าย
+    function transferStatusClass(status) {
+        if (status === 'รอดำเนินการ') return 'bg-amber-500/10 text-amber-400 border border-amber-500/20';
+        if (status === 'ยกเลิกแล้ว') return 'bg-red-500/10 text-red-400 border border-red-500/20';
+        return 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20';
+    }
 
     // Render Transfers Table
     function renderTransfersTable() {
@@ -112,9 +156,7 @@
             const dateStr = new Date(transfer.created_at).toLocaleString('th-TH');
             const fromBranch = transfer.from_branch?.name || '-';
             const toBranch = transfer.to_branch?.name || '-';
-            const statusClass = transfer.status === 'รอดำเนินการ'
-                ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
-                : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20';
+            const statusClass = transferStatusClass(transfer.status);
 
             const actionButtons = `<div class="flex items-center justify-end gap-2">
                     <button onclick="openTransferDetailModal('${transfer._id}')" class="px-3 py-1.5 rounded-pill bg-primary hover:bg-primary-pressed text-on-primary text-xs font-bold transition-all">
@@ -158,10 +200,7 @@
 
         if (statusEl) {
             statusEl.textContent = transfer.status;
-            statusEl.className = 'px-2.5 py-1 rounded text-xs font-bold ' +
-                (transfer.status === 'รอดำเนินการ'
-                    ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
-                    : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20');
+            statusEl.className = 'px-2.5 py-1 rounded text-xs font-bold ' + transferStatusClass(transfer.status);
         }
 
         if (fromEl) fromEl.textContent = transfer.from_branch?.name || '-';
@@ -204,8 +243,23 @@
             };
         }
 
+        const btnCancel = document.getElementById('btn-transfer-view-cancel');
+
+        // สิทธิ์: เห็นปุ่ม "รับเข้าสินค้า" ได้เฉพาะผู้ที่สาขาตัวเองตรงกับสาขาปลายทางเท่านั้น
+        // ทุกกรณีอื่น (สาขาต้นทาง, หรือแอดมิน/ผู้จัดการที่ไม่ตรงกับสาขาปลายทาง) เห็นแค่ปุ่ม "ยกเลิกการโอนย้าย"
+        const currentUser = getCurrentUser();
+        const myBranchId = currentUser.branch ? (currentUser.branch._id || currentUser.branch) : '';
+        const myRole = currentUser.role || '';
+        const isPrivilegedRole = myRole === 'Administrator' || myRole === 'แอดมิน' || myRole === 'ผู้จัดการ';
+        const fromBranchId = transfer.from_branch ? (transfer.from_branch._id || transfer.from_branch) : '';
+        const toBranchId = transfer.to_branch ? (transfer.to_branch._id || transfer.to_branch) : '';
+        const branchIsSource = myBranchId && String(myBranchId) === String(fromBranchId);
+        const branchIsDest = myBranchId && String(myBranchId) === String(toBranchId);
+        const isDestBranch = branchIsDest;
+        const isSourceBranch = branchIsSource || (isPrivilegedRole && !branchIsDest);
+
         if (btnReceive) {
-            if (transfer.status === 'รอดำเนินการ') {
+            if (transfer.status === 'รอดำเนินการ' && isDestBranch) {
                 btnReceive.classList.remove('hidden');
                 btnReceive.onclick = async () => {
                     closeTransferViewModal();
@@ -213,6 +267,18 @@
                 };
             } else {
                 btnReceive.classList.add('hidden');
+            }
+        }
+
+        if (btnCancel) {
+            if (transfer.status === 'รอดำเนินการ' && isSourceBranch) {
+                btnCancel.classList.remove('hidden');
+                btnCancel.onclick = async () => {
+                    closeTransferViewModal();
+                    await cancelTransfer(transferId);
+                };
+            } else {
+                btnCancel.classList.add('hidden');
             }
         }
 
@@ -255,6 +321,7 @@
         transferCart = [];
         renderTransferCart();
         setScanStatus('');
+        clearAllTransferFieldErrors();
         if (transferToBranch) transferToBranch.value = '';
         await loadBranchesForTransfer();
         if (transferScanInput) {
@@ -269,6 +336,7 @@
         transferCart = [];
         renderTransferCart();
         setScanStatus('');
+        clearAllTransferFieldErrors();
         if (transferToBranch) transferToBranch.value = '';
         if (transferScanInput) transferScanInput.value = '';
     }
@@ -427,7 +495,8 @@
                 scanFeedback(`เพิ่ม ${product.name} (${code}) ลงรายการโอนย้ายแล้ว`);
             } else {
                 const branchName = transferScanHint ? transferScanHint.textContent : 'สาขาต้นทาง';
-                scanFeedback(`ไม่พบ ${code} ในสต็อกของสาขา ${branchName}`, 'error');
+                setScanStatus(`ไม่พบ ${code} ในสต็อกของสาขา ${branchName}`, 'error');
+                showScanErrorPopup('ไม่พบสินค้าในสต็อก', `ไม่พบรหัสสินค้าหรือหมายเลข IMEI "${code}" ในสต็อกคงเหลือของสาขา <b>${branchName}</b> กรุณาตรวจสอบรหัสสินค้าอีกครั้ง`);
             }
         } catch (err) {
             console.error('[TRANSFER] Error searching product:', err);
@@ -443,6 +512,8 @@
     // Render Transfer Cart
     function renderTransferCart() {
         if (!transferCartItems || !transferCartCount) return;
+
+        if (transferCart.length > 0) clearFieldError(transferCartError, transferCartBox);
 
         if (transferCart.length === 0) {
             if (transferCartEmpty) {
@@ -493,10 +564,8 @@
 
     // Submit Transfer
     async function submitTransfer() {
-        if (transferCart.length === 0) {
-            showToast('กรุณาเพิ่มสินค้าในรายการโอนย้าย', 'error');
-            return;
-        }
+        clearAllTransferFieldErrors();
+        let hasError = false;
 
         const sourceBranchId = getTransferSourceBranchId();
         if (!sourceBranchId) {
@@ -505,14 +574,19 @@
         }
 
         if (!transferToBranch || !transferToBranch.value) {
-            showToast('กรุณาเลือกสาขาปลายทาง', 'error');
-            return;
+            setFieldError(transferToBranchError, transferToBranch, 'กรุณาเลือกสาขาปลายทาง');
+            hasError = true;
+        } else if (transferToBranch.value === sourceBranchId) {
+            setFieldError(transferToBranchError, transferToBranch, 'ไม่สามารถโอนย้ายไปสาขาเดียวกันได้');
+            hasError = true;
         }
 
-        if (transferToBranch.value === sourceBranchId) {
-            showToast('ไม่สามารถโอนย้ายไปสาขาเดียวกันได้', 'error');
-            return;
+        if (transferCart.length === 0) {
+            setFieldError(transferCartError, transferCartBox, 'กรุณาเพิ่มสินค้าอย่างน้อย 1 รายการก่อนสร้างใบโอนย้าย');
+            hasError = true;
         }
+
+        if (hasError) return;
 
         const originalBtnText = btnSubmitTransfer ? btnSubmitTransfer.innerHTML : '';
         if (btnSubmitTransfer) {
@@ -584,6 +658,30 @@
         }, 'รับเข้าสต็อก');
     };
 
+    // Cancel Transfer (เฉพาะสาขาต้นทาง และเฉพาะก่อนที่สาขาปลายทางจะยืนยันรับเข้า)
+    window.cancelTransfer = async function (transferId) {
+        showConfirm('ยกเลิกการโอนย้าย', 'ยืนยันยกเลิกรายการโอนย้ายนี้? สินค้าทั้งหมดจะถูกคืนกลับเข้าสต็อกสาขาต้นทาง', async () => {
+            try {
+                const response = await authFetch(`${API_BASE_URL}/transfers/${transferId}/cancel`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showToast('ยกเลิกการโอนย้ายสำเร็จ สินค้ากลับเข้าสต็อกสาขาต้นทางแล้ว');
+                    loadTransfers();
+                    pollPendingTransfers();
+                } else {
+                    showToast(result.message || 'เกิดข้อผิดพลาด', 'error');
+                }
+            } catch (err) {
+                showToast('ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้', 'error');
+            }
+        }, 'ยกเลิกการโอนย้าย');
+    };
+
     // Print Transfer Document
     window.printTransferDocument = async function (transferId) {
         try {
@@ -625,6 +723,7 @@
     if (transferTabHistory) transferTabHistory.addEventListener('click', () => switchTransferTab('history'));
     if (btnOpenCreateTransfer) btnOpenCreateTransfer.addEventListener('click', openTransferModal);
     if (btnCloseCreateTransfer) btnCloseCreateTransfer.addEventListener('click', closeTransferModal);
+    if (transferToBranch) transferToBranch.addEventListener('change', () => clearFieldError(transferToBranchError, transferToBranch));
     // ยิงค้นหาสินค้าจากช่องสแกน (ใช้ร่วมกันทั้งกด Enter และกดปุ่ม "เพิ่ม")
     function submitScanInput() {
         if (!transferScanInput) return;

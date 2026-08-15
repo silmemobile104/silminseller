@@ -76,7 +76,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // โหลดสคริปต์เฉพาะหน้า (js/page-<name>.js) แบบ dynamic ครั้งเดียว แล้ว cache ไว้
     // PAGE_SCRIPT_VERSION: บัมพ์เลขนี้ทุกครั้งที่แก้ไฟล์ใน js/ เพื่อไม่ให้เบราว์เซอร์ใช้ของเก่าที่ cache ไว้
-    const PAGE_SCRIPT_VERSION = 'dark_yellow_redesign_v1';
+    const PAGE_SCRIPT_VERSION = 'transfer_cancel_v5';
     const __loadedPageScripts = {};
     function loadPageScript(name) {
         if (__loadedPageScripts[name]) return __loadedPageScripts[name];
@@ -893,9 +893,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 'ดำ': '#000000', 'black': '#000000', 'midnight': '#1C1C1E', 'มิดไนท์': '#1C1C1E',
                 'ขาว': '#FFFFFF', 'white': '#FFFFFF', 'starlight': '#F9F6EF', 'สตาร์ไลท์': '#F9F6EF',
                 'แดง': '#FF3B30', 'red': '#FF3B30',
-                'ฟ้า': '#32ADE6', 'blue': '#2E5C92', 'sierra blue': '#9BB5CE', 'เซียร์ร่าบลู': '#9BB5CE',
+                'ฟ้า': '#32ADE6', 'บลู': '#2E5C92', 'blue': '#2E5C92', 'sierra blue': '#9BB5CE', 'เซียร์ร่าบลู': '#9BB5CE',
                 'น้ำเงิน': '#007AFF', 'navy': '#000080', 'กรม': '#000080', 'pacific blue': '#2E475D',
-                'เหลืองเข้ม': '#FFC300', 'เหลือง': '#FFCC00', 'yellow': '#FFCC00',
+                'เหลือง': '#FFCC00', 'yellow': '#FFCC00', 'เหลืองอ่อน': '#FFF3B0', 'เหลืองเข้ม': '#FFC300',
                 'ส้ม': '#FF9500', 'orange': '#FF9500',
                 'ม่วง': '#AF52DE', 'purple': '#AF52DE', 'deep purple': '#594F63',
                 'เขียว': '#34C759', 'green': '#34C759', 'alpine green': '#576856', 'midnight green': '#4E5851',
@@ -904,8 +904,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 'ทอง': '#FFD700', 'gold': '#FFD700', 'rose gold': '#B76E79', 'โรสโกลด์': '#B76E79',
                 'ชมพู': '#FF2D55', 'pink': '#FF2D55',
                 'ไทเทเนียม': '#878681', 'titanium': '#878681', 'natural titanium': '#878681', 'เนเชอรัล': '#878681',
-                'เหลืองอ่อน': '#FFF3B0', 'บรอนซ์': '#CD7F32',
-                'เนื้อ': '#EDC9AF', 'ไททาเนียมดำ': '#3E3F43'
+                'ไวท์ไทเทเนียม': '#ECE9E3', 'ไทเทเนียมดำ': '#3E3F43', 'กราไฟต์': '#3E3F43',
+                'บรอนซ์': '#CD7F32', 'ทะเลทราย': '#EDC9AF', 'เนื้อ': '#EDC9AF'
             };
 
             let bgCol = '#8E8E93';
@@ -1320,9 +1320,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 'ดำ': '#000000', 'black': '#000000', 'midnight': '#1C1C1E', 'มิดไนท์': '#1C1C1E',
                 'ขาว': '#FFFFFF', 'white': '#FFFFFF', 'starlight': '#F9F6EF', 'สตาร์ไลท์': '#F9F6EF',
                 'แดง': '#FF3B30', 'red': '#FF3B30',
-                'ฟ้า': '#32ADE6', 'blue': '#2E5C92', 'sierra blue': '#9BB5CE', 'เซียร์ร่าบลู': '#9BB5CE',
+                'ฟ้า': '#32ADE6', 'บลู': '#2E5C92', 'blue': '#2E5C92', 'sierra blue': '#9BB5CE', 'เซียร์ร่าบลู': '#9BB5CE',
                 'น้ำเงิน': '#007AFF', 'navy': '#000080', 'กรม': '#000080', 'pacific blue': '#2E475D',
-                'เหลือง': '#FFCC00', 'yellow': '#FFCC00',
+                'เหลือง': '#FFCC00', 'yellow': '#FFCC00', 'เหลืองอ่อน': '#FFF3B0', 'เหลืองเข้ม': '#FFC300',
                 'ส้ม': '#FF9500', 'orange': '#FF9500',
                 'ม่วง': '#AF52DE', 'purple': '#AF52DE', 'deep purple': '#594F63',
                 'เขียว': '#34C759', 'green': '#34C759', 'alpine green': '#576856', 'midnight green': '#4E5851',
@@ -1331,9 +1331,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 'ทอง': '#FFD700', 'gold': '#FFD700', 'rose gold': '#B76E79', 'โรสโกลด์': '#B76E79',
                 'ชมพู': '#FF2D55', 'pink': '#FF2D55',
                 'ไทเทเนียม': '#878681', 'titanium': '#878681', 'natural titanium': '#878681', 'เนเชอรัล': '#878681',
-                'เหลืองอ่อน': '#FFF3B0', 'เหลืองเข้ม': '#FFC300', 'บรอนซ์': '#CD7F32',
-                'ทะเลทราย': '#EDC9AF', 'บลู': '#00B7EB', 'ไวท์ไทเทเนียม': '#ECE9E3', 'กราไฟต์': '#3E3F43'
-
+                'ไวท์ไทเทเนียม': '#ECE9E3', 'ไทเทเนียมดำ': '#3E3F43', 'กราไฟต์': '#3E3F43',
+                'บรอนซ์': '#CD7F32', 'ทะเลทราย': '#EDC9AF', 'เนื้อ': '#EDC9AF'
             };
 
             let bgCol = '#8E8E93';
@@ -2110,9 +2109,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     'ดำ': '#000000', 'black': '#000000', 'midnight': '#1C1C1E', 'มิดไนท์': '#1C1C1E',
                     'ขาว': '#FFFFFF', 'white': '#FFFFFF', 'starlight': '#F9F6EF', 'สตาร์ไลท์': '#F9F6EF',
                     'แดง': '#FF3B30', 'red': '#FF3B30',
-                    'ฟ้า': '#32ADE6', 'blue': '#2E5C92', 'sierra blue': '#9BB5CE', 'เซียร์ร่าบลู': '#9BB5CE',
+                    'ฟ้า': '#32ADE6', 'บลู': '#2E5C92', 'blue': '#2E5C92', 'sierra blue': '#9BB5CE', 'เซียร์ร่าบลู': '#9BB5CE',
                     'น้ำเงิน': '#007AFF', 'navy': '#000080', 'กรม': '#000080', 'pacific blue': '#2E475D',
-                    'เหลือง': '#FFCC00', 'yellow': '#FFCC00',
+                    'เหลือง': '#FFCC00', 'yellow': '#FFCC00', 'เหลืองอ่อน': '#FFF3B0', 'เหลืองเข้ม': '#FFC300',
                     'ส้ม': '#FF9500', 'orange': '#FF9500',
                     'ม่วง': '#AF52DE', 'purple': '#AF52DE', 'deep purple': '#594F63',
                     'เขียว': '#34C759', 'green': '#34C759', 'alpine green': '#576856', 'midnight green': '#4E5851',
@@ -2121,8 +2120,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     'ทอง': '#FFD700', 'gold': '#FFD700', 'rose gold': '#B76E79', 'โรสโกลด์': '#B76E79',
                     'ชมพู': '#FF2D55', 'pink': '#FF2D55',
                     'ไทเทเนียม': '#878681', 'titanium': '#878681', 'natural titanium': '#878681', 'เนเชอรัล': '#878681',
-                    'เหลืองอ่อน': '#FFF3B0', 'เหลืองเข้ม': '#FFC300', 'บรอนซ์': '#CD7F32',
-                    'ทะเลทราย': '#EDC9AF', 'บลู': '#00B7EB', 'ไวท์ไทเทเนียม': '#ECE9E3', 'กราไฟต์': '#3E3F43'
+                    'ไวท์ไทเทเนียม': '#ECE9E3', 'ไทเทเนียมดำ': '#3E3F43', 'กราไฟต์': '#3E3F43',
+                    'บรอนซ์': '#CD7F32', 'ทะเลทราย': '#EDC9AF', 'เนื้อ': '#EDC9AF'
                 };
                 Object.keys(colorMap).forEach(k => {
                     if (colorName.toLowerCase().includes(k.toLowerCase())) iconColorHex = colorMap[k];
@@ -2240,9 +2239,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 'ดำ': '#000000', 'black': '#000000', 'midnight': '#1C1C1E', 'มิดไนท์': '#1C1C1E',
                 'ขาว': '#FFFFFF', 'white': '#FFFFFF', 'starlight': '#F9F6EF', 'สตาร์ไลท์': '#F9F6EF',
                 'แดง': '#FF3B30', 'red': '#FF3B30',
-                'ฟ้า': '#32ADE6', 'blue': '#2E5C92', 'sierra blue': '#9BB5CE', 'เซียร์ร่าบลู': '#9BB5CE',
+                'ฟ้า': '#32ADE6', 'บลู': '#2E5C92', 'blue': '#2E5C92', 'sierra blue': '#9BB5CE', 'เซียร์ร่าบลู': '#9BB5CE',
                 'น้ำเงิน': '#007AFF', 'navy': '#000080', 'กรม': '#000080', 'pacific blue': '#2E475D',
-                'เหลือง': '#FFCC00', 'yellow': '#FFCC00',
+                'เหลือง': '#FFCC00', 'yellow': '#FFCC00', 'เหลืองอ่อน': '#FFF3B0', 'เหลืองเข้ม': '#FFC300',
                 'ส้ม': '#FF9500', 'orange': '#FF9500',
                 'ม่วง': '#AF52DE', 'purple': '#AF52DE', 'deep purple': '#594F63',
                 'เขียว': '#34C759', 'green': '#34C759', 'alpine green': '#576856', 'midnight green': '#4E5851',
@@ -2251,8 +2250,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 'ทอง': '#FFD700', 'gold': '#FFD700', 'rose gold': '#B76E79', 'โรสโกลด์': '#B76E79',
                 'ชมพู': '#FF2D55', 'pink': '#FF2D55',
                 'ไทเทเนียม': '#878681', 'titanium': '#878681', 'natural titanium': '#878681', 'เนเชอรัล': '#878681',
-                'เหลืองอ่อน': '#FFF3B0', 'เหลืองเข้ม': '#FFC300', 'บรอนซ์': '#CD7F32',
-                'ทะเลทราย': '#EDC9AF', 'บลู': '#00B7EB', 'ไวท์ไทเทเนียม': '#ECE9E3', 'กราไฟต์': '#3E3F43'
+                'ไวท์ไทเทเนียม': '#ECE9E3', 'ไทเทเนียมดำ': '#3E3F43', 'กราไฟต์': '#3E3F43',
+                'บรอนซ์': '#CD7F32', 'ทะเลทราย': '#EDC9AF', 'เนื้อ': '#EDC9AF'
             };
             let bgCol = '#8E8E93';
             Object.keys(colorMap).forEach(k => {

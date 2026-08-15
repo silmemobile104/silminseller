@@ -2036,6 +2036,96 @@ router.put('/transfers/:id/receive', async (req, res) => {
     }
 });
 
+// PUT /api/transfers/:id/cancel
+// หน้าที่: ยกเลิกรายการโอนย้าย (ทำได้เฉพาะสาขาต้นทาง และต้องยังไม่ถูกรับเข้าที่ปลายทาง) คืนสต็อกกลับสาขาต้นทาง
+router.put('/transfers/:id/cancel', async (req, res) => {
+    try {
+        if (!req.user.permissions.manage_transfers) {
+            return res.status(403).json({ success: false, message: 'ไม่มีสิทธิ์ในการยกเลิกรายการโอนย้ายสินค้า' });
+        }
+        const transfer = await Transfer.findById(req.params.id);
+        if (!transfer) return res.status(404).json({ success: false, message: 'ไม่พบรายการโอนย้ายที่ระบุ' });
+
+        if (transfer.status !== 'รอดำเนินการ') {
+            return res.status(400).json({
+                success: false,
+                message: transfer.status === 'รับเข้าแล้ว'
+                    ? 'ไม่สามารถยกเลิกได้ เนื่องจากสาขาปลายทางยืนยันรับสินค้าเรียบร้อยแล้ว'
+                    : 'รายการนี้ถูกยกเลิกไปแล้ว'
+            });
+        }
+
+        const userBranchId = req.user && req.user.branch_id ? req.user.branch_id.toString() : '';
+        const fromBranchId = transfer.from_branch ? transfer.from_branch.toString() : '';
+
+        // ตรวจสอบสิทธิ์: แอดมิน/ผู้จัดการ ยกเลิกได้ทุกสาขา, พนักงานทั่วไปต้องอยู่สาขาต้นทางเท่านั้น
+        const userRole = req.user && req.user.role ? req.user.role : '';
+        const canCancelAnyBranch = userRole === 'Administrator' || userRole === 'แอดมิน' || userRole === 'ผู้จัดการ';
+        if (!canCancelAnyBranch) {
+            if (!userBranchId || userBranchId !== fromBranchId) {
+                return res.status(403).json({ success: false, message: 'คุณไม่มีสิทธิ์ยกเลิกรายการโอนย้ายนี้ (เฉพาะสาขาต้นทางเท่านั้น)' });
+            }
+        }
+
+        // คืนสต็อกกลับเข้าสาขาต้นทาง
+        for (const item of transfer.items || []) {
+            const productCode = (item.product_code || '').toString();
+            if (!productCode) continue;
+
+            const product = await Product.findOne({ product_code: productCode });
+            if (!product) {
+                return res.status(400).json({ success: false, message: `ไม่พบสินค้าในระบบ: ${productCode}` });
+            }
+
+            const fromBal = ensureBranchBalance(product, transfer.from_branch);
+
+            const returnedImeis = Array.isArray(item.imeis) ? item.imeis.map(x => x.toString().trim()).filter(Boolean) : [];
+            if (returnedImeis.length > 0) {
+                const set = new Set((fromBal.imeis || []).map(x => x.toString().trim()));
+                for (const imei of returnedImeis) {
+                    if (!set.has(imei)) {
+                        fromBal.imeis.push(imei);
+                        set.add(imei);
+                    }
+                }
+                fromBal.quantity = (fromBal.imeis || []).length;
+            } else {
+                fromBal.quantity = Number(fromBal.quantity || 0) + Number(item.quantity || 0);
+            }
+
+            await product.save();
+
+            // Movement: ยกเลิกการโอนย้ายสินค้า (คืนสต็อกกลับสาขาต้นทาง)
+            await createMovementsForItem({
+                productId: product._id,
+                action: 'ยกเลิกการโอนย้ายสินค้า',
+                fromBranch: transfer.to_branch,
+                toBranch: transfer.from_branch,
+                referenceNo: transfer.transfer_number,
+                createdBy: req.user.employee_id,
+                transitHours: 0,
+                imeis: returnedImeis,
+                quantity: returnedImeis.length > 0 ? returnedImeis.length : Number(item.quantity || 0)
+            });
+        }
+
+        transfer.status = 'ยกเลิกแล้ว';
+        transfer.cancelled_by = req.user.employee_id;
+        transfer.cancelled_at = new Date();
+        transfer.updatedAt = new Date();
+        const saved = await transfer.save();
+
+        // Log transfer cancellation
+        await logActivity(req, 'CANCEL', 'TRANSFER', `ยกเลิกการโอนย้ายสินค้า เลขที่ ${transfer.transfer_number}`, transfer.transfer_number, saved._id);
+
+        console.log(`[โอนย้ายสินค้า] ยกเลิกสำเร็จ: ${transfer.transfer_number}`);
+        res.status(200).json({ success: true, message: 'ยกเลิกการโอนย้ายสำเร็จ สินค้ากลับเข้าสต็อกสาขาต้นทางแล้ว', data: saved });
+    } catch (error) {
+        console.error('เกิดข้อผิดพลาดในการยกเลิกการโอนย้าย:', error);
+        res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการยกเลิกการโอนย้าย' });
+    }
+});
+
 // POST /api/transactions
 // หน้าที่: บันทึกรายการขายและหักสต็อกอัตโนมัติ
 router.post('/transactions', async (req, res) => {
