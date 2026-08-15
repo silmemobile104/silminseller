@@ -342,10 +342,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const masterDataList = document.getElementById('master-data-list');
     const masterDataEmpty = document.getElementById('master-data-empty');
     const productTableBody = document.getElementById('product-table-body');
-    const stockPaginationContainer = document.getElementById('stock-pagination-container');
-    const stockPaginationInfo = document.getElementById('stock-pagination-info');
-    const btnStockPrevPage = document.getElementById('btn-stock-prev-page');
-    const btnStockNextPage = document.getElementById('btn-stock-next-page');
 
     const stockSearchInput = document.getElementById('stock-search-input');
     const btnStockFilter = document.getElementById('btn-stock-filter');
@@ -450,8 +446,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // เปิดให้สคริปต์หน้าอื่นที่โหลดแยก (js/page-*.js) มองเห็นได้ผ่าน window — sync ทุกครั้งที่ reassign ตัวแปรนี้
     window.allProductsCache = allProductsCache;
     let stockFilteredCache = [];
-    let currentStockPage = 1;
-    const stockItemsPerPage = 20;
+    let stockLoadedCount = 0; // จำนวนสินค้าที่ render แล้วตอนนี้ (infinite scroll)
+    const stockItemsPerPage = 10; // โหลดเพิ่มทีละ 10 รายการ
     let stockSearchDebounceId = null;
     let stockSearchQuery = '';
     let stockFilters = {
@@ -760,47 +756,27 @@ document.addEventListener('DOMContentLoaded', () => {
         stockResultCount.textContent = `แสดง ${filteredCount} จาก ${totalCount} รายการ`;
     };
 
-    const updateStockPaginationControls = (totalItems, totalPages) => {
-        if (!stockPaginationContainer) return;
-
-        if (totalItems <= stockItemsPerPage) {
-            stockPaginationContainer.classList.add('hidden');
-        } else {
-            stockPaginationContainer.classList.remove('hidden');
-        }
-
-        const startItem = (currentStockPage - 1) * stockItemsPerPage + 1;
-        const endItem = Math.min(currentStockPage * stockItemsPerPage, totalItems);
-
-        if (stockPaginationInfo) {
-            stockPaginationInfo.textContent = `แสดง ${totalItems > 0 ? startItem : 0} ถึง ${endItem} จาก ${totalItems} รายการ (หน้า ${currentStockPage} จาก ${totalPages})`;
-        }
-
-        if (btnStockPrevPage) {
-            btnStockPrevPage.disabled = currentStockPage <= 1;
-        }
-
-        if (btnStockNextPage) {
-            btnStockNextPage.disabled = currentStockPage >= totalPages;
-        }
+    // โหลดสินค้าชุดถัดไป (stockItemsPerPage รายการ) มาต่อท้ายตารางที่มีอยู่ — เรียกซ้ำได้เรื่อยๆ จน stockLoadedCount ถึง cache ทั้งหมด
+    const loadMoreStockProducts = () => {
+        const totalItems = stockFilteredCache.length;
+        if (stockLoadedCount >= totalItems) return;
+        const nextBatch = stockFilteredCache.slice(stockLoadedCount, stockLoadedCount + stockItemsPerPage);
+        renderProductTable(nextBatch, true);
+        stockLoadedCount += nextBatch.length;
     };
 
     const renderStockPage = () => {
-        const totalItems = stockFilteredCache.length;
-        const totalPages = Math.ceil(totalItems / stockItemsPerPage) || 1;
-        if (currentStockPage > totalPages) currentStockPage = totalPages;
-        if (currentStockPage < 1) currentStockPage = 1;
-
-        const startIndex = (currentStockPage - 1) * stockItemsPerPage;
-        const paginatedProducts = stockFilteredCache.slice(startIndex, startIndex + stockItemsPerPage);
-
-        renderProductTable(paginatedProducts);
-        updateStockPaginationControls(totalItems, totalPages);
+        stockLoadedCount = 0;
+        if (productTableBody) productTableBody.innerHTML = '';
+        if (stockFilteredCache.length === 0) {
+            renderProductTable([]); // แสดงข้อความ "ไม่พบสินค้าที่ค้นหา"
+            return;
+        }
+        loadMoreStockProducts();
     };
 
     const applyStockSearchAndFilters = () => {
         stockFilteredCache = getFilteredProducts();
-        currentStockPage = 1;
         renderStockPage();
         renderActiveFilterChips();
         updateFilterButtonBadge();
@@ -2105,18 +2081,20 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     window.fetchProducts = fetchProducts;
 
-    const renderProductTable = (products) => {
+    const renderProductTable = (products, append = false) => {
         if (!productTableBody) return;
-        productTableBody.innerHTML = '';
+        if (!append) productTableBody.innerHTML = '';
 
         if (products.length === 0) {
-            productTableBody.innerHTML = `
-                <tr>
-                    <td colspan="9" class="px-6 py-8 text-center text-slate-400 italic">
-                        ไม่พบสินค้าที่ค้นหา
-                    </td>
-                </tr>
-            `;
+            if (!append) {
+                productTableBody.innerHTML = `
+                    <tr>
+                        <td colspan="9" class="px-6 py-8 text-center text-slate-400 italic">
+                            ไม่พบสินค้าที่ค้นหา
+                        </td>
+                    </tr>
+                `;
+            }
             return;
         }
 
@@ -3725,21 +3703,14 @@ document.addEventListener('DOMContentLoaded', () => {
     if (stockFilterQtyMax) stockFilterQtyMax.addEventListener('input', () => { syncFiltersFromPanel(); applyStockSearchAndFilters(); });
     if (stockFilterSort) stockFilterSort.addEventListener('change', () => { syncFiltersFromPanel(); applyStockSearchAndFilters(); });
 
-    if (btnStockPrevPage) {
-        btnStockPrevPage.addEventListener('click', () => {
-            if (currentStockPage > 1) {
-                currentStockPage--;
-                renderStockPage();
-            }
-        });
-    }
-
-    if (btnStockNextPage) {
-        btnStockNextPage.addEventListener('click', () => {
-            const totalPages = Math.ceil(stockFilteredCache.length / stockItemsPerPage) || 1;
-            if (currentStockPage < totalPages) {
-                currentStockPage++;
-                renderStockPage();
+    // Infinite scroll สำหรับตารางจัดการสต็อก — โหลดเพิ่มทีละ stockItemsPerPage เมื่อเลื่อนใกล้ถึงจุดล่างสุดของพื้นที่เนื้อหา
+    const mainContentEl = document.getElementById('main-content');
+    if (mainContentEl) {
+        mainContentEl.addEventListener('scroll', () => {
+            if (!viewStock || viewStock.classList.contains('hidden')) return;
+            const { scrollTop, scrollHeight, clientHeight } = mainContentEl;
+            if (scrollHeight - scrollTop - clientHeight < 200) {
+                loadMoreStockProducts();
             }
         });
     }
