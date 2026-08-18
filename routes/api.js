@@ -2446,7 +2446,7 @@ router.get('/transactions', async (req, res) => {
         const transactions = await Transaction.find(filter)
             .populate('branch_id', 'name')
             .populate('employee_id', 'name emp_id')
-            .populate('items.product_id', 'name')
+            .populate('items.product_id', 'name product_code')
             .populate('member_id', 'first_name last_name phone')
             .sort({ created_at: -1 });
 
@@ -2484,7 +2484,7 @@ router.get('/transactions/:id', async (req, res) => {
         const transaction = await Transaction.findById(req.params.id)
             .populate('branch_id')
             .populate('employee_id', 'name emp_id')
-            .populate('items.product_id', 'name')
+            .populate('items.product_id', 'name product_code')
             .populate('member_id', 'prefix first_name last_name first_name_en last_name_en phone address citizen_id member_number')
             .populate('cancelled_by', 'name');
 

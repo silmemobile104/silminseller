@@ -7,6 +7,14 @@
     // ==========================================
     let membersData = [];
 
+    // แจ้งเตือนแบบ popup กลางจอ (ใช้ custom-confirm-modal เดิมของระบบ ซ่อนปุ่มยกเลิก เหลือปุ่ม "ตกลง" ปุ่มเดียว)
+    // ใช้เฉพาะกรณีข้อมูลซ้ำ ซึ่งสำคัญกว่าการแจ้งเตือนแบบ toast ทั่วไปที่หายไปเร็วและอาจมองไม่ทัน
+    const showMemberDuplicatePopup = (message) => {
+        showConfirm('พบข้อมูลซ้ำในระบบ', message, () => {}, 'ตกลง', 'danger');
+        const cancelBtn = document.getElementById('confirm-cancel-btn');
+        if (cancelBtn) cancelBtn.style.display = 'none';
+    };
+
     const loadMembers = async () => {
         try {
             const response = await authFetch(`${API_BASE_URL}/members`);
@@ -106,6 +114,54 @@
         });
     }
 
+    // รายชื่อฟิลด์บังคับกรอกในป๊อปอัพเพิ่ม/แก้ไขสมาชิก — ใช้ทั้งตอน validate และตอนล้าง error ตอนเปิด/ปิดฟอร์ม
+    const memberRequiredFields = [
+        'member-citizen-id', 'member-prefix', 'member-first-name', 'member-last-name',
+        'member-first-name-en', 'member-last-name-en', 'member-birthdate', 'member-card-expiry',
+        'member-gender', 'member-address', 'member-zipcode', 'member-phone',
+        'member-facebook-name', 'member-facebook-link', 'member-line-id', 'member-referral'
+    ];
+
+    // แสดง/ล้าง inline error message สีแดงใต้ฟิลด์ในฟอร์มสมาชิก (fieldEl เป็น null ได้สำหรับช่องที่ไม่ใช่ input เช่นรูปถ่าย)
+    const setMemberFieldError = (fieldEl, errorEl, message, normalBorderClass = 'border-divider-soft') => {
+        if (errorEl) {
+            errorEl.textContent = message;
+            errorEl.classList.remove('hidden');
+        }
+        if (fieldEl) {
+            fieldEl.classList.remove(normalBorderClass);
+            fieldEl.classList.add('border-red-500');
+        }
+    };
+    const clearMemberFieldError = (fieldEl, errorEl, normalBorderClass = 'border-divider-soft') => {
+        if (errorEl) {
+            errorEl.textContent = '';
+            errorEl.classList.add('hidden');
+        }
+        if (fieldEl) {
+            fieldEl.classList.remove('border-red-500');
+            fieldEl.classList.add(normalBorderClass);
+        }
+    };
+    const clearAllMemberFieldErrors = () => {
+        memberRequiredFields.forEach(id => {
+            clearMemberFieldError(document.getElementById(id), document.getElementById(`member-error-${id.replace('member-', '')}`));
+        });
+        clearMemberFieldError(null, document.getElementById('member-error-photo'));
+        clearMemberFieldError(null, document.getElementById('member-error-card-front-photo'));
+    };
+
+    // ล้าง error ของฟิลด์ทันทีที่ผู้ใช้เริ่มแก้ไข ไม่ต้องรอกดบันทึกใหม่
+    memberRequiredFields.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+            const evt = (el.tagName === 'SELECT') ? 'change' : 'input';
+            el.addEventListener(evt, () => {
+                clearMemberFieldError(el, document.getElementById(`member-error-${id.replace('member-', '')}`));
+            });
+        }
+    });
+
     // Member Modal Management
     const memberModal = document.getElementById('member-modal');
     const openMemberModal = () => {
@@ -117,6 +173,7 @@
     };
 
     const resetMemberForm = () => {
+        clearAllMemberFieldErrors();
         document.getElementById('edit-member-id').value = '';
         document.getElementById('member-citizen-id').value = '';
         document.getElementById('member-prefix').value = '';
@@ -396,29 +453,39 @@
             const lineId = document.getElementById('member-line-id').value.trim();
             const referral = document.getElementById('member-referral').value;
 
-            // Comprehensive Form Validations
-            if (!citizenId) return showToast('กรุณากรอกเลขบัตรประชาชน', 'error');
-            if (!prefix) return showToast('กรุณากรอกคำนำหน้า', 'error');
-            if (!firstName || !lastName) return showToast('กรุณากรอกชื่อและนามสกุลภาษาไทย', 'error');
-            if (!firstNameEn || !lastNameEn) return showToast('กรุณากรอกชื่อและนามสกุลภาษาอังกฤษ', 'error');
-            if (!birthdate) return showToast('กรุณากรอกวันเกิด', 'error');
-            if (!cardExpiry) return showToast('กรุณากรอกวันหมดอายุบัตร', 'error');
-            if (!gender) return showToast('กรุณาเลือกเพศ', 'error');
-            if (!address) return showToast('กรุณากรอกที่อยู่', 'error');
-            if (!zipcode) return showToast('กรุณากรอกรหัสไปรษณีย์', 'error');
-            if (!phone) return showToast('กรุณากรอกเบอร์โทรศัพท์', 'error');
-            if (!facebookName) return showToast('กรุณากรอกชื่อ Facebook', 'error');
-            if (!facebookLink) return showToast('กรุณากรอกลิงก์ Facebook', 'error');
-            if (!lineId) return showToast('กรุณากรอก LINE ID', 'error');
-            if (!referral) return showToast('กรุณาเลือกแหล่งที่มาที่รู้จัก', 'error');
+            // Comprehensive Form Validations — เช็คทุกฟิลด์พร้อมกัน ไม่ใช่หยุดที่ฟิลด์แรกที่ว่าง
+            // เพื่อให้เห็น error สีแดงใต้ทุกช่องที่กรอกไม่ครบในคราวเดียว ไม่ต้องกดบันทึกซ้ำหลายรอบทีละฟิลด์
+            let hasFieldError = false;
+            memberRequiredFields.forEach(id => {
+                const el = document.getElementById(id);
+                const errorEl = document.getElementById(`member-error-${id.replace('member-', '')}`);
+                const value = el ? el.value.trim() : '';
+                if (!value) {
+                    setMemberFieldError(el, errorEl, 'กรุณากรอกข้อมูล');
+                    hasFieldError = true;
+                } else {
+                    clearMemberFieldError(el, errorEl);
+                }
+            });
 
-            // Strict Photo Validations
+            // Strict Photo Validations (ไม่ใช่ input ทั่วไป จึงเช็คแยกและโชว์ error ใต้กรอบรูปแทน)
+            const photoErrorEl = document.getElementById('member-error-photo');
             if (!currentMemberPhoto) {
-                return showToast('กรุณากด "อ่านบัตร" เพื่อดึงรูปถ่ายจากชิปการ์ด', 'error');
+                setMemberFieldError(null, photoErrorEl, 'กรุณากด "อ่านบัตร" เพื่อดึงรูปถ่ายจากชิปการ์ด');
+                hasFieldError = true;
+            } else {
+                clearMemberFieldError(null, photoErrorEl);
             }
+
+            const cardFrontErrorEl = document.getElementById('member-error-card-front-photo');
             if (!currentCardFrontPhotoUrl && !currentCardFrontPhotoBase64) {
-                return showToast('กรุณาแนบรูปถ่ายหน้าบัตรประชาชนทุกครั้ง', 'error');
+                setMemberFieldError(null, cardFrontErrorEl, 'กรุณาแนบรูปถ่ายหน้าบัตรประชาชนทุกครั้ง');
+                hasFieldError = true;
+            } else {
+                clearMemberFieldError(null, cardFrontErrorEl);
             }
+
+            if (hasFieldError) return;
 
             const editId = document.getElementById('edit-member-id').value;
             const payload = {
@@ -467,6 +534,9 @@
                     showToast(editId ? 'แก้ไขข้อมูลสมาชิกสำเร็จ' : 'เพิ่มสมาชิกใหม่สำเร็จ');
                     closeMemberModal();
                     loadMembers();
+                } else if (result.message && result.message.includes('มีอยู่ในระบบแล้ว')) {
+                    // ข้อมูลซ้ำ (เช่น เลขบัตรประชาชนซ้ำ) — เด้ง popup แทน toast เพราะสำคัญกว่าและไม่อยากให้พลาด
+                    showMemberDuplicatePopup(result.message);
                 } else {
                     showToast(result.message || 'เกิดข้อผิดพลาด', 'error');
                 }

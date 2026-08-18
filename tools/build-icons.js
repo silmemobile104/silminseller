@@ -28,7 +28,7 @@ const BI_CSS = 'https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstr
 // ⚠️ ต้องตรงกับเลข ?v= ของ <link rel="preload" ... woff2> และ icons.css ใน index.html
 //    บัมพ์เลขนี้ทุกครั้งที่ฟอนต์ถูก subset ใหม่ (เช่น เพิ่มไอคอนใหม่) ไม่งั้นเบราว์เซอร์
 //    ที่ cache ไว้ 1 ปีจะยังใช้ฟอนต์เก่าที่ไม่มี glyph ตัวใหม่
-const FONT_VERSION = '3';
+const FONT_VERSION = '4';
 
 const root = path.resolve(__dirname, '..');
 

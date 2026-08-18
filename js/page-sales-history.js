@@ -435,7 +435,7 @@
         if (transactionDetailItems) {
             transactionDetailItems.innerHTML = '';
             (txn.items || []).forEach(item => {
-                const imeiValue = item.imei_sold || item.imei || item.serial || item.serial_number || '';
+                const productCode = (item.product_id && item.product_id.product_code) || item.product_code || '';
                 const itemRow = document.createElement('tr');
                 itemRow.className = 'border-b border-hairline';
                 const isGift = item.is_gift === true;
@@ -444,7 +444,7 @@
                         ${item.product_name}
                         ${isGift ? '<span class="ml-2 px-1.5 py-0.5 text-[10px] font-bold bg-amber-500/20 text-amber-400 rounded">ของแถม</span>' : ''}
                     </td>
-                    <td class="px-4 py-3 text-center text-body-muted">${imeiValue ? imeiValue : '-'}</td>
+                    <td class="px-4 py-3 text-center">${productCode ? `<span class="font-mono font-bold text-primary tracking-wide">${productCode}</span>` : '<span class="text-body-muted">-</span>'}</td>
                     <td class="px-4 py-3 text-center text-body-muted">${item.quantity}</td>
                     <td class="px-4 py-3 text-right text-ink font-mono">${isGift ? '<span class="text-amber-400 font-bold">ของแถม</span>' : `฿${item.price.toLocaleString()}`}</td>
                 `;

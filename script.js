@@ -76,7 +76,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // โหลดสคริปต์เฉพาะหน้า (js/page-<name>.js) แบบ dynamic ครั้งเดียว แล้ว cache ไว้
     // PAGE_SCRIPT_VERSION: บัมพ์เลขนี้ทุกครั้งที่แก้ไฟล์ใน js/ เพื่อไม่ให้เบราว์เซอร์ใช้ของเก่าที่ cache ไว้
-    const PAGE_SCRIPT_VERSION = 'transfer_cancel_v5';
+    const PAGE_SCRIPT_VERSION = 'member_inline_validation_v1';
     const __loadedPageScripts = {};
     function loadPageScript(name) {
         if (__loadedPageScripts[name]) return __loadedPageScripts[name];
@@ -872,6 +872,79 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     };
 
+    // ==========================================
+    // สีของสินค้า (ใช้ร่วมกันทุกหน้า)
+    // ==========================================
+    // เดิมตารางสีนี้ถูกก็อปไว้หลายที่ พอเพิ่มสีใหม่ต้องไล่แก้ทุกจุดและมักตกหล่น จึงรวมมาไว้ที่เดียว
+    const PRODUCT_COLOR_MAP = {
+        'ดำ': '#000000', 'black': '#000000', 'midnight': '#1C1C1E', 'มิดไนท์': '#1C1C1E',
+        'ขาว': '#FFFFFF', 'white': '#FFFFFF', 'starlight': '#F9F6EF', 'สตาร์ไลท์': '#F9F6EF',
+        'แดง': '#FF3B30', 'red': '#FF3B30',
+        'ฟ้า': '#32ADE6', 'บลู': '#2E5C92', 'blue': '#2E5C92', 'sierra blue': '#9BB5CE', 'เซียร์ร่าบลู': '#9BB5CE',
+        'น้ำเงิน': '#007AFF', 'navy': '#000080', 'กรม': '#000080', 'pacific blue': '#2E475D',
+        'เหลือง': '#FFCC00', 'yellow': '#FFCC00', 'เหลืองอ่อน': '#FFF3B0', 'เหลืองเข้ม': '#FFC300',
+        'ส้ม': '#FF9500', 'orange': '#FF9500',
+        'ม่วง': '#AF52DE', 'purple': '#AF52DE', 'deep purple': '#594F63',
+        'เขียว': '#34C759', 'green': '#34C759', 'alpine green': '#576856', 'midnight green': '#4E5851',
+        'เงิน': '#C0C0C0', 'silver': '#C0C0C0', 'ซิลเวอร์': '#C0C0C0',
+        'เทา': '#8E8E93', 'gray': '#8E8E93', 'space gray': '#535150', 'สเปซเกรย์': '#535150',
+        'ทอง': '#FFD700', 'gold': '#FFD700', 'rose gold': '#B76E79', 'โรสโกลด์': '#B76E79',
+        'ชมพู': '#FF2D55', 'pink': '#FF2D55',
+        'ไทเทเนียม': '#878681', 'titanium': '#878681', 'natural titanium': '#878681', 'เนเชอรัล': '#878681',
+        'ไวท์ไทเทเนียม': '#ECE9E3', 'ไทเทเนียมดำ': '#3E3F43', 'กราไฟต์': '#3E3F43',
+        'บรอนซ์': '#CD7F32', 'ทะเลทราย': '#EDC9AF', 'เนื้อ': '#EDC9AF'
+    };
+
+    // แปลงชื่อสี (ไทย/อังกฤษ) เป็น hex — ถ้าแอดมินตั้ง color_code ไว้เองในหน้าตั้งค่า ให้ค่านั้นชนะเสมอ
+    const resolveProductColorHex = (colorName, colorDoc, fallback = '#8E8E93') => {
+        if (colorDoc && colorDoc.color_code) return colorDoc.color_code;
+        let hex = fallback;
+        if (colorName) {
+            const lower = colorName.toLowerCase();
+            Object.keys(PRODUCT_COLOR_MAP).forEach(k => {
+                if (lower.includes(k.toLowerCase())) hex = PRODUCT_COLOR_MAP[k];
+            });
+        }
+        return hex;
+    };
+
+    const hexToRgb = (hex) => {
+        let h = String(hex || '').replace('#', '').trim();
+        if (h.length === 3) h = h.split('').map(c => c + c).join('');
+        if (!/^[0-9a-fA-F]{6}$/.test(h)) return { r: 142, g: 142, b: 147 };
+        return { r: parseInt(h.slice(0, 2), 16), g: parseInt(h.slice(2, 4), 16), b: parseInt(h.slice(4, 6), 16) };
+    };
+
+    // ความสว่างเชิงสายตา 0-1 ใช้ตัดสินว่าสีนั้นจมไปกับพื้นมืดหรือไม่
+    const colorLuminance = (hex) => {
+        const { r, g, b } = hexToRgb(hex);
+        return (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+    };
+
+    const mixHexWithWhite = (hex, amount) => {
+        const { r, g, b } = hexToRgb(hex);
+        const m = (c) => Math.round(c + (255 - c) * amount);
+        return `#${[m(r), m(g), m(b)].map(c => c.toString(16).padStart(2, '0')).join('')}`;
+    };
+
+    const hexToRgba = (hex, alpha) => {
+        const { r, g, b } = hexToRgb(hex);
+        return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+    };
+
+    // คืนชุดสีสำหรับไทล์ไอคอนสินค้า: ไอคอนใช้สีเต็ม พื้นหลังใช้สีเดียวกันแบบจางลง
+    // สีเข้มมาก (ดำ, กรม, deep purple) ต้องดึงให้สว่างขึ้นก่อน ไม่งั้นไอคอนจะจมหายไปกับพื้นดำ
+    const getProductColorTheme = (colorName, colorDoc) => {
+        const base = resolveProductColorHex(colorName, colorDoc);
+        const lum = colorLuminance(base);
+        const icon = lum < 0.35 ? mixHexWithWhite(base, 0.55) : base;
+        return {
+            icon,
+            bg: hexToRgba(icon, 0.16),
+            border: hexToRgba(icon, 0.34)
+        };
+    };
+
     const renderFilterSwatches = (containerId, targetId, dataArray) => {
         const container = document.getElementById(containerId);
         const targetSelect = document.getElementById(targetId);
@@ -889,31 +962,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const swatch = document.createElement('div');
             swatch.className = 'w-7 h-7 rounded-full border-2 border-transparent transition-all custom-swatch swatch-indicator';
 
-            const colorMap = {
-                'ดำ': '#000000', 'black': '#000000', 'midnight': '#1C1C1E', 'มิดไนท์': '#1C1C1E',
-                'ขาว': '#FFFFFF', 'white': '#FFFFFF', 'starlight': '#F9F6EF', 'สตาร์ไลท์': '#F9F6EF',
-                'แดง': '#FF3B30', 'red': '#FF3B30',
-                'ฟ้า': '#32ADE6', 'บลู': '#2E5C92', 'blue': '#2E5C92', 'sierra blue': '#9BB5CE', 'เซียร์ร่าบลู': '#9BB5CE',
-                'น้ำเงิน': '#007AFF', 'navy': '#000080', 'กรม': '#000080', 'pacific blue': '#2E475D',
-                'เหลือง': '#FFCC00', 'yellow': '#FFCC00', 'เหลืองอ่อน': '#FFF3B0', 'เหลืองเข้ม': '#FFC300',
-                'ส้ม': '#FF9500', 'orange': '#FF9500',
-                'ม่วง': '#AF52DE', 'purple': '#AF52DE', 'deep purple': '#594F63',
-                'เขียว': '#34C759', 'green': '#34C759', 'alpine green': '#576856', 'midnight green': '#4E5851',
-                'เงิน': '#C0C0C0', 'silver': '#C0C0C0', 'ซิลเวอร์': '#C0C0C0',
-                'เทา': '#8E8E93', 'gray': '#8E8E93', 'space gray': '#535150', 'สเปซเกรย์': '#535150',
-                'ทอง': '#FFD700', 'gold': '#FFD700', 'rose gold': '#B76E79', 'โรสโกลด์': '#B76E79',
-                'ชมพู': '#FF2D55', 'pink': '#FF2D55',
-                'ไทเทเนียม': '#878681', 'titanium': '#878681', 'natural titanium': '#878681', 'เนเชอรัล': '#878681',
-                'ไวท์ไทเทเนียม': '#ECE9E3', 'ไทเทเนียมดำ': '#3E3F43', 'กราไฟต์': '#3E3F43',
-                'บรอนซ์': '#CD7F32', 'ทะเลทราย': '#EDC9AF', 'เนื้อ': '#EDC9AF'
-            };
-
-            let bgCol = '#8E8E93';
-            Object.keys(colorMap).forEach(k => {
-                if (item.name && item.name.toLowerCase().includes(k.toLowerCase())) bgCol = colorMap[k];
-            });
-            if (item.color_code) bgCol = item.color_code;
-            swatch.style.backgroundColor = bgCol;
+            swatch.style.backgroundColor = resolveProductColorHex(item.name, item);
 
             const label = document.createElement('span');
             label.className = 'text-[10px] text-slate-400 whitespace-nowrap swatch-text transition-colors';
@@ -1316,32 +1365,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const swatch = document.createElement('div');
             swatch.className = 'w-7 h-7 rounded-full border-2 border-transparent transition-all custom-swatch';
 
-            const colorMap = {
-                'ดำ': '#000000', 'black': '#000000', 'midnight': '#1C1C1E', 'มิดไนท์': '#1C1C1E',
-                'ขาว': '#FFFFFF', 'white': '#FFFFFF', 'starlight': '#F9F6EF', 'สตาร์ไลท์': '#F9F6EF',
-                'แดง': '#FF3B30', 'red': '#FF3B30',
-                'ฟ้า': '#32ADE6', 'บลู': '#2E5C92', 'blue': '#2E5C92', 'sierra blue': '#9BB5CE', 'เซียร์ร่าบลู': '#9BB5CE',
-                'น้ำเงิน': '#007AFF', 'navy': '#000080', 'กรม': '#000080', 'pacific blue': '#2E475D',
-                'เหลือง': '#FFCC00', 'yellow': '#FFCC00', 'เหลืองอ่อน': '#FFF3B0', 'เหลืองเข้ม': '#FFC300',
-                'ส้ม': '#FF9500', 'orange': '#FF9500',
-                'ม่วง': '#AF52DE', 'purple': '#AF52DE', 'deep purple': '#594F63',
-                'เขียว': '#34C759', 'green': '#34C759', 'alpine green': '#576856', 'midnight green': '#4E5851',
-                'เงิน': '#C0C0C0', 'silver': '#C0C0C0', 'ซิลเวอร์': '#C0C0C0',
-                'เทา': '#8E8E93', 'gray': '#8E8E93', 'space gray': '#535150', 'สเปซเกรย์': '#535150',
-                'ทอง': '#FFD700', 'gold': '#FFD700', 'rose gold': '#B76E79', 'โรสโกลด์': '#B76E79',
-                'ชมพู': '#FF2D55', 'pink': '#FF2D55',
-                'ไทเทเนียม': '#878681', 'titanium': '#878681', 'natural titanium': '#878681', 'เนเชอรัล': '#878681',
-                'ไวท์ไทเทเนียม': '#ECE9E3', 'ไทเทเนียมดำ': '#3E3F43', 'กราไฟต์': '#3E3F43',
-                'บรอนซ์': '#CD7F32', 'ทะเลทราย': '#EDC9AF', 'เนื้อ': '#EDC9AF'
-            };
-
-            let bgCol = '#8E8E93';
-            Object.keys(colorMap).forEach(k => {
-                if (item.name && item.name.toLowerCase().includes(k.toLowerCase())) bgCol = colorMap[k];
-            });
-            if (item.color_code) bgCol = item.color_code;
-
-            swatch.style.backgroundColor = bgCol;
+            swatch.style.backgroundColor = resolveProductColorHex(item.name, item);
 
             const label = document.createElement('span');
             label.className = 'text-[10px] text-slate-400 whitespace-nowrap custom-swatch-label transition-colors';
@@ -1519,7 +1543,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         const toast = document.createElement('div');
-        toast.className = 'bg-canvas-elevated border border-hairline border-l-4 border-l-amber-500 px-4 py-3 rounded-lg flex items-center justify-between gap-3 toast-animate min-w-[300px] pointer-events-auto transfer-toast';
+        toast.className = 'bg-canvas-elevated border border-hairline px-4 py-3 rounded-lg flex items-center justify-between gap-3 toast-animate min-w-[300px] pointer-events-auto transfer-toast';
         toast.innerHTML = `
             <div class="flex items-center gap-3">
                 <div class="w-8 h-8 rounded-full bg-surface-chip flex items-center justify-center text-amber-400 shrink-0">
@@ -1644,30 +1668,30 @@ document.addEventListener('DOMContentLoaded', () => {
         const toast = document.createElement('div');
 
         // สีสถานะ (เขียว/แดง/ส้ม/ฟ้า) เป็นข้อยกเว้นที่ตั้งใจไว้จากกฎ single-accent ของ DESIGN.md
-        // เก็บไว้เฉพาะ toast/badge สถานะเท่านั้น ใช้เป็นสีไอคอน + เส้นขอบซ้าย ไม่ใช้เป็นพื้นทึบ
-        let accentBorder = 'border-l-blue-500';
+        // เก็บไว้เฉพาะสีไอคอน + พื้นหลังแบบจางของ toast เท่านั้น ไม่ใช้เป็นเส้นขอบ
         let iconColor = 'text-blue-400';
+        let bgColor = 'bg-blue-400/60';
         let icon = 'fa-circle-info';
 
         if (type === 'success' || type === 'confirm') {
-            accentBorder = 'border-l-emerald-500';
             iconColor = 'text-emerald-400';
+            bgColor = 'bg-emerald-400/60';
             icon = 'fa-circle-check';
         } else if (type === 'error' || type === 'danger') {
-            accentBorder = 'border-l-rose-500';
             iconColor = 'text-rose-400';
+            bgColor = 'bg-rose-400/60';
             icon = 'fa-circle-xmark';
         } else if (type === 'warning') {
-            accentBorder = 'border-l-amber-500';
             iconColor = 'text-amber-400';
+            bgColor = 'bg-amber-400/60';
             icon = 'fa-triangle-exclamation';
         } else { // info
-            accentBorder = 'border-l-blue-500';
             iconColor = 'text-blue-400';
+            bgColor = 'bg-blue-400/60';
             icon = 'fa-circle-info';
         }
 
-        toast.className = `bg-canvas-elevated border border-hairline border-l-4 ${accentBorder} px-4 py-3 rounded-lg flex items-center gap-3 toast-animate min-w-[240px] pointer-events-auto transition-all duration-300`;
+        toast.className = `${bgColor} border border-hairline px-4 py-3 rounded-lg flex items-center gap-3 toast-animate min-w-[240px] pointer-events-auto transition-all duration-300`;
         toast.innerHTML = `
             <div class="flex items-center justify-center w-8 h-8 rounded-sm bg-surface-chip flex-shrink-0">
                 <i class="fa-solid ${icon} ${iconColor} text-base"></i>
@@ -1767,6 +1791,15 @@ document.addEventListener('DOMContentLoaded', () => {
         cancelBtn.onclick = cleanup;
     };
     if (typeof window !== 'undefined') window.showConfirm = showConfirm;
+
+    // แจ้งเตือนแบบปุ่มเดียว (ไม่มีอะไรให้ "ยกเลิก") ใช้ modal ตัวเดียวกับ showConfirm
+    // เพื่อให้กล่องแจ้งเตือนทั้งระบบหน้าตาและจังหวะ animation เหมือนกันหมด
+    const showAlert = (title, message, okText = 'รับทราบ', type = 'warning', onOk = null) => {
+        showConfirm(title, message, () => { if (onOk) onOk(); }, okText, type);
+        const cancelBtn = document.getElementById('confirm-cancel-btn');
+        if (cancelBtn) cancelBtn.style.display = 'none';
+    };
+    if (typeof window !== 'undefined') window.showAlert = showAlert;
 
     const showPrompt = (title, defaultValue, onConfirm) => {
         promptTitle.textContent = title;
@@ -2045,8 +2078,10 @@ document.addEventListener('DOMContentLoaded', () => {
         setVisible(navStockAuditReview, permissions.manage_stock_audit);
 
         // Toggle Settings header/divider based on sub-permissions
+        // กลุ่ม "ตั้งค่าระบบ" ตอนนี้รวมจัดการพนักงาน/สาขาไว้ด้วย เงื่อนไขนี้เลยต้องครอบคลุมสิทธิ์นั้นด้วย
+        // ไม่งั้น user ที่มีแค่ manage_personnel/manage_branches จะเห็นเมนูแต่หัวข้อกลุ่มหาย
         if (navSettingsHeader) {
-            const hasSettingsSection = !!(permissions.manage_settings || permissions.manage_roles || permissions.view_audit_logs);
+            const hasSettingsSection = !!(permissions.manage_settings || permissions.manage_roles || permissions.view_audit_logs || permissions.manage_personnel || permissions.manage_branches);
             setVisible(navSettingsHeader, hasSettingsSection);
         }
 
@@ -2054,8 +2089,45 @@ document.addEventListener('DOMContentLoaded', () => {
         window.__userPermissions = permissions;
     };
 
+    // Skeleton loading แถวตารางสต็อก — แสดงระหว่างรอข้อมูลสินค้าจาก server ครั้งแรก (ก่อน renderProductTable มีข้อมูลจริงมาแทนที่)
+    const renderStockTableSkeleton = (rowCount = 8) => {
+        if (!productTableBody) return;
+        const bar = (widthClass, extraClass = '') => `<div class="h-3.5 ${widthClass} rounded-full bg-[#5c5c5c] animate-pulse ${extraClass}"></div>`;
+        let rowsHtml = '';
+        for (let i = 0; i < rowCount; i++) {
+            rowsHtml += `
+                <tr>
+                    <td class="px-6 py-4">${bar('w-20')}</td>
+                    <td class="px-6 py-4">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-full bg-[#5c5c5c] animate-pulse flex-shrink-0"></div>
+                            <div class="space-y-2">
+                                ${bar('w-32')}
+                                ${bar('w-20 h-2.5')}
+                            </div>
+                        </div>
+                    </td>
+                    <td class="px-6 py-4">${bar('w-24')}</td>
+                    <td class="px-6 py-4">${bar('w-24')}</td>
+                    <td class="px-6 py-4">${bar('w-16')}</td>
+                    <td class="px-6 py-4 text-right">${bar('w-16 ml-auto')}</td>
+                    <td class="px-6 py-4 text-center">${bar('w-10 mx-auto')}</td>
+                    <td class="px-6 py-4">${bar('w-20')}</td>
+                    <td class="px-6 py-4">
+                        <div class="flex items-center justify-end gap-2">
+                            <div class="w-8 h-8 rounded-lg bg-[#5c5c5c] animate-pulse"></div>
+                            <div class="w-8 h-8 rounded-lg bg-[#5c5c5c] animate-pulse"></div>
+                        </div>
+                    </td>
+                </tr>
+            `;
+        }
+        productTableBody.innerHTML = rowsHtml;
+    };
+
     // Fetch All Products
     async function fetchProducts() {
+        renderStockTableSkeleton();
         try {
             await ensureMasterDataLoaded();
             const response = await authFetch(`${API_BASE_URL}/products`);
@@ -2103,31 +2175,9 @@ document.addEventListener('DOMContentLoaded', () => {
             const capacityName = product.capacity_id ? product.capacity_id.name : '';
             const conditionName = product.condition_id ? product.condition_id.name : '';
 
-            let iconColorHex = '#cbd5e1'; // default slate-300
-            if (colorName) {
-                const colorMap = {
-                    'ดำ': '#000000', 'black': '#000000', 'midnight': '#1C1C1E', 'มิดไนท์': '#1C1C1E',
-                    'ขาว': '#FFFFFF', 'white': '#FFFFFF', 'starlight': '#F9F6EF', 'สตาร์ไลท์': '#F9F6EF',
-                    'แดง': '#FF3B30', 'red': '#FF3B30',
-                    'ฟ้า': '#32ADE6', 'บลู': '#2E5C92', 'blue': '#2E5C92', 'sierra blue': '#9BB5CE', 'เซียร์ร่าบลู': '#9BB5CE',
-                    'น้ำเงิน': '#007AFF', 'navy': '#000080', 'กรม': '#000080', 'pacific blue': '#2E475D',
-                    'เหลือง': '#FFCC00', 'yellow': '#FFCC00', 'เหลืองอ่อน': '#FFF3B0', 'เหลืองเข้ม': '#FFC300',
-                    'ส้ม': '#FF9500', 'orange': '#FF9500',
-                    'ม่วง': '#AF52DE', 'purple': '#AF52DE', 'deep purple': '#594F63',
-                    'เขียว': '#34C759', 'green': '#34C759', 'alpine green': '#576856', 'midnight green': '#4E5851',
-                    'เงิน': '#C0C0C0', 'silver': '#C0C0C0', 'ซิลเวอร์': '#C0C0C0',
-                    'เทา': '#8E8E93', 'gray': '#8E8E93', 'space gray': '#535150', 'สเปซเกรย์': '#535150',
-                    'ทอง': '#FFD700', 'gold': '#FFD700', 'rose gold': '#B76E79', 'โรสโกลด์': '#B76E79',
-                    'ชมพู': '#FF2D55', 'pink': '#FF2D55',
-                    'ไทเทเนียม': '#878681', 'titanium': '#878681', 'natural titanium': '#878681', 'เนเชอรัล': '#878681',
-                    'ไวท์ไทเทเนียม': '#ECE9E3', 'ไทเทเนียมดำ': '#3E3F43', 'กราไฟต์': '#3E3F43',
-                    'บรอนซ์': '#CD7F32', 'ทะเลทราย': '#EDC9AF', 'เนื้อ': '#EDC9AF'
-                };
-                Object.keys(colorMap).forEach(k => {
-                    if (colorName.toLowerCase().includes(k.toLowerCase())) iconColorHex = colorMap[k];
-                });
-                if (product.color_id && product.color_id.color_code) iconColorHex = product.color_id.color_code;
-            }
+            const iconColorHex = colorName
+                ? resolveProductColorHex(colorName, product.color_id, '#cbd5e1')
+                : '#cbd5e1'; // default slate-300
 
             const isDevice = checkIsDevice(categoryName, product);
             const stockDisplay = isDevice
@@ -2235,29 +2285,7 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('v-product-sell').textContent = `฿${(product.selling_price || 0).toLocaleString()}`;
         const colorName = product.color_id ? product.color_id.name : '-';
         if (colorName !== '-') {
-            const colorMap = {
-                'ดำ': '#000000', 'black': '#000000', 'midnight': '#1C1C1E', 'มิดไนท์': '#1C1C1E',
-                'ขาว': '#FFFFFF', 'white': '#FFFFFF', 'starlight': '#F9F6EF', 'สตาร์ไลท์': '#F9F6EF',
-                'แดง': '#FF3B30', 'red': '#FF3B30',
-                'ฟ้า': '#32ADE6', 'บลู': '#2E5C92', 'blue': '#2E5C92', 'sierra blue': '#9BB5CE', 'เซียร์ร่าบลู': '#9BB5CE',
-                'น้ำเงิน': '#007AFF', 'navy': '#000080', 'กรม': '#000080', 'pacific blue': '#2E475D',
-                'เหลือง': '#FFCC00', 'yellow': '#FFCC00', 'เหลืองอ่อน': '#FFF3B0', 'เหลืองเข้ม': '#FFC300',
-                'ส้ม': '#FF9500', 'orange': '#FF9500',
-                'ม่วง': '#AF52DE', 'purple': '#AF52DE', 'deep purple': '#594F63',
-                'เขียว': '#34C759', 'green': '#34C759', 'alpine green': '#576856', 'midnight green': '#4E5851',
-                'เงิน': '#C0C0C0', 'silver': '#C0C0C0', 'ซิลเวอร์': '#C0C0C0',
-                'เทา': '#8E8E93', 'gray': '#8E8E93', 'space gray': '#535150', 'สเปซเกรย์': '#535150',
-                'ทอง': '#FFD700', 'gold': '#FFD700', 'rose gold': '#B76E79', 'โรสโกลด์': '#B76E79',
-                'ชมพู': '#FF2D55', 'pink': '#FF2D55',
-                'ไทเทเนียม': '#878681', 'titanium': '#878681', 'natural titanium': '#878681', 'เนเชอรัล': '#878681',
-                'ไวท์ไทเทเนียม': '#ECE9E3', 'ไทเทเนียมดำ': '#3E3F43', 'กราไฟต์': '#3E3F43',
-                'บรอนซ์': '#CD7F32', 'ทะเลทราย': '#EDC9AF', 'เนื้อ': '#EDC9AF'
-            };
-            let bgCol = '#8E8E93';
-            Object.keys(colorMap).forEach(k => {
-                if (colorName.toLowerCase().includes(k.toLowerCase())) bgCol = colorMap[k];
-            });
-            if (product.color_id && product.color_id.color_code) bgCol = product.color_id.color_code;
+            const bgCol = resolveProductColorHex(colorName, product.color_id);
 
             document.getElementById('v-product-color').innerHTML = `<div class="w-4 h-4 rounded-full flex-shrink-0" style="background-color: ${bgCol};"></div> <span>${colorName}</span>`;
         } else {
@@ -3228,192 +3256,194 @@ document.addEventListener('DOMContentLoaded', () => {
         };
 
         try {
-        if (viewName === 'dashboard') {
-            activateView(viewDashboard, navDashboard);
-            await loadPageView('dashboard');
-            await loadPageScript('dashboard');
-            if (typeof loadDashboardData === 'function') loadDashboardData();
-            if (!window.__isDashboardCardBound) {
-                window.__isDashboardCardBound = true;
-                const cardPendingTransfer = document.getElementById('card-pending-transfer');
-                if (cardPendingTransfer) {
-                    cardPendingTransfer.addEventListener('click', async () => {
-                        if (navTransfers) {
-                            await switchView('transfers');
-                            const tabIncoming = document.getElementById('transfer-tab-incoming');
-                            if (tabIncoming) tabIncoming.click();
-                        }
-                    });
+            if (viewName === 'dashboard') {
+                activateView(viewDashboard, navDashboard);
+                await loadPageView('dashboard');
+                await loadPageScript('dashboard');
+                if (typeof loadDashboardData === 'function') loadDashboardData();
+                if (!window.__isDashboardCardBound) {
+                    window.__isDashboardCardBound = true;
+                    const cardPendingTransfer = document.getElementById('card-pending-transfer');
+                    if (cardPendingTransfer) {
+                        cardPendingTransfer.addEventListener('click', async () => {
+                            if (navTransfers) {
+                                await switchView('transfers');
+                                const tabIncoming = document.getElementById('transfer-tab-incoming');
+                                if (tabIncoming) tabIncoming.click();
+                            }
+                        });
+                    }
                 }
             }
-        }
-        else if (viewName === 'stock') {
-            activateView(viewStock, navStock);
-            activateMobileNav(mobileNavStock);
-            allProductsCache = []; // Clear cache to ensure fresh data including transferring items
-            window.allProductsCache = allProductsCache;
-            await fetchProducts();
-        }
-        else if (viewName === 'transactions') {
-            activateView(viewTransactions, navTransactions);
-            activateMobileNav(mobileNavTransactions);
-            // โหลดสินค้าสำหรับ POS (Backend จะกรองตามสาขาอัตโนมัติสำหรับพนักงานขาย)
-            await fetchPosProducts();
-            updatePosBranchBadge();
-            // Show mobile cart FAB on POS page
-            const _posFab = document.getElementById('pos-mobile-cart-fab');
-            if (_posFab && window.innerWidth < 768) _posFab.style.display = 'flex';
-        }
-        else if (viewName === 'personnel') {
-            activateView(viewPersonnel, navPersonnel);
-            await loadPageView('personnel');
-            await loadPageScript('personnel');
-            loadEmployees();
-        }
-        else if (viewName === 'branches') {
-            activateView(viewBranches, navBranches);
-            await loadPageView('branches');
-            await loadPageScript('branches');
-            loadBranches();
-        }
-        else if (viewName === 'settings') {
-            activateView(viewSettings, navSettings);
-            await loadPageView('settings');
-            await Promise.all([loadPageScript('settings'), fetchMasterData()]);
-            if (typeof renderSettingsList === 'function') renderSettingsList();
-        }
-        else if (viewName === 'roles') {
-            activateView(viewRoles, navRoles);
-            await loadPageView('roles');
-            await loadPageScript('roles');
-            loadRoles();
-        }
-        else if (viewName === 'sales-history') {
-            activateView(viewSalesHistory, navSalesHistory);
-            await loadPageView('sales-history');
-            await loadPageScript('sales-history');
-            loadBranchesForSalesHistory();
-            loadEmployeesForSalesHistory();
-            loadSalesHistory();
-        }
-        else if (viewName === 'daily-summary') {
-            activateView(viewDailySummary, navDailySummary);
-            activateMobileNav(mobileNavDailySummary);
-            await loadPageView('sales-history');
-            await loadPageScript('sales-history');
-            loadDailySummary();
-        }
-        else if (viewName === 'transfers') {
-            activateView(viewTransfers, navTransfers);
-            await loadPageView('transfers');
-            await loadPageScript('transfers');
-            loadTransfers();
-        }
-        else if (viewName === 'deposits') {
-            activateView(viewDeposits, navDeposits);
-            await loadPageView('deposits');
-            await loadPageScript('deposits');
-            if (typeof loadBranchesForDeposits === 'function') loadBranchesForDeposits();
-            loadDeposits();
-        }
-        else if (viewName === 'movements') {
-            activateView(viewMovements, navMovements);
-            await loadPageView('movements');
-            await loadPageScript('movements');
-            setTimeout(() => {
-                const searchInput = document.getElementById('movement-search-input');
-                if (searchInput) searchInput.focus();
-            }, 100);
-        }
-        else if (viewName === 'members') {
-            activateView(viewMembers, navMembers);
-            activateMobileNav(mobileNavMembers);
-            await loadPageView('members');
-            await loadPageScript('members');
-            loadMembers();
-        }
-        else if (viewName === 'report-arrival') {
-            activateView(viewReportArrival, navReportArrival);
-            await loadPageView('po-accounting');
-            await loadPageScript('po-accounting');
-            if (typeof window.initImportWorkflowPage === 'function') window.initImportWorkflowPage();
-            if (typeof window.populateArrivalDropdowns === 'function') window.populateArrivalDropdowns();
-            if (typeof loadMyArrivalReports === 'function') loadMyArrivalReports();
-            if (typeof loadArrivalPOs === 'function') loadArrivalPOs();
-        }
-        else if (viewName === 'approve-import') {
-            activateView(viewApproveImport, navApproveImport);
-            await loadPageView('po-accounting');
-            await loadPageScript('po-accounting');
-            if (typeof window.initImportWorkflowPage === 'function') window.initImportWorkflowPage();
-            if (typeof populateApproveImportBranchFilter === 'function') populateApproveImportBranchFilter();
-            if (typeof loadImportNotifications === 'function') {
-                loadImportNotifications();
+            else if (viewName === 'stock') {
+                activateView(viewStock, navStock);
+                activateMobileNav(mobileNavStock);
+                allProductsCache = []; // Clear cache to ensure fresh data including transferring items
+                window.allProductsCache = allProductsCache;
+                await fetchProducts();
             }
-            if (typeof loadApprovePOs === 'function') loadApprovePOs();
-            if (typeof loadApproveHistory === 'function') loadApproveHistory();
-        }
-        else if (viewName === 'warranty-check') {
-            activateView(viewWarrantyCheck, navWarrantyCheck);
-            await Promise.all([loadPageView('sales-history'), loadPageView('warranty-check')]);
-            await Promise.all([loadPageScript('sales-history'), loadPageScript('warranty-check')]);
-        }
-        else if (viewName === 'branch-inventory') {
-            activateView(viewBranchInventory, navBranchInventory);
-            await loadPageView('branch-inventory');
-            await loadPageScript('branch-inventory');
-            if (typeof initBranchInventory === 'function') initBranchInventory();
-        }
-        else if (viewName === 'accounting-po') {
-            activateView(viewAccountingPO, navAccountingPO);
-            activateMobileNav(mobileNavAccountingPO);
-            await loadPageView('po-accounting');
-            await loadPageScript('po-accounting');
-            if (typeof initAccountingPO === 'function') initAccountingPO();
-        }
-        else if (viewName === 'branch-receive') {
-            activateView(viewBranchReceive, navBranchReceive);
-            await loadPageView('po-accounting');
-            await loadPageScript('po-accounting');
-            if (typeof initBranchReceive === 'function') initBranchReceive();
-        }
-        else if (viewName === 'accounting') {
-            activateView(viewAccounting, navAccounting);
-            await loadPageView('po-accounting');
-            await loadPageScript('po-accounting');
-            if (typeof initAccounting === 'function') initAccounting();
-        }
-        else if (viewName === 'audit-logs') {
-            activateView(viewAuditLogs, navAuditLogs);
-            await loadPageView('audit-logs');
-            await loadPageScript('audit-logs');
-            await fetchAuditLogs(1);
-        }
-        else if (viewName === 'stock-audit') {
-            activateView(viewStockAudit, navStockAudit);
-            activateMobileNav(mobileNavStockAudit);
-            await loadPageView('stock-audit');
-            await loadPageScript('stock-audit');
-            if (typeof initStockAudit === 'function') initStockAudit();
-        }
-        else if (viewName === 'stock-audit-review') {
-            activateView(viewStockAuditReview, navStockAuditReview);
-            await loadPageView('stock-audit');
-            await loadPageScript('stock-audit');
-            if (typeof loadAuditReviewSessions === 'function') loadAuditReviewSessions();
-        }
-        else if (viewName === 'accounting-settings') {
-            activateView(viewAccountingSettings, navAccountingSettings);
-            await loadPageView('accounting-settings');
-            await loadPageScript('accounting-settings');
-            if (typeof initAccountingSettings === 'function') initAccountingSettings();
-        }
-        else if (viewName === 'disbursement') {
-            activateView(viewDisbursement, navDisbursement);
-            await loadPageView('accounting-settings');
-            await loadPageScript('accounting-settings');
-            if (typeof initDisbursement === 'function') initDisbursement();
-        }
+            else if (viewName === 'transactions') {
+                activateView(viewTransactions, navTransactions);
+                activateMobileNav(mobileNavTransactions);
+                // โหลดสินค้าสำหรับ POS (Backend จะกรองตามสาขาอัตโนมัติสำหรับพนักงานขาย)
+                await fetchPosProducts();
+                updatePosBranchBadge();
+                // Show floating cart FAB below the desktop two-column breakpoint (lg, 1024px) —
+                // matches the POS layout's own flex-col -> lg:flex-row stacking point, so there's
+                // no dead zone between the mobile FAB and the desktop side-by-side cart column.
+                const _posFab = document.getElementById('pos-mobile-cart-fab');
+                if (_posFab && window.innerWidth < 1024) _posFab.style.display = 'flex';
+            }
+            else if (viewName === 'personnel') {
+                activateView(viewPersonnel, navPersonnel);
+                await loadPageView('personnel');
+                await loadPageScript('personnel');
+                loadEmployees();
+            }
+            else if (viewName === 'branches') {
+                activateView(viewBranches, navBranches);
+                await loadPageView('branches');
+                await loadPageScript('branches');
+                loadBranches();
+            }
+            else if (viewName === 'settings') {
+                activateView(viewSettings, navSettings);
+                await loadPageView('settings');
+                await Promise.all([loadPageScript('settings'), fetchMasterData()]);
+                if (typeof renderSettingsList === 'function') renderSettingsList();
+            }
+            else if (viewName === 'roles') {
+                activateView(viewRoles, navRoles);
+                await loadPageView('roles');
+                await loadPageScript('roles');
+                loadRoles();
+            }
+            else if (viewName === 'sales-history') {
+                activateView(viewSalesHistory, navSalesHistory);
+                await loadPageView('sales-history');
+                await loadPageScript('sales-history');
+                loadBranchesForSalesHistory();
+                loadEmployeesForSalesHistory();
+                loadSalesHistory();
+            }
+            else if (viewName === 'daily-summary') {
+                activateView(viewDailySummary, navDailySummary);
+                activateMobileNav(mobileNavDailySummary);
+                await loadPageView('sales-history');
+                await loadPageScript('sales-history');
+                loadDailySummary();
+            }
+            else if (viewName === 'transfers') {
+                activateView(viewTransfers, navTransfers);
+                await loadPageView('transfers');
+                await loadPageScript('transfers');
+                loadTransfers();
+            }
+            else if (viewName === 'deposits') {
+                activateView(viewDeposits, navDeposits);
+                await loadPageView('deposits');
+                await loadPageScript('deposits');
+                if (typeof loadBranchesForDeposits === 'function') loadBranchesForDeposits();
+                loadDeposits();
+            }
+            else if (viewName === 'movements') {
+                activateView(viewMovements, navMovements);
+                await loadPageView('movements');
+                await loadPageScript('movements');
+                setTimeout(() => {
+                    const searchInput = document.getElementById('movement-search-input');
+                    if (searchInput) searchInput.focus();
+                }, 100);
+            }
+            else if (viewName === 'members') {
+                activateView(viewMembers, navMembers);
+                activateMobileNav(mobileNavMembers);
+                await loadPageView('members');
+                await loadPageScript('members');
+                loadMembers();
+            }
+            else if (viewName === 'report-arrival') {
+                activateView(viewReportArrival, navReportArrival);
+                await loadPageView('po-accounting');
+                await loadPageScript('po-accounting');
+                if (typeof window.initImportWorkflowPage === 'function') window.initImportWorkflowPage();
+                if (typeof window.populateArrivalDropdowns === 'function') window.populateArrivalDropdowns();
+                if (typeof loadMyArrivalReports === 'function') loadMyArrivalReports();
+                if (typeof loadArrivalPOs === 'function') loadArrivalPOs();
+            }
+            else if (viewName === 'approve-import') {
+                activateView(viewApproveImport, navApproveImport);
+                await loadPageView('po-accounting');
+                await loadPageScript('po-accounting');
+                if (typeof window.initImportWorkflowPage === 'function') window.initImportWorkflowPage();
+                if (typeof populateApproveImportBranchFilter === 'function') populateApproveImportBranchFilter();
+                if (typeof loadImportNotifications === 'function') {
+                    loadImportNotifications();
+                }
+                if (typeof loadApprovePOs === 'function') loadApprovePOs();
+                if (typeof loadApproveHistory === 'function') loadApproveHistory();
+            }
+            else if (viewName === 'warranty-check') {
+                activateView(viewWarrantyCheck, navWarrantyCheck);
+                await Promise.all([loadPageView('sales-history'), loadPageView('warranty-check')]);
+                await Promise.all([loadPageScript('sales-history'), loadPageScript('warranty-check')]);
+            }
+            else if (viewName === 'branch-inventory') {
+                activateView(viewBranchInventory, navBranchInventory);
+                await loadPageView('branch-inventory');
+                await loadPageScript('branch-inventory');
+                if (typeof initBranchInventory === 'function') initBranchInventory();
+            }
+            else if (viewName === 'accounting-po') {
+                activateView(viewAccountingPO, navAccountingPO);
+                activateMobileNav(mobileNavAccountingPO);
+                await loadPageView('po-accounting');
+                await loadPageScript('po-accounting');
+                if (typeof initAccountingPO === 'function') initAccountingPO();
+            }
+            else if (viewName === 'branch-receive') {
+                activateView(viewBranchReceive, navBranchReceive);
+                await loadPageView('po-accounting');
+                await loadPageScript('po-accounting');
+                if (typeof initBranchReceive === 'function') initBranchReceive();
+            }
+            else if (viewName === 'accounting') {
+                activateView(viewAccounting, navAccounting);
+                await loadPageView('po-accounting');
+                await loadPageScript('po-accounting');
+                if (typeof initAccounting === 'function') initAccounting();
+            }
+            else if (viewName === 'audit-logs') {
+                activateView(viewAuditLogs, navAuditLogs);
+                await loadPageView('audit-logs');
+                await loadPageScript('audit-logs');
+                await fetchAuditLogs(1);
+            }
+            else if (viewName === 'stock-audit') {
+                activateView(viewStockAudit, navStockAudit);
+                activateMobileNav(mobileNavStockAudit);
+                await loadPageView('stock-audit');
+                await loadPageScript('stock-audit');
+                if (typeof initStockAudit === 'function') initStockAudit();
+            }
+            else if (viewName === 'stock-audit-review') {
+                activateView(viewStockAuditReview, navStockAuditReview);
+                await loadPageView('stock-audit');
+                await loadPageScript('stock-audit');
+                if (typeof loadAuditReviewSessions === 'function') loadAuditReviewSessions();
+            }
+            else if (viewName === 'accounting-settings') {
+                activateView(viewAccountingSettings, navAccountingSettings);
+                await loadPageView('accounting-settings');
+                await loadPageScript('accounting-settings');
+                if (typeof initAccountingSettings === 'function') initAccountingSettings();
+            }
+            else if (viewName === 'disbursement') {
+                activateView(viewDisbursement, navDisbursement);
+                await loadPageView('accounting-settings');
+                await loadPageScript('accounting-settings');
+                if (typeof initDisbursement === 'function') initDisbursement();
+            }
         } catch (err) {
             console.error(`switchView('${viewName}') failed:`, err);
             if (typeof showToast === 'function') {
@@ -3742,6 +3772,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const posSearchResults = document.getElementById('pos-search-results');
     const cartItemsContainer = document.getElementById('cart-items-container');
     const cartEmptyState = document.getElementById('cart-empty-state');
+    const cartHintBanner = document.getElementById('cart-hint-banner');
     const cartCountBadge = document.getElementById('cart-count-badge');
     const posCartHeader = document.querySelector('#view-transactions .fa-basket-shopping')
         ? document.querySelector('#view-transactions .fa-basket-shopping').closest('h3')
@@ -3871,16 +3902,35 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Fetch products for POS
     async function fetchPosProducts() {
+        // ⚠️ switchView('transactions') ถูกเรียกได้ตั้งแต่ตอน restore หน้าล่าสุด ซึ่งเป็นจังหวะที่ยังรัน
+        // body ของ DOMContentLoaded ไม่จบ — const ของหน้าขายที่ประกาศอยู่ท้ายไฟล์ (posProductsCache,
+        // renderPosSkeleton ฯลฯ) จึงยังอยู่ใน TDZ แตะตรงๆ ตอนนี้จะได้ ReferenceError ทันที
+        // (แม้แต่ `typeof` ก็ throw) จึงต้องเลื่อนไปทำหลัง stack ปัจจุบันคลายตัว ตอนนั้น const พร้อมแล้ว
+        // microtask ทำงานก่อนที่ network จะตอบกลับเสมอ skeleton จึงยังทันขึ้นก่อนข้อมูลจริง
+        queueMicrotask(() => {
+            // โชว์ skeleton เฉพาะตอนที่ยังไม่มีอะไรให้ดูเลย ถ้ากลับเข้าหน้านี้ซ้ำและมีข้อมูลเดิมค้างอยู่
+            // ให้คงรายการเดิมไว้ระหว่างโหลดใหม่ ดีกว่าให้หน้าจอกระพริบทุกครั้งที่สลับหน้ามา
+            if (posProductsCache.length === 0) renderPosSkeleton();
+        });
+
+        // เรียกได้เฉพาะหลัง await เท่านั้น (พ้น TDZ แล้ว) และจะไม่ลบรายการเดิมทิ้งถ้าโหลดซ้ำแล้วพลาด
+        const failIfEmpty = () => {
+            if (posProductsCache.length === 0) showPosLoadError();
+        };
+
         try {
             const response = await authFetch(`${API_BASE_URL}/products`);
             const json = await response.json();
             if (json.success) {
                 posProductsCache = json.data;
-                if (typeof populatePosDropdowns === 'function') populatePosDropdowns();
-                if (typeof initPosRender === 'function') initPosRender();
+                populatePosDropdowns();
+                initPosRender();
+            } else {
+                failIfEmpty();
             }
         } catch (error) {
             console.error('เกิดข้อผิดพลาดในการดึงข้อมูลสินค้าสำหรับ POS:', error);
+            failIfEmpty();
         }
     }
 
@@ -3903,9 +3953,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
         let badge = document.getElementById('pos-branch-badge');
         if (!badge) {
-            badge = document.createElement('div');
+            badge = document.createElement('p');
             badge.id = 'pos-branch-badge';
-            badge.className = 'mt-3 bg-amber-100 text-amber-800 text-xs font-bold py-2 px-3 rounded-lg text-center';
+            badge.className = 'text-[11px] text-ink-muted-48 mt-1';
             headerContainer.appendChild(badge);
         }
 
@@ -3913,8 +3963,10 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     // State for POS UI
-    let posCurrentPage = 1;
-    let posPerPage = 12;
+    // Infinite scroll: ทยอยเติมสินค้าทีละชุดเมื่อเลื่อนใกล้ล่างสุด แทนการแบ่งหน้าแบบเดิม
+    // (แนวทางเดียวกับตารางหน้าจัดการสต็อก) 12 ชิ้นต่อชุดลงตัวพอดีกับกริด 3 คอลัมน์
+    const POS_ITEMS_PER_BATCH = 12;
+    let posLoadedCount = 0;
     let posFilteredData = [];
     let posActiveTab = 'search'; // 'search' or 'scan'
 
@@ -3958,235 +4010,570 @@ document.addEventListener('DOMContentLoaded', () => {
         return 'อื่นๆ';
     };
 
+    // สแนปช็อตข้อมูลสินค้า (รหัส/สี/ประเภท/สต็อกคงเหลือ ณ ตอนหยิบใส่ตะกร้า) สำหรับแสดงในตารางยืนยันการชำระเงิน
+    // เก็บไว้ตอน push เข้าตะกร้าเพราะ posProductsCache อาจเปลี่ยนไปก่อนเปิด modal ชำระเงิน
+    const getCartProductSnapshot = (product) => ({
+        product_code: product.product_code || '',
+        color_name: (product.color_id && product.color_id.name) ? product.color_id.name : '',
+        type_name: (product.type_id && product.type_id.name) ? product.type_id.name : '',
+        stock_available: (typeof product.quantity === 'number') ? product.quantity : null
+    });
+
+    // มุมมอง/การเรียง/การกรองของกริดสินค้า — เก็บเป็นสถานะเดียวกันทั้งหน้า เพื่อให้ปุ่มสลับมุมมอง
+    // ตัวเลือกเรียงลำดับ และตัวกรอง อ่าน/เขียนที่เดียวกันหมด ไม่ต้องไล่ query DOM ซ้ำ
+    let posViewMode = 'grid'; // 'grid' | 'list'
+    let posSortMode = 'name-asc';
+    // หมวดหมู่ที่เลือกอยู่ เก็บเป็นตัวแปรตรงๆ ไม่ฝากไว้กับ <select> ที่ซ่อน เพราะ select.value จะเงียบๆ
+    // ไม่เปลี่ยนค่าถ้าไม่มี option ที่ตรงกัน ทำให้แท็บกดแล้วรายการไม่ถูกกรอง
+    let posActiveCategory = '';
+    // สินค้าที่หมดสต็อกถูกซ่อนออกจากกริดตั้งแต่แรก (display: none โดยพฤตินัย ผ่านการกรองออกจาก
+    // posFilteredData) เพื่อไม่ให้พนักงานเผลอขายของที่ไม่มีจริง — เปิดดูได้จากตัวกรองถ้าต้องเช็คว่า
+    // รุ่นไหนหมดโดยไม่ต้องออกจากหน้าขาย
+    let posShowOutOfStock = false;
+
+    // ==========================================
+    // Skeleton loading ของหน้าจัดรายการขาย
+    // ==========================================
+    // ใช้โทนเดียวกับ skeleton หน้าสต็อก (bg-[#5c5c5c] + animate-pulse) เพื่อให้จังหวะกระพริบ
+    // ของทั้งระบบเป็นแบบเดียวกัน โครงร่างจำลองการ์ด/แถวจริงไว้ เลย์เอาต์จะได้ไม่กระโดดตอนข้อมูลมาแทน
+    const posSkeletonBar = (cls) => `<div class="rounded-full bg-[#5c5c5c] animate-pulse ${cls}"></div>`;
+
+    const posSkeletonCard = () => `
+        <div class="bg-surface-tile-3 border border-hairline rounded-md p-3.5">
+            <div class="flex items-start gap-3">
+                <div class="w-10 h-10 rounded-md bg-[#5c5c5c] animate-pulse shrink-0"></div>
+                <div class="min-w-0 flex-1">
+                    <div class="flex items-start gap-2">
+                        ${posSkeletonBar('h-3.5 flex-1')}
+                        ${posSkeletonBar('h-4 w-20 shrink-0')}
+                    </div>
+                    ${posSkeletonBar('h-2.5 w-3/5 mt-2.5')}
+                    ${posSkeletonBar('h-2.5 w-2/5 mt-1.5')}
+                    ${posSkeletonBar('h-2.5 w-1/4 mt-1.5')}
+                </div>
+            </div>
+            <div class="flex items-center gap-2 mt-3.5">
+                ${posSkeletonBar('h-5 w-24')}
+                <div class="ml-auto flex items-center gap-1.5">
+                    ${posSkeletonBar('h-8 w-20')}
+                    ${posSkeletonBar('h-8 w-8')}
+                </div>
+            </div>
+        </div>`;
+
+    const posSkeletonTableRow = () => `
+        <tr class="bg-canvas-elevated">
+            <td class="px-4 py-3.5">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-md bg-[#5c5c5c] animate-pulse shrink-0"></div>
+                    <div class="min-w-0 flex-1 max-w-[220px]">
+                        ${posSkeletonBar('h-3.5 w-4/5')}
+                        ${posSkeletonBar('h-2.5 w-3/5 mt-2')}
+                    </div>
+                </div>
+            </td>
+            <td class="px-4 py-3.5">${posSkeletonBar('h-6 w-32')}</td>
+            <td class="px-4 py-3.5">${posSkeletonBar('h-2.5 w-24')}${posSkeletonBar('h-2.5 w-28 mt-2')}</td>
+            <td class="px-4 py-3.5">${posSkeletonBar('h-5 w-28')}</td>
+            <td class="px-4 py-3.5">${posSkeletonBar('h-4 w-16')}</td>
+            <td class="px-4 py-3.5">${posSkeletonBar('h-5 w-20')}</td>
+            <td class="px-4 py-3.5">
+                <div class="flex items-center gap-1.5">
+                    ${posSkeletonBar('h-8 w-20')}
+                    ${posSkeletonBar('h-8 w-8')}
+                </div>
+            </td>
+        </tr>`;
+
+    const renderPosSkeleton = () => {
+        const tabsEl = document.getElementById('pos-category-tabs');
+        if (tabsEl) {
+            tabsEl.innerHTML = Array.from({ length: 6 }, (_, i) =>
+                `<div class="shrink-0 h-[42px] ${i === 0 ? 'w-[104px]' : 'w-[96px]'} rounded-md bg-[#5c5c5c] animate-pulse"></div>`
+            ).join('');
+        }
+
+        const resultCountEl = document.getElementById('pos-result-count');
+        if (resultCountEl) resultCountEl.textContent = '–';
+
+        const paginationContainer = document.getElementById('pos-pagination-container');
+        if (paginationContainer) {
+            paginationContainer.classList.remove('flex');
+            paginationContainer.classList.add('hidden');
+        }
+
+        if (!posSearchResults || !posEmptyState) return;
+        posEmptyState.classList.add('hidden');
+        posSearchResults.classList.remove('hidden');
+
+        // จำนวนโครงร่างอิงจำนวนต่อหน้า แต่ไม่เกิน 9 ชิ้น พอให้เต็มพื้นที่ที่มองเห็นโดยไม่ต้องวาดทิ้ง
+        const count = Math.min(POS_ITEMS_PER_BATCH, 9);
+        if (posViewMode === 'list') {
+            posSearchResults.className = 'block';
+            posSearchResults.innerHTML = `
+                <div class="overflow-x-auto rounded-md border border-hairline">
+                    <table class="w-full min-w-[1120px] border-collapse text-left overflow-x-auto">
+                        <tbody class="divide-y divide-hairline">
+                            ${Array.from({ length: count }, posSkeletonTableRow).join('')}
+                        </tbody>
+                    </table>
+                </div>`;
+        } else {
+            posSearchResults.className = 'grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3.5';
+            posSearchResults.innerHTML = Array.from({ length: count }, posSkeletonCard).join('');
+        }
+    };
+
+    // ถ้าโหลดไม่สำเร็จต้องเก็บ skeleton ทิ้ง ไม่งั้นหน้าจะค้างกระพริบตลอดไปโดยผู้ใช้ไม่รู้ว่าเกิดอะไรขึ้น
+    const showPosLoadError = () => {
+        const tabsEl = document.getElementById('pos-category-tabs');
+        if (tabsEl) tabsEl.innerHTML = '';
+        if (!posSearchResults || !posEmptyState) return;
+        posSearchResults.innerHTML = '';
+        posSearchResults.classList.add('hidden');
+        posEmptyState.classList.remove('hidden');
+        const titleEl = document.getElementById('pos-empty-state-title');
+        const subtitleEl = document.getElementById('pos-empty-state-subtitle');
+        if (titleEl) titleEl.textContent = 'โหลดรายการสินค้าไม่สำเร็จ';
+        if (subtitleEl) subtitleEl.textContent = 'ตรวจสอบการเชื่อมต่อแล้วเข้าหน้านี้ใหม่อีกครั้ง';
+    };
+
+    const posCategoryIcon = (name) => {
+        const n = (name || '').toLowerCase();
+        if (n.includes('iphone') || n.includes('มือถือ') || n.includes('phone')) return 'fa-mobile-screen';
+        if (n.includes('ipad') || n.includes('tablet') || n.includes('แท็บเล็ต')) return 'fa-tablet-screen-button';
+        if (n.includes('mac') || n.includes('notebook') || n.includes('โน้ตบุ๊ก')) return 'fa-laptop';
+        if (n.includes('watch') || n.includes('นาฬิกา')) return 'fa-clock';
+        if (n.includes('airpod') || n.includes('หูฟัง') || n.includes('buds')) return 'fa-headphones';
+        if (n.includes('เสริม') || n.includes('accessor')) return 'fa-plug';
+        return 'fa-box';
+    };
+
+    const setPosCategory = (value) => {
+        posActiveCategory = value || '';
+        // sync ค่าไปที่ <select> ที่ซ่อนไว้เท่าที่ทำได้ เผื่อโค้ดส่วนอื่นยังอ่านจากมัน แต่ไม่ใช้เป็นแหล่งความจริง
+        const categorySelect = document.getElementById('pos-filter-category');
+        if (categorySelect) categorySelect.value = posActiveCategory;
+        renderPosCategoryTabs();
+        searchPosProducts();
+    };
+
+    const renderPosCategoryTabs = () => {
+        const tabsEl = document.getElementById('pos-category-tabs');
+        if (!tabsEl) return;
+
+        const categories = Array.from(
+            new Set(posProductsCache.map(p => (p.type_id && p.type_id.name) ? p.type_id.name : '').filter(Boolean))
+        ).sort((a, b) => a.localeCompare(b, 'th'));
+
+        // หมวดหมู่ที่เลือกค้างไว้อาจหายไปหลังโหลดข้อมูลรอบใหม่ ถ้าหายให้ตกกลับเป็น "ทั้งหมด"
+        if (posActiveCategory && !categories.includes(posActiveCategory)) posActiveCategory = '';
+
+        const tabs = [{ value: '', label: 'ทั้งหมด', icon: 'fa-table-cells-large' }]
+            .concat(categories.map(c => ({ value: c, label: c, icon: posCategoryIcon(c) })));
+
+        tabsEl.innerHTML = tabs.map(t => {
+            const isActive = t.value === posActiveCategory;
+            const cls = isActive
+                ? 'bg-primary text-on-primary border-primary'
+                : 'bg-canvas-elevated text-body-muted border-hairline hover:text-ink hover:border-primary/40';
+            return `<button type="button" class="pos-cat-tab shrink-0 px-5 py-2.5 rounded-md border text-[13px] font-semibold transition-colors flex items-center gap-2 ${cls}" data-category="${escapeAttr(t.value)}" aria-pressed="${isActive}"><i class="fa-solid ${t.icon}"></i> ${t.label}</button>`;
+        }).join('');
+
+        // ผูก listener ครั้งเดียวที่ตัวคอนเทนเนอร์ แท็บถูก re-render บ่อย การผูกรายปุ่มทำให้หลุดง่าย
+        if (!tabsEl.dataset.bound) {
+            tabsEl.dataset.bound = '1';
+            tabsEl.addEventListener('click', (e) => {
+                const btn = e.target.closest('.pos-cat-tab');
+                if (!btn || !tabsEl.contains(btn)) return;
+                setPosCategory(btn.getAttribute('data-category'));
+            });
+        }
+    };
+
+    const updatePosStatTotal = () => {
+        const el = document.getElementById('pos-stat-total');
+        if (!el) return;
+        const units = posProductsCache.reduce((sum, p) => sum + Math.max(0, p.quantity || 0), 0);
+        el.textContent = units.toLocaleString();
+    };
+
+    const updatePosFilterDot = () => {
+        const dot = document.getElementById('pos-filter-dot');
+        if (!dot) return;
+        const brandSelect = document.getElementById('pos-filter-brand');
+        const hasFilter = !!((brandSelect && brandSelect.value) || posShowOutOfStock);
+        dot.classList.toggle('hidden', !hasFilter);
+    };
+
     const populatePosDropdowns = () => {
         const categorySelect = document.getElementById('pos-filter-category');
         const brandSelect = document.getElementById('pos-filter-brand');
-        if (!categorySelect || !brandSelect) return;
 
-        const categories = new Set();
-        const brands = new Set();
+        if (categorySelect) {
+            const categories = new Set();
+            posProductsCache.forEach(p => {
+                if (p.type_id && p.type_id.name) categories.add(p.type_id.name);
+            });
+            categorySelect.innerHTML = '<option value="">หมวดหมู่ทั้งหมด</option>';
+            Array.from(categories).sort().forEach(c => {
+                const opt = document.createElement('option');
+                opt.value = c;
+                opt.textContent = c;
+                categorySelect.appendChild(opt);
+            });
+            // แหล่งความจริงคือ posActiveCategory เสมอ ที่นี่แค่ทำให้ select เดินตาม
+            if (posActiveCategory && !categories.has(posActiveCategory)) posActiveCategory = '';
+            categorySelect.value = posActiveCategory;
+        }
 
-        posProductsCache.forEach(p => {
-            if (p.type_id && p.type_id.name) categories.add(p.type_id.name);
-            brands.add(getBrandFromProduct(p));
-        });
+        if (brandSelect) {
+            const brands = new Set();
+            posProductsCache.forEach(p => brands.add(getBrandFromProduct(p)));
+            const keep = brandSelect.value;
+            brandSelect.innerHTML = '<option value="">แบรนด์ทั้งหมด</option>';
+            Array.from(brands).sort().forEach(b => {
+                const opt = document.createElement('option');
+                opt.value = b;
+                opt.textContent = b;
+                brandSelect.appendChild(opt);
+            });
+            brandSelect.value = Array.from(brands).includes(keep) ? keep : '';
+        }
 
-        categorySelect.innerHTML = '<option value="">หมวดหมู่ทั้งหมด</option>';
-        Array.from(categories).sort().forEach(c => {
-            const opt = document.createElement('option');
-            opt.value = c;
-            opt.textContent = c;
-            categorySelect.appendChild(opt);
-        });
+        renderPosCategoryTabs();
+        updatePosStatTotal();
+        updatePosFilterDot();
+    };
 
-        brandSelect.innerHTML = '<option value="">แบรนด์ทั้งหมด</option>';
-        Array.from(brands).sort().forEach(b => {
-            const opt = document.createElement('option');
-            opt.value = b;
-            opt.textContent = b;
-            brandSelect.appendChild(opt);
+    const escapeAttr = (v) => String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+
+    // ข้อมูลที่การ์ดและแถวใช้ร่วมกัน แยกออกมาเพื่อไม่ให้สองมุมมองหลุดจากกันเวลาแก้ทีหลัง
+    const buildPosCardData = (product) => {
+        const categoryName = product.type_id ? product.type_id.name : 'ทั่วไป';
+        const colorName = product.color_id ? product.color_id.name : '';
+        const capacityName = product.capacity_id ? product.capacity_id.name : '';
+        const stockQty = product.quantity || 0;
+        const imeiCount = Array.isArray(product.imeis) ? product.imeis.length : 0;
+        const firstImei = imeiCount > 0 ? product.imeis[0] : '';
+        return {
+            categoryName,
+            stockQty,
+            firstImei,
+            imeiCount,
+            colorName,
+            colorTheme: getProductColorTheme(colorName, product.color_id),
+            branchName: (product.branch_id && product.branch_id.name) ? product.branch_id.name : '',
+            conditionName: (product.condition_id && product.condition_id.name) ? product.condition_id.name : '',
+            unitName: (product.unit_id && product.unit_id.name) ? product.unit_id.name : 'ชิ้น',
+            isOutOfStock: stockQty <= 0,
+            nameFull: `${product.name} ${capacityName} ${colorName}`.trim(),
+            isDevice: typeof checkIsDevice === 'function' ? checkIsDevice(categoryName, product) : false,
+            qtyInCart: typeof cart !== 'undefined'
+                ? cart.filter(item => item.product_id === product._id).reduce((sum, item) => sum + item.quantity, 0)
+                : 0,
+            price: product.selling_price || 0
+        };
+    };
+
+    const posQtyControlsMarkup = (product, d) => `
+        <div class="pos-qty-controls flex items-center gap-2.5 ${d.qtyInCart > 0 ? '' : 'hidden'}">
+            <button type="button" class="pos-card-qty-minus w-7 h-7 rounded-full border border-hairline flex items-center justify-center text-body-muted hover:text-ink hover:bg-surface-chip transition-colors" data-product-id="${product._id}" aria-label="ลดจำนวน">
+                <i class="fa-solid fa-minus text-[10px]"></i>
+            </button>
+            <span class="pos-card-qty-display font-bold font-mono text-base text-ink w-4 text-center tabular-nums">${d.qtyInCart}</span>
+            <button type="button" class="pos-card-qty-plus w-7 h-7 rounded-full border border-hairline flex items-center justify-center text-body-muted hover:text-ink hover:bg-surface-chip transition-colors" data-product-id="${product._id}" aria-label="เพิ่มจำนวน">
+                <i class="fa-solid fa-plus text-[10px]"></i>
+            </button>
+        </div>`;
+
+    const posAddButtonMarkup = (product, d, extraClass = '') => `
+        <button type="button" class="pos-add-btn ${extraClass} px-4 py-2 rounded-pill text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${d.qtyInCart > 0 ? 'hidden' : ''} ${d.isOutOfStock ? 'bg-surface-chip text-ink-muted-48 cursor-not-allowed' : 'bg-primary hover:bg-primary-pressed active:scale-95 text-on-primary'}" data-product-id="${product._id}" ${d.isOutOfStock ? 'disabled' : ''}>
+            <i class="fa-solid fa-plus text-[10px]"></i> เพิ่ม
+        </button>`;
+
+    const renderPosProductCard = (product) => {
+        const d = buildPosCardData(product);
+        const card = document.createElement('div');
+        card.className = `pos-card relative bg-surface-tile-3 border rounded-md p-3.5 transition-colors ${d.isOutOfStock ? 'border-hairline opacity-60' : 'border-hairline hover:border-primary/40'}`;
+        card.setAttribute('data-product-id', product._id);
+        card.innerHTML = `
+            <div class="flex items-start gap-3">
+                <div class="w-10 h-10 rounded-full border flex items-center justify-center shrink-0" style="color:${d.colorTheme.icon};background-color:${d.colorTheme.bg};border-color:${d.colorTheme.border};">
+                    <i class="fa-solid ${d.isDevice ? 'fa-mobile-screen' : posCategoryIcon(d.categoryName)} text-base"></i>
+                </div>
+                <div class="min-w-0 flex-1">
+                    <div class="flex items-start gap-2">
+                        <h4 class="flex-1 min-w-0 font-bold text-ink text-[13px] leading-snug truncate">${d.nameFull}</h4>
+                        <span class="shrink-0 flex items-center gap-1.5 max-w-[46%] px-2 py-1 rounded-pill bg-surface-chip text-[10px] font-bold ${d.branchName ? 'text-body-muted' : 'text-ink-muted-48'}">
+                            <i class="fa-solid fa-shop text-[9px] text-ink-muted-48 shrink-0"></i>
+                            <span class="truncate">${d.branchName || 'ไม่ระบุสาขา'}</span>
+                        </span>
+                    </div>
+                    <p class="text-[11px] text-body-muted mt-0.5">คงเหลือ: ${d.stockQty}</p>
+                    <div class="inline-flex items-center gap-2 mt-2">
+                        <span class="inline-flex items-center gap-2 px-2.5 py-1.5 rounded-sm bg-primary/10 border border-primary/40 max-w-full">
+                            <i class="fa-solid fa-barcode text-primary text-[10px] shrink-0"></i>
+                            <span class="font-mono font-extrabold text-[12px] text-primary tracking-widest truncate">${product.product_code || '-'}</span>
+                        </span>
+                    </div>
+                </div>
+            </div>
+            <div class="flex items-center gap-2 mt-3.5">
+                <span class="text-[17px] font-extrabold font-mono text-primary tabular-nums">฿${d.price.toLocaleString()}</span>
+                <div class="ml-auto flex items-center gap-1.5">
+                    ${posQtyControlsMarkup(product, d)}
+                    ${posAddButtonMarkup(product, d)}
+                </div>
+            </div>
+        `;
+        return card;
+    };
+
+    const posTableRowMarkup = (product) => {
+        const d = buildPosCardData(product);
+        return `
+            <tr class="pos-card bg-canvas-elevated hover:bg-surface-tile-2 transition-colors ${d.isOutOfStock ? 'opacity-60' : ''}" data-product-id="${product._id}">
+                <td class="px-4 py-3.5 align-middle">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-full border flex items-center justify-center shrink-0" style="color:${d.colorTheme.icon};background-color:${d.colorTheme.bg};border-color:${d.colorTheme.border};">
+                            <i class="fa-solid ${d.isDevice ? 'fa-mobile-screen' : posCategoryIcon(d.categoryName)} text-base"></i>
+                        </div>
+                        <div class="min-w-0">
+                            <p class="font-bold text-ink text-[13px] leading-snug truncate">${d.nameFull}</p>
+                        </div>
+                    </div>
+                </td>
+                <td class="px-4 py-3.5 align-middle whitespace-nowrap">
+                    <span class="inline-flex items-center gap-2 px-3 py-1.5 rounded-sm bg-primary/10 border border-primary/40">
+                        <i class="fa-solid fa-barcode text-primary text-[11px]"></i>
+                        <span class="font-mono font-extrabold text-[13px] text-primary tracking-widest">${product.product_code || '-'}</span>
+                    </span>
+                </td>
+                <td class="px-4 py-3.5 align-middle">
+                    <p class="text-[11px] text-body-muted truncate">สี: ${d.colorName || '–'}</p>
+                    <p class="text-[11px] text-body-muted mt-1 truncate">ประเภท: ${d.conditionName || d.categoryName || '–'}</p>
+                </td>
+                <td class="px-4 py-3.5 align-middle">
+                    <span class="inline-flex items-center gap-1.5 max-w-[170px] px-2.5 py-1 rounded-pill bg-surface-chip text-[11px] font-semibold ${d.branchName ? 'text-body-muted' : 'text-ink-muted-48'}">
+                        <i class="fa-solid fa-shop text-[9px] text-ink-muted-48 shrink-0"></i>
+                        <span class="truncate">${d.branchName || 'ไม่ระบุสาขา'}</span>
+                    </span>
+                </td>
+                <td class="px-4 py-3.5 align-middle whitespace-nowrap">
+                    <p class="leading-none">
+                        <span class="text-[15px] font-bold font-mono text-ink tabular-nums">${d.stockQty}</span>
+                        <span class="text-[11px] text-body-muted ml-1">${d.unitName}</span>
+                    </p>
+                </td>
+                <td class="px-4 py-3.5 align-middle whitespace-nowrap">
+                    <span class="text-[17px] font-extrabold font-mono text-primary tabular-nums">฿${d.price.toLocaleString()}</span>
+                </td>
+                <td class="px-4 py-3.5 align-middle">
+                    <div class="flex items-center gap-1.5">
+                        ${posQtyControlsMarkup(product, d)}
+                        ${posAddButtonMarkup(product, d)}
+                    </div>
+                </td>
+            </tr>`;
+    };
+
+    // โครงตารางเปล่า (หัวตาราง + tbody ว่าง) — แถวจริงถูกทยอยเติมเข้า tbody ทีละชุดตอนเลื่อนดู
+    const posTableShellMarkup = () => {
+        const th = 'px-4 py-3 text-[11px] font-bold text-body-muted tracking-wide whitespace-nowrap';
+        return `
+            <div class="overflow-x-auto rounded-md border border-hairline">
+                <table class="w-full min-w-[1120px] border-collapse text-left">
+                    <thead>
+                        <tr class="bg-surface-tile-2 border-b border-hairline">
+                            <th class="${th}">สินค้า</th>
+                            <th class="${th}">IMEI</th>
+                            <th class="${th}">รายละเอียด</th>
+                            <th class="${th}">สาขา</th>
+                            <th class="${th}">สต็อกคงเหลือ</th>
+                            <th class="${th}">ราคา</th>
+                            <th class="${th}">จัดการ</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-hairline"></tbody>
+                </table>
+            </div>`;
+    };
+
+    // อัปเดตบรรทัด "แสดง X จาก Y รายการ" ให้เดินตามจำนวนที่โหลดมาแล้วจริง (รูปแบบเดียวกับหน้าจัดการสต็อก)
+    const updatePosLoadedInfo = () => {
+        const infoEl = document.getElementById('pos-pagination-info');
+        if (!infoEl) return;
+        const total = posFilteredData.length;
+        infoEl.textContent = total === 0
+            ? 'แสดง 0 จาก 0 รายการ'
+            : `แสดง ${posLoadedCount.toLocaleString()} จาก ${total.toLocaleString()} รายการ`;
+    };
+
+    // โหลดสินค้าชุดถัดไปมาต่อท้ายของเดิม — เรียกซ้ำได้เรื่อยๆ จน posLoadedCount ถึงจำนวนที่กรองไว้ทั้งหมด
+    const loadMorePosProducts = () => {
+        if (!posSearchResults) return;
+        const total = posFilteredData.length;
+        if (posLoadedCount >= total) return;
+
+        const batch = posFilteredData.slice(posLoadedCount, posLoadedCount + POS_ITEMS_PER_BATCH);
+
+        if (posViewMode === 'list') {
+            const tbody = posSearchResults.querySelector('tbody');
+            if (!tbody) return;
+            tbody.insertAdjacentHTML('beforeend', batch.map(posTableRowMarkup).join(''));
+        } else {
+            const frag = document.createDocumentFragment();
+            batch.forEach(product => frag.appendChild(renderPosProductCard(product)));
+            posSearchResults.appendChild(frag);
+        }
+
+        posLoadedCount += batch.length;
+        updatePosLoadedInfo();
+
+        // ถ้าโหลดแล้วเนื้อหายังไม่ล้นพื้นที่ที่มองเห็น scroll event จะไม่มีวันยิง
+        // และรายการที่เหลือจะเข้าถึงไม่ได้ตลอดไป จึงโหลดต่อจนกว่าจะล้นหรือหมดรายการ
+        if (posProductGrid && posLoadedCount < total && posProductGrid.scrollHeight <= posProductGrid.clientHeight) {
+            loadMorePosProducts();
+        }
+    };
+
+    // จับคลิกที่ตัวคอนเทนเนอร์ครั้งเดียว แทนการผูก listener รายปุ่ม — จำเป็นสำหรับ infinite scroll
+    // เพราะการ์ดชุดใหม่ถูกเติมเข้ามาเรื่อยๆ ถ้าผูกรายปุ่มแล้วผูกซ้ำทุกชุด ปุ่มชุดเก่าจะมี listener ซ้อนกัน
+    // จนกดเพิ่มสินค้าครั้งเดียวแล้วเด้งหลายรอบ
+    const bindPosResultsDelegation = () => {
+        if (!posSearchResults || posSearchResults.dataset.bound) return;
+        posSearchResults.dataset.bound = '1';
+
+        posSearchResults.addEventListener('click', async (e) => {
+            const addBtn = e.target.closest('.pos-add-btn');
+            if (addBtn && !addBtn.disabled) {
+                const product = posProductsCache.find(p => p._id === addBtn.getAttribute('data-product-id'));
+                if (product) handleAddToCart(product);
+                return;
+            }
+
+            const plusBtn = e.target.closest('.pos-card-qty-plus');
+            if (plusBtn) {
+                const productId = plusBtn.getAttribute('data-product-id');
+                const product = posProductsCache.find(p => p._id === productId);
+                if (!product) return;
+                const currentQty = typeof cart !== 'undefined' ? cart.filter(item => item.product_id === productId).reduce((sum, item) => sum + item.quantity, 0) : 0;
+                if (currentQty >= product.quantity) {
+                    if (typeof showToast === 'function') showToast(`สินค้า ${product.name} มีไม่เพียงพอในสต็อก`, 'error');
+                    return;
+                }
+                // เพิ่มจำนวนตรงๆ ไม่ผ่าน handleAddToCart/modal ยืนยัน — ปุ่ม +/- มีไว้ปรับจำนวนสินค้าที่ "ยืนยันแล้ว" อยู่ในตะกร้า
+                // อย่างรวดเร็ว การเด้ง modal ยืนยันซ้ำทุกครั้งที่กด + ขัดกับความหมายของปุ่มปรับจำนวนแบบ inline
+                processAddToCart(product);
+                return;
+            }
+
+            const minusBtn = e.target.closest('.pos-card-qty-minus');
+            if (minusBtn) {
+                const productId = minusBtn.getAttribute('data-product-id');
+                if (typeof cart === 'undefined') return;
+                const idx = cart.map(i => i.product_id).lastIndexOf(productId);
+                if (idx === -1) return;
+                if (cart[idx].quantity > 1) {
+                    cart[idx].quantity -= 1;
+                    cart[idx].subtotal = cart[idx].quantity * cart[idx].price;
+                } else {
+                    cart.splice(idx, 1);
+                }
+                if (typeof renderCart === 'function') renderCart();
+                return;
+            }
+
         });
     };
 
     const renderPosProductsTable = () => {
         if (!posSearchResults || !posEmptyState) return;
 
-        posSearchResults.innerHTML = '';
+        bindPosResultsDelegation();
 
-        const paginationContainer = document.getElementById('pos-pagination-container');
+        posSearchResults.innerHTML = '';
+        posLoadedCount = 0;
+
+        const infoContainer = document.getElementById('pos-pagination-container');
+        const resultCountEl = document.getElementById('pos-result-count');
+        if (resultCountEl) resultCountEl.textContent = posFilteredData.length.toLocaleString();
 
         if (posFilteredData.length === 0) {
+            // ข้อความ empty-state ต้องแยกกรณี "ยังไม่ได้ค้นหา" กับ "ค้นหาแล้วไม่พบ" — เดิมใช้ข้อความเดียวกันทั้งคู่
+            // ("ค้นหาสินค้าเพื่อเริ่มขาย") ซึ่งเข้าใจผิดได้เมื่อผู้ใช้พิมพ์คำค้นหรือเลือกตัวกรองแล้วไม่พบสินค้าจริงๆ
+            const brandSelect = document.getElementById('pos-filter-brand');
+            const hasActiveFilter = !!(
+                (posSearchInput && posSearchInput.value.trim()) ||
+                posActiveCategory ||
+                (brandSelect && brandSelect.value)
+            );
+            const titleEl = document.getElementById('pos-empty-state-title');
+            const subtitleEl = document.getElementById('pos-empty-state-subtitle');
+            if (titleEl && subtitleEl) {
+                if (hasActiveFilter) {
+                    titleEl.textContent = 'ไม่พบสินค้าที่ตรงกับคำค้นหา';
+                    subtitleEl.textContent = 'ลองตรวจสอบคำค้นหา หรือล้างตัวกรองแล้วค้นหาใหม่';
+                } else {
+                    titleEl.textContent = 'ค้นหาสินค้าเพื่อเริ่มขาย';
+                    subtitleEl.textContent = 'พิมพ์ชื่อสินค้า, รหัสสินค้า หรือ IMEI';
+                }
+            }
             posEmptyState.classList.remove('hidden');
             posSearchResults.classList.add('hidden');
-            if (paginationContainer) paginationContainer.classList.add('hidden');
-            updatePosPagination();
+            if (infoContainer) {
+                // ต้องถอด flex ออกด้วย ไม่งั้น display:flex จะชนกับ hidden แล้วแถบสรุปยังโผล่อยู่
+                infoContainer.classList.remove('flex');
+                infoContainer.classList.add('hidden');
+            }
+            updatePosLoadedInfo();
             return;
         }
 
         posEmptyState.classList.add('hidden');
         posSearchResults.classList.remove('hidden');
-        if (paginationContainer) paginationContainer.classList.remove('hidden');
-
-        const startIndex = (posCurrentPage - 1) * posPerPage;
-        const endIndex = startIndex + posPerPage;
-        const paginatedData = posFilteredData.slice(startIndex, endIndex);
-
-        paginatedData.forEach(product => {
-            const categoryName = product.type_id ? product.type_id.name : 'ทั่วไป';
-            const colorName = product.color_id ? product.color_id.name : '';
-            const capacityName = product.capacity_id ? product.capacity_id.name : '';
-            const stockQty = product.quantity || 0;
-            const isOutOfStock = stockQty <= 0;
-            const productNameFull = `${product.name} ${capacityName} ${colorName}`.trim();
-            const isDevice = typeof checkIsDevice === 'function' ? checkIsDevice(categoryName, product) : false;
-
-            const qtyInCart = typeof cart !== 'undefined' ? cart.filter(item => item.product_id === product._id).reduce((sum, item) => sum + item.quantity, 0) : 0;
-
-            const card = document.createElement('div');
-            card.className = `pos-card bg-canvas-elevated border rounded-lg p-4 transition-all ${isOutOfStock ? 'border-red-500/30 opacity-60' : 'border-hairline hover:border-primary/40'}`;
-            card.setAttribute('data-product-id', product._id);
-            card.innerHTML = `
-                <div class="flex items-start gap-3 mb-3">
-                    <div class="w-12 h-12 rounded-sm bg-surface-chip text-ink flex items-center justify-center flex-shrink-0">
-                        <i class="fa-solid ${isDevice ? 'fa-mobile-screen' : 'fa-box'} text-xl"></i>
-                    </div>
-                    <div class="min-w-0 flex-1">
-                        <h4 class="font-bold text-ink text-sm leading-tight">${productNameFull}</h4>
-                        <p class="text-sm font-bold font-mono text-body-muted mt-1 tracking-wider">${product.product_code || '-'}</p>
-                        <div class="flex items-center justify-between mt-1.5 pr-1">
-                            <span class="text-[12px] font-bold ${isOutOfStock ? 'text-red-400' : 'text-body-muted'}">${isOutOfStock ? 'สินค้าหมด' : `คงเหลือ: ${stockQty}`}</span>
-                            <span class="text-[12px] text-ink-muted-48 text-right truncate pl-2">${product.branch_id && product.branch_id.name ? product.branch_id.name : ''}</span>
-                        </div>
-                    </div>
-                </div>
-                <div class="border-t border-hairline mt-3 pt-3">
-                    <div class="flex items-center justify-between mb-3">
-                        <span class="font-black font-mono text-xl text-ink">฿${(product.selling_price || 0).toLocaleString()}</span>
-
-                        <!-- Quantity Controls -->
-                        <div class="pos-qty-controls flex items-center gap-3 ${qtyInCart > 0 ? '' : 'hidden'}">
-                             <button class="pos-card-qty-minus w-7 h-7 rounded-full border border-hairline flex items-center justify-center text-body-muted hover:bg-surface-chip transition-colors" data-product-id="${product._id}">
-                                 <i class="fa-solid fa-minus text-[10px]"></i>
-                             </button>
-                             <span class="pos-card-qty-display font-bold font-mono text-lg text-ink w-4 text-center">${qtyInCart}</span>
-                             <button class="pos-card-qty-plus w-7 h-7 rounded-full border border-hairline flex items-center justify-center text-body-muted hover:bg-surface-chip transition-colors" data-product-id="${product._id}">
-                                 <i class="fa-solid fa-plus text-[10px]"></i>
-                             </button>
-                        </div>
-                    </div>
-
-                    <button class="pos-add-btn w-full py-2.5 rounded-pill text-sm font-bold transition-all flex items-center justify-center gap-2 ${isOutOfStock ? 'bg-surface-chip text-ink-muted-48 cursor-not-allowed' : 'bg-primary hover:bg-primary-pressed text-on-primary'}" data-product-id="${product._id}" ${isOutOfStock ? 'disabled' : ''}>
-                        <i class="fa-solid fa-plus"></i> เพิ่ม
-                    </button>
-                </div>
-            `;
-            posSearchResults.appendChild(card);
-        });
-
-        // Attach Add to Cart listeners
-        document.querySelectorAll('.pos-add-btn:not([disabled])').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const productId = e.currentTarget.getAttribute('data-product-id');
-                const product = posProductsCache.find(p => p._id === productId);
-                if (product) {
-                    handleAddToCart(product);
-                }
-            });
-        });
-
-        document.querySelectorAll('.pos-card-qty-plus').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const productId = e.currentTarget.getAttribute('data-product-id');
-                const product = posProductsCache.find(p => p._id === productId);
-                if (product) {
-                    // Check stock limit before adding
-                    const currentQty = typeof cart !== 'undefined' ? cart.filter(item => item.product_id === productId).reduce((sum, item) => sum + item.quantity, 0) : 0;
-                    if (currentQty >= product.quantity) {
-                        if (typeof showToast === 'function') showToast(`สินค้า ${product.name} มีไม่เพียงพอในสต็อก`, 'error');
-                        return;
-                    }
-                    handleAddToCart(product);
-                }
-            });
-        });
-
-        document.querySelectorAll('.pos-card-qty-minus').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const productId = e.currentTarget.getAttribute('data-product-id');
-                if (typeof cart !== 'undefined') {
-                    const idx = cart.map(i => i.product_id).lastIndexOf(productId);
-                    if (idx !== -1) {
-                        if (cart[idx].quantity > 1) {
-                            cart[idx].quantity -= 1;
-                            cart[idx].subtotal = cart[idx].quantity * cart[idx].price;
-                        } else {
-                            cart.splice(idx, 1);
-                        }
-                        if (typeof renderCart === 'function') renderCart();
-                    }
-                }
-            });
-        });
-
-        updatePosPagination();
-    };
-
-    const updatePosPagination = () => {
-        const infoEl = document.getElementById('pos-pagination-info');
-        const controlsEl = document.getElementById('pos-pagination-controls');
-        if (!infoEl || !controlsEl) return;
-
-        const totalItems = posFilteredData.length;
-        if (totalItems === 0) {
-            infoEl.textContent = 'แสดง 0-0 จาก 0 รายการ';
-            controlsEl.innerHTML = '';
-            return;
+        if (infoContainer) {
+            infoContainer.classList.remove('hidden');
+            infoContainer.classList.add('flex');
         }
 
-        const totalPages = Math.ceil(totalItems / posPerPage);
-        const startIndex = (posCurrentPage - 1) * posPerPage + 1;
-        const endIndex = Math.min(startIndex + posPerPage - 1, totalItems);
-
-        infoEl.textContent = `แสดง ${startIndex}-${endIndex} จาก ${totalItems} รายการ`;
-
-        let paginationHTML = '';
-
-        paginationHTML += `<button class="pos-page-btn px-3 py-1.5 rounded-sm text-sm font-medium flex items-center gap-1.5 ${posCurrentPage === 1 ? 'text-ink-muted-48 bg-surface-chip cursor-not-allowed' : 'text-body-muted bg-surface-chip hover:bg-surface-tile-2 transition-colors'}" data-page="${posCurrentPage - 1}" ${posCurrentPage === 1 ? 'disabled' : ''}><i class="fa-solid fa-chevron-left text-xs"></i> ย้อนกลับ</button>`;
-
-        let startPage = Math.max(1, posCurrentPage - 2);
-        let endPage = Math.min(totalPages, posCurrentPage + 2);
-
-        if (startPage > 1) {
-            paginationHTML += `<button class="pos-page-btn px-3 py-1.5 rounded-sm text-sm font-medium text-ink-muted-48 hover:bg-surface-tile-2 transition-colors" data-page="1">1</button>`;
-            if (startPage > 2) paginationHTML += `<span class="px-2 text-ink-muted-48">...</span>`;
+        if (posViewMode === 'list') {
+            posSearchResults.className = 'block';
+            posSearchResults.innerHTML = posTableShellMarkup();
+        } else {
+            posSearchResults.className = 'grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3.5';
         }
 
-        for (let i = startPage; i <= endPage; i++) {
-            const isActive = i === posCurrentPage;
-            paginationHTML += `<button class="pos-page-btn px-3 py-1.5 rounded-sm text-sm font-medium transition-colors ${isActive ? 'bg-primary text-on-primary' : 'text-ink-muted-48 hover:bg-surface-tile-2'}" data-page="${i}">${i}</button>`;
-        }
-
-        if (endPage < totalPages) {
-            if (endPage < totalPages - 1) paginationHTML += `<span class="px-2 text-ink-muted-48">...</span>`;
-            paginationHTML += `<button class="pos-page-btn px-3 py-1.5 rounded-sm text-sm font-medium text-ink-muted-48 hover:bg-surface-tile-2 transition-colors" data-page="${totalPages}">${totalPages}</button>`;
-        }
-
-        paginationHTML += `<button class="pos-page-btn px-3 py-1.5 rounded-sm text-sm font-medium flex items-center gap-1.5 ${posCurrentPage === totalPages ? 'text-ink-muted-48 bg-surface-chip cursor-not-allowed' : 'text-ink-muted-48 bg-surface-chip hover:bg-surface-tile-2 transition-colors'}" data-page="${posCurrentPage + 1}" ${posCurrentPage === totalPages ? 'disabled' : ''}>ถัดไป <i class="fa-solid fa-chevron-right text-xs"></i></button>`;
-
-        controlsEl.innerHTML = paginationHTML;
-
-        document.querySelectorAll('.pos-page-btn:not([disabled])').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const newPage = parseInt(e.currentTarget.getAttribute('data-page'));
-                if (newPage && newPage !== posCurrentPage && newPage >= 1 && newPage <= totalPages) {
-                    posCurrentPage = newPage;
-                    renderPosProductsTable();
-                }
-            });
-        });
+        if (posProductGrid) posProductGrid.scrollTop = 0;
+        loadMorePosProducts();
     };
 
     const initPosRender = () => {
         if (posSearchInput) posSearchInput.value = '';
         const categorySelect = document.getElementById('pos-filter-category');
         const brandSelect = document.getElementById('pos-filter-brand');
+        posActiveCategory = '';
         if (categorySelect) categorySelect.value = '';
         if (brandSelect) brandSelect.value = '';
+        renderPosCategoryTabs();
+        updatePosStatTotal();
+        updatePosFilterDot();
         searchPosProducts();
     };
 
     const searchPosProducts = (query = null) => {
-        const categorySelect = document.getElementById('pos-filter-category');
         const brandSelect = document.getElementById('pos-filter-brand');
 
-        const selectedCategory = categorySelect ? categorySelect.value : '';
+        const selectedCategory = posActiveCategory;
         const selectedBrand = brandSelect ? brandSelect.value : '';
 
         const q = (query !== null ? query : (posSearchInput ? posSearchInput.value : '')).trim().toLowerCase();
 
         posFilteredData = posProductsCache.filter(p => {
-            // Hide out of stock products
-            if ((p.quantity || 0) <= 0) return false;
+            // สินค้าหมดสต็อกถูกซ่อนไว้เป็นค่าตั้งต้น (พนักงานขายของที่ยังมีอยู่จริงเท่านั้น)
+            // แต่เปิดดูได้จากตัวกรอง เพื่อให้เช็คได้ว่าของรุ่นไหนหมดโดยไม่ต้องออกจากหน้าขาย
+            if (!posShowOutOfStock && (p.quantity || 0) <= 0) return false;
 
             // Category filter
             if (selectedCategory && (!p.type_id || p.type_id.name !== selectedCategory)) return false;
@@ -4204,20 +4591,26 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             return true;
-        }).sort((a, b) => {
-            // Devices (mobile phones) first
-            const isDeviceA = typeof checkIsDevice === 'function' ? checkIsDevice(a.type_id ? a.type_id.name : '', a) : false;
-            const isDeviceB = typeof checkIsDevice === 'function' ? checkIsDevice(b.type_id ? b.type_id.name : '', b) : false;
-            if (isDeviceA && !isDeviceB) return -1;
-            if (!isDeviceA && isDeviceB) return 1;
-
-            // Newest uploaded first (created_at descending)
-            const dateA = new Date(a.created_at || 0).getTime();
-            const dateB = new Date(b.created_at || 0).getTime();
-            return dateB - dateA;
         });
 
-        posCurrentPage = 1;
+        const byName = (a, b) => (a.name || '').localeCompare(b.name || '', 'th', { numeric: true });
+        posFilteredData.sort((a, b) => {
+            switch (posSortMode) {
+                case 'name-desc': return -byName(a, b);
+                case 'price-asc': return (a.selling_price || 0) - (b.selling_price || 0);
+                case 'price-desc': return (b.selling_price || 0) - (a.selling_price || 0);
+                case 'stock-desc': return (b.quantity || 0) - (a.quantity || 0);
+                case 'recent': {
+                    // ลำดับเดิมของระบบ: เครื่อง (มือถือ/แท็บเล็ต) มาก่อน แล้วเรียงตามของที่เพิ่งเพิ่มเข้าระบบล่าสุด
+                    const isDeviceA = typeof checkIsDevice === 'function' ? checkIsDevice(a.type_id ? a.type_id.name : '', a) : false;
+                    const isDeviceB = typeof checkIsDevice === 'function' ? checkIsDevice(b.type_id ? b.type_id.name : '', b) : false;
+                    if (isDeviceA !== isDeviceB) return isDeviceA ? -1 : 1;
+                    return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime();
+                }
+                default: return byName(a, b);
+            }
+        });
+
         renderPosProductsTable();
     };
 
@@ -4306,6 +4699,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 cart.push({
                     product_id: product._id,
                     product_name: product.name,
+                    ...getCartProductSnapshot(product),
                     imei_sold: imei,
                     quantity: 1,
                     price: product.selling_price,
@@ -4342,6 +4736,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 cart.push({
                     product_id: product._id,
                     product_name: product.name,
+                    ...getCartProductSnapshot(product),
                     imei_sold: '',
                     quantity: 1,
                     price: product.selling_price,
@@ -4412,6 +4807,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     cart.push({
                         product_id: product._id,
                         product_name: product.name,
+                        ...getCartProductSnapshot(product),
                         imei_sold: imei,
                         quantity: 1,
                         price: product.selling_price,
@@ -4455,12 +4851,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const controls = card.querySelector('.pos-qty-controls');
             const display = card.querySelector('.pos-card-qty-display');
+            const addBtn = card.querySelector('.pos-add-btn');
 
             if (qtyInCart > 0) {
                 if (controls) controls.classList.remove('hidden');
                 if (display) display.textContent = qtyInCart;
+                if (addBtn) addBtn.classList.add('hidden');
             } else {
                 if (controls) controls.classList.add('hidden');
+                if (addBtn) addBtn.classList.remove('hidden');
             }
         });
     };
@@ -4475,20 +4874,26 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (cart.length === 0) {
             if (cartEmptyState) cartEmptyState.classList.remove('hidden');
-            if (cartCountBadge) cartCountBadge.innerHTML = '<span class="text-ink font-extrabold text-lg">0</span> รายการ';
-            if (cartSubtotal) cartSubtotal.innerHTML = '฿0.00';
+            if (cartHintBanner) cartHintBanner.classList.remove('hidden');
+            if (cartCountBadge) cartCountBadge.textContent = '0 รายการ';
+            updateCartTotals();
             if (typeof renderMobileCart === 'function') renderMobileCart();
+            // ตะกร้าว่างแล้ว ต้องรีเซ็ตการ์ดสินค้าในกริดกลับเป็นสถานะ "เพิ่ม" ด้วย ไม่งั้นการ์ดของสินค้าชิ้นล่าสุดที่เพิ่งลบออก
+            // จะค้างแสดงตัวปรับจำนวนที่ค่าเก่า (เพราะฟังก์ชันนี้ return ก่อนถึงจุดที่ sync กริดตามปกติด้านล่าง)
+            if (typeof syncPOSCardQuantities === 'function') syncPOSCardQuantities();
             return;
         }
 
         if (cartEmptyState) cartEmptyState.classList.add('hidden');
-        if (cartCountBadge) cartCountBadge.innerHTML = `<span class="text-ink font-extrabold text-lg">${cart.length}</span> รายการ`;
+        if (cartHintBanner) cartHintBanner.classList.add('hidden');
+        if (cartCountBadge) cartCountBadge.textContent = `${cart.length} รายการ`;
 
         cart.forEach((item, index) => {
             const cartEl = document.createElement('div');
             cartEl.className = 'cart-item bg-canvas border border-hairline rounded-md p-3 flex items-center gap-3 transition-colors animate-fade-in';
+            const itemColorTheme = getProductColorTheme(item.color_name, null);
             cartEl.innerHTML = `
-                <div class="w-10 h-10 rounded-sm bg-surface-chip text-ink flex items-center justify-center flex-shrink-0">
+                <div class="w-10 h-10 rounded-sm border flex items-center justify-center flex-shrink-0" style="color:${itemColorTheme.icon};background-color:${itemColorTheme.bg};border-color:${itemColorTheme.border};">
                     <i class="fa-solid ${item._isDevice ? 'fa-mobile-screen' : 'fa-box'} text-lg"></i>
                 </div>
                 <div class="flex-1 min-w-0">
@@ -4500,7 +4905,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 <div class="text-right flex-shrink-0">
                     <div class="flex flex-col items-end justify-center">
                         <span class="text-[10px] text-ink-muted-48 uppercase font-bold tracking-wider">ราคา/หน่วย</span>
-                        <p class="text-body-muted font-semibold font-mono text-sm">฿${item.price.toLocaleString()}</p>
                     </div>
                     <p class="cart-line-subtotal font-bold text-ink font-mono text-sm mt-0.5">฿${item.subtotal.toLocaleString()}</p>
                     ${!item.imei_sold ? `
@@ -4565,9 +4969,20 @@ document.addEventListener('DOMContentLoaded', () => {
         if (typeof renderMobileCart === 'function') renderMobileCart();
     };
 
+    const formatBaht = (n) => `฿${Number(n || 0).toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
     const updateCartTotals = () => {
         const subtotal = cart.reduce((sum, item) => sum + item.subtotal, 0);
-        if (cartSubtotal) cartSubtotal.innerHTML = `฿${subtotal.toLocaleString()}`;
+        // ส่วนลดมาจากช่องเดียวกับที่ใช้ตอนชำระเงิน จึงเห็นยอดสุทธิตรงกันทั้งในตะกร้าและในหน้าจ่ายเงิน
+        const discountInput = document.getElementById('modal-pos-discount');
+        const discount = Math.min(subtotal, Math.max(0, parseFloat(discountInput ? discountInput.value : 0) || 0));
+
+        const discountEl = document.getElementById('cart-discount');
+        const netEl = document.getElementById('cart-net-total');
+
+        if (cartSubtotal) cartSubtotal.textContent = formatBaht(subtotal);
+        if (discountEl) discountEl.textContent = discount > 0 ? `-${formatBaht(discount)}` : formatBaht(0);
+        if (netEl) netEl.textContent = formatBaht(subtotal - discount);
     };
 
     // ==========================================
@@ -4587,7 +5002,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let mobileCartOpen = false;
 
     const showMobileCartFab = () => {
-        if (mobileCartFab && window.innerWidth < 768) {
+        if (mobileCartFab && window.innerWidth < 1024) {
             mobileCartFab.style.display = 'flex';
         }
     };
@@ -4598,6 +5013,17 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         closeMobileCart();
     };
+
+    // ปรับปุ่มตะกร้าลอย (FAB) แบบเรียลไทม์เมื่อผู้ใช้ปรับขนาดหน้าต่าง/หมุนจอ ระหว่างที่ยังอยู่หน้ารายการขาย
+    // (ก่อนหน้านี้ปุ่มจะเช็คขนาดจอแค่ตอนสลับเข้าหน้าเท่านั้น ถ้าปรับขนาดจอค้างอยู่ที่หน้านี้ ปุ่มจะไม่อัปเดตตาม)
+    window.addEventListener('resize', () => {
+        if (!viewTransactions || viewTransactions.classList.contains('hidden')) return;
+        if (window.innerWidth < 1024) {
+            showMobileCartFab();
+        } else {
+            hideMobileCartFab();
+        }
+    });
 
     const openMobileCart = () => {
         if (!mobileCartOverlay || !mobileCartPanel) return;
@@ -4666,8 +5092,12 @@ document.addEventListener('DOMContentLoaded', () => {
             const el = document.createElement('div');
             el.className = 'mobile-cart-item flex items-center gap-3 bg-canvas border border-hairline rounded-md p-3';
 
+            const itemColorTheme = getProductColorTheme(item.color_name, null);
             const iconDiv = document.createElement('div');
-            iconDiv.className = 'item-icon w-10 h-10 rounded-sm bg-surface-chip text-ink flex items-center justify-center flex-shrink-0';
+            iconDiv.className = 'item-icon w-10 h-10 rounded-sm border flex items-center justify-center flex-shrink-0';
+            iconDiv.style.color = itemColorTheme.icon;
+            iconDiv.style.backgroundColor = itemColorTheme.bg;
+            iconDiv.style.borderColor = itemColorTheme.border;
             iconDiv.innerHTML = '<i class="fa-solid ' + (item._isDevice ? 'fa-mobile-screen' : 'fa-box') + '"></i>';
 
             const infoDiv = document.createElement('div');
@@ -4692,8 +5122,51 @@ document.addEventListener('DOMContentLoaded', () => {
             pricesDiv.appendChild(unitPrice);
             pricesDiv.appendChild(subtotalPrice);
 
-            const removeDiv = document.createElement('div');
-            removeDiv.className = 'item-remove text-body-muted hover:text-red-400 p-1.5 rounded-sm hover:bg-red-500/10 cursor-pointer flex-shrink-0 transition-colors';
+            // \u0e2a\u0e34\u0e19\u0e04\u0e49\u0e32\u0e17\u0e35\u0e48\u0e44\u0e21\u0e48\u0e43\u0e0a\u0e48 IMEI \u0e1b\u0e23\u0e31\u0e1a\u0e08\u0e33\u0e19\u0e27\u0e19\u0e44\u0e14\u0e49\u0e15\u0e23\u0e07\u0e19\u0e35\u0e49\u0e40\u0e25\u0e22 \u2014 \u0e04\u0e39\u0e48\u0e02\u0e19\u0e32\u0e19\u0e01\u0e31\u0e1a\u0e15\u0e31\u0e27\u0e1b\u0e23\u0e31\u0e1a\u0e08\u0e33\u0e19\u0e27\u0e19\u0e1a\u0e19\u0e15\u0e30\u0e01\u0e23\u0e49\u0e32\u0e40\u0e14\u0e2a\u0e01\u0e4c\u0e17\u0e47\u0e2d\u0e1b
+            // (\u0e40\u0e14\u0e34\u0e21\u0e21\u0e35\u0e41\u0e04\u0e48\u0e1b\u0e38\u0e48\u0e21\u0e25\u0e1a\u0e43\u0e19\u0e15\u0e30\u0e01\u0e23\u0e49\u0e32\u0e21\u0e37\u0e2d\u0e16\u0e37\u0e2d \u0e15\u0e49\u0e2d\u0e07\u0e1b\u0e34\u0e14\u0e41\u0e1c\u0e07\u0e41\u0e25\u0e49\u0e27\u0e22\u0e49\u0e2d\u0e19\u0e44\u0e1b\u0e01\u0e32\u0e23\u0e4c\u0e14\u0e2a\u0e34\u0e19\u0e04\u0e49\u0e32\u0e40\u0e1e\u0e37\u0e48\u0e2d\u0e40\u0e1e\u0e34\u0e48\u0e21\u0e08\u0e33\u0e19\u0e27\u0e19 \u0e44\u0e21\u0e48\u0e15\u0e23\u0e07\u0e01\u0e31\u0e1a\u0e15\u0e30\u0e01\u0e23\u0e49\u0e32\u0e40\u0e14\u0e2a\u0e01\u0e4c\u0e17\u0e47\u0e2d\u0e1b)
+            if (!item.imei_sold) {
+                const qtyRow = document.createElement('div');
+                qtyRow.className = 'flex items-center gap-1 mt-0.5';
+
+                const minusBtn = document.createElement('button');
+                minusBtn.className = 'mobile-cart-qty-minus w-11 h-11 rounded-sm bg-surface-chip text-body-muted hover:bg-surface-tile-2 text-xs flex items-center justify-center transition-colors';
+                minusBtn.innerHTML = '<i class="fa-solid fa-minus text-[10px]"></i>';
+                minusBtn.addEventListener('click', () => {
+                    if (item.quantity > 1) {
+                        item.quantity -= 1;
+                        item.subtotal = item.quantity * item.price;
+                        renderCart();
+                    }
+                });
+
+                const qtyLabel = document.createElement('span');
+                qtyLabel.className = 'text-xs text-body-muted font-mono w-5 text-center';
+                qtyLabel.textContent = item.quantity;
+
+                const plusBtn = document.createElement('button');
+                plusBtn.className = 'mobile-cart-qty-plus w-11 h-11 rounded-sm bg-surface-chip text-body-muted hover:bg-surface-tile-2 text-xs flex items-center justify-center transition-colors';
+                plusBtn.innerHTML = '<i class="fa-solid fa-plus text-[10px]"></i>';
+                plusBtn.addEventListener('click', () => {
+                    const product = posProductsCache.find(p => p._id === item.product_id);
+                    if (product && item.quantity >= product.quantity) {
+                        showToast(`\u0e2a\u0e34\u0e19\u0e04\u0e49\u0e32 ${item.product_name} \u0e21\u0e35\u0e44\u0e21\u0e48\u0e40\u0e1e\u0e35\u0e22\u0e07\u0e1e\u0e2d\u0e43\u0e19\u0e2a\u0e15\u0e47\u0e2d\u0e01`, 'error');
+                        return;
+                    }
+                    item.quantity += 1;
+                    item.subtotal = item.quantity * item.price;
+                    renderCart();
+                });
+
+                qtyRow.appendChild(minusBtn);
+                qtyRow.appendChild(qtyLabel);
+                qtyRow.appendChild(plusBtn);
+                pricesDiv.appendChild(qtyRow);
+            }
+
+            const removeDiv = document.createElement('button');
+            removeDiv.type = 'button';
+            removeDiv.setAttribute('aria-label', 'ลบสินค้าออกจากตะกร้า');
+            removeDiv.className = 'item-remove w-11 h-11 flex items-center justify-center text-body-muted hover:text-red-400 rounded-sm hover:bg-red-500/10 flex-shrink-0 transition-colors';
             removeDiv.dataset.index = index;
             removeDiv.innerHTML = '<i class="fa-solid fa-trash-can" style="font-size:12px;"></i>';
             removeDiv.addEventListener('click', () => {
@@ -4908,6 +5381,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (modalTotalDisplay) modalTotalDisplay.textContent = `฿${grandTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
 
+        // ให้สรุปยอดในตะกร้าด้านข้างเดินตามส่วนลดที่กรอกในหน้าจ่ายเงินทันที
+        if (typeof updateCartTotals === 'function') updateCartTotals();
+
         // Update Finance Summary Breakdown Row in Ledger
         const modalFinanceSummaryRow = document.getElementById('modal-finance-summary-row');
         const selectedPayment = paymentMethod ? paymentMethod.value : '';
@@ -5120,6 +5596,7 @@ document.addEventListener('DOMContentLoaded', () => {
         cart.push({
             product_id: product._id,
             product_name: product.name,
+            ...getCartProductSnapshot(product),
             imei_sold: imei.toString().trim(),
             quantity: 1,
             price: product.selling_price,
@@ -5147,6 +5624,7 @@ document.addEventListener('DOMContentLoaded', () => {
             cart.push({
                 product_id: product._id,
                 product_name: product.name,
+                ...getCartProductSnapshot(product),
                 imei_sold: '',
                 quantity: 1,
                 price: product.selling_price,
@@ -5191,50 +5669,130 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // POS Filters and Tabs Events
+    // POS Filters, Sorting, View Mode Events
     const categorySelect = document.getElementById('pos-filter-category');
     const brandSelect = document.getElementById('pos-filter-brand');
-    const filterClearBtn = document.getElementById('pos-filter-clear');
+    const filterBtn = document.getElementById('pos-btn-filter');
+    const filterPanel = document.getElementById('pos-filter-panel');
+    const filterShowOut = document.getElementById('pos-filter-show-out');
+    const filterClearBtn = document.getElementById('pos-btn-clear-filter');
+    const posSortSelect = document.getElementById('pos-sort');
+    const posViewGridBtn = document.getElementById('pos-view-grid');
+    const posViewListBtn = document.getElementById('pos-view-list');
+    const posScanBtn = document.getElementById('pos-btn-scan');
 
     if (categorySelect) {
-        categorySelect.addEventListener('change', () => searchPosProducts());
+        categorySelect.addEventListener('change', (e) => {
+            posActiveCategory = e.target.value || '';
+            if (typeof renderPosCategoryTabs === 'function') renderPosCategoryTabs();
+            searchPosProducts();
+        });
     }
     if (brandSelect) {
-        brandSelect.addEventListener('change', () => searchPosProducts());
-    }
-    if (filterClearBtn) {
-        filterClearBtn.addEventListener('click', () => {
-            if (categorySelect) categorySelect.value = '';
-            if (brandSelect) brandSelect.value = '';
-            if (posSearchInput) posSearchInput.value = '';
+        brandSelect.addEventListener('change', () => {
+            if (typeof updatePosFilterDot === 'function') updatePosFilterDot();
             searchPosProducts();
         });
     }
 
-    const tabSearch = document.getElementById('pos-tab-search');
-    const tabScan = document.getElementById('pos-tab-scan');
+    const closePosFilterPanel = () => {
+        if (!filterPanel || !filterBtn) return;
+        filterPanel.classList.add('hidden');
+        filterBtn.setAttribute('aria-expanded', 'false');
+    };
 
-    if (tabSearch && tabScan) {
-        tabSearch.addEventListener('click', () => {
-            posActiveTab = 'search';
-            tabSearch.className = 'px-4 py-2 rounded-md text-sm font-semibold bg-primary text-on-primary transition-all';
-            tabScan.className = 'px-4 py-2 rounded-md text-sm font-semibold text-body-muted hover:text-ink hover:bg-surface-chip transition-all';
-            if (posSearchInput) {
-                posSearchInput.placeholder = 'ค้นหาสินค้า / สแกนบาร์โค้ด / สแกน IMEI...';
-                posSearchInput.focus();
+    if (filterBtn && filterPanel) {
+        filterBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const willOpen = filterPanel.classList.contains('hidden');
+            filterPanel.classList.toggle('hidden', !willOpen);
+            filterBtn.setAttribute('aria-expanded', String(willOpen));
+        });
+        filterPanel.addEventListener('click', (e) => e.stopPropagation());
+    }
+
+    if (filterShowOut) {
+        filterShowOut.addEventListener('change', (e) => {
+            posShowOutOfStock = e.target.checked;
+            if (typeof updatePosFilterDot === 'function') updatePosFilterDot();
+            searchPosProducts();
+        });
+    }
+
+    if (filterClearBtn) {
+        filterClearBtn.addEventListener('click', () => {
+            posActiveCategory = '';
+            if (categorySelect) categorySelect.value = '';
+            if (brandSelect) brandSelect.value = '';
+            if (filterShowOut) filterShowOut.checked = false;
+            posShowOutOfStock = false;
+            if (posSearchInput) posSearchInput.value = '';
+            if (typeof renderPosCategoryTabs === 'function') renderPosCategoryTabs();
+            if (typeof updatePosFilterDot === 'function') updatePosFilterDot();
+            closePosFilterPanel();
+            searchPosProducts();
+        });
+    }
+
+    if (posSortSelect) {
+        posSortSelect.addEventListener('change', (e) => {
+            posSortMode = e.target.value;
+            searchPosProducts();
+        });
+    }
+
+    // Infinite scroll ของกริดสินค้า — พื้นที่ที่เลื่อนคือ #pos-product-grid เอง ไม่ใช่ #main-content
+    // เหมือนหน้าจัดการสต็อก เพราะเลย์เอาต์หน้าขายตรึงความสูงไว้แล้วให้กริดเลื่อนอยู่ข้างใน
+    if (posProductGrid) {
+        posProductGrid.addEventListener('scroll', () => {
+            const { scrollTop, scrollHeight, clientHeight } = posProductGrid;
+            if (scrollHeight - scrollTop - clientHeight < 200) {
+                loadMorePosProducts();
             }
         });
+    }
 
-        tabScan.addEventListener('click', () => {
-            posActiveTab = 'scan';
-            tabScan.className = 'px-4 py-2 rounded-md text-sm font-semibold bg-primary text-on-primary transition-all';
-            tabSearch.className = 'px-4 py-2 rounded-md text-sm font-semibold text-body-muted hover:text-ink hover:bg-surface-chip transition-all';
+    if (posViewGridBtn && posViewListBtn) {
+        const activeCls = 'w-9 h-9 rounded-md flex items-center justify-center transition-colors bg-primary text-on-primary';
+        const idleCls = 'w-9 h-9 rounded-md flex items-center justify-center transition-colors bg-surface-chip text-body-muted hover:text-ink';
+        const applyViewMode = (mode) => {
+            posViewMode = mode;
+            posViewGridBtn.className = mode === 'grid' ? activeCls : idleCls;
+            posViewListBtn.className = mode === 'list' ? activeCls : idleCls;
+            posViewGridBtn.setAttribute('aria-pressed', String(mode === 'grid'));
+            posViewListBtn.setAttribute('aria-pressed', String(mode === 'list'));
+            renderPosProductsTable();
+        };
+        posViewGridBtn.addEventListener('click', () => applyViewMode('grid'));
+        posViewListBtn.addEventListener('click', () => applyViewMode('list'));
+    }
+
+    // ปุ่มบาร์โค้ดในช่องค้นหาสลับเป็นโหมดสแกน: ยิงบาร์โค้ด/IMEI แล้วกด Enter จะเพิ่มลงตะกร้าทันที
+    if (posScanBtn) {
+        posScanBtn.addEventListener('click', () => {
+            posActiveTab = posActiveTab === 'scan' ? 'search' : 'scan';
+            const isScan = posActiveTab === 'scan';
+            posScanBtn.className = isScan
+                ? 'absolute inset-y-0 right-0 mr-2 my-2 w-10 rounded-md bg-primary text-on-primary transition-colors flex items-center justify-center'
+                : 'absolute inset-y-0 right-0 mr-2 my-2 w-10 rounded-md bg-surface-chip text-body-muted hover:text-ink hover:bg-surface-tile-2 transition-colors flex items-center justify-center';
+            posScanBtn.setAttribute('aria-pressed', String(isScan));
             if (posSearchInput) {
-                posSearchInput.placeholder = 'สแกนบาร์โค้ด / IMEI และกด Enter...';
+                posSearchInput.placeholder = isScan
+                    ? 'สแกนบาร์โค้ด / IMEI แล้วกด Enter...'
+                    : 'ค้นหาสินค้า / สแกนบาร์โค้ด / สแกน IMEI...';
                 posSearchInput.focus();
             }
         });
     }
+
+    // คลิกที่ว่างเพื่อปิดเมนูลอยทั้งหมดของหน้าขาย (ตัวกรอง)
+    document.addEventListener('click', () => {
+        closePosFilterPanel();
+    });
+    document.addEventListener('keydown', (e) => {
+        if (e.key !== 'Escape') return;
+        closePosFilterPanel();
+    });
 
     // Update dynamic Down Payment labels reactive logic
     const updateFinanceDownPaymentLabel = () => {
@@ -5380,6 +5938,28 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // ปุ่มสลับวิธีชำระเงินแบบ toggle (แทนที่ <select id="modal-pos-payment-method"> ที่ซ่อนไว้ทางสายตา)
+    // เก็บ select เดิมไว้เป็นแหล่งความจริงเพื่อไม่ต้องแก้ไข logic คำนวณ/ตรวจสอบที่ผูกกับ paymentMethod.value ทั้งหมด
+    const posPaymentToggleBtns = document.querySelectorAll('.pos-payment-toggle-btn');
+    const syncPaymentToggleUI = () => {
+        const currentVal = paymentMethod ? paymentMethod.value : '';
+        posPaymentToggleBtns.forEach(btn => {
+            const isActive = btn.dataset.value === currentVal;
+            btn.className = `pos-payment-toggle-btn flex-1 py-2.5 rounded-sm text-sm font-bold transition-all flex items-center justify-center bg-[#222] border border-[#444] gap-2 ${isActive ? 'bg-primary text-on-primary' : 'text-body-muted hover:text-ink'}`;
+        });
+    };
+    if (paymentMethod && posPaymentToggleBtns.length) {
+        posPaymentToggleBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                if (paymentMethod.value === btn.dataset.value) return;
+                paymentMethod.value = btn.dataset.value;
+                paymentMethod.dispatchEvent(new Event('change', { bubbles: true }));
+            });
+        });
+        // ต่อคิวหลัง listener หลักด้านบน เพื่อให้ UI ปุ่มสะท้อนค่าที่อาจถูกบังคับรีเซ็ต (เช่น จัดไฟแนนซ์ไม่ได้เพราะไม่มีเครื่องในตะกร้า) เสมอ
+        paymentMethod.addEventListener('change', syncPaymentToggleUI);
+    }
+
     const fetchCartLatestPrices = async () => {
         if (cart.length === 0) return;
         const productIds = cart.map(item => item.product_id);
@@ -5406,7 +5986,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const openCheckoutModal = async () => {
         if (!confirmPriceModal) return;
         if (cart.length === 0) {
-            showToast('กรุณาเพิ่มสินค้าลงในตะกร้าก่อนทำรายการ', 'error');
+            // เดิมเป็น toast มุมจอซึ่งพลาดสายตาได้ง่ายตอนกำลังจดจ่ออยู่กับปุ่มชำระเงิน
+            // เปลี่ยนเป็น popup กลางจอ พร้อมปุ่มที่พากลับไปยังช่องค้นหาสินค้าให้เลย
+            showAlert(
+                'ยังไม่มีสินค้าในตะกร้า',
+                'เลือกสินค้าที่ต้องการขายจากรายการก่อน<br>แล้วจึงกดชำระเงินอีกครั้ง',
+                'เลือกสินค้า',
+                'warning',
+                () => { if (posSearchInput) posSearchInput.focus(); }
+            );
             return;
         }
 
@@ -5439,6 +6027,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Reset ALL inputs in modal
         if (posDiscount) posDiscount.value = '0';
         if (paymentMethod) paymentMethod.selectedIndex = 0;
+        if (typeof syncPaymentToggleUI === 'function') syncPaymentToggleUI();
 
         // Buy Cash detail resets
         if (modalCashAmount) modalCashAmount.value = '0';
@@ -5484,63 +6073,78 @@ document.addEventListener('DOMContentLoaded', () => {
         // Render cart summary items with editable unit prices
         if (confirmPriceList) {
             confirmPriceList.innerHTML = '';
+            const posUserForRow = getCurrentUserForPos();
+            const posBranchNameForRow = (posUserForRow && posUserForRow.branch && posUserForRow.branch.name) ? posUserForRow.branch.name : '-';
             cart.forEach((item, index) => {
-                const div = document.createElement('div');
-                div.className = 'flex justify-between items-center py-3 text-sm hover:bg-surface-chip/40 px-2 rounded-md transition-colors';
-                div.innerHTML = `
-                    <div>
-                        <p class="font-bold text-ink">${item.product_name}</p>
-                        <div class="mt-1 flex flex-col gap-1.5">
-                            ${item.imei_sold ?
-                        `<span class="w-fit bg-surface-chip text-body-muted border border-hairline px-1.5 py-0.5 rounded text-[10px] font-mono">IMEI: ${item.imei_sold}</span>`
-                        : `<span class="w-fit bg-surface-chip/60 px-1.5 py-0.5 rounded text-body-muted text-[10px]">จำนวน: ${item.quantity} ${item.unit_name || 'ชิ้น'}</span>`
-                    }
-                            ${(item._isDevice || item.imei_sold) ? `
-                                <div class="flex items-center gap-2 mt-1">
-                                    <span class="text-[10px] text-body-muted">ระยะประกัน:</span>
-                                    <select class="modal-warranty-select bg-surface-chip border border-hairline text-ink text-[10px] font-bold rounded px-2 py-0.5 focus:outline-none focus:border-primary-focus" data-index="${index}">
-                                        <option value="1 เดือน" ${(!item.warranty_period || item.warranty_period === '1 เดือน') ? 'selected' : ''}>1 เดือน</option>
-                                        <option value="2 เดือน" ${(item.warranty_period === '2 เดือน') ? 'selected' : ''}>2 เดือน</option>
-                                        <option value="3 เดือน" ${(item.warranty_period === '3 เดือน') ? 'selected' : ''}>3 เดือน</option>
-                                        <option value="1 ปี" ${(item.warranty_period === '1 ปี') ? 'selected' : ''}>1 ปี</option>
-                                    </select>
-                                </div>
-                            ` : ''}
-                            ${(item.unit_name === 'ชิ้น') ? `
-                                <div class="flex items-center gap-2 mt-1.5">
-                                    <span class="text-[10px] text-body-muted">การขาย:</span>
-                                    <div class="inline-flex rounded-md overflow-hidden border border-hairline" role="group">
-                                        <button type="button" data-index="${index}" data-type="normal"
-                                            class="gift-toggle-btn px-2.5 py-0.5 text-[10px] font-semibold transition-all ${!item.is_gift ? 'bg-primary/20 text-primary border-r border-hairline' : 'bg-surface-chip/40 text-body-muted hover:text-ink border-r border-hairline'}">
-                                            ขายปกติ
-                                        </button>
-                                        <button type="button" data-index="${index}" data-type="gift"
-                                            class="gift-toggle-btn px-2.5 py-0.5 text-[10px] font-semibold transition-all ${item.is_gift ? 'bg-amber-500/20 text-amber-400' : 'bg-surface-chip/40 text-body-muted hover:text-ink'}">
-                                            ของแถม
-                                        </button>
-                                    </div>
-                                </div>
-                            ` : ''}
+                const card = document.createElement('div');
+                card.className = 'bg-[#1c1c1c] border border-[#333] rounded-sm p-3 flex flex-col gap-4 relative';
+                const detailLines = [];
+                if (item.color_name) detailLines.push(`สี: ${item.color_name}`);
+                if (item.type_name) detailLines.push(`ประเภท: ${item.type_name}`);
+                const itemColorTheme = getProductColorTheme(item.color_name, null);
+                card.innerHTML = `
+                    <div class="flex items-start gap-4">
+                        <div class="w-12 h-12 rounded-full border flex items-center justify-center shrink-0" style="color:${itemColorTheme.icon};background-color:${itemColorTheme.bg};border-color:${itemColorTheme.border};">
+                            <i class="fa-solid ${item._isDevice ? 'fa-mobile-screen' : 'fa-box'} text-xl"></i>
                         </div>
-                        <div class="modal-item-price-badge" data-index="${index}"></div>
-                    </div>
-                    <div class="flex items-center gap-3 text-right">
-                        <div class="flex flex-col items-end">
-                            <span class="text-[10px] text-body-muted uppercase font-bold mb-1 tracking-wider">แก้ไขราคา</span>
-                            <div class="relative">
-                                <span class="absolute left-2 top-1/2 -translate-y-1/2 text-ink-muted-48 text-xs font-mono">฿</span>
-                                <input type="number" value="${item.price}" min="0" step="1" data-index="${index}"
-                                    class="modal-item-price-input w-28 pl-5 pr-2 py-1 rounded bg-surface-chip border border-divider-soft text-ink text-right font-mono text-sm focus:border-primary-focus focus:ring-1 focus:ring-primary-focus/40 focus:outline-none transition-all"
-                                    ${(paymentMethod && paymentMethod.value === 'จัดไฟแนนซ์' && !item.is_gift && item.unit_name === 'เครื่อง') ? '' : 'disabled'}>
+                        <div class="flex-1 min-w-0">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <p class="font-bold text-white text-base leading-tight">${item.product_name}</p>
+                                    ${item.product_code ? `<p class="text-sm text-gray-400 font-mono mt-1">รหัสสินค้า: ${item.product_code}</p>` : ''}
+                                    <p class="text-sm text-gray-400 mt-0.5">คงเหลือ: ${(item.stock_available !== null && item.stock_available !== undefined) ? item.stock_available.toLocaleString() : '-'}</p>
+                                </div>
+                                <div class="bg-[#2a2a2a] text-gray-400 text-xs px-2.5 py-1 rounded-full flex items-center gap-1.5 shrink-0">
+                                    <i class="fa-solid fa-store"></i> ${posBranchNameForRow}
+                                </div>
+                            </div>
+                            
+                            <div class="mt-3 flex flex-wrap gap-2 items-center">
+                                ${item.imei_sold ?
+                        `<span class="inline-flex items-center gap-1.5 bg-[#2a2a2a] text-[#FFE169] border border-[#b48025] px-2.5 py-1 rounded-lg text-xs font-mono font-bold"><i class="fa-solid fa-sim-card"></i> ${item.imei_sold}</span>`
+                        : `<span class="inline-flex items-center gap-1.5 bg-[#2a2a2a] text-gray-400 border border-[#444] px-2.5 py-1 rounded-lg text-xs"><i class="fa-solid fa-layer-group"></i> จำนวน: ${item.quantity} ${item.unit_name || 'ชิ้น'}</span>`
+                    }
+                                
+                                ${detailLines.length ? detailLines.map(l => `<span class="text-xs text-gray-400 bg-[#222] px-2 py-1 rounded-lg border border-[#444]">${l}</span>`).join('') : ''}
                             </div>
                         </div>
-                        <div class="w-24 flex flex-col items-end pt-3.5 font-mono">
-                            <span class="text-body-muted text-[10px] uppercase font-bold mb-0.5">รวม</span>
-                            <p class="text-ink font-bold text-sm modal-item-subtotal" data-index="${index}">฿${(item.price * item.quantity).toLocaleString()}</p>
+                    </div>
+                    
+                    <div class="flex items-end justify-between mt-1">
+                        <div class="flex flex-col gap-1 w-[150px]">
+                            <div class="relative w-full">
+                                <span class="absolute left-0 top-1/2 -translate-y-1/2 text-[#FFE169] text-xl font-bold">฿</span>
+                                <input type="number" value="${item.price}" min="0" step="1" data-index="${index}"
+                                    class="modal-item-price-input w-full pl-5 pr-2 py-1 rounded bg-transparent border-none text-[#FFE169] text-2xl font-bold focus:bg-[#2a2a2a] focus:outline-none transition-all"
+                                    ${(paymentMethod && paymentMethod.value === 'จัดไฟแนนซ์' && !item.is_gift && item.unit_name === 'เครื่อง') ? '' : 'disabled'}>
+                            </div>
+                            <div class="modal-item-price-badge w-full text-xs" data-index="${index}"></div>
+                        </div>
+                        
+                        <div class="flex items-center gap-2">
+                            ${(item._isDevice || item.imei_sold) ? `
+                                <select class="modal-warranty-select bg-[#2a2a2a] border border-[#444] text-gray-300 text-sm rounded-full px-4 py-2 focus:outline-none focus:border-[#FFE169] transition-all cursor-pointer hover:bg-[#333] hover:text-white" data-index="${index}">
+                                    <option value="1 เดือน" ${(!item.warranty_period || item.warranty_period === '1 เดือน') ? 'selected' : ''}>ประกัน 1 เดือน</option>
+                                    <option value="2 เดือน" ${(item.warranty_period === '2 เดือน') ? 'selected' : ''}>ประกัน 2 เดือน</option>
+                                    <option value="3 เดือน" ${(item.warranty_period === '3 เดือน') ? 'selected' : ''}>ประกัน 3 เดือน</option>
+                                    <option value="1 ปี" ${(item.warranty_period === '1 ปี') ? 'selected' : ''}>ประกัน 1 ปี</option>
+                                </select>
+                            ` : (item.unit_name === 'ชิ้น') ? `
+                                <div class="inline-flex rounded-full overflow-hidden border border-[#444]" role="group">
+                                    <button type="button" data-index="${index}" data-type="normal"
+                                        class="gift-toggle-btn px-4 py-2 text-sm font-semibold transition-all ${!item.is_gift ? 'bg-[#FFE169] text-black' : 'bg-[#2a2a2a] text-gray-400 hover:text-white'}">
+                                        ขายปกติ
+                                    </button>
+                                    <button type="button" data-index="${index}" data-type="gift"
+                                        class="gift-toggle-btn px-4 py-2 text-sm font-semibold transition-all ${item.is_gift ? 'bg-[#FFE169] text-black' : 'bg-[#2a2a2a] text-gray-400 hover:text-white'}">
+                                        ของแถม
+                                    </button>
+                                </div>
+                            ` : ``}
                         </div>
                     </div>
                 `;
-                confirmPriceList.appendChild(div);
+                confirmPriceList.appendChild(card);
             });
 
             // Attach dynamic listener for price edits inside the checkout modal
@@ -5803,12 +6407,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 showToast('ทำรายการขายสำเร็จ');
                 openCheckoutSuccessModal(result.data);
                 closeCheckoutModal();
+                fetchPosProducts();
 
                 cart = [];
                 renderCart();
 
                 // Reset state and layouts
                 if (paymentMethod) paymentMethod.selectedIndex = 0;
+                if (typeof syncPaymentToggleUI === 'function') syncPaymentToggleUI();
                 if (posDiscount) posDiscount.value = '0';
                 if (modalCashAmount) modalCashAmount.value = '0';
                 if (modalTransferAmount) modalTransferAmount.value = '0';
