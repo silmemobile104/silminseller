@@ -280,7 +280,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const navPersonnel = document.getElementById('nav-personnel');
     const navBranches = document.getElementById('nav-branches');
     const navSettings = document.getElementById('nav-settings');
-    const navSettingsHeader = document.getElementById('nav-settings-header');
     const navRoles = document.getElementById('nav-roles');
     const navSalesHistory = document.getElementById('nav-sales-history');
     const navTransfers = document.getElementById('nav-transfers');
@@ -1223,7 +1222,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // Reset Title
             const modalTitle = document.getElementById('modal-title');
-            if (modalTitle) modalTitle.innerHTML = `<img src="icons_img/box (1) 5.png" alt="" width="22" height="22">เพิ่มสินค้าใหม่`;
+            if (modalTitle) modalTitle.innerHTML = `<i class="bi bi-box-seam text-[#FFE169]"></i> เพิ่มสินค้าใหม่`;
 
             // Show Excel Button in modal header
             const btnExcelOpen = document.getElementById('btn-add-product-excel');
@@ -2077,13 +2076,23 @@ document.addEventListener('DOMContentLoaded', () => {
         setVisible(mobileNavStockAudit, permissions.do_stock_audit);
         setVisible(navStockAuditReview, permissions.manage_stock_audit);
 
-        // Toggle Settings header/divider based on sub-permissions
-        // กลุ่ม "ตั้งค่าระบบ" ตอนนี้รวมจัดการพนักงาน/สาขาไว้ด้วย เงื่อนไขนี้เลยต้องครอบคลุมสิทธิ์นั้นด้วย
-        // ไม่งั้น user ที่มีแค่ manage_personnel/manage_branches จะเห็นเมนูแต่หัวข้อกลุ่มหาย
-        if (navSettingsHeader) {
-            const hasSettingsSection = !!(permissions.manage_settings || permissions.manage_roles || permissions.view_audit_logs || permissions.manage_personnel || permissions.manage_branches);
-            setVisible(navSettingsHeader, hasSettingsSection);
-        }
+        // ซ่อน/แสดงหัวข้อกลุ่มเมนู (nav-section-header) อัตโนมัติ:
+        // ถ้าเมนูทุกอันในหมวดหมู่นั้นถูกซ่อนหมด (ตาม permissions ด้านบน) ให้ซ่อนชื่อกลุ่มไปด้วย
+        // เช็คจาก DOM จริงหลัง setVisible ทำงานเสร็จ แทนที่จะ hardcode เงื่อนไข permission ต่อกลุ่ม
+        // เพื่อให้ยังถูกต้องแม้จะมีการเพิ่ม/ย้ายเมนูระหว่างกลุ่มในอนาคต
+        const sectionHeaders = document.querySelectorAll('#sidebar .nav-section-header');
+        sectionHeaders.forEach((header) => {
+            let sibling = header.nextElementSibling;
+            let hasVisibleItem = false;
+            while (sibling && !sibling.classList.contains('nav-section-header')) {
+                if (sibling.classList.contains('nav-menu-item') && !sibling.classList.contains('hidden') && sibling.style.display !== 'none') {
+                    hasVisibleItem = true;
+                    break;
+                }
+                sibling = sibling.nextElementSibling;
+            }
+            setVisible(header, hasVisibleItem);
+        });
 
         // เก็บ permissions ไว้ใน window สำหรับใช้ตรวจสอบใน renderProductTable
         window.__userPermissions = permissions;
@@ -3805,6 +3814,67 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const btnCheckout = document.getElementById('btn-checkout');
 
+    // ข้อความแจ้งเตือน inline สีแดงใต้ช่องที่บังคับกรอกในโมดัลชำระเงิน (พร้อมขอบสีแดงที่ตัวช่องกรอกเอง ไม่ใช่แค่ข้อความ)
+    // (เดิมมีแค่ showToast มุมจอซึ่งพลาดสายตาได้ง่าย ปุ่ม "ชำระเงิน" ก็เป็นสีเขียวตลอดไม่บอกว่ากรอกไม่ครบ)
+    const posPaymentMethodGroup = document.getElementById('pos-payment-method-group');
+    const posPaymentMethodError = document.getElementById('pos-payment-method-error');
+    const posCashAmountError = document.getElementById('pos-cash-amount-error');
+    const posFinanceCompanyError = document.getElementById('pos-finance-company-error');
+    const posFinanceDownAmountError = document.getElementById('pos-finance-down-amount-error');
+
+    // จับคู่ error message แต่ละอันกับช่องกรอก/กลุ่มที่ต้องขึ้นขอบแดงด้วย
+    const posInlineErrorTargets = [
+        {
+            error: posPaymentMethodError,
+            setBorder: (hasError) => {
+                if (!posPaymentMethodGroup) return;
+                posPaymentMethodGroup.classList.toggle('ring-2', hasError);
+                posPaymentMethodGroup.classList.toggle('ring-red-500', hasError);
+            }
+        },
+        {
+            error: posCashAmountError,
+            setBorder: (hasError) => {
+                [modalCashAmount, modalTransferAmount].forEach(el => {
+                    if (!el) return;
+                    el.classList.toggle('border-red-500', hasError);
+                    el.classList.toggle('border-[#444]', !hasError);
+                });
+            }
+        },
+        {
+            error: posFinanceCompanyError,
+            setBorder: (hasError) => {
+                if (!modalFinanceCompany) return;
+                modalFinanceCompany.classList.toggle('border-red-500', hasError);
+                modalFinanceCompany.classList.toggle('border-[#444]', !hasError);
+            }
+        },
+        {
+            error: posFinanceDownAmountError,
+            setBorder: (hasError) => {
+                [modalFinanceDownCash, modalFinanceDownTransfer].forEach(el => {
+                    if (!el) return;
+                    el.classList.toggle('border-red-500', hasError);
+                    el.classList.toggle('border-[#555]', !hasError);
+                });
+            }
+        }
+    ];
+
+    const clearPosInlineErrors = () => {
+        posInlineErrorTargets.forEach(({ error, setBorder }) => {
+            if (error) error.classList.add('hidden');
+            setBorder(false);
+        });
+    };
+    const showPosInlineError = (el) => {
+        clearPosInlineErrors();
+        if (el) el.classList.remove('hidden');
+        const target = posInlineErrorTargets.find(t => t.error === el);
+        if (target) target.setBorder(true);
+    };
+
     const modalSubtotalDisplay = document.getElementById('modal-subtotal-display');
     const modalDiscountDisplay = document.getElementById('modal-discount-display');
     const modalTotalDisplay = document.getElementById('modal-total-display');
@@ -5216,7 +5286,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const validateFinancePrices = () => {
         const isFinancing = (paymentMethod && paymentMethod.value === 'จัดไฟแนนซ์');
-        let hasBelowCost = false;
 
         cart.forEach((item, index) => {
             const badgeContainer = confirmPriceList ? confirmPriceList.querySelector(`.modal-item-price-badge[data-index="${index}"]`) : null;
@@ -5272,7 +5341,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const defaultSellingPrice = item.default_selling_price || 0;
 
             if (currentPrice < costPrice) {
-                hasBelowCost = true;
                 badgeContainer.innerHTML = `
                     <div class="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-red-500/20 text-red-400 border border-red-500/30 flex items-center gap-1 mt-2.5 animate-pulse">
                         <i class="fa-solid fa-circle-exclamation"></i>
@@ -5291,23 +5359,8 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
-        if (isFinancing) {
-            if (hasBelowCost) {
-                if (btnConfirmCheckout) {
-                    btnConfirmCheckout.disabled = true;
-                    btnConfirmCheckout.classList.add('opacity-40', 'cursor-not-allowed', 'grayscale');
-                    btnConfirmCheckout.classList.remove('hover:shadow-emerald-500/35');
-                    btnConfirmCheckout.title = 'ผิดพลาด: ราคาขายจัดไฟแนนซ์ต่ำกว่าราคาทุนของสินค้า';
-                }
-            } else {
-                if (btnConfirmCheckout) {
-                    btnConfirmCheckout.disabled = false;
-                    btnConfirmCheckout.classList.remove('opacity-40', 'cursor-not-allowed', 'grayscale');
-                    btnConfirmCheckout.classList.add('hover:shadow-emerald-500/35');
-                    btnConfirmCheckout.title = '';
-                }
-            }
-        }
+        // หมายเหตุ: ปุ่ม "ชำระเงิน" ตั้งใจให้เป็นสีเขียวและกดได้ตลอด ไม่ disable ล่วงหน้าจาก state
+        // การตรวจสอบราคาต่ำกว่าทุนจริงๆ ทำตอนกดปุ่มใน checkoutNow() แทน (ดู badge สีแดงที่รายการสินค้าด้านบนประกอบ)
     };
 
     const updateFinancingAmount = () => {
@@ -5434,7 +5487,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const missing = grandTotal - receivedSum;
                 if (paymentStatusBadge) {
                     paymentStatusBadge.className = 'px-2.5 py-1 rounded-lg text-xs font-black uppercase tracking-wider flex items-center gap-1.5 bg-red-500/20 text-red-400 border border-red-500/30';
-                    paymentStatusBadge.innerHTML = `<span class="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span> ขาดเงินอีก ❌`;
+                    paymentStatusBadge.innerHTML = `<span class="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span> ขาดเงินอีก`;
                 }
                 if (verifyResultLabel) verifyResultLabel.textContent = 'ยอดขาดคงเหลือ';
                 if (verifyChangeDisplay) {
@@ -5442,13 +5495,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     verifyChangeDisplay.className = 'text-2xl font-black font-mono text-red-400 animate-pulse';
                 }
 
-                // บล็อกปุ่มชำระเงิน
-                if (btnConfirmCheckout) {
-                    btnConfirmCheckout.disabled = true;
-                    btnConfirmCheckout.classList.add('opacity-40', 'cursor-not-allowed', 'grayscale');
-                    btnConfirmCheckout.classList.remove('hover:shadow-emerald-500/35');
-                    btnConfirmCheckout.title = 'กรุณารับยอดเงินชำระให้ครบก่อนทำรายการ';
-                }
             } else {
                 // ครบ หรือ มีเงินทอน
                 const change = receivedSum - grandTotal;
@@ -5467,25 +5513,14 @@ document.addEventListener('DOMContentLoaded', () => {
                     verifyChangeDisplay.className = `text-2xl font-black font-mono ${change > 0 ? 'text-cyan-400' : 'text-emerald-400'}`;
                 }
 
-                // ปลดล็อกปุ่ม
-                if (btnConfirmCheckout) {
-                    btnConfirmCheckout.disabled = false;
-                    btnConfirmCheckout.classList.remove('opacity-40', 'cursor-not-allowed', 'grayscale');
-                    btnConfirmCheckout.classList.add('hover:shadow-emerald-500/35');
-                    btnConfirmCheckout.title = '';
-                }
             }
         } else if (selectedPayment === 'จัดไฟแนนซ์') {
             if (paymentVerifyPanel) paymentVerifyPanel.classList.add('hidden');
             updateFinanceDownPaymentLabel();
         } else {
-            // ยังไม่ได้เลือกวิธีชำระเงิน
+            // ยังไม่ได้เลือกวิธีชำระเงิน — ปุ่ม "ชำระเงิน" ยังคงเป็นสีเขียวและกดได้เสมอ
+            // ตรวจสอบว่าเลือกวิธีชำระเงินหรือยังตอนกดปุ่มใน checkoutNow() แทน
             if (paymentVerifyPanel) paymentVerifyPanel.classList.add('hidden');
-            if (btnConfirmCheckout) {
-                btnConfirmCheckout.disabled = true;
-                btnConfirmCheckout.classList.add('opacity-40', 'cursor-not-allowed', 'grayscale');
-                btnConfirmCheckout.title = 'กรุณาเลือกวิธีชำระเงิน';
-            }
         }
     };
 
@@ -5497,12 +5532,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (modalCashAmount) {
         modalCashAmount.addEventListener('input', () => {
+            clearPosInlineErrors();
             updateModalTotals();
         });
     }
 
     if (modalTransferAmount) {
         modalTransferAmount.addEventListener('input', () => {
+            clearPosInlineErrors();
             updateModalTotals();
         });
     }
@@ -5817,51 +5854,47 @@ document.addEventListener('DOMContentLoaded', () => {
         const actualPaid = cash + transfer;
         const remaining = totalUpfrontToCollect - actualPaid;
 
+        // หมายเหตุ: ปุ่ม "ชำระเงิน" ตั้งใจให้เป็นสีเขียวและกดได้ตลอด ไม่ disable ล่วงหน้าจาก state
+        // ตรวจสอบยอดเงินดาวน์/รับเงินหน้าร้านครบไหมจริงๆ ตอนกดปุ่มใน checkoutNow() แทน
         if (totalUpfrontToCollect <= 0) {
             modalFinanceTotalDownLabel.className = 'text-sm font-bold text-body-muted font-mono';
             modalFinanceTotalDownLabel.textContent = 'ยอดต้องรับ: ฿0.00';
-            if (btnConfirmCheckout) {
-                btnConfirmCheckout.disabled = false;
-                btnConfirmCheckout.classList.remove('opacity-40', 'cursor-not-allowed', 'grayscale');
-                btnConfirmCheckout.title = '';
-            }
         } else if (remaining > 0) {
             modalFinanceTotalDownLabel.className = 'text-sm font-bold text-amber-400 font-mono';
             modalFinanceTotalDownLabel.textContent = `ยอดต้องรับ: ฿${totalUpfrontToCollect.toLocaleString(undefined, { minimumFractionDigits: 2 })} | ขาดอีก: ฿${remaining.toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
-            if (btnConfirmCheckout) {
-                btnConfirmCheckout.disabled = true;
-                btnConfirmCheckout.classList.add('opacity-40', 'cursor-not-allowed', 'grayscale');
-                btnConfirmCheckout.title = 'กรุณารับเงินให้ครบตามยอดที่ต้องชำระหน้าร้าน';
-            }
         } else if (remaining < 0) {
             const change = Math.abs(remaining);
             modalFinanceTotalDownLabel.className = 'text-sm font-bold text-cyan-400 font-mono';
             modalFinanceTotalDownLabel.textContent = `ยอดต้องรับ: ฿${totalUpfrontToCollect.toLocaleString(undefined, { minimumFractionDigits: 2 })} | ทอนคืน: ฿${change.toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
-            if (btnConfirmCheckout) {
-                btnConfirmCheckout.disabled = false;
-                btnConfirmCheckout.classList.remove('opacity-40', 'cursor-not-allowed', 'grayscale');
-                btnConfirmCheckout.title = '';
-            }
         } else {
             modalFinanceTotalDownLabel.className = 'text-sm font-bold text-emerald-400 font-mono';
             modalFinanceTotalDownLabel.textContent = `ยอดต้องรับ: ฿${totalUpfrontToCollect.toLocaleString(undefined, { minimumFractionDigits: 2 })} (ครบถ้วน)`;
-            if (btnConfirmCheckout) {
-                btnConfirmCheckout.disabled = false;
-                btnConfirmCheckout.classList.remove('opacity-40', 'cursor-not-allowed', 'grayscale');
-                btnConfirmCheckout.title = '';
-            }
         }
         updateFinancingAmount();
     };
 
     if (modalFinanceDownTotal) {
-        modalFinanceDownTotal.addEventListener('input', updateFinanceDownPaymentLabel);
+        modalFinanceDownTotal.addEventListener('input', () => {
+            clearPosInlineErrors();
+            updateFinanceDownPaymentLabel();
+        });
     }
     if (modalFinanceDownCash) {
-        modalFinanceDownCash.addEventListener('input', updateFinanceDownPaymentLabel);
+        modalFinanceDownCash.addEventListener('input', () => {
+            clearPosInlineErrors();
+            updateFinanceDownPaymentLabel();
+        });
     }
     if (modalFinanceDownTransfer) {
-        modalFinanceDownTransfer.addEventListener('input', updateFinanceDownPaymentLabel);
+        modalFinanceDownTransfer.addEventListener('input', () => {
+            clearPosInlineErrors();
+            updateFinanceDownPaymentLabel();
+        });
+    }
+    if (modalFinanceCompany) {
+        modalFinanceCompany.addEventListener('change', () => {
+            clearPosInlineErrors();
+        });
     }
 
     // Additional manual fees listeners
@@ -5951,6 +5984,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (paymentMethod && posPaymentToggleBtns.length) {
         posPaymentToggleBtns.forEach(btn => {
             btn.addEventListener('click', () => {
+                clearPosInlineErrors();
                 if (paymentMethod.value === btn.dataset.value) return;
                 paymentMethod.value = btn.dataset.value;
                 paymentMethod.dispatchEvent(new Event('change', { bubbles: true }));
@@ -6025,9 +6059,8 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         // Reset ALL inputs in modal
+        clearPosInlineErrors();
         if (posDiscount) posDiscount.value = '0';
-        if (paymentMethod) paymentMethod.selectedIndex = 0;
-        if (typeof syncPaymentToggleUI === 'function') syncPaymentToggleUI();
 
         // Buy Cash detail resets
         if (modalCashAmount) modalCashAmount.value = '0';
@@ -6054,6 +6087,14 @@ document.addEventListener('DOMContentLoaded', () => {
         // Reset block visibilities
         if (blockBuyCashDetails) blockBuyCashDetails.classList.add('hidden');
         if (blockFinanceDetails) blockFinanceDetails.classList.add('hidden');
+
+        // ตั้งค่าเริ่มต้นวิธีชำระเงินเป็น "เงินสด" (ซื้อสด) เสมอ แทนที่จะปล่อยว่างให้ผู้ใช้ต้องเลือกเอง
+        // ต้องอยู่หลังบล็อก "Reset block visibilities" ด้านบน ไม่งั้น dispatch change ที่แสดง block-buy-cash-details จะถูกซ่อนทับอีกที
+        if (paymentMethod) {
+            paymentMethod.value = 'ซื้อสด';
+            paymentMethod.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+        if (typeof syncPaymentToggleUI === 'function') syncPaymentToggleUI();
 
         // Member Selection reset
         if (selectedMemberId) selectedMemberId.value = '';
@@ -6254,21 +6295,17 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const checkoutNow = async () => {
+        clearPosInlineErrors();
+
         if (cart.length === 0) {
             showToast('กรุณาเพิ่มสินค้าลงในตะกร้าก่อนทำรายการ', 'error');
-            return;
-        }
-
-        const memberIdVal = selectedMemberId ? selectedMemberId.value : '';
-        if (!memberIdVal) {
-            showToast('กรุณาเลือกข้อมูลลูกค้า/สมาชิกทุกครั้งก่อนชำระเงิน', 'error');
-            if (posMemberSearch) posMemberSearch.focus();
             return;
         }
 
         const selectedPayment = paymentMethod ? paymentMethod.value : '';
         if (!selectedPayment) {
             showToast('กรุณาเลือกวิธีชำระเงิน', 'error');
+            showPosInlineError(posPaymentMethodError);
             return;
         }
 
@@ -6293,10 +6330,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (cashVal + transferVal < totalChk) {
                 showToast('ยอดเงินที่รับมาไม่ครบถ้วนตามราคาสุทธิ กรุณาตรวจสอบการรับเงิน', 'error');
+                showPosInlineError(posCashAmountError);
                 if (modalCashAmount) modalCashAmount.focus();
                 return;
             }
         } else if (selectedPayment === 'จัดไฟแนนซ์') {
+            const belowCostItem = cart.find(item => !item.is_gift && item.unit_name === 'เครื่อง' && item.price < (item.cost_price || 0));
+            if (belowCostItem) {
+                showToast(`ผิดพลาด: ราคาขายจัดไฟแนนซ์ของ "${belowCostItem.product_name}" ต่ำกว่าราคาทุนของสินค้า กรุณาแก้ไขราคาก่อนทำรายการ`, 'error');
+                return;
+            }
+
             const selectedCompanyId = modalFinanceCompany ? modalFinanceCompany.value : '';
             const matchingCompany = (window.masterDataCache && window.masterDataCache.financeCompanies)
                 ? window.masterDataCache.financeCompanies.find(c => c._id === selectedCompanyId)
@@ -6311,6 +6355,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (!compName) {
                 showToast('กรุณากรอกชื่อบริษัทไฟแนนซ์', 'error');
+                showPosInlineError(posFinanceCompanyError);
                 if (modalFinanceCompany) modalFinanceCompany.focus();
                 return;
             }
@@ -6331,6 +6376,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const actualReceived = enteredCash + enteredTrans;
             if (actualReceived < totalUpfrontToCollect) {
                 showToast(`ยอดรับเงินรวมกัน (฿${actualReceived.toLocaleString(undefined, { minimumFractionDigits: 2 })}) ต้องไม่ต่ำกว่ายอดชำระหน้าร้าน (฿${totalUpfrontToCollect.toLocaleString(undefined, { minimumFractionDigits: 2 })})`, 'error');
+                showPosInlineError(posFinanceDownAmountError);
                 if (modalFinanceDownCash) modalFinanceDownCash.focus();
                 return;
             }
@@ -6413,7 +6459,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 renderCart();
 
                 // Reset state and layouts
-                if (paymentMethod) paymentMethod.selectedIndex = 0;
+                if (paymentMethod) paymentMethod.value = 'ซื้อสด';
                 if (typeof syncPaymentToggleUI === 'function') syncPaymentToggleUI();
                 if (posDiscount) posDiscount.value = '0';
                 if (modalCashAmount) modalCashAmount.value = '0';

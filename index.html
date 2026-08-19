@@ -95,6 +95,11 @@
 
             <!-- Navigation -->
             <nav class="flex-1 overflow-y-auto py-4 px-3 space-y-1">
+                <div
+                    class="sidebar-text nav-section-header pt-0 pb-2 px-3 text-md font-semibold text-slate-100 uppercase tracking-wider">
+                    ภาพรวม
+                </div>
+
                 <a href="#" id="nav-dashboard" data-tooltip="แดชบอร์ด"
                     class="flex items-center px-3 py-3 rounded-xl text-slate-300 hover:bg-slate-700/50 hover:text-white transition-all group nav-menu-item">
                     <i class="bi bi-bar-chart text-slate-400 w-5 text-center text-xl"></i>
@@ -108,6 +113,62 @@
                     <i class="bi bi-file-earmark-text text-slate-400 w-5 text-center text-xl"></i>
 
                     <span class="sidebar-text ml-3 font-medium">สรุปยอดขายรายวัน</span>
+
+                </a>
+
+                <div
+                    class="sidebar-text nav-section-header pt-4 pb-2 px-3 text-md font-semibold text-slate-100 uppercase tracking-wider">
+                    การขายและลูกค้า
+                </div>
+
+                <a href="#" id="nav-transactions" data-tooltip="รายการขาย"
+                    class="flex items-center px-3 py-3 rounded-xl text-slate-300 hover:bg-slate-700/50 hover:text-white transition-all group nav-menu-item">
+                    <i class="bi bi-bag text-slate-400 w-5 text-center text-xl"></i>
+                    <span class="sidebar-text ml-3 font-medium">รายการขาย</span>
+
+                </a>
+
+                <a href="#" id="nav-deposits" data-tooltip="การมัดจำสินค้า"
+                    class="flex items-center px-3 py-3 rounded-xl text-slate-300 hover:bg-slate-700/50 hover:text-white transition-all group nav-menu-item relative">
+                    <i class="bi bi-piggy-bank text-slate-400 w-5 text-center text-xl"></i>
+                    <span class="sidebar-text ml-3 font-medium">การมัดจำสินค้า</span>
+                </a>
+
+                <a href="#" id="nav-sales-history" data-tooltip="ประวัติการขาย"
+                    class="flex items-center px-3 py-3 rounded-xl text-slate-300 hover:bg-slate-700/50 hover:text-white transition-all group nav-menu-item">
+                    <i class="bi bi-clock text-slate-400 w-5 text-center text-xl"></i>
+                    <span class="sidebar-text ml-3 font-medium">ประวัติการขาย</span>
+
+                </a>
+
+                <a href="#" id="nav-members" data-tooltip="สมาชิก"
+                    class="flex items-center px-3 py-3 rounded-xl text-slate-300 hover:bg-slate-700/50 hover:text-white transition-all group nav-menu-item">
+                    <i class="bi bi-people text-slate-400 w-5 text-center text-xl"></i>
+                    <span class="sidebar-text ml-3 font-medium">สมาชิก</span>
+                </a>
+
+                <a href="#" id="nav-warranty-check" data-tooltip="เช็คประกัน"
+                    class="flex items-center px-3 py-3 rounded-xl text-slate-300 hover:bg-slate-700/50 hover:text-white transition-all group nav-menu-item">
+                    <i class="bi bi-shield-check text-slate-400 w-5 text-center text-xl"></i>
+                    <span class="sidebar-text ml-3 font-medium">เช็คประกัน</span>
+                </a>
+
+                <div
+                    class="sidebar-text nav-section-header pt-4 pb-2 px-3 text-md font-semibold text-slate-100 uppercase tracking-wider">
+                    สต็อกและคลังสินค้า
+                </div>
+
+                <a href="#" id="nav-branch-inventory" data-tooltip="สินค้าในสาขา"
+                    class="flex items-center px-3 py-3 rounded-xl text-slate-300 hover:bg-slate-700/50 hover:text-white transition-all group nav-menu-item">
+                    <i class="bi bi-box text-slate-400 w-5 text-center text-xl"></i>
+                    <span class="sidebar-text ml-3 font-medium">สินค้าในสาขา</span>
+
+                </a>
+
+                <a href="#" id="nav-stock" data-tooltip="จัดการสต็อก"
+                    class="flex items-center px-3 py-3 rounded-xl transition-all group nav-menu-item active">
+                    <i class="bi bi-box-seam text-slate-400 w-5 text-center text-xl"></i>
+                    <span class="sidebar-text ml-3 font-medium">จัดการสต็อก</span>
 
                 </a>
 
@@ -135,60 +196,15 @@
                         id="nav-stock-audit-review-badge" style="display:none;">0</span>
                 </a>
 
-                <a href="#" id="nav-branch-inventory" data-tooltip="สินค้าในสาขา"
+                <div
+                    class="sidebar-text nav-section-header pt-4 pb-2 px-3 text-md font-semibold text-slate-100 uppercase tracking-wider">
+                    การสั่งซื้อและรับสินค้า
+                </div>
+
+                <a href="#" id="nav-accounting-po" data-tooltip="ระบบสั่งซื้อ (PO)"
                     class="flex items-center px-3 py-3 rounded-xl text-slate-300 hover:bg-slate-700/50 hover:text-white transition-all group nav-menu-item">
-                    <i class="bi bi-box text-slate-400 w-5 text-center text-xl"></i>
-                    <span class="sidebar-text ml-3 font-medium">สินค้าในสาขา</span>
-
-                </a>
-
-                <a href="#" id="nav-stock" data-tooltip="จัดการสต็อก"
-                    class="flex items-center px-3 py-3 rounded-xl transition-all group nav-menu-item active">
-                    <i class="bi bi-box-seam text-slate-400 w-5 text-center text-xl"></i>
-                    <span class="sidebar-text ml-3 font-medium">จัดการสต็อก</span>
-
-                </a>
-
-                <a href="#" id="nav-transactions" data-tooltip="รายการขาย"
-                    class="flex items-center px-3 py-3 rounded-xl text-slate-300 hover:bg-slate-700/50 hover:text-white transition-all group nav-menu-item">
-                    <i class="bi bi-bag text-slate-400 w-5 text-center text-xl"></i>
-                    <span class="sidebar-text ml-3 font-medium">รายการขาย</span>
-
-                </a>
-
-                <a href="#" id="nav-sales-history" data-tooltip="ประวัติการขาย"
-                    class="flex items-center px-3 py-3 rounded-xl text-slate-300 hover:bg-slate-700/50 hover:text-white transition-all group nav-menu-item">
-                    <i class="bi bi-clock text-slate-400 w-5 text-center text-xl"></i>
-                    <span class="sidebar-text ml-3 font-medium">ประวัติการขาย</span>
-
-                </a>
-
-
-
-                <a href="#" id="nav-deposits" data-tooltip="การมัดจำสินค้า"
-                    class="flex items-center px-3 py-3 rounded-xl text-slate-300 hover:bg-slate-700/50 hover:text-white transition-all group nav-menu-item relative">
-                    <i class="bi bi-piggy-bank text-slate-400 w-5 text-center text-xl"></i>
-                    <span class="sidebar-text ml-3 font-medium">การมัดจำสินค้า</span>
-                </a>
-
-                <a href="#" id="nav-transfers" data-tooltip="โอนย้ายสินค้าระหว่างสาขา"
-                    class="flex items-center px-3 py-3 rounded-xl text-slate-300 hover:bg-slate-700/50 hover:text-white transition-all group nav-menu-item">
-                    <i class="bi bi-arrow-left-right text-slate-400 w-5 text-center text-xl"></i>
-                    <span class="sidebar-text ml-3 font-medium">โอนย้ายสินค้าระหว่างสาขา</span>
-                </a>
-
-                <a href="#" id="nav-movements" data-tooltip="ประวัติการเคลื่อนไหว"
-                    class="flex items-center px-3 py-3 rounded-xl text-slate-300 hover:bg-slate-700/50 hover:text-white transition-all group nav-menu-item">
-                    <i class="bi bi-arrow-down-up text-slate-400 w-5 text-center text-xl"></i>
-                    <span class="sidebar-text ml-3 font-medium">ประวัติการเคลื่อนไหว</span>
-
-                </a>
-
-                <a href="#" id="nav-report-arrival" data-tooltip="แจ้งของถึงสาขา"
-                    class="flex items-center px-3 py-3 rounded-xl text-slate-300 hover:bg-slate-700/50 hover:text-white transition-all group nav-menu-item">
-                    <i class="bi bi-truck-front text-slate-400 w-5 text-center text-xl"></i>
-                    <span class="sidebar-text ml-3 font-medium">แจ้งของถึงสาขา</span>
-                    <span id="import-arrival-badge" class="absolute right-3 top-1/2 -translate-y-1/2 hidden"></span>
+                    <i class="bi bi-cart-plus text-slate-400 w-5 text-center text-xl"></i>
+                    <span class="sidebar-text ml-3 font-medium">ระบบสั่งซื้อ (PO)</span>
                 </a>
 
                 <a href="#" id="nav-approve-import" data-tooltip="ตรวจสอบนำเข้า"
@@ -199,28 +215,17 @@
                         class="absolute right-3 top-1/2 -translate-y-1/2 bg-violet-500 text-white text-[10px] font-bold h-5 w-5 flex items-center justify-center rounded-full shadow-[0_0_8px_rgba(139,92,246,0.6)] hidden">0</span>
                 </a>
 
-                <a href="#" id="nav-accounting-po" data-tooltip="ระบบสั่งซื้อ (PO)"
+                <a href="#" id="nav-report-arrival" data-tooltip="แจ้งของถึงสาขา"
                     class="flex items-center px-3 py-3 rounded-xl text-slate-300 hover:bg-slate-700/50 hover:text-white transition-all group nav-menu-item">
-                    <i class="bi bi-cart-plus text-slate-400 w-5 text-center text-xl"></i>
-                    <span class="sidebar-text ml-3 font-medium">ระบบสั่งซื้อ (PO)</span>
+                    <i class="bi bi-truck-front text-slate-400 w-5 text-center text-xl"></i>
+                    <span class="sidebar-text ml-3 font-medium">แจ้งของถึงสาขา</span>
+                    <span id="import-arrival-badge" class="absolute right-3 top-1/2 -translate-y-1/2 hidden"></span>
                 </a>
 
-                <a href="#" id="nav-accounting" data-tooltip="ระบบบัญชีและการเงิน"
+                <a href="#" id="nav-transfers" data-tooltip="โอนย้ายสินค้าระหว่างสาขา"
                     class="flex items-center px-3 py-3 rounded-xl text-slate-300 hover:bg-slate-700/50 hover:text-white transition-all group nav-menu-item">
-                    <i class="bi bi-cash-stack text-slate-400 w-5 text-center text-xl"></i>
-                    <span class="sidebar-text ml-3 font-medium">ระบบบัญชีและการเงิน</span>
-                </a>
-
-                <a href="#" id="nav-accounting-settings" data-tooltip="ตั้งค่าผังบัญชี"
-                    class="flex items-center px-3 py-3 rounded-xl text-slate-300 hover:bg-slate-700/50 hover:text-white transition-all group nav-menu-item">
-                    <i class="bi bi-diagram-3 text-slate-400 w-5 text-center text-xl"></i>
-                    <span class="sidebar-text ml-3 font-medium">ตั้งค่าผังบัญชี</span>
-                </a>
-
-                <a href="#" id="nav-disbursement" data-tooltip="ใบสำคัญจ่าย"
-                    class="flex items-center px-3 py-3 rounded-xl text-slate-300 hover:bg-slate-700/50 hover:text-white transition-all group nav-menu-item">
-                    <i class="bi bi-wallet text-slate-400 w-5 text-center text-xl"></i>
-                    <span class="sidebar-text ml-3 font-medium">ใบสำคัญจ่าย</span>
+                    <i class="bi bi-arrow-left-right text-slate-400 w-5 text-center text-xl"></i>
+                    <span class="sidebar-text ml-3 font-medium">โอนย้ายสินค้าระหว่างสาขา</span>
                 </a>
 
                 <a href="#" id="nav-branch-receive" data-tooltip="ตรวจรับของเข้า"
@@ -229,17 +234,40 @@
                     <span class="sidebar-text ml-3 font-medium">ตรวจรับของเข้า</span>
                 </a>
 
-                <a href="#" id="nav-members" data-tooltip="สมาชิก"
+                <a href="#" id="nav-movements" data-tooltip="ประวัติการเคลื่อนไหว"
                     class="flex items-center px-3 py-3 rounded-xl text-slate-300 hover:bg-slate-700/50 hover:text-white transition-all group nav-menu-item">
-                    <i class="bi bi-people text-slate-400 w-5 text-center text-xl"></i>
-                    <span class="sidebar-text ml-3 font-medium">สมาชิก</span>
+                    <i class="bi bi-arrow-down-up text-slate-400 w-5 text-center text-xl"></i>
+                    <span class="sidebar-text ml-3 font-medium">ประวัติการเคลื่อนไหว</span>
+
                 </a>
 
-                <a href="#" id="nav-warranty-check" data-tooltip="เช็คประกัน"
+                <div
+                    class="sidebar-text nav-section-header pt-4 pb-2 px-3 text-md font-semibold text-slate-100 uppercase tracking-wider">
+                    บัญชีและการเงิน
+                </div>
+
+                <a href="#" id="nav-accounting" data-tooltip="ระบบบัญชีและการเงิน"
                     class="flex items-center px-3 py-3 rounded-xl text-slate-300 hover:bg-slate-700/50 hover:text-white transition-all group nav-menu-item">
-                    <i class="bi bi-shield-check text-slate-400 w-5 text-center text-xl"></i>
-                    <span class="sidebar-text ml-3 font-medium">เช็คประกัน</span>
+                    <i class="bi bi-cash-stack text-slate-400 w-5 text-center text-xl"></i>
+                    <span class="sidebar-text ml-3 font-medium">ระบบบัญชีและการเงิน</span>
                 </a>
+
+                <a href="#" id="nav-disbursement" data-tooltip="ใบสำคัญจ่าย"
+                    class="flex items-center px-3 py-3 rounded-xl text-slate-300 hover:bg-slate-700/50 hover:text-white transition-all group nav-menu-item">
+                    <i class="bi bi-wallet text-slate-400 w-5 text-center text-xl"></i>
+                    <span class="sidebar-text ml-3 font-medium">ใบสำคัญจ่าย</span>
+                </a>
+
+                <a href="#" id="nav-accounting-settings" data-tooltip="ตั้งค่าผังบัญชี"
+                    class="flex items-center px-3 py-3 rounded-xl text-slate-300 hover:bg-slate-700/50 hover:text-white transition-all group nav-menu-item">
+                    <i class="bi bi-diagram-3 text-slate-400 w-5 text-center text-xl"></i>
+                    <span class="sidebar-text ml-3 font-medium">ตั้งค่าผังบัญชี</span>
+                </a>
+
+                <div id="nav-settings-header"
+                    class="sidebar-text nav-section-header pt-4 pb-2 px-3 text-md font-semibold text-slate-100 uppercase tracking-wider">
+                    ตั้งค่าระบบ
+                </div>
 
                 <a href="#" id="nav-personnel" data-tooltip="จัดการพนักงาน"
                     class="flex items-center px-3 py-3 rounded-xl text-slate-300 hover:bg-slate-700/50 hover:text-white transition-all group nav-menu-item">
@@ -253,21 +281,16 @@
                     <span class="sidebar-text ml-3 font-medium">จัดการสาขา</span>
                 </a>
 
-                <div id="nav-settings-header"
-                    class="sidebar-text pt-4 pb-2 px-3 text-md font-semibold text-slate-100 uppercase tracking-wider">
-                    การตั้งค่า
-                </div>
+                <a href="#" id="nav-roles" data-tooltip="จัดการสิทธิ์ใช้งาน"
+                    class="flex items-center px-3 py-3 rounded-xl text-slate-300 hover:bg-slate-700/50 hover:text-white transition-all group nav-menu-item">
+                    <i class="bi bi-key text-slate-400 w-5 text-center text-xl"></i>
+                    <span class="sidebar-text ml-3 font-medium">จัดการสิทธิ์ใช้งาน</span>
+                </a>
 
                 <a href="#" id="nav-settings" data-tooltip="การตั้งค่าระบบ"
                     class="flex items-center px-3 py-3 rounded-xl text-slate-300 hover:bg-slate-700/50 hover:text-white transition-all group nav-menu-item">
                     <i class="bi bi-gear text-slate-400 w-5 text-center text-xl"></i>
                     <span class="sidebar-text ml-3 font-medium">การตั้งค่าระบบ</span>
-                </a>
-
-                <a href="#" id="nav-roles" data-tooltip="จัดการสิทธิ์ใช้งาน"
-                    class="flex items-center px-3 py-3 rounded-xl text-slate-300 hover:bg-slate-700/50 hover:text-white transition-all group nav-menu-item">
-                    <i class="bi bi-key text-slate-400 w-5 text-center text-xl"></i>
-                    <span class="sidebar-text ml-3 font-medium">จัดการสิทธิ์ใช้งาน</span>
                 </a>
 
                 <a href="#" id="nav-audit-logs" data-tooltip="ประวัติกิจกรรมระบบ"
@@ -305,20 +328,20 @@
                     <button
                         class="hidden sm:flex items-center gap-2 bg-surface-chip hover:bg-surface-tile-2 text-ink px-4 py-2 rounded-md transition-colors">
                         <i class="bi bi-geo-alt text-md pt-1 "></i>
-                        <span id="topbar-user-branch" class="text-[15px] font-medium mt-1">กำลังโหลด...</span>
+                        <span id="topbar-user-branch" class="text-[15px] font-medium ">กำลังโหลด...</span>
                     </button>
 
                     <!-- Notifications -->
                     <button aria-label="การแจ้งเตือน"
                         class="relative text-body-muted hover:text-ink transition-colors focus:outline-none">
-                        <i class="fa-regular fa-bell text-2xl"></i> <span
+                        <img src="icon/bell.png" alt="" width="20"> <span
                             class="absolute -top-0.5 -right-0.6 w-2.5 h-2.5 bg-red-500 rounded-full border border-canvas"></span>
                     </button>
 
                     <!-- Theme Toggle -->
                     <button aria-label="สลับธีมสว่างหรือมืด"
-                        class="text-body-muted hover:text-ink transition-colors focus:outline-none">
-                        <i class="bi bi-sun text-2xl"></i> </button>
+                        class="text-body-muted hover:text-ink text-white focus:outline-none">
+                        <i class="bi bi-sun text-xl"></i> </button>
 
                     <!-- User Profile Container -->
                     <div id="user-profile-container" class="relative pl-5">
@@ -426,8 +449,9 @@
                 <div id="view-stock" class="hidden space-y-8 animate-fade-in">
                     <!-- Stock Header Section -->
                     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                        <div>
-                            <h3 class="text-4xl font-medium text-white">จัดการสต็อก</h3>
+                        <div class="flex items-center gap-4">
+                            <i class="bi bi-box-seam text-white w-5 text-2xl text-center"></i>
+                            <h3 class="text-2xl  text-white">จัดการสต็อก</h3>
                         </div>
                         <div class="flex items-center gap-3">
                             <button id="btn-add-product"
@@ -1515,7 +1539,7 @@
             <!-- Modal Header -->
             <div class="flex items-center justify-between mb-6 pb-2 border-b border-[#333333]">
                 <h3 class="text-lg font-medium text-white flex items-center gap-2">
-                    <i class="fa-solid fa-filter text-slate-400"></i> ตัวกรองคลังสินค้าอย่างละเอียด
+                    <i class="fa-solid fa-filter text-[#FFE169]"></i> ตัวกรองคลังสินค้าอย่างละเอียด
                 </h3>
                 <button aria-label="ปิด" id="btn-stock-filter-close" type="button"
                     class="text-red-500 hover:text-red-400 transition-colors">
@@ -3090,7 +3114,7 @@
                 </h3>
                 <button aria-label="ปิด" id="close-price-modal-btn"
                     class="modal-close-btn text-red-500  transition-colors p-2 rounded-lg cursor-pointer">
-                    <i class="fa-solid fa-xmark text-3xl"></i>
+                    <i class="fa-solid fa-xmark text-xl"></i>
                 </button>
             </div>
 
@@ -3114,7 +3138,7 @@
                         <div class="flex items-center justify-between gap-3">
                             <h4 class="text-sm font-bold text-white flex items-center gap-3">
                                 <i class="fa-solid fa-user text-w"></i>
-                                ข้อมูลลูกค้า / สมาชิก <span class="text-red-500">*</span>
+                                ข้อมูลลูกค้า / สมาชิก
                             </h4>
                             <button id="btn-pos-add-member"
                                 class="shrink-0 text-xs px-3 py-1.5 bg-[#444] hover:bg-[#555] text-white rounded-lg transition-all flex items-center gap-1.5 cursor-pointer border border-[#555]">
@@ -3219,11 +3243,12 @@
                                 <i class="fa-solid fa-money-bill text-white"></i> วิธีชำระเงิน
                             </label>
                             <select id="modal-pos-payment-method" class="sr-only" tabindex="-1" aria-hidden="true">
-                                <option value="" disabled selected>-- เลือกช่องทาง --</option>
-                                <option value="ซื้อสด">ซื้อสด</option>
+                                <option value="" disabled>-- เลือกช่องทาง --</option>
+                                <option value="ซื้อสด" selected>ซื้อสด</option>
                                 <option value="จัดไฟแนนซ์">จัดไฟแนนซ์</option>
                             </select>
-                            <div class="flex gap-2" role="group" aria-label="วิธีชำระเงิน">
+                            <div id="pos-payment-method-group" class="flex gap-2 rounded-lg transition-all" role="group"
+                                aria-label="วิธีชำระเงิน">
                                 <!-- Using text-[#FFE169] and border-[#FFE169] for active state, handled in JS ideally, but let's set default classes here -->
                                 <button type="button" data-value="ซื้อสด"
                                     class="pos-payment-toggle-btn flex-1 py-2.5 rounded-lg text-sm font-bold transition-all border border-[#FFE169] text-[#FFE169] bg-[#222] cursor-pointer">
@@ -3234,6 +3259,10 @@
                                     จัดไฟแนนซ์
                                 </button>
                             </div>
+                            <p id="pos-payment-method-error"
+                                class="hidden text-red-500 text-xs mt-1.5 flex items-center gap-1.5">
+                                <i class="fa-solid fa-circle-exclamation"></i> กรุณากรอกข้อมูล
+                            </p>
                         </div>
 
                         <!-- A: BLOCK BUY CASH DETAILS -->
@@ -3261,6 +3290,10 @@
                                     </div>
                                 </div>
                             </div>
+                            <p id="pos-cash-amount-error"
+                                class="hidden text-red-500 text-xs mt-1.5 flex items-center gap-1.5">
+                                <i class="fa-solid fa-circle-exclamation"></i> กรุณากรอกข้อมูล
+                            </p>
                         </div>
 
                         <!-- B: BLOCK FINANCE DETAILS -->
@@ -3274,6 +3307,10 @@
                                     class="w-full px-4 py-3 rounded-lg bg-[#222] border border-[#444] text-white text-sm focus:outline-none focus:border-[#FFE169] transition-all">
                                     <option value="" disabled selected>เลือกบริษัทจัดไฟแนนซ์...</option>
                                 </select>
+                                <p id="pos-finance-company-error"
+                                    class="hidden text-red-500 text-xs mt-1.5 flex items-center gap-1.5">
+                                    <i class="fa-solid fa-circle-exclamation"></i> กรุณากรอกข้อมูล
+                                </p>
                             </div>
 
                             <!-- Row 2: Down Payment Splits -->
@@ -3375,6 +3412,10 @@
                                         </div>
                                     </div>
                                 </div>
+                                <p id="pos-finance-down-amount-error"
+                                    class="hidden text-red-500 text-xs mt-1.5 flex items-center gap-1.5">
+                                    <i class="fa-solid fa-circle-exclamation"></i> กรุณากรอกข้อมูล
+                                </p>
                             </div>
                         </div>
                     </div>
@@ -3453,7 +3494,7 @@
 
                         <!-- Action Buttons -->
                         <button id="confirm-price-checkout-btn"
-                            class="w-full py-4 rounded-sm bg-[#2DAA23] hover:bg-[#258e1c] text-white font-bold text-lg transition-all flex items-center justify-center cursor-pointer">
+                            class="w-full py-4 rounded-sm bg-[#117200] hover:bg-[#258e1c] text-white font-bold text-lg transition-all flex items-center justify-center cursor-pointer">
                             ชำระเงิน
                         </button>
                         <!-- cancel-price-modal-btn can be omitted or hidden as there is an X button at the top -->
