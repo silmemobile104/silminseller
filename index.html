@@ -14,19 +14,19 @@
     <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
 
     <link rel="icon" type="image/svg+xml" href="logo.png">
-    <link rel="stylesheet" href="tailwind.css?v=8">
+    <link rel="stylesheet" href="tailwind.css?v=11">
     <!-- xlsx ถูกย้ายไปโหลดแบบ on-demand ตอนเปิด modal นำเข้า Excel แล้ว (ดู ensureXlsxLoaded ใน script.js)
          เดิมโหลดตรงนี้แบบ render-blocking ทุกครั้งที่เข้าเว็บ ทั้งที่ใช้แค่ฟีเจอร์เดียว -->
     <!-- ไอคอน: self-host + ตัดเหลือเฉพาะที่ใช้จริง (Font Awesome 144 + Bootstrap Icons 28)
          จากเดิมโหลด CSS เต็มชุด 2 เจ้าจาก CDN (~200KB, ~2,000 ไอคอน) เหลือ ~24KB
          ⚠️ เพิ่มไอคอนใหม่ที่ไม่เคยใช้มาก่อน ต้องรัน `npm run build:icons` ก่อน deploy -->
-    <link rel="stylesheet" href="vendor/icons/icons.css?v=5">
+    <link rel="stylesheet" href="vendor/icons/icons.css?v=6">
     <!-- preload ฟอนต์ไอคอนที่ subset แล้ว (รวมกันเหลือ ~17KB) เพื่อตัด waterfall
          ปกติเบราว์เซอร์ต้องรอ parse CSS จบก่อนถึงจะรู้ว่าต้องโหลดฟอนต์ -->
     <!-- ⚠️ ?v= ต้องตรงกับ FONT_VERSION ใน tools/build-icons.js เป๊ะๆ
          ถ้าไม่ตรง เบราว์เซอร์จะมองเป็นคนละไฟล์แล้วโหลดฟอนต์ซ้ำสองรอบ -->
-    <link rel="preload" as="font" type="font/woff2" crossorigin href="vendor/icons/webfonts/fa-solid-900.woff2?v=5">
-    <link rel="preload" as="font" type="font/woff2" crossorigin href="vendor/icons/webfonts/bootstrap-icons.woff2?v=5">
+    <link rel="preload" as="font" type="font/woff2" crossorigin href="vendor/icons/webfonts/fa-solid-900.woff2?v=6">
+    <link rel="preload" as="font" type="font/woff2" crossorigin href="vendor/icons/webfonts/bootstrap-icons.woff2?v=6">
     <!-- Prompt: โหลดเฉพาะน้ำหนักที่ใช้จริง (300-900 + italic 400) — ตัดจาก 18 variants เหลือ 8
          หมายเหตุ: ฟอนต์ Inter ถูกลบออกแล้ว เพราะ style.css บังคับ Prompt กับทุก element (* selector) จึงไม่เคยถูกใช้ -->
     <link
@@ -322,10 +322,10 @@
                     </button>
                     <!-- Global System Information: เหมือนกันทุกหน้า ห้ามใส่ชื่อหน้า (ชื่อหน้าอยู่ที่ Page Header เท่านั้น) -->
                     <div id="navbar-global-info"
-                        class="hidden md:flex items-center gap-2.5 lg:gap-3 min-w-0 text-[16px] text-[#C9C9C9] select-none">
+                        class="hidden md:flex items-center gap-2.5 lg:gap-3 min-w-0 text-[14px] text-[#C9C9C9] select-none">
                         <span class="flex items-center gap-1.5 shrink-0">
                             <span id="navbar-status-dot" class="w-2 h-2 rounded-full bg-emerald-500 shrink-0"></span>
-                            <span id="navbar-status-text" class="font-medium whitespace-nowrap">ระบบออนไลน์</span>
+                            <span id="navbar-status-text" class=" whitespace-nowrap">ระบบออนไลน์</span>
                         </span>
                         <span class="text-[#313131] shrink-0" aria-hidden="true">|</span>
                         <span class="flex items-center gap-1.5 shrink-0 whitespace-nowrap">
@@ -364,9 +364,8 @@
                             <!-- User Details (Left side) -->
                             <div class="hidden sm:flex flex-col text-right">
                                 <span id="topbar-user-name"
-                                    class="font-medium text-ink text-[18px] leading-tight">กำลังโหลด...</span>
-                                <span id="topbar-user-role"
-                                    class="text-[12px] text-body-muted font-medium">กำลังโหลด...</span>
+                                    class=" text-ink text-[18px] leading-tight">กำลังโหลด...</span>
+                                <span id="topbar-user-role" class="text-[12px] text-body-muted ">กำลังโหลด...</span>
                             </div>
 
                             <!-- Avatar (Right side) -->
@@ -411,14 +410,14 @@
                                         <i class="fa-solid fa-store w-5 text-center text-body-muted"></i>
                                         สาขา
                                     </span>
-                                    <span id="popup-user-branch" class="font-medium text-ink">กำลังโหลด...</span>
+                                    <span id="popup-user-branch" class=" text-ink">กำลังโหลด...</span>
                                 </div>
                                 <div class="flex items-center justify-between">
                                     <span class="flex items-center gap-2 text-body-muted">
                                         <i class="fa-solid fa-shield w-5 text-center text-body-muted"></i>
                                         สิทธิ์การใช้งาน
                                     </span>
-                                    <span id="popup-user-role" class="font-medium text-ink">กำลังโหลด...</span>
+                                    <span id="popup-user-role" class=" text-ink">กำลังโหลด...</span>
                                 </div>
                             </div>
 
@@ -1307,7 +1306,7 @@
     </div>
     <!-- PRINT BARCODE MODAL -->
     <div id="barcode-modal"
-        class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 backdrop-blur-sm opacity-0 pointer-events-none transition-opacity duration-300 px-4">
+        class="fixed inset-0 z-50 flex items-center justify-center  backdrop-blur-sm opacity-0 pointer-events-none transition-opacity duration-300 px-4">
         <div class="absolute inset-0" id="barcode-modal-backdrop"></div>
         <div
             class="modal-content relative w-full max-w-md max-h-[90vh] bg-slate-800 rounded-3xl shadow-2xl border border-slate-700 flex flex-col transform scale-95 transition-transform duration-300">
@@ -1940,12 +1939,12 @@
     </div>
     <!-- EXCEL IMPORT MODAL -->
     <div id="excel-import-modal"
-        class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 backdrop-blur-sm opacity-0 pointer-events-none transition-opacity duration-300 p-4">
+        class="fixed inset-0 z-50 flex items-center justify-center  backdrop-blur-sm opacity-0 pointer-events-none transition-opacity duration-300 p-4">
         <div
             class="modal-content relative w-[95%] md:w-[900px] max-h-[90vh] overflow-y-auto p-6 md:p-8 bg-slate-800 rounded-2xl shadow-2xl border border-slate-700">
             <!-- Modal Header -->
             <div class="flex items-center justify-between mb-6 pb-4 border-b border-slate-700">
-                <h3 class="text-2xl font-bold flex items-center gap-2">
+                <h3 class="text-2xl font-bold text-white flex items-center gap-2">
                     <i class="fa-solid fa-file-excel text-emerald-500"></i> นำเข้าสินค้าผ่าน Excel
                 </h3>
                 <button aria-label="ปิด" id="close-excel-modal-btn" type="button"
@@ -2119,7 +2118,7 @@
                             <i class="fa-solid fa-cloud-arrow-up text-3xl"></i>
                         </div>
                         <div class="space-y-1">
-                            <p class="text-sm font-semibold">ลากไฟล์ Excel มาวางที่นี่ หรือ <span
+                            <p class="text-sm font-semibold text-white">ลากไฟล์ Excel มาวางที่นี่ หรือ <span
                                     class="text-emerald-400 group-hover:underline">คลิกเพื่อเลือกไฟล์</span></p>
                             <p class="text-xs text-slate-400">รองรับไฟล์ประเภท .xlsx และ .xls เท่านั้น</p>
                         </div>
@@ -2189,8 +2188,7 @@
                     </div>
                 </div>
                 <!-- Import Progress Overlay (Shown during importing) -->
-                <div id="excel-import-progress-box"
-                    class="hidden bg-slate-900/80 border border-slate-700 p-6 rounded-2xl space-y-4">
+                <div id="excel-import-progress-box" class="hidden  border border-slate-700 p-6 rounded-2xl space-y-4">
                     <div class="flex items-center justify-between text-xs text-slate-300">
                         <span id="excel-progress-text" class="font-medium">กำลังเตรียมการนำเข้าสินค้า...</span>
                         <span id="excel-progress-percent" class="font-bold text-emerald-400">0%</span>
@@ -3756,74 +3754,73 @@
     <div id="modal-po-view"
         class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm opacity-0 pointer-events-none transition-all duration-300 p-4">
         <div
-            class="modal-content relative w-full max-w-4xl max-h-[90vh] flex flex-col bg-canvas-elevated rounded-lg  transform scale-95 transition-transform duration-300">
-            <div class="p-6 border-b border-hairline flex justify-between items-center bg-canvas-elevated rounded-t-lg">
-                <h3 class="text-xl font-bold text-ink flex items-center gap-3">
-                    <div class="w-10 h-10 rounded-md bg-surface-chip flex items-center justify-center">
-                        <i class="fa-solid fa-file-lines text-body-muted"></i>
-                    </div> รายละเอียดใบสั่งซื้อ PO: <span id="view-po-number" class="text-ink font-mono"></span>
+            class="modal-content relative w-full max-w-4xl max-h-[90vh] flex flex-col bg-[#18181B] rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.5)] border border-[#4D4D4D] transform scale-95 transition-transform duration-300">
+            <div class="p-6 border-b border-[#333333] flex justify-between items-center bg-[#18181B] rounded-t-2xl shrink-0">
+                <h3 class="text-lg font-medium text-white flex items-center gap-2">
+                    <i class="fa-solid fa-file-lines text-[#FFE169] text-sm"></i> รายละเอียดใบสั่งซื้อ PO: <span
+                        id="view-po-number" class="font-mono"></span>
                 </h3>
                 <button aria-label="ปิด" id="btn-close-po-view"
-                    class="modal-close-btn text-body-muted hover:text-ink transition-colors p-2 rounded-sm hover:bg-surface-chip cursor-pointer">
+                    class="text-red-500 hover:text-red-400 transition-colors">
                     <i class="fa-solid fa-xmark text-xl"></i>
                 </button>
             </div>
             <div class="flex-1 overflow-y-auto p-6 space-y-6">
                 <!-- Info cards grid -->
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div class="bg-canvas p-4 rounded-lg ">
-                        <span class="text-xs text-body-muted font-bold block mb-1">ผู้จัดจำหน่าย (Supplier)</span>
-                        <span id="view-po-supplier" class="text-ink font-medium text-sm flex items-center gap-1.5"><i
-                                class="fa-solid fa-building text-body-muted text-xs"></i> -</span>
+                    <div class="bg-[#27272A] border border-[#3F3F46] p-4 rounded-xl">
+                        <span class="text-slate-200 text-xs font-medium block mb-1.5">ผู้จัดจำหน่าย (Supplier)</span>
+                        <span id="view-po-supplier" class="text-white font-medium text-sm flex items-center gap-1.5"><i
+                                class="fa-solid fa-building text-white/70 text-xs"></i> -</span>
                     </div>
-                    <div class="bg-canvas p-4 rounded-lg ">
-                        <span class="text-xs text-body-muted font-bold block mb-1">สาขาปลายทาง (Branch)</span>
-                        <span id="view-po-branch" class="text-ink font-medium text-sm flex items-center gap-1.5"><i
-                                class="fa-solid fa-location-dot text-body-muted text-xs"></i> -</span>
+                    <div class="bg-[#27272A] border border-[#3F3F46] p-4 rounded-xl">
+                        <span class="text-slate-200 text-xs font-medium block mb-1.5">สาขาปลายทาง (Branch)</span>
+                        <span id="view-po-branch" class="text-white font-medium text-sm flex items-center gap-1.5"><i
+                                class="fa-solid fa-location-dot text-white/70 text-xs"></i> -</span>
                     </div>
-                    <div class="bg-canvas p-4 rounded-lg ">
-                        <span class="text-xs text-body-muted font-bold block mb-1">สถานะปัจจุบัน (Status)</span>
+                    <div class="bg-[#27272A] border border-[#3F3F46] p-4 rounded-xl">
+                        <span class="text-slate-200 text-xs font-medium block mb-1.5">สถานะปัจจุบัน (Status)</span>
                         <span id="view-po-status"
-                            class="inline-flex px-2.5 py-0.5 rounded-full text-xs font-semibold border bg-surface-chip text-body-muted border-hairline">-</span>
+                            class="inline-flex px-2.5 py-0.5 rounded-full text-xs font-semibold border bg-white/5 text-slate-300 border-white/10">-</span>
                     </div>
                 </div>
                 <div class="space-y-3">
-                    <h4 class="text-sm font-bold text-body-muted flex items-center gap-1.5"><i
-                            class="fa-solid fa-cubes text-body-muted"></i> รายการสินค้าและยอดตรวจรับ</h4>
+                    <label class="text-slate-200 font-medium flex items-center gap-2 text-xs"><i
+                            class="fa-solid fa-cubes text-white"></i> รายการสินค้าและยอดตรวจรับ</label>
                     <div id="view-po-items" class="space-y-4 font-normal">
                         <!-- Dynamic PO items read-only list -->
                     </div>
                 </div>
-                <div id="view-po-payment-section" class="space-y-3 pt-4 border-t border-hairline">
-                    <h4 class="text-sm font-bold text-body-muted flex items-center gap-1.5"><i
-                            class="fa-solid fa-receipt text-amber-400"></i> รายละเอียดการชำระเงิน</h4>
+                <div id="view-po-payment-section" class="space-y-3 pt-4 border-t border-[#3F3F46]">
+                    <label class="text-slate-200 font-medium flex items-center gap-2 text-xs"><i
+                            class="fa-solid fa-receipt text-[#FFE169]"></i> รายละเอียดการชำระเงิน</label>
                     <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                        <div class="bg-canvas p-4 rounded-lg ">
-                            <span class="text-xs text-body-muted font-bold block mb-1">สถานะชำระเงิน</span>
-                            <span id="view-po-pay-status" class="text-ink font-medium text-sm">-</span>
+                        <div class="bg-[#27272A] border border-[#3F3F46] p-4 rounded-xl">
+                            <span class="text-slate-200 text-xs font-medium block mb-1.5">สถานะชำระเงิน</span>
+                            <span id="view-po-pay-status" class="text-white font-medium text-sm">-</span>
                         </div>
-                        <div class="bg-canvas p-4 rounded-lg ">
-                            <span class="text-xs text-body-muted font-bold block mb-1">ยอดจ่ายจริงแล้ว</span>
+                        <div class="bg-[#27272A] border border-[#3F3F46] p-4 rounded-xl">
+                            <span class="text-slate-200 text-xs font-medium block mb-1.5">ยอดจ่ายจริงแล้ว</span>
                             <span id="view-po-pay-paid" class="text-emerald-400 font-bold text-sm font-mono">-</span>
                         </div>
-                        <div class="bg-canvas p-4 rounded-lg ">
-                            <span class="text-xs text-body-muted font-bold block mb-1">ส่วนลดรวม</span>
+                        <div class="bg-[#27272A] border border-[#3F3F46] p-4 rounded-xl">
+                            <span class="text-slate-200 text-xs font-medium block mb-1.5">ส่วนลดรวม</span>
                             <span id="view-po-pay-discount" class="text-rose-400 font-bold text-sm font-mono">-</span>
                         </div>
-                        <div class="bg-canvas p-4 rounded-lg ">
-                            <span class="text-xs text-body-muted font-bold block mb-1">ยอดคงเหลือค้างจ่าย</span>
+                        <div class="bg-[#27272A] border border-[#3F3F46] p-4 rounded-xl">
+                            <span class="text-slate-200 text-xs font-medium block mb-1.5">ยอดคงเหลือค้างจ่าย</span>
                             <span id="view-po-pay-outstanding"
                                 class="text-amber-400 font-bold text-sm font-mono">-</span>
                         </div>
                     </div>
                     <div id="view-po-payments-history-container" class="space-y-2 pt-2 hidden">
-                        <span class="text-xs text-body-muted font-bold block"><i
-                                class="fa-solid fa-clock-rotate-left mr-1 text-body-muted"></i>ประวัติการจ่ายเงินสด
+                        <span class="text-slate-200 text-xs font-medium block"><i
+                                class="fa-solid fa-clock-rotate-left mr-1 text-white/70"></i>ประวัติการจ่ายเงินสด
                             (แต่ละรอบ)</span>
-                        <div class="overflow-x-auto rounded-md ">
+                        <div class="overflow-x-auto rounded-xl border border-[#3F3F46]">
                             <table class="w-full text-left border-collapse text-xs">
                                 <thead>
-                                    <tr class="bg-canvas text-body-muted border-b border-hairline">
+                                    <tr class="bg-[#1a1a1a] text-slate-300 border-b border-[#3F3F46]">
                                         <th class="p-3 font-semibold">รอบที่</th>
                                         <th class="p-3 font-semibold">วันที่จ่าย</th>
                                         <th class="p-3 font-semibold">เลขที่ธุรกรรม</th>
@@ -3831,7 +3828,7 @@
                                         <th class="p-3 font-semibold text-right">ผู้บันทึก</th>
                                     </tr>
                                 </thead>
-                                <tbody id="view-po-payments-history-rows" class="text-body-muted font-normal">
+                                <tbody id="view-po-payments-history-rows" class="text-slate-300 font-normal">
                                     <!-- Dynamic rows -->
                                 </tbody>
                             </table>
@@ -3839,12 +3836,12 @@
                     </div>
                 </div>
             </div>
-            <div class="p-6 border-t border-hairline bg-canvas-elevated rounded-b-lg flex gap-3">
+            <div class="p-6 border-t border-[#333333] bg-[#18181B] rounded-b-2xl flex gap-3 shrink-0">
                 <button id="btn-close-po-view-bottom"
-                    class="flex-1 py-3 bg-surface-chip hover:bg-surface-tile-2 text-body-muted font-bold rounded-pill transition-all">
+                    class="flex-1 py-3 rounded-xl bg-[#E4E4E7] text-[#18181B] font-bold hover:bg-white transition-colors">
                     ปิดหน้าต่าง </button>
                 <button id="btn-edit-po-from-view"
-                    class="flex-1 py-3 bg-primary hover:bg-primary-pressed text-on-primary font-bold rounded-pill transition-all hidden">
+                    class="flex-1 py-3 rounded-xl bg-[#FFE169] text-[#333333] font-bold hover:bg-[#E2B93C] transition-colors hidden">
                     <i class="fa-solid fa-pen-to-square mr-1.5"></i> แก้ไขใบสั่งซื้อ </button>
             </div>
         </div>
@@ -4720,7 +4717,7 @@
     <!-- defer: ปล่อยให้ parse HTML จบก่อนค่อย execute
          ปลอดภัยเพราะทั้งไฟล์ห่ออยู่ใน DOMContentLoaded listener อยู่แล้ว
          และสคริปต์ defer จะ execute ก่อน event DOMContentLoaded ยิงเสมอ -->
-    <script defer src="script.js?v=pos_no_kebab_v10"></script>
+    <script defer src="script.js?v=single_session_expiry_toast_v1"></script>
 </body>
 
 </html>

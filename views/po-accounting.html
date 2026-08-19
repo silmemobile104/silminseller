@@ -426,15 +426,17 @@
 
 <div id="view-accounting-po">
     <!-- Custom Header Area matching mockup -->
-    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-        <h3 class="text-2xl font-bold text-ink">
-            ระบบสั่งซื้อ (PO)
-        </h3>
-        <div>
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+        <div class="flex items-center gap-4">
+            <i class="bi bi-cart-plus text-white w-5 text-2xl text-center"></i>
+            <h3 class="text-2xl  text-white">ระบบสั่งซื้อ (PO)</h3>
+        </div>
+        <div class="flex items-center gap-3">
             <!-- Proxy button to trigger the hidden Create PO tab -->
             <button type="button" onclick="document.getElementById('tab-btn-create-po').click()"
-                class="px-5 py-2.5 rounded-md text-sm font-semibold bg-primary text-black hover:bg-primary-pressed transition-colors flex items-center gap-2">
-                <i class="fa-solid fa-plus"></i> สร้างใบสั่งซื้อ
+                class="px-4 py-2 bg-[#FFE169] relative cursor-pointer hover:bg-[#E2B93C] text-[#333333] font-medium rounded-xl shadow-lg shadow-cyan-500/20 transition-all flex items-center gap-2 w-fit glow-button">
+                <i class="fa-solid fa-plus"></i>
+                <p>สร้างใบสั่งซื้อ</p>
             </button>
         </div>
     </div>
@@ -451,18 +453,9 @@
         #tab-content-po-history {
             display: block !important;
         }
-
-        /* Properly hide modal when not active */
-        #tab-content-create-po.hidden {
-            display: none !important;
-        }
-
-        #tab-content-create-po {
-            display: flex !important;
-        }
     </style>
     <div id="tab-content-create-po"
-        class="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm hidden items-center justify-center p-4">
+        class="fixed inset-0 z-[100] backdrop-blur-sm opacity-0 pointer-events-none transition-opacity duration-300 flex items-center justify-center p-4">
         <!-- Modal Container (Matching Add New Product 100%) -->
         <div
             class="modal-content relative w-[95%] md:w-[650px] max-h-[90vh] overflow-y-auto p-8 bg-[#18181B] rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.5)] border border-[#4D4D4D] custom-scrollbar">
@@ -483,49 +476,54 @@
 
             <!-- Form content -->
             <div class="space-y-4">
-                <form id="form-create-po" class="space-y-4">
+                <form id="form-create-po" novalidate class="space-y-5 text-sm">
 
                     <!-- Dropdowns -->
-                    <div class="grid grid-cols-2 gap-3">
-                        <div>
-                            <label class="text-[11px] font-medium text-white/60 mb-1 flex items-center gap-1.5">
-                                <i class="fa-solid fa-building-user text-[10px]"></i> Supplier | แหล่งที่มา
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                        <div class="space-y-2">
+                            <label class="text-slate-200 font-medium flex items-center gap-2 text-xs">
+                                <i class="fa-solid fa-building-user text-white"></i> Supplier | แหล่งที่มา <span
+                                    class="text-red-500">*</span>
                             </label>
                             <div class="relative">
                                 <select id="po-supplier" required
-                                    class="w-full px-3 py-2 rounded-lg bg-[#1a1a1a] border border-white/10 text-white/80 focus:border-[#FFE169] focus:outline-none transition-all text-xs appearance-none">
+                                    class="w-full px-4 py-2.5 rounded-xl bg-[#27272A] border border-[#3F3F46] text-white focus:border-[#FFE169] focus:outline-none transition-all text-sm appearance-none pr-10">
                                     <option value="">-- เลือกผู้จัดจำหน่าย --</option>
                                 </select>
-                                <i
-                                    class="fa-solid fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-white/30 text-[10px] pointer-events-none"></i>
+                                <div
+                                    class="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none text-slate-400">
+                                    <i class="fa-solid fa-chevron-down text-xs"></i>
+                                </div>
                             </div>
                         </div>
-                        <div>
-                            <label class="text-[11px] font-medium text-white/60 mb-1 flex items-center gap-1.5">
-                                <i class="fa-solid fa-location-dot text-[10px]"></i> สาขาปลายทาง <span
+                        <div class="space-y-2">
+                            <label class="text-slate-200 font-medium flex items-center gap-2 text-xs">
+                                <i class="fa-solid fa-location-dot text-white"></i> สาขาปลายทาง <span
                                     class="text-red-500">*</span>
                             </label>
                             <div class="relative">
                                 <select id="po-branch" required
-                                    class="w-full px-3 py-2 rounded-lg bg-[#1a1a1a] border border-white/10 text-white/80 focus:border-[#FFE169] focus:outline-none transition-all text-xs appearance-none">
+                                    class="w-full px-4 py-2.5 rounded-xl bg-[#27272A] border border-[#3F3F46] text-white focus:border-[#FFE169] focus:outline-none transition-all text-sm appearance-none pr-10">
                                     <option value="">-- เลือกสาขาปลายทาง --</option>
                                 </select>
-                                <i
-                                    class="fa-solid fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-white/30 text-[10px] pointer-events-none"></i>
+                                <div
+                                    class="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none text-slate-400">
+                                    <i class="fa-solid fa-chevron-down text-xs"></i>
+                                </div>
                             </div>
                         </div>
                     </div>
 
-                    <div>
-                        <label class="text-[11px] font-medium text-white/60 mb-1.5 flex items-center gap-1.5">
-                            <i class="fa-solid fa-box-open text-[10px]"></i> รายการสินค้า
+                    <div class="space-y-2">
+                        <label class="text-slate-200 font-medium flex items-center gap-2 text-xs">
+                            <i class="fa-solid fa-box-open text-white"></i> รายการสินค้า
                         </label>
                         <div id="po-items-container" class="space-y-3">
                             <!-- Dynamic rows will be inserted here by JS -->
                         </div>
 
                         <button type="button" id="btn-add-po-item"
-                            class="w-full mt-3 py-2 bg-[#1f1f1f] hover:bg-[#2a2a2a] text-white/60 text-xs font-semibold rounded-lg border border-white/5 transition-colors">
+                            class="w-full mt-3 py-2.5 bg-[#27272A] hover:bg-[#3F3F46] text-slate-300 hover:text-white text-sm font-semibold rounded-xl border border-[#3F3F46] transition-colors">
                             + เพิ่มรายการ
                         </button>
                     </div>
@@ -537,12 +535,17 @@
                         <span id="po-grand-total">0</span>
                     </div>
 
-                    <div class="pt-2">
+                    <!-- Actions -->
+                    <div class="flex items-center justify-center gap-4 pt-6 mt-2 pb-2">
+                        <button type="button" id="btn-cancel-edit-po"
+                            class="hidden px-10 py-2.5 rounded-xl bg-[#E4E4E7] text-[#18181B] text-[15px] font-bold hover:bg-white transition-colors">
+                            ยกเลิก
+                        </button>
                         <button type="submit" id="btn-submit-po"
-                            class="w-full py-2.5 bg-[#FFE169] hover:bg-yellow-400 text-black font-bold text-sm rounded-lg transition-all flex justify-center items-center gap-2">
+                            class="px-12 py-2.5 rounded-xl bg-[#FFE169] text-[#333333] text-[15px] font-bold hover:bg-[#E2B93C] transition-colors flex items-center gap-2">
+                            <i class="fa-regular fa-floppy-disk"></i>
                             <span id="text-submit-po">สร้างใบสั่งซื้อ</span>
                         </button>
-                        <button type="button" id="btn-cancel-edit-po" class="hidden"></button>
                     </div>
                 </form>
             </div>
@@ -553,95 +556,83 @@
     <div id="tab-content-po-history" class="space-y-6 animate-fade-in">
 
         <!-- Main Card matching mockup -->
-        <div class="bg-canvas-elevated rounded-xl border border-hairline p-4 md:p-6 overflow-hidden">
+        <div class="bg-[#4D4D4D]/40 rounded-2xl shadow-lg overflow-hidden backdrop-blur-sm">
             <!-- Filters Header -->
-            <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-4">
-                <h4 class="text-lg font-bold text-ink flex items-center gap-2">
-                    <i class="fa-regular fa-clipboard text-body-muted"></i>
+            <div class="p-6 pb-0 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+                <h3 class="text-lg text-white flex items-center gap-2">
+                    <i class="fa-regular fa-clipboard"></i>
                     ประวัติการสั่งซื้อ
-                </h4>
+                </h3>
 
-                <div class="flex flex-wrap items-center gap-2.5">
+                <div class="flex flex-wrap items-center gap-2.5 relative w-full lg:w-auto">
                     <!-- Search -->
-                    <div class="relative w-full sm:w-48">
-                        <span
-                            class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-body-muted">
-                            <i class="fa-solid fa-magnifying-glass text-xs"></i>
-                        </span>
+                    <div class="relative group w-full sm:w-64 cursor-pointer shadow-lg rounded-[0.5rem] overflow-hidden backdrop-blur-sm">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <i class="fa-solid fa-search text-white group-focus-within:text-[#FFE169] transition-colors"></i>
+                        </div>
                         <input type="text" id="search-po-history" placeholder="ค้นหา..."
-                            class="w-full pl-8 pr-4 py-2 bg-surface-chip border border-divider-soft text-ink rounded-md focus:outline-none focus:border-primary-focus text-sm placeholder:text-body-muted">
+                            class="bg-transparent text-sm pl-10 pr-4 py-2 w-full text-white focus:outline-none focus:border-[#FFE169] focus:ring-1 focus:ring-[#FFE169] transition-all placeholder-white">
                     </div>
                     <!-- Status Filter -->
-                    <div class="relative w-full sm:w-36">
-                        <select id="filter-po-status"
-                            class="w-full px-3 py-2 pl-7 bg-surface-chip border border-divider-soft text-body-muted text-sm rounded-md focus:outline-none focus:border-primary-focus appearance-none cursor-pointer">
-                            <option value="">สถานะ: ทั้งหมด</option>
-                            <option value="รอจัดส่ง">สถานะ: รอจัดส่ง</option>
-                            <option value="สั่งซื้อแล้ว">สถานะ: สั่งซื้อแล้ว</option>
-                            <option value="กำลังตรวจรับ">สถานะ: กำลังตรวจรับ</option>
-                            <option value="รับของบางส่วน">สถานะ: รับของบางส่วน</option>
-                            <option value="รับของครบแล้ว">สถานะ: รับของครบแล้ว</option>
-                            <option value="ยกเลิก">สถานะ: ยกเลิก</option>
-                        </select>
-                        <i
-                            class="fa-solid fa-spinner absolute left-2.5 top-1/2 -translate-y-1/2 text-body-muted text-[10px]"></i>
-                    </div>
+                    <select id="filter-po-status"
+                        class="bg-[#4D4D4D]/40 rounded-2xl shadow-lg cursor-pointer text-sm rounded-[0.5rem] px-3 py-2 text-white focus:outline-none focus:border-[#FFE169] focus:ring-1 focus:ring-[#FFE169] w-full sm:w-auto [&>option]:bg-[#4D4D4D] [&>option:hover]:bg-[#FFE169] [&>option:hover]:text-[#333333] [&>option:checked]:bg-[#FFE169] [&>option:checked]:text-[#333333]">
+                        <option value="">สถานะ: ทั้งหมด</option>
+                        <option value="รอจัดส่ง">สถานะ: รอจัดส่ง</option>
+                        <option value="ของถึงสาขาแล้ว">สถานะ: ของถึงสาขาแล้ว</option>
+                        <option value="กำลังตรวจรับ">สถานะ: กำลังตรวจรับ</option>
+                        <option value="นำเข้าสำเร็จ">สถานะ: นำเข้าสำเร็จ</option>
+                        <option value="ยกเลิก">สถานะ: ยกเลิก</option>
+                    </select>
                     <!-- Branch Filter -->
-                    <div class="relative w-full sm:w-36">
-                        <select id="filter-po-branch"
-                            class="w-full px-3 py-2 pl-7 bg-surface-chip border border-divider-soft text-body-muted text-sm rounded-md focus:outline-none focus:border-primary-focus appearance-none cursor-pointer">
-                            <option value="">เลือกสาขา</option>
-                        </select>
-                        <i
-                            class="fa-solid fa-location-dot absolute left-2.5 top-1/2 -translate-y-1/2 text-body-muted text-[10px]"></i>
-                    </div>
+                    <select id="filter-po-branch"
+                        class="bg-[#4D4D4D]/40 rounded-2xl shadow-lg cursor-pointer text-sm rounded-[0.5rem] px-3 py-2 text-white focus:outline-none focus:border-[#FFE169] focus:ring-1 focus:ring-[#FFE169] w-full sm:w-auto [&>option]:bg-[#4D4D4D] [&>option:hover]:bg-[#FFE169] [&>option:hover]:text-[#333333] [&>option:checked]:bg-[#FFE169] [&>option:checked]:text-[#333333]">
+                        <option value="">เลือกสาขา</option>
+                    </select>
                     <!-- Supplier Filter -->
-                    <div class="relative w-full sm:w-36">
-                        <select id="filter-po-supplier"
-                            class="w-full px-3 py-2 pl-7 bg-surface-chip border border-divider-soft text-body-muted text-sm rounded-md focus:outline-none focus:border-primary-focus appearance-none cursor-pointer">
-                            <option value="">ซัพพลายเออร์</option>
-                        </select>
-                        <i
-                            class="fa-solid fa-truck-fast absolute left-2.5 top-1/2 -translate-y-1/2 text-body-muted text-[10px]"></i>
-                    </div>
+                    <select id="filter-po-supplier"
+                        class="bg-[#4D4D4D]/40 rounded-2xl shadow-lg cursor-pointer text-sm rounded-[0.5rem] px-3 py-2 text-white focus:outline-none focus:border-[#FFE169] focus:ring-1 focus:ring-[#FFE169] w-full sm:w-auto [&>option]:bg-[#4D4D4D] [&>option:hover]:bg-[#FFE169] [&>option:hover]:text-[#333333] [&>option:checked]:bg-[#FFE169] [&>option:checked]:text-[#333333]">
+                        <option value="">ซัพพลายเออร์</option>
+                    </select>
                     <!-- Hidden refresh button to keep JS working -->
                     <button type="button" id="btn-refresh-po-history" class="hidden"></button>
                 </div>
             </div>
 
             <!-- Active filters chip and count -->
-            <div class="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-4">
-                <div class="flex items-center gap-2" id="po-active-filters-container">
-                    <div
-                        class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-surface-chip border border-divider-soft text-xs text-body-muted">
-                        <i class="fa-solid fa-magnifying-glass text-[10px]"></i>
-                        <span id="po-active-filter-text">สถานะ:ทั้งหมด</span>
-                        <button type="button" class="ml-1 hover:text-ink"
-                            onclick="document.getElementById('filter-po-status').value=''; document.getElementById('search-po-history').value=''; document.getElementById('filter-po-branch').value=''; document.getElementById('filter-po-supplier').value=''; document.getElementById('search-po-history').dispatchEvent(new Event('input'));">
-                            <i class="fa-solid fa-xmark text-[10px]"></i>
-                        </button>
+            <div class="px-6 py-4">
+                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <div class="flex flex-wrap gap-2" id="po-active-filters-container">
+                        <div
+                            class="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-[#4D4D4D]/40 border border-[#3F3F46] text-sm text-white font-medium">
+                            <i class="fa-solid fa-magnifying-glass text-[10px]"></i>
+                            <span id="po-active-filter-text">สถานะ:ทั้งหมด</span>
+                            <button type="button" class="ml-1 hover:text-[#FFE169] transition-colors"
+                                onclick="document.getElementById('filter-po-status').value=''; document.getElementById('search-po-history').value=''; document.getElementById('filter-po-branch').value=''; document.getElementById('filter-po-supplier').value=''; document.getElementById('search-po-history').dispatchEvent(new Event('input'));">
+                                <i class="fa-solid fa-xmark text-[10px]"></i>
+                            </button>
+                        </div>
                     </div>
-                </div>
-                <div class="text-xs text-body-muted font-medium">
-                    สินค้าทั้งหมด <span id="po-history-total-count">0</span> รายการ
+                    <div class="text-xs text-white font-medium">
+                        สินค้าทั้งหมด <span id="po-history-total-count">0</span> รายการ
+                    </div>
                 </div>
             </div>
 
             <!-- PO History Table -->
-            <div class="overflow-x-auto -mx-4 md:-mx-6">
-                <table class="w-full text-left border-collapse">
-                    <thead class="bg-surface-tile-2 text-body-muted text-sm border-y border-hairline">
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-sm whitespace-nowrap border-collapse">
+                    <thead class="bg-[#4D4D4D]/40 text-white">
                         <tr>
-                            <th class="px-4 py-4 md:px-6 font-semibold whitespace-nowrap">วันที่สร้าง</th>
-                            <th class="px-4 py-4 md:px-6 font-semibold whitespace-nowrap">เลขที่ PO</th>
-                            <th class="px-4 py-4 md:px-6 font-semibold whitespace-nowrap">Supplier</th>
-                            <th class="px-4 py-4 md:px-6 font-semibold whitespace-nowrap">สาขาปลายทาง</th>
-                            <th class="px-4 py-4 md:px-6 font-semibold text-right whitespace-nowrap">ยอดรวม</th>
-                            <th class="px-4 py-4 md:px-6 font-semibold text-center whitespace-nowrap">สถานะ</th>
-                            <th class="px-4 py-4 md:px-6 font-semibold text-right whitespace-nowrap">จัดการ</th>
+                            <th class="px-6 py-4 font-semibold text-[15px]">วันที่สร้าง</th>
+                            <th class="px-6 py-4 font-semibold text-[15px]">เลขที่ PO</th>
+                            <th class="px-6 py-4 font-semibold text-[15px]">Supplier</th>
+                            <th class="px-6 py-4 font-semibold text-[15px]">สาขาปลายทาง</th>
+                            <th class="px-6 py-4 font-semibold text-[15px] text-right">ยอดรวม</th>
+                            <th class="px-6 py-4 font-semibold text-[15px] text-center">สถานะ</th>
+                            <th class="px-6 py-4 font-semibold text-[15px] text-right">จัดการ</th>
                         </tr>
                     </thead>
-                    <tbody id="table-body-po-history" class="divide-y divide-hairline">
+                    <tbody id="table-body-po-history" class="divide-y divide-[#464646]">
                         <!-- Dynamic rows will be rendered here by JS -->
                     </tbody>
                 </table>

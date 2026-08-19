@@ -40,8 +40,8 @@
         const container = document.getElementById('po-items-container');
 
         const row = document.createElement('div');
-        row.className = 'p-4 border border-white/10 rounded-xl relative po-item-row hover:border-[#FFE169]/30 transition-colors group bg-[#161616]';
-        
+        row.className = 'p-4 border border-[#3F3F46] rounded-xl relative po-item-row hover:border-[#FFE169]/50 transition-colors ';
+
         const typeChips = (window.masterDataCache?.productTypes || []).map(t => t.name);
         const colorData = window.masterDataCache?.productColors || [];
         const colorSwatches = colorData.map(c => c.name || c);
@@ -53,10 +53,6 @@
             
             <div class="flex flex-col gap-4">
                 <!-- Hidden inputs to keep original JS functional -->
-                <select name="po_item_name" class="hidden">
-                    <option value="" selected>-- เลือกชื่อสินค้า --</option>
-                    ${(window.masterDataCache?.productNames || []).map(x => `<option value="${x.name || x}">${x.name || x}</option>`).join('')}
-                </select>
                 <input type="hidden" name="po_item_code" value="">
                 <select name="po_item_category" class="hidden"><option value=""></option>${typeChips.map(t => `<option value="${t}">${t}</option>`).join('')}</select>
                 <select name="po_item_color" class="hidden"><option value=""></option>${colorSwatches.map(c => `<option value="${c}">${c}</option>`).join('')}</select>
@@ -65,41 +61,49 @@
                 <input type="checkbox" name="po_item_track_imei" class="hidden" id="track_imei_${id}">
 
                 <!-- ชื่อสินค้า -->
-                <div>
-                    <label class="text-[11px] font-medium text-white/60 mb-1.5 flex items-center gap-1.5"><i class="fa-solid fa-mobile-screen text-[10px]"></i> ชื่อสินค้า <span class="text-red-500">*</span></label>
-                    <input type="text" class="dummy-po-name w-full px-3 py-2.5 rounded-lg bg-[#1a1a1a] border border-white/10 text-white/90 focus:border-[#FFE169] focus:outline-none transition-all text-xs" placeholder="พิมพ์ชื่อสินค้า หรือเลือกรุ่น">
+                <div class="space-y-2">
+                    <label class="text-slate-200 font-medium flex items-center gap-2 text-xs"><i class="fa-solid fa-mobile-screen text-white"></i> ชื่อสินค้า <span class="text-red-500">*</span></label>
+                    <div class="relative">
+                        <select name="po_item_name" class="w-full px-4 py-2.5 rounded-xl bg-[#27272A] border border-[#3F3F46] text-white focus:border-[#FFE169] focus:outline-none transition-all text-sm appearance-none pr-10">
+                            <option value="" selected>-- เลือกชื่อสินค้า --</option>
+                            ${(window.masterDataCache?.productNames || []).map(x => `<option value="${x.name || x}">${x.name || x}</option>`).join('')}
+                        </select>
+                        <div class="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none text-slate-400">
+                            <i class="fa-solid fa-chevron-down text-xs"></i>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- หมวดหมู่สินค้า -->
-                <div>
-                    <label class="text-[11px] font-medium text-white/60 mb-2 flex items-center gap-1.5"><i class="fa-solid fa-layer-group text-[10px]"></i> หมวดหมู่สินค้า</label>
+                <div class="space-y-2">
+                    <label class="text-slate-200 font-medium flex items-center gap-2 text-xs"><i class="fa-solid fa-layer-group text-white"></i> หมวดหมู่สินค้า</label>
                     <div class="flex flex-wrap gap-2 po-chip-group" data-target="po_item_category">
-                        ${typeChips.map(t => `<button type="button" class="px-4 py-1.5 rounded-full border border-white/10 bg-[#1a1a1a] text-white/60 text-[10px] hover:border-[#FFE169]/50 transition-all po-chip" data-value="${t}">${t}</button>`).join('')}
+                        ${typeChips.map(t => `<button type="button" class="px-4 py-2.5 rounded-xl border border-[#3F3F46] bg-[#27272A] text-slate-300 text-sm hover:border-[#FFE169] hover:text-white transition-colors po-chip" data-value="${t}">${t}</button>`).join('')}
                     </div>
                 </div>
 
                 <!-- สี -->
-                <div class="relative group w-full">
-                    <label class="text-[11px] font-medium text-white/60 mb-2 flex items-center gap-1.5"><i class="fa-solid fa-palette text-[10px]"></i> สี <span class="text-red-500">*</span></label>
+                <div class="relative  w-full space-y-2">
+                    <label class="text-slate-200 font-medium flex items-center gap-2 text-xs"><i class="fa-solid fa-palette text-white"></i> สี <span class="text-red-500">*</span></label>
                     <div class="flex items-center gap-3 overflow-x-auto hide-scrollbar py-2 px-8 w-full po-chip-group scroll-smooth" data-target="po_item_color">
                         <style>#po-items-container .po-chip-group::-webkit-scrollbar { display: none; } #po-items-container .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }</style>
                         ${colorData.map(c => {
-                            const name = c.name || c;
-                            const hex = window.resolveProductColorHex ? window.resolveProductColorHex(name, c) : '#6b7280';
-                            return `
+            const name = c.name || c;
+            const hex = window.resolveProductColorHex ? window.resolveProductColorHex(name, c) : '#6b7280';
+            return `
                             <div class="flex flex-col items-center gap-1 cursor-pointer po-chip-color group shrink-0" data-value="${name}">
                                 <div class="w-7 h-7 rounded-full border-2 border-transparent group-hover:scale-110 transition-all flex items-center justify-center color-ring relative shadow-sm" style="background-color: ${hex}">
                                 </div>
-                                <span class="text-[10px] text-white/50 color-label transition-colors">${name}</span>
+                                <span class="text-[10px] text-slate-400 color-label transition-colors">${name}</span>
                             </div>`;
-                        }).join('')}
+        }).join('')}
                     </div>
-                    <button type="button" aria-label="ก่อนหน้า" onclick="this.parentElement.querySelector('.po-chip-group').scrollBy({left:-150, behavior:'smooth'})" class="absolute left-0 top-6 bottom-0 w-10 flex items-center justify-start bg-gradient-to-r from-[#161616] via-[#161616]/90 to-transparent pointer-events-none">
+                    <button type="button" aria-label="ก่อนหน้า" onclick="this.parentElement.querySelector('.po-chip-group').scrollBy({left:-150, behavior:'smooth'})" class="absolute left-0 top-6 bottom-0 w-10 flex items-center justify-start bg-gradient-to-r from-[#18181B] via-[#18181B]/90 to-transparent pointer-events-none">
                         <div class="w-5 h-5 bg-[#3F3F46] hover:bg-[#FFE169] rounded-full flex items-center justify-center pointer-events-auto cursor-pointer shadow-md text-white hover:text-[#333333] transition-colors hover:scale-110 shrink-0">
                             <i class="fa-solid fa-chevron-left text-[10px]"></i>
                         </div>
                     </button>
-                    <button type="button" aria-label="ถัดไป" onclick="this.parentElement.querySelector('.po-chip-group').scrollBy({left:150, behavior:'smooth'})" class="absolute right-0 top-6 bottom-0 w-10 flex items-center justify-end bg-gradient-to-l from-[#161616] via-[#161616]/90 to-transparent pointer-events-none">
+                    <button type="button" aria-label="ถัดไป" onclick="this.parentElement.querySelector('.po-chip-group').scrollBy({left:150, behavior:'smooth'})" class="absolute right-0 top-6 bottom-0 w-10 flex items-center justify-end bg-gradient-to-l from-[#18181B] via-[#18181B]/90 to-transparent pointer-events-none">
                         <div class="w-5 h-5 bg-[#FFE169] rounded-full flex items-center justify-center pointer-events-auto cursor-pointer shadow-md text-[#333333] transition-transform hover:scale-110 shrink-0">
                             <i class="fa-solid fa-chevron-right text-[10px]"></i>
                         </div>
@@ -107,71 +111,65 @@
                 </div>
 
                 <!-- ความจุ -->
-                <div>
-                    <label class="text-[11px] font-medium text-white/60 mb-2 flex items-center gap-1.5"><i class="fa-solid fa-hard-drive text-[10px]"></i> ความจุ</label>
+                <div class="space-y-2">
+                    <label class="text-slate-200 font-medium flex items-center gap-2 text-xs"><i class="fa-solid fa-hard-drive text-white"></i> ความจุ</label>
                     <div class="flex flex-wrap gap-2 po-chip-group" data-target="po_item_capacity">
-                        ${capacityChips.map(c => `<button type="button" class="px-4 py-1.5 rounded-full border border-white/10 bg-[#1a1a1a] text-white/60 text-[10px] hover:border-[#FFE169]/50 transition-all po-chip min-w-[60px]" data-value="${c}">${c}</button>`).join('')}
+                        ${capacityChips.map(c => `<button type="button" class="px-4 py-2.5 rounded-xl border border-[#3F3F46] bg-[#27272A] text-slate-300 text-sm hover:border-[#FFE169] hover:text-white transition-colors po-chip min-w-[60px]" data-value="${c}">${c}</button>`).join('')}
                     </div>
                 </div>
 
                 <!-- ราคาทุน & ราคาขาย -->
-                <div class="grid grid-cols-2 gap-4">
-                    <div>
-                        <label class="text-[11px] font-medium text-white/60 mb-1.5 flex items-center gap-1.5"><i class="fa-solid fa-tag text-[10px]"></i> ราคาทุน <span class="text-red-500">*</span></label>
-                        <input type="number" name="po_item_cost" required min="0" placeholder="0" class="w-full px-3 py-2.5 rounded-lg bg-[#1a1a1a] border border-white/10 text-white/90 focus:border-[#FFE169] focus:outline-none transition-all text-xs font-mono">
-                        <div class="flex flex-wrap gap-1.5 mt-2">
-                            ${[15000, 20000, 27000, 35000].map(p => `<button type="button" class="px-2 py-1 rounded bg-[#222] border border-white/5 text-white/50 text-[9px] hover:text-[#FFE169] transition-colors" onclick="const i = this.parentElement.previousElementSibling; i.value='${p}'; i.dispatchEvent(new Event('input'))">${p.toLocaleString()}</button>`).join('')}
+                <div class="grid grid-cols-2 gap-5 pt-2">
+                    <div class="space-y-2">
+                        <label class="text-slate-200 font-medium flex items-center gap-2 text-xs"><i class="fa-solid fa-tag text-white"></i> ราคาทุน <span class="text-red-500">*</span></label>
+                        <input type="number" name="po_item_cost" required min="0" placeholder="0" class="w-full px-4 py-2.5 rounded-xl bg-[#27272A] border border-[#3F3F46] text-white focus:border-[#FFE169] focus:outline-none transition-all placeholder-slate-500 text-sm">
+                        <div class="flex gap-1.5 flex-wrap pt-1">
+                            ${[15000, 20000, 27000, 35000].map(p => `<button type="button" class="px-2.5 py-1 bg-[#333] text-slate-300 rounded-full text-[11px] hover:text-[#FFE169] border border-transparent hover:border-[#FFE169] transition-all" onclick="const i = this.parentElement.previousElementSibling; i.value='${p}'; i.dispatchEvent(new Event('input'))">${p.toLocaleString()}</button>`).join('')}
                         </div>
                     </div>
-                    <div>
-                        <label class="text-[11px] font-medium text-white/60 mb-1.5 flex items-center gap-1.5"><i class="fa-solid fa-tags text-[10px]"></i> ราคาขาย <span class="text-red-500">*</span></label>
-                        <input type="number" name="po_item_sell" required min="0" placeholder="0" class="w-full px-3 py-2.5 rounded-lg bg-[#1a1a1a] border border-white/10 text-white/90 focus:border-[#FFE169] focus:outline-none transition-all text-xs font-mono">
-                        <div class="flex flex-wrap gap-1.5 mt-2">
-                            ${[15000, 20000, 27000, 35000].map(p => `<button type="button" class="px-2 py-1 rounded bg-[#222] border border-white/5 text-white/50 text-[9px] hover:text-[#FFE169] transition-colors" onclick="this.parentElement.previousElementSibling.value='${p}'">${p.toLocaleString()}</button>`).join('')}
+                    <div class="space-y-2">
+                        <label class="text-slate-200 font-medium flex items-center gap-2 text-xs"><i class="fa-solid fa-tags text-white"></i> ราคาขาย <span class="text-red-500">*</span></label>
+                        <input type="number" name="po_item_sell" required min="0" placeholder="0" class="w-full px-4 py-2.5 rounded-xl bg-[#27272A] border border-[#3F3F46] text-white focus:border-[#FFE169] focus:outline-none transition-all placeholder-slate-500 text-sm">
+                        <div class="flex gap-1.5 flex-wrap pt-1">
+                            ${[15000, 20000, 27000, 35000].map(p => `<button type="button" class="px-2.5 py-1 bg-[#333] text-slate-300 rounded-full text-[11px] hover:text-[#FFE169] border border-transparent hover:border-[#FFE169] transition-all" onclick="this.parentElement.previousElementSibling.value='${p}'">${p.toLocaleString()}</button>`).join('')}
                         </div>
                     </div>
                 </div>
 
                 <!-- จำนวน & หน่วยนับ -->
-                <div class="grid grid-cols-2 gap-4 items-start border-t border-white/10 pt-4 mt-2">
-                    <div>
-                        <label class="text-[11px] font-medium text-white/60 mb-2 flex items-center gap-1.5"><i class="fa-solid fa-cubes text-[10px]"></i> จำนวน <span class="text-red-500">*</span></label>
-                        <input type="number" name="po_item_qty" required min="1" value="1" class="w-full px-3 py-2.5 rounded-lg bg-[#1a1a1a] border border-white/10 text-white/90 focus:border-[#FFE169] focus:outline-none transition-all text-xs font-bold text-center">
+                <div class="grid grid-cols-2 gap-5 items-start border-t border-[#3F3F46] pt-4 mt-2">
+                    <div class="space-y-2">
+                        <label class="text-slate-200 font-medium flex items-center gap-2 text-xs"><i class="fa-solid fa-cubes text-white"></i> จำนวน <span class="text-red-500">*</span></label>
+                        <input type="number" name="po_item_qty" required min="1" value="1" class="w-full px-4 py-2.5 rounded-xl bg-[#27272A] border border-[#3F3F46] text-white focus:border-[#FFE169] focus:outline-none transition-all text-sm">
                     </div>
-                    <div>
-                        <label class="text-[11px] font-medium text-white/60 mb-2 flex items-center gap-1.5"><i class="fa-solid fa-box text-[10px]"></i> หน่วยนับ <span class="text-red-500">*</span></label>
+                    <div class="space-y-2">
+                        <label class="text-slate-200 font-medium flex items-center gap-2 text-xs"><i class="fa-solid fa-box text-white"></i> หน่วยนับ <span class="text-red-500">*</span></label>
                         <div class="flex gap-2 po-chip-group" data-target="po_item_unit">
-                            ${unitChips.map(u => `<button type="button" class="px-4 py-2.5 rounded-lg border border-white/10 bg-[#1a1a1a] text-white/60 text-[11px] hover:border-[#FFE169]/50 transition-all po-chip flex-1" data-value="${u}">${u}</button>`).join('')}
+                            ${unitChips.map(u => `<button type="button" class="px-4 py-2.5 rounded-xl border border-[#3F3F46] bg-[#27272A] text-slate-300 text-sm hover:border-[#FFE169] hover:text-white transition-colors po-chip flex-1" data-value="${u}">${u}</button>`).join('')}
                         </div>
                     </div>
                 </div>
 
                 <!-- IMEI Tracking -->
-                <div>
-                    <label class="text-[11px] font-medium text-white/60 mb-2 flex items-center gap-1.5"><i class="fa-solid fa-barcode text-[10px]"></i> สินค้านี้ต้องบันทึก IMEI (เช่น โทรศัพท์/แท็บเล็ต)</label>
+                <div class="space-y-2">
+                    <label class="text-slate-200 font-medium flex items-center gap-2 text-xs"><i class="fa-solid fa-barcode text-white"></i> สินค้านี้ต้องบันทึก IMEI (เช่น โทรศัพท์/แท็บเล็ต) <span class="text-red-500">*</span></label>
                     <div class="flex items-center gap-5 mt-2 po-radio-group" data-target="po_item_track_imei">
                         <label class="flex items-center gap-2 cursor-pointer group">
                             <div class="w-4 h-4 rounded-full border border-white/30 flex items-center justify-center group-hover:border-[#FFE169] transition-colors po-radio" data-value="true">
                                 <div class="w-2 h-2 rounded-full bg-[#FFE169] opacity-0 indicator transition-opacity"></div>
                             </div>
-                            <span class="text-[10px] text-white/60 group-hover:text-white/90">บันทึกเดี่ยว</span>
+                            <span class="text-[10px] text-white/60 group-hover:text-white/90">บันทึกเลข IMEI</span>
                         </label>
                         <label class="flex items-center gap-2 cursor-pointer group">
-                            <div class="w-4 h-4 rounded-full border border-white/30 flex items-center justify-center group-hover:border-[#FFE169] transition-colors po-radio" data-value="true">
+                            <div class="w-4 h-4 rounded-full border border-white/30 flex items-center justify-center group-hover:border-[#FFE169] transition-colors po-radio" data-value="false">
                                 <div class="w-2 h-2 rounded-full bg-[#FFE169] opacity-0 indicator transition-opacity"></div>
                             </div>
-                            <span class="text-[10px] text-white/60 group-hover:text-white/90">บันทึกยอด (IMEI)</span>
-                        </label>
-                        <label class="flex items-center gap-2 cursor-pointer group">
-                            <div class="w-4 h-4 rounded-full border border-[#FFE169] flex items-center justify-center transition-colors po-radio active" data-value="false">
-                                <div class="w-2 h-2 rounded-full bg-[#FFE169] opacity-100 indicator transition-opacity"></div>
-                            </div>
-                            <span class="text-[10px] text-white/90">ไม่บันทึกยอด (IMEI)</span>
+                            <span class="text-[10px] text-white/60 group-hover:text-white/90">ไม่บันทึกเลข IMEI</span>
                         </label>
                     </div>
                 </div>
 
-                <div class="text-center text-xs text-white/50 mt-2 p-2 bg-[#1a1a1a] rounded-lg border border-white/5">
+                <div class="text-center text-xs text-slate-300 mt-2 p-2.5 bg-[#1f1f1f] rounded-xl border border-[#3F3F46]">
                      รวม: <span class="po-row-total text-white font-bold font-mono">฿0</span>
                 </div>
             </div>
@@ -185,16 +183,16 @@
             const targetName = group.getAttribute('data-target');
             const hiddenSelect = row.querySelector(`[name="${targetName}"]`);
             const chips = group.querySelectorAll('.po-chip');
-            
+
             chips.forEach(chip => {
                 chip.addEventListener('click', () => {
                     chips.forEach(c => {
-                        c.classList.remove('border-[#FFE169]', 'text-[#FFE169]', 'bg-[#FFE169]/10');
-                        c.classList.add('border-white/10', 'text-white/60', 'bg-[#1a1a1a]');
+                        c.classList.remove('border-[#FFE169]', 'text-[#FFE169]');
+                        c.classList.add('border-[#3F3F46]', 'text-slate-300');
                     });
-                    chip.classList.remove('border-white/10', 'text-white/60', 'bg-[#1a1a1a]');
-                    chip.classList.add('border-[#FFE169]', 'text-[#FFE169]', 'bg-[#FFE169]/10');
-                    
+                    chip.classList.remove('border-[#3F3F46]', 'text-slate-300');
+                    chip.classList.add('border-[#FFE169]', 'text-[#FFE169]');
+
                     if (hiddenSelect) {
                         hiddenSelect.value = chip.getAttribute('data-value');
                         hiddenSelect.dispatchEvent(new Event('change'));
@@ -213,14 +211,14 @@
                     colorChips.forEach(c => {
                         c.querySelector('.color-ring').classList.remove('border-[#FFE169]', 'scale-110');
                         c.querySelector('.color-ring').classList.add('border-transparent');
-                        c.querySelector('.color-label').classList.remove('text-[#FFE169]', 'text-[11px]');
-                        c.querySelector('.color-label').classList.add('text-white/50', 'text-[10px]');
+                        c.querySelector('.color-label').classList.remove('text-[#FFE169]', 'text-[13px]');
+                        c.querySelector('.color-label').classList.add('text-slate-400', 'text-[10px]');
                     });
                     chip.querySelector('.color-ring').classList.remove('border-transparent');
                     chip.querySelector('.color-ring').classList.add('border-[#FFE169]', 'scale-110');
-                    chip.querySelector('.color-label').classList.remove('text-white/50', 'text-[10px]');
-                    chip.querySelector('.color-label').classList.add('text-[#FFE169]', 'text-[11px]');
-                    
+                    chip.querySelector('.color-label').classList.remove('text-slate-400', 'text-[10px]');
+                    chip.querySelector('.color-label').classList.add('text-[#FFE169]', 'text-[13px]');
+
                     if (hiddenColorSelect) {
                         hiddenColorSelect.value = chip.getAttribute('data-value');
                         hiddenColorSelect.dispatchEvent(new Event('change'));
@@ -250,7 +248,7 @@
                     radio.querySelector('.indicator').classList.add('opacity-100');
                     radio.nextElementSibling.classList.remove('text-white/60');
                     radio.nextElementSibling.classList.add('text-white/90');
-                    
+
                     if (hiddenImeiCheck) {
                         hiddenImeiCheck.checked = (radio.getAttribute('data-value') === 'true');
                         hiddenImeiCheck.dispatchEvent(new Event('change'));
@@ -259,29 +257,6 @@
             });
         }
 
-        // Dummy Input to Hidden Name Select
-        const dummyName = row.querySelector('.dummy-po-name');
-        const hiddenNameSelect = row.querySelector('[name="po_item_name"]');
-        if (dummyName && hiddenNameSelect) {
-            dummyName.addEventListener('change', (e) => {
-                const val = e.target.value.trim();
-                let found = false;
-                Array.from(hiddenNameSelect.options).forEach(opt => {
-                    if (opt.value === val) {
-                        hiddenNameSelect.value = val;
-                        found = true;
-                    }
-                });
-                if (!found && val) {
-                    const newOpt = new Option(val, val);
-                    hiddenNameSelect.add(newOpt);
-                    hiddenNameSelect.value = val;
-                }
-                if (!val) hiddenNameSelect.value = '';
-                
-                hiddenNameSelect.dispatchEvent(new Event('change'));
-            });
-        }
         // --- End of inline logic ---
 
         // Attach event listener for delete row
@@ -375,11 +350,63 @@
         document.getElementById('btn-add-po-item').addEventListener('click', addPoItemRow);
     }
 
+    // Highlight ช่องที่ไม่ผ่าน validation ด้วย inline error (แดง + ข้อความใต้ช่อง) — รูปแบบเดียวกับ Add Product
+    // displayElement = element ที่จะใส่กรอบแดง/ข้อความต่อท้าย, watchElement = element ที่ต้องฟัง input/change เพื่อล้าง highlight
+    const highlightPoInvalid = (displayElement, watchElement, toastMsg, isButton) => {
+        if (!displayElement || !watchElement) return;
+        showToast(toastMsg, 'error');
+
+        if (displayElement.focus && typeof displayElement.focus === 'function' && displayElement.tagName !== 'DIV') {
+            displayElement.focus();
+        } else if (displayElement.scrollIntoView) {
+            displayElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+
+        // ล้าง highlight/ข้อความเดิมก่อนตรวจใหม่ทุกครั้ง
+        document.querySelectorAll('.invalid-highlight').forEach(el => {
+            el.classList.remove('!border-red-500', '!ring-2', '!ring-red-500/20', 'invalid-highlight');
+        });
+        document.querySelectorAll('.invalid-inline-msg').forEach(el => el.remove());
+
+        displayElement.classList.add('!border-red-500', '!ring-2', '!ring-red-500/20', 'invalid-highlight');
+        if (displayElement.tagName === 'DIV') {
+            displayElement.classList.add('p-2', 'rounded-xl'); // ให้กรอบแดงมีที่หายใจ ไม่ชิดชิพ/ปุ่มข้างใน
+        }
+
+        const errorText = document.createElement('p');
+        errorText.className = 'invalid-inline-msg text-red-500 text-[11px] mt-1.5 ml-1 font-medium animate-pulse';
+        const prefixMsg = isButton ? 'กรุณาเลือกข้อมูล' : 'กรุณากรอกข้อมูล';
+        errorText.innerHTML = `<i class="fa-solid fa-circle-exclamation mr-1"></i> ${prefixMsg}`;
+        displayElement.parentNode.insertBefore(errorText, displayElement.nextSibling);
+
+        const removeHighlight = () => {
+            displayElement.classList.remove('!border-red-500', '!ring-2', '!ring-red-500/20', 'invalid-highlight');
+            if (errorText.parentNode) errorText.remove();
+            watchElement.removeEventListener('input', removeHighlight);
+            watchElement.removeEventListener('change', removeHighlight);
+            displayElement.removeEventListener('click', removeHighlight);
+        };
+        watchElement.addEventListener('input', removeHighlight);
+        watchElement.addEventListener('change', removeHighlight);
+        displayElement.addEventListener('click', removeHighlight);
+    };
+
     if (document.getElementById('form-create-po')) {
         document.getElementById('form-create-po').addEventListener('submit', async (e) => {
             e.preventDefault();
-            const supplier_name = document.getElementById('po-supplier').value;
-            const branch_id = document.getElementById('po-branch').value;
+
+            const supplierEl = document.getElementById('po-supplier');
+            const branchEl = document.getElementById('po-branch');
+            const supplier_name = supplierEl.value;
+            const branch_id = branchEl.value;
+
+            if (!supplier_name) {
+                return highlightPoInvalid(supplierEl, supplierEl, 'กรุณาเลือก Supplier / แหล่งที่มา', true);
+            }
+            if (!branch_id) {
+                return highlightPoInvalid(branchEl, branchEl, 'กรุณาเลือกสาขาปลายทาง', true);
+            }
+
             const rows = document.querySelectorAll('.po-item-row');
 
             if (rows.length === 0) {
@@ -388,22 +415,60 @@
 
             const items = [];
             for (let row of rows) {
+                const nameEl = row.querySelector('[name="po_item_name"]');
+                if (!nameEl.value) {
+                    return highlightPoInvalid(nameEl, nameEl, 'กรุณาเลือกชื่อสินค้า', true);
+                }
+
+                const colorEl = row.querySelector('[name="po_item_color"]');
+                const colorContainer = row.querySelector('.po-chip-group[data-target="po_item_color"]');
+                if (!colorEl.value) {
+                    return highlightPoInvalid(colorContainer, colorEl, 'กรุณาเลือกสีสินค้า', true);
+                }
+
+                const costEl = row.querySelector('[name="po_item_cost"]');
+                if (!costEl.value.trim()) {
+                    return highlightPoInvalid(costEl, costEl, 'กรุณากรอกราคาทุน', false);
+                }
+
+                const sellEl = row.querySelector('[name="po_item_sell"]');
+                if (!sellEl.value.trim()) {
+                    return highlightPoInvalid(sellEl, sellEl, 'กรุณากรอกราคาขาย', false);
+                }
+
+                const qtyEl = row.querySelector('[name="po_item_qty"]');
+                if (!qtyEl.value.trim()) {
+                    return highlightPoInvalid(qtyEl, qtyEl, 'กรุณากรอกจำนวน', false);
+                }
+
+                const unitEl = row.querySelector('[name="po_item_unit"]');
+                const unitContainer = row.querySelector('.po-chip-group[data-target="po_item_unit"]');
+                if (!unitEl.value) {
+                    return highlightPoInvalid(unitContainer, unitEl, 'กรุณาเลือกหน่วยนับ', true);
+                }
+
+                const imeiGroup = row.querySelector('.po-radio-group[data-target="po_item_track_imei"]');
+                const imeiCheck = row.querySelector('[name="po_item_track_imei"]');
+                if (imeiGroup && !imeiGroup.querySelector('.po-radio.active')) {
+                    return highlightPoInvalid(imeiGroup, imeiCheck, 'กรุณาเลือกว่าต้องบันทึก IMEI หรือไม่', true);
+                }
+
                 let product_code = row.querySelector('[name="po_item_code"]').value.trim();
                 if (!product_code) {
                     // หากไม่ได้กรอก SKU ระบบจะสุ่มรหัสให้อัตโนมัติ เพื่อนำไปใช้ติดตามสต็อกสินค้าอย่างถูกต้อง
                     product_code = 'SKU-' + Date.now().toString().slice(-6) + Math.floor(100 + Math.random() * 900);
                 }
                 items.push({
-                    product_name: row.querySelector('[name="po_item_name"]').value,
+                    product_name: nameEl.value,
                     product_code: product_code,
                     category: row.querySelector('[name="po_item_category"]').value,
-                    color: row.querySelector('[name="po_item_color"]').value,
+                    color: colorEl.value,
                     capacity: row.querySelector('[name="po_item_capacity"]').value,
-                    unit: row.querySelector('[name="po_item_unit"]').value,
-                    ordered_qty: Number(row.querySelector('[name="po_item_qty"]').value),
-                    cost_price: Number(row.querySelector('[name="po_item_cost"]').value),
-                    selling_price: Number(row.querySelector('[name="po_item_sell"]').value),
-                    track_imei: row.querySelector('[name="po_item_track_imei"]').checked
+                    unit: unitEl.value,
+                    ordered_qty: Number(qtyEl.value),
+                    cost_price: Number(costEl.value),
+                    selling_price: Number(sellEl.value),
+                    track_imei: imeiCheck.checked
                 });
             }
 
@@ -483,7 +548,24 @@
                 setPoRowValue(row, 'po_item_cost', item.cost_price || 0);
                 setPoRowValue(row, 'po_item_sell', item.selling_price || 0);
                 const checkImei = row.querySelector('[name="po_item_track_imei"]');
-                if (checkImei) checkImei.checked = !!item.track_imei;
+                if (checkImei) {
+                    checkImei.checked = !!item.track_imei;
+                    // ซิงค์ปุ่มเลือก IMEI ในหน้าจอให้ตรงกับค่าจริงของ PO เดิม (ไม่งั้นตอนแก้ไขจะดูเหมือนยังไม่ได้เลือก)
+                    const imeiGroup = row.querySelector('.po-radio-group[data-target="po_item_track_imei"]');
+                    if (imeiGroup) {
+                        const targetValue = String(!!item.track_imei);
+                        imeiGroup.querySelectorAll('.po-radio').forEach(r => {
+                            const isMatch = r.getAttribute('data-value') === targetValue;
+                            r.classList.toggle('border-[#FFE169]', isMatch);
+                            r.classList.toggle('active', isMatch);
+                            r.classList.toggle('border-white/30', !isMatch);
+                            r.querySelector('.indicator').classList.toggle('opacity-100', isMatch);
+                            r.querySelector('.indicator').classList.toggle('opacity-0', !isMatch);
+                            r.nextElementSibling.classList.toggle('text-white/90', isMatch);
+                            r.nextElementSibling.classList.toggle('text-white/60', !isMatch);
+                        });
+                    }
+                }
 
                 // Trigger calculation
                 const event = new Event('input');
@@ -526,13 +608,13 @@
         if (!btnCreate || !btnHistory || !contentCreate || !contentHistory) return;
 
         if (tabName === 'create') {
-            contentCreate.classList.remove('hidden');
+            contentCreate.classList.remove('opacity-0', 'pointer-events-none');
             contentHistory.classList.add('hidden');
 
             btnCreate.className = 'px-5 py-2.5 rounded-lg text-sm font-semibold transition-all duration-200 bg-primary text-on-primary';
             btnHistory.className = 'px-5 py-2.5 rounded-lg text-sm font-semibold transition-all duration-200 text-body-muted hover:text-ink hover:bg-surface-chip/50';
         } else {
-            contentCreate.classList.add('hidden');
+            contentCreate.classList.add('opacity-0', 'pointer-events-none');
             contentHistory.classList.remove('hidden');
 
             btnHistory.className = 'px-5 py-2.5 rounded-lg text-sm font-semibold transition-all duration-200 bg-primary text-on-primary';
@@ -570,28 +652,58 @@
         document.getElementById('filter-po-supplier').addEventListener('change', handlePOFilterChange);
     }
 
+    // Skeleton loading แถวตารางประวัติการสั่งซื้อ — ใช้โทนเดียวกับ skeleton หน้าจัดการสต็อก
+    // (bg-[#5c5c5c] + animate-pulse) ให้จังหวะกระพริบของทั้งระบบเป็นแบบเดียวกัน
+    const renderPOHistorySkeleton = (rowCount = 6) => {
+        const tbody = document.getElementById('table-body-po-history');
+        if (!tbody) return;
+        const bar = (widthClass, extraClass = '') => `<div class="h-3.5 ${widthClass} rounded-full bg-[#5c5c5c] animate-pulse ${extraClass}"></div>`;
+        let rowsHtml = '';
+        for (let i = 0; i < rowCount; i++) {
+            rowsHtml += `
+                <tr>
+                    <td class="px-6 py-4">${bar('w-20')}</td>
+                    <td class="px-6 py-4">${bar('w-16')}</td>
+                    <td class="px-6 py-4">${bar('w-28')}</td>
+                    <td class="px-6 py-4">${bar('w-24')}</td>
+                    <td class="px-6 py-4 text-right">${bar('w-16 ml-auto')}</td>
+                    <td class="px-6 py-4 text-center">
+                        <div class="h-5 w-20 mx-auto rounded-[0.375rem] bg-[#5c5c5c] animate-pulse"></div>
+                    </td>
+                    <td class="px-6 py-4 text-right">
+                        <div class="flex items-center justify-end gap-1">
+                            <div class="w-8 h-8 rounded-lg bg-[#5c5c5c] animate-pulse"></div>
+                            <div class="w-8 h-8 rounded-lg bg-[#5c5c5c] animate-pulse"></div>
+                        </div>
+                    </td>
+                </tr>
+            `;
+        }
+        tbody.innerHTML = rowsHtml;
+    };
+
     const loadPOHistory = async () => {
         const tbody = document.getElementById('table-body-po-history');
         if (!tbody) return;
-        tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4"><i class="fa-solid fa-circle-notch fa-spin text-body-muted"></i></td></tr>';
+        renderPOHistorySkeleton();
 
         try {
             const res = await authFetch(`${API_BASE_URL}/purchase-orders`);
             const json = await res.json();
             if (json.success) {
                 poHistoryCache = json.data || [];
-                
+
                 // Populate filters from unique values in history (except status which is static)
                 const branchFilter = document.getElementById('filter-po-branch');
                 const supplierFilter = document.getElementById('filter-po-supplier');
-                
+
                 if (branchFilter && poHistoryCache.length > 0) {
                     const uniqueBranches = [...new Set(poHistoryCache.filter(p => p.branch_id && p.branch_id.name).map(p => p.branch_id.name))];
                     const currentBranch = branchFilter.value;
                     branchFilter.innerHTML = '<option value="">เลือกสาขา</option>' + uniqueBranches.map(b => `<option value="${b}">${b}</option>`).join('');
                     branchFilter.value = currentBranch;
                 }
-                
+
                 if (supplierFilter && poHistoryCache.length > 0) {
                     const uniqueSuppliers = [...new Set(poHistoryCache.filter(p => p.supplier_name).map(p => p.supplier_name))];
                     const currentSupplier = supplierFilter.value;
@@ -613,22 +725,22 @@
         const status = document.getElementById('filter-po-status')?.value;
         const branch = document.getElementById('filter-po-branch')?.value;
         const supplier = document.getElementById('filter-po-supplier')?.value;
-        
+
         let texts = [];
         if (status) texts.push(`สถานะ:${status}`);
         if (branch) texts.push(`สาขา:${branch}`);
         if (supplier) texts.push(`ซัพพลายเออร์:${supplier}`);
-        
+
         const textSpan = document.getElementById('po-active-filter-text');
         const container = document.getElementById('po-active-filters-container');
-        
+
         if (textSpan && container) {
             if (texts.length > 0) {
                 textSpan.textContent = texts.join(', ');
                 container.style.display = 'flex';
             } else {
                 textSpan.textContent = 'สถานะ:ทั้งหมด';
-                container.style.display = 'flex'; 
+                container.style.display = 'flex';
             }
         }
     };
@@ -662,13 +774,13 @@
         if (countLabel) countLabel.textContent = filtered.length;
 
         if (filtered.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="7" class="text-center py-6 text-body-muted">ไม่มีรายการใบสั่งซื้อ</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="7" class="px-6 py-8 text-center text-slate-400 italic">ไม่มีรายการใบสั่งซื้อ</td></tr>';
             return;
         }
 
         filtered.forEach(po => {
             const tr = document.createElement('tr');
-            tr.className = 'border-b border-hairline hover:bg-surface-chip/30 transition-colors';
+            tr.className = 'hover:bg-[#464646] transition-colors';
 
             // Format date
             let dateStr = '-';
@@ -692,44 +804,44 @@
                 });
             }
 
-            // Status Badge
-            const statusColors = {
-                'รอจัดส่ง': 'border-hairline bg-surface-chip text-ink',
-                'สั่งซื้อแล้ว': 'border-hairline bg-surface-chip text-ink',
-                'กำลังตรวจรับ': 'border-amber-500/30 bg-amber-500/10 text-amber-400',
-                'รับของบางส่วน': 'border-amber-500/30 bg-amber-500/10 text-amber-400',
-                'รับของครบแล้ว': 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400',
-                'ยกเลิก': 'border-red-500/30 bg-red-500/10 text-red-400'
+            // Status Badge (dot + pill) — สีไล่ตามลำดับสถานะจริงของ PO (ต้องตรงกับ enum ใน models/index.js)
+            const statusStyles = {
+                'รอจัดส่ง': { dot: 'bg-sky-500', badge: 'bg-sky-500/10', text: 'text-sky-400' },
+                'ของถึงสาขาแล้ว': { dot: 'bg-blue-500', badge: 'bg-blue-500/10', text: 'text-blue-400' },
+                'กำลังตรวจรับ': { dot: 'bg-amber-500', badge: 'bg-amber-500/10', text: 'text-amber-400' },
+                'นำเข้าสำเร็จ': { dot: 'bg-[#20D500]', badge: 'bg-[#42A231]/[0.12]', text: 'text-[#20D500]' },
+                'ยกเลิก': { dot: 'bg-[#FE0000]', badge: 'bg-[#FE0000]/[0.12]', text: 'text-[#FE0000]' }
             };
-            const badgeClass = statusColors[po.status] || 'border-hairline bg-surface-chip text-body-muted';
+            const st = statusStyles[po.status] || { dot: 'bg-slate-400', badge: 'bg-white/5', text: 'text-slate-300' };
 
             tr.innerHTML = `
-                <td class="px-4 py-4 md:px-6 text-body-muted text-sm whitespace-nowrap">
-                    <i class="fa-regular fa-clock text-body-muted/60 mr-1.5"></i>${dateStr}
+                <td class="px-6 py-4 text-white text-sm whitespace-nowrap">
+                    <i class="fa-regular fa-clock text-white/70 mr-1.5"></i>${dateStr}
                 </td>
-                <td class="px-4 py-4 md:px-6 font-mono font-bold text-body-muted whitespace-nowrap">${po.po_number || '-'}</td>
-                <td class="px-4 py-4 md:px-6 text-ink font-medium whitespace-nowrap">${po.supplier_name || '-'}</td>
-                <td class="px-4 py-4 md:px-6 text-body-muted text-sm whitespace-nowrap">
-                    <i class="fa-solid fa-location-dot text-body-muted/60 mr-1.5"></i>${branchName}
+                <td class="px-6 py-4 font-mono font-semibold text-[#FFE169] whitespace-nowrap">${po.po_number || '-'}</td>
+                <td class="px-6 py-4 text-white font-medium whitespace-nowrap">${po.supplier_name || '-'}</td>
+                <td class="px-6 py-4 text-white text-sm whitespace-nowrap">
+                    <i class="fa-solid fa-location-dot text-white/70 mr-1.5"></i>${branchName}
                 </td>
-                <td class="px-4 py-4 md:px-6 text-right font-mono font-bold text-ink whitespace-nowrap">฿${totalAmount.toLocaleString()}</td>
-                <td class="px-4 py-4 md:px-6 text-center whitespace-nowrap">
-                    <span class="inline-flex px-2.5 py-0.5 rounded-full text-xs font-semibold border ${badgeClass} whitespace-nowrap">
-                        ${po.status || '-'}
-                    </span>
+                <td class="px-6 py-4 text-right font-mono text-white whitespace-nowrap">฿${totalAmount.toLocaleString()}</td>
+                <td class="px-6 py-4 text-center whitespace-nowrap">
+                    <div class="inline-flex items-center gap-2 px-2.5 py-1 rounded-[0.375rem] ${st.badge}">
+                        <div class="w-2 h-2 rounded-full ${st.dot}"></div>
+                        <span class="${st.text} font-medium text-xs">${po.status || '-'}</span>
+                    </div>
                 </td>
-                <td class="px-4 py-4 md:px-6 text-right whitespace-nowrap">
-                    <div class="flex items-center justify-end gap-1.5 whitespace-nowrap">
-                        <button class="btn-view-po px-2.5 py-1.5 bg-surface-chip text-ink hover:bg-surface-tile-2 border border-hairline rounded-lg transition-all text-[11px] font-bold whitespace-nowrap shrink-0" title="รายละเอียดใบ PO">
-                            <i class="fa-solid fa-eye"></i> รายละเอียด
+                <td class="px-6 py-4 text-right whitespace-nowrap">
+                    <div class="flex items-center justify-end gap-1">
+                        <button class="btn-view-po text-white hover:text-indigo-400 transition-colors p-2" title="รายละเอียดใบ PO">
+                            <i class="fa-solid fa-eye"></i>
                         </button>
                         ${po.status === 'รอจัดส่ง' || po.status === 'สั่งซื้อแล้ว' ? `
-                            <button class="btn-cancel-po px-2.5 py-1.5 bg-red-500/10 text-red-400 hover:bg-red-500/25 border border-red-500/30 rounded-lg transition-all text-[11px] font-bold whitespace-nowrap shrink-0" title="ยกเลิกใบ PO">
-                                <i class="fa-solid fa-trash-can"></i> ยกเลิก
+                            <button class="btn-cancel-po text-white hover:text-red-400 transition-colors p-2" title="ยกเลิกใบ PO">
+                                <i class="fa-solid fa-trash-can"></i>
                             </button>
                         ` : ''}
-                        <button class="btn-print-po px-2.5 py-1.5 bg-surface-chip hover:bg-surface-tile-2 text-body-muted rounded-lg border border-hairline transition-all text-[11px] font-bold whitespace-nowrap shrink-0" title="พิมพ์ใบ PO">
-                            <i class="fa-solid fa-print"></i> พิมพ์
+                        <button class="btn-print-po text-white hover:text-amber-400 transition-colors p-2" title="พิมพ์ใบ PO">
+                            <i class="fa-solid fa-print"></i>
                         </button>
                     </div>
                 </td>
@@ -1499,25 +1611,24 @@
         if (!modal) return;
 
         document.getElementById('view-po-number').textContent = po.po_number;
-        document.getElementById('view-po-supplier').innerHTML = `<i class="fa-solid fa-building text-body-muted text-xs"></i> ${po.supplier_name}`;
+        document.getElementById('view-po-supplier').innerHTML = `<i class="fa-solid fa-building text-white/70 text-xs"></i> ${po.supplier_name}`;
 
         const branchName = po.branch_id ? po.branch_id.name : '-';
-        document.getElementById('view-po-branch').innerHTML = `<i class="fa-solid fa-location-dot text-body-muted text-xs"></i> ${branchName}`;
+        document.getElementById('view-po-branch').innerHTML = `<i class="fa-solid fa-location-dot text-white/70 text-xs"></i> ${branchName}`;
 
+        // สีสถานะต้องตรงกับ enum จริงใน models/index.js (ชุดเดียวกับตารางประวัติการสั่งซื้อ)
         const statusColors = {
-            'รอจัดส่ง': 'bg-amber-500/10 text-amber-400 border-amber-500/20',
-            'ของถึงสาขาแล้ว': 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
-            'กำลังตรวจรับ': 'bg-surface-chip text-ink border-hairline',
-            'นำเข้าสำเร็จ': 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
-            'รับของครบแล้ว': 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
-            'ยกเลิก': 'bg-red-500/10 text-red-400 border-red-500/20'
+            'รอจัดส่ง': 'bg-sky-500/10 text-sky-400 border-sky-500/20',
+            'ของถึงสาขาแล้ว': 'bg-blue-500/10 text-blue-400 border-blue-500/20',
+            'กำลังตรวจรับ': 'bg-amber-500/10 text-amber-400 border-amber-500/20',
+            'นำเข้าสำเร็จ': 'bg-[#42A231]/[0.12] text-[#20D500] border-[#20D500]/20',
+            'ยกเลิก': 'bg-[#FE0000]/[0.12] text-[#FE0000] border-[#FE0000]/20'
         };
-        const statusClass = statusColors[po.status] || 'bg-surface-chip text-body-muted border-hairline';
-        const displayStatus = po.status === 'นำเข้าสำเร็จ' || po.status === 'รับของครบแล้ว' ? 'นำเข้าสำเร็จ' : po.status;
+        const statusClass = statusColors[po.status] || 'bg-white/5 text-slate-300 border-white/10';
 
         const statusBadge = document.getElementById('view-po-status');
         statusBadge.className = `inline-flex px-3 py-1 rounded-full text-xs font-bold border ${statusClass}`;
-        statusBadge.textContent = displayStatus;
+        statusBadge.textContent = po.status;
 
         // คำนวณรายละเอียดการชำระเงิน
         const totalCost = po.items ? po.items.reduce((sum, item) => sum + (item.cost_price * item.ordered_qty), 0) : 0;
@@ -1533,7 +1644,7 @@
 
         const payStatusEl = document.getElementById('view-po-pay-status');
         if (payStatusEl) {
-            payStatusEl.className = `${payStatusColors[po.payment_status || 'ยังไม่ได้ชำระ'] || 'text-body-muted'} font-semibold text-sm`;
+            payStatusEl.className = `${payStatusColors[po.payment_status || 'ยังไม่ได้ชำระ'] || 'text-slate-300'} font-semibold text-sm`;
             payStatusEl.textContent = po.payment_status || 'ยังไม่ได้ชำระ';
         }
 
@@ -1560,11 +1671,11 @@
         itemsContainer.innerHTML = '';
 
         if (!po.items || po.items.length === 0) {
-            itemsContainer.innerHTML = '<div class="text-center py-6 text-body-muted text-xs">ไม่มีรายการสินค้าในใบสั่งซื้อนี้</div>';
+            itemsContainer.innerHTML = '<div class="text-center py-6 text-slate-400 text-xs">ไม่มีรายการสินค้าในใบสั่งซื้อนี้</div>';
         } else {
             po.items.forEach(item => {
                 const el = document.createElement('div');
-                el.className = 'p-5 bg-surface-tile-3 border border-hairline rounded-2xl space-y-4 hover:border-hairline transition-all';
+                el.className = 'p-5 bg-[#27272A] border border-[#3F3F46] rounded-xl space-y-4';
 
                 const received = item.received_qty || 0;
                 const ordered = item.ordered_qty || 0;
@@ -1576,14 +1687,14 @@
                 let imeisHtml = '';
                 if (item.track_imei && item.imeis_scanned && item.imeis_scanned.length > 0) {
                     const chips = item.imeis_scanned.map(imei => `
-                        <span class="px-2.5 py-1 bg-surface-chip border border-hairline text-ink font-mono text-[10px] rounded-lg flex items-center gap-1">
-                            <i class="fa-solid fa-barcode text-[8px] text-ink-muted-48"></i> ${imei}
+                        <span class="px-2.5 py-1 bg-[#1a1a1a] border border-[#3F3F46] text-white font-mono text-[10px] rounded-lg flex items-center gap-1">
+                            <i class="fa-solid fa-barcode text-[8px] text-white/50"></i> ${imei}
                         </span>
                     `).join('');
                     imeisHtml = `
-                        <div class="pt-3 border-t border-hairline space-y-2">
-                            <span class="text-xs text-body-muted font-bold flex items-center gap-1"><i class="fa-solid fa-qrcode text-[10px]"></i> หมายเลข IMEI ที่สแกนนำเข้าคลังแล้ว (${item.imeis_scanned.length}):</span>
-                            <div class="flex flex-wrap gap-1.5 max-h-[120px] overflow-y-auto p-1 bg-surface-tile-3 border border-hairline rounded-lg modal-scrollable-content">${chips}</div>
+                        <div class="pt-3 border-t border-[#3F3F46] space-y-2">
+                            <span class="text-xs text-slate-300 font-bold flex items-center gap-1"><i class="fa-solid fa-qrcode text-[10px]"></i> หมายเลข IMEI ที่สแกนนำเข้าคลังแล้ว (${item.imeis_scanned.length}):</span>
+                            <div class="flex flex-wrap gap-1.5 max-h-[120px] overflow-y-auto p-1 bg-[#1a1a1a] border border-[#3F3F46] rounded-lg modal-scrollable-content">${chips}</div>
                         </div>
                     `;
                 }
@@ -1591,27 +1702,27 @@
                 el.innerHTML = `
                     <div class="flex justify-between items-start gap-4">
                         <div>
-                            <span class="text-ink font-bold text-sm md:text-base flex items-center gap-2">
+                            <span class="text-white font-bold text-sm md:text-base flex items-center gap-2">
                                 ${item.product_name}
-                                <span class="text-xs text-body-muted font-mono font-normal">(${item.product_code})</span>
+                                <span class="text-xs text-slate-400 font-mono font-normal">(${item.product_code})</span>
                             </span>
-                            <p class="text-xs text-body-muted mt-1">
-                                ยอดสั่งซื้อ: <span class="text-ink font-bold">${ordered}</span> | 
+                            <p class="text-xs text-slate-300 mt-1">
+                                ยอดสั่งซื้อ: <span class="text-white font-bold">${ordered}</span> |
                                 ยอดรับจริง: <span class="text-emerald-400 font-bold">${received}</span> ชิ้น
                             </p>
                         </div>
                         <div class="text-right shrink-0">
-                            <span class="text-[10px] font-semibold px-2 py-0.5 rounded-lg ${item.track_imei ? 'bg-surface-chip text-ink border border-hairline' : 'bg-surface-chip text-ink border border-hairline'} border">
+                            <span class="text-[10px] font-semibold px-2 py-0.5 rounded-lg bg-[#1a1a1a] text-white border border-[#3F3F46]">
                                 ${item.track_imei ? 'เก็บซีเรียล IMEI' : 'นับจำนวนชิ้น'}
                             </span>
                         </div>
                     </div>
-                    
+
                     <div class="space-y-1">
-                        <div class="w-full bg-surface-chip rounded-full h-2 overflow-hidden border border-hairline progress-bar-glow">
+                        <div class="w-full bg-[#1a1a1a] rounded-full h-2 overflow-hidden border border-[#3F3F46]">
                             <div class="bg-emerald-500 h-full rounded-full transition-all duration-500" style="width: ${itemPercent}%"></div>
                         </div>
-                        <div class="flex justify-between text-[10px] font-bold text-body-muted">
+                        <div class="flex justify-between text-[10px] font-bold text-slate-300">
                             <span>สถานะตรวจรับเข้า</span>
                             <span class="font-mono text-emerald-400">${itemPercent}%</span>
                         </div>
@@ -1628,7 +1739,7 @@
         const historyTbody = document.getElementById('view-po-payments-history-rows');
 
         if (historyContainer && historyTbody) {
-            historyTbody.innerHTML = '<tr><td colspan="5" class="text-center p-3 text-body-muted font-bold">กำลังโหลดประวัติการจ่ายเงิน...</td></tr>';
+            historyTbody.innerHTML = '<tr><td colspan="5" class="text-center p-3 text-slate-300 font-bold">กำลังโหลดประวัติการจ่ายเงิน...</td></tr>';
             historyContainer.classList.remove('hidden');
 
             try {
@@ -1644,12 +1755,12 @@
                         const txnId = item.transaction_id || '-';
 
                         return `
-                            <tr class="border-b border-hairline hover:bg-surface-chip/20 transition-colors">
-                                <td class="p-3 font-bold text-body-muted">${round}</td>
-                                <td class="p-3 text-body-muted">${dateStr}</td>
-                                <td class="p-3 font-mono font-semibold text-body-muted">${txnId}</td>
+                            <tr class="border-b border-[#3F3F46] hover:bg-white/5 transition-colors">
+                                <td class="p-3 font-bold text-slate-300">${round}</td>
+                                <td class="p-3 text-slate-300">${dateStr}</td>
+                                <td class="p-3 font-mono font-semibold text-slate-300">${txnId}</td>
                                 <td class="p-3 font-mono font-bold text-emerald-400 text-right">${amount}</td>
-                                <td class="p-3 text-right text-body-muted">${recordedBy}</td>
+                                <td class="p-3 text-right text-slate-300">${recordedBy}</td>
                             </tr>
                         `;
                     }).join('');

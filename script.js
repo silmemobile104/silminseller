@@ -55,18 +55,9 @@ document.addEventListener('DOMContentLoaded', () => {
         // ตรวจสอบ 401 → เซสชั่นหมดอายุ (Token ไม่ถูกต้อง/หมดอายุ)
         // หมายเหตุ: 403 สงวนไว้สำหรับ "ไม่มีสิทธิ์ทำรายการนี้" (business permission) ซึ่งแต่ละหน้าจะจัดการเองจาก result.message
         if (response.status === 401) {
-            // Toast debounce - แสดง error เพียงครั้งเดียว
-            if (!window.__isShowingAuthError) {
-                window.__isShowingAuthError = true;
-                forceLogout();
-                showToast('เซสชั่นหมดอายุ กรุณาเข้าสู่ระบบใหม่', 'error');
-                setTimeout(() => {
-                    window.__isShowingAuthError = false;
-                }, 3000);
-            } else {
-                // ถ้ามีการแสดง error อยู่แล้ว ให้ logout เงียบๆ
-                forceLogout();
-            }
+            // เรียก forceLogout() ได้ทุกครั้งโดยไม่ต้องเช็คอะไรก่อน — ตัวมันล็อกไว้แล้วว่าจะทำงานจริง
+            // แค่ครั้งแรกครั้งเดียว ใบที่ 401 ตามมาทีหลังจะ return ทันที ไม่มี Toast ซ้ำ
+            forceLogout();
             throw new Error('เซสชั่นหมดอายุ');
         }
         return response;
@@ -76,7 +67,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // โหลดสคริปต์เฉพาะหน้า (js/page-<name>.js) แบบ dynamic ครั้งเดียว แล้ว cache ไว้
     // PAGE_SCRIPT_VERSION: บัมพ์เลขนี้ทุกครั้งที่แก้ไฟล์ใน js/ เพื่อไม่ให้เบราว์เซอร์ใช้ของเก่าที่ cache ไว้
-    const PAGE_SCRIPT_VERSION = 'member_inline_validation_v1';
+    const PAGE_SCRIPT_VERSION = 'po_view_modal_design_match_v1';
     const __loadedPageScripts = {};
     function loadPageScript(name) {
         if (__loadedPageScripts[name]) return __loadedPageScripts[name];
@@ -129,7 +120,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // ไม่ได้รอ init function ถ้า HTML ยังไม่ถูกแทรกเข้า DOM ก่อน ตัวแปรที่ query ไว้จะเป็น null ถาวร
     // ชื่อ name ต้องตรงกับชื่อที่ใช้ใน loadPageScript — ไฟล์เดียวอาจมีหลาย <div id="view-XXX"> รวมกัน
     // ถ้าหน้านั้นถูก share โดยสคริปต์เดียวกันหลาย view (ดูตาราง mapping ในแผน)
-    const VIEW_FRAGMENT_VERSION = 'v3'; // บัมพ์เลขนี้ทุกครั้งที่แก้ไฟล์ใน views/
+    const VIEW_FRAGMENT_VERSION = 'v8'; // บัมพ์เลขนี้ทุกครั้งที่แก้ไฟล์ใน views/
     const __loadedPageViews = {};
     function loadPageView(name) {
         if (__loadedPageViews[name]) return __loadedPageViews[name];
@@ -161,9 +152,25 @@ document.addEventListener('DOMContentLoaded', () => {
         return promise;
     }
 
+    // ตัวล็อกว่า "จัดการเซสชั่นหมดอายุไปแล้ว" — ตั้งครั้งเดียวจนกว่าจะล็อกอินใหม่สำเร็จ
+    // ห้ามใช้ตัวจับเวลา (เช่นปลดล็อกหลัง 3 วินาที) เพราะตอน token หมดอายุ request ที่ยิงทีหลัง
+    // จะทยอย 401 กลับมาเรื่อยๆ (โหลดหน้า → โหลด view → โหลดสคริปต์หน้า → ยิง API ของหน้านั้น
+    // รวมถึง poll ทุก 30 วินาที) ซึ่งกินเวลานานกว่าหน้าต่างเวลาที่ตั้งไว้ ทำให้ Toast เด้งซ้ำเป็นชุด
+    let sessionExpiredHandled = false;
+
     const forceLogout = () => {
+        // เรียกซ้ำจาก 401 ใบถัดๆ ไป = ไม่ต้องทำอะไรอีกเลย (ทั้ง Toast, ล้าง storage และสลับหน้าจอ
+        // ถูกทำไปแล้วตั้งแต่ใบแรก) การรีเซ็ต DOM ซ้ำๆ ยังทำให้หน้าจอล็อกอินกระตุกด้วย
+        if (sessionExpiredHandled) return;
+        sessionExpiredHandled = true;
+
         localStorage.removeItem('silmin_token');
         localStorage.removeItem('silmin_user');
+
+        // หยุด poll เบื้องหลัง ไม่งั้นมันจะยิง API ต่อทุก 30 วินาทีแล้วได้ 401 ซ้ำไม่รู้จบ
+        if (typeof window.stopPendingTransferPolling === 'function') {
+            window.stopPendingTransferPolling();
+        }
 
         const mainLayout = document.getElementById('main-layout');
         const loginScreen = document.getElementById('login-screen');
@@ -177,10 +184,11 @@ document.addEventListener('DOMContentLoaded', () => {
             loginScreen.classList.add('flex', 'opacity-100');
         }
 
-        // แสดง Toast แจ้งเตือน (ถ้ามี showToast)
+        // Toast ใบเดียวจบ ไม่ว่าจะมีกี่ request ที่ 401 และห่างกันนานแค่ไหน
+        // ต้องส่ง force = true เพราะ showToast กลืน Toast ทุกใบหลัง sessionExpiredHandled = true
         setTimeout(() => {
             if (typeof showToast === 'function') {
-                showToast('เซสชั่นหมดอายุ กรุณาเข้าสู่ระบบใหม่', 'error');
+                showToast('เซสชั่นหมดอายุ กรุณาเข้าสู่ระบบใหม่', 'error', true);
             }
         }, 600);
     };
@@ -1664,8 +1672,17 @@ document.addEventListener('DOMContentLoaded', () => {
             pendingTransferPollInterval = null;
         }
     };
+    // forceLogout() (ประกาศไว้ด้านบนของไฟล์) ต้องเรียกตัวนี้เพื่อหยุด poll ตอนเซสชั่นหมดอายุ
+    // ต้องผ่าน window เพราะ forceLogout อยู่เหนือ const ตัวนี้ การอ้างชื่อตรงๆ จะติด TDZ
+    window.stopPendingTransferPolling = stopPendingTransferPolling;
 
-    const showToast = (message, type = 'success') => {
+    // force = true สงวนไว้ให้ forceLogout() เท่านั้น
+    // เมื่อเซสชั่นหมดอายุ ทุก request ที่ค้างอยู่จะ throw ตามกันเป็นชุด แล้วแต่ละหน้าก็ catch
+    // ไปเด้ง Toast "เกิดข้อผิดพลาด" ของตัวเอง (มีอยู่ราว 39 จุดทั้งโปรเจกต์) กลายเป็น Toast ท่วมจอ
+    // ทั้งที่ต้นเหตุเดียวกันหมด จึงกลืนทิ้งทุกใบหลังเซสชั่นหมดอายุ เหลือใบแจ้งเตือนใบเดียว
+    const showToast = (message, type = 'success', force = false) => {
+        if (sessionExpiredHandled && !force) return;
+
         const toast = document.createElement('div');
 
         // สีสถานะ (เขียว/แดง/ส้ม/ฟ้า) เป็นข้อยกเว้นที่ตั้งใจไว้จากกฎ single-accent ของ DESIGN.md
@@ -2690,6 +2707,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Save JWT token & user data
                 localStorage.setItem('silmin_token', result.token);
                 localStorage.setItem('silmin_user', JSON.stringify(result.data));
+
+                // ปลดล็อกตัวจับเซสชั่นหมดอายุ เพื่อให้รอบหน้าที่ token หมดอายุยังแจ้งเตือนได้อีกครั้ง
+                sessionExpiredHandled = false;
 
                 // Fade out login
                 loginScreen.classList.remove('opacity-100');
@@ -4119,13 +4139,18 @@ document.addEventListener('DOMContentLoaded', () => {
         return 'อื่นๆ';
     };
 
-    // สแนปช็อตข้อมูลสินค้า (รหัส/สี/ประเภท/สต็อกคงเหลือ ณ ตอนหยิบใส่ตะกร้า) สำหรับแสดงในตารางยืนยันการชำระเงิน
+    // สแนปช็อตข้อมูลสินค้า (รหัส/สี/ประเภท/สต็อกคงเหลือ/สาขาที่ตัดสต็อก ณ ตอนหยิบใส่ตะกร้า)
+    // สำหรับแสดงในตารางยืนยันการชำระเงิน
     // เก็บไว้ตอน push เข้าตะกร้าเพราะ posProductsCache อาจเปลี่ยนไปก่อนเปิด modal ชำระเงิน
+    // branch_name: GET /products คืนมาเป็นรายแถวสต็อก (หนึ่งสินค้าอาจมีหลายแถว แยกตามสาขา)
+    //   ต้องเก็บของแถวที่ผู้ใช้กดจริง ไม่ใช่สาขาของคนที่ล็อกอิน เพราะแอดมิน/ผู้จัดการที่ดูแบบ 'ALL'
+    //   ขายสินค้าข้ามสาขาได้ และตะกร้าใบเดียวอาจมีสินค้าจากคนละสาขาปนกัน
     const getCartProductSnapshot = (product) => ({
         product_code: product.product_code || '',
         color_name: (product.color_id && product.color_id.name) ? product.color_id.name : '',
         type_name: (product.type_id && product.type_id.name) ? product.type_id.name : '',
-        stock_available: (typeof product.quantity === 'number') ? product.quantity : null
+        stock_available: (typeof product.quantity === 'number') ? product.quantity : null,
+        branch_name: (product.branch_id && product.branch_id.name) ? product.branch_id.name : ''
     });
 
     // มุมมอง/การเรียง/การกรองของกริดสินค้า — เก็บเป็นสถานะเดียวกันทั้งหน้า เพื่อให้ปุ่มสลับมุมมอง
@@ -6153,9 +6178,12 @@ document.addEventListener('DOMContentLoaded', () => {
         // Render cart summary items with editable unit prices
         if (confirmPriceList) {
             confirmPriceList.innerHTML = '';
+            // สาขาต้องอ่านจากตัวสินค้าในตะกร้าแต่ละชิ้น (item.branch_name) ไม่ใช่สาขาของผู้ล็อกอิน
+            // ใช้สาขาผู้ล็อกอินเป็น fallback เฉพาะกรณีสินค้าไม่มีข้อมูลสาขาติดมา (เช่นสต็อกเป็น 0 ทุกสาขา)
             const posUserForRow = getCurrentUserForPos();
-            const posBranchNameForRow = (posUserForRow && posUserForRow.branch && posUserForRow.branch.name) ? posUserForRow.branch.name : '-';
+            const posUserBranchName = (posUserForRow && posUserForRow.branch && posUserForRow.branch.name) ? posUserForRow.branch.name : '';
             cart.forEach((item, index) => {
+                const posBranchNameForRow = item.branch_name || posUserBranchName || '-';
                 const card = document.createElement('div');
                 card.className = 'bg-[#1c1c1c] border border-[#333] rounded-sm p-3 flex flex-col gap-4 relative';
                 const detailLines = [];
@@ -6181,8 +6209,20 @@ document.addEventListener('DOMContentLoaded', () => {
                             
                             <div class="mt-3 flex flex-wrap gap-2 items-center">
                                 ${item.imei_sold ?
+                        // สินค้าผูก IMEI = หนึ่งการ์ดต่อหนึ่งเครื่องเสมอ ปรับจำนวนไม่ได้ จึงไม่มีปุ่ม + -
                         `<span class="inline-flex items-center gap-1.5 bg-[#2a2a2a] text-[#FFE169] border border-[#b48025] px-2.5 py-1 rounded-lg text-xs font-mono font-bold"><i class="fa-solid fa-sim-card"></i> ${item.imei_sold}</span>`
-                        : `<span class="inline-flex items-center gap-1.5 bg-[#2a2a2a] text-gray-400 border border-[#444] px-2.5 py-1 rounded-lg text-xs"><i class="fa-solid fa-layer-group"></i> จำนวน: ${item.quantity} ${item.unit_name || 'ชิ้น'}</span>`
+                        : `<span class="inline-flex items-center bg-[#2a2a2a] border border-[#444] rounded-lg text-xs overflow-hidden">
+                                        <button type="button" aria-label="ลดจำนวน" data-index="${index}" ${item.quantity <= 1 ? 'disabled' : ''}
+                                            class="modal-item-qty-minus w-7 h-7 flex items-center justify-center text-gray-400 hover:text-[#FFE169] hover:bg-[#333] transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:text-gray-400 disabled:hover:bg-transparent">
+                                            <i class="fa-solid fa-minus text-[10px]"></i>
+                                        </button>
+                                        <span class="modal-item-qty text-white font-mono font-bold min-w-[1.75rem] text-center" data-index="${index}">${item.quantity}</span>
+                                        <button type="button" aria-label="เพิ่มจำนวน" data-index="${index}"
+                                            class="modal-item-qty-plus w-7 h-7 flex items-center justify-center text-gray-400 hover:text-[#FFE169] hover:bg-[#333] transition-colors cursor-pointer">
+                                            <i class="fa-solid fa-plus text-[10px]"></i>
+                                        </button>
+                                        <span class="text-gray-400 pl-1 pr-2.5">${item.unit_name || 'ชิ้น'}</span>
+                                    </span>`
                     }
                                 
                                 ${detailLines.length ? detailLines.map(l => `<span class="text-xs text-gray-400 bg-[#222] px-2 py-1 rounded-lg border border-[#444]">${l}</span>`).join('') : ''}
@@ -6203,7 +6243,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         
                         <div class="flex items-center gap-2">
                             ${(item._isDevice || item.imei_sold) ? `
-                                <select class="modal-warranty-select bg-[#2a2a2a] border border-[#444] text-gray-300 text-sm rounded-full px-4 py-2 focus:outline-none focus:border-[#FFE169] transition-all cursor-pointer hover:bg-[#333] hover:text-white" data-index="${index}">
+                                <select class="modal-warranty-select bg-[#2a2a2a] border border-[#444] text-gray-300 text-sm rounded-[5px] px-4 py-2 focus:outline-none focus:border-[#FFE169] transition-all cursor-pointer hover:bg-[#333] hover:text-white" data-index="${index}">
                                     <option value="1 เดือน" ${(!item.warranty_period || item.warranty_period === '1 เดือน') ? 'selected' : ''}>ประกัน 1 เดือน</option>
                                     <option value="2 เดือน" ${(item.warranty_period === '2 เดือน') ? 'selected' : ''}>ประกัน 2 เดือน</option>
                                     <option value="3 เดือน" ${(item.warranty_period === '3 เดือน') ? 'selected' : ''}>ประกัน 3 เดือน</option>
@@ -6253,6 +6293,48 @@ document.addEventListener('DOMContentLoaded', () => {
                     // Synchronize state seamlessly with sidebar background cart view
                     renderCart();
                 });
+            });
+
+            // Attach dynamic listener for quantity steppers (เฉพาะสินค้าที่ไม่ผูก IMEI)
+            // ใช้ชื่อคลาส modal-item-qty-* แยกจาก cart-qty-* ของตะกร้าฝั่ง sidebar
+            // เพราะ renderCart() ผูก listener ด้วย document.querySelectorAll ถ้าชื่อชนกันจะยิงซ้อนกันสองที่
+            const applyModalQtyChange = (idx, delta) => {
+                const item = cart[idx];
+                if (!item || item.imei_sold) return;
+
+                const next = item.quantity + delta;
+                if (next < 1) return;
+
+                // เพดานสต็อก: ใช้ยอดคงเหลือของ "แถวสาขาที่หยิบมาจริง" ที่สแนปช็อตไว้ตอนใส่ตะกร้า
+                // ไม่ค้นจาก posProductsCache ด้วย _id เพราะสินค้าหนึ่งตัวมีหลายแถวแยกตามสาขา
+                // การ find() ด้วย _id จะเจอแถวแรกซึ่งอาจเป็นสต็อกของคนละสาขากับที่กำลังขาย
+                if (delta > 0 && typeof item.stock_available === 'number' && next > item.stock_available) {
+                    showToast(`สินค้า ${item.product_name} มีไม่เพียงพอในสต็อก (คงเหลือ ${item.stock_available})`, 'error');
+                    return;
+                }
+
+                item.quantity = next;
+                item.subtotal = item.price * item.quantity;
+
+                const qtyLabel = confirmPriceList.querySelector(`.modal-item-qty[data-index="${idx}"]`);
+                if (qtyLabel) qtyLabel.textContent = item.quantity;
+
+                const minusBtn = confirmPriceList.querySelector(`.modal-item-qty-minus[data-index="${idx}"]`);
+                if (minusBtn) minusBtn.disabled = (item.quantity <= 1);
+
+                const subtotalLabel = confirmPriceList.querySelector(`.modal-item-subtotal[data-index="${idx}"]`);
+                if (subtotalLabel) subtotalLabel.textContent = `฿${item.subtotal.toLocaleString()}`;
+
+                // ยอดรวมใน modal + ตะกร้าฝั่ง sidebar ต้องขยับตามทันที
+                updateModalTotals();
+                renderCart();
+            };
+
+            confirmPriceList.querySelectorAll('.modal-item-qty-minus').forEach(btn => {
+                btn.addEventListener('click', () => applyModalQtyChange(parseInt(btn.dataset.index), -1));
+            });
+            confirmPriceList.querySelectorAll('.modal-item-qty-plus').forEach(btn => {
+                btn.addEventListener('click', () => applyModalQtyChange(parseInt(btn.dataset.index), 1));
             });
 
             // Attach dynamic listener for gift toggle buttons
