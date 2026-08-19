@@ -81,6 +81,7 @@
 .fa-circle-exclamation:before,.fa-exclamation-circle:before{content:"\f06a"}
 .fa-arrow-right-from-bracket:before,.fa-sign-out:before{content:"\f08b"}
 .fa-sitemap:before{content:"\f0e8"}
+.fa-circle-dollar-to-slot:before,.fa-donate:before{content:"\f4b9"}
 .fa-list-squares:before,.fa-list:before{content:"\f03a"}
 .fa-cart-plus:before{content:"\f217"}
 .fa-circle-dot:before,.fa-dot-circle:before{content:"\f192"}
@@ -168,11 +169,9 @@
 .fa-mobile-android-alt:before,.fa-mobile-screen:before{content:"\f3cf"}
 .fa-coins:before{content:"\f51e"}
 .fa-sliders-h:before,.fa-sliders:before{content:"\f1de"}
-.fa-ellipsis-v:before,.fa-ellipsis-vertical:before{content:"\f142"}
 .fa-calculator:before{content:"\f1ec"}
 .fa-drivers-license:before,.fa-id-card:before{content:"\f2c2"}
 .fa-hand-holding-hand:before{content:"\e4f7"}
-.fa-bell:before{content:"\f0f3"}
 .fa-location-dot:before,.fa-map-marker-alt:before{content:"\f3c5"}
 .fa-arrow-down:before{content:"\f063"}
 .fa-inbox:before{content:"\f01c"}
@@ -185,7 +184,6 @@
 .fa-arrow-up:before{content:"\f062"}
 .fa-list-check:before,.fa-tasks:before{content:"\f0ae"}
 .fa-shipping-fast:before,.fa-truck-fast:before{content:"\f48b"}
-.fa-copy:before{content:"\f0c5"}
 .fa-add:before,.fa-plus:before{content:"\2b"}
 .fa-close:before,.fa-multiply:before,.fa-remove:before,.fa-times:before,.fa-xmark:before{content:"\f00d"}
 .fa-store:before{content:"\f54e"}
@@ -199,6 +197,7 @@
 .fa-qrcode:before{content:"\f029"}
 .fa-clock-rotate-left:before,.fa-history:before{content:"\f1da"}
 .fa-shield-blank:before,.fa-shield:before{content:"\f132"}
+.fa-calendar:before{content:"\f133"}
 .fa-circle-plus:before,.fa-plus-circle:before{content:"\f055"}
 .fa-arrow-up-z-a:before,.fa-sort-alpha-up-alt:before{content:"\f882"}
 .fa-user-plus:before{content:"\f234"}
@@ -218,15 +217,15 @@
 :host,:root{--fa-style-family-brands:"Font Awesome 6 Brands";--fa-font-brands:normal 400 1em/1 "Font Awesome 6 Brands"}
 .fa-brands,.fab{font-weight:400}
 :host,:root{--fa-font-regular:normal 400 1em/1 "Font Awesome 6 Free"}
-@font-face{font-family:"Font Awesome 6 Free";font-style:normal;font-weight:400;font-display:swap;src:url(./webfonts/fa-regular-400.woff2?v=4) format("woff2")}
+@font-face{font-family:"Font Awesome 6 Free";font-style:normal;font-weight:400;font-display:swap;src:url(./webfonts/fa-regular-400.woff2?v=5) format("woff2")}
 .fa-regular,.far{font-weight:400}
 :host,:root{--fa-style-family-classic:"Font Awesome 6 Free";--fa-font-solid:normal 900 1em/1 "Font Awesome 6 Free"}
-@font-face{font-family:"Font Awesome 6 Free";font-style:normal;font-weight:900;font-display:swap;src:url(./webfonts/fa-solid-900.woff2?v=4) format("woff2")}
+@font-face{font-family:"Font Awesome 6 Free";font-style:normal;font-weight:900;font-display:swap;src:url(./webfonts/fa-solid-900.woff2?v=5) format("woff2")}
 .fa-solid,.fas{font-weight:900}
-@font-face{font-family:"Font Awesome 5 Free";font-display:swap;font-weight:900;src:url(./webfonts/fa-solid-900.woff2?v=4) format("woff2")}
-@font-face{font-family:"Font Awesome 5 Free";font-display:swap;font-weight:400;src:url(./webfonts/fa-regular-400.woff2?v=4) format("woff2")}
-@font-face{font-family:"FontAwesome";font-display:swap;src:url(./webfonts/fa-solid-900.woff2?v=4) format("woff2")}
-@font-face{font-family:"FontAwesome";font-display:swap;src:url(./webfonts/fa-regular-400.woff2?v=4) format("woff2");unicode-range:u+f003,u+f006,u+f014,u+f016-f017,u+f01a-f01b,u+f01d,u+f022,u+f03e,u+f044,u+f046,u+f05c-f05d,u+f06e,u+f070,u+f087-f088,u+f08a,u+f094,u+f096-f097,u+f09d,u+f0a0,u+f0a2,u+f0a4-f0a7,u+f0c5,u+f0c7,u+f0e5-f0e6,u+f0eb,u+f0f6-f0f8,u+f10c,u+f114-f115,u+f118-f11a,u+f11c-f11d,u+f133,u+f147,u+f14e,u+f150-f152,u+f185-f186,u+f18e,u+f190-f192,u+f196,u+f1c1-f1c9,u+f1d9,u+f1db,u+f1e3,u+f1ea,u+f1f7,u+f1f9,u+f20a,u+f247-f248,u+f24a,u+f24d,u+f255-f25b,u+f25d,u+f271-f274,u+f278,u+f27b,u+f28c,u+f28e,u+f29c,u+f2b5,u+f2b7,u+f2ba,u+f2bc,u+f2be,u+f2c0-f2c1,u+f2c3,u+f2d0,u+f2d2,u+f2d4,u+f2dc}
+@font-face{font-family:"Font Awesome 5 Free";font-display:swap;font-weight:900;src:url(./webfonts/fa-solid-900.woff2?v=5) format("woff2")}
+@font-face{font-family:"Font Awesome 5 Free";font-display:swap;font-weight:400;src:url(./webfonts/fa-regular-400.woff2?v=5) format("woff2")}
+@font-face{font-family:"FontAwesome";font-display:swap;src:url(./webfonts/fa-solid-900.woff2?v=5) format("woff2")}
+@font-face{font-family:"FontAwesome";font-display:swap;src:url(./webfonts/fa-regular-400.woff2?v=5) format("woff2");unicode-range:u+f003,u+f006,u+f014,u+f016-f017,u+f01a-f01b,u+f01d,u+f022,u+f03e,u+f044,u+f046,u+f05c-f05d,u+f06e,u+f070,u+f087-f088,u+f08a,u+f094,u+f096-f097,u+f09d,u+f0a0,u+f0a2,u+f0a4-f0a7,u+f0c5,u+f0c7,u+f0e5-f0e6,u+f0eb,u+f0f6-f0f8,u+f10c,u+f114-f115,u+f118-f11a,u+f11c-f11d,u+f133,u+f147,u+f14e,u+f150-f152,u+f185-f186,u+f18e,u+f190-f192,u+f196,u+f1c1-f1c9,u+f1d9,u+f1db,u+f1e3,u+f1ea,u+f1f7,u+f1f9,u+f20a,u+f247-f248,u+f24a,u+f24d,u+f255-f25b,u+f25d,u+f271-f274,u+f278,u+f27b,u+f28c,u+f28e,u+f29c,u+f2b5,u+f2b7,u+f2ba,u+f2bc,u+f2be,u+f2c0-f2c1,u+f2c3,u+f2d0,u+f2d2,u+f2d4,u+f2dc}
 /*!
  * Bootstrap Icons v1.11.3 (https://icons.getbootstrap.com/)
  * Copyright 2019-2024 The Bootstrap Authors
@@ -236,7 +235,7 @@
 @font-face {
   font-display:swap;
   font-family: "bootstrap-icons";
-  src:url("./webfonts/bootstrap-icons.woff2?v=4") format("woff2");
+  src:url("./webfonts/bootstrap-icons.woff2?v=5") format("woff2");
 }
 .bi::before,
 [class^="bi-"]::before,
@@ -269,10 +268,8 @@
 .bi-file-earmark-text::before { content: "\f38b"; }
 .bi-file-text::before { content: "\f3b9"; }
 .bi-gear::before { content: "\f3e5"; }
-.bi-geo-alt::before { content: "\f3e8"; }
 .bi-inbox::before { content: "\f42d"; }
 .bi-key::before { content: "\f44f"; }
-.bi-list::before { content: "\f479"; }
 .bi-people::before { content: "\f4d0"; }
 .bi-person-badge::before { content: "\f4d3"; }
 .bi-shield-check::before { content: "\f52f"; }

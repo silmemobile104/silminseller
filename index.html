@@ -14,19 +14,19 @@
     <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
 
     <link rel="icon" type="image/svg+xml" href="logo.png">
-    <link rel="stylesheet" href="tailwind.css?v=7">
+    <link rel="stylesheet" href="tailwind.css?v=8">
     <!-- xlsx ถูกย้ายไปโหลดแบบ on-demand ตอนเปิด modal นำเข้า Excel แล้ว (ดู ensureXlsxLoaded ใน script.js)
          เดิมโหลดตรงนี้แบบ render-blocking ทุกครั้งที่เข้าเว็บ ทั้งที่ใช้แค่ฟีเจอร์เดียว -->
     <!-- ไอคอน: self-host + ตัดเหลือเฉพาะที่ใช้จริง (Font Awesome 144 + Bootstrap Icons 28)
          จากเดิมโหลด CSS เต็มชุด 2 เจ้าจาก CDN (~200KB, ~2,000 ไอคอน) เหลือ ~24KB
          ⚠️ เพิ่มไอคอนใหม่ที่ไม่เคยใช้มาก่อน ต้องรัน `npm run build:icons` ก่อน deploy -->
-    <link rel="stylesheet" href="vendor/icons/icons.css?v=4">
+    <link rel="stylesheet" href="vendor/icons/icons.css?v=5">
     <!-- preload ฟอนต์ไอคอนที่ subset แล้ว (รวมกันเหลือ ~17KB) เพื่อตัด waterfall
          ปกติเบราว์เซอร์ต้องรอ parse CSS จบก่อนถึงจะรู้ว่าต้องโหลดฟอนต์ -->
     <!-- ⚠️ ?v= ต้องตรงกับ FONT_VERSION ใน tools/build-icons.js เป๊ะๆ
          ถ้าไม่ตรง เบราว์เซอร์จะมองเป็นคนละไฟล์แล้วโหลดฟอนต์ซ้ำสองรอบ -->
-    <link rel="preload" as="font" type="font/woff2" crossorigin href="vendor/icons/webfonts/fa-solid-900.woff2?v=4">
-    <link rel="preload" as="font" type="font/woff2" crossorigin href="vendor/icons/webfonts/bootstrap-icons.woff2?v=4">
+    <link rel="preload" as="font" type="font/woff2" crossorigin href="vendor/icons/webfonts/fa-solid-900.woff2?v=5">
+    <link rel="preload" as="font" type="font/woff2" crossorigin href="vendor/icons/webfonts/bootstrap-icons.woff2?v=5">
     <!-- Prompt: โหลดเฉพาะน้ำหนักที่ใช้จริง (300-900 + italic 400) — ตัดจาก 18 variants เหลือ 8
          หมายเหตุ: ฟอนต์ Inter ถูกลบออกแล้ว เพราะ style.css บังคับ Prompt กับทุก element (* selector) จึงไม่เคยถูกใช้ -->
     <link
@@ -315,22 +315,37 @@
             <!-- Top App Bar -->
             <header
                 class="h-20 bg-canvas/80 backdrop-blur-[20px] backdrop-saturate-[1.8]  flex items-center justify-between px-4 sm:px-6 z-10">
-                <div class="flex items-center gap-4">
+                <div class="flex items-center gap-4 min-w-0">
                     <button aria-label="เปิดหรือปิดเมนู" id="toggle-sidebar"
-                        class="text-ink hover:text-ink transition-colors focus:outline-none p-2 rounded-sm">
+                        class="text-ink hover:text-ink transition-colors focus:outline-none p-2 rounded-sm shrink-0">
                         <img src="icon/menu.png" alt="" width="26">
                     </button>
-                    <p id="topbar-current-page" class="text-lg font-medium text-ink">หน้าหลัก</p>
+                    <!-- Global System Information: เหมือนกันทุกหน้า ห้ามใส่ชื่อหน้า (ชื่อหน้าอยู่ที่ Page Header เท่านั้น) -->
+                    <div id="navbar-global-info"
+                        class="hidden md:flex items-center gap-2.5 lg:gap-3 min-w-0 text-[16px] text-[#C9C9C9] select-none">
+                        <span class="flex items-center gap-1.5 shrink-0">
+                            <span id="navbar-status-dot" class="w-2 h-2 rounded-full bg-emerald-500 shrink-0"></span>
+                            <span id="navbar-status-text" class="font-medium whitespace-nowrap">ระบบออนไลน์</span>
+                        </span>
+                        <span class="text-[#313131] shrink-0" aria-hidden="true">|</span>
+                        <span class="flex items-center gap-1.5 shrink-0 whitespace-nowrap">
+                            <i class="fa-regular fa-calendar text-[12px] text-[#C9C9C9]"></i>
+                            <span id="navbar-date">-</span>
+                        </span>
+                        <span class="text-[#313131] shrink-0" aria-hidden="true">|</span>
+                        <span class="flex items-center gap-1.5 shrink-0 whitespace-nowrap">
+                            <i class="fa-regular fa-clock text-[12px] text-[#C9C9C9]"></i>
+                            <span id="navbar-time" class="tabular-nums">-</span>
+                        </span>
+                        <span class="hidden lg:inline text-[#313131] shrink-0" aria-hidden="true">|</span>
+                        <span class="hidden lg:flex items-center gap-1.5 min-w-0 truncate">
+                            <i class="fa-solid fa-location-dot text-[12px] text-[#C9C9C9]"></i>
+                            <span id="navbar-branch" class="truncate">กำลังโหลด...</span>
+                        </span>
+                    </div>
                 </div>
 
                 <div class="flex items-center gap-5 sm:gap-6">
-                    <!-- Branch Selector -->
-                    <button
-                        class="hidden sm:flex items-center gap-2 bg-surface-chip hover:bg-surface-tile-2 text-ink px-4 py-2 rounded-md transition-colors">
-                        <i class="bi bi-geo-alt text-md pt-1 "></i>
-                        <span id="topbar-user-branch" class="text-[15px] font-medium ">กำลังโหลด...</span>
-                    </button>
-
                     <!-- Notifications -->
                     <button aria-label="การแจ้งเตือน"
                         class="relative text-body-muted hover:text-ink transition-colors focus:outline-none">
@@ -340,8 +355,8 @@
 
                     <!-- Theme Toggle -->
                     <button aria-label="สลับธีมสว่างหรือมืด"
-                        class="text-body-muted hover:text-ink text-white focus:outline-none">
-                        <i class="bi bi-sun text-xl"></i> </button>
+                        class="text-body-muted hover:text-ink text-[#C9C9C9] focus:outline-none">
+                        <i class="bi bi-sun text-xl text-white"></i> </button>
 
                     <!-- User Profile Container -->
                     <div id="user-profile-container" class="relative pl-5">

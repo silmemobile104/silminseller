@@ -906,6 +906,8 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         return hex;
     };
+    window.resolveProductColorHex = resolveProductColorHex;
+
 
     const hexToRgb = (hex) => {
         let h = String(hex || '').replace('#', '').trim();
@@ -1222,7 +1224,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // Reset Title
             const modalTitle = document.getElementById('modal-title');
-            if (modalTitle) modalTitle.innerHTML = `<i class="bi bi-box-seam text-[#FFE169]"></i> เพิ่มสินค้าใหม่`;
+            if (modalTitle) modalTitle.innerHTML = `<i class="fa-solid fa-plus text-[#FFE169]"></i> เพิ่มสินค้าใหม่`;
 
             // Show Excel Button in modal header
             const btnExcelOpen = document.getElementById('btn-add-product-excel');
@@ -1882,9 +1884,11 @@ document.addEventListener('DOMContentLoaded', () => {
             // 1. Update Header Elements
             // Desktop topbar elements
             const topbarBranch = document.getElementById('topbar-user-branch');
+            const navbarBranch = document.getElementById('navbar-branch');
             if (topbarUserName) topbarUserName.textContent = userName;
             if (topbarUserRole) topbarUserRole.textContent = userRole;
             if (topbarBranch) topbarBranch.textContent = branchName;
+            if (navbarBranch) navbarBranch.textContent = branchName;
 
             // Tablet topbar elements
             const topbarUserNameTablet = document.getElementById('topbar-user-name-tablet');
@@ -1934,6 +1938,9 @@ document.addEventListener('DOMContentLoaded', () => {
             const topbarBranch = document.getElementById('topbar-user-branch');
             if (topbarBranch) topbarBranch.textContent = branchNameFallback;
 
+            const navbarBranch = document.getElementById('navbar-branch');
+            if (navbarBranch) navbarBranch.textContent = branchNameFallback;
+
             const topbarUserNameTablet = document.getElementById('topbar-user-name-tablet');
             const topbarUserRoleTablet = document.getElementById('topbar-user-role-tablet');
             if (topbarUserNameTablet) topbarUserNameTablet.textContent = userNameFallback;
@@ -1961,6 +1968,45 @@ document.addEventListener('DOMContentLoaded', () => {
             if (popupUserRole) popupUserRole.textContent = userRoleFallback;
         }
     };
+
+    // Global Navbar: system status (online/offline) + Thai date/time — เหมือนกันทุกหน้า
+    // ใช้ navigator.onLine ของเบราว์เซอร์ ไม่มีการเรียก Backend ใหม่
+    const initNavbarGlobalInfo = () => {
+        const statusDot = document.getElementById('navbar-status-dot');
+        const statusText = document.getElementById('navbar-status-text');
+        const dateEl = document.getElementById('navbar-date');
+        const timeEl = document.getElementById('navbar-time');
+        if (!statusDot && !statusText && !dateEl && !timeEl) return;
+
+        const thaiDateFormatter = new Intl.DateTimeFormat('th-TH', {
+            day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Bangkok'
+        });
+        const thaiTimeFormatter = new Intl.DateTimeFormat('th-TH', {
+            hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Bangkok'
+        });
+
+        const updateClock = () => {
+            const now = new Date();
+            if (dateEl) dateEl.textContent = thaiDateFormatter.format(now);
+            if (timeEl) timeEl.textContent = `${thaiTimeFormatter.format(now)} น.`;
+        };
+
+        const updateStatus = () => {
+            const online = navigator.onLine;
+            if (statusText) statusText.textContent = online ? 'ระบบออนไลน์' : 'ระบบออฟไลน์';
+            if (statusDot) {
+                statusDot.classList.toggle('bg-emerald-500', online);
+                statusDot.classList.toggle('bg-red-500', !online);
+            }
+        };
+
+        updateClock();
+        updateStatus();
+        setInterval(updateClock, 15000);
+        window.addEventListener('online', updateStatus);
+        window.addEventListener('offline', updateStatus);
+    };
+    initNavbarGlobalInfo();
 
     // User Profile Dropdown Popup behavior
     const userProfileTrigger = document.getElementById('user-profile-trigger');
@@ -3246,13 +3292,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             if (nav) {
                 nav.classList.add('active');
-
-                // Update topbar page name based on nav text
-                const topbarPageName = document.getElementById('topbar-current-page');
-                const sidebarTextEl = nav.querySelector('.sidebar-text');
-                if (topbarPageName && sidebarTextEl) {
-                    topbarPageName.textContent = sidebarTextEl.textContent.trim();
-                }
             }
         };
 

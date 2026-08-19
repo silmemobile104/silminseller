@@ -40,79 +40,249 @@
         const container = document.getElementById('po-items-container');
 
         const row = document.createElement('div');
-        row.className = 'p-5  border border-hairline rounded-xl relative po-item-row hover:border-primary/30 transition-colors group';
+        row.className = 'p-4 border border-white/10 rounded-xl relative po-item-row hover:border-[#FFE169]/30 transition-colors group bg-[#161616]';
+        
+        const typeChips = (window.masterDataCache?.productTypes || []).map(t => t.name);
+        const colorData = window.masterDataCache?.productColors || [];
+        const colorSwatches = colorData.map(c => c.name || c);
+        const capacityChips = (window.masterDataCache?.productCapacities || []).map(c => c.name || c);
+        const unitChips = (window.masterDataCache?.productUnits || []).map(u => u.name);
+
         row.innerHTML = `
-            <button type="button" class="btn-delete-row absolute -top-3 -right-3 w-8 h-8 rounded-full bg-surface-chip border border-hairline text-body-muted hover:text-ink hover:bg-red-500 flex items-center justify-center transition-all opacity-0 group-hover:opacity-100 z-10"><i class="fa-solid fa-trash text-xs"></i></button>
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
-                <div class="md:col-span-2">
-                    <label class="text-[10px] font-bold text-body-muted uppercase tracking-wide">ชื่อสินค้า <span class="text-red-400">*</span></label>
-                    <select name="po_item_name" required class="w-full px-3 py-2.5 text-sm rounded-lg bg-surface-chip border border-divider-soft text-ink focus:border-primary-focus focus:ring-1 focus:ring-primary-focus/40 focus:outline-none transition-all">
-                        <option value="" disabled selected>-- เลือกชื่อสินค้า --</option>
-                        ${(window.masterDataCache?.productNames || []).map(x => {
-            const val = x.name || x;
-            const label = x.code ? `${val} (${x.code})` : val;
-            return `<option value="${val}">${label}</option>`;
-        }).join('')}
-                    </select>
-                </div>
+            <button type="button" class="btn-delete-row absolute top-2 right-2 w-6 h-6 rounded-md bg-[#222] text-red-500 hover:bg-red-500/20 flex items-center justify-center transition-all z-10"><i class="fa-solid fa-xmark text-[10px]"></i></button>
+            
+            <div class="flex flex-col gap-4">
+                <!-- Hidden inputs to keep original JS functional -->
+                <select name="po_item_name" class="hidden">
+                    <option value="" selected>-- เลือกชื่อสินค้า --</option>
+                    ${(window.masterDataCache?.productNames || []).map(x => `<option value="${x.name || x}">${x.name || x}</option>`).join('')}
+                </select>
+                <input type="hidden" name="po_item_code" value="">
+                <select name="po_item_category" class="hidden"><option value=""></option>${typeChips.map(t => `<option value="${t}">${t}</option>`).join('')}</select>
+                <select name="po_item_color" class="hidden"><option value=""></option>${colorSwatches.map(c => `<option value="${c}">${c}</option>`).join('')}</select>
+                <select name="po_item_capacity" class="hidden"><option value=""></option>${capacityChips.map(c => `<option value="${c}">${c}</option>`).join('')}</select>
+                <select name="po_item_unit" class="hidden"><option value=""></option>${unitChips.map(u => `<option value="${u}">${u}</option>`).join('')}</select>
+                <input type="checkbox" name="po_item_track_imei" class="hidden" id="track_imei_${id}">
+
+                <!-- ชื่อสินค้า -->
                 <div>
-                    <label class="text-[10px] font-bold text-body-muted uppercase tracking-wide">รหัส/SKU</label>
-                    <input type="text" name="po_item_code" readonly placeholder="ระบบรันให้อัตโนมัติ หากเป็นชื่อที่ไม่มีรหัส" class="w-full px-3 py-2.5 text-sm rounded-lg bg-surface-tile-3 border border-hairline text-body-muted focus:outline-none placeholder-ink-muted-48 transition-all font-mono cursor-not-allowed opacity-80">
+                    <label class="text-[11px] font-medium text-white/60 mb-1.5 flex items-center gap-1.5"><i class="fa-solid fa-mobile-screen text-[10px]"></i> ชื่อสินค้า <span class="text-red-500">*</span></label>
+                    <input type="text" class="dummy-po-name w-full px-3 py-2.5 rounded-lg bg-[#1a1a1a] border border-white/10 text-white/90 focus:border-[#FFE169] focus:outline-none transition-all text-xs" placeholder="พิมพ์ชื่อสินค้า หรือเลือกรุ่น">
                 </div>
+
+                <!-- หมวดหมู่สินค้า -->
                 <div>
-                    <label class="text-[10px] font-bold text-body-muted uppercase tracking-wide">หมวดหมู่</label>
-                    <select name="po_item_category" class="w-full px-3 py-2.5 text-sm rounded-lg bg-surface-chip border border-divider-soft text-ink focus:border-primary-focus focus:ring-1 focus:ring-primary-focus/40 focus:outline-none transition-all">
-                        <option value="">-- เลือก --</option>
-                        ${(window.masterDataCache?.productTypes || []).map(t => `<option value="${t.name}">${t.name}</option>`).join('')}
-                    </select>
+                    <label class="text-[11px] font-medium text-white/60 mb-2 flex items-center gap-1.5"><i class="fa-solid fa-layer-group text-[10px]"></i> หมวดหมู่สินค้า</label>
+                    <div class="flex flex-wrap gap-2 po-chip-group" data-target="po_item_category">
+                        ${typeChips.map(t => `<button type="button" class="px-4 py-1.5 rounded-full border border-white/10 bg-[#1a1a1a] text-white/60 text-[10px] hover:border-[#FFE169]/50 transition-all po-chip" data-value="${t}">${t}</button>`).join('')}
+                    </div>
                 </div>
-            </div>
-            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-4 items-end">
+
+                <!-- สี -->
+                <div class="relative group w-full">
+                    <label class="text-[11px] font-medium text-white/60 mb-2 flex items-center gap-1.5"><i class="fa-solid fa-palette text-[10px]"></i> สี <span class="text-red-500">*</span></label>
+                    <div class="flex items-center gap-3 overflow-x-auto hide-scrollbar py-2 px-8 w-full po-chip-group scroll-smooth" data-target="po_item_color">
+                        <style>#po-items-container .po-chip-group::-webkit-scrollbar { display: none; } #po-items-container .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }</style>
+                        ${colorData.map(c => {
+                            const name = c.name || c;
+                            const hex = window.resolveProductColorHex ? window.resolveProductColorHex(name, c) : '#6b7280';
+                            return `
+                            <div class="flex flex-col items-center gap-1 cursor-pointer po-chip-color group shrink-0" data-value="${name}">
+                                <div class="w-7 h-7 rounded-full border-2 border-transparent group-hover:scale-110 transition-all flex items-center justify-center color-ring relative shadow-sm" style="background-color: ${hex}">
+                                </div>
+                                <span class="text-[10px] text-white/50 color-label transition-colors">${name}</span>
+                            </div>`;
+                        }).join('')}
+                    </div>
+                    <button type="button" aria-label="ก่อนหน้า" onclick="this.parentElement.querySelector('.po-chip-group').scrollBy({left:-150, behavior:'smooth'})" class="absolute left-0 top-6 bottom-0 w-10 flex items-center justify-start bg-gradient-to-r from-[#161616] via-[#161616]/90 to-transparent pointer-events-none">
+                        <div class="w-5 h-5 bg-[#3F3F46] hover:bg-[#FFE169] rounded-full flex items-center justify-center pointer-events-auto cursor-pointer shadow-md text-white hover:text-[#333333] transition-colors hover:scale-110 shrink-0">
+                            <i class="fa-solid fa-chevron-left text-[10px]"></i>
+                        </div>
+                    </button>
+                    <button type="button" aria-label="ถัดไป" onclick="this.parentElement.querySelector('.po-chip-group').scrollBy({left:150, behavior:'smooth'})" class="absolute right-0 top-6 bottom-0 w-10 flex items-center justify-end bg-gradient-to-l from-[#161616] via-[#161616]/90 to-transparent pointer-events-none">
+                        <div class="w-5 h-5 bg-[#FFE169] rounded-full flex items-center justify-center pointer-events-auto cursor-pointer shadow-md text-[#333333] transition-transform hover:scale-110 shrink-0">
+                            <i class="fa-solid fa-chevron-right text-[10px]"></i>
+                        </div>
+                    </button>
+                </div>
+
+                <!-- ความจุ -->
                 <div>
-                    <label class="text-[10px] font-bold text-body-muted uppercase tracking-wide">สี</label>
-                    <select name="po_item_color" class="w-full px-3 py-2.5 text-sm rounded-lg bg-surface-chip border border-divider-soft text-ink focus:border-primary-focus focus:ring-1 focus:ring-primary-focus/40 focus:outline-none transition-all">
-                        <option value="">-- เลือกสี --</option>
-                        ${(window.masterDataCache?.productColors || []).map(x => `<option value="${x.name || x}">${x.name || x}</option>`).join('')}
-                    </select>
+                    <label class="text-[11px] font-medium text-white/60 mb-2 flex items-center gap-1.5"><i class="fa-solid fa-hard-drive text-[10px]"></i> ความจุ</label>
+                    <div class="flex flex-wrap gap-2 po-chip-group" data-target="po_item_capacity">
+                        ${capacityChips.map(c => `<button type="button" class="px-4 py-1.5 rounded-full border border-white/10 bg-[#1a1a1a] text-white/60 text-[10px] hover:border-[#FFE169]/50 transition-all po-chip min-w-[60px]" data-value="${c}">${c}</button>`).join('')}
+                    </div>
                 </div>
+
+                <!-- ราคาทุน & ราคาขาย -->
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="text-[11px] font-medium text-white/60 mb-1.5 flex items-center gap-1.5"><i class="fa-solid fa-tag text-[10px]"></i> ราคาทุน <span class="text-red-500">*</span></label>
+                        <input type="number" name="po_item_cost" required min="0" placeholder="0" class="w-full px-3 py-2.5 rounded-lg bg-[#1a1a1a] border border-white/10 text-white/90 focus:border-[#FFE169] focus:outline-none transition-all text-xs font-mono">
+                        <div class="flex flex-wrap gap-1.5 mt-2">
+                            ${[15000, 20000, 27000, 35000].map(p => `<button type="button" class="px-2 py-1 rounded bg-[#222] border border-white/5 text-white/50 text-[9px] hover:text-[#FFE169] transition-colors" onclick="const i = this.parentElement.previousElementSibling; i.value='${p}'; i.dispatchEvent(new Event('input'))">${p.toLocaleString()}</button>`).join('')}
+                        </div>
+                    </div>
+                    <div>
+                        <label class="text-[11px] font-medium text-white/60 mb-1.5 flex items-center gap-1.5"><i class="fa-solid fa-tags text-[10px]"></i> ราคาขาย <span class="text-red-500">*</span></label>
+                        <input type="number" name="po_item_sell" required min="0" placeholder="0" class="w-full px-3 py-2.5 rounded-lg bg-[#1a1a1a] border border-white/10 text-white/90 focus:border-[#FFE169] focus:outline-none transition-all text-xs font-mono">
+                        <div class="flex flex-wrap gap-1.5 mt-2">
+                            ${[15000, 20000, 27000, 35000].map(p => `<button type="button" class="px-2 py-1 rounded bg-[#222] border border-white/5 text-white/50 text-[9px] hover:text-[#FFE169] transition-colors" onclick="this.parentElement.previousElementSibling.value='${p}'">${p.toLocaleString()}</button>`).join('')}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- จำนวน & หน่วยนับ -->
+                <div class="grid grid-cols-2 gap-4 items-start border-t border-white/10 pt-4 mt-2">
+                    <div>
+                        <label class="text-[11px] font-medium text-white/60 mb-2 flex items-center gap-1.5"><i class="fa-solid fa-cubes text-[10px]"></i> จำนวน <span class="text-red-500">*</span></label>
+                        <input type="number" name="po_item_qty" required min="1" value="1" class="w-full px-3 py-2.5 rounded-lg bg-[#1a1a1a] border border-white/10 text-white/90 focus:border-[#FFE169] focus:outline-none transition-all text-xs font-bold text-center">
+                    </div>
+                    <div>
+                        <label class="text-[11px] font-medium text-white/60 mb-2 flex items-center gap-1.5"><i class="fa-solid fa-box text-[10px]"></i> หน่วยนับ <span class="text-red-500">*</span></label>
+                        <div class="flex gap-2 po-chip-group" data-target="po_item_unit">
+                            ${unitChips.map(u => `<button type="button" class="px-4 py-2.5 rounded-lg border border-white/10 bg-[#1a1a1a] text-white/60 text-[11px] hover:border-[#FFE169]/50 transition-all po-chip flex-1" data-value="${u}">${u}</button>`).join('')}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- IMEI Tracking -->
                 <div>
-                    <label class="text-[10px] font-bold text-body-muted uppercase tracking-wide">ความจุ</label>
-                    <select name="po_item_capacity" class="w-full px-3 py-2.5 text-sm rounded-lg bg-surface-chip border border-divider-soft text-ink focus:border-primary-focus focus:ring-1 focus:ring-primary-focus/40 focus:outline-none transition-all">
-                        <option value="">-- เลือกความจุ --</option>
-                        ${(window.masterDataCache?.productCapacities || []).map(x => `<option value="${x.name || x}">${x.name || x}</option>`).join('')}
-                    </select>
+                    <label class="text-[11px] font-medium text-white/60 mb-2 flex items-center gap-1.5"><i class="fa-solid fa-barcode text-[10px]"></i> สินค้านี้ต้องบันทึก IMEI (เช่น โทรศัพท์/แท็บเล็ต)</label>
+                    <div class="flex items-center gap-5 mt-2 po-radio-group" data-target="po_item_track_imei">
+                        <label class="flex items-center gap-2 cursor-pointer group">
+                            <div class="w-4 h-4 rounded-full border border-white/30 flex items-center justify-center group-hover:border-[#FFE169] transition-colors po-radio" data-value="true">
+                                <div class="w-2 h-2 rounded-full bg-[#FFE169] opacity-0 indicator transition-opacity"></div>
+                            </div>
+                            <span class="text-[10px] text-white/60 group-hover:text-white/90">บันทึกเดี่ยว</span>
+                        </label>
+                        <label class="flex items-center gap-2 cursor-pointer group">
+                            <div class="w-4 h-4 rounded-full border border-white/30 flex items-center justify-center group-hover:border-[#FFE169] transition-colors po-radio" data-value="true">
+                                <div class="w-2 h-2 rounded-full bg-[#FFE169] opacity-0 indicator transition-opacity"></div>
+                            </div>
+                            <span class="text-[10px] text-white/60 group-hover:text-white/90">บันทึกยอด (IMEI)</span>
+                        </label>
+                        <label class="flex items-center gap-2 cursor-pointer group">
+                            <div class="w-4 h-4 rounded-full border border-[#FFE169] flex items-center justify-center transition-colors po-radio active" data-value="false">
+                                <div class="w-2 h-2 rounded-full bg-[#FFE169] opacity-100 indicator transition-opacity"></div>
+                            </div>
+                            <span class="text-[10px] text-white/90">ไม่บันทึกยอด (IMEI)</span>
+                        </label>
+                    </div>
                 </div>
-                <div>
-                    <label class="text-[10px] font-bold text-body-muted uppercase tracking-wide">หน่วยนับ <span class="text-red-400">*</span></label>
-                    <select name="po_item_unit" required class="w-full px-3 py-2.5 text-sm rounded-lg bg-surface-chip border border-divider-soft text-ink focus:border-primary-focus focus:ring-1 focus:ring-primary-focus/40 focus:outline-none transition-all">
-                        <option value="">-- เลือก --</option>
-                        ${(window.masterDataCache?.productUnits || []).map(u => `<option value="${u.name}">${u.name}</option>`).join('')}
-                    </select>
-                </div>
-                <div>
-                    <label class="text-[10px] font-bold text-body-muted uppercase tracking-wide">จำนวน <span class="text-red-400">*</span></label>
-                    <input type="number" name="po_item_qty" required min="1" value="1" class="w-full px-3 py-2.5 text-sm rounded-lg bg-surface-chip border border-divider-soft text-ink focus:border-primary-focus focus:ring-1 focus:ring-primary-focus/40 focus:outline-none font-bold text-center transition-all">
-                </div>
-                <div>
-                    <label class="text-[10px] font-bold text-body-muted uppercase tracking-wide">ราคาทุน <span class="text-red-400">*</span></label>
-                    <input type="number" name="po_item_cost" required min="0" placeholder="0" step="any" class="w-full px-3 py-2.5 text-sm rounded-lg bg-surface-chip border border-divider-soft text-ink focus:border-primary-focus focus:ring-1 focus:ring-primary-focus/40 focus:outline-none font-mono placeholder-ink-muted-48 transition-all">
-                </div>
-                <div>
-                    <label class="text-[10px] font-bold text-body-muted uppercase tracking-wide">ราคาขาย <span class="text-red-400">*</span></label>
-                    <input type="number" name="po_item_sell" required min="0" placeholder="0" step="any" class="w-full px-3 py-2.5 text-sm rounded-lg bg-surface-chip border border-divider-soft text-ink focus:border-primary-focus focus:ring-1 focus:ring-primary-focus/40 focus:outline-none font-mono placeholder-ink-muted-48 transition-all">
-                </div>
-            </div>
-            <div class="mt-4 pt-3 border-t border-hairline/50 flex items-center justify-between">
-                <div class="flex items-center gap-2">
-                    <input type="checkbox" name="po_item_track_imei" id="track_imei_${id}" class="w-4 h-4 rounded border-hairline bg-surface-chip text-primary focus:ring-primary-focus focus:ring-offset-canvas-elevated">
-                    <label for="track_imei_${id}" class="text-xs text-body-muted cursor-pointer hover:text-ink transition-colors">สินค้านี้ต้องบันทึก IMEI (เช่น โทรศัพท์/แท็บเล็ต)</label>
-                </div>
-                <div class="text-right text-xs text-body-muted">
-                     รวม: <span class="po-row-total text-ink font-bold font-mono">฿0</span>
+
+                <div class="text-center text-xs text-white/50 mt-2 p-2 bg-[#1a1a1a] rounded-lg border border-white/5">
+                     รวม: <span class="po-row-total text-white font-bold font-mono">฿0</span>
                 </div>
             </div>
         `;
         container.appendChild(row);
+
+        // --- Start of inline logic for Chips to Hidden Inputs ---
+
+        // Generic text chips (Category, Capacity, Unit)
+        row.querySelectorAll('.po-chip-group:not([data-target="po_item_color"])').forEach(group => {
+            const targetName = group.getAttribute('data-target');
+            const hiddenSelect = row.querySelector(`[name="${targetName}"]`);
+            const chips = group.querySelectorAll('.po-chip');
+            
+            chips.forEach(chip => {
+                chip.addEventListener('click', () => {
+                    chips.forEach(c => {
+                        c.classList.remove('border-[#FFE169]', 'text-[#FFE169]', 'bg-[#FFE169]/10');
+                        c.classList.add('border-white/10', 'text-white/60', 'bg-[#1a1a1a]');
+                    });
+                    chip.classList.remove('border-white/10', 'text-white/60', 'bg-[#1a1a1a]');
+                    chip.classList.add('border-[#FFE169]', 'text-[#FFE169]', 'bg-[#FFE169]/10');
+                    
+                    if (hiddenSelect) {
+                        hiddenSelect.value = chip.getAttribute('data-value');
+                        hiddenSelect.dispatchEvent(new Event('change'));
+                    }
+                });
+            });
+        });
+
+        // Color Swatches
+        const colorGroup = row.querySelector('.po-chip-group[data-target="po_item_color"]');
+        if (colorGroup) {
+            const hiddenColorSelect = row.querySelector('[name="po_item_color"]');
+            const colorChips = colorGroup.querySelectorAll('.po-chip-color');
+            colorChips.forEach(chip => {
+                chip.addEventListener('click', () => {
+                    colorChips.forEach(c => {
+                        c.querySelector('.color-ring').classList.remove('border-[#FFE169]', 'scale-110');
+                        c.querySelector('.color-ring').classList.add('border-transparent');
+                        c.querySelector('.color-label').classList.remove('text-[#FFE169]', 'text-[11px]');
+                        c.querySelector('.color-label').classList.add('text-white/50', 'text-[10px]');
+                    });
+                    chip.querySelector('.color-ring').classList.remove('border-transparent');
+                    chip.querySelector('.color-ring').classList.add('border-[#FFE169]', 'scale-110');
+                    chip.querySelector('.color-label').classList.remove('text-white/50', 'text-[10px]');
+                    chip.querySelector('.color-label').classList.add('text-[#FFE169]', 'text-[11px]');
+                    
+                    if (hiddenColorSelect) {
+                        hiddenColorSelect.value = chip.getAttribute('data-value');
+                        hiddenColorSelect.dispatchEvent(new Event('change'));
+                    }
+                });
+            });
+        }
+
+        // Radio Buttons (IMEI Tracking)
+        const radioGroup = row.querySelector('.po-radio-group');
+        if (radioGroup) {
+            const hiddenImeiCheck = row.querySelector('[name="po_item_track_imei"]');
+            const radios = radioGroup.querySelectorAll('.po-radio');
+            radios.forEach(radio => {
+                radio.parentElement.addEventListener('click', () => {
+                    radios.forEach(r => {
+                        r.classList.remove('border-[#FFE169]', 'active');
+                        r.classList.add('border-white/30');
+                        r.querySelector('.indicator').classList.remove('opacity-100');
+                        r.querySelector('.indicator').classList.add('opacity-0');
+                        r.nextElementSibling.classList.remove('text-white/90');
+                        r.nextElementSibling.classList.add('text-white/60');
+                    });
+                    radio.classList.remove('border-white/30');
+                    radio.classList.add('border-[#FFE169]', 'active');
+                    radio.querySelector('.indicator').classList.remove('opacity-0');
+                    radio.querySelector('.indicator').classList.add('opacity-100');
+                    radio.nextElementSibling.classList.remove('text-white/60');
+                    radio.nextElementSibling.classList.add('text-white/90');
+                    
+                    if (hiddenImeiCheck) {
+                        hiddenImeiCheck.checked = (radio.getAttribute('data-value') === 'true');
+                        hiddenImeiCheck.dispatchEvent(new Event('change'));
+                    }
+                });
+            });
+        }
+
+        // Dummy Input to Hidden Name Select
+        const dummyName = row.querySelector('.dummy-po-name');
+        const hiddenNameSelect = row.querySelector('[name="po_item_name"]');
+        if (dummyName && hiddenNameSelect) {
+            dummyName.addEventListener('change', (e) => {
+                const val = e.target.value.trim();
+                let found = false;
+                Array.from(hiddenNameSelect.options).forEach(opt => {
+                    if (opt.value === val) {
+                        hiddenNameSelect.value = val;
+                        found = true;
+                    }
+                });
+                if (!found && val) {
+                    const newOpt = new Option(val, val);
+                    hiddenNameSelect.add(newOpt);
+                    hiddenNameSelect.value = val;
+                }
+                if (!val) hiddenNameSelect.value = '';
+                
+                hiddenNameSelect.dispatchEvent(new Event('change'));
+            });
+        }
+        // --- End of inline logic ---
 
         // Attach event listener for delete row
         const deleteBtn = row.querySelector('.btn-delete-row');
@@ -383,11 +553,21 @@
         document.getElementById('btn-refresh-po-history').addEventListener('click', () => loadPOHistory());
     }
 
+    const handlePOFilterChange = () => {
+        renderPOHistoryTable();
+    };
+
     if (document.getElementById('search-po-history')) {
-        document.getElementById('search-po-history').addEventListener('input', (e) => {
-            const query = e.target.value.trim().toLowerCase();
-            renderPOHistoryTable(query);
-        });
+        document.getElementById('search-po-history').addEventListener('input', handlePOFilterChange);
+    }
+    if (document.getElementById('filter-po-status')) {
+        document.getElementById('filter-po-status').addEventListener('change', handlePOFilterChange);
+    }
+    if (document.getElementById('filter-po-branch')) {
+        document.getElementById('filter-po-branch').addEventListener('change', handlePOFilterChange);
+    }
+    if (document.getElementById('filter-po-supplier')) {
+        document.getElementById('filter-po-supplier').addEventListener('change', handlePOFilterChange);
     }
 
     const loadPOHistory = async () => {
@@ -400,6 +580,25 @@
             const json = await res.json();
             if (json.success) {
                 poHistoryCache = json.data || [];
+                
+                // Populate filters from unique values in history (except status which is static)
+                const branchFilter = document.getElementById('filter-po-branch');
+                const supplierFilter = document.getElementById('filter-po-supplier');
+                
+                if (branchFilter && poHistoryCache.length > 0) {
+                    const uniqueBranches = [...new Set(poHistoryCache.filter(p => p.branch_id && p.branch_id.name).map(p => p.branch_id.name))];
+                    const currentBranch = branchFilter.value;
+                    branchFilter.innerHTML = '<option value="">เลือกสาขา</option>' + uniqueBranches.map(b => `<option value="${b}">${b}</option>`).join('');
+                    branchFilter.value = currentBranch;
+                }
+                
+                if (supplierFilter && poHistoryCache.length > 0) {
+                    const uniqueSuppliers = [...new Set(poHistoryCache.filter(p => p.supplier_name).map(p => p.supplier_name))];
+                    const currentSupplier = supplierFilter.value;
+                    supplierFilter.innerHTML = '<option value="">ซัพพลายเออร์</option>' + uniqueSuppliers.map(s => `<option value="${s}">${s}</option>`).join('');
+                    supplierFilter.value = currentSupplier;
+                }
+
                 renderPOHistoryTable();
             } else {
                 tbody.innerHTML = `<tr><td colspan="7" class="text-center py-6 text-red-400">ดึงข้อมูลไม่สำเร็จ: ${json.message}</td></tr>`;
@@ -410,16 +609,57 @@
         }
     };
 
-    const renderPOHistoryTable = (query = '') => {
+    const updateActiveFilterChip = () => {
+        const status = document.getElementById('filter-po-status')?.value;
+        const branch = document.getElementById('filter-po-branch')?.value;
+        const supplier = document.getElementById('filter-po-supplier')?.value;
+        
+        let texts = [];
+        if (status) texts.push(`สถานะ:${status}`);
+        if (branch) texts.push(`สาขา:${branch}`);
+        if (supplier) texts.push(`ซัพพลายเออร์:${supplier}`);
+        
+        const textSpan = document.getElementById('po-active-filter-text');
+        const container = document.getElementById('po-active-filters-container');
+        
+        if (textSpan && container) {
+            if (texts.length > 0) {
+                textSpan.textContent = texts.join(', ');
+                container.style.display = 'flex';
+            } else {
+                textSpan.textContent = 'สถานะ:ทั้งหมด';
+                container.style.display = 'flex'; 
+            }
+        }
+    };
+
+    const renderPOHistoryTable = () => {
         const tbody = document.getElementById('table-body-po-history');
         if (!tbody) return;
+
+        updateActiveFilterChip();
+
+        const query = (document.getElementById('search-po-history')?.value || '').trim().toLowerCase();
+        const statusFilter = document.getElementById('filter-po-status')?.value || '';
+        const branchFilter = document.getElementById('filter-po-branch')?.value || '';
+        const supplierFilter = document.getElementById('filter-po-supplier')?.value || '';
 
         tbody.innerHTML = '';
         const filtered = poHistoryCache.filter(po => {
             const poNum = (po.po_number || '').toLowerCase();
             const supplier = (po.supplier_name || '').toLowerCase();
-            return poNum.includes(query) || supplier.includes(query);
+            const branchName = (po.branch_id && po.branch_id.name) ? po.branch_id.name : '';
+
+            const matchSearch = poNum.includes(query) || supplier.includes(query);
+            const matchStatus = statusFilter === '' || po.status === statusFilter;
+            const matchBranch = branchFilter === '' || branchName === branchFilter;
+            const matchSupplier = supplierFilter === '' || po.supplier_name === supplierFilter;
+
+            return matchSearch && matchStatus && matchBranch && matchSupplier;
         });
+
+        const countLabel = document.getElementById('po-history-total-count');
+        if (countLabel) countLabel.textContent = filtered.length;
 
         if (filtered.length === 0) {
             tbody.innerHTML = '<tr><td colspan="7" class="text-center py-6 text-body-muted">ไม่มีรายการใบสั่งซื้อ</td></tr>';
@@ -464,16 +704,20 @@
             const badgeClass = statusColors[po.status] || 'border-hairline bg-surface-chip text-body-muted';
 
             tr.innerHTML = `
+                <td class="px-4 py-4 md:px-6 text-body-muted text-sm whitespace-nowrap">
+                    <i class="fa-regular fa-clock text-body-muted/60 mr-1.5"></i>${dateStr}
+                </td>
                 <td class="px-4 py-4 md:px-6 font-mono font-bold text-body-muted whitespace-nowrap">${po.po_number || '-'}</td>
-                <td class="px-4 py-4 md:px-6 text-body-muted text-sm whitespace-nowrap">${dateStr}</td>
                 <td class="px-4 py-4 md:px-6 text-ink font-medium whitespace-nowrap">${po.supplier_name || '-'}</td>
-                <td class="px-4 py-4 md:px-6 text-body-muted text-sm whitespace-nowrap">${branchName}</td>
+                <td class="px-4 py-4 md:px-6 text-body-muted text-sm whitespace-nowrap">
+                    <i class="fa-solid fa-location-dot text-body-muted/60 mr-1.5"></i>${branchName}
+                </td>
+                <td class="px-4 py-4 md:px-6 text-right font-mono font-bold text-ink whitespace-nowrap">฿${totalAmount.toLocaleString()}</td>
                 <td class="px-4 py-4 md:px-6 text-center whitespace-nowrap">
                     <span class="inline-flex px-2.5 py-0.5 rounded-full text-xs font-semibold border ${badgeClass} whitespace-nowrap">
                         ${po.status || '-'}
                     </span>
                 </td>
-                <td class="px-4 py-4 md:px-6 text-right font-mono font-bold text-ink whitespace-nowrap">฿${totalAmount.toLocaleString()}</td>
                 <td class="px-4 py-4 md:px-6 text-right whitespace-nowrap">
                     <div class="flex items-center justify-end gap-1.5 whitespace-nowrap">
                         <button class="btn-view-po px-2.5 py-1.5 bg-surface-chip text-ink hover:bg-surface-tile-2 border border-hairline rounded-lg transition-all text-[11px] font-bold whitespace-nowrap shrink-0" title="รายละเอียดใบ PO">
@@ -534,8 +778,8 @@
     };
 
     window.initAccountingPO = async () => {
-        // Reset view tab to create PO default
-        switchPoTab('create');
+        // Default view to history
+        switchPoTab('history');
 
         // Populate branches list for selection in form (in case not loaded yet)
         const poBranchEl = document.getElementById('po-branch');
