@@ -1,0 +1,25 @@
+<div id="view-branches">
+                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                        <div>
+                            <h3 class="text-2xl font-bold text-ink">จัดการสาขา</h3>
+                            <p class="text-body-muted mt-1">เพิ่ม ลบ และจัดการข้อมูลสาขาของระบบ</p>
+                        </div>
+                        <button id="btn-add-branch"
+                            class="px-4 py-2 bg-primary hover:bg-primary-pressed text-on-primary font-medium rounded-pill transition-all flex items-center gap-2 w-fit">
+                            <i class="fa-solid fa-plus"></i>
+                            เพิ่มสาขาใหม่
+                        </button>
+                    </div>
+
+                    <div id="branch-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        <!-- Branch cards injected here -->
+                    </div>
+
+                    <!-- Empty State for Branches -->
+                    <div id="branch-empty-state"
+                        class="hidden flex flex-col items-center justify-center p-12 border-2 border-dashed border-hairline rounded-lg">
+                        <i class="fa-solid fa-store-slash text-5xl text-ink-muted-48 mb-4"></i>
+                        <h4 class="text-lg font-medium text-ink">ยังไม่มีข้อมูลสาขา</h4>
+                        <p class="text-body-muted mt-1">กรุณาเพิ่มสาขาใหม่เพื่อเริ่มใช้งาน</p>
+                    </div>
+</div>

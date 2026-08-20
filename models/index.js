@@ -315,9 +315,11 @@ const transferSchema = new mongoose.Schema({
         imeis: [{ type: String }],
         quantity: { type: Number, default: 1 }
     }],
-    status: { type: String, default: 'รอดำเนินการ' }, // รอดำเนินการ | รับเข้าแล้ว
+    status: { type: String, default: 'รอดำเนินการ' }, // รอดำเนินการ | รับเข้าแล้ว | ยกเลิกแล้ว
     created_by: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee', required: true },
     received_by: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee', default: null },
+    cancelled_by: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee', default: null }, // ผู้ที่กดยกเลิก (สาขาต้นทาง)
+    cancelled_at: { type: Date, default: null }, // วันที่ยกเลิก
     created_at: { type: Date, default: Date.now }
 }, { timestamps: true });
 const Transfer = mongoose.model('Transfer', transferSchema, 'transfer');

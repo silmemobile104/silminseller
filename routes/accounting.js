@@ -26,6 +26,31 @@ function verifyToken(req, res, next) {
 }
 router.use(verifyToken);
 
+// ============================================
+// Middleware: Require manage_finance permission
+// ============================================
+function requireFinancePermission(req, res, next) {
+    if (!req.user || !req.user.permissions || !req.user.permissions.manage_finance) {
+        return res.status(403).json({ success: false, message: 'ไม่มีสิทธิ์เข้าถึงระบบบัญชี (ต้องการสิทธิ์จัดการการเงิน)' });
+    }
+    next();
+}
+router.use(requireFinancePermission);
+
+// Helper: total cash amount of a disbursement voucher (net + VAT)
+function voucherTotalAmount(v) {
+    return v.net_amount + v.vat_amount;
+}
+
+// Helpers: local-date parts (not toISOString, which is UTC and mis-dates
+// documents created between 00:00-06:59 local time, ICT/UTC+7).
+function localYearMonth(date) {
+    return date.getFullYear() + String(date.getMonth() + 1).padStart(2, '0');
+}
+function localYearMonthDay(date) {
+    return localYearMonth(date) + String(date.getDate()).padStart(2, '0');
+}
+
 // Helper: Log activity
 async function logActivity(req, action, module, description, targetId, refNo, details) {
     try {
@@ -146,9 +171,24 @@ router.post('/pnl-config', async (req, res) => {
     try {
         const { lines } = req.body;
         if (!Array.isArray(lines)) return res.status(400).json({ success: false, message: 'ข้อมูลไม่ถูกต้อง' });
-        // Clear old and re-insert
-        await PnLConfig.deleteMany({});
-        const docs = lines.map((line, idx) => {
+
+        // Reject rows with a blank display_name instead of silently dropping them —
+        // a silent drop returns success:true while the line vanishes from the config,
+        // and would also shift every auto-assigned sort_order after it.
+        const invalidRowNumbers = lines
+            .map((line, idx) => (!line || typeof line.display_name !== 'string' || line.display_name.trim() === '') ? idx + 1 : null)
+            .filter(n => n !== null);
+        if (invalidRowNumbers.length > 0) {
+            return res.status(400).json({
+                success: false,
+                message: `กรุณากรอกชื่อรายการให้ครบ (แถวที่ ${invalidRowNumbers.join(', ')} ไม่มีชื่อ)`
+            });
+        }
+
+        // Build docs BEFORE touching existing data, so a bad row never leaves
+        // the collection wiped out with nothing successfully re-inserted.
+        const docs = lines
+            .map((line, idx) => {
             let sec = (line.section || '').toLowerCase();
             if (sec === 'cogs' || sec === 'tax' || sec === 'other_expense') sec = 'expense';
             if (sec === 'other_income') sec = 'revenue';
@@ -163,7 +203,7 @@ router.post('/pnl-config', async (req, res) => {
 
             return {
                 sort_order: line.sort_order || (idx + 1) * 10,
-                display_name: line.display_name,
+                display_name: line.display_name.trim(),
                 section: sec,
                 category_id: line.category_id || null,
                 group_id: line.group_id || null,
@@ -172,7 +212,11 @@ router.post('/pnl-config', async (req, res) => {
                 is_total_line: line.is_total_line || false
             };
         });
-        await PnLConfig.insertMany(docs);
+        // Only clear existing config once the new set has been validated/built successfully.
+        await PnLConfig.deleteMany({});
+        if (docs.length > 0) {
+            await PnLConfig.insertMany(docs);
+        }
         await logActivity(req, 'UPDATE', 'PNL_CONFIG', 'อัปเดตการตั้งค่างบกำไรขาดทุน');
         res.json({ success: true });
     } catch (err) {
@@ -188,11 +232,10 @@ router.post('/pnl-config', async (req, res) => {
 router.get('/disbursements', async (req, res) => {
     try {
         const filter = {};
-        if (req.query.startDate && req.query.endDate) {
-            filter.payment_date = {
-                $gte: new Date(req.query.startDate + 'T00:00:00'),
-                $lte: new Date(req.query.endDate + 'T23:59:59')
-            };
+        if (req.query.startDate || req.query.endDate) {
+            filter.payment_date = {};
+            if (req.query.startDate) filter.payment_date.$gte = new Date(req.query.startDate + 'T00:00:00');
+            if (req.query.endDate) filter.payment_date.$lte = new Date(req.query.endDate + 'T23:59:59');
         }
         if (req.query.branch_id) filter.branch_id = req.query.branch_id;
         const vouchers = await DisbursementVoucher.find(filter)
@@ -204,7 +247,7 @@ router.get('/disbursements', async (req, res) => {
 
         const voucherObjs = vouchers.map(v => {
             const obj = v.toObject();
-            obj.total_amount = obj.net_amount + obj.vat_amount;
+            obj.total_amount = voucherTotalAmount(obj);
             return obj;
         });
 
@@ -222,14 +265,12 @@ router.post('/disbursements', async (req, res) => {
             return res.status(400).json({ success: false, message: 'กรุณากรอกข้อมูลให้ครบถ้วน' });
         }
 
-        // Auto-generate voucher number: PV-YYYYMM-XXXX (Running count reset monthly)
+        // Auto-generate voucher number: PV-YYYYMM-XXXX (Running count reset monthly).
+        // Count by voucher_no prefix (not payment_date) so a user-editable/back-dated
+        // payment_date can never cause a duplicate voucher_no.
         const today = new Date();
-        const yearMonth = today.toISOString().slice(0, 7).replace('-', '');
-        const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-        const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0, 23, 59, 59, 999);
-        const countMonth = await DisbursementVoucher.countDocuments({
-            payment_date: { $gte: startOfMonth, $lte: endOfMonth }
-        });
+        const yearMonth = localYearMonth(today);
+        const countMonth = await DisbursementVoucher.countDocuments({ voucher_no: { $regex: `^PV-${yearMonth}-` } });
         const voucher_no = `PV-${yearMonth}-${String(countMonth + 1).padStart(4, '0')}`;
 
         // Calculate VAT
@@ -281,17 +322,24 @@ router.post('/disbursements', async (req, res) => {
         });
 
         // Also record in CashMovement for backward compatibility with existing P&L
-        const todayStart = new Date(today.toISOString().slice(0, 10) + 'T00:00:00');
-        const todayEnd = new Date(today.toISOString().slice(0, 10) + 'T23:59:59');
-        const cmDateStr2 = today.toISOString().slice(0, 10).replace(/-/g, '');
+        // นับ transaction_id ตรงนี้ (ใกล้ create ที่สุด) ไม่ใช่ตอนต้น request เพราะระหว่างนั้นมี
+        // การอัปโหลดรูปหลักฐานขึ้น Google Drive ซึ่งอาจใช้เวลาหลายวินาที นับไว้ก่อนหน้านั้นเสี่ยงชนกับ
+        // ธุรกรรมอื่นที่สร้าง TXN เลขเดียวกันในช่วงเวลานั้นพอดี (transaction_id เป็น unique index)
+        const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
+        const todayEnd = new Date(); todayEnd.setHours(23, 59, 59, 999);
         const cmCount = await CashMovement.countDocuments({ created_at: { $gte: todayStart, $lte: todayEnd } });
-        const cmTxnId = `TXN-${cmDateStr2}-${String(cmCount + 1).padStart(4, '0')}`;
+        const cmTxnId = `TXN-${localYearMonthDay(today)}-${String(cmCount + 1).padStart(4, '0')}`;
+
+        // Cash actually leaving the till is net_amount + vat_amount (the voucher's
+        // total_amount), not the raw `amount` field — for VAT_EXCLUDED vouchers,
+        // `amount` only covers the net portion and understates cash out by the VAT.
+        const totalCashOut = voucherTotalAmount({ net_amount, vat_amount });
 
         await CashMovement.create({
             transaction_id: cmTxnId,
             type: 'รายจ่าย',
             category: 'อื่นๆ',
-            amount: amount,
+            amount: totalCashOut,
             reference_id: voucher._id,
             recorded_by: req.user.employee_id
         });
@@ -305,7 +353,7 @@ router.post('/disbursements', async (req, res) => {
             .populate('created_by', 'name');
 
         const voucherObj = populated.toObject();
-        voucherObj.total_amount = voucherObj.net_amount + voucherObj.vat_amount;
+        voucherObj.total_amount = voucherTotalAmount(voucherObj);
 
         res.json({ success: true, voucher: voucherObj });
     } catch (err) {
@@ -322,10 +370,9 @@ router.get('/disbursements/:id', async (req, res) => {
             .populate('branch_id')
             .populate('created_by', 'name');
         if (!voucher) return res.status(404).json({ success: false, message: 'ไม่พบใบสำคัญจ่าย' });
-        
+
         const voucherObj = voucher.toObject();
-        voucherObj.total_amount = voucherObj.net_amount + voucherObj.satang_amount || voucherObj.net_amount + voucherObj.vat_amount;
-        voucherObj.total_amount = voucherObj.net_amount + voucherObj.vat_amount;
+        voucherObj.total_amount = voucherTotalAmount(voucherObj);
 
         res.json({ success: true, voucher: voucherObj });
     } catch (err) {
@@ -343,19 +390,17 @@ router.get('/pnl-report', async (req, res) => {
         const startDate = req.query.startDate ? new Date(req.query.startDate + 'T00:00:00') : new Date(new Date().setDate(new Date().getDate() - 30));
         const endDate = req.query.endDate ? new Date(req.query.endDate + 'T23:59:59') : new Date();
 
-        // Get P&L config lines
-        const pnlConfigs = await PnLConfig.find().populate('account_ids').sort({ sort_order: 1 });
-
-        // Get all disbursement vouchers in period
-        const vouchers = await DisbursementVoucher.find({
-            payment_date: { $gte: startDate, $lte: endDate }
-        }).populate('debit_account_id');
-
-        // Get transactions in period (sales)
-        const transactions = await Transaction.find({
-            created_at: { $gte: startDate, $lte: endDate },
-            status: { $ne: 'ยกเลิกแล้ว' }
-        });
+        // Get P&L config lines, disbursement vouchers, and sales transactions in parallel — independent queries
+        const [pnlConfigs, vouchers, transactions] = await Promise.all([
+            PnLConfig.find().populate('account_ids').sort({ sort_order: 1 }),
+            DisbursementVoucher.find({
+                payment_date: { $gte: startDate, $lte: endDate }
+            }).populate('debit_account_id'),
+            Transaction.find({
+                created_at: { $gte: startDate, $lte: endDate },
+                status: { $ne: 'ยกเลิกแล้ว' }
+            })
+        ]);
 
         // Aggregate by account_id from vouchers
         const voucherByAccount = {};
@@ -398,7 +443,9 @@ router.get('/pnl-report', async (req, res) => {
 
         // If no P&L config yet, fallback to basic summary
         if (pnlConfigs.length === 0) {
-            totalRevenue = salesRevenue;
+            // Note: do NOT assign totalRevenue = salesRevenue here — salesRevenue is
+            // already added separately below (summary.totalRevenue = totalRevenue + salesRevenue).
+            // Assigning it here would double-count sales revenue in the summary and netProfit.
 
             // Get expenses from CashMovement
             const expenses = await CashMovement.find({

@@ -1,0 +1,41 @@
+@import "tailwindcss";
+
+@theme {
+  /* Accent — Signal Yellow, the only interactive color in the system */
+  --color-primary: #FFE169;
+  --color-primary-pressed: #F5D24E;
+  --color-primary-focus: #FFD43B;
+  --color-primary-muted: rgba(255, 225, 105, 0.4);
+  --color-primary-on-light: #8A6D00;
+  --color-on-primary: #1d1d1f;
+
+  /* Surface */
+  --color-canvas: #000000;
+  --color-canvas-elevated: #1d1d1f;
+  --color-surface-tile-2: #232325;
+  --color-surface-tile-3: #161618;
+  --color-surface-chip: #2a2a2c;
+  --color-surface-chip-translucent: rgba(60, 60, 64, 0.72);
+
+  /* Text */
+  --color-ink: #f5f5f7;
+  --color-body-muted: #a1a1a6;
+  --color-ink-muted-48: #6e6e73;
+
+  /* Hairlines */
+  --color-hairline: #38383a;
+  --color-divider-soft: rgba(255, 255, 255, 0.08);
+
+  /* Shape scale */
+  --radius-xs: 5px;
+  --radius-sm: 8px;
+  --radius-md: 11px;
+  --radius-lg: 18px;
+  --radius-pill: 9999px;
+}
+
+@layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+  }
+}

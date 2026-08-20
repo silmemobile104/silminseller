@@ -1,0 +1,47 @@
+<div id="view-personnel">
+                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                        <div>
+                            <h3 class="text-2xl font-bold text-ink">จัดการพนักงาน</h3>
+                            <p class="text-body-muted mt-1">เพิ่ม ลบ และจัดการสิทธิ์การเข้าใช้งาน</p>
+                        </div>
+                        <button id="btn-add-employee"
+                            class="px-4 py-2 bg-primary hover:bg-primary-pressed text-on-primary font-medium rounded-pill transition-all flex items-center gap-2 w-fit">
+                            <i class="fa-solid fa-user-plus"></i>
+                            เพิ่มพนักงาน
+                        </button>
+                    </div>
+
+                    <div class="bg-canvas-elevated rounded-lg border border-hairline overflow-hidden">
+                        <div class="p-6 border-b border-hairline flex items-center justify-between">
+                            <h3 class="text-lg font-bold text-ink">รายชื่อพนักงานทั้งหมด</h3>
+                            <span id="employee-count-badge"
+                                class="bg-surface-chip text-body-muted text-sm font-bold px-3 py-1 rounded-pill border border-hairline">0
+                                คน</span>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left text-sm whitespace-nowrap">
+                                <thead class="bg-surface-tile-3 text-body-muted">
+                                    <tr>
+                                        <th class="px-6 py-4 font-medium">ชื่อ-นามสกุล</th>
+                                        <th class="px-6 py-4 font-medium">รหัสพนักงาน</th>
+                                        <th class="px-6 py-4 font-medium">ระดับสิทธิ์</th>
+                                        <th class="px-6 py-4 font-medium">สาขาที่ประจำการ</th>
+                                        <th class="px-6 py-4 font-medium text-center">สถานะ</th>
+                                        <th class="px-6 py-4 font-medium text-right">จัดการ</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="employee-table-body" class="divide-y divide-hairline">
+                                    <!-- Data will be loaded here -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Empty State -->
+                    <div id="employee-empty-state"
+                        class="hidden flex flex-col items-center justify-center p-12 border-2 border-dashed border-hairline rounded-lg">
+                        <i class="fa-solid fa-user-slash text-5xl text-ink-muted-48 mb-4"></i>
+                        <h4 class="text-lg font-medium text-ink">ยังไม่มีข้อมูลพนักงาน</h4>
+                        <p class="text-body-muted mt-1">กรุณาเพิ่มพนักงานใหม่เพื่อเริ่มใช้งาน</p>
+                    </div>
+</div>

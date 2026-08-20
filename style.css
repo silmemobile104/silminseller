@@ -58,8 +58,8 @@
     padding-right: 0;
 }
 
-/* ซ่อน section header "การตั้งค่า" */
-#sidebar.collapsed #nav-settings-header {
+/* ซ่อน section header ของกลุ่มเมนูตอน collapsed */
+#sidebar.collapsed .nav-section-header {
     display: none;
 }
 
@@ -93,7 +93,7 @@
 
 /* 1. สีข้อความเมื่อไม่ได้ Active (Inactive) */
 .nav-menu-item {
-    color: #ffffff !important;
+    color: #A8A8A8 !important;
     background-color: transparent !important;
     border-color: transparent !important;
 }
@@ -104,13 +104,26 @@
 }
 
 .nav-menu-item .sidebar-text {
+    color: #A8A8A8 !important;
+}
+
+.nav-menu-item:hover .sidebar-text {
     color: #ffffff !important;
 }
 
-/* ทำให้รูปภาพ (Icon) เป็นสีขาวเมื่อ Inactive */
+/* ทำให้รูปภาพ (Icon) เป็นสีเทา #A8A8A8 เมื่อ Inactive */
 .nav-menu-item:not(.active) img {
     opacity: 1;
-    filter: brightness(0) invert(1);
+    filter: brightness(0) saturate(100%) invert(72%);
+}
+
+/* ทำให้ไอคอน Bootstrap Icons เป็นสีเทา #A8A8A8 เมื่อ Inactive */
+.nav-menu-item:not(.active) i {
+    color: #A8A8A8 !important;
+}
+
+.nav-menu-item:hover:not(.active) i {
+    color: #ffffff !important;
 }
 
 /* 2. สีพื้นหลัง, สีข้อความ และปรับรูปภาพให้เข้มขึ้นเมื่อ Active */
@@ -135,14 +148,19 @@
     filter: brightness(0.2) contrast(1.5) !important;
 }
 
+/* ปรับสีไอคอน Bootstrap Icons เป็น #4D4D4D เมื่อ Active */
+.nav-menu-item.active i {
+    color: #4D4D4D !important;
+}
+
 /* ==========================================
    SCROLLBAR STYLING (DARK THEME)
    ========================================== */
 
 /* สำหรับเบราว์เซอร์ Chrome, Safari, Edge */
 ::-webkit-scrollbar {
-    width: 10px;
-    height: 10px;
+    width: 1px;
+    height: 1px;
 }
 
 ::-webkit-scrollbar-track {
@@ -150,20 +168,20 @@
 }
 
 ::-webkit-scrollbar-thumb {
-    background: #4D4D4D;
+    background: rgb(26, 26, 26);
     /* สีเทาเข้ม (slate-700) */
     border-radius: 10px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-    background: #4D4D4D;
+    background: #0e0e0e;
     /* สีเทาสว่างขึ้นเมื่อเอาเมาส์ชี้ (slate-600) */
 }
 
 /* สำหรับ Firefox */
 html {
-    scrollbar-width: thin;
-    scrollbar-color: #4D4D4D transparent;
+    scrollbar-width: 1px;
+    scrollbar-color: #00000065 transparent;
 }
 
 .hide-scrollbar::-webkit-scrollbar {
@@ -173,4 +191,40 @@ html {
 .hide-scrollbar {
     -ms-overflow-style: none;
     scrollbar-width: none;
+}
+
+/* ==========================================
+   TOAST NOTIFICATIONS — เดิมใช้แค่ class เฉยๆ ไม่มี CSS รองรับเลย
+   ทำให้ toast (เช่น แจ้งเตือน "สินค้าในสต็อกไม่เพียงพอ") ไหลไปอยู่ในลำดับ
+   เอกสารปกติแทนที่จะลอยเป็น overlay ผู้ใช้เลยไม่เห็นข้อความเลย
+   ========================================== */
+.toast-container,
+.transfer-toast-container {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    max-width: calc(100vw - 40px);
+    pointer-events: none;
+}
+
+.toast-animate {
+    animation: toast-drop-in 0.3s ease-out;
+}
+
+@keyframes toast-drop-in {
+    from {
+        opacity: 0;
+        transform: translateY(-16px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }

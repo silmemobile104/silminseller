@@ -3,3 +3,7 @@ node_modules
 
 database
 SKILL.md
+
+# ไฟล์ที่ build ขึ้นมาเอง — ไม่ commit เพื่อไม่ให้เกิด merge conflict เวลาทำงานร่วมกัน
+# สร้างด้วย `npm run build` ก่อน deploy (ถ้าไม่มี dist/ server จะตกกลับไปใช้ซอร์สเดิมอัตโนมัติ ระบบไม่พัง)
+dist/

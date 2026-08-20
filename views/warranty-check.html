@@ -1,0 +1,37 @@
+<div id="view-warranty-check">
+                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                        <div>
+                            <h3 class="text-2xl font-bold text-ink">เช็คประกันสินค้า</h3>
+                            <p class="text-body-muted mt-1">ตรวจสอบวันหมดอายุประกันด้วย IMEI, ชื่อลูกค้า
+                                หรือเบอร์โทรศัพท์</p>
+                        </div>
+                    </div>
+
+                    <div class="bg-canvas-elevated rounded-lg border border-hairline p-6 md:p-8">
+                        <div class="max-w-3xl mx-auto space-y-8">
+                            <form id="warranty-search-form" class="relative group">
+                                <div class="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
+                                    <i
+                                        class="fa-solid fa-shield-halved text-2xl text-body-muted group-focus-within:text-primary transition-colors"></i>
+                                </div>
+                                <input id="warranty-search-input" type="text"
+                                    placeholder="ระบุ IMEI หรือ ชื่อลูกค้า/เบอร์โทร..."
+                                    class="bg-surface-chip border border-divider-soft text-lg rounded-pill pl-16 pr-32 py-5 w-full text-ink focus:outline-none focus:border-primary-focus focus:ring-1 focus:ring-primary-focus/40 transition-all placeholder-ink-muted-48">
+                                <button type="submit"
+                                    class="absolute right-3 top-3 bottom-3 px-6 bg-primary hover:bg-primary-pressed text-on-primary font-bold rounded-pill transition-all flex items-center gap-2">
+                                    <i class="fa-solid fa-search"></i> ค้นหา
+                                </button>
+                            </form>
+
+                            <!-- Results Container -->
+                            <div id="warranty-results-container" class="space-y-4">
+                                <!-- Results will be rendered here by JS -->
+                                <div class="flex flex-col items-center justify-center py-12 text-body-muted">
+                                    <i class="fa-solid fa-magnifying-glass text-5xl mb-4 text-ink-muted-48 opacity-50"></i>
+                                    <p class="font-medium text-lg">ระบุข้อมูลเพื่อค้นหา</p>
+                                    <p class="text-sm mt-1">สามารถค้นหาด้วย IMEI หรือข้อมูลของลูกค้า</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+</div>
