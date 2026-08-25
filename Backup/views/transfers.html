@@ -1,0 +1,48 @@
+<div id="view-transfers">
+                    <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                        <div>
+                            <h3 class="text-2xl font-bold text-ink">โอนย้ายสินค้า</h3>
+                            <p class="text-body-muted mt-1">สร้างรายการโอนย้าย และรับเข้าสินค้าระหว่างสาขา</p>
+                        </div>
+                        <button id="btn-open-create-transfer"
+                            class="px-5 py-3 rounded-pill bg-primary hover:bg-primary-pressed text-on-primary font-bold transition-all flex items-center gap-2">
+                            <i class="fa-solid fa-plus"></i>
+                            สร้างรายการโอนย้าย
+                        </button>
+                    </div>
+
+                    <div class="bg-canvas-elevated rounded-lg border border-hairline overflow-hidden">
+                        <div class="p-4 border-b border-hairline flex items-center gap-3">
+                            <button id="transfer-tab-incoming"
+                                class="px-4 py-2 rounded-pill text-sm font-bold bg-primary/10 text-primary border border-primary/20 transition-all">
+                                รายการรอรับเข้า
+                            </button>
+                            <button id="transfer-tab-history"
+                                class="px-4 py-2 rounded-pill text-sm font-bold bg-surface-tile-3 text-body-muted border border-hairline hover:border-primary/30 transition-all">
+                                ประวัติการโอนย้าย
+                            </button>
+                            <div class="ml-auto text-xs text-body-muted" id="transfer-branch-hint">
+                                แสดงเฉพาะรายการที่เกี่ยวข้องกับสาขาของคุณ</div>
+                        </div>
+
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left text-sm whitespace-nowrap">
+                                <thead class="bg-surface-tile-3 text-body-muted">
+                                    <tr>
+                                        <th class="px-6 py-4 font-medium">วันที่</th>
+                                        <th class="px-6 py-4 font-medium">เลขที่โอน</th>
+                                        <th class="px-6 py-4 font-medium">ต้นทาง</th>
+                                        <th class="px-6 py-4 font-medium">ปลายทาง</th>
+                                        <th class="px-6 py-4 font-medium">สถานะ</th>
+                                        <th class="px-6 py-4 font-medium text-right">การทำงาน</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="transfer-table-body" class="divide-y divide-hairline"></tbody>
+                            </table>
+                        </div>
+
+                        <div id="transfer-empty" class="hidden p-10 text-center text-body-muted">
+                            ไม่พบรายการโอนย้าย
+                        </div>
+                    </div>
+</div>

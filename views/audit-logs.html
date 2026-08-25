@@ -1,0 +1,148 @@
+<div id="view-audit-logs">
+                    <!-- Header -->
+                    <div>
+                        <h3 class="text-2xl font-bold text-ink flex items-center gap-3">
+                            <div
+                                class="w-12 h-12 rounded-lg bg-surface-chip flex items-center justify-center">
+                                <i class="fa-solid fa-clock-rotate-left text-ink text-xl"></i>
+                            </div>
+                            ระบบบันทึกประวัติการทำงาน (Audit Trail / Activity Log)
+                        </h3>
+                        <p class="text-sm text-body-muted mt-2">
+                            ระบบบันทึกประวัติการทำงานทุกความเคลื่อนไหวในระบบอย่างละเอียด เพื่อความโปร่งใส
+                            ป้องกันการทุจริต และตรวจสอบย้อนหลัง
+                        </p>
+                    </div>
+
+                    <!-- Filter panel -->
+                    <div
+                        class="p-6 rounded-lg bg-canvas-elevated border border-hairline relative overflow-hidden group">
+                        <div class="relative grid grid-cols-1 md:grid-cols-4 gap-4">
+                            <!-- Search -->
+                            <div class="space-y-2">
+                                <label
+                                    class="text-xs font-semibold text-body-muted uppercase tracking-wider block">ค้นหากิจกรรม
+                                    / เอกสาร</label>
+                                <div class="relative">
+                                    <input type="text" id="audit-filter-search" placeholder="ค้นหาข้อความ, เลขเอกสาร..."
+                                        class="w-full bg-surface-chip border border-divider-soft rounded-md py-3 px-4 pl-11 text-ink placeholder-ink-muted-48 focus:outline-none focus:border-primary-focus focus:ring-1 focus:ring-primary-focus/40 transition-all text-sm">
+                                    <i class="fa-solid fa-magnifying-glass absolute left-4 top-3.5 text-body-muted"></i>
+                                </div>
+                            </div>
+
+                            <!-- Module Filter -->
+                            <div class="space-y-2">
+                                <label
+                                    class="text-xs font-semibold text-body-muted uppercase tracking-wider block">โมดูลระบบ</label>
+                                <select id="audit-filter-module"
+                                    class="w-full bg-surface-chip border border-divider-soft rounded-md py-3 px-4 text-ink focus:outline-none focus:border-primary-focus focus:ring-1 focus:ring-primary-focus/40 transition-all text-sm">
+                                    <option value="ALL">ทั้งหมด (All Modules)</option>
+                                    <option value="AUTH">ระบบล็อกอิน (Auth)</option>
+                                    <option value="PO">ระบบใบสั่งซื้อ (PO)</option>
+                                    <option value="STOCK">ระบบสินค้า & คลังสต็อก (Stock)</option>
+                                    <option value="POS">ระบบขายหน้าร้าน (POS)</option>
+                                    <option value="TRANSFER">ระบบโอนย้ายสาขา (Transfer)</option>
+                                    <option value="PERSONNEL">ระบบพนักงาน (Personnel)</option>
+                                    <option value="ROLE">ระบบสิทธิ์ (Roles)</option>
+                                </select>
+                            </div>
+
+                            <!-- Action Filter -->
+                            <div class="space-y-2">
+                                <label
+                                    class="text-xs font-semibold text-body-muted uppercase tracking-wider block">ประเภทกิจกรรม</label>
+                                <select id="audit-filter-action"
+                                    class="w-full bg-surface-chip border border-divider-soft rounded-md py-3 px-4 text-ink focus:outline-none focus:border-primary-focus focus:ring-1 focus:ring-primary-focus/40 transition-all text-sm">
+                                    <option value="ALL">ทั้งหมด (All Actions)</option>
+                                    <option value="CREATE">สร้างใหม่ (CREATE)</option>
+                                    <option value="UPDATE">แก้ไข/อัปเดต (UPDATE)</option>
+                                    <option value="DELETE">ลบข้อมูล (DELETE)</option>
+                                    <option value="LOGIN">ล็อกอินเข้าระบบ (LOGIN)</option>
+                                    <option value="CANCEL">ยกเลิกรายการ (CANCEL)</option>
+                                    <option value="APPROVE">อนุมัติรายการ (APPROVE)</option>
+                                </select>
+                            </div>
+
+                            <!-- User Filter / Buttons -->
+                            <div class="space-y-2 flex flex-col justify-between">
+                                <label
+                                    class="text-xs font-semibold text-body-muted uppercase tracking-wider block">ผู้ปฏิบัติการ</label>
+                                <div class="flex gap-2">
+                                    <div class="relative flex-grow">
+                                        <input type="text" id="audit-filter-user" placeholder="ชื่อพนักงาน..."
+                                            class="w-full bg-surface-chip border border-divider-soft rounded-md py-3 px-4 pl-11 text-ink placeholder-ink-muted-48 focus:outline-none focus:border-primary-focus focus:ring-1 focus:ring-primary-focus/40 transition-all text-sm">
+                                        <i class="fa-solid fa-user absolute left-4 top-3.5 text-body-muted"></i>
+                                    </div>
+                                    <button id="btn-clear-audit-filters" title="ล้างตัวกรอง"
+                                        class="px-4 bg-surface-chip hover:bg-surface-tile-2 border border-hairline text-body-muted rounded-md transition-all active:scale-95">
+                                        <i class="fa-solid fa-filter-circle-xmark text-lg"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Audit Log Table Container -->
+                    <div
+                        class="rounded-lg bg-canvas-elevated border border-hairline overflow-hidden animate-slide-up">
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left border-collapse">
+                                <thead>
+                                    <tr class="border-b border-hairline bg-surface-tile-3">
+                                        <th class="py-4 px-6 text-xs font-bold text-body-muted uppercase tracking-wider">
+                                            วัน-เวลา</th>
+                                        <th class="py-4 px-6 text-xs font-bold text-body-muted uppercase tracking-wider">
+                                            ผู้ทำรายการ</th>
+                                        <th class="py-4 px-6 text-xs font-bold text-body-muted uppercase tracking-wider">
+                                            ประเภท</th>
+                                        <th class="py-4 px-6 text-xs font-bold text-body-muted uppercase tracking-wider">
+                                            โมดูล</th>
+                                        <th class="py-4 px-6 text-xs font-bold text-body-muted uppercase tracking-wider">
+                                            รายละเอียดกิจกรรม</th>
+                                        <th class="py-4 px-6 text-xs font-bold text-body-muted uppercase tracking-wider">
+                                            เอกสารอ้างอิง</th>
+                                        <th
+                                            class="py-4 px-6 text-xs font-bold text-body-muted uppercase tracking-wider text-right">
+                                            รายละเอียดเชิงลึก</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="audit-logs-table-body" class="divide-y divide-hairline">
+                                    <!-- Rendered dynamically by JS -->
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Empty State inside Table -->
+                        <div id="audit-logs-empty" class="hidden text-center py-20">
+                            <div
+                                class="w-20 h-20 rounded-full bg-surface-chip flex items-center justify-center text-ink-muted-48 mx-auto mb-6">
+                                <i class="fa-solid fa-clock-rotate-left text-3xl"></i>
+                            </div>
+                            <h4 class="text-ink text-lg font-semibold">ไม่พบข้อมูลประวัติกิจกรรม</h4>
+                            <p class="text-body-muted mt-2 max-w-xs mx-auto text-sm">
+                                ไม่มีประวัติกิจกรรมระบบตามการค้นหาหรือตัวกรองที่เลือก</p>
+                        </div>
+
+                        <!-- Pagination Footer -->
+                        <div
+                            class="p-6 border-t border-hairline flex flex-col sm:flex-row items-center justify-between gap-4 bg-surface-tile-3">
+                            <div class="text-sm text-body-muted" id="audit-pagination-info">
+                                กำลังแสดงรายการที่ 0-0 จาก 0 รายการทั้งหมด
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <button id="btn-audit-prev"
+                                    class="px-4 py-2 bg-surface-chip hover:bg-surface-tile-2 border border-hairline text-body-muted rounded-md transition-all disabled:opacity-30 disabled:pointer-events-none text-sm font-semibold active:scale-95 flex items-center gap-2">
+                                    <i class="fa-solid fa-chevron-left text-xs"></i> ก่อนหน้า
+                                </button>
+                                <div class="px-4 py-2 bg-surface-chip border border-hairline text-ink rounded-md text-sm font-bold min-w-[3rem] text-center"
+                                    id="audit-current-page">
+                                    1
+                                </div>
+                                <button id="btn-audit-next"
+                                    class="px-4 py-2 bg-surface-chip hover:bg-surface-tile-2 border border-hairline text-body-muted rounded-md transition-all disabled:opacity-30 disabled:pointer-events-none text-sm font-semibold active:scale-95 flex items-center gap-2">
+                                    ถัดไป <i class="fa-solid fa-chevron-right text-xs"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+</div>

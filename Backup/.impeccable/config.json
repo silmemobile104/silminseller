@@ -1,0 +1,17 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "gray-on-color",
+        "value": "text-slate-900",
+        "files": [
+          "index.html"
+        ],
+        "createdAt": "2026-08-18T09:33:08.080Z",
+        "reason": "pre-existing badge (nav-stock-audit-review-badge), unchanged by this edit; slate-900 on amber-500 is near-black on amber, high contrast not washed-out gray"
+      }
+    ]
+  }
+}

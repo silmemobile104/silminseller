@@ -1,0 +1,35 @@
+<div id="view-roles">
+                    <!-- Header -->
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                        <div>
+                            <h3 class="text-2xl font-bold text-ink flex items-center gap-3">
+                                <div
+                                    class="w-12 h-12 rounded-lg bg-surface-chip flex items-center justify-center">
+                                    <i class="fa-solid fa-shield-halved text-ink text-xl"></i>
+                                </div>
+                                ระดับสิทธิ์การใช้งานระบบแต่ละตำแหน่งงาน
+                            </h3>
+                            <p class="text-sm text-body-muted mt-2">กำหนดสิทธิ์การเข้าถึงระบบสำหรับแต่ละตำแหน่งงาน</p>
+                        </div>
+                        <button id="btn-add-role"
+                            class="px-6 py-3 bg-primary hover:bg-primary-pressed text-on-primary font-bold rounded-pill flex items-center justify-center gap-2 transition-all active:scale-95">
+                            <i class="fa-solid fa-plus"></i> เพิ่มบทบาทใหม่
+                        </button>
+                    </div>
+
+                    <!-- Roles Grid -->
+                    <div id="roles-grid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                        <!-- Rendered dynamically by JS -->
+                    </div>
+
+                    <div id="roles-empty"
+                        class="hidden text-center py-20 bg-canvas-elevated rounded-lg border border-dashed border-hairline">
+                        <div
+                            class="w-20 h-20 rounded-full bg-surface-chip flex items-center justify-center text-body-muted mx-auto mb-6">
+                            <i class="fa-solid fa-shield-halved text-3xl"></i>
+                        </div>
+                        <h4 class="text-ink text-lg font-semibold">ยังไม่มีข้อมูลระดับสิทธิ์</h4>
+                        <p class="text-body-muted mt-2 max-w-xs mx-auto">คุณสามารถเพิ่มบทบาทพนักงานใหม่ เช่น "แคชเชียร์"
+                            หรือ "พนักงานสต็อก" ได้ที่นี่</p>
+                    </div>
+</div>

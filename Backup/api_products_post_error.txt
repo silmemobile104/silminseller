@@ -1,0 +1,3 @@
+TypeError: Cannot read properties of undefined (reading 'quantity')
+    at D:\silminseller_project\silminseller\routes\api.js:587:39
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)

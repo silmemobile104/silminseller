@@ -71,7 +71,7 @@ const verifyToken = (req, res, next) => {
         next();
     } catch (error) {
         console.error('JWT verification failed:', error.message);
-        return res.status(403).json({
+        return res.status(401).json({
             success: false,
             message: 'เซสชั่นหมดอายุ กรุณาเข้าสู่ระบบใหม่'
         });
@@ -1834,6 +1834,8 @@ router.post('/transfers', async (req, res) => {
             return res.status(403).json({ success: false, message: 'ไม่มีสิทธิ์ในการสร้างรายการโอนย้ายสินค้า' });
         }
         const { to_branch, items } = req.body;
+
+        // สาขาต้นทางยึดตามสาขาของผู้ใช้ที่ล็อกอินเสมอ (ไม่รับค่าจาก client)
         const fromBranch = req.user && req.user.branch_id ? req.user.branch_id : null;
         if (!fromBranch) return res.status(400).json({ success: false, message: 'ไม่พบข้อมูลสาขาต้นทางของผู้ใช้งาน' });
         if (!to_branch) return res.status(400).json({ success: false, message: 'กรุณาเลือกสาขาปลายทาง' });
@@ -1959,11 +1961,14 @@ router.put('/transfers/:id/receive', async (req, res) => {
 
         const userBranchId = req.user && req.user.branch_id ? req.user.branch_id.toString() : '';
         const toBranchId = transfer.to_branch ? transfer.to_branch.toString() : '';
-        const userRole = req.user && req.user.role ? req.user.role : '';
 
-        // ตรวจสอบสิทธิ์: Admin/ผู้จัดการ สามารถรับเข้าได้จากทุกสาขา
+        // ตรวจสอบสิทธิ์: แอดมิน/ผู้จัดการ สามารถรับเข้าได้จากทุกสาขา
         // พนักงานทั่วไปต้องอยู่ที่สาขาปลายทาง
-        if (userRole !== 'Administrator' && userRole !== 'ผู้จัดการ') {
+        // หมายเหตุ: ห้ามใช้สิทธิ์ filter_stock_branch แทน role เช็คตรงนี้ เพราะ filter_stock_branch
+        // คือสิทธิ์กรองสาขาในเมนูดูสต็อก (read-only) ไม่ใช่สิทธิ์ย้ายสต็อกเข้าข้ามสาขา
+        const userRole = req.user && req.user.role ? req.user.role : '';
+        const canReceiveAnyBranch = userRole === 'Administrator' || userRole === 'แอดมิน' || userRole === 'ผู้จัดการ';
+        if (!canReceiveAnyBranch) {
             if (!userBranchId || userBranchId !== toBranchId) {
                 return res.status(403).json({ success: false, message: 'คุณไม่มีสิทธิ์รับเข้าสินค้ารายการนี้' });
             }
@@ -2028,6 +2033,96 @@ router.put('/transfers/:id/receive', async (req, res) => {
     } catch (error) {
         console.error('เกิดข้อผิดพลาดในการรับเข้าสินค้า:', error);
         res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการรับเข้าสินค้า' });
+    }
+});
+
+// PUT /api/transfers/:id/cancel
+// หน้าที่: ยกเลิกรายการโอนย้าย (ทำได้เฉพาะสาขาต้นทาง และต้องยังไม่ถูกรับเข้าที่ปลายทาง) คืนสต็อกกลับสาขาต้นทาง
+router.put('/transfers/:id/cancel', async (req, res) => {
+    try {
+        if (!req.user.permissions.manage_transfers) {
+            return res.status(403).json({ success: false, message: 'ไม่มีสิทธิ์ในการยกเลิกรายการโอนย้ายสินค้า' });
+        }
+        const transfer = await Transfer.findById(req.params.id);
+        if (!transfer) return res.status(404).json({ success: false, message: 'ไม่พบรายการโอนย้ายที่ระบุ' });
+
+        if (transfer.status !== 'รอดำเนินการ') {
+            return res.status(400).json({
+                success: false,
+                message: transfer.status === 'รับเข้าแล้ว'
+                    ? 'ไม่สามารถยกเลิกได้ เนื่องจากสาขาปลายทางยืนยันรับสินค้าเรียบร้อยแล้ว'
+                    : 'รายการนี้ถูกยกเลิกไปแล้ว'
+            });
+        }
+
+        const userBranchId = req.user && req.user.branch_id ? req.user.branch_id.toString() : '';
+        const fromBranchId = transfer.from_branch ? transfer.from_branch.toString() : '';
+
+        // ตรวจสอบสิทธิ์: แอดมิน/ผู้จัดการ ยกเลิกได้ทุกสาขา, พนักงานทั่วไปต้องอยู่สาขาต้นทางเท่านั้น
+        const userRole = req.user && req.user.role ? req.user.role : '';
+        const canCancelAnyBranch = userRole === 'Administrator' || userRole === 'แอดมิน' || userRole === 'ผู้จัดการ';
+        if (!canCancelAnyBranch) {
+            if (!userBranchId || userBranchId !== fromBranchId) {
+                return res.status(403).json({ success: false, message: 'คุณไม่มีสิทธิ์ยกเลิกรายการโอนย้ายนี้ (เฉพาะสาขาต้นทางเท่านั้น)' });
+            }
+        }
+
+        // คืนสต็อกกลับเข้าสาขาต้นทาง
+        for (const item of transfer.items || []) {
+            const productCode = (item.product_code || '').toString();
+            if (!productCode) continue;
+
+            const product = await Product.findOne({ product_code: productCode });
+            if (!product) {
+                return res.status(400).json({ success: false, message: `ไม่พบสินค้าในระบบ: ${productCode}` });
+            }
+
+            const fromBal = ensureBranchBalance(product, transfer.from_branch);
+
+            const returnedImeis = Array.isArray(item.imeis) ? item.imeis.map(x => x.toString().trim()).filter(Boolean) : [];
+            if (returnedImeis.length > 0) {
+                const set = new Set((fromBal.imeis || []).map(x => x.toString().trim()));
+                for (const imei of returnedImeis) {
+                    if (!set.has(imei)) {
+                        fromBal.imeis.push(imei);
+                        set.add(imei);
+                    }
+                }
+                fromBal.quantity = (fromBal.imeis || []).length;
+            } else {
+                fromBal.quantity = Number(fromBal.quantity || 0) + Number(item.quantity || 0);
+            }
+
+            await product.save();
+
+            // Movement: ยกเลิกการโอนย้ายสินค้า (คืนสต็อกกลับสาขาต้นทาง)
+            await createMovementsForItem({
+                productId: product._id,
+                action: 'ยกเลิกการโอนย้ายสินค้า',
+                fromBranch: transfer.to_branch,
+                toBranch: transfer.from_branch,
+                referenceNo: transfer.transfer_number,
+                createdBy: req.user.employee_id,
+                transitHours: 0,
+                imeis: returnedImeis,
+                quantity: returnedImeis.length > 0 ? returnedImeis.length : Number(item.quantity || 0)
+            });
+        }
+
+        transfer.status = 'ยกเลิกแล้ว';
+        transfer.cancelled_by = req.user.employee_id;
+        transfer.cancelled_at = new Date();
+        transfer.updatedAt = new Date();
+        const saved = await transfer.save();
+
+        // Log transfer cancellation
+        await logActivity(req, 'CANCEL', 'TRANSFER', `ยกเลิกการโอนย้ายสินค้า เลขที่ ${transfer.transfer_number}`, transfer.transfer_number, saved._id);
+
+        console.log(`[โอนย้ายสินค้า] ยกเลิกสำเร็จ: ${transfer.transfer_number}`);
+        res.status(200).json({ success: true, message: 'ยกเลิกการโอนย้ายสำเร็จ สินค้ากลับเข้าสต็อกสาขาต้นทางแล้ว', data: saved });
+    } catch (error) {
+        console.error('เกิดข้อผิดพลาดในการยกเลิกการโอนย้าย:', error);
+        res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการยกเลิกการโอนย้าย' });
     }
 });
 
@@ -2351,7 +2446,7 @@ router.get('/transactions', async (req, res) => {
         const transactions = await Transaction.find(filter)
             .populate('branch_id', 'name')
             .populate('employee_id', 'name emp_id')
-            .populate('items.product_id', 'name')
+            .populate('items.product_id', 'name product_code')
             .populate('member_id', 'first_name last_name phone')
             .sort({ created_at: -1 });
 
@@ -2389,7 +2484,7 @@ router.get('/transactions/:id', async (req, res) => {
         const transaction = await Transaction.findById(req.params.id)
             .populate('branch_id')
             .populate('employee_id', 'name emp_id')
-            .populate('items.product_id', 'name')
+            .populate('items.product_id', 'name product_code')
             .populate('member_id', 'prefix first_name last_name first_name_en last_name_en phone address citizen_id member_number')
             .populate('cancelled_by', 'name');
 
@@ -2566,7 +2661,12 @@ router.get('/sales/daily-summary', async (req, res) => {
                 dvQuery.branch_id = branchId;
             }
             const todayDisbursements = await DisbursementVoucher.find(dvQuery);
-            cashDisbursed = todayDisbursements.reduce((sum, v) => sum + (v.amount || 0), 0);
+            // Use net_amount + vat_amount (== voucher total_amount), not the raw `amount`
+            // field — for VAT_EXCLUDED vouchers `amount` is only the net portion, so
+            // summing it alone understates actual cash paid out by the VAT amount.
+            // Fall back to `amount` for legacy vouchers created before net_amount/vat_amount
+            // existed, so they don't silently contribute 0 to today's cash-out total.
+            cashDisbursed = todayDisbursements.reduce((sum, v) => sum + ((v.net_amount || v.amount || 0) + (v.vat_amount || 0)), 0);
         }
 
         res.json({

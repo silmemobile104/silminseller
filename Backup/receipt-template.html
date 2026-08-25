@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ใบเสร็จรับเงิน - SilminMobile</title>
+    <style>
+        @font-face {
+            font-family: 'Sarabun';
+            src: url('https://fonts.googleapis.com/css2?family=Sarabun:wght@100;400;700&display=swap');
+        }
+        body {
+            font-family: 'Sarabun', sans-serif;
+            background-color: white;
+            color: black;
+            margin: 0;
+            padding: 20px;
+            font-size: 14px;
+        }
+        .receipt-container {
+            max-width: 800px;
+            margin: 0 auto;
+            border: 1px solid #eee;
+            padding: 30px;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #333;
+            padding-bottom: 20px;
+        }
+        .header-left {
+            text-align: left;
+        }
+        .header-right {
+            text-align: right;
+            font-size: 20px;
+            font-weight: bold;
+            color: #000;
+            line-height: 1.2;
+            padding-top: 10px;
+        }
+        .store-name {
+            font-size: 28px;
+            font-weight: bold;
+            margin: 0;
+            color: #000;
+        }
+        .branch-info {
+            font-size: 16px;
+            color: #555;
+            margin-top: 5px;
+        }
+        .receipt-info {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 30px;
+        }
+        .receipt-info-item {
+            display: flex;
+            flex-direction: column;
+        }
+        .label {
+            font-weight: bold;
+            color: #666;
+            font-size: 12px;
+            text-transform: uppercase;
+        }
+        .value {
+            font-size: 15px;
+            margin-top: 2px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 30px;
+        }
+        th {
+            text-align: left;
+            border-bottom: 2px solid #333;
+            padding: 12px 5px;
+            font-size: 13px;
+        }
+        td {
+            padding: 12px 5px;
+            border-bottom: 1px solid #eee;
+            vertical-align: top;
+        }
+        .item-details {
+            font-size: 12px;
+            color: #666;
+            margin-top: 4px;
+        }
+        .totals {
+            width: 300px;
+            margin-left: auto;
+        }
+        .total-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+        }
+        .total-row.grand-total {
+            border-top: 2px solid #333;
+            margin-top: 10px;
+            padding-top: 15px;
+            font-size: 20px;
+            font-weight: bold;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 50px;
+            border-top: 1px dashed #ccc;
+            padding-top: 20px;
+            color: #777;
+        }
+        .payment-method {
+            margin-top: 20px;
+            font-size: 12px;
+            font-style: italic;
+        }
+        .border-top-dashed {
+            border-top: 1px dashed #bbb;
+            margin-top: 4px;
+            padding-top: 6px !important;
+        }
+        @media print {
+            body { padding: 0; }
+            .receipt-container { border: none; max-width: 100%; }
+            button { display: none; }
+        }
+    </style>
+</head>
+<body>
+    <div class="receipt-container" id="receipt">
+        <div class="header">
+            <div class="header-left">
+                <h1 class="store-name">บริษัท ซิลมิน โมบาย จำกัด</h1>
+                <h1 class="store-name">SilminMobile</h1>
+                <div class="branch-info" id="branch-name">-</div>
+                <div class="branch-info" id="branch-address">-</div>
+                <div class="branch-info" id="branch-phone-row" style="display: none;">เบอร์โทรศัพท์ : <span id="branch-phone-text">-</span></div>
+                <div class="branch-info" id="branch-policy">เลขประจำตัวผู้เสียภาษี : 0955562000701</div>
+                <div class="branch-info" id="receipt-date">วันที่: --/--/---- --:--</div>
+            </div>
+            <div class="header-right">
+                ใบเสร็จรับเงิน/ใบกำกับภาษี
+            </div>
+        </div>
+
+        <div class="receipt-info">
+            <div class="receipt-info-item">
+                <span class="label">เลขที่ใบเสร็จ / Receipt No.</span>
+                <span class="value" id="receipt-number">INV-XXXXXX</span>
+            </div>
+            <div class="receipt-info-item" style="text-align: right;">
+                <span class="label">พนักงานขาย / Seller</span>
+                <span class="value" id="employee-name">Admin</span>
+            </div>
+        </div>
+
+        <!-- ข้อมูลลูกค้า / Customer Information -->
+        <div id="customer-info-section" style="display: none; border: 1px solid #ddd; padding: 12px; margin-bottom: 20px; border-radius: 6px; background-color: #fafafa;">
+            <div style="font-weight: bold; font-size: 13px; color: #333; border-bottom: 1px solid #ddd; padding-bottom: 6px; margin-bottom: 8px; text-transform: uppercase;">
+                ข้อมูลผู้ซื้อ / Customer Information
+            </div>
+            <table style="width: 100%; margin-bottom: 0; font-size: 13px; border-collapse: collapse;">
+                <tr style="border-bottom: none;">
+                    <td style="padding: 3px 0; border-bottom: none; width: 50%; vertical-align: top;"><strong>ชื่อลูกค้า / Name:</strong> <span id="customer-name">-</span></td>
+                    <td style="padding: 3px 0; border-bottom: none; width: 50%; vertical-align: top;"><strong>เบอร์โทร / Phone:</strong> <span id="customer-phone">-</span></td>
+                </tr>
+                <tr style="border-bottom: none;">
+                    <td style="padding: 3px 0; border-bottom: none; vertical-align: top;"><strong>เลขบัตรประชาชน / ID No:</strong> <span id="customer-citizen-id">-</span></td>
+                    <td style="padding: 3px 0; border-bottom: none; width: 50%; vertical-align: top;"><strong>รหัสสมาชิก / Member No:</strong> <span id="customer-member-number">-</span></td>
+                </tr>
+                <tr style="border-bottom: none;">
+                    <td colspan="2" style="padding: 3px 0; border-bottom: none; vertical-align: top;"><strong>ที่อยู่ / Address:</strong> <span id="customer-address">-</span></td>
+                </tr>
+            </table>
+        </div>
+
+        <table id="items-table">
+            <thead>
+                <tr>
+                    <th style="width: 50%;">รายการสินค้า / Items</th>
+                    <th style="text-align: center; width: 15%;">จำนวน / Qty</th>
+                    <th style="text-align: right; width: 15%;">ราคา / Price</th>
+                    <th style="text-align: right; width: 20%;">รวม / Subtotal</th>
+                </tr>
+            </thead>
+            <tbody id="items-list">
+                <!-- Items will be injected here -->
+            </tbody>
+        </table>
+
+        <div class="totals">
+            <div class="total-row">
+                <span>ยอดรวมสินค้า / Subtotal:</span>
+                <span id="subtotal">฿0.00</span>
+            </div>
+            <div class="total-row" id="discount-row" style="display: none; color: #e53935;">
+                <span>ส่วนลดท้ายบิล / Discount:</span>
+                <span id="discount">-฿0.00</span>
+            </div>
+            
+            <!-- ส่วนภาษีมูลค่าเพิ่ม VAT 7% -->
+            <div class="total-row border-top-dashed">
+                <span>มูลค่าก่อนภาษี / Net Taxable:</span>
+                <span id="tax-base">฿0.00</span>
+            </div>
+            <div class="total-row">
+                <span>ภาษีมูลค่าเพิ่ม 7% / VAT 7%:</span>
+                <span id="vat-amount">฿0.00</span>
+            </div>
+            
+            <!-- รวมทั้งสิ้น -->
+            <div class="total-row grand-total">
+                <span>ยอดรวมสุทธิ / Grand Total:</span>
+                <span id="total-amount">฿0.00</span>
+            </div>
+        </div>
+
+        <!-- วิธีชำระเงิน / Payment Method Info -->
+        <div class="payment-method">
+            วิธีชำระเงิน / Payment Method: <span id="payment-method-text">-</span>
+        </div>
+
+        <div class="footer">
+            <p>*** ขอบคุณที่ใช้บริการ SilminMobile ***</p>
+            <p>กรุณาเก็บใบเสร็จไว้เพื่อเป็นหลักฐาน</p>
+        </div>
+    </div>
+
+    <script>
+        window.addEventListener('message', function(event) {
+            const data = event.data;
+            if (data && data.type === 'PRINT_RECEIPT') {
+                populateReceipt(data.payload, data.options);
+            }
+        });
+
+        function calculateWarrantyExpiry(purchaseDateStr, warrantyPeriod) {
+            if (!warrantyPeriod || warrantyPeriod === 'ไม่มีประกัน') return null;
+            
+            const purchaseDate = new Date(purchaseDateStr);
+            const expiryDate = new Date(purchaseDate);
+
+            const match = warrantyPeriod.match(/(\d+)\s*(เดือน|ปี)/);
+            if (match) {
+                const value = parseInt(match[1]);
+                const unit = match[2];
+                
+                if (unit === 'เดือน') {
+                    expiryDate.setMonth(purchaseDate.getMonth() + value);
+                } else if (unit === 'ปี') {
+                    expiryDate.setFullYear(purchaseDate.getFullYear() + value);
+                }
+                return expiryDate;
+            }
+            return null;
+        }
+
+        function populateReceipt(txn, options) {
+            options = options || { showItems: true, showContract: true, showIcloud: true };
+            document.getElementById('branch-name').textContent = txn.branch_id ? txn.branch_id.name : 'สาขาหลัก';
+            const addrEl = document.getElementById('branch-address');
+            addrEl.textContent = (txn.branch_id && txn.branch_id.address) ? txn.branch_id.address : '';
+            addrEl.style.display = addrEl.textContent ? 'block' : 'none';
+
+            // ส่วนข้อมูลเบอร์โทรศัพท์สาขา
+            const phoneRow = document.getElementById('branch-phone-row');
+            const phoneText = document.getElementById('branch-phone-text');
+            if (phoneRow && phoneText) {
+                const phoneVal = (txn.branch_id && txn.branch_id.phone) ? txn.branch_id.phone : '';
+                if (phoneVal) {
+                    phoneText.textContent = phoneVal;
+                    phoneRow.style.display = 'block';
+                } else {
+                    phoneRow.style.display = 'none';
+                }
+            }
+            
+            document.getElementById('receipt-date').textContent = 'วันที่: ' + new Date(txn.created_at).toLocaleString('th-TH');
+            document.getElementById('receipt-number').textContent = txn.receipt_number;
+            document.getElementById('employee-name').textContent = txn.employee_id ? txn.employee_id.name : 'Admin';
+            
+            // ส่วนข้อมูลลูกค้า
+            const custSection = document.getElementById('customer-info-section');
+            if (custSection) {
+                if (txn.member_id) {
+                    custSection.style.display = 'block';
+                    
+                    const m = txn.member_id;
+                    const titlePrefix = m.prefix ? m.prefix + ' ' : '';
+                    const fullName = titlePrefix + (m.first_name || '') + ' ' + (m.last_name || '');
+                    
+                    document.getElementById('customer-name').textContent = fullName.trim() || '-';
+                    document.getElementById('customer-phone').textContent = m.phone || '-';
+                    document.getElementById('customer-citizen-id').textContent = m.citizen_id || '-';
+                    document.getElementById('customer-member-number').textContent = m.member_number || '-';
+                    document.getElementById('customer-address').textContent = m.address || '-';
+                } else {
+                    custSection.style.display = 'none';
+                }
+            }
+            
+            const itemsList = document.getElementById('items-list');
+            itemsList.innerHTML = '';
+
+            let itemsSubtotal = 0;
+            let printedSubtotal = 0;
+            txn.items.forEach(item => {
+                const itemTotal = item.quantity * item.price;
+                itemsSubtotal += itemTotal;
+                
+                const isGift = item.is_gift === true;
+
+                // Calculate warranty expiry date
+                let warrantyText = '';
+                if (item.warranty_period && item.warranty_period !== 'ไม่มีประกัน') {
+                    const expiry = calculateWarrantyExpiry(txn.created_at, item.warranty_period);
+                    if (expiry) {
+                        const dateFormatted = expiry.toLocaleDateString('th-TH', {
+                            day: 'numeric',
+                            month: 'long',
+                            year: 'numeric'
+                        });
+                        warrantyText = `รับประกัน: ${item.warranty_period} (หมดประกันวันที่ ${dateFormatted})`;
+                    } else {
+                        warrantyText = `รับประกัน: ${item.warranty_period}`;
+                    }
+                }
+
+                const row = document.createElement('tr');
+                row.className = 'product-item-row';
+                row.innerHTML = `
+                    <td>
+                        <div style="font-weight: bold;">
+                            ${item.product_name}
+                            ${isGift ? ' <span style="font-weight: normal; font-size: 11px; color: #e65100;">(ของแถม)</span>' : ''}
+                        </div>
+                        ${item.imei_sold ? `<div class="item-details">IMEI: ${item.imei_sold}</div>` : ''}
+                        ${warrantyText ? `<div class="item-details" style="color: #2e7d32; font-weight: bold;">🛡️ ${warrantyText}</div>` : ''}
+                    </td>
+                    <td style="text-align: center;">${item.quantity}</td>
+                    <td style="text-align: right; color: ${isGift ? '#e65100' : 'black'}; font-weight: ${isGift ? 'bold' : 'normal'};">
+                        ${isGift ? 'แถม' : `฿${item.price.toLocaleString()}`}
+                    </td>
+                    <td style="text-align: right; color: ${isGift ? '#e65100' : 'black'}; font-weight: ${isGift ? 'bold' : 'normal'};">
+                        ${isGift ? 'แถม' : `฿${itemTotal.toLocaleString()}`}
+                    </td>
+                `;
+                itemsList.appendChild(row);
+
+                if (options.showItems) {
+                    printedSubtotal += itemTotal;
+                }
+            });
+
+            // Toggle visibility of product item rows dynamically
+            const productRows = itemsList.querySelectorAll('.product-item-row');
+            productRows.forEach(row => {
+                row.style.display = options.showItems ? 'table-row' : 'none';
+            });
+
+            // Add Contract Fee as inline item row if enabled
+            if (options.showContract && txn.contract_fee > 0) {
+                itemsSubtotal += txn.contract_fee;
+                printedSubtotal += txn.contract_fee;
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>
+                        <div style="font-weight: bold;">ค่าใบสัญญา</div>
+                    </td>
+                    <td style="text-align: center;">1</td>
+                    <td style="text-align: right;">฿${txn.contract_fee.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+                    <td style="text-align: right;">฿${txn.contract_fee.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+                `;
+                itemsList.appendChild(row);
+            }
+
+            // Add iCloud Fee as inline item row if enabled
+            if (options.showIcloud && txn.icloud_fee > 0) {
+                itemsSubtotal += txn.icloud_fee;
+                printedSubtotal += txn.icloud_fee;
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>
+                        <div style="font-weight: bold;">ค่าบริการ iCloud</div>
+                    </td>
+                    <td style="text-align: center;">1</td>
+                    <td style="text-align: right;">฿${txn.icloud_fee.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+                    <td style="text-align: right;">฿${txn.icloud_fee.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+                `;
+                itemsList.appendChild(row);
+            }
+
+            // Toggle visibility of the entire table based on whether at least one list item is visible
+            const hasVisibleItems = options.showItems || 
+                                    (options.showContract && txn.contract_fee > 0) || 
+                                    (options.showIcloud && txn.icloud_fee > 0);
+
+            const itemsTable = document.getElementById('items-table');
+            if (itemsTable) {
+                itemsTable.style.display = hasVisibleItems ? 'table' : 'none';
+            }
+
+            // คำนวณหักราคารวมภาษีของรายการที่แสดงผลจริง
+            const finalTotal = txn.total_amount || 0;
+            const originalDiscount = Math.max(0, itemsSubtotal - finalTotal);
+            
+            // ใช้ส่วนลดเฉพาะเมื่อแสดงรายการสินค้า
+            const printedDiscount = options.showItems ? originalDiscount : 0;
+            const printedGrandTotal = Math.max(0, printedSubtotal - printedDiscount);
+
+            // แยกส่วนที่ไม่คิดภาษี (ค่าสัญญา และ ค่า iCloud)
+            const contractFeeVal = (options.showContract && txn.contract_fee > 0) ? txn.contract_fee : 0;
+            const icloudFeeVal = (options.showIcloud && txn.icloud_fee > 0) ? txn.icloud_fee : 0;
+            const nonTaxableFees = contractFeeVal + icloudFeeVal;
+
+            // ยอดที่นำมาคิดภาษี (สินค้าปกติ) = ยอดรวมสุทธิ - ยอดที่ไม่คิดภาษี
+            const taxableAmount = Math.max(0, printedGrandTotal - nonTaxableFees);
+
+            // สูตรถอด Vat 7%: ยอดรวมที่ต้องเสียภาษี * 7 / 107
+            const vatRate = 7;
+            const vatAmount = (taxableAmount * vatRate) / (100 + vatRate);
+            const beforeVat = taxableAmount - vatAmount;
+
+            // กรอกข้อมูลสรุปยอดต่างๆ (ป้อนเป็น printedSubtotal เพื่อสะท้อนเฉพาะที่เปิดแสดง)
+            document.getElementById('subtotal').textContent = '฿' + printedSubtotal.toLocaleString(undefined, {minimumFractionDigits: 2});
+            
+            const discountRow = document.getElementById('discount-row');
+            if (printedDiscount > 0.01) { // ยอมรับ Floating math offset เล็กน้อย
+                discountRow.style.display = 'flex';
+                document.getElementById('discount').textContent = '-฿' + printedDiscount.toLocaleString(undefined, {minimumFractionDigits: 2});
+            } else {
+                discountRow.style.display = 'none';
+            }
+
+            // หักและป้อนค่าภาษี 7% (ปัดเศษทศนิยม 2 ตำแหน่งให้ตรงกันเป๊ะ)
+            document.getElementById('tax-base').textContent = '฿' + beforeVat.toLocaleString(undefined, {minimumFractionDigits: 2});
+            document.getElementById('vat-amount').textContent = '฿' + vatAmount.toLocaleString(undefined, {minimumFractionDigits: 2});
+
+            // ยอดสุทธิ
+            document.getElementById('total-amount').textContent = '฿' + printedGrandTotal.toLocaleString(undefined, {minimumFractionDigits: 2});
+
+            // เสริมสร้างรายละเอียดข้อมูลวิธีชำระเงิน (Payment details representation)
+            let paymentStr = txn.payment_method || 'เงินสด';
+            if (txn.payment_type === 'ซื้อสด') {
+                const payments = [];
+                if (txn.cash_amount > 0) payments.push(`เงินสด: ฿${txn.cash_amount.toLocaleString(undefined, {minimumFractionDigits: 2})}`);
+                if (txn.transfer_amount > 0) payments.push(`โอนผ่านธนาคาร: ฿${txn.transfer_amount.toLocaleString(undefined, {minimumFractionDigits: 2})}`);
+                if (payments.length > 0) {
+                    paymentStr = `ซื้อสด (${payments.join(' / ')})`;
+                }
+            } else if (txn.payment_type === 'จัดไฟแนนซ์' || txn.payment_method === 'จัดไฟแนนซ์') {
+                paymentStr = `จัดไฟแนนซ์ (${txn.finance_company || 'ไม่ระบุ'})`;
+            }
+            document.getElementById('payment-method-text').textContent = paymentStr;
+
+            // ส่วนข้อมูลไฟแนนซ์ (Down Payment)
+            const financeSection = document.getElementById('finance-receipt-section');
+            const downPayment = txn.down_payment || 0;
+            if (txn.payment_type === 'จัดไฟแนนซ์' || txn.payment_method === 'จัดไฟแนนซ์' || downPayment > 0) {
+                // คัดกรองและแยกยอดรวมของเฉพาะเครื่อง (ไอเทมที่มี IMEI)
+                const devicesTotal = txn.items.filter(item => !!item.imei_sold).reduce((sum, item) => sum + (item.quantity * item.price), 0);
+                const netDevicesTotal = Math.max(0, devicesTotal - originalDiscount);
+                const financedAmount = Math.max(0, netDevicesTotal - downPayment);
+                const upfrontPaid = Math.max(0, printedGrandTotal - financedAmount);
+
+                financeSection.style.display = 'block';
+                document.getElementById('down-payment').textContent = '฿' + downPayment.toLocaleString(undefined, {minimumFractionDigits: 2});
+                const upfrontEl = document.getElementById('upfront-payment');
+                if (upfrontEl) upfrontEl.textContent = '฿' + upfrontPaid.toLocaleString(undefined, {minimumFractionDigits: 2});
+                document.getElementById('balance').textContent = '฿' + financedAmount.toLocaleString(undefined, {minimumFractionDigits: 2});
+            } else {
+                financeSection.style.display = 'none';
+            }
+
+            // Trigger print after a short delay to ensure rendering
+            setTimeout(() => {
+                window.print();
+                // Optionally close the window after printing
+                // window.close();
+            }, 500);
+        }
+    </script>
+</body>
+</html>

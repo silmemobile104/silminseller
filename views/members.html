@@ -1,0 +1,52 @@
+<div id="view-members">
+                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                        <div>
+                            <h3 class="text-2xl font-bold text-ink">สมาชิก</h3>
+                            <p class="text-body-muted mt-1">จัดการข้อมูลสมาชิกลูกค้า พร้อมระบบอ่านบัตรประชาชน</p>
+                        </div>
+                        <button id="btn-add-member"
+                            class="px-4 py-2 bg-primary hover:bg-primary-pressed text-on-primary font-medium rounded-pill transition-all flex items-center gap-2 w-fit">
+                            <i class="fa-solid fa-user-plus"></i>
+                            เพิ่มสมาชิก
+                        </button>
+                    </div>
+
+                    <!-- Members Search -->
+                    <div class="bg-canvas-elevated rounded-lg border border-hairline overflow-hidden">
+                        <div
+                            class="p-6 border-b border-hairline flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                            <h3 class="text-lg font-bold text-ink flex items-center gap-2">
+                                <i class="fa-solid fa-address-card text-body-muted"></i>
+                                รายชื่อสมาชิก
+                            </h3>
+                            <div class="relative group">
+                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <i
+                                        class="fa-solid fa-search text-body-muted group-focus-within:text-primary transition-colors"></i>
+                                </div>
+                                <input id="member-search-input" type="text"
+                                    placeholder="ค้นหาชื่อ, เลขบัตร, เบอร์โทร..."
+                                    class="bg-surface-chip border border-divider-soft text-sm rounded-pill pl-10 pr-4 py-2 w-64 text-ink focus:outline-none focus:border-primary-focus focus:ring-1 focus:ring-primary-focus/40 transition-all placeholder-ink-muted-48">
+                            </div>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left text-sm whitespace-nowrap">
+                                <thead class="bg-surface-tile-3 text-body-muted">
+                                    <tr>
+                                        <th class="px-6 py-4 font-medium">รูป</th>
+                                        <th class="px-6 py-4 font-medium">เลขสมาชิก</th>
+                                        <th class="px-6 py-4 font-medium">ชื่อ-นามสกุล</th>
+                                        <th class="px-6 py-4 font-medium">เลขบัตรประชาชน</th>
+                                        <th class="px-6 py-4 font-medium">เบอร์โทร</th>
+                                        <th class="px-6 py-4 font-medium">แหล่งที่มา</th>
+                                        <th class="px-6 py-4 font-medium">วันที่ลงทะเบียน</th>
+                                        <th class="px-6 py-4 font-medium text-right">จัดการ</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="member-table-body" class="divide-y divide-hairline">
+                                    <!-- Data will be loaded here by JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+</div>
