@@ -9,7 +9,9 @@
     "watch:css": "tailwindcss -i ./src/tailwind-input.css -o ./tailwind.css --watch",
     "build:icons": "node tools/build-icons.js",
     "build:js": "node tools/build-js.js",
-    "build": "npm run build:css && npm run build:icons && npm run build:js"
+    "build:images": "node tools/build-images.js",
+    "build:fonts": "node tools/build-fonts.js",
+    "build": "npm run build:css && npm run build:icons && npm run build:images && npm run build:js"
   },
   "keywords": [],
   "author": "",
@@ -31,6 +33,7 @@
     "@tailwindcss/cli": "^4.3.1",
     "esbuild": "^0.28.2",
     "fontverter": "^2.0.0",
+    "sharp": "^0.35.4",
     "subset-font": "^2.5.0",
     "tailwindcss": "^4.3.1"
   }

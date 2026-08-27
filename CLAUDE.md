@@ -12,11 +12,13 @@ Multi-branch retail management system for a Thai mobile-phone chain (บริ�
 
 ```bash
 npm start              # run server (port from .env PORT, default 5000)
-npm run build          # build:css + build:icons + build:js — run before deploy
+npm run build          # build:css + build:icons + build:images + build:js — run before deploy
 npm run build:css      # Tailwind v4: src/tailwind-input.css -> tailwind.css
 npm run watch:css      # Tailwind watch mode during UI work
 npm run build:icons    # re-subset icon fonts (see "Icons" below)
+npm run build:images   # downscale _original/* to the sizes actually displayed
 npm run build:js       # esbuild minify -> dist/
+npm run build:fonts    # re-download + self-host the Prompt webfont (NOT in `build`)
 ```
 
 **There is no test suite** (`npm test` is a failing stub). Verification in practice:
@@ -76,6 +78,15 @@ Static assets are served with `maxAge: 1y` and cached again by a Service Worker 
 `index.html` itself is served `Cache-Control: no-cache` (it declares everyone else's versions), as is `sw.js`.
 
 **Icons:** the icon CSS and `.woff2` files are subset to only the glyphs the codebase actually references. Using an icon class that was never used before requires `npm run build:icons` + a `FONT_VERSION` bump, or the icon silently won't render. Originals live in `vendor/icons/webfonts/_original/`; subsetting always re-derives from those, so it's safe to re-run.
+
+## Assets
+
+Images were ~85% of the cold-load weight, and unlike code they gain nothing from the server's brotli compression — so asset size is managed by build steps, not by hand.
+
+- **Never edit the served image files directly** (`icon_silminmobile.png`, `logo.png`, `icon/*.png`, …) — `npm run build:images` overwrites them from `_original/`. To change a logo, replace the file in `_original/` and re-run. Targets are declared in `tools/build-images.js` as 2× the size the HTML actually displays.
+- **Never use `.ico` in an `<img>` tag.** ICO stores an uncompressed bitmap: a 128×128 icon is exactly 66 KB (128·128·4 bytes), while the same image as PNG is ~1 KB. A past PNG→ICO conversion made three nav icons 10–94× *larger*.
+- **Fonts are self-hosted** in `vendor/fonts/` — there is no Google Fonts dependency, and the page loads zero external origins. `tools/build-fonts.js` fetches only the weights in use (400–900 + italic 400; weight 300 is deliberately excluded because nothing uses `font-light`) and only the `thai` + `latin` subsets. It needs network access, so it is kept out of the default `build` chain.
+- Before deleting an "unused" asset, match against URL-encoded forms too — many filenames contain spaces (`icons_img/box (1) 5.png` is referenced as `box%20(1)%205.png`).
 
 ## Domain invariants
 
