@@ -4144,34 +4144,6 @@ document.addEventListener('DOMContentLoaded', () => {
     let posFilteredData = [];
     let posActiveTab = 'search'; // 'search' or 'scan'
 
-    const getProductImage = (productName, typeName) => {
-        let imageName = 'default.png';
-        if (!productName) return `/images/products/${imageName}`;
-        const name = productName.toLowerCase();
-        const type = typeName ? typeName.toLowerCase() : '';
-        if (name.includes('iphone 15 pro max')) imageName = 'iphone-15-pro-max.png';
-        else if (name.includes('iphone 15 pro')) imageName = 'iphone-15-pro.png';
-        else if (name.includes('iphone 15 plus')) imageName = 'iphone-15-plus.png';
-        else if (name.includes('iphone 15')) imageName = 'iphone-15.png';
-        else if (name.includes('iphone 14 pro max')) imageName = 'iphone-14-pro-max.png';
-        else if (name.includes('iphone 14 pro')) imageName = 'iphone-14-pro.png';
-        else if (name.includes('iphone 14 plus')) imageName = 'iphone-14-plus.png';
-        else if (name.includes('iphone 14')) imageName = 'iphone-14.png';
-        else if (name.includes('iphone 13 pro max')) imageName = 'iphone-13-pro-max.png';
-        else if (name.includes('iphone 13 pro')) imageName = 'iphone-13-pro.png';
-        else if (name.includes('iphone 13')) imageName = 'iphone-13.png';
-        else if (name.includes('ipad pro')) imageName = 'ipad-pro.png';
-        else if (name.includes('ipad air')) imageName = 'ipad-air.png';
-        else if (name.includes('ipad mini')) imageName = 'ipad-mini.png';
-        else if (name.includes('ipad')) imageName = 'ipad.png';
-        else if (name.includes('samsung galaxy s24 ultra')) imageName = 's24-ultra.png';
-        else if (name.includes('samsung galaxy z fold5')) imageName = 'z-fold5.png';
-        else if (type.includes('iphone')) imageName = 'iphone-15.png';
-        else if (type.includes('ipad')) imageName = 'ipad.png';
-        else if (type.includes('android')) imageName = 's24-ultra.png';
-        return `/images/products/${imageName}`;
-    };
-
     const getBrandFromProduct = (product) => {
         if (product.brand_id && product.brand_id.name) return product.brand_id.name;
         const name = (product.name || '').toLowerCase();
