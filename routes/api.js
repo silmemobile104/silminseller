@@ -38,6 +38,32 @@ const {
 
 const { uploadBufferToDriveInFolder } = require('../utils/googleDrive');
 
+// อัปโหลดรูปหน้าตรงสมาชิก (จากเครื่องอ่านบัตร) ขึ้น Google Drive แทนการเก็บ base64 ดิบใน DB
+// - ถ้าเป็น URL อยู่แล้ว (เช่น ส่งค่าเดิมกลับมาตอนแก้ไขข้อมูล) ไม่ต้องอัปโหลดซ้ำ
+// - ถ้าอัปโหลดไม่สำเร็จ (Drive ล่ม ฯลฯ) fallback เก็บ base64 เดิมไว้ก่อน ดีกว่าไม่มีรูปเลย
+const uploadMemberPhotoIfNeeded = async (photoInput, citizenId) => {
+    if (!photoInput || typeof photoInput !== 'string' || photoInput.trim() === '') return '';
+    if (photoInput.startsWith('http')) return photoInput;
+
+    try {
+        const matches = photoInput.match(/^data:([A-Za-z-+\/]+);base64,([\s\S]+)$/);
+        let buffer, mimeType;
+        if (matches && matches.length === 3) {
+            mimeType = matches[1];
+            buffer = Buffer.from(matches[2], 'base64');
+        } else {
+            mimeType = 'image/jpeg';
+            buffer = Buffer.from(photoInput, 'base64');
+        }
+        const fileName = `MEMBER_PHOTO_${(citizenId || '').trim() || Date.now()}_${Date.now()}.jpg`;
+        const folderName = 'รูปสมาชิก';
+        return await uploadBufferToDriveInFolder(buffer, mimeType, fileName, folderName);
+    } catch (err) {
+        console.error('Error uploading member photo to Drive:', err);
+        return photoInput; // fallback: เก็บ base64 เดิมไว้แทนที่จะเสียรูปไปเลย
+    }
+};
+
 // ==========================================
 // JWT Verification Middleware (ตรวจสอบ Token)
 // ==========================================
@@ -482,15 +508,15 @@ router.get('/master-data', async (req, res) => {
             suppliers,
             financeCompanies
         ] = await Promise.all([
-            Branch.find(),
-            ProductType.find(),
-            ProductUnit.find(),
-            ProductColor.find(),
-            ProductCapacity.find(),
-            ProductCondition.find(),
-            ProductName.find(),
-            Supplier.find(),
-            FinanceCompany.find()
+            Branch.find().lean(),
+            ProductType.find().lean(),
+            ProductUnit.find().lean(),
+            ProductColor.find().lean(),
+            ProductCapacity.find().lean(),
+            ProductCondition.find().lean(),
+            ProductName.find().lean(),
+            Supplier.find().lean(),
+            FinanceCompany.find().lean()
         ]);
 
         res.status(200).json({
@@ -666,7 +692,8 @@ router.get('/products/direct-imports-history', async (req, res) => {
 
         const logs = await AuditLog.find(filter)
             .sort({ createdAt: -1 })
-            .limit(100);
+            .limit(100)
+            .lean();
 
         res.status(200).json({
             success: true,
@@ -716,7 +743,7 @@ router.post('/products/validate-prices', async (req, res) => {
             return res.status(400).json({ success: false, message: 'กรุณาระบุรายการรหัสสินค้าให้ถูกต้อง' });
         }
 
-        const products = await Product.find({ _id: { $in: product_ids } }, 'cost_price selling_price');
+        const products = await Product.find({ _id: { $in: product_ids } }, 'cost_price selling_price').lean();
         const priceMap = {};
         products.forEach(p => {
             priceMap[p._id.toString()] = {
@@ -744,12 +771,12 @@ router.get('/products', async (req, res) => {
             return res.status(400).json({ success: false, message: 'ไม่พบข้อมูลสาขาที่ต้องการใช้งาน' });
         }
 
-        const allBranches = await Branch.find();
+        const allBranches = await Branch.find().lean();
         const branchMap = {};
         allBranches.forEach(b => { branchMap[b._id.toString()] = { _id: b._id, name: b.name }; });
 
         // Step A: Build In-Transit Map
-        const pendingTransfers = await Transfer.find({ status: 'รอดำเนินการ' }).populate('from_branch to_branch');
+        const pendingTransfers = await Transfer.find({ status: 'รอดำเนินการ' }).populate('from_branch to_branch').lean();
         const inTransitItems = {};
         const transitCodes = new Set();
 
@@ -791,13 +818,14 @@ router.get('/products', async (req, res) => {
             .populate('condition_id', 'name')
             .populate('supplier_id', 'name')
             .populate('stock_balances.branch_id', 'name')
-            .sort({ createdAt: -1 });
+            .sort({ createdAt: -1 })
+            .lean();
 
         // Step C & D: Map Products (The Core Fix + Clean Admin View)
         let products = [];
 
         productsRaw.forEach(p => {
-            const po = p.toObject();
+            const po = p;
             const transits = inTransitItems[po.product_code] || [];
             let pushedAnyRow = false;
 
@@ -879,11 +907,12 @@ router.get('/products/global-stock', async (req, res) => {
             .populate('condition_id', 'name')
             .populate('supplier_id', 'name')
             .populate('stock_balances.branch_id', 'name')
-            .sort({ createdAt: -1 });
+            .sort({ createdAt: -1 })
+            .lean();
 
         // Transform for frontend
         const products = productsRaw.map(p => {
-            const po = p.toObject();
+            const po = p;
             let totalQty = 0;
             if (po.stock_balances) {
                 po.stock_balances.forEach(b => {
@@ -942,7 +971,8 @@ router.get('/products/search', async (req, res) => {
             .populate('color_id', 'name')
             .populate('capacity_id', 'name')
             .populate('condition_id', 'name')
-            .populate('supplier_id', 'name');
+            .populate('supplier_id', 'name')
+            .lean();
 
         if (!product) {
             return res.status(404).json({ success: false, message: 'ไม่พบสินค้า' });
@@ -1119,7 +1149,8 @@ router.get('/movements/search', async (req, res) => {
             .populate('type_id', 'name')
             .populate('color_id', 'name')
             .populate('capacity_id', 'name')
-            .populate('condition_id', 'name');
+            .populate('condition_id', 'name')
+            .lean();
 
         let isImeiSearch = false;
 
@@ -1129,19 +1160,21 @@ router.get('/movements/search', async (req, res) => {
                 .populate('type_id', 'name')
                 .populate('color_id', 'name')
                 .populate('capacity_id', 'name')
-                .populate('condition_id', 'name');
+                .populate('condition_id', 'name')
+                .lean();
             if (product) isImeiSearch = true;
         }
 
         // ถ้าค้นจาก Product ไม่เจอเลย ลองค้นจากประวัติ Movement โดยตรงเผื่อขายออกไปแล้ว
         if (!product) {
-            const movementWithImei = await Movement.findOne({ imei: query }).populate('product_id');
+            const movementWithImei = await Movement.findOne({ imei: query }).populate('product_id').lean();
             if (movementWithImei && movementWithImei.product_id) {
                 product = await Product.findById(movementWithImei.product_id._id)
                     .populate('type_id', 'name')
                     .populate('color_id', 'name')
                     .populate('capacity_id', 'name')
-                    .populate('condition_id', 'name');
+                    .populate('condition_id', 'name')
+                    .lean();
                 isImeiSearch = true;
             }
         }
@@ -1160,7 +1193,8 @@ router.get('/movements/search', async (req, res) => {
             .populate('from_branch', 'name')
             .populate('to_branch', 'name')
             .populate('created_by', 'name')
-            .sort({ created_at: -1 });
+            .sort({ created_at: -1 })
+            .lean();
 
         res.status(200).json({
             success: true,
@@ -1388,7 +1422,8 @@ router.get('/employees', async (req, res) => {
         const employees = await Employee.find()
             .select('-password')
             .populate('branch_id', 'name')
-            .sort({ createdAt: -1 });
+            .sort({ createdAt: -1 })
+            .lean();
 
         res.status(200).json({ success: true, data: employees });
     } catch (error) {
@@ -1507,7 +1542,7 @@ router.delete('/employees/:id', async (req, res) => {
 // GET /api/branches
 router.get('/branches', async (req, res) => {
     try {
-        const branches = await Branch.find().sort({ createdAt: -1 });
+        const branches = await Branch.find().sort({ createdAt: -1 }).lean();
         res.status(200).json({ success: true, data: branches });
     } catch (error) {
         console.error('API Error GET /api/branches:', error);
@@ -1731,7 +1766,8 @@ router.get('/transfers', async (req, res) => {
             .populate('to_branch', 'name')
             .populate('created_by', 'name emp_id')
             .populate('received_by', 'name emp_id')
-            .sort({ createdAt: -1 });
+            .sort({ createdAt: -1 })
+            .lean();
 
         res.status(200).json({
             success: true,
@@ -1756,7 +1792,7 @@ router.get('/transfers/pending-count', async (req, res) => {
         const pendingTransfers = await Transfer.find({
             to_branch: branchId,
             status: 'รอดำเนินการ'
-        }).populate('from_branch', 'name').sort({ created_at: -1 });
+        }).populate('from_branch', 'name').sort({ created_at: -1 }).lean();
 
         const count = pendingTransfers.length;
 
@@ -1786,14 +1822,15 @@ router.get('/transfers/:id', async (req, res) => {
             .populate('from_branch', 'name address')
             .populate('to_branch', 'name')
             .populate('created_by', 'name emp_id')
-            .populate('received_by', 'name emp_id');
+            .populate('received_by', 'name emp_id')
+            .lean();
 
         if (!transfer) {
             return res.status(404).json({ success: false, message: 'ไม่พบรายการโอนย้ายที่ระบุ' });
         }
 
-        // Convert to plain object to allow modification
-        const transferObj = transfer.toObject();
+        // ใช้ตรงๆ ได้เลยเพราะ .lean() คืน plain object มาแล้ว
+        const transferObj = transfer;
 
         // Populate color, capacity, condition, unit from product data for old transfers
         if (transferObj.items && transferObj.items.length > 0) {
@@ -1804,7 +1841,8 @@ router.get('/transfers/:id', async (req, res) => {
                         .populate('color_id', 'name')
                         .populate('capacity_id', 'name')
                         .populate('condition_id', 'name')
-                        .populate('unit_id', 'name');
+                        .populate('unit_id', 'name')
+                        .lean();
                     if (product) {
                         if (!item.color) transferObj.items[i].color = product.color_id?.name || '';
                         if (!item.capacity) transferObj.items[i].capacity = product.capacity_id?.name || '';
@@ -2434,7 +2472,7 @@ router.get('/transactions', async (req, res) => {
                     { last_name: searchRegex },
                     { phone: searchRegex }
                 ]
-            });
+            }).select('_id').lean();
 
             if (matchingMembers.length > 0) {
                 orQuery.push({ member_id: { $in: matchingMembers.map(m => m._id) } });
@@ -2443,21 +2481,35 @@ router.get('/transactions', async (req, res) => {
             filter.$or = orQuery;
         }
 
-        const transactions = await Transaction.find(filter)
+        // Pagination แบบไม่ทำลาย backward compat: ไม่ส่ง page/limit มา = คืนพฤติกรรมเดิม (ทั้งหมด)
+        // ส่งมาก็จะได้ query.limit(...) ไปทำงานที่ DB แทนการโอนข้อมูลทั้งหมดมา filter ที่ frontend
+        const page = parseInt(req.query.page, 10);
+        const limit = parseInt(req.query.limit, 10);
+        const usePagination = Number.isInteger(page) && page > 0 && Number.isInteger(limit) && limit > 0;
+
+        let transactionsQuery = Transaction.find(filter)
             .populate('branch_id', 'name')
             .populate('employee_id', 'name emp_id')
             .populate('items.product_id', 'name product_code')
             .populate('member_id', 'first_name last_name phone')
             .sort({ created_at: -1 });
 
-        const financeCompanies = await FinanceCompany.find({});
+        if (usePagination) {
+            transactionsQuery = transactionsQuery.skip((page - 1) * limit).limit(limit);
+        }
+
+        const [transactions, total] = await Promise.all([
+            transactionsQuery.lean(),
+            usePagination ? Transaction.countDocuments(filter) : Promise.resolve(null)
+        ]);
+
+        const financeCompanies = await FinanceCompany.find({}).lean();
         const companyMap = {};
         financeCompanies.forEach(c => {
             companyMap[c._id.toString()] = c.name;
         });
 
-        const resolvedTransactions = transactions.map(txn => {
-            const doc = txn.toObject();
+        const resolvedTransactions = transactions.map(doc => {
             if (companyMap[doc.finance_company]) {
                 doc.finance_company = companyMap[doc.finance_company];
             }
@@ -2467,7 +2519,8 @@ router.get('/transactions', async (req, res) => {
         res.status(200).json({
             success: true,
             message: 'ดึงข้อมูลรายการขายสำเร็จ',
-            data: resolvedTransactions
+            data: resolvedTransactions,
+            ...(usePagination ? { pagination: { page, limit, total } } : {})
         });
     } catch (error) {
         console.error('API Error GET /api/transactions:', error);
@@ -2486,15 +2539,16 @@ router.get('/transactions/:id', async (req, res) => {
             .populate('employee_id', 'name emp_id')
             .populate('items.product_id', 'name product_code')
             .populate('member_id', 'prefix first_name last_name first_name_en last_name_en phone address citizen_id member_number')
-            .populate('cancelled_by', 'name');
+            .populate('cancelled_by', 'name')
+            .lean();
 
         if (!transaction) {
             return res.status(404).json({ success: false, message: 'ไม่พบรายการที่ต้องการ' });
         }
 
-        const doc = transaction.toObject();
+        const doc = transaction;
         if (doc.finance_company && mongoose.Types.ObjectId.isValid(doc.finance_company)) {
-            const fc = await FinanceCompany.findById(doc.finance_company);
+            const fc = await FinanceCompany.findById(doc.finance_company).lean();
             if (fc) {
                 doc.finance_company = fc.name;
             }
@@ -2624,7 +2678,8 @@ router.get('/sales/daily-summary', async (req, res) => {
         const todayTransactions = await Transaction.find(query)
             .populate('employee_id', 'name emp_id')
             .populate('member_id', 'first_name last_name phone')
-            .sort({ created_at: -1 });
+            .sort({ created_at: -1 })
+            .lean();
 
         let totalSales = 0;
         let cashReceived = 0;
@@ -2642,7 +2697,7 @@ router.get('/sales/daily-summary', async (req, res) => {
             }
 
             for (const item of txn.items) {
-                const product = await Product.findById(item.product_id).populate('unit_id');
+                const product = await Product.findById(item.product_id).populate('unit_id').lean();
                 const unitName = product && product.unit_id ? product.unit_id.name : '';
                 if (unitName === 'เครื่อง') {
                     devicesSold += item.quantity || 0;
@@ -2650,7 +2705,7 @@ router.get('/sales/daily-summary', async (req, res) => {
             }
         }
 
-        const cashAccount = await AccountChart.findOne({ account_code: '110101' });
+        const cashAccount = await AccountChart.findOne({ account_code: '110101' }).lean();
         let cashDisbursed = 0;
         if (cashAccount) {
             const dvQuery = {
@@ -2660,7 +2715,7 @@ router.get('/sales/daily-summary', async (req, res) => {
             if (branchId) {
                 dvQuery.branch_id = branchId;
             }
-            const todayDisbursements = await DisbursementVoucher.find(dvQuery);
+            const todayDisbursements = await DisbursementVoucher.find(dvQuery).lean();
             // Use net_amount + vat_amount (== voucher total_amount), not the raw `amount`
             // field — for VAT_EXCLUDED vouchers `amount` is only the net portion, so
             // summing it alone understates actual cash paid out by the VAT amount.
@@ -2712,7 +2767,7 @@ router.get('/dashboard-stats', async (req, res) => {
         const todayTransactions = await Transaction.find({
             created_at: { $gte: todayStart, $lte: todayEnd },
             ...branchFilter
-        }).populate('branch_id', 'name');
+        }).populate('branch_id', 'name').lean();
 
         const todaySales = todayTransactions.reduce((sum, t) => sum + (t.total_amount || 0), 0);
         const todayTransactionCount = todayTransactions.length;
@@ -2723,7 +2778,7 @@ router.get('/dashboard-stats', async (req, res) => {
         for (const txn of todayTransactions) {
             for (const item of txn.items) {
                 if (item.product_id) {
-                    const product = await Product.findById(item.product_id);
+                    const product = await Product.findById(item.product_id).lean();
                     if (product) {
                         const profit = (item.price - (product.cost_price || 0)) * item.quantity;
                         estimatedProfit += profit;
@@ -2732,23 +2787,35 @@ router.get('/dashboard-stats', async (req, res) => {
             }
         }
 
-        // 3. จำนวนสินค้าในคลัง (Total Stock)
-        const stockMatchStage = Object.keys(branchFilter).length > 0
-            ? [{ $match: { branch_id: branchFilter.branch_id } }]
+        // 3. จำนวนสินค้าในคลัง (Total Stock) + 4. สินค้าใกล้หมด (Low Stock: quantity < 5)
+        // หมายเหตุ: Product ไม่มี field `branch_id`/`quantity` ตรงๆ แล้วตั้งแต่ย้ายไปโครงสร้าง ERP
+        // (ดู migrateProductsToERP ใน models/index.js) สต็อกอยู่ใน stock_balances[] แยกตามสาขาแทน
+        // จึงต้อง $unwind ก่อนแล้วรวมยอดต่อสินค้า ก่อน group รวมทั้งหมดอีกที
+        const stockBranchMatch = Object.keys(branchFilter).length > 0
+            ? [{ $match: { 'stock_balances.branch_id': new mongoose.Types.ObjectId(branchFilter.branch_id) } }]
             : [];
 
         const stockAgg = await Product.aggregate([
-            ...stockMatchStage,
-            { $group: { _id: null, totalQuantity: { $sum: '$quantity' }, totalProducts: { $sum: 1 } } }
+            { $unwind: { path: '$stock_balances', preserveNullAndEmptyArrays: true } },
+            ...stockBranchMatch,
+            {
+                $group: {
+                    _id: '$_id',
+                    productQty: { $sum: { $ifNull: ['$stock_balances.quantity', 0] } }
+                }
+            },
+            {
+                $group: {
+                    _id: null,
+                    totalQuantity: { $sum: '$productQty' },
+                    totalProducts: { $sum: 1 },
+                    lowStockProducts: { $sum: { $cond: [{ $lt: ['$productQty', 5] }, 1, 0] } }
+                }
+            }
         ]);
         const totalStock = stockAgg.length > 0 ? stockAgg[0].totalQuantity : 0;
         const totalProducts = stockAgg.length > 0 ? stockAgg[0].totalProducts : 0;
-
-        // 4. สินค้าใกล้หมด (Low Stock: quantity < 5)
-        const lowStockCount = await Product.countDocuments({
-            quantity: { $lt: 5 },
-            ...branchFilter
-        });
+        const lowStockCount = stockAgg.length > 0 ? stockAgg[0].lowStockProducts : 0;
 
         // 5. ยอดขายแยกตามสาขา (Sales by Branch) - วันนี้
         const salesByBranch = {};
@@ -2765,7 +2832,8 @@ router.get('/dashboard-stats', async (req, res) => {
         const recentTransactions = await Transaction.find(branchFilter)
             .populate('branch_id', 'name')
             .sort({ created_at: -1 })
-            .limit(10);
+            .limit(10)
+            .lean();
 
         res.status(200).json({
             success: true,
@@ -2805,7 +2873,7 @@ router.get('/dashboard-stats', async (req, res) => {
 // GET /api/roles - ดึงรายการ Role ทั้งหมด
 router.get('/roles', async (req, res) => {
     try {
-        const roles = await Role.find().sort({ createdAt: 1 });
+        const roles = await Role.find().sort({ createdAt: 1 }).lean();
         res.status(200).json({ success: true, data: roles });
     } catch (error) {
         console.error('API Error GET /api/roles:', error);
@@ -2928,7 +2996,8 @@ router.get('/audit-logs', async (req, res) => {
         const logs = await AuditLog.find(filter)
             .sort({ createdAt: -1 })
             .skip(skip)
-            .limit(limit);
+            .limit(limit)
+            .lean();
 
         res.status(200).json({
             success: true,
@@ -2967,7 +3036,7 @@ router.get('/members/search', async (req, res) => {
                 { citizen_id: { $regex: query, $options: 'i' } },
                 { member_number: { $regex: query, $options: 'i' } }
             ]
-        }).limit(10);
+        }).limit(10).lean();
 
         res.json({ success: true, data: members });
     } catch (error) {
@@ -2979,8 +3048,26 @@ router.get('/members/search', async (req, res) => {
 // GET /api/members - ดึงข้อมูลสมาชิกทั้งหมด
 router.get('/members', async (req, res) => {
     try {
-        const members = await Member.find().sort({ createdAt: -1 });
-        res.status(200).json({ success: true, data: members });
+        // Pagination แบบไม่ทำลาย backward compat: ไม่ส่ง page/limit มา = คืนพฤติกรรมเดิม (ทั้งหมด)
+        const page = parseInt(req.query.page, 10);
+        const limit = parseInt(req.query.limit, 10);
+        const usePagination = Number.isInteger(page) && page > 0 && Number.isInteger(limit) && limit > 0;
+
+        let membersQuery = Member.find().sort({ createdAt: -1 });
+        if (usePagination) {
+            membersQuery = membersQuery.skip((page - 1) * limit).limit(limit);
+        }
+
+        const [members, total] = await Promise.all([
+            membersQuery.lean(),
+            usePagination ? Member.countDocuments() : Promise.resolve(null)
+        ]);
+
+        res.status(200).json({
+            success: true,
+            data: members,
+            ...(usePagination ? { pagination: { page, limit, total } } : {})
+        });
     } catch (error) {
         console.error('API Error GET /api/members:', error);
         res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการดึงข้อมูลสมาชิก' });
@@ -3034,6 +3121,10 @@ router.post('/members', async (req, res) => {
             }
         }
 
+        // อัปโหลดรูปหน้าตรงจากบัตร (data.photo) ขึ้น Drive แทนการเก็บ base64 ดิบใน DB ตรงๆ
+        // (เดิมเก็บ base64 ทำให้ทุก query ที่ดึงรายชื่อสมาชิกโอนรูปเต็มมาด้วยทุกครั้ง หนักกับเน็ตช้า)
+        const photoUrl = await uploadMemberPhotoIfNeeded(data.photo, data.citizen_id);
+
         // Auto Generate Member Number: SMXXXXX (เช่น SM00001)
         const lastMember = await Member.findOne({ member_number: { $regex: /^SM\d+$/ } }).sort({ member_number: -1 });
         let nextSeq = 1;
@@ -3057,7 +3148,7 @@ router.post('/members', async (req, res) => {
             card_expiry: data.card_expiry || '',
             gender: data.gender || '',
             address: data.address || '',
-            photo: data.photo || '',
+            photo: photoUrl,
             card_front_photo: cardFrontPhotoUrl,
             zipcode: data.zipcode || '',
             phone: data.phone || '',
@@ -3126,6 +3217,8 @@ router.put('/members/:id', async (req, res) => {
             }
         }
 
+        const photoUrl = await uploadMemberPhotoIfNeeded(data.photo, data.citizen_id);
+
         const updateData = {
             citizen_id: (data.citizen_id || '').trim(),
             prefix: data.prefix || '',
@@ -3137,7 +3230,7 @@ router.put('/members/:id', async (req, res) => {
             card_expiry: data.card_expiry || '',
             gender: data.gender || '',
             address: data.address || '',
-            photo: data.photo || '',
+            photo: photoUrl,
             card_front_photo: cardFrontPhotoUrl,
             zipcode: data.zipcode || '',
             phone: data.phone || '',
@@ -3245,7 +3338,8 @@ router.get('/import-notifications', async (req, res) => {
             .populate('branch_id', 'name')
             .populate('reported_by', 'name emp_id')
             .populate('approved_by', 'name')
-            .sort({ createdAt: -1 });
+            .sort({ createdAt: -1 })
+            .lean();
 
         res.status(200).json({ success: true, message: 'ดึงข้อมูลสำเร็จ', data: notifications });
     } catch (error) {
@@ -3415,7 +3509,7 @@ router.get('/warranty/check', async (req, res) => {
                 { last_name: qRegex },
                 { phone: qRegex }
             ]
-        });
+        }).select('_id').lean();
         const memberIds = members.map(m => m._id);
 
         // Find transactions matching member OR IMEI
@@ -3428,7 +3522,8 @@ router.get('/warranty/check', async (req, res) => {
         })
             .populate('branch_id', 'name')
             .populate('member_id', 'first_name last_name phone')
-            .sort({ created_at: -1 });
+            .sort({ created_at: -1 })
+            .lean();
 
         const results = [];
         transactions.forEach(txn => {
@@ -3605,7 +3700,8 @@ router.get('/purchase-orders', async (req, res) => {
             .populate('created_by', 'name role')
             .populate('received_by', 'name')
             .populate('arrival_reported_by', 'name')
-            .sort({ createdAt: -1 });
+            .sort({ createdAt: -1 })
+            .lean();
 
         res.status(200).json({
             success: true,
@@ -3960,10 +4056,10 @@ router.get('/accounting/profit-loss', async (req, res) => {
         const posTxns = await Transaction.find({
             created_at: { $gte: start, $lte: end },
             status: { $ne: 'ยกเลิกแล้ว' }
-        }).populate('employee_id', 'name emp_id');
+        }).populate('employee_id', 'name emp_id').lean();
 
         const txnIds = posTxns.map(t => t._id);
-        const receivables = await FinanceReceivable.find({ transaction_id: { $in: txnIds } });
+        const receivables = await FinanceReceivable.find({ transaction_id: { $in: txnIds } }).lean();
         const recMap = {};
         receivables.forEach(r => {
             recMap[r.transaction_id.toString()] = r;
@@ -4022,7 +4118,7 @@ router.get('/accounting/profit-loss', async (req, res) => {
         }).populate({
             path: 'transaction_id',
             match: { created_at: { $lt: start } }
-        }).populate('recorded_by', 'name emp_id');
+        }).populate('recorded_by', 'name emp_id').lean();
 
         settledReceivablesOutsidePeriod.forEach(r => {
             if (r.transaction_id) {
@@ -4044,7 +4140,7 @@ router.get('/accounting/profit-loss', async (req, res) => {
             created_at: { $gte: start, $lte: end },
             type: 'รายรับ',
             category: { $ne: 'ขายสินค้า' }
-        }).populate('recorded_by', 'name emp_id');
+        }).populate('recorded_by', 'name emp_id').lean();
 
         const otherRevenue = otherRevenuesMovements.reduce((sum, c) => sum + (c.amount || 0), 0);
 
@@ -4052,7 +4148,7 @@ router.get('/accounting/profit-loss', async (req, res) => {
         const finalizedPOs = await PurchaseOrder.find({
             updatedAt: { $gte: start, $lte: end },
             status: 'นำเข้าสำเร็จ'
-        });
+        }).lean();
 
         const poCost = finalizedPOs.reduce((sum, po) => {
             const poSum = po.items.reduce((itemSum, item) => itemSum + (item.cost_price * (item.received_qty || 0)), 0);
@@ -4064,7 +4160,7 @@ router.get('/accounting/profit-loss', async (req, res) => {
             created_at: { $gte: start, $lte: end },
             type: 'รายจ่าย',
             category: { $ne: 'ซื้อสินค้า (PO)' }
-        }).populate('recorded_by', 'name emp_id');
+        }).populate('recorded_by', 'name emp_id').lean();
 
         const otherExpenses = otherExpensesMovements.reduce((sum, c) => sum + (c.amount || 0), 0);
 
@@ -4105,7 +4201,7 @@ router.get('/accounting/profit-loss', async (req, res) => {
         const poPaidMovements = await CashMovement.find({
             created_at: { $gte: start, $lte: end },
             category: 'ซื้อสินค้า (PO)'
-        }).populate('recorded_by', 'name emp_id');
+        }).populate('recorded_by', 'name emp_id').lean();
 
         poPaidMovements.forEach(c => {
             ledger.push({
@@ -4341,17 +4437,17 @@ router.get('/accounting/receivables', async (req, res) => {
         const receivables = await FinanceReceivable.find()
             .populate('transaction_id')
             .populate('recorded_by', 'name emp_id')
-            .sort({ createdAt: -1 });
+            .sort({ createdAt: -1 })
+            .lean();
 
         // Resolve finance company names if stored as ObjectIds
-        const financeCompanies = await FinanceCompany.find({});
+        const financeCompanies = await FinanceCompany.find({}).lean();
         const companyMap = {};
         financeCompanies.forEach(c => {
             companyMap[c._id.toString()] = c.name;
         });
 
-        const resolvedReceivables = receivables.map(rec => {
-            const doc = rec.toObject();
+        const resolvedReceivables = receivables.map(doc => {
             if (companyMap[doc.finance_company]) {
                 doc.finance_company = companyMap[doc.finance_company];
             }
@@ -4527,7 +4623,7 @@ router.get('/finance/summary', async (req, res) => {
         ]);
 
         // Resolve finance company names and merge duplicates
-        const financeCompanies = await FinanceCompany.find({});
+        const financeCompanies = await FinanceCompany.find({}).lean();
         const companyMap = {};
         financeCompanies.forEach(c => {
             companyMap[c._id.toString()] = c.name;
@@ -4785,7 +4881,8 @@ router.get('/stock-audit/sessions', async (req, res) => {
         }
         const sessions = await StockAuditSession.find(filter)
             .populate('branch_id', 'name').populate('created_by', 'name emp_id').populate('closed_by', 'name emp_id')
-            .sort({ session_date: -1 });
+            .sort({ session_date: -1 })
+            .lean();
         res.json({ success: true, data: sessions, total: sessions.length });
     } catch (error) {
         console.error('API Error GET /api/stock-audit/sessions:', error);
@@ -4797,11 +4894,12 @@ router.get('/stock-audit/sessions', async (req, res) => {
 router.get('/stock-audit/sessions/:id', async (req, res) => {
     try {
         const session = await StockAuditSession.findById(req.params.id)
-            .populate('branch_id', 'name').populate('created_by', 'name emp_id').populate('closed_by', 'name emp_id');
+            .populate('branch_id', 'name').populate('created_by', 'name emp_id').populate('closed_by', 'name emp_id')
+            .lean();
         if (!session) return res.status(404).json({ success: false, message: 'ไม่พบรอบตรวจนับสต็อกที่ระบุ' });
 
         const items = await StockAuditItem.find({ session_id: session._id })
-            .populate('scanned_by', 'name emp_id').populate('reviewed_by', 'name emp_id').sort({ scanned_at: 1 });
+            .populate('scanned_by', 'name emp_id').populate('reviewed_by', 'name emp_id').sort({ scanned_at: 1 }).lean();
 
         const summary = {
             total: items.length,
@@ -5054,7 +5152,8 @@ router.get('/deposits', async (req, res) => {
             .populate('created_by', 'name')
             .populate('completed_by', 'name')
             .populate('cancelled_by', 'name')
-            .sort({ createdAt: -1 });
+            .sort({ createdAt: -1 })
+            .lean();
 
         res.json({ success: true, data: list });
     } catch (error) {

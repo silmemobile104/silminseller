@@ -14,7 +14,7 @@ const memberSchema = new mongoose.Schema({
     card_expiry: { type: String, default: '' }, // วันหมดอายุบัตร
     gender: { type: String, default: '' }, // เพศ
     address: { type: String, default: '' }, // ที่อยู่
-    photo: { type: String, default: '' }, // รูปถ่ายจากบัตร (base64)
+    photo: { type: String, default: '' }, // รูปถ่ายจากบัตร (Google Drive URL — สมาชิกเก่าก่อน migration อาจยังเป็น base64 ดิบ)
     card_front_photo: { type: String, default: '' }, // รูปหน้าบัตร (Google Drive URL)
 
     // ข้อมูลที่กรอกเพิ่มเติม
@@ -31,6 +31,8 @@ const memberSchema = new mongoose.Schema({
         default: ''
     }
 }, { timestamps: true });
+
+memberSchema.index({ phone: 1 });
 
 const Member = mongoose.model('Member', memberSchema, 'member');
 

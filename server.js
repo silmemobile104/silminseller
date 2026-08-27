@@ -50,6 +50,11 @@ app.use(express.static(__dirname, {
         if (filePath === path.join(__dirname, 'index.html')) {
             res.setHeader('Cache-Control', 'no-cache');
         }
+        // sw.js ต้องไม่ถูก cache นาน ไม่งั้นเบราว์เซอร์อาจไม่เห็นเวอร์ชันใหม่ของ Service Worker เอง
+        // (เนื้อหาไฟล์นี้แทบไม่เปลี่ยน แต่กันไว้เผื่อแก้ logic การแคชในอนาคต)
+        if (filePath === path.join(__dirname, 'sw.js')) {
+            res.setHeader('Cache-Control', 'no-cache');
+        }
     }
 }));
 
@@ -64,7 +69,7 @@ if (!MONGODB_URI) {
     process.exit(1);
 }
 
-mongoose.connect(MONGODB_URI)
+mongoose.connect(MONGODB_URI, { maxPoolSize: 20 })
     .then(async () => {
         console.log('เชื่อมต่อฐานข้อมูล MongoDB Atlas สำเร็จ');
         // Seed default roles ถ้ายังไม่มีข้อมูล

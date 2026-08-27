@@ -218,6 +218,9 @@ const productSchema = new mongoose.Schema({
     }]
 
 }, { timestamps: true });
+// ใช้กรองสินค้าตามสาขาใน GET /api/products และ createdAt ใช้ sort ล่าสุดก่อนของ list เดียวกัน
+productSchema.index({ 'stock_balances.branch_id': 1 });
+productSchema.index({ createdAt: -1 });
 const Product = mongoose.model('Product', productSchema, 'product');
 
 // 11.1 Movement Ledger (บันทึกการเคลื่อนไหวสินค้า)
@@ -233,6 +236,10 @@ const movementSchema = new mongoose.Schema({
     created_by: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee', required: true },
     created_at: { type: Date, default: Date.now }
 }, { timestamps: true });
+movementSchema.index({ product_id: 1 });
+movementSchema.index({ from_branch: 1 });
+movementSchema.index({ to_branch: 1 });
+movementSchema.index({ created_at: -1 });
 const Movement = mongoose.model('Movement', movementSchema, 'movement');
 
 // Auto-migration helper (จะถูกเรียกตอนเริ่มรันเซิร์ฟเวอร์)
@@ -302,6 +309,11 @@ const transactionSchema = new mongoose.Schema({
     cancelled_at: { type: Date }, // วันที่ยกเลิก
     created_at: { type: Date, default: Date.now } // วันที่ทำรายการ
 }, { timestamps: true });
+// ครอบ query ที่ใช้บ่อยสุดใน /api/transactions (กรองตามสาขา + เรียง/กรองตามวันที่)
+transactionSchema.index({ branch_id: 1, created_at: -1 });
+transactionSchema.index({ employee_id: 1 });
+transactionSchema.index({ status: 1 });
+transactionSchema.index({ payment_type: 1 });
 const Transaction = mongoose.model('Transaction', transactionSchema, 'transaction');
 
 // 13. Transfer (โอนย้ายสินค้าระหว่างสาขา)
@@ -322,6 +334,10 @@ const transferSchema = new mongoose.Schema({
     cancelled_at: { type: Date, default: null }, // วันที่ยกเลิก
     created_at: { type: Date, default: Date.now }
 }, { timestamps: true });
+transferSchema.index({ status: 1 });
+transferSchema.index({ to_branch: 1 });
+transferSchema.index({ from_branch: 1 });
+transferSchema.index({ created_at: -1 });
 const Transfer = mongoose.model('Transfer', transferSchema, 'transfer');
 
 // 14. Finance Company (บริษัทจัดไฟแนนซ์)
@@ -348,6 +364,7 @@ const importNotificationSchema = new mongoose.Schema({
     approved_by: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee' },
     approved_at: { type: Date }
 }, { timestamps: true });
+importNotificationSchema.index({ branch_id: 1, status: 1 });
 const ImportNotification = mongoose.model('ImportNotification', importNotificationSchema, 'importnotification');
 
 // 16. Purchase Order (ใบสั่งซื้อ)
@@ -382,6 +399,8 @@ const purchaseOrderSchema = new mongoose.Schema({
     discount: { type: Number, default: 0 },
     discount_remark: { type: String, default: '' }
 }, { timestamps: true });
+purchaseOrderSchema.index({ branch_id: 1, status: 1 });
+purchaseOrderSchema.index({ createdAt: -1 });
 const PurchaseOrder = mongoose.model('PurchaseOrder', purchaseOrderSchema, 'purchaseorder');
 
 // 17. Audit Log (บันทึกกิจกรรมพนักงานและประวัติการทำงานระบบ)
@@ -396,6 +415,9 @@ const auditLogSchema = new mongoose.Schema({
     user_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee', required: true }, // รหัสพนักงานผู้ทำรายการ
     user_name: { type: String, required: true } // ชื่อพนักงานผู้ทำรายการ
 }, { timestamps: true });
+auditLogSchema.index({ createdAt: -1 });
+auditLogSchema.index({ module: 1 });
+auditLogSchema.index({ user_id: 1 });
 const AuditLog = mongoose.model('AuditLog', auditLogSchema, 'auditlog');
 
 // 18. Cash Movement (รายการเงินเคลื่อนไหวในระบบบัญชี)
@@ -408,6 +430,8 @@ const cashMovementSchema = new mongoose.Schema({
     recorded_by: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee', required: true },
     created_at: { type: Date, default: Date.now }
 }, { timestamps: true });
+cashMovementSchema.index({ created_at: -1 });
+cashMovementSchema.index({ type: 1, category: 1 });
 const CashMovement = mongoose.model('CashMovement', cashMovementSchema, 'cashmovement');
 
 // 19. Finance Receivable (ระบบบัญชีลูกหนี้จัดไฟแนนซ์)
@@ -447,6 +471,7 @@ const stockAuditSessionSchema = new mongoose.Schema({
     total_items_scanned: { type: Number, default: 0 },
     notes: { type: String, default: '' }
 }, { timestamps: true });
+stockAuditSessionSchema.index({ branch_id: 1, status: 1 });
 const StockAuditSession = mongoose.model('StockAuditSession', stockAuditSessionSchema, 'stockauditsession');
 
 // 21. Stock Audit Item (รายการสินค้าแต่ละชิ้นในรอบการตรวจนับ)
@@ -498,6 +523,8 @@ const depositSchema = new mongoose.Schema({
     cancel_reason: { type: String, default: '' },
     notes: { type: String, default: '' }
 }, { timestamps: true });
+depositSchema.index({ branch_id: 1, status: 1 });
+depositSchema.index({ createdAt: -1 });
 
 const Deposit = mongoose.model('Deposit', depositSchema, 'deposit');
 

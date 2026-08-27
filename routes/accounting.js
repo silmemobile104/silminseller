@@ -75,9 +75,9 @@ async function logActivity(req, action, module, description, targetId, refNo, de
 router.get('/chart-of-accounts', async (req, res) => {
     try {
         const [categories, groups, accounts] = await Promise.all([
-            AccountCategory.find().sort({ category_code: 1 }),
-            AccountGroup.find().populate('category_id').sort({ group_code: 1 }),
-            AccountChart.find().populate('category_id').populate('group_id').sort({ account_code: 1 })
+            AccountCategory.find().sort({ category_code: 1 }).lean(),
+            AccountGroup.find().populate('category_id').sort({ group_code: 1 }).lean(),
+            AccountChart.find().populate('category_id').populate('group_id').sort({ account_code: 1 }).lean()
         ]);
         res.json({ success: true, categories, groups, accounts });
     } catch (err) {
@@ -159,7 +159,8 @@ router.get('/pnl-config', async (req, res) => {
             .populate('category_id')
             .populate('group_id')
             .populate('account_ids')
-            .sort({ sort_order: 1 });
+            .sort({ sort_order: 1 })
+            .lean();
         res.json({ success: true, configs });
     } catch (err) {
         res.status(500).json({ success: false, message: err.message });
@@ -243,10 +244,10 @@ router.get('/disbursements', async (req, res) => {
             .populate('credit_account_id')
             .populate('branch_id')
             .populate('created_by', 'name')
-            .sort({ created_at: -1 });
+            .sort({ created_at: -1 })
+            .lean();
 
-        const voucherObjs = vouchers.map(v => {
-            const obj = v.toObject();
+        const voucherObjs = vouchers.map(obj => {
             obj.total_amount = voucherTotalAmount(obj);
             return obj;
         });
@@ -368,10 +369,11 @@ router.get('/disbursements/:id', async (req, res) => {
             .populate('debit_account_id')
             .populate('credit_account_id')
             .populate('branch_id')
-            .populate('created_by', 'name');
+            .populate('created_by', 'name')
+            .lean();
         if (!voucher) return res.status(404).json({ success: false, message: 'ไม่พบใบสำคัญจ่าย' });
 
-        const voucherObj = voucher.toObject();
+        const voucherObj = voucher;
         voucherObj.total_amount = voucherTotalAmount(voucherObj);
 
         res.json({ success: true, voucher: voucherObj });
@@ -392,14 +394,14 @@ router.get('/pnl-report', async (req, res) => {
 
         // Get P&L config lines, disbursement vouchers, and sales transactions in parallel — independent queries
         const [pnlConfigs, vouchers, transactions] = await Promise.all([
-            PnLConfig.find().populate('account_ids').sort({ sort_order: 1 }),
+            PnLConfig.find().populate('account_ids').sort({ sort_order: 1 }).lean(),
             DisbursementVoucher.find({
                 payment_date: { $gte: startDate, $lte: endDate }
-            }).populate('debit_account_id'),
+            }).populate('debit_account_id').lean(),
             Transaction.find({
                 created_at: { $gte: startDate, $lte: endDate },
                 status: { $ne: 'ยกเลิกแล้ว' }
-            })
+            }).lean()
         ]);
 
         // Aggregate by account_id from vouchers
@@ -451,7 +453,7 @@ router.get('/pnl-report', async (req, res) => {
             const expenses = await CashMovement.find({
                 type: 'รายจ่าย',
                 created_at: { $gte: startDate, $lte: endDate }
-            });
+            }).lean();
             totalExpense = expenses.reduce((sum, e) => sum + (e.amount || 0), 0);
 
             reportLines.push(

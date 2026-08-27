@@ -7,6 +7,15 @@
     // ==========================================
     let membersData = [];
 
+    // สมาชิกใหม่: photo เป็น URL จาก Google Drive แล้ว (ดู uploadMemberPhotoIfNeeded ใน routes/api.js)
+    // สมาชิกเก่าก่อน migration: photo ยังเป็น base64 ดิบอยู่ ต้องรองรับทั้งสองแบบ
+    const memberPhotoSrc = (photo) => {
+        if (!photo) return '';
+        return photo.startsWith('http') || photo.startsWith('data:')
+            ? photo
+            : `data:image/jpeg;base64,${photo}`;
+    };
+
     // แจ้งเตือนแบบ popup กลางจอ (ใช้ custom-confirm-modal เดิมของระบบ ซ่อนปุ่มยกเลิก เหลือปุ่ม "ตกลง" ปุ่มเดียว)
     // ใช้เฉพาะกรณีข้อมูลซ้ำ ซึ่งสำคัญกว่าการแจ้งเตือนแบบ toast ทั่วไปที่หายไปเร็วและอาจมองไม่ทัน
     const showMemberDuplicatePopup = (message) => {
@@ -58,7 +67,7 @@
             const dateStr = m.createdAt ? new Date(m.createdAt).toLocaleDateString('th-TH', { year: 'numeric', month: 'short', day: 'numeric' }) : '-';
 
             const photoHtml = m.photo
-                ? `<img src="data:image/jpeg;base64,${m.photo}" class="w-10 h-10 rounded-sm object-cover border border-hairline">`
+                ? `<img src="${memberPhotoSrc(m.photo)}" class="w-10 h-10 rounded-sm object-cover border border-hairline">`
                 : `<div class="w-10 h-10 rounded-sm bg-surface-chip flex items-center justify-center text-body-muted"><i class="fa-solid fa-user"></i></div>`;
 
             const referralBadge = m.referral_source
@@ -247,7 +256,7 @@
         const photoContainer = document.getElementById('v-member-photo-container');
         if (photoContainer) {
             if (m.photo) {
-                photoContainer.innerHTML = `<img src="data:image/jpeg;base64,${m.photo}" class="w-full h-full object-cover">`;
+                photoContainer.innerHTML = `<img src="${memberPhotoSrc(m.photo)}" class="w-full h-full object-cover">`;
             } else {
                 photoContainer.innerHTML = `<i class="fa-solid fa-user text-4xl text-body-muted"></i>`;
             }
@@ -310,7 +319,7 @@
         currentMemberPhoto = member.photo || '';
         const photoPreview = document.getElementById('member-photo-preview');
         if (photoPreview && member.photo) {
-            photoPreview.innerHTML = `<img src="data:image/jpeg;base64,${member.photo}" class="w-full h-full object-cover">`;
+            photoPreview.innerHTML = `<img src="${memberPhotoSrc(member.photo)}" class="w-full h-full object-cover">`;
         }
 
         // Populate card front photo preview
