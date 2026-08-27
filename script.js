@@ -45,22 +45,67 @@ document.addEventListener('DOMContentLoaded', () => {
         return token ? { 'Authorization': `Bearer ${token}` } : {};
     };
 
+    // timeout กันค้าง: เดิมถ้าเน็ตช้ามาก/หลุดกลางคัน fetch จะค้างรอไม่มีกำหนด ผู้ใช้เห็นแค่หน้าจอนิ่งๆ
+    const AUTH_FETCH_TIMEOUT_MS = 30000;
+    // จำนวนครั้งที่ "ลองใหม่" (ไม่นับครั้งแรก) — ใช้กับ GET เท่านั้น ดูเหตุผลด้านล่าง
+    const AUTH_FETCH_GET_RETRIES = 2;
+
     const authFetch = async (url, options = {}) => {
         const headers = {
             ...getAuthHeaders(),
             ...(options.headers || {})
         };
-        const response = await fetch(url, { ...options, headers });
 
-        // ตรวจสอบ 401 → เซสชั่นหมดอายุ (Token ไม่ถูกต้อง/หมดอายุ)
-        // หมายเหตุ: 403 สงวนไว้สำหรับ "ไม่มีสิทธิ์ทำรายการนี้" (business permission) ซึ่งแต่ละหน้าจะจัดการเองจาก result.message
-        if (response.status === 401) {
-            // เรียก forceLogout() ได้ทุกครั้งโดยไม่ต้องเช็คอะไรก่อน — ตัวมันล็อกไว้แล้วว่าจะทำงานจริง
-            // แค่ครั้งแรกครั้งเดียว ใบที่ 401 ตามมาทีหลังจะ return ทันที ไม่มี Toast ซ้ำ
-            forceLogout();
-            throw new Error('เซสชั่นหมดอายุ');
+        // ⚠️ ลองใหม่อัตโนมัติเฉพาะ GET เท่านั้น
+        // POST/PUT/DELETE ห้ามลองซ้ำเด็ดขาด เพราะถ้า request แรกถึงเซิร์ฟเวอร์แล้วแต่ response หายกลางทาง
+        // การยิงซ้ำจะสร้างรายการซ้ำ (เช่น บิลขายซ้ำใบ / ตัดสต็อกซ้ำรอบ) ซึ่งแย่กว่าการให้ผู้ใช้กดเอง
+        const method = (options.method || 'GET').toUpperCase();
+        const maxAttempts = method === 'GET' ? AUTH_FETCH_GET_RETRIES + 1 : 1;
+
+        let lastError;
+        for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), AUTH_FETCH_TIMEOUT_MS);
+
+            // ถ้าผู้เรียกส่ง signal มาเอง ให้ยกเลิกพร้อมกันได้ด้วย (เช่น ยกเลิกการค้นหาที่พิมพ์ทับ)
+            if (options.signal) {
+                if (options.signal.aborted) controller.abort();
+                else options.signal.addEventListener('abort', () => controller.abort(), { once: true });
+            }
+
+            try {
+                const response = await fetch(url, { ...options, headers, signal: controller.signal });
+
+                // ตรวจสอบ 401 → เซสชั่นหมดอายุ (Token ไม่ถูกต้อง/หมดอายุ)
+                // หมายเหตุ: 403 สงวนไว้สำหรับ "ไม่มีสิทธิ์ทำรายการนี้" (business permission) ซึ่งแต่ละหน้าจะจัดการเองจาก result.message
+                if (response.status === 401) {
+                    // เรียก forceLogout() ได้ทุกครั้งโดยไม่ต้องเช็คอะไรก่อน — ตัวมันล็อกไว้แล้วว่าจะทำงานจริง
+                    // แค่ครั้งแรกครั้งเดียว ใบที่ 401 ตามมาทีหลังจะ return ทันที ไม่มี Toast ซ้ำ
+                    forceLogout();
+                    throw new Error('เซสชั่นหมดอายุ');
+                }
+                return response;
+            } catch (err) {
+                // ผู้เรียกสั่งยกเลิกเอง หรือเซสชั่นหมดอายุ — ไม่ใช่ปัญหาเครือข่าย ไม่ต้องลองใหม่
+                if (options.signal && options.signal.aborted) throw err;
+                if (err && err.message === 'เซสชั่นหมดอายุ') throw err;
+
+                const isTimeout = err && err.name === 'AbortError';
+                lastError = isTimeout
+                    ? new Error('เชื่อมต่อเซิร์ฟเวอร์ไม่สำเร็จ (หมดเวลารอ) กรุณาตรวจสอบสัญญาณอินเทอร์เน็ต')
+                    : err;
+
+                if (attempt < maxAttempts) {
+                    // หน่วงแบบ exponential backoff กันยิงรัวตอนเน็ตกำลังกระตุก
+                    await new Promise(r => setTimeout(r, 400 * attempt));
+                    continue;
+                }
+                throw lastError;
+            } finally {
+                clearTimeout(timeoutId);
+            }
         }
-        return response;
+        throw lastError;
     };
     // เปิดให้สคริปต์หน้าอื่นที่โหลดแยก (js/page-*.js) เรียกใช้ได้ผ่าน window
     window.authFetch = authFetch;

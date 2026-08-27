@@ -37,6 +37,7 @@ const {
 } = require('../models');
 
 const { uploadBufferToDriveInFolder } = require('../utils/googleDrive');
+const mdCache = require('../utils/masterDataCache');
 
 // อัปโหลดรูปหน้าตรงสมาชิก (จากเครื่องอ่านบัตร) ขึ้น Google Drive แทนการเก็บ base64 ดิบใน DB
 // - ถ้าเป็น URL อยู่แล้ว (เช่น ส่งค่าเดิมกลับมาตอนแก้ไขข้อมูล) ไม่ต้องอัปโหลดซ้ำ
@@ -156,6 +157,32 @@ const getRequestedBranchId = (req) => {
 
     // พนักงานขาย/คนไม่มีสิทธิ์: บังคับสาขาตามตัวเอง
     return userBranchId;
+};
+
+// เติมข้อมูล Master Data ให้เอกสารสินค้าจากแคชใน RAM แทนการใช้ .populate()
+// ให้ผลลัพธ์รูปแบบเดียวกับ .populate(path, 'name') เป๊ะๆ แต่ไม่ต้องยิง query เพิ่มไปที่ Atlas เลย
+// (วัดจริง: /products ทุกสาขา 1,516ms -> 131ms)
+// ⚠️ ต้องเรียกกับเอกสารที่มาจาก .lean() เท่านั้น เพราะแก้ค่า field ในตัวเอกสารโดยตรง
+//
+// withStockBranches: เดิม /products กับ /products/global-stock populate stock_balances.branch_id ด้วย
+// แต่ /products/search ไม่ populate (ปล่อยเป็น ObjectId ดิบ) — ต้องคงรูปแบบเดิมของแต่ละ endpoint ไว้เป๊ะ
+// ไม่งั้น response เปลี่ยนรูปเงียบๆ แล้วฝั่ง frontend ที่อ่าน branch_id อยู่จะพังแบบหาสาเหตุยาก
+const hydrateProducts = (products, md, { withStockBranches = true } = {}) => {
+    const { maps } = md;
+    products.forEach(p => {
+        p.type_id = mdCache.resolveRef(maps.productTypes, p.type_id);
+        p.unit_id = mdCache.resolveRef(maps.productUnits, p.unit_id);
+        p.color_id = mdCache.resolveRef(maps.productColors, p.color_id);
+        p.capacity_id = mdCache.resolveRef(maps.productCapacities, p.capacity_id);
+        p.condition_id = mdCache.resolveRef(maps.productConditions, p.condition_id);
+        p.supplier_id = mdCache.resolveRef(maps.suppliers, p.supplier_id);
+        if (withStockBranches && Array.isArray(p.stock_balances)) {
+            p.stock_balances.forEach(b => {
+                b.branch_id = mdCache.resolveRef(maps.branches, b.branch_id);
+            });
+        }
+    });
+    return products;
 };
 
 const injectBranchStockVirtuals = (product, branchId) => {
@@ -497,42 +524,13 @@ router.use(verifyToken);
 router.get('/master-data', async (req, res) => {
 
     try {
-        const [
-            branches,
-            productTypes,
-            productUnits,
-            productColors,
-            productCapacities,
-            productConditions,
-            productNames,
-            suppliers,
-            financeCompanies
-        ] = await Promise.all([
-            Branch.find().lean(),
-            ProductType.find().lean(),
-            ProductUnit.find().lean(),
-            ProductColor.find().lean(),
-            ProductCapacity.find().lean(),
-            ProductCondition.find().lean(),
-            ProductName.find().lean(),
-            Supplier.find().lean(),
-            FinanceCompany.find().lean()
-        ]);
+        // เสิร์ฟจากแคชใน RAM — ทุกคีย์ตรงกับที่ frontend คาดหวังอยู่แล้ว (ดู utils/masterDataCache.js)
+        const md = await mdCache.get();
 
         res.status(200).json({
             success: true,
             message: 'ดึงข้อมูล Master Data สำเร็จ',
-            data: {
-                branches,
-                productTypes,
-                productUnits,
-                productColors,
-                productCapacities,
-                productConditions,
-                productNames,
-                suppliers,
-                financeCompanies
-            }
+            data: md.lists
         });
     } catch (error) {
         console.error('API Error /api/master-data:', error);
@@ -771,19 +769,23 @@ router.get('/products', async (req, res) => {
             return res.status(400).json({ success: false, message: 'ไม่พบข้อมูลสาขาที่ต้องการใช้งาน' });
         }
 
-        const allBranches = await Branch.find().lean();
+        // Master Data มาจากแคชใน RAM (ดู utils/masterDataCache.js) ไม่ต้องยิง query ทุกครั้ง
+        const md = await mdCache.get();
         const branchMap = {};
-        allBranches.forEach(b => { branchMap[b._id.toString()] = { _id: b._id, name: b.name }; });
+        md.lists.branches.forEach(b => { branchMap[b._id.toString()] = { _id: b._id, name: b.name }; });
 
         // Step A: Build In-Transit Map
-        const pendingTransfers = await Transfer.find({ status: 'รอดำเนินการ' }).populate('from_branch to_branch').lean();
+        // ไม่ populate สาขาแล้ว — เปิดชื่อสาขาจากแคชแทน (สาขาทั้งหมดมีแค่ ~22 แถว)
+        const pendingTransfers = await Transfer.find({ status: 'รอดำเนินการ' }).lean();
         const inTransitItems = {};
         const transitCodes = new Set();
 
         pendingTransfers.forEach(tr => {
-            const fromName = tr.from_branch ? tr.from_branch.name : 'ต้นทาง';
-            const toName = tr.to_branch ? tr.to_branch.name : 'ปลายทาง';
-            const toId = tr.to_branch ? tr.to_branch._id.toString() : null;
+            const fromBranch = tr.from_branch ? branchMap[tr.from_branch.toString()] : null;
+            const toBranch = tr.to_branch ? branchMap[tr.to_branch.toString()] : null;
+            const fromName = fromBranch ? fromBranch.name : 'ต้นทาง';
+            const toName = toBranch ? toBranch.name : 'ปลายทาง';
+            const toId = toBranch ? toBranch._id.toString() : null;
             const direction = `${fromName} > ${toName}`;
 
             tr.items.forEach(item => {
@@ -809,17 +811,11 @@ router.get('/products', async (req, res) => {
             ];
         }
 
-        // ดึงสินค้าแบบ Master Catalog
-        const productsRaw = await Product.find(query)
-            .populate('type_id', 'name')
-            .populate('unit_id', 'name')
-            .populate('color_id', 'name')
-            .populate('capacity_id', 'name')
-            .populate('condition_id', 'name')
-            .populate('supplier_id', 'name')
-            .populate('stock_balances.branch_id', 'name')
-            .sort({ createdAt: -1 })
-            .lean();
+        // ดึงสินค้าแบบ Master Catalog แล้ว join master data จากแคชใน RAM (แทน 7 populate)
+        const productsRaw = hydrateProducts(
+            await Product.find(query).sort({ createdAt: -1 }).lean(),
+            md
+        );
 
         // Step C & D: Map Products (The Core Fix + Clean Admin View)
         let products = [];
@@ -899,16 +895,10 @@ router.get('/products', async (req, res) => {
 // หน้าที่: ดึงข้อมูลสินค้าทั้งหมดทุกสาขา เพื่อใช้สำหรับดูราคากลางและสต็อกรวม (Read-only)
 router.get('/products/global-stock', async (req, res) => {
     try {
-        const productsRaw = await Product.find({})
-            .populate('type_id', 'name')
-            .populate('unit_id', 'name')
-            .populate('color_id', 'name')
-            .populate('capacity_id', 'name')
-            .populate('condition_id', 'name')
-            .populate('supplier_id', 'name')
-            .populate('stock_balances.branch_id', 'name')
-            .sort({ createdAt: -1 })
-            .lean();
+        const productsRaw = hydrateProducts(
+            await Product.find({}).sort({ createdAt: -1 }).lean(),
+            await mdCache.get()
+        );
 
         // Transform for frontend
         const products = productsRaw.map(p => {
@@ -965,18 +955,13 @@ router.get('/products/search', async (req, res) => {
             query['stock_balances.branch_id'] = branchId;
         }
 
-        const product = await Product.findOne(query)
-            .populate('type_id', 'name')
-            .populate('unit_id', 'name')
-            .populate('color_id', 'name')
-            .populate('capacity_id', 'name')
-            .populate('condition_id', 'name')
-            .populate('supplier_id', 'name')
-            .lean();
+        const product = await Product.findOne(query).lean();
 
         if (!product) {
             return res.status(404).json({ success: false, message: 'ไม่พบสินค้า' });
         }
+        // เดิม endpoint นี้ไม่ populate stock_balances.branch_id — คงไว้แบบนั้น
+        hydrateProducts([product], await mdCache.get(), { withStockBranches: false });
 
         res.status(200).json({
             success: true,
@@ -1558,6 +1543,7 @@ router.post('/branches', async (req, res) => {
 
         const newBranch = new Branch({ name, address, phone });
         const savedBranch = await newBranch.save();
+        mdCache.invalidate();
         res.status(201).json({ success: true, message: 'เพิ่มสาขาใหม่สำเร็จ', data: savedBranch });
     } catch (error) {
         console.error('API Error POST /api/branches:', error);
@@ -1579,6 +1565,7 @@ router.put('/branches/:id', async (req, res) => {
 
         if (!updatedBranch) return res.status(404).json({ success: false, message: 'ไม่พบสาขาที่ระบุ' });
 
+        mdCache.invalidate();
         res.status(200).json({ success: true, message: 'แก้ไขข้อมูลสาขาสำเร็จ', data: updatedBranch });
     } catch (error) {
         console.error('API Error PUT /api/branches:', error);
@@ -1592,6 +1579,7 @@ router.delete('/branches/:id', async (req, res) => {
         const deletedBranch = await Branch.findByIdAndDelete(req.params.id);
         if (!deletedBranch) return res.status(404).json({ success: false, message: 'ไม่พบสาขาที่ระบุ' });
 
+        mdCache.invalidate();
         res.status(200).json({ success: true, message: 'ลบสาขาสำเร็จ' });
     } catch (error) {
         console.error('API Error DELETE /api/branches:', error);
@@ -1636,6 +1624,7 @@ router.post('/master/:collection', async (req, res) => {
         const newItem = new Model(payload);
         const savedItem = await newItem.save();
 
+        mdCache.invalidate();
         console.log(`[MASTER] เพิ่มข้อมูลสำเร็จ: ${collection} -> ${name} (ID: ${savedItem._id})`);
         res.status(201).json({
             success: true,
@@ -1681,6 +1670,7 @@ router.delete('/master/:collection/:id', async (req, res) => {
             return res.status(404).json({ success: false, message: 'ไม่พบข้อมูลที่ต้องการลบ' });
         }
 
+        mdCache.invalidate();
         res.status(200).json({
             success: true,
             message: 'ลบข้อมูลสำเร็จ'
@@ -1728,6 +1718,7 @@ router.put('/master/:collection/:id', async (req, res) => {
             return res.status(404).json({ success: false, message: 'ไม่พบข้อมูลที่ต้องการแก้ไข' });
         }
 
+        mdCache.invalidate();
         res.status(200).json({
             success: true,
             message: 'แก้ไขข้อมูลสำเร็จ',
@@ -2686,6 +2677,22 @@ router.get('/sales/daily-summary', async (req, res) => {
         let financeDownpayment = 0;
         let devicesSold = 0;
 
+        // ดึงสินค้าที่ขายวันนี้รอบเดียวด้วย $in (เดิมวน findById + populate ทีละชิ้น = N+1)
+        // ชื่อหน่วยนับเปิดจากแคช master data ใน RAM จึงไม่ต้อง populate ด้วย
+        const soldIds = [...new Set(
+            todayTransactions.flatMap(t => (t.items || [])
+                .filter(i => i.product_id)
+                .map(i => i.product_id.toString()))
+        )];
+        const soldDocs = soldIds.length
+            ? await Product.find({ _id: { $in: soldIds } }, 'unit_id').lean()
+            : [];
+        const md = await mdCache.get();
+        const unitNameById = new Map(soldDocs.map(p => {
+            const unit = p.unit_id ? md.maps.productUnits.get(p.unit_id.toString()) : null;
+            return [p._id.toString(), unit ? unit.name : ''];
+        }));
+
         for (const txn of todayTransactions) {
             totalSales += txn.total_amount || 0;
 
@@ -2697,8 +2704,9 @@ router.get('/sales/daily-summary', async (req, res) => {
             }
 
             for (const item of txn.items) {
-                const product = await Product.findById(item.product_id).populate('unit_id').lean();
-                const unitName = product && product.unit_id ? product.unit_id.name : '';
+                const unitName = item.product_id
+                    ? (unitNameById.get(item.product_id.toString()) || '')
+                    : '';
                 if (unitName === 'เครื่อง') {
                     devicesSold += item.quantity || 0;
                 }
@@ -2774,15 +2782,24 @@ router.get('/dashboard-stats', async (req, res) => {
 
         // 2. กำไรโดยประมาณวันนี้ (Estimated Profit)
         // คำนวณจาก selling_price - cost_price ของสินค้าที่ขายวันนี้
+        // ดึงต้นทุนสินค้าทุกตัวที่ขายวันนี้ในรอบเดียวด้วย $in แทนการวน findById ทีละชิ้น
+        // เดิมเป็น N+1: บิล 50 ใบ = 50+ query ต่อเนื่อง ที่ ~79ms ต่อรอบไป Atlas = ช้าเป็นวินาที
+        const soldProductIds = [...new Set(
+            todayTransactions.flatMap(t => (t.items || [])
+                .filter(i => i.product_id)
+                .map(i => i.product_id.toString()))
+        )];
+        const soldProducts = soldProductIds.length
+            ? await Product.find({ _id: { $in: soldProductIds } }, 'cost_price').lean()
+            : [];
+        const costById = new Map(soldProducts.map(p => [p._id.toString(), p.cost_price || 0]));
+
         let estimatedProfit = 0;
         for (const txn of todayTransactions) {
             for (const item of txn.items) {
-                if (item.product_id) {
-                    const product = await Product.findById(item.product_id).lean();
-                    if (product) {
-                        const profit = (item.price - (product.cost_price || 0)) * item.quantity;
-                        estimatedProfit += profit;
-                    }
+                if (item.product_id && costById.has(item.product_id.toString())) {
+                    const cost = costById.get(item.product_id.toString());
+                    estimatedProfit += (item.price - cost) * item.quantity;
                 }
             }
         }
