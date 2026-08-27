@@ -88,6 +88,20 @@ Images were ~85% of the cold-load weight, and unlike code they gain nothing from
 - **Fonts are self-hosted** in `vendor/fonts/` — there is no Google Fonts dependency, and the page loads zero external origins. `tools/build-fonts.js` fetches only the weights in use (400–900 + italic 400; weight 300 is deliberately excluded because nothing uses `font-light`) and only the `thai` + `latin` subsets. It needs network access, so it is kept out of the default `build` chain.
 - Before deleting an "unused" asset, match against URL-encoded forms too — many filenames contain spaces (`icons_img/box (1) 5.png` is referenced as `box%20(1)%205.png`).
 
+## Accessibility
+
+`axe-core` is a devDependency, and the server happens to serve `node_modules/`, so the same engine Lighthouse uses can be run against the live page: load `/node_modules/axe-core/axe.min.js` via a script tag in the browser console, then `await axe.run(document)`. The page currently has **zero WCAG violations**; the only remaining axe finding is `region` (body-level modals outside a landmark), which is best-practice-tagged, not WCAG, and not a Lighthouse audit.
+
+Conventions that keep it that way — every form control needs an accessible name:
+
+- Labels sit *above* their field, sometimes with a wrapper `<div>` in between, so they need an explicit `for="<field-id>"`. Proximity alone does not associate them, and a `<label>` without `for` leaves the field unnamed.
+- Toggle switches hide the real `<input type="checkbox">` with `sr-only` and draw the switch as a `<div>`, so the wrapping `<label>` has no text. Give the input an `aria-label` matching the visible `<span>` in the same row.
+- Any `overflow-y-auto` container needs `tabindex="0"` so keyboard users can scroll it (WCAG 2.1.1).
+- Headings must not skip levels — the permission sections under an `<h3>` modal title are `<h4>`, not `<h5>`.
+- Never leave a heading empty for JS to fill later; give it the same default text the JS sets on open.
+
+Two audits report as *incomplete* rather than passing: `th-has-data-cells` on tables whose `<tbody>` is populated by JS. They are empty at load, so axe cannot judge them — not a real defect.
+
 ## Domain invariants
 
 These are correctness rules, not preferences — `PRODUCT.md` treats stock accuracy as the top priority.

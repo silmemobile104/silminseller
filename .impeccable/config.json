@@ -11,6 +11,15 @@
         ],
         "createdAt": "2026-08-18T09:33:08.080Z",
         "reason": "pre-existing badge (nav-stock-audit-review-badge), unchanged by this edit; slate-900 on amber-500 is near-black on amber, high contrast not washed-out gray"
+      },
+      {
+        "rule": "border-accent-on-rounded",
+        "value": "*",
+        "files": [
+          "js/page-accounting-settings.js"
+        ],
+        "createdAt": "2026-08-27T05:26:25.889Z",
+        "reason": "Claude: false positive — L221 is a tab button where rounded-t-lg curves only the top corners and border-b-2 draws only on the bottom (straight) edge, so the radius and the border never meet. Accent underline on the active tab matches DESIGN.md's rule that #FFE169 is the sole interactive signal; same rounded-t + border-b pairing used in ~9 other places."
       }
     ]
   }
