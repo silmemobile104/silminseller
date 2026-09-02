@@ -8,180 +8,181 @@
     const movementEmptyState = document.getElementById('movement-empty-state');
     const movementTimeline = document.getElementById('movement-timeline');
 
+    // ชื่อสาขา/เลขเอกสาร/ชื่อผู้ทำรายการมาจากฐานข้อมูลแล้วถูกยัดเข้า innerHTML
+    // ของเดิมใส่ดิบๆ ทุกจุดในไทม์ไลน์
+    const mvEsc = (s) => String(s == null ? '' : s)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+
+    // โทนสีของเหตุการณ์ — อยู่ในพาเลตต์ระบบ (ข้อ 11.6) ไม่ใช่ emerald/cyan/indigo/rose แบบเดิม
+    const MV_TONES = {
+        in: { hex: '#20D500', bg: 'bg-[#42A231]/[0.12]', text: 'text-[#20D500]' },   // ของเข้า
+        move: { hex: '#FF9F0A', bg: 'bg-orange-500/[0.12]', text: 'text-orange-400' }, // กำลังย้าย
+        sale: { hex: '#FFE169', bg: 'bg-[#FFE169]/[0.12]', text: 'text-[#FFE169]' },  // ขายออก
+        cancel: { hex: '#FE0000', bg: 'bg-[#FE0000]/[0.12]', text: 'text-[#FE0000]' } // ยกเลิก
+    };
+
+    // ⚠️ ค่า action ทั้ง 8 แบบที่ฝั่งเซิร์ฟเวอร์เขียนลงคอลเลกชัน movement จริง
+    //    ของเดิม switch รองรับแค่ 4 แบบ ที่เหลือ (รวมถึง "นำเข้าสินค้า (PO)" ซึ่งเป็นแบบที่พบมากที่สุด)
+    //    ตกไปที่ default คือมีแต่จุดเทาๆ ไม่มีกล่องรายละเอียดบอกสาขา เลขเอกสาร หรือผู้ทำรายการเลย
+    const MV_ACTIONS = {
+        'นำเข้าสินค้า (PO)': { icon: 'fa-truck-ramp-box', tone: 'in' },
+        'นำเข้าสินค้า': { icon: 'fa-truck-ramp-box', tone: 'in' },
+        'รับเข้าสต็อก': { icon: 'fa-arrow-down', tone: 'in' },
+        'รับโอนย้าย': { icon: 'fa-box-open', tone: 'in' },
+        'ส่งโอนย้าย': { icon: 'fa-truck-fast', tone: 'move' },
+        'ขายออก': { icon: 'fa-cash-register', tone: 'sale' },
+        'ยกเลิกการโอนย้ายสินค้า': { icon: 'fa-ban', tone: 'cancel' },
+        'ยกเลิกการขาย': { icon: 'fa-rotate', tone: 'cancel' }
+    };
+    const mvConf = (action) => MV_ACTIONS[action] || { icon: 'fa-circle-dot', tone: 'move' };
+
+    const mvSetEmpty = (title, desc) => {
+        const t = document.getElementById('movement-empty-title');
+        const d = document.getElementById('movement-empty-desc');
+        if (t) t.textContent = title;
+        if (d) d.textContent = desc;
+        if (movementResultArea) movementResultArea.classList.add('hidden');
+        if (movementEmptyState) movementEmptyState.classList.remove('hidden');
+    };
+
+    // แถวโครงร่างกระพริบระหว่างรอผล (ข้อ 11.7)
+    const mvSkeleton = (n = 3) => {
+        if (!movementTimeline) return;
+        if (movementEmptyState) movementEmptyState.classList.add('hidden');
+        if (movementResultArea) movementResultArea.classList.remove('hidden');
+        const bar = (w) => `<div class="h-3.5 ${w} rounded-full bg-[#5c5c5c] animate-pulse"></div>`;
+        movementTimeline.innerHTML = Array.from({ length: n }).map(() => `
+            <div class="flex gap-4">
+                <div class="w-10 h-10 rounded-full bg-[#5c5c5c] animate-pulse shrink-0"></div>
+                <div class="flex-1 bg-[#27272A] border border-[#3F3F46] rounded-xl p-4 space-y-2">
+                    ${bar('w-40')}${bar('w-full')}${bar('w-2/3')}
+                </div>
+            </div>`).join('');
+        ['mov-product-name', 'mov-product-code', 'mov-type', 'mov-color', 'mov-capacity']
+            .forEach(id => { const el = document.getElementById(id); if (el) el.textContent = '…'; });
+        const c = document.getElementById('movement-count');
+        if (c) c.textContent = '';
+    };
+
     if (formSearchMovement) {
         formSearchMovement.addEventListener('submit', async (e) => {
             e.preventDefault();
             const query = movementSearchInput.value.trim();
             if (!query) return;
 
-            try {
-                const btnSearch = document.getElementById('btn-search-movement');
-                const origHtml = btnSearch.innerHTML;
-                btnSearch.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i> กำลังค้นหา...';
+            const btnSearch = document.getElementById('btn-search-movement');
+            const origHtml = btnSearch ? btnSearch.innerHTML : '';
+            if (btnSearch) {
+                btnSearch.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> กำลังค้นหา...';
                 btnSearch.disabled = true;
+            }
+            mvSkeleton();
 
+            try {
                 const response = await window.authFetch(`${API_BASE_URL}/movements/search?query=${encodeURIComponent(query)}`);
                 const res = await response.json();
                 if (res && res.success) {
                     renderMovementResult(res.data);
                 } else {
-                    window.showToast(res?.message || 'ไม่พบประวัติการเคลื่อนไหว', 'error');
-                    movementResultArea.classList.add('hidden');
-                    movementEmptyState.classList.remove('hidden');
+                    mvSetEmpty('ไม่พบข้อมูล',
+                        res && res.message ? res.message : `ไม่พบสินค้าหรือ IMEI "${query}" ในระบบ ลองตรวจสอบเลขอีกครั้ง`);
                 }
-
-                btnSearch.innerHTML = origHtml;
-                btnSearch.disabled = false;
             } catch (error) {
                 console.error('Error searching movement:', error);
                 window.showToast('เกิดข้อผิดพลาดในการค้นหาประวัติ', 'error');
-                movementResultArea.classList.add('hidden');
-                movementEmptyState.classList.remove('hidden');
-
-                const btnSearch = document.getElementById('btn-search-movement');
-                btnSearch.innerHTML = '<i class="fa-solid fa-search mr-2"></i> ค้นหาข้อมูล';
-                btnSearch.disabled = false;
+                mvSetEmpty('เชื่อมต่อเซิร์ฟเวอร์ไม่สำเร็จ', 'ลองกดค้นหาอีกครั้ง หรือตรวจสอบการเชื่อมต่ออินเทอร์เน็ต');
+            } finally {
+                if (btnSearch) {
+                    btnSearch.innerHTML = origHtml;
+                    btnSearch.disabled = false;
+                }
             }
         });
     }
 
-    function renderMovementResult(data) {
-        movementEmptyState.classList.add('hidden');
-        movementResultArea.classList.remove('hidden');
+    // แถวรายละเอียดหนึ่งบรรทัด สร้างเฉพาะเมื่อมีค่าจริง — ทุก action จึงแสดงเท่าที่ตัวเองมี
+    // ไม่ต้องเขียนกล่องรายละเอียดแยกรายชนิดเหมือนของเดิม (ที่เขียนไว้แค่ 4 ชนิด)
+    const mvRow = (icon, label, value, valueClass = 'text-white') => value
+        ? `<p class="flex items-center gap-2 text-xs">
+               <i class="fa-solid ${icon} text-white/70 w-4 text-center"></i>
+               <span class="text-white/70">${mvEsc(label)}</span>
+               <span class="${valueClass} font-medium">${mvEsc(value)}</span>
+           </p>`
+        : '';
 
-        // Product Info
-        document.getElementById('mov-product-name').textContent = data.product.name;
-        document.getElementById('mov-product-code').textContent = data.product.product_code || '-';
-        document.getElementById('mov-type').textContent = data.product.type || 'ไม่ระบุ';
-        document.getElementById('mov-color').textContent = data.product.color || 'ไม่ระบุ';
-        document.getElementById('mov-capacity').textContent = data.product.capacity || 'ไม่ระบุ';
+    function renderMovementResult(data) {
+        if (movementEmptyState) movementEmptyState.classList.add('hidden');
+        if (movementResultArea) movementResultArea.classList.remove('hidden');
+
+        const p = data.product || {};
+        document.getElementById('mov-product-name').textContent = p.name || '-';
+        document.getElementById('mov-product-code').textContent = p.product_code || '-';
+        document.getElementById('mov-type').textContent = p.type || 'ไม่ระบุ';
+        document.getElementById('mov-color').textContent = p.color || 'ไม่ระบุ';
+        document.getElementById('mov-capacity').textContent = p.capacity || 'ไม่ระบุ';
 
         const badge = document.getElementById('mov-query-badge');
         if (data.is_imei_search) {
-            document.getElementById('mov-query-text').textContent = data.searched_query;
+            document.getElementById('mov-query-text').textContent = data.searched_query || '-';
             badge.classList.remove('hidden');
         } else {
             badge.classList.add('hidden');
         }
 
-        // Timeline
-        movementTimeline.innerHTML = '';
-        if (!data.movements || data.movements.length === 0) {
-            movementTimeline.innerHTML = '<div class="text-body-muted">ยังไม่มีประวัติการเคลื่อนไหว</div>';
+        const movements = data.movements || [];
+        const countEl = document.getElementById('movement-count');
+        if (countEl) countEl.textContent = movements.length ? `ทั้งหมด ${movements.length} เหตุการณ์` : '';
+
+        if (!movements.length) {
+            movementTimeline.innerHTML =
+                '<p class="py-8 text-center text-white/50 italic">ยังไม่มีประวัติการเคลื่อนไหวของสินค้าชิ้นนี้</p>';
             return;
         }
 
-        // เส้นไทม์ไลน์
-        const line = document.createElement('div');
-        line.className = 'absolute top-0 bottom-0 left-[19px] w-1 bg-hairline rounded-full';
-        movementTimeline.appendChild(line);
-
-        data.movements.forEach((mov, index) => {
+        movementTimeline.innerHTML = movements.map((mov, index) => {
             const isLatest = index === 0;
-            const dateObj = new Date(mov.created_at);
-            const dateStr = dateObj.toLocaleDateString('th-TH', { year: 'numeric', month: 'short', day: 'numeric' });
-            const timeStr = dateObj.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
+            const conf = mvConf(mov.action);
+            const tone = MV_TONES[conf.tone];
+            const dt = new Date(mov.created_at);
+            const dateStr = isNaN(dt) ? '-' : dt.toLocaleDateString('th-TH', { year: 'numeric', month: 'short', day: 'numeric' });
+            const timeStr = isNaN(dt) ? '' : dt.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
 
-            let iconHtml = '';
-            let colorClass = '';
-            let detailsHtml = '';
+            const rows = [
+                mvRow('fa-store', 'จากสาขา', mov.from_branch && mov.from_branch.name),
+                mvRow('fa-location-dot', 'ไปยังสาขา', mov.to_branch && mov.to_branch.name, tone.text),
+                mvRow('fa-file-invoice', 'เลขที่เอกสาร', mov.reference_no, 'text-[#FFE169] font-mono'),
+                mvRow('fa-stopwatch', 'ใช้เวลาขนส่ง',
+                    mov.transit_hours ? `${Number(mov.transit_hours).toFixed(1)} ชั่วโมง` : ''),
+                mvRow('fa-tag', 'IMEI', !data.is_imei_search ? mov.imei : '', 'text-white font-mono'),
+                mvRow('fa-cubes', 'จำนวน',
+                    (!data.is_imei_search && !mov.imei && mov.quantity) ? `${mov.quantity} ชิ้น` : ''),
+                mvRow('fa-user', 'ผู้ทำรายการ', mov.created_by && mov.created_by.name)
+            ].filter(Boolean).join('');
 
-            switch (mov.action) {
-                case 'รับเข้าสต็อก':
-                    iconHtml = '<i class="fa-solid fa-arrow-down"></i>';
-                    colorClass = 'bg-emerald-500 text-white border-emerald-400/30';
-                    detailsHtml = `
-                        <div class="mt-3 bg-surface-tile-3 rounded-md p-3 border border-emerald-500/20">
-                            <div class="text-body-muted flex items-center">
-                                <i class="fa-solid fa-store text-emerald-400 w-5"></i> เข้าสู่สาขา <span class="font-bold text-emerald-400 ml-2">${mov.to_branch ? mov.to_branch.name : '-'}</span>
-                            </div>
-                            <div class="text-xs text-body-muted mt-2 flex items-center"><i class="fa-solid fa-user-check w-5"></i> รับเข้าโดย: ${mov.created_by ? mov.created_by.name : '-'}</div>
-                        </div>
-                    `;
-                    break;
-                case 'ส่งโอนย้าย':
-                    iconHtml = '<i class="fa-solid fa-truck-fast"></i>';
-                    colorClass = 'bg-cyan-500 text-white border-cyan-400/30';
-                    detailsHtml = `
-                        <div class="mt-3 bg-surface-tile-3 rounded-md p-3 border border-cyan-500/20">
-                            <div class="text-body-muted flex items-center mb-1">
-                                <i class="fa-solid fa-store text-body-muted w-5"></i> ต้นทาง <span class="font-bold text-ink ml-2">${mov.from_branch ? mov.from_branch.name : '-'}</span>
-                            </div>
-                            <div class="text-body-muted flex items-center">
-                                <i class="fa-solid fa-arrow-right-to-city text-cyan-400 w-5"></i> ปลายทาง <span class="font-bold text-cyan-400 ml-2">${mov.to_branch ? mov.to_branch.name : '-'}</span>
-                            </div>
-                            <div class="mt-2 pt-2 border-t border-hairline flex flex-wrap gap-3">
-                                <div class="text-xs text-body-muted flex items-center"><i class="fa-solid fa-file-invoice text-body-muted mr-1"></i> เลขที่โอน: ${mov.reference_no}</div>
-                                <div class="text-xs text-body-muted flex items-center"><i class="fa-solid fa-user text-body-muted mr-1"></i> ผู้โอน: ${mov.created_by ? mov.created_by.name : '-'}</div>
-                            </div>
-                        </div>
-                    `;
-                    break;
-                case 'รับโอนย้าย':
-                    iconHtml = '<i class="fa-solid fa-box-open"></i>';
-                    colorClass = 'bg-indigo-500 text-white border-indigo-400/30';
-                    detailsHtml = `
-                        <div class="mt-3 bg-surface-tile-3 rounded-md p-3 border border-indigo-500/20">
-                            <div class="text-body-muted flex items-center">
-                                <i class="fa-solid fa-check-to-slot text-indigo-400 w-5"></i> รับเข้าสาขา <span class="font-bold text-indigo-400 ml-2">${mov.to_branch ? mov.to_branch.name : '-'}</span>
-                            </div>
-                            <div class="mt-2 pt-2 border-t border-hairline flex flex-wrap gap-3">
-                                <div class="text-xs text-indigo-300 flex items-center bg-indigo-500/10 px-2 py-1 rounded-md"><i class="fa-solid fa-stopwatch mr-1"></i> ใช้เวลาขนส่ง: ${Number(mov.transit_hours).toFixed(1)} ชั่วโมง</div>
-                                <div class="text-xs text-body-muted flex items-center py-1"><i class="fa-solid fa-user-check text-body-muted mr-1"></i> ผู้รับ: ${mov.created_by ? mov.created_by.name : '-'}</div>
-                            </div>
-                        </div>
-                    `;
-                    break;
-                case 'ขายออก':
-                    iconHtml = '<i class="fa-solid fa-cash-register"></i>';
-                    colorClass = 'bg-rose-500 text-white border-rose-400/30';
-                    detailsHtml = `
-                        <div class="mt-3 bg-surface-tile-3 rounded-md p-3 border border-rose-500/30">
-                            <div class="text-ink flex items-center font-medium">
-                                <i class="fa-solid fa-store text-rose-400 w-5"></i> ขายออกจาก <span class="font-bold text-rose-400 ml-2">${mov.from_branch ? mov.from_branch.name : '-'}</span>
-                            </div>
-                            <div class="mt-2 pt-2 border-t border-hairline flex flex-wrap gap-3">
-                                <div class="text-xs text-rose-300 flex items-center"><i class="fa-solid fa-receipt mr-1"></i> ใบเสร็จ: ${mov.reference_no}</div>
-                                <div class="text-xs text-body-muted flex items-center"><i class="fa-solid fa-user-tag mr-1"></i> พนักงานขาย: ${mov.created_by ? mov.created_by.name : '-'}</div>
-                            </div>
-                        </div>
-                    `;
-                    break;
-                default:
-                    iconHtml = '<i class="fa-solid fa-circle-dot"></i>';
-                    colorClass = 'bg-surface-tile-2 text-body-muted border-hairline';
-            }
-
-            const itemDiv = document.createElement('div');
-            itemDiv.className = `relative pl-12 transition-all duration-500 hover:-translate-y-1 ${isLatest ? 'opacity-100 scale-100' : 'opacity-80 scale-[0.98] hover:opacity-100'}`;
-            itemDiv.innerHTML = `
-                <!-- Timeline Dot -->
-                <div class="absolute left-0 top-1 -ml-[3px] w-10 h-10 rounded-full border flex items-center justify-center text-sm z-10 ${colorClass}">
-                    ${isLatest ? '<div class="absolute -inset-1 bg-primary rounded-full opacity-20 animate-ping"></div>' : ''}
-                    ${iconHtml}
-                </div>
-
-                <!-- Content Box -->
-                <div class="bg-canvas-elevated border ${isLatest ? 'border-divider-soft' : 'border-hairline'} rounded-lg p-5 group hover:border-primary/30 transition-colors duration-300">
-                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-2">
-                        <span class="font-bold text-ink text-xl flex items-center gap-2">
-                            ${mov.action}
-                            ${isLatest ? '<span class="text-[10px] font-bold tracking-wider uppercase bg-surface-chip text-ink px-2 py-0.5 rounded-pill border border-hairline ml-2">LATEST</span>' : ''}
-                        </span>
-                        <div class="flex items-center gap-2 bg-surface-tile-3 px-3 py-1.5 rounded-md border border-hairline">
-                            <i class="fa-regular fa-clock text-body-muted"></i>
-                            <span class="text-sm text-body-muted font-medium">${dateStr}</span>
-                            <span class="text-sm text-ink-muted-48 font-mono">${timeStr}</span>
-                        </div>
+            return `
+            <div class="flex gap-4">
+                <div class="flex flex-col items-center shrink-0">
+                    <div class="w-10 h-10 rounded-full flex items-center justify-center shrink-0"
+                         style="color:${tone.hex};background-color:#27272A;border:1px solid ${tone.hex}59;">
+                        <i class="fa-solid ${mvEsc(conf.icon)}"></i>
                     </div>
-
-                    ${data.is_imei_search === false && mov.imei ? '<div class="text-sm text-ink font-mono mt-2 flex items-center"><i class="fa-solid fa-tag text-body-muted w-5"></i> IMEI: <span class="font-bold ml-1 bg-surface-chip px-2 py-0.5 rounded border border-hairline">' + mov.imei + '</span></div>' : ''}
-                    ${data.is_imei_search === false && !mov.imei && mov.quantity ? '<div class="text-sm text-ink font-mono mt-2 flex items-center"><i class="fa-solid fa-cubes text-body-muted w-5"></i> จำนวน: <span class="font-bold ml-1 bg-surface-chip px-2 py-0.5 rounded border border-hairline">' + mov.quantity + '</span></div>' : ''}
-
-                    ${detailsHtml}
+                    ${index < movements.length - 1 ? '<div class="w-px flex-1 bg-[#3F3F46] mt-2"></div>' : ''}
                 </div>
-            `;
-            movementTimeline.appendChild(itemDiv);
-        });
+                <div class="flex-1 min-w-0 bg-[#27272A] border ${isLatest ? 'border-[#FFE169]' : 'border-[#3F3F46]'} rounded-xl p-4 mb-2">
+                    <div class="flex flex-wrap items-center justify-between gap-2">
+                        <div class="flex items-center gap-2">
+                            <span class="inline-flex items-center gap-2 px-2.5 py-1 rounded-[0.375rem] ${tone.bg}">
+                                <span class="w-2 h-2 rounded-full" style="background-color:${tone.hex}"></span>
+                                <span class="${tone.text} font-medium text-xs">${mvEsc(mov.action || '-')}</span>
+                            </span>
+                            ${isLatest ? '<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#FFE169] text-[#333333]">ล่าสุด</span>' : ''}
+                        </div>
+                        <span class="text-xs text-white/70 font-mono">${mvEsc(dateStr)} ${mvEsc(timeStr)}</span>
+                    </div>
+                    ${rows ? `<div class="mt-3 space-y-1.5">${rows}</div>` : ''}
+                </div>
+            </div>`;
+        }).join('');
     }
 })();

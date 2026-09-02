@@ -23,211 +23,256 @@
     };
 
     // Render action badges with beautiful styling and icons
+    const AUDIT_COLS = 7;
+
+    // คำบรรยายกิจกรรมมาจากทั่วทั้งระบบ (ชื่อสินค้า/พนักงาน/สาขา ที่ผู้ใช้พิมพ์เอง)
+    // แล้วถูกยัดเข้า innerHTML — ของเดิมใส่ดิบๆ ทั้ง description, user_name และ reference_no
+    const adEsc = (s) => String(s == null ? '' : s)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+
+    const adStateRow = (msg, cls = 'text-white/50 italic') =>
+        `<tr><td colspan="${AUDIT_COLS}" class="px-6 py-8 text-center ${cls}">${adEsc(msg)}</td></tr>`;
+
+    const adSkeleton = (rows = 6) => {
+        const tbody = document.getElementById('audit-logs-table-body');
+        if (!tbody) return;
+        const bar = (w) => `<div class="h-3.5 ${w} rounded-full bg-[#5c5c5c] animate-pulse"></div>`;
+        tbody.innerHTML = Array.from({ length: rows }).map(() => `
+            <tr>
+                <td class="px-6 py-4">${bar('w-32')}</td>
+                <td class="px-6 py-4">
+                    <div class="flex items-center gap-2">
+                        <div class="w-7 h-7 rounded-full bg-[#5c5c5c] animate-pulse shrink-0"></div>${bar('w-24')}
+                    </div>
+                </td>
+                <td class="px-6 py-4">${bar('w-20')}</td>
+                <td class="px-6 py-4">${bar('w-24')}</td>
+                <td class="px-6 py-4">${bar('w-full')}</td>
+                <td class="px-6 py-4">${bar('w-24')}</td>
+                <td class="px-6 py-4">${bar('w-8')}</td>
+            </tr>`).join('');
+    };
+
+    // ประเภทกิจกรรมยุบเหลือ 3 โทนตามตารางข้อ 11.6 (สร้าง=สำเร็จ · แก้ไข=ระหว่างดำเนินการ · ลบ/ยกเลิก=ล้มเหลว)
+    const AUDIT_ACTIONS = {
+        CREATE: { label: 'สร้างใหม่', icon: 'fa-circle-plus', tone: 'ok' },
+        APPROVE: { label: 'อนุมัติ', icon: 'fa-check', tone: 'ok' },
+        UPDATE: { label: 'แก้ไข', icon: 'fa-pen-to-square', tone: 'warn' },
+        DELETE: { label: 'ลบข้อมูล', icon: 'fa-trash-can', tone: 'bad' },
+        CANCEL: { label: 'ยกเลิก', icon: 'fa-ban', tone: 'bad' },
+        LOGIN: { label: 'เข้าสู่ระบบ', icon: 'fa-right-to-bracket', tone: 'muted' }
+    };
+    const AUDIT_TONES = {
+        ok: { dot: 'bg-[#20D500]', bg: 'bg-[#42A231]/[0.12]', text: 'text-[#20D500]' },
+        warn: { dot: 'bg-orange-500', bg: 'bg-orange-500/[0.12]', text: 'text-orange-400' },
+        bad: { dot: 'bg-[#FE0000]', bg: 'bg-[#FE0000]/[0.12]', text: 'text-[#FE0000]' },
+        muted: { dot: 'bg-white/40', bg: 'bg-[#4D4D4D]/60', text: 'text-white' }
+    };
+
+    // โมดูลทั้งหมดที่ระบบบันทึกจริง — ตัวเลือกในดรอปดาวน์และป้ายในตารางอ่านจากตารางนี้ชุดเดียว
+    // ของเดิมดรอปดาวน์มีแค่ 7 โมดูล ทั้งที่ข้อมูลจริงมี 14 ทำให้กรองบางโมดูลไม่ได้เลย
+    const AUDIT_MODULES = {
+        AUTH: { label: 'เข้าสู่ระบบ', icon: 'fa-lock' },
+        STOCK: { label: 'คลังสินค้า', icon: 'fa-box' },
+        PO: { label: 'ใบสั่งซื้อ (PO)', icon: 'fa-file-invoice-dollar' },
+        POS: { label: 'ขายหน้าร้าน (POS)', icon: 'fa-cash-register' },
+        TRANSFER: { label: 'โอนย้ายสาขา', icon: 'fa-truck-ramp-box' },
+        PERSONNEL: { label: 'พนักงาน', icon: 'fa-users' },
+        ROLE: { label: 'สิทธิ์ใช้งาน', icon: 'fa-shield-halved' },
+        ACCOUNTING: { label: 'บัญชีและการเงิน', icon: 'fa-chart-line' },
+        DEPOSIT: { label: 'มัดจำ/จอง', icon: 'fa-wallet' },
+        REQUISITION: { label: 'ใบเบิกสินค้า', icon: 'fa-clipboard-list' },
+        COA: { label: 'ผังบัญชี', icon: 'fa-sitemap' },
+        STOCK_AUDIT: { label: 'ตรวจนับสต็อก', icon: 'fa-clipboard-check' },
+        PNL_CONFIG: { label: 'ตั้งค่างบกำไรขาดทุน', icon: 'fa-chart-pie' },
+        DISBURSEMENT: { label: 'ใบสำคัญจ่าย', icon: 'fa-file-invoice' }
+    };
+
     const getActionBadgeHtml = (action) => {
-        let bgClass = '', textClass = '', iconClass = '', titleText = action;
-        switch (action) {
-            case 'CREATE':
-                bgClass = 'bg-emerald-500/10 border border-emerald-500/20';
-                textClass = 'text-emerald-400';
-                iconClass = 'fa-solid fa-circle-plus';
-                titleText = 'สร้างใหม่ (CREATE)';
-                break;
-            case 'UPDATE':
-                bgClass = 'bg-amber-500/10 border border-amber-500/20';
-                textClass = 'text-amber-400';
-                iconClass = 'fa-solid fa-pen-to-square';
-                titleText = 'แก้ไข/ปรับปรุง (UPDATE)';
-                break;
-            case 'DELETE':
-                bgClass = 'bg-rose-500/10 border border-rose-500/20';
-                textClass = 'text-rose-400';
-                iconClass = 'fa-solid fa-trash-can';
-                titleText = 'ลบข้อมูล (DELETE)';
-                break;
-            case 'LOGIN':
-                bgClass = 'bg-surface-chip border border-hairline';
-                textClass = 'text-body-muted';
-                iconClass = 'fa-solid fa-right-to-bracket';
-                titleText = 'ล็อกอิน (LOGIN)';
-                break;
-            case 'CANCEL':
-                bgClass = 'bg-rose-500/10 border border-rose-500/20';
-                textClass = 'text-rose-400';
-                iconClass = 'fa-solid fa-ban';
-                titleText = 'ยกเลิก (CANCEL)';
-                break;
-            case 'APPROVE':
-                bgClass = 'bg-emerald-500/10 border border-emerald-500/20';
-                textClass = 'text-emerald-400';
-                iconClass = 'fa-solid fa-circle-check';
-                titleText = 'อนุมัติ (APPROVE)';
-                break;
-            default:
-                bgClass = 'bg-surface-chip border border-hairline';
-                textClass = 'text-body-muted';
-                iconClass = 'fa-solid fa-gear';
-        }
-        return `
-            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold ${bgClass} ${textClass}" title="${titleText}">
-                <i class="${iconClass} text-[10px]"></i>
-                ${action}
-            </span>
-        `;
+        const conf = AUDIT_ACTIONS[action] || { label: action || '-', icon: 'fa-circle-info', tone: 'muted' };
+        const t = AUDIT_TONES[conf.tone];
+        return `<div class="inline-flex items-center gap-2 px-2.5 py-1 rounded-[0.375rem] ${t.bg}" title="${adEsc(conf.label)} (${adEsc(action || '')})">
+                    <div class="w-2 h-2 rounded-full ${t.dot}"></div>
+                    <span class="${t.text} font-medium text-xs">${adEsc(conf.label)}</span>
+                </div>`;
     };
 
-    // Render module badges with custom icons
     const getModuleBadgeHtml = (module) => {
-        let iconClass = '', thaiName = module;
-        switch (module) {
-            case 'AUTH':
-                iconClass = 'fa-solid fa-lock';
-                thaiName = 'เข้าสู่ระบบ';
-                break;
-            case 'PO':
-                iconClass = 'fa-solid fa-file-invoice-dollar';
-                thaiName = 'ใบสั่งซื้อ (PO)';
-                break;
-            case 'STOCK':
-                iconClass = 'fa-solid fa-box';
-                thaiName = 'คลังสินค้า';
-                break;
-            case 'POS':
-                iconClass = 'fa-solid fa-cash-register';
-                thaiName = 'ขายสินค้า (POS)';
-                break;
-            case 'TRANSFER':
-                iconClass = 'fa-solid fa-truck-ramp-box';
-                thaiName = 'โอนย้ายสาขา';
-                break;
-            case 'PERSONNEL':
-                iconClass = 'fa-solid fa-users';
-                thaiName = 'จัดการพนักงาน';
-                break;
-            case 'ROLE':
-                iconClass = 'fa-solid fa-shield-halved';
-                thaiName = 'จัดการสิทธิ์';
-                break;
-            default:
-                iconClass = 'fa-solid fa-bars-progress';
-        }
-        return `
-            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-surface-chip text-body-muted border border-hairline" title="${module}">
-                <i class="${iconClass} text-[10px]"></i>
-                ${thaiName}
-            </span>
-        `;
+        const conf = AUDIT_MODULES[module] || { label: module || '-', icon: 'fa-circle-info' };
+        return `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[0.375rem] text-xs font-medium bg-[#4D4D4D]/60 text-white">
+                    <i class="fa-solid ${adEsc(conf.icon)} text-[10px]"></i>${adEsc(conf.label)}
+                </span>`;
     };
 
-    // Fetch and render logs from the API
+    // เติมตัวเลือกดรอปดาวน์จากตารางกลาง — จะได้ไม่มีโมดูลไหนตกหล่นอีก
+    const adFillFilterOptions = () => {
+        const mod = document.getElementById('audit-filter-module');
+        if (mod && mod.options.length <= 1) {
+            mod.innerHTML = '<option value="ALL">ทุกโมดูล</option>' +
+                Object.entries(AUDIT_MODULES)
+                    .map(([k, v]) => `<option value="${adEsc(k)}">${adEsc(v.label)}</option>`).join('');
+        }
+        const act = document.getElementById('audit-filter-action');
+        if (act && act.options.length <= 1) {
+            act.innerHTML = '<option value="ALL">ทุกประเภท</option>' +
+                Object.entries(AUDIT_ACTIONS)
+                    .map(([k, v]) => `<option value="${adEsc(k)}">${adEsc(v.label)}</option>`).join('');
+        }
+    };
+
+    // ชิปตัวกรองที่ใช้อยู่ (ข้อ 11.5 — ลบได้เฉพาะตอนคลิกกากบาท)
+    const adRenderChips = () => {
+        const box = document.getElementById('audit-active-filters');
+        if (!box) return;
+        box.innerHTML = '';
+
+        const search = document.getElementById('audit-filter-search');
+        const user = document.getElementById('audit-filter-user');
+        const mod = document.getElementById('audit-filter-module');
+        const act = document.getElementById('audit-filter-action');
+
+        const chips = [];
+        if (search && search.value.trim()) chips.push({ key: 'search', label: `ค้นหา: ${search.value.trim()}` });
+        if (user && user.value.trim()) chips.push({ key: 'user', label: `ผู้ทำรายการ: ${user.value.trim()}` });
+        if (mod && mod.value && mod.value !== 'ALL') {
+            chips.push({ key: 'module', label: `โมดูล: ${(AUDIT_MODULES[mod.value] || {}).label || mod.value}` });
+        }
+        if (act && act.value && act.value !== 'ALL') {
+            chips.push({ key: 'action', label: `ประเภท: ${(AUDIT_ACTIONS[act.value] || {}).label || act.value}` });
+        }
+
+        const clearOne = (key) => {
+            if (key === 'search' && search) search.value = '';
+            if (key === 'user' && user) user.value = '';
+            if (key === 'module' && mod) mod.value = 'ALL';
+            if (key === 'action' && act) act.value = 'ALL';
+            fetchAuditLogs(1);
+        };
+
+        chips.forEach(c => {
+            const chip = document.createElement('button');
+            chip.type = 'button';
+            chip.className = 'px-4 py-2.5 rounded-xl bg-[#4D4D4D]/40 border border-[#3F3F46] ' +
+                'text-white text-sm font-medium transition-colors flex items-center gap-2 cursor-pointer';
+            chip.innerHTML = `<span>${adEsc(c.label)}</span><i class="fa-solid fa-xmark text-[10px] opacity-80"></i>`;
+            chip.setAttribute('aria-label', `ลบตัวกรอง ${c.label}`);
+            chip.addEventListener('click', (e) => {
+                if (!e.target.closest('i.fa-xmark')) return;
+                clearOne(c.key);
+            });
+            box.appendChild(chip);
+        });
+
+        // ปุ่มล้างทั้งหมดโผล่เมื่อมีตัวกรองมากกว่า 1 ตัวเท่านั้น
+        if (chips.length > 1) {
+            const clearAll = document.createElement('button');
+            clearAll.type = 'button';
+            clearAll.className = 'px-2.5 py-1 bg-red-500/10 hover:bg-red-500/15 text-red-300 ' +
+                'rounded-full text-xs font-medium border border-red-500/30 transition-colors cursor-pointer';
+            clearAll.textContent = 'ล้างทั้งหมด';
+            clearAll.addEventListener('click', () => {
+                if (search) search.value = '';
+                if (user) user.value = '';
+                if (mod) mod.value = 'ALL';
+                if (act) act.value = 'ALL';
+                fetchAuditLogs(1);
+            });
+            box.appendChild(clearAll);
+        }
+    };
+
     const fetchAuditLogs = async (page = 1) => {
         auditCurrentPage = page;
         const tableBody = document.getElementById('audit-logs-table-body');
-        const emptyState = document.getElementById('audit-logs-empty');
         const pageIndicator = document.getElementById('audit-current-page');
         const prevBtn = document.getElementById('btn-audit-prev');
         const nextBtn = document.getElementById('btn-audit-next');
         const paginationInfo = document.getElementById('audit-pagination-info');
-
         if (!tableBody) return;
 
-        // Render skeleton loading
-        tableBody.innerHTML = `
-            <tr>
-                <td colspan="7" class="py-12 text-center text-body-muted">
-                    <div class="flex flex-col items-center justify-center gap-3">
-                        <i class="fa-solid fa-circle-notch fa-spin text-3xl text-body-muted"></i>
-                        <span class="text-sm font-medium tracking-wide">กำลังโหลดข้อมูลประวัติความปลอดภัย...</span>
-                    </div>
-                </td>
-            </tr>
-        `;
-        if (emptyState) emptyState.classList.add('hidden');
+        adFillFilterOptions();
+        adRenderChips();
+        adSkeleton();
         if (prevBtn) prevBtn.disabled = true;
         if (nextBtn) nextBtn.disabled = true;
 
         try {
-            // Compile filters
             const search = document.getElementById('audit-filter-search')?.value || '';
             const module = document.getElementById('audit-filter-module')?.value || 'ALL';
             const action = document.getElementById('audit-filter-action')?.value || 'ALL';
             const user_name = document.getElementById('audit-filter-user')?.value || '';
 
-            const params = new URLSearchParams({
-                page,
-                limit: 50,
-                search,
-                module,
-                action,
-                user_name
-            });
-
+            const params = new URLSearchParams({ page, limit: 50, search, module, action, user_name });
             const res = await authFetch(`${API_BASE_URL}/audit-logs?${params.toString()}`);
             const result = await res.json();
 
-            if (result.success) {
-                auditLogsCache = result.data || [];
-                const logs = result.data || [];
-                const pag = result.pagination || { total: 0, pages: 1, page: 1, limit: 50 };
-
-                if (logs.length === 0) {
-                    tableBody.innerHTML = '';
-                    if (emptyState) emptyState.classList.remove('hidden');
-                    if (paginationInfo) paginationInfo.textContent = 'กำลังแสดงรายการที่ 0-0 จาก 0 รายการทั้งหมด';
-                    if (pageIndicator) pageIndicator.textContent = '1';
-                    return;
-                }
-
-                // Render table rows
-                let rowsHtml = '';
-                logs.forEach((log, index) => {
-                    const timeStr = formatThaiDateTime(log.createdAt);
-                    const refBadge = log.reference_no
-                        ? `<span class="px-2 py-0.5 rounded bg-surface-chip border border-hairline text-body-muted font-mono text-[11px]">${log.reference_no}</span>`
-                        : `<span class="text-body-muted">-</span>`;
-
-                    rowsHtml += `
-                        <tr class="hover:bg-surface-chip/40 transition-colors">
-                            <td class="py-4 px-6 text-xs text-body-muted font-mono">${timeStr}</td>
-                            <td class="py-4 px-6">
-                                <div class="flex items-center gap-2">
-                                    <div class="w-7 h-7 rounded-full bg-surface-chip border border-hairline text-ink flex items-center justify-center font-bold text-xs">
-                                        ${(log.user_name || 'U').charAt(0).toUpperCase()}
-                                    </div>
-                                    <span class="text-sm font-bold text-ink">${log.user_name || 'ระบบ'}</span>
-                                </div>
-                            </td>
-                            <td class="py-4 px-6">${getActionBadgeHtml(log.action)}</td>
-                            <td class="py-4 px-6">${getModuleBadgeHtml(log.module)}</td>
-                            <td class="py-4 px-6 text-sm text-body-muted font-medium">${log.description || '-'}</td>
-                            <td class="py-4 px-6">${refBadge}</td>
-                            <td class="py-4 px-6 text-right">
-                                <button onclick="window.viewAuditLogDetail('${log._id}')" class="p-2 bg-surface-chip border border-hairline text-body-muted hover:text-primary hover:bg-primary/10 rounded-md transition-all active:scale-95" title="ตรวจสอบเชิงลึก">
-                                    <i class="fa-solid fa-circle-info text-sm"></i>
-                                </button>
-                            </td>
-                        </tr>
-                    `;
-                });
-
-                tableBody.innerHTML = rowsHtml;
-                if (emptyState) emptyState.classList.add('hidden');
-
-                // Update Pagination Info
-                const startItem = (pag.page - 1) * pag.limit + 1;
-                const endItem = Math.min(pag.page * pag.limit, pag.total);
-                if (paginationInfo) {
-                    paginationInfo.textContent = `กำลังแสดงรายการที่ ${startItem}-${endItem} จาก ${pag.total} รายการทั้งหมด`;
-                }
-
-                if (pageIndicator) pageIndicator.textContent = pag.page;
-                if (prevBtn) prevBtn.disabled = pag.page <= 1;
-                if (nextBtn) nextBtn.disabled = pag.page >= pag.pages;
-            } else {
-                tableBody.innerHTML = `<tr><td colspan="7" class="py-8 text-center text-red-400 font-medium">${result.message || 'เกิดข้อผิดพลาดในการโหลดข้อมูล'}</td></tr>`;
+            if (!result.success) {
+                tableBody.innerHTML = adStateRow(result.message || 'เกิดข้อผิดพลาดในการโหลดข้อมูล', 'text-red-400');
+                if (paginationInfo) paginationInfo.textContent = '';
+                return;
             }
+
+            auditLogsCache = result.data || [];
+            const logs = auditLogsCache;
+            const pag = result.pagination || { total: 0, pages: 1, page: 1, limit: 50 };
+
+            if (!logs.length) {
+                tableBody.innerHTML = adStateRow('ไม่พบประวัติกิจกรรมตามตัวกรองที่เลือก');
+                if (paginationInfo) paginationInfo.textContent = '';
+                if (pageIndicator) pageIndicator.textContent = '1';
+                return;
+            }
+
+            tableBody.innerHTML = logs.map(log => {
+                const refBadge = log.reference_no
+                    ? `<span class="font-mono font-semibold text-[#FFE169]">${adEsc(log.reference_no)}</span>`
+                    : '<span class="text-white/50">-</span>';
+                const initial = adEsc((log.user_name || 'ร').trim().charAt(0).toUpperCase());
+                return `
+                <tr class="hover:bg-[#464646] transition-colors">
+                    <td class="px-6 py-4 text-white/70 font-mono text-xs">${adEsc(formatThaiDateTime(log.createdAt))}</td>
+                    <td class="px-6 py-4">
+                        <div class="flex items-center gap-2">
+                            <div class="w-7 h-7 rounded-full flex items-center justify-center shrink-0 text-xs font-semibold"
+                                 style="color:#FFE169;background-color:#27272A;border:1px solid #FFE16959;"
+                                 aria-hidden="true">${initial}</div>
+                            <span class="text-white font-medium">${adEsc(log.user_name || 'ระบบ')}</span>
+                        </div>
+                    </td>
+                    <td class="px-6 py-4">${getActionBadgeHtml(log.action)}</td>
+                    <td class="px-6 py-4">${getModuleBadgeHtml(log.module)}</td>
+                    <td class="px-6 py-4">
+                        <span class="text-white block max-w-[420px] truncate" title="${adEsc(log.description || '')}">${adEsc(log.description || '-')}</span>
+                    </td>
+                    <td class="px-6 py-4">${refBadge}</td>
+                    <td class="px-6 py-4 text-right">
+                        <div class="flex items-center justify-end gap-1">
+                            <button type="button" class="btn-audit-detail text-white hover:text-indigo-400 transition-colors p-2 cursor-pointer"
+                                data-id="${adEsc(log._id)}" title="ดูรายละเอียดเชิงลึก"
+                                aria-label="ดูรายละเอียดเชิงลึกของกิจกรรม ${adEsc(log.description || '')}">
+                                <i class="fa-solid fa-circle-info"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>`;
+            }).join('');
+
+            tableBody.querySelectorAll('.btn-audit-detail').forEach(btn =>
+                btn.addEventListener('click', () => window.viewAuditLogDetail(btn.dataset.id)));
+
+            const startItem = (pag.page - 1) * pag.limit + 1;
+            const endItem = Math.min(pag.page * pag.limit, pag.total);
+            if (paginationInfo) {
+                paginationInfo.textContent = `แสดง ${startItem}-${endItem} จาก ${pag.total} รายการ`;
+            }
+            if (pageIndicator) pageIndicator.textContent = pag.page;
+            if (prevBtn) prevBtn.disabled = pag.page <= 1;
+            if (nextBtn) nextBtn.disabled = pag.page >= pag.pages;
         } catch (error) {
             console.error('fetchAuditLogs error:', error);
-            tableBody.innerHTML = `<tr><td colspan="7" class="py-8 text-center text-red-400 font-medium">ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์เพื่อดึงข้อมูลประวัติกิจกรรมได้</td></tr>`;
+            tableBody.innerHTML = adStateRow('ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์เพื่อดึงข้อมูลประวัติกิจกรรมได้', 'text-red-400');
+            if (paginationInfo) paginationInfo.textContent = '';
         }
     };
     window.fetchAuditLogs = fetchAuditLogs;
@@ -253,15 +298,15 @@
             if (log.details) {
                 try {
                     payloadContainer.textContent = JSON.stringify(log.details, null, 2);
-                    payloadContainer.classList.remove('text-body-muted');
-                    payloadContainer.classList.add('text-ink');
+                    payloadContainer.classList.remove('text-white/50', 'italic');
+                    payloadContainer.classList.add('text-white');
                 } catch (e) {
                     payloadContainer.textContent = String(log.details);
                 }
             } else {
                 payloadContainer.textContent = 'ไม่มีข้อมูลเพิ่มเติม (No details payload provided)';
-                payloadContainer.classList.add('text-body-muted');
-                payloadContainer.classList.remove('text-ink');
+                payloadContainer.classList.add('text-white/50', 'italic');
+                payloadContainer.classList.remove('text-white');
             }
         }
 

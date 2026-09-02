@@ -13,8 +13,20 @@
     const depositFilterSearch = document.getElementById('deposit-filter-search');
     const btnOpenCreateDeposit = document.getElementById('btn-open-create-deposit');
     const depositTableBody = document.getElementById('deposit-table-body');
-    const depositEmpty = document.getElementById('deposit-empty');
     const depositBranchHeader = document.getElementById('deposit-branch-header');
+
+    // แถบชิปตัวกรอง + ตัวนับผลลัพธ์ + พาเนลกรองละเอียด (DESIGN.md ข้อ 11.5 / 11.8)
+    const depositActiveFilters = document.getElementById('deposit-active-filters');
+    const depositResultCount = document.getElementById('deposit-result-count');
+    const depositFilterPanel = document.getElementById('deposit-filter-panel');
+    const depositFilterPanelContent = document.getElementById('deposit-filter-panel-content');
+    const btnDepositFilter = document.getElementById('btn-deposit-filter');
+    const btnDepositFilterText = document.getElementById('btn-deposit-filter-text');
+    const btnDepositFilterClose = document.getElementById('btn-deposit-filter-close');
+    const btnDepositFilterApply = document.getElementById('btn-deposit-filter-apply');
+    const btnDepositFilterReset = document.getElementById('btn-deposit-filter-reset');
+
+    const DEPOSIT_TABLE_COLS = 10;
 
     // Create Modal Elements
     const modalCreateDeposit = document.getElementById('modal-create-deposit');
@@ -120,41 +132,116 @@
         }
     }
 
-    const populateDepositProducts = () => {
-        const datalist = document.getElementById('deposit-products-datalist');
-        if (!datalist) return;
-        datalist.innerHTML = '';
-        if (window.masterDataCache && Array.isArray(window.masterDataCache.productNames)) {
-            window.masterDataCache.productNames.forEach(p => {
-                const opt = document.createElement('option');
-                opt.value = p.name;
-                datalist.appendChild(opt);
-            });
-        }
+    // ==========================================
+    // ตัวเลือกในโมดัล "บันทึกรายการจองมัดจำใหม่"
+    //
+    // คลาสทุกตัวด้านล่างลอกมาจากโมดัล "เพิ่มสินค้าใหม่" (#add-product-modal) ให้หน้าตาตรงกัน
+    // ต่างกันจุดเดียวคือ "ค่าที่เขียนลง hidden input":
+    //   หน้าสต็อกเก็บ _id ของ master data
+    //   ใบมัดจำเก็บ "ชื่อ" เพราะตอน submit มันเอาชื่อสินค้า + ความจุ + สี มาต่อกันเป็น product_name
+    //   (ดู const product_name = [productNameInput, capacityName, colorName].join(' '))
+    // และต้อง dispatch 'change' เองด้วย เพราะ <input type="hidden"> ไม่ยิง event ให้อัตโนมัติ
+    // ถ้าไม่ยิง handleDepositVariationChange จะไม่ทำงาน = ราคาไม่เติมให้อัตโนมัติ
+    // ==========================================
+
+    const setDepositPickerValue = (hiddenInput, name) => {
+        if (!hiddenInput) return;
+        hiddenInput.value = name;
+        hiddenInput.dispatchEvent(new Event('change'));
     };
 
+    const populateDepositProducts = () => {
+        const select = document.getElementById('modal-deposit-product-id');
+        if (!select) return;
+        const names = (window.masterDataCache && Array.isArray(window.masterDataCache.productNames))
+            ? window.masterDataCache.productNames : [];
+        select.innerHTML = '<option value="">-- เลือกสินค้าที่จอง --</option>'
+            + names.map(p => `<option value="${p.name}">${p.name}</option>`).join('');
+    };
+
+    // Swatch สี — โครงเดียวกับ renderCustomColorSwatches ใน script.js
+    const renderDepositColorSwatches = () => {
+        const container = document.getElementById('modal-deposit-color-container');
+        const hiddenInput = document.getElementById('modal-deposit-color');
+        if (!container || !hiddenInput) return;
+        container.innerHTML = '';
+
+        const colors = (window.masterDataCache && Array.isArray(window.masterDataCache.productColors))
+            ? window.masterDataCache.productColors : [];
+
+        colors.forEach(item => {
+            const wrapper = document.createElement('div');
+            wrapper.className = 'flex flex-col items-center gap-1 cursor-pointer custom-swatch-wrapper';
+            wrapper.dataset.value = item.name;
+
+            const swatch = document.createElement('div');
+            swatch.className = 'w-7 h-7 rounded-full border-2 border-transparent transition-all custom-swatch';
+            swatch.style.backgroundColor = window.resolveProductColorHex
+                ? window.resolveProductColorHex(item.name, item)
+                : '#8E8E93';
+
+            const label = document.createElement('span');
+            label.className = 'text-[10px] text-slate-400 whitespace-nowrap custom-swatch-label transition-colors';
+            label.textContent = item.name;
+
+            wrapper.appendChild(swatch);
+            wrapper.appendChild(label);
+
+            wrapper.addEventListener('click', () => {
+                Array.from(container.children).forEach(child => {
+                    const sw = child.querySelector('.custom-swatch');
+                    const lb = child.querySelector('.custom-swatch-label');
+                    if (sw) { sw.classList.remove('border-[#FFE169]', 'scale-110'); sw.classList.add('border-transparent'); }
+                    if (lb) { lb.classList.remove('text-[#FFE169]', 'text-[13px]'); lb.classList.add('text-slate-400', 'text-[10px]'); }
+                });
+                swatch.classList.remove('border-transparent');
+                swatch.classList.add('border-[#FFE169]', 'scale-110');
+                label.classList.remove('text-slate-400', 'text-[10px]');
+                label.classList.add('text-[#FFE169]', 'text-[13px]');
+                setDepositPickerValue(hiddenInput, item.name);
+            });
+
+            container.appendChild(wrapper);
+        });
+    };
+
+    // Pill ความจุ — โครงเดียวกับ renderCustomSelectPills ใน script.js
+    const renderDepositCapacityPills = () => {
+        const container = document.getElementById('modal-deposit-capacity-container');
+        const hiddenInput = document.getElementById('modal-deposit-capacity');
+        if (!container || !hiddenInput) return;
+        container.innerHTML = '';
+
+        const caps = (window.masterDataCache && Array.isArray(window.masterDataCache.productCapacities))
+            ? window.masterDataCache.productCapacities : [];
+
+        caps.forEach(item => {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'custom-pill flex-shrink-0 px-4 py-2.5 bg-[#27272A] border border-[#3F3F46] rounded-xl text-slate-300 text-sm hover:border-[#FFE169] hover:text-white transition-colors';
+            btn.dataset.value = item.name;
+            btn.textContent = item.name;
+
+            btn.addEventListener('click', () => {
+                Array.from(container.children).forEach(child => {
+                    child.classList.remove('border-[#FFE169]', 'text-[#FFE169]');
+                    child.classList.add('border-[#3F3F46]', 'text-slate-300');
+                });
+                btn.classList.remove('border-[#3F3F46]', 'text-slate-300');
+                btn.classList.add('border-[#FFE169]', 'text-[#FFE169]');
+                setDepositPickerValue(hiddenInput, item.name);
+            });
+
+            container.appendChild(btn);
+        });
+    };
+
+    // เดิมฟังก์ชันนี้เติม <datalist> ให้ช่องพิมพ์ ตอนนี้เปลี่ยนเป็น swatch/pill ตามดีไซน์โมดัลเพิ่มสินค้า
+    // เรียกใหม่ทุกครั้งที่เปิดโมดัล ซึ่งเท่ากับล้างสถานะ "ที่เลือกไว้" ของครั้งก่อนไปในตัว
+    // (depositForm.reset() ล้างค่าใน hidden input ให้ แต่ล้างสีขอบ/ตัวหนังสือของ pill ไม่ได้)
     const populateDepositColorAndCapacity = () => {
-        const colorDatalist = document.getElementById('deposit-colors-datalist');
-        const capDatalist = document.getElementById('deposit-capacities-datalist');
-        if (!colorDatalist || !capDatalist) return;
-        colorDatalist.innerHTML = '';
-        capDatalist.innerHTML = '';
-        if (window.masterDataCache) {
-            if (Array.isArray(window.masterDataCache.productColors)) {
-                window.masterDataCache.productColors.forEach(c => {
-                    const opt = document.createElement('option');
-                    opt.value = c.name;
-                    colorDatalist.appendChild(opt);
-                });
-            }
-            if (Array.isArray(window.masterDataCache.productCapacities)) {
-                window.masterDataCache.productCapacities.forEach(c => {
-                    const opt = document.createElement('option');
-                    opt.value = c.name;
-                    capDatalist.appendChild(opt);
-                });
-            }
-        }
+        renderDepositColorSwatches();
+        renderDepositCapacityPills();
     };
 
     const populateAssignImeiSelect = (productName) => {
@@ -205,6 +292,210 @@
         }
     };
 
+    // ==========================================
+    // ชิ้นส่วน UI ที่ใช้ซ้ำ — เดินตามแบบแปลนหน้า #stock ใน DESIGN.md ข้อ 11.5 - 11.7
+    // ==========================================
+
+    // แถวโครงร่างระหว่างรอข้อมูล — ต้องเรียกก่อน await เสมอ ไม่ปล่อยตารางว่าง (ข้อ 11.7)
+    const renderDepositSkeleton = (rowCount = 6) => {
+        const bar = (widthClass) => `<div class="h-3.5 ${widthClass} rounded-full bg-[#5c5c5c] animate-pulse"></div>`;
+        const twoLine = (w1, w2) => `<div class="space-y-2">${bar(w1)}${bar(w2)}</div>`;
+        let html = '';
+        for (let i = 0; i < rowCount; i++) {
+            html += `
+                <tr>
+                    <td class="px-6 py-4">${twoLine('w-24', 'w-20')}</td>
+                    <td class="px-6 py-4">${twoLine('w-32', 'w-24')}</td>
+                    <td class="px-6 py-4">${twoLine('w-36', 'w-28')}</td>
+                    <td class="px-6 py-4">${bar('w-16 ml-auto')}</td>
+                    <td class="px-6 py-4">${bar('w-16 ml-auto')}</td>
+                    <td class="px-6 py-4">${bar('w-16 ml-auto')}</td>
+                    <td class="px-6 py-4">${bar('w-20')}</td>
+                    <td class="px-6 py-4">${twoLine('w-24', 'w-28')}</td>
+                    <td class="px-6 py-4">${twoLine('w-24', 'w-20')}</td>
+                    <td class="px-6 py-4">
+                        <div class="flex items-center justify-end gap-2">
+                            <div class="w-8 h-8 rounded-[0.375rem] bg-[#5c5c5c] animate-pulse"></div>
+                            <div class="w-8 h-8 rounded-[0.375rem] bg-[#5c5c5c] animate-pulse"></div>
+                        </div>
+                    </td>
+                </tr>
+            `;
+        }
+        depositTableBody.innerHTML = html;
+    };
+
+    const depositStateRow = (message, extraClass = 'text-white/50 italic') =>
+        `<tr><td colspan="${DEPOSIT_TABLE_COLS}" class="px-6 py-8 text-center ${extraClass}">${message}</td></tr>`;
+
+    // ป้ายสถานะ: จุดสี + พื้น tint 12% ตามตารางสถานะใน DESIGN.md ข้อ 11.6
+    const depositStatusBadge = (status) => {
+        let dot = 'bg-orange-500', bg = 'bg-orange-500/[0.12]', text = 'text-orange-400';
+        if (status === 'สำเร็จ') {
+            dot = 'bg-[#20D500]'; bg = 'bg-[#42A231]/[0.12]'; text = 'text-[#20D500]';
+        } else if (status === 'ยกเลิก') {
+            dot = 'bg-[#FE0000]'; bg = 'bg-[#FE0000]/[0.12]'; text = 'text-[#FE0000]';
+        }
+        return `
+            <div class="inline-flex items-center gap-2 px-2.5 py-1 rounded-[0.375rem] ${bg}">
+                <div class="w-2 h-2 rounded-full ${dot}"></div>
+                <span class="${text} font-medium text-xs">${status}</span>
+            </div>
+        `;
+    };
+
+    // ไอคอนสินค้าประจำแถว — สูตรเดียวกับคอลัมน์ "ชื่อสินค้า" หน้า #stock (ตัวสร้างอยู่ใน script.js ที่เดียว)
+    //
+    // ใบมัดจำไม่ได้เก็บ color_id / type_id แยกไว้ — schema มีแค่ product_name ที่เป็นสตริงรวม
+    // (เช่น "iPhone 15 128 Black") และ product_id ที่ /api/deposits ไม่ได้ populate มาให้
+    // จึงหาข้อมูลสินค้าจากสองทาง เรียงตามความแม่นยำ:
+    //   1) จับคู่ product_id กับ allProductsCache ที่ script.js โหลดไว้แล้ว — ได้ color_id/type_id ของจริง
+    //   2) ถ้าไม่มีในแคช (เข้าหน้านี้ตรงๆ โดยไม่ผ่านหน้าสต็อก) ให้อ่านจากชื่อสินค้าแทน
+    //      resolveProductColorHex จับคำแบบ substring อยู่แล้ว "…128 Black" จึงได้ #000000
+    //      ส่วนใบที่มี IMEI ถือเป็นเครื่องแน่นอน ยัดเข้า imeis ให้ checkIsDevice ตัดสินได้
+    const findCachedProduct = (productId) => {
+        if (!productId || !Array.isArray(window.allProductsCache)) return null;
+        const id = String(productId);
+        return window.allProductsCache.find(p => String(p._id) === id) || null;
+    };
+
+    // จุดสี 16px แทนไอคอนวงกลม 40px เดิม — ตามข้อ 11.14 (สีเครื่องอย่างเดียว ไม่ต้องแยกประเภทสินค้า)
+    // ไม่ต้องใช้ probe/type_id แล้วเพราะ productColorDot ไม่สนใจว่าเป็นเครื่องหรือกล่อง
+    const depositProductIcon = (item) => {
+        if (!window.productColorDot) return '';
+        const cached = findCachedProduct(item.product_id);
+        const colorName = (cached && cached.color_id && cached.color_id.name)
+            ? cached.color_id.name
+            : item.product_name;
+        return window.productColorDot(colorName, cached ? cached.color_id : null);
+    };
+
+    // เซลล์สองบรรทัด: บรรทัดหลัก + คำบรรยายรอง (สูตร "ชื่อ + คำบรรยาย" ข้อ 11.6)
+    // ใช้ยุบคอลัมน์ที่เคยแยกกัน (ลูกค้า+เบอร์โทร, สินค้า+IMEI, ผู้ทำรายการ+สาขา) โดยไม่ทำข้อมูลหาย
+    const twoLineCell = (main, sub) => `
+        <div>
+            <p class="font-medium text-white">${main}</p>
+            <p class="text-xs text-white/70 mt-0.5">${sub}</p>
+        </div>
+    `;
+
+    const selectedOptionText = (selectEl) => {
+        if (!selectEl) return '';
+        const opt = selectEl.options[selectEl.selectedIndex];
+        return opt ? opt.textContent.trim() : '';
+    };
+
+    // นับตัวกรองที่ "อยู่ในพาเนลละเอียด" เท่านั้น — ตัวเลขนี้ไปโชว์บนปุ่ม "เพิ่มเติม (n)"
+    const countDrawerFilters = () => {
+        let n = 0;
+        if (depositFilterStage && depositFilterStage.value !== 'ALL') n++;
+        if (depositFilterStartDate && depositFilterStartDate.value) n++;
+        if (depositFilterEndDate && depositFilterEndDate.value) n++;
+        return n;
+    };
+
+    const updateDepositFilterBadge = () => {
+        if (!btnDepositFilterText) return;
+        const n = countDrawerFilters();
+        btnDepositFilterText.textContent = n > 0 ? `เพิ่มเติม (${n})` : 'เพิ่มเติม';
+    };
+
+    const renderDepositChips = () => {
+        if (!depositActiveFilters) return;
+        depositActiveFilters.innerHTML = '';
+
+        const addChip = (label, onRemove) => {
+            const chip = document.createElement('button');
+            chip.type = 'button';
+            chip.className = 'px-4 py-2.5 rounded-xl bg-[#4D4D4D]/40 border border-[#3F3F46] text-white text-sm font-medium transition-colors flex items-center gap-2';
+            chip.innerHTML = `<span>${label}</span><i class="fa-solid fa-xmark text-[10px] opacity-80"></i>`;
+            chip.addEventListener('click', (e) => {
+                // ลบได้เฉพาะตอนคลิกที่กากบาท ตัวชิปเองไม่ตอบสนอง (ข้อ 11.5)
+                if (!e.target.closest('i.fa-xmark')) return;
+                onRemove();
+            });
+            depositActiveFilters.appendChild(chip);
+        };
+
+        let activeCount = 0;
+
+        const term = (depositFilterSearch && depositFilterSearch.value || '').trim();
+        if (term) {
+            activeCount++;
+            addChip(`ค้นหา: ${term}`, () => { depositFilterSearch.value = ''; loadDeposits(); });
+        }
+        // ฟิลเตอร์สาขาถูกล็อกไว้สำหรับคนที่ไม่มีสิทธิ์ข้ามสาขา — ล็อกอยู่ก็ไม่ต้องมีชิปให้กดลบ
+        if (depositFilterBranch && depositFilterBranch.value !== 'ALL' && !depositFilterBranch.disabled) {
+            activeCount++;
+            addChip(`สาขา: ${selectedOptionText(depositFilterBranch)}`, () => {
+                depositFilterBranch.value = 'ALL';
+                loadDeposits();
+            });
+        }
+        if (depositFilterStatus && depositFilterStatus.value !== 'ALL') {
+            activeCount++;
+            addChip(`สถานะ: ${selectedOptionText(depositFilterStatus)}`, () => {
+                depositFilterStatus.value = 'ALL';
+                loadDeposits();
+            });
+        }
+        if (depositFilterStage && depositFilterStage.value !== 'ALL') {
+            activeCount++;
+            addChip(`ขั้นตอน: ${selectedOptionText(depositFilterStage)}`, () => {
+                depositFilterStage.value = 'ALL';
+                loadDeposits();
+            });
+        }
+        const startVal = depositFilterStartDate && depositFilterStartDate.value;
+        const endVal = depositFilterEndDate && depositFilterEndDate.value;
+        if (startVal || endVal) {
+            activeCount++;
+            const thaiDate = (v) => new Date(v).toLocaleDateString('th-TH');
+            const from = startVal ? thaiDate(startVal) : 'ไม่จำกัด';
+            const to = endVal ? thaiDate(endVal) : 'ไม่จำกัด';
+            addChip(`นัดรับ: ${from} - ${to}`, () => {
+                if (depositFilterStartDate) depositFilterStartDate.value = '';
+                if (depositFilterEndDate) depositFilterEndDate.value = '';
+                loadDeposits();
+            });
+        }
+
+        // ปุ่มล้างทั้งหมดโผล่เมื่อมีตัวกรองมากกว่า 1 ตัวเท่านั้น (ข้อ 11.5)
+        if (activeCount > 1) {
+            const clearBtn = document.createElement('button');
+            clearBtn.type = 'button';
+            clearBtn.className = 'px-2.5 py-1 bg-red-500/10 hover:bg-red-500/15 text-red-300 rounded-full text-xs font-medium border border-red-500/30 transition-colors';
+            clearBtn.textContent = 'ล้างทั้งหมด';
+            clearBtn.addEventListener('click', resetAllDepositFilters);
+            depositActiveFilters.appendChild(clearBtn);
+        }
+
+        updateDepositFilterBadge();
+    };
+
+    function resetAllDepositFilters() {
+        if (depositFilterSearch) depositFilterSearch.value = '';
+        // สาขาที่ถูกล็อกต้องคงค่าเดิมไว้ ไม่งั้นผู้ใช้ที่ดูได้แค่สาขาตัวเองจะเห็นข้ามสาขา
+        if (depositFilterBranch && !depositFilterBranch.disabled) depositFilterBranch.value = 'ALL';
+        if (depositFilterStatus) depositFilterStatus.value = 'ALL';
+        if (depositFilterStage) depositFilterStage.value = 'ALL';
+        if (depositFilterStartDate) depositFilterStartDate.value = '';
+        if (depositFilterEndDate) depositFilterEndDate.value = '';
+        loadDeposits();
+    }
+
+    // เปิด/ปิดพาเนลกรองละเอียด — สองชั้น: กล่องนอกจางเข้า/ออก กล่องในเลื่อนเข้า/ออก (ข้อ 11.8)
+    const openDepositFilterPanel = () => {
+        if (!depositFilterPanel) return;
+        depositFilterPanel.classList.remove('opacity-0', 'pointer-events-none');
+        if (depositFilterPanelContent) depositFilterPanelContent.classList.remove('translate-x-full');
+    };
+    const closeDepositFilterPanel = () => {
+        if (!depositFilterPanel) return;
+        depositFilterPanel.classList.add('opacity-0', 'pointer-events-none');
+        if (depositFilterPanelContent) depositFilterPanelContent.classList.add('translate-x-full');
+    };
+
     async function loadDeposits() {
         if (!depositTableBody) return;
 
@@ -247,6 +538,11 @@
             }
         }
 
+        // ชิปต้องอัปเดตทันทีที่ผู้ใช้เปลี่ยนตัวกรอง ไม่ต้องรอ API ตอบ
+        renderDepositChips();
+        if (depositResultCount) depositResultCount.textContent = '';
+        renderDepositSkeleton();
+
         try {
             const token = localStorage.getItem('silmin_token');
             const response = await fetch(url, {
@@ -256,39 +552,55 @@
 
             depositTableBody.innerHTML = '';
             if (result.success && result.data && result.data.length > 0) {
-                depositEmpty.classList.add('hidden');
                 result.data.forEach(item => {
                     const row = document.createElement('tr');
-                    row.className = 'hover:bg-surface-chip/40 transition-colors border-b border-hairline cursor-pointer';
+                    row.className = 'hover:bg-[#464646] transition-colors cursor-pointer';
 
                     const dateStr = new Date(item.createdAt).toLocaleDateString('th-TH', { hour: '2-digit', minute: '2-digit' }) + ' น.';
                     const apptStr = item.appointment_date ? new Date(item.appointment_date).toLocaleDateString('th-TH') : 'ไม่ระบุ';
-
-                    let statusClass = 'bg-amber-500/10 text-amber-400 border border-amber-500/20';
-                    if (item.status === 'สำเร็จ') statusClass = 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20';
-                    else if (item.status === 'ยกเลิก') statusClass = 'bg-rose-500/10 text-rose-400 border border-rose-500/20';
+                    const imeiStr = item.imei
+                        ? `<span class="font-mono">${item.imei}</span>`
+                        : '<span class="italic">IMEI: ยังไม่ระบุ</span>';
+                    // เลขที่บิล POS มีเฉพาะรายการที่ส่งมอบแล้ว จึงเกาะไปกับบรรทัดขั้นตอนแทนที่จะกินคอลัมน์ของตัวเอง
+                    const stageStr = item.bill_number ? `${item.stage} · บิล ${item.bill_number}` : item.stage;
+                    const remaining = item.remaining_amount || 0;
 
                     row.innerHTML = `
-                        <td class="px-1.5 py-2 font-medium text-ink-muted-48">${dateStr}</td>
-                        <td class="px-1.5 py-2 text-ink font-medium">${item.customer_name}</td>
-                        <td class="px-1.5 py-2 font-mono text-body-muted">${item.customer_phone}</td>
-                        <td class="px-1.5 py-2 font-mono font-semibold text-ink">฿${item.deposit_amount.toLocaleString()}</td>
-                        <td class="px-1.5 py-2 text-body-muted">${apptStr}</td>
-                        <td class="px-1.5 py-2 text-center font-mono font-bold border-r border-hairline text-body-muted">${item.bill_number || '-'}</td>
-                        <td class="px-1.5 py-2 font-mono border-r border-hairline text-body-muted break-words">${item.imei || '<span class="text-ink-muted-48 italic">ไม่ระบุ</span>'}</td>
-                        <td class="px-1.5 py-2 border-r border-hairline text-ink font-medium break-words" title="${item.product_name}">${item.product_name}</td>
-                        <td class="px-1.5 py-2 font-mono border-r border-hairline text-body-muted">฿${item.product_price.toLocaleString()}</td>
-                        <td class="px-1.5 py-2 font-mono font-bold text-red-400">฿${item.remaining_amount.toLocaleString()}</td>
-                        <td class="px-1.5 py-2">
-                            <span class="px-1.5 py-0.5 rounded text-[9px] font-bold ${statusClass}">${item.status}</span>
-                            <div class="text-[9px] text-ink-muted-48 mt-1">${item.stage}</div>
+                        <td class="px-6 py-4">
+                            <div>
+                                <p class="font-mono font-semibold text-[#FFE169]">${item.deposit_number || '-'}</p>
+                                <p class="text-xs text-white/70 mt-0.5">${dateStr}</p>
+                            </div>
                         </td>
-                        <td class="px-1.5 py-2 text-body-muted">${item.created_by?.name || '-'}</td>
-                        <td class="px-1.5 py-2 text-body-muted">${item.branch_id?.name || '-'}</td>
-                        <td class="px-1.5 py-2 text-center">
-                            <button class="btn-print-deposit w-7 h-7 mx-auto rounded-sm bg-surface-chip flex items-center justify-center text-body-muted hover:text-primary hover:bg-primary/10 transition-colors" data-id="${item._id}" title="พิมพ์ใบมัดจำ">
-                                <i class="fa-solid fa-print"></i>
-                            </button>
+                        <td class="px-6 py-4">
+                            ${twoLineCell(item.customer_name, `<span class="font-mono">${item.customer_phone}</span>`)}
+                        </td>
+                        <td class="px-6 py-4">
+                            <p class="font-medium text-white flex items-center gap-2">${depositProductIcon(item)}<span>${item.product_name}</span></p>
+                            <p class="text-xs text-white/70 pl-6 mt-0.5">${imeiStr}</p>
+                        </td>
+                        <td class="px-6 py-4 text-right text-white font-mono">฿${item.product_price.toLocaleString()}</td>
+                        <td class="px-6 py-4 text-right text-white font-mono">฿${item.deposit_amount.toLocaleString()}</td>
+                        <td class="px-6 py-4 text-right font-mono ${remaining > 0 ? 'text-[#FE0000]' : 'text-white'}">฿${remaining.toLocaleString()}</td>
+                        <td class="px-6 py-4 text-white text-sm">${apptStr}</td>
+                        <td class="px-6 py-4">
+                            <div>
+                                ${depositStatusBadge(item.status)}
+                                <p class="text-xs text-white/70 mt-1">${stageStr}</p>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4">
+                            ${twoLineCell(item.created_by?.name || '-', item.branch_id?.name || '-')}
+                        </td>
+                        <td class="px-6 py-4 text-right">
+                            <div class="flex items-center justify-end gap-1">
+                                <button type="button" class="btn-view-deposit text-white hover:text-indigo-400 transition-colors p-2" title="ดูรายละเอียด">
+                                    <i class="fa-solid fa-eye"></i>
+                                </button>
+                                <button type="button" class="btn-print-deposit text-white hover:text-amber-400 transition-colors p-2" data-id="${item._id}" title="พิมพ์ใบมัดจำ">
+                                    <i class="fa-solid fa-print"></i>
+                                </button>
+                            </div>
                         </td>
                     `;
 
@@ -297,17 +609,30 @@
                         printDepositSlip(item._id);
                     });
 
+                    // ปุ่มตาเป็นทางเข้าที่คีย์บอร์ดใช้ได้จริง ส่วนคลิกทั้งแถวเก็บไว้เป็นทางลัดของเมาส์
+                    row.querySelector('.btn-view-deposit').addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        openDepositDetailsModal(item);
+                    });
+
                     row.addEventListener('click', () => {
                         openDepositDetailsModal(item);
                     });
 
                     depositTableBody.appendChild(row);
                 });
+
+                if (depositResultCount) {
+                    depositResultCount.textContent = `แสดง ${result.data.length} รายการ`;
+                }
             } else {
-                depositEmpty.classList.remove('hidden');
+                depositTableBody.innerHTML = depositStateRow('ไม่พบข้อมูลใบมัดจำสินค้าตามตัวเลือก');
+                if (depositResultCount) depositResultCount.textContent = '';
             }
         } catch (e) {
             console.error('Error loading deposits list:', e);
+            depositTableBody.innerHTML = depositStateRow('เกิดข้อผิดพลาดในการโหลดรายการมัดจำ', 'text-red-400');
+            if (depositResultCount) depositResultCount.textContent = '';
             showToast('เกิดข้อผิดพลาดในการโหลดรายการมัดจำ', 'error');
         }
     }
@@ -316,7 +641,7 @@
         if (!depositForm) return;
         depositForm.reset();
         editDepositId.value = '';
-        depositModalTitle.innerHTML = '<i class="fa-solid fa-wallet text-primary"></i> บันทึกรายการจองมัดจำใหม่';
+        depositModalTitle.innerHTML = 'บันทึกรายการจองมัดจำใหม่';
         depositSplitRow.classList.add('hidden');
         modalDepositRemaining.value = '0';
 
@@ -344,16 +669,8 @@
         activeDeposit = deposit;
 
         detailDepositNumber.textContent = deposit.deposit_number;
-        detailDepositStatus.textContent = deposit.status;
-
-        detailDepositStatus.className = 'px-2 py-0.5 rounded text-[10px] font-bold border';
-        if (deposit.status === 'รอดำเนินการ') {
-            detailDepositStatus.classList.add('bg-amber-500/10', 'text-amber-400', 'border-amber-500/20');
-        } else if (deposit.status === 'สำเร็จ') {
-            detailDepositStatus.classList.add('bg-emerald-500/10', 'text-emerald-400', 'border-emerald-500/20');
-        } else {
-            detailDepositStatus.classList.add('bg-rose-500/10', 'text-rose-400', 'border-rose-500/20');
-        }
+        // ใช้ป้ายสถานะสูตรเดียวกับในตาราง (จุดสี + tint 12%) แทนการสลับคลาสเองทีละชุด
+        detailDepositStatus.innerHTML = depositStatusBadge(deposit.status);
 
         detailDepositCustomer.textContent = deposit.customer_name;
         detailDepositPhone.textContent = deposit.customer_phone;
@@ -365,7 +682,7 @@
 
         const createdDate = new Date(deposit.createdAt).toLocaleDateString('th-TH', { hour: '2-digit', minute: '2-digit' }) + ' น.';
         const apptDate = deposit.appointment_date ? new Date(deposit.appointment_date).toLocaleDateString('th-TH') : 'ไม่ระบุ';
-        detailDepositDates.innerHTML = `วันที่ทำจอง: <span class="text-ink font-medium">${createdDate}</span><br/>นัดรับเครื่อง: <span class="text-ink font-medium">${apptDate}</span>`;
+        detailDepositDates.innerHTML = `วันที่ทำจอง: <span class="text-white font-medium">${createdDate}</span><br/>นัดรับเครื่อง: <span class="text-white font-medium">${apptDate}</span>`;
 
         detailDepositSender.textContent = `${deposit.created_by?.name || '-'} / สาขา: ${deposit.branch_id?.name || '-'}`;
 
@@ -547,13 +864,41 @@
         }
     }
 
-    // Set event listeners for filter controls
+    // ตัวกรองบนแถบควบคุม — เปลี่ยนแล้วยิงทันที
     if (depositFilterBranch) depositFilterBranch.addEventListener('change', loadDeposits);
     if (depositFilterStatus) depositFilterStatus.addEventListener('change', loadDeposits);
-    if (depositFilterStage) depositFilterStage.addEventListener('change', loadDeposits);
-    if (depositFilterStartDate) depositFilterStartDate.addEventListener('change', loadDeposits);
-    if (depositFilterEndDate) depositFilterEndDate.addEventListener('change', loadDeposits);
-    if (depositFilterSearch) depositFilterSearch.addEventListener('input', loadDeposits);
+
+    // ช่องค้นหาต้องหน่วงก่อนยิง — เดิมผูก 'input' กับ loadDeposits ตรงๆ ทำให้ยิง API ทุกตัวอักษรที่พิมพ์
+    // คำค้น 10 ตัวอักษร = 10 requests ทั้งที่ผู้ใช้ต้องการผลลัพธ์ชุดเดียว
+    let depositSearchTimer = null;
+    if (depositFilterSearch) {
+        depositFilterSearch.addEventListener('input', () => {
+            clearTimeout(depositSearchTimer);
+            depositSearchTimer = setTimeout(loadDeposits, 300);
+        });
+    }
+
+    // ตัวกรองในพาเนลละเอียด — ไม่ยิงทันทีตอนเปลี่ยน รอกด "ตกลง" (ไวยากรณ์เดียวกับพาเนลกรองหน้า #stock)
+    if (btnDepositFilter) btnDepositFilter.addEventListener('click', openDepositFilterPanel);
+    if (btnDepositFilterClose) btnDepositFilterClose.addEventListener('click', closeDepositFilterPanel);
+    if (btnDepositFilterApply) {
+        btnDepositFilterApply.addEventListener('click', () => {
+            closeDepositFilterPanel();
+            loadDeposits();
+        });
+    }
+    if (btnDepositFilterReset) {
+        btnDepositFilterReset.addEventListener('click', () => {
+            closeDepositFilterPanel();
+            resetAllDepositFilters();
+        });
+    }
+    // คลิกพื้นที่มืดนอกพาเนล = ปิด (ไม่ใช้ค่าที่เพิ่งเลือก)
+    if (depositFilterPanel) {
+        depositFilterPanel.addEventListener('click', (e) => {
+            if (e.target === depositFilterPanel) closeDepositFilterPanel();
+        });
+    }
 
     // Open/Close Modals Listeners
     if (btnOpenCreateDeposit) btnOpenCreateDeposit.addEventListener('click', openCreateDepositModal);
@@ -664,8 +1009,53 @@
             const colorNameInput = modalDepositColor ? modalDepositColor.value.trim() : '';
             const capacityNameInput = modalDepositCapacity ? modalDepositCapacity.value.trim() : '';
 
+            // ตรวจช่องบังคับเองทีละช่องตามลำดับที่เห็นบนหน้าจอ แล้วเตือนแบบ inline
+            // (ฟอร์มตั้ง novalidate ไว้เหมือนฟอร์มเพิ่มสินค้า จึงต้องตรวจเองทั้งหมด
+            //  ไม่งั้นช่องที่ติด required จะไม่ถูกบังคับเลย)
+            // ใช้ window.highlightInvalidInput ตัวเดียวกับโมดัล "เพิ่มสินค้าใหม่" หน้า #stock
+            const invalid = (el, msg) => {
+                if (window.highlightInvalidInput) window.highlightInvalidInput(el, msg);
+                else showToast(msg, 'error');
+            };
+
+            if (!customer_name) {
+                invalid(modalDepositCustomerName, 'กรุณาระบุชื่อลูกค้า');
+                return;
+            }
+            if (!customer_phone) {
+                invalid(modalDepositCustomerPhone, 'กรุณาระบุเบอร์โทรลูกค้า');
+                return;
+            }
             if (!productNameInput) {
-                showToast('กรุณาระบุชื่อสินค้า', 'error');
+                invalid(modalDepositProductId, 'กรุณาเลือกสินค้าที่จอง');
+                return;
+            }
+            if (modalDepositColor && !colorNameInput) {
+                invalid(modalDepositColor, 'กรุณาเลือกสีสินค้า');
+                return;
+            }
+            if (modalDepositCapacity && !capacityNameInput) {
+                invalid(modalDepositCapacity, 'กรุณาเลือกความจุสินค้า');
+                return;
+            }
+            if (!Number(modalDepositProductPrice.value)) {
+                invalid(modalDepositProductPrice, 'กรุณาระบุราคาเต็มสินค้า');
+                return;
+            }
+            if (!Number(modalDepositAmount.value)) {
+                invalid(modalDepositAmount, 'กรุณาระบุยอดเงินมัดจำ');
+                return;
+            }
+            if (!modalDepositAppointment.value) {
+                invalid(modalDepositAppointment, 'กรุณาระบุวันที่นัดรับเครื่อง');
+                return;
+            }
+            if (!modalDepositPaymentMethod.value) {
+                invalid(modalDepositPaymentMethod, 'กรุณาเลือกช่องทางการชำระมัดจำ');
+                return;
+            }
+            if (!modalDepositStage.value) {
+                invalid(modalDepositStage, 'กรุณาเลือกขั้นตอนการดำเนินงาน');
                 return;
             }
 
@@ -708,7 +1098,7 @@
             const notes = modalDepositNotes.value.trim();
 
             if (payment_method === 'ผสม' && (cash_amount + transfer_amount !== deposit_amount)) {
-                showToast('ยอดเงินสดและยอดเงินโอนต้องรวมกันได้เท่ากับยอดมัดจำ', 'error');
+                invalid(modalDepositCashAmount, 'ยอดเงินสดและยอดเงินโอนต้องรวมกันได้เท่ากับยอดมัดจำ');
                 return;
             }
 

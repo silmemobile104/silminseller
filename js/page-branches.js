@@ -5,7 +5,6 @@
     // DOM elements ที่หน้านี้ใช้ (ดึงเองแยกจาก core เพราะ const เดิมอยู่คนละไฟล์กันแล้ว)
     const btnAddBranch = document.getElementById('btn-add-branch');
     const branchGrid = document.getElementById('branch-grid');
-    const branchEmptyState = document.getElementById('branch-empty-state');
     const branchModal = document.getElementById('branch-modal');
     const closeBranchModalBtn = document.getElementById('close-branch-modal-btn');
     const cancelBranchModalBtn = document.getElementById('cancel-branch-modal-btn');
@@ -21,75 +20,184 @@
     // Branch Management Logic
     // ==========================================
 
+    // ---------- กริดสาขา (DESIGN.md ข้อ 11.3 - 11.7) ----------
+    let _brCache = [];
+    let _brSearch = '';
+    let _brBound = false;
+
+    // ชื่อ/ที่อยู่/เบอร์โทรมาจากฐานข้อมูลแล้วถูกยัดเข้า innerHTML
+    // ของเดิมใส่ดิบๆ ถ้าค่าไหนมี < หรือ " ปนมา จะทำให้การ์ดเพี้ยนหรือหน้าพัง
+    const brEsc = (s) => String(s == null ? '' : s)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+
+    const brStateBox = (msg, cls = 'text-white/50 italic') =>
+        `<div class="col-span-full px-6 py-10 text-center ${cls}">${brEsc(msg)}</div>`;
+
+    const brSkeleton = (n = 6) => {
+        if (!branchGrid) return;
+        const bar = (w) => `<div class="h-3.5 ${w} rounded-full bg-[#5c5c5c] animate-pulse"></div>`;
+        branchGrid.innerHTML = Array.from({ length: n }).map(() => `
+            <div class="bg-[#27272A] border border-[#3F3F46] rounded-xl p-5">
+                <div class="flex items-start gap-3">
+                    <div class="w-11 h-11 rounded-full bg-[#5c5c5c] animate-pulse shrink-0"></div>
+                    <div class="flex-1 space-y-2 pt-1">
+                        ${bar('w-32')}
+                        ${bar('w-24')}
+                    </div>
+                </div>
+                <div class="mt-4 space-y-2">${bar('w-full')}${bar('w-3/4')}</div>
+            </div>`).join('');
+    };
+
+    const brSetText = (id, text) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = text;
+    };
+
+    // ชิปตัวกรองที่ใช้อยู่ (ข้อ 11.5 — ลบได้เฉพาะตอนคลิกกากบาท)
+    const brRenderChips = () => {
+        const box = document.getElementById('branch-active-filters');
+        if (!box) return;
+        box.innerHTML = '';
+        if (!_brSearch.trim()) return;
+
+        const chip = document.createElement('button');
+        chip.type = 'button';
+        chip.className = 'px-4 py-2.5 rounded-xl bg-[#4D4D4D]/40 border border-[#3F3F46] ' +
+            'text-white text-sm font-medium transition-colors flex items-center gap-2 cursor-pointer';
+        chip.innerHTML = `<span>ค้นหา: ${brEsc(_brSearch.trim())}</span><i class="fa-solid fa-xmark text-[10px] opacity-80"></i>`;
+        chip.setAttribute('aria-label', `ลบตัวกรอง ค้นหา ${_brSearch.trim()}`);
+        chip.addEventListener('click', (e) => {
+            if (!e.target.closest('i.fa-xmark')) return;
+            _brSearch = '';
+            const s = document.getElementById('branch-search');
+            if (s) s.value = '';
+            brRender();
+        });
+        box.appendChild(chip);
+    };
+
+    const brRender = () => {
+        if (!branchGrid) return;
+        brRenderChips();
+
+        const q = _brSearch.trim().toLowerCase();
+        const rows = _brCache.filter(b => !q ||
+            [b.name, b.address, b.phone].filter(Boolean).join(' ').toLowerCase().includes(q));
+
+        brSetText('branch-count-badge', `${_brCache.length} สาขา`);
+        brSetText('branch-result-count', _brCache.length ? `แสดง ${rows.length} จาก ${_brCache.length} รายการ` : '');
+
+        if (!rows.length) {
+            branchGrid.innerHTML = brStateBox(_brCache.length
+                ? 'ไม่พบสาขาที่ตรงกับคำค้นหา'
+                : 'ยังไม่มีข้อมูลสาขา กด "เพิ่มสาขาใหม่" เพื่อเริ่มใช้งาน');
+            return;
+        }
+
+        branchGrid.innerHTML = rows.map(branch => `
+            <div class="bg-[#27272A] border border-[#3F3F46] rounded-xl p-5 hover:border-[#FFE169] transition-colors flex flex-col">
+                <div class="flex items-start gap-3">
+                    <div class="w-11 h-11 rounded-full flex items-center justify-center shrink-0"
+                         style="color:#FFE169;background-color:#27272A;border:1px solid #FFE16959;">
+                        <i class="fa-solid fa-store text-lg"></i>
+                    </div>
+                    <div class="min-w-0 flex-1">
+                        <h4 class="text-base font-semibold text-white truncate" title="${brEsc(branch.name)}">${brEsc(branch.name)}</h4>
+                        ${branch.phone
+                ? `<p class="text-xs text-white/70 font-mono mt-0.5 flex items-center gap-1.5">
+                                   <i class="fa-solid fa-phone text-[10px]"></i> ${brEsc(branch.phone)}</p>`
+                : '<p class="text-xs text-white/50 italic mt-0.5">ไม่ได้ระบุเบอร์โทรศัพท์</p>'}
+                    </div>
+                    <!-- ปุ่มต้องเห็นตลอด ของเดิมซ่อนไว้แล้วให้โผล่ตอนเอาเมาส์ชี้การ์ด
+                         ซึ่งคนใช้คีย์บอร์ดโฟกัสแล้วมองไม่เห็น และบนมือถือไม่มี hover เลย -->
+                    <div class="flex items-center gap-1 shrink-0">
+                        <button type="button" class="btn-view-branch text-white hover:text-indigo-400 transition-colors p-2 cursor-pointer"
+                            data-id="${brEsc(branch._id)}" title="ดูรายละเอียด"
+                            aria-label="ดูรายละเอียดสาขา ${brEsc(branch.name)}">
+                            <i class="fa-solid fa-eye"></i>
+                        </button>
+                        <button type="button" class="btn-delete-branch text-white hover:text-red-400 transition-colors p-2 cursor-pointer"
+                            data-id="${brEsc(branch._id)}" title="ลบสาขา"
+                            aria-label="ลบสาขา ${brEsc(branch.name)}">
+                            <i class="fa-solid fa-trash-can"></i>
+                        </button>
+                    </div>
+                </div>
+                <p class="text-sm text-white/70 mt-4 flex items-start gap-2 flex-1">
+                    <i class="fa-solid fa-location-dot text-[11px] mt-1 shrink-0"></i>
+                    <span class="line-clamp-2">${branch.address ? brEsc(branch.address) : '<span class="text-white/50 italic">ไม่มีรายละเอียดที่อยู่</span>'}</span>
+                </p>
+            </div>`).join('');
+
+        const byId = (id) => rows.find(b => String(b._id) === String(id));
+        branchGrid.querySelectorAll('.btn-view-branch').forEach(btn =>
+            btn.addEventListener('click', () => { const b = byId(btn.dataset.id); if (b) openViewBranchModal(b); }));
+        branchGrid.querySelectorAll('.btn-delete-branch').forEach(btn =>
+            btn.addEventListener('click', () => { const b = byId(btn.dataset.id); if (b) deleteBranch(b._id, b.name); }));
+    };
+
+    // การลบย้อนไม่ได้ ต้องผ่าน showConfirm() และบอกชื่อสาขาที่จะลบให้ชัด (ข้อ 11.12 ข้อ 11)
+    const deleteBranch = (id, name) => {
+        showConfirm('ยืนยันการลบสาขา',
+            `ต้องการลบสาขา <strong class="text-white">${brEsc(name || '')}</strong> ใช่หรือไม่<br><span class="text-xs text-white/70">ข้อมูลนี้ไม่สามารถกู้คืนได้</span>`,
+            async () => {
+                try {
+                    const response = await authFetch(`${API_BASE_URL}/branches/${id}`, { method: 'DELETE' });
+                    const result = await response.json();
+                    if (result.success) {
+                        showToast('ลบสาขาสำเร็จ');
+                        loadBranches();
+                    } else {
+                        showToast('เกิดข้อผิดพลาด: ' + result.message, 'error');
+                    }
+                } catch (err) {
+                    showToast('ไม่สามารถลบสาขาได้', 'error');
+                }
+            }, 'ลบสาขา', 'danger');
+    };
+
     async function loadBranches() {
         if (!branchGrid) return;
+
+        // ผูก listener ครั้งเดียว (loadPageView แทรก HTML ครั้งเดียว)
+        if (!_brBound) {
+            _brBound = true;
+            const s = document.getElementById('branch-search');
+            if (s) {
+                let t = null;
+                s.addEventListener('input', () => {
+                    clearTimeout(t);
+                    t = setTimeout(() => { _brSearch = s.value; brRender(); }, 200);
+                });
+            }
+            const r = document.getElementById('btn-refresh-branches');
+            if (r) r.addEventListener('click', () => loadBranches());
+        }
+
+        brSkeleton();
 
         try {
             const response = await authFetch(`${API_BASE_URL}/branches`);
             const json = await response.json();
 
-            branchGrid.innerHTML = '';
-
-            if (json.success && json.data.length > 0) {
-                branchEmptyState.classList.add('hidden');
-
-                json.data.forEach(branch => {
-                    const card = document.createElement('div');
-                    card.className = 'bg-canvas-elevated rounded-lg border border-hairline p-6 hover:border-primary/40 transition-colors group relative overflow-hidden';
-                    card.innerHTML = `
-                        <div class="absolute top-0 right-0 p-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button class="btn-view-branch w-8 h-8 rounded-sm bg-surface-chip flex items-center justify-center text-body-muted hover:text-primary hover:bg-primary/10 transition-colors" data-id="${branch._id}" title="ดูรายละเอียด">
-                                <i class="fa-solid fa-eye text-sm"></i>
-                            </button>
-                            <button class="btn-delete-branch w-8 h-8 rounded-sm bg-surface-chip flex items-center justify-center text-body-muted hover:text-red-400 hover:bg-red-400/10 transition-colors" data-id="${branch._id}">
-                                <i class="fa-solid fa-trash-can text-sm"></i>
-                            </button>
-                        </div>
-                        <div class="w-12 h-12 rounded-sm bg-surface-chip flex items-center justify-center text-ink mb-4">
-                            <i class="fa-solid fa-store text-xl"></i>
-                        </div>
-                        <h4 class="text-xl font-bold text-ink mb-2">${branch.name}</h4>
-                        ${branch.phone ? `<p class="text-xs text-body-muted font-mono mb-2 flex items-center gap-1.5"><i class="fa-solid fa-phone text-[10px]"></i> ${branch.phone}</p>` : ''}
-                        <p class="text-sm text-body-muted line-clamp-2">${branch.address || 'ไม่มีรายละเอียดที่อยู่'}</p>
-                    `;
-                    branchGrid.appendChild(card);
-                });
-
-                // Attach event listeners for View/Edit/Delete buttons
-                document.querySelectorAll('.btn-view-branch').forEach(btn => {
-                    btn.addEventListener('click', (e) => {
-                        const id = e.currentTarget.getAttribute('data-id');
-                        const branch = json.data.find(b => b._id === id || (b._id && b._id.$oid === id));
-                        if (branch) openViewBranchModal(branch);
-                    });
-                });
-
-                document.querySelectorAll('.btn-delete-branch').forEach(btn => {
-                    btn.addEventListener('click', (e) => {
-                        const id = e.currentTarget.getAttribute('data-id');
-                        showConfirm('ยืนยันการลบสาขา', 'คุณแน่ใจหรือไม่ที่จะลบสาขานี้? ข้อมูลนี้ไม่สามารถกู้คืนได้', async () => {
-                            try {
-                                const response = await authFetch(`${API_BASE_URL}/branches/${id}`, { method: 'DELETE' });
-                                const result = await response.json();
-                                if (result.success) {
-                                    showToast('ลบสาขาสำเร็จ');
-                                    loadBranches();
-                                } else {
-                                    showToast('เกิดข้อผิดพลาด: ' + result.message, 'error');
-                                }
-                            } catch (err) {
-                                showToast('ไม่สามารถลบสาขาได้', 'error');
-                            }
-                        });
-                    });
-                });
-
+            if (json.success) {
+                _brCache = json.data || [];
+                brRender();
             } else {
-                branchEmptyState.classList.remove('hidden');
-                branchEmptyState.classList.add('flex');
+                _brCache = [];
+                branchGrid.innerHTML = brStateBox(json.message || 'ดึงข้อมูลสาขาไม่สำเร็จ', 'text-red-400');
+                brSetText('branch-count-badge', '0 สาขา');
+                brSetText('branch-result-count', '');
+                showToast('ดึงข้อมูลสาขาไม่สำเร็จ', 'error');
             }
         } catch (error) {
             console.error('Error loading branches:', error);
+            _brCache = [];
+            branchGrid.innerHTML = brStateBox('เชื่อมต่อเซิร์ฟเวอร์ไม่สำเร็จ', 'text-red-400');
+            brSetText('branch-count-badge', '0 สาขา');
+            brSetText('branch-result-count', '');
             showToast('ดึงข้อมูลสาขาไม่สำเร็จ', 'error');
         }
     }
@@ -135,9 +243,9 @@
         if (branchPhoneInput) branchPhoneInput.value = phone;
 
         if (id) {
-            branchModalTitle.innerHTML = `<i class="fa-solid fa-pen-to-square text-body-muted"></i> แก้ไขสาขา`;
+            branchModalTitle.innerHTML = `<i class="fa-solid fa-pen-to-square text-[#FFE169]"></i> แก้ไขสาขา`;
         } else {
-            branchModalTitle.innerHTML = `<i class="fa-solid fa-store text-body-muted"></i> เพิ่มสาขาใหม่`;
+            branchModalTitle.innerHTML = `<i class="fa-solid fa-store text-[#FFE169]"></i> เพิ่มสาขาใหม่`;
         }
 
         branchModal.classList.remove('opacity-0', 'pointer-events-none');

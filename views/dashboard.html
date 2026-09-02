@@ -1,125 +1,159 @@
 <div id="view-dashboard">
-                    <div>
-                        <h3 class="text-2xl font-bold text-ink">แดชบอร์ด</h3>
-                        <p class="text-body-muted mt-1">ภาพรวมยอดขายและสถานะคลังสินค้า — อัพเดตอัตโนมัติ</p>
-                    </div>
+    <!-- [1] หัวหน้า + ตัวกรองช่วงเวลา/สาขา/สถานะ -->
+    <div class="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4">
+        <div class="flex items-center gap-4">
+            <i class="bi bi-bar-chart text-white w-5 text-2xl text-center"></i>
+            <h3 class="text-2xl text-white">แดชบอร์ดผู้บริหาร</h3>
+        </div>
+        <div class="flex flex-wrap items-center gap-2.5">
+            <select id="dash-filter-status" aria-label="กรองตามสถานะบิล"
+                class="bg-transparent border border-white/30 rounded-[10px] cursor-pointer text-sm px-3 py-2 text-white focus:outline-none focus:ring-1 focus:ring-[#FFE169] [&>option]:bg-[#4D4D4D] [&>option:checked]:bg-[#FFE169] [&>option:checked]:text-[#333333]">
+                <option value="">สถานะทั้งหมด</option>
+                <option value="เสร็จสิ้น">เสร็จสิ้น</option>
+                <option value="ยกเลิกแล้ว">ยกเลิกแล้ว</option>
+            </select>
+            <select id="dash-filter-branch" aria-label="กรองตามสาขา"
+                class="bg-transparent border border-white/30 rounded-[10px] cursor-pointer text-sm px-3 py-2 text-white focus:outline-none focus:ring-1 focus:ring-[#FFE169] [&>option]:bg-[#4D4D4D] [&>option:checked]:bg-[#FFE169] [&>option:checked]:text-[#333333]">
+                <option value="">ทุกสาขา</option>
+            </select>
+            <input type="date" id="dash-filter-start" aria-label="วันที่เริ่มต้น"
+                class="bg-transparent border border-white/30 rounded-[10px] text-sm px-3 py-2 text-white focus:outline-none focus:ring-1 focus:ring-[#FFE169]">
+            <input type="date" id="dash-filter-end" aria-label="วันที่สิ้นสุด"
+                class="bg-transparent border border-white/30 rounded-[10px] text-sm px-3 py-2 text-white focus:outline-none focus:ring-1 focus:ring-[#FFE169]">
+            <button id="dash-filter-reset" type="button"
+                class="px-3 py-2 bg-[#4D4D4D]/40 cursor-pointer text-white flex items-center justify-center gap-1.5 rounded-[0.5rem] text-sm hover:bg-[#5C5C5C] transition-colors">
+                <i class="fa-solid fa-rotate"></i> วันนี้
+            </button>
+        </div>
+    </div>
 
-                    <!-- Stat Cards -->
-                    <div class="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 md:gap-6">
-                        <!-- Card 1: ยอดขายวันนี้ -->
-                        <div
-                            class="bg-canvas-elevated rounded-lg p-6 border border-hairline hover:border-primary/40 transition-all duration-300">
-                            <div class="flex items-center justify-between mb-4">
-                                <h4 class="text-body-muted font-medium text-sm">ยอดขายวันนี้</h4>
-                                <div
-                                    class="w-10 h-10 rounded-full bg-surface-chip flex items-center justify-center text-ink">
-                                    <i class="fa-solid fa-baht-sign text-lg"></i>
-                                </div>
-                            </div>
-                            <p id="stat-today-sales" class="text-3xl font-bold text-ink font-mono">฿0</p>
-                            <p class="text-xs text-ink-muted-48 mt-2 flex items-center gap-1">
-                                <i class="fa-solid fa-receipt"></i>
-                                <span id="stat-today-txn-count">0</span> รายการวันนี้
-                            </p>
-                        </div>
+    <!-- [2] การ์ดตัวเลขหลัก 6 ใบ — เนื้อในถูกเขียนจาก js/page-dashboard.js -->
+    <div id="dash-kpi-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-6 gap-4"></div>
 
-                        <!-- Card 2: กำไรสุทธิวันนี้ -->
-                        <div
-                            class="bg-canvas-elevated rounded-lg p-6 border border-hairline hover:border-primary/40 transition-all duration-300">
-                            <div class="flex items-center justify-between mb-4">
-                                <h4 class="text-body-muted font-medium text-sm">กำไรสุทธิวันนี้</h4>
-                                <div
-                                    class="w-10 h-10 rounded-full bg-surface-chip flex items-center justify-center text-ink">
-                                    <i class="fa-solid fa-chart-line text-lg"></i>
-                                </div>
-                            </div>
-                            <p id="stat-today-profit" class="text-3xl font-bold text-ink font-mono">฿0</p>
-                            <p class="text-xs text-ink-muted-48 mt-2 flex items-center gap-1">
-                                <i class="fa-solid fa-arrow-trend-up"></i>
-                                คำนวณจากต้นทุนสินค้า
-                            </p>
-                        </div>
+    <!-- [3] กราฟยอดขายรายปี + ตารางผลการดำเนินการรายสาขา -->
+    <div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
+        <!-- กราฟยอดขายรายปี -->
+        <div class="bg-[#4D4D4D]/40 rounded-2xl shadow-lg overflow-hidden backdrop-blur-sm">
+            <div class="p-6 pb-0 flex flex-wrap items-center justify-between gap-3">
+                <h3 class="text-lg text-white flex items-center gap-2">
+                    <i class="fa-solid fa-chart-area text-[#FFE169]"></i>
+                    ยอดขายรายปี <span id="dash-chart-year" class="text-sm text-white/70"></span>
+                </h3>
+                <div class="flex flex-wrap items-center gap-4 text-xs text-white">
+                    <span class="flex items-center gap-2">
+                        <span class="w-2.5 h-2.5 rounded-full bg-[#20D500] shrink-0"></span> ยอดขายเฉพาะเครื่อง
+                    </span>
+                    <span class="flex items-center gap-2">
+                        <span class="w-2.5 h-2.5 rounded-full bg-[#FFE169] shrink-0"></span> ยอดขายอุปกรณ์เสริม
+                    </span>
+                </div>
+            </div>
+            <div class="p-6 pt-4">
+                <div id="dash-sales-chart" class="relative w-full">
+                    <!-- SVG ถูกวาดจาก JS -->
+                </div>
+            </div>
+        </div>
 
-                        <!-- Card 3: สินค้าในสต็อกทั้งหมด -->
-                        <div
-                            class="bg-canvas-elevated rounded-lg p-6 border border-hairline hover:border-primary/40 transition-all duration-300">
-                            <div class="flex items-center justify-between mb-4">
-                                <h4 class="text-body-muted font-medium text-sm">สินค้าในสต็อกทั้งหมด</h4>
-                                <div
-                                    class="w-10 h-10 rounded-full bg-surface-chip flex items-center justify-center text-ink">
-                                    <i class="fa-solid fa-boxes-stacked text-lg"></i>
-                                </div>
-                            </div>
-                            <p id="stat-total-stock" class="text-3xl font-bold text-ink font-mono">0</p>
-                            <p class="text-xs text-ink-muted-48 mt-2 flex items-center gap-1">
-                                <i class="fa-solid fa-cube"></i>
-                                <span id="stat-total-products">0</span> รายการ รวมทุกหมวดหมู่
-                            </p>
-                        </div>
+        <!-- ผลการดำเนินการรายสาขา -->
+        <div class="bg-[#4D4D4D]/40 rounded-2xl shadow-lg overflow-hidden backdrop-blur-sm flex flex-col">
+            <div class="p-6 pb-0">
+                <h3 class="text-lg text-white flex items-center gap-2">
+                    <i class="fa-solid fa-code-branch text-[#FFE169]"></i>
+                    ผลการดำเนินการรายสาขา
+                    <span id="dash-branch-period" class="text-sm text-white/70"></span>
+                </h3>
+            </div>
+            <div class="mt-4 overflow-x-auto flex-1" tabindex="0">
+                <table class="w-full text-left text-sm whitespace-nowrap border-collapse">
+                    <thead class="bg-[#4D4D4D]/40 text-white">
+                        <tr>
+                            <th class="px-6 py-3.5 font-semibold text-[15px] w-full">สาขา</th>
+                            <th class="px-6 py-3.5 font-semibold text-[15px] text-right">ยอดขาย (บาท)</th>
+                            <th class="px-6 py-3.5 font-semibold text-[15px] text-right">กำไรขั้นต้น (บาท)</th>
+                            <th class="px-6 py-3.5 font-semibold text-[15px] text-center">ออเดอร์</th>
+                        </tr>
+                    </thead>
+                    <tbody id="dash-branch-tbody" class="divide-y divide-[#464646]"></tbody>
+                </table>
+            </div>
+            <div class="px-6 py-4 text-right">
+                <button type="button" id="dash-branch-more"
+                    class="text-sm text-[#FFE169] hover:text-[#E2B93C] transition-colors cursor-pointer">
+                    ดูรายละเอียดเพิ่มเติม <i class="fa-solid fa-chevron-right text-[10px] ml-0.5"></i>
+                </button>
+            </div>
+        </div>
+    </div>
 
-                        <!-- Card 4: สินค้าใกล้หมด -->
-                        <div
-                            class="bg-canvas-elevated rounded-lg p-6 border border-hairline hover:border-primary/40 transition-all duration-300">
-                            <div class="flex items-center justify-between mb-4">
-                                <h4 class="text-body-muted font-medium text-sm">สินค้าใกล้หมด</h4>
-                                <div
-                                    class="w-10 h-10 rounded-full bg-surface-chip flex items-center justify-center text-ink">
-                                    <i class="fa-solid fa-triangle-exclamation text-lg"></i>
-                                </div>
-                            </div>
-                            <p id="stat-low-stock" class="text-3xl font-bold text-ink font-mono">0</p>
-                            <p class="text-xs text-ink-muted-48 mt-2 flex items-center gap-1">
-                                <i class="fa-solid fa-circle-exclamation"></i>
-                                สินค้าคงเหลือน้อยกว่า 5 ชิ้น
-                            </p>
-                        </div>
+    <!-- [4] สัดส่วนหมวดหมู่ + รายรับรายจ่าย + สินค้าขายดี -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
+        <!-- สัดส่วนหมวดหมู่สินค้า -->
+        <div class="lg:col-span-3 bg-[#4D4D4D]/40 rounded-2xl shadow-lg overflow-hidden backdrop-blur-sm">
+            <div class="p-6 pb-0">
+                <h3 class="text-lg text-white flex items-center gap-2">
+                    <i class="fa-solid fa-chart-pie text-[#FFE169]"></i> ยอดขายหมวดหมู่สินค้า
+                    <span id="dash-cat-period" class="text-sm text-white/70"></span>
+                </h3>
+            </div>
+            <div id="dash-category-body" class="p-6"></div>
+        </div>
 
-                        <!-- Card 5: รายการรอรับสินค้า -->
-                        <div id="card-pending-transfer"
-                            class="bg-canvas-elevated rounded-lg p-6 border border-hairline hover:border-primary/40 transition-all duration-300 cursor-pointer hidden">
-                            <div class="flex items-center justify-between mb-4">
-                                <h4 class="text-body-muted font-medium text-sm">รายการรอรับสินค้า</h4>
-                                <div
-                                    class="w-10 h-10 rounded-full bg-surface-chip flex items-center justify-center text-ink">
-                                    <i class="fa-solid fa-box text-lg"></i>
-                                </div>
-                            </div>
-                            <p id="stat-pending-transfers" class="text-3xl font-bold text-ink font-mono">0</p>
-                            <p class="text-xs text-ink-muted-48 mt-2 flex items-center gap-1">
-                                <i class="fa-solid fa-truck-fast"></i>
-                                รอการตรวจสอบและรับเข้า
-                            </p>
-                        </div>
-                    </div>
+        <!-- รายรับ - รายจ่าย -->
+        <div class="lg:col-span-5 bg-[#4D4D4D]/40 rounded-2xl shadow-lg overflow-hidden backdrop-blur-sm">
+            <div class="p-6 pb-0">
+                <h3 class="text-lg text-white flex items-center gap-2">
+                    <i class="fa-solid fa-money-bill-transfer text-[#FFE169]"></i>
+                    รายรับ - รายจ่าย <span id="dash-cash-period" class="text-sm text-white/70"></span>
+                </h3>
+            </div>
+            <div id="dash-cashflow-body" class="p-6"></div>
+        </div>
 
-                    <!-- Recent Transactions Table -->
-                    <div class="bg-canvas-elevated rounded-lg border border-hairline overflow-hidden">
-                        <div class="p-6 border-b border-hairline flex items-center justify-between">
-                            <h3 class="text-lg font-bold text-ink flex items-center gap-2">
-                                <i class="fa-solid fa-clock-rotate-left text-body-muted"></i>
-                                รายการขายล่าสุด
-                            </h3>
-                            <span id="stat-recent-badge"
-                                class="bg-surface-chip text-body-muted text-xs font-bold px-3 py-1 rounded-pill border border-hairline">
-                                10 รายการล่าสุด
-                            </span>
-                        </div>
-                        <div class="overflow-x-auto">
-                            <table class="w-full text-left text-sm whitespace-nowrap">
-                                <thead class="bg-surface-tile-3 text-body-muted">
-                                    <tr>
-                                        <th class="px-6 py-4 font-medium">เลขที่ใบเสร็จ</th>
-                                        <th class="px-6 py-4 font-medium">สาขา</th>
-                                        <th class="px-6 py-4 font-medium text-center">จำนวนรายการ</th>
-                                        <th class="px-6 py-4 font-medium">ช่องทางชำระ</th>
-                                        <th class="px-6 py-4 font-medium text-right">ยอดรวม</th>
-                                        <th class="px-6 py-4 font-medium text-right">เวลา</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="recent-txn-table-body" class="divide-y divide-hairline">
-                                    <!-- Data loaded by JS -->
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
+        <!-- สินค้าขายดี -->
+        <div class="lg:col-span-4 bg-[#4D4D4D]/40 rounded-2xl shadow-lg overflow-hidden backdrop-blur-sm">
+            <div class="p-6 pb-0">
+                <h3 class="text-lg text-white flex items-center gap-2">
+                    <i class="fa-solid fa-ranking-star text-[#FFE169]"></i> สินค้าขายดี
+                    <span class="text-sm text-white/70">(Top 5)</span>
+                </h3>
+            </div>
+            <div class="mt-4 overflow-x-auto" tabindex="0">
+                <table class="w-full text-left text-sm whitespace-nowrap border-collapse">
+                    <thead class="bg-[#4D4D4D]/40 text-white">
+                        <tr>
+                            <th class="px-6 py-3.5 font-semibold text-[15px]">อันดับ</th>
+                            <th class="px-6 py-3.5 font-semibold text-[15px] w-full">สินค้า</th>
+                            <th class="px-6 py-3.5 font-semibold text-[15px] text-center">ขายได้ (ชิ้น)</th>
+                            <th class="px-6 py-3.5 font-semibold text-[15px] text-right">ยอดขาย (บาท)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="dash-top-tbody" class="divide-y divide-[#464646]"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- [5] ใบสั่งซื้อล่าสุด -->
+    <div class="bg-[#4D4D4D]/40 rounded-2xl shadow-lg overflow-hidden backdrop-blur-sm">
+        <div class="p-6 pb-0">
+            <h3 class="text-lg text-white flex items-center gap-2">
+                <i class="fa-solid fa-file-invoice text-[#FFE169]"></i> รายการสั่งซื้อล่าสุด
+            </h3>
+        </div>
+        <div class="mt-4 overflow-x-auto" tabindex="0">
+            <table class="w-full text-left text-sm whitespace-nowrap border-collapse">
+                <thead class="bg-[#4D4D4D]/40 text-white">
+                    <tr>
+                        <th class="px-6 py-4 font-semibold text-[15px]">เลขที่ PO</th>
+                        <th class="px-6 py-4 font-semibold text-[15px] w-full">ซัพพลายเออร์</th>
+                        <th class="px-6 py-4 font-semibold text-[15px] text-right">มูลค่า (บาท)</th>
+                        <th class="px-6 py-4 font-semibold text-[15px]">สถานะ</th>
+                        <th class="px-6 py-4 font-semibold text-[15px]">วันที่สั่งซื้อ</th>
+                    </tr>
+                </thead>
+                <tbody id="dash-po-tbody" class="divide-y divide-[#464646]"></tbody>
+            </table>
+        </div>
+    </div>
 </div>

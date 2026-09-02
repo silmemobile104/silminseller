@@ -1,67 +1,111 @@
 <div id="view-settings">
-                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                        <div>
-                            <h3 class="text-2xl font-bold text-ink">ตั้งค่าข้อมูลพื้นฐาน</h3>
-                            <p class="text-body-muted mt-1">จัดการตัวเลือก หมวดหมู่ และคุณสมบัติของสินค้า</p>
-                        </div>
+    <!-- [1] หัวหน้า — DESIGN.md ข้อ 11.2 -->
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div class="flex items-center gap-4">
+            <i class="bi bi-gear text-white w-5 text-2xl text-center"></i>
+            <h3 class="text-2xl text-white">ตั้งค่าข้อมูลพื้นฐาน</h3>
+        </div>
+    </div>
+
+    <!-- [2] แท็บหมวดข้อมูล — ป้ายตัวเลขเติมจากข้อมูลจริงใน js/page-settings.js -->
+    <div id="settings-tabs" class="flex flex-wrap items-center gap-2">
+        <button type="button" data-tab="productname" aria-pressed="true"
+            class="settings-tab-btn px-4 py-2.5 rounded-xl text-sm font-bold border transition-colors flex items-center gap-2 cursor-pointer bg-[#FFE169] text-[#333333] border-[#FFE169]">
+            <i class="fa-solid fa-mobile-screen"></i> ชื่อสินค้า
+            <span class="settings-tab-badge px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#333333]/20">0</span>
+        </button>
+        <button type="button" data-tab="producttype" aria-pressed="false"
+            class="settings-tab-btn px-4 py-2.5 rounded-xl text-sm font-bold border transition-colors flex items-center gap-2 cursor-pointer bg-[#27272A] text-slate-300 border-[#3F3F46] hover:border-[#FFE169] hover:text-white">
+            <i class="fa-solid fa-tag"></i> ประเภทสินค้า
+            <span class="settings-tab-badge px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#4D4D4D]/60 text-white">0</span>
+        </button>
+        <button type="button" data-tab="productunit" aria-pressed="false"
+            class="settings-tab-btn px-4 py-2.5 rounded-xl text-sm font-bold border transition-colors flex items-center gap-2 cursor-pointer bg-[#27272A] text-slate-300 border-[#3F3F46] hover:border-[#FFE169] hover:text-white">
+            <i class="fa-solid fa-ruler"></i> หน่วยนับ
+            <span class="settings-tab-badge px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#4D4D4D]/60 text-white">0</span>
+        </button>
+        <button type="button" data-tab="productcolor" aria-pressed="false"
+            class="settings-tab-btn px-4 py-2.5 rounded-xl text-sm font-bold border transition-colors flex items-center gap-2 cursor-pointer bg-[#27272A] text-slate-300 border-[#3F3F46] hover:border-[#FFE169] hover:text-white">
+            <i class="fa-solid fa-palette"></i> สี
+            <span class="settings-tab-badge px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#4D4D4D]/60 text-white">0</span>
+        </button>
+        <button type="button" data-tab="productcapacity" aria-pressed="false"
+            class="settings-tab-btn px-4 py-2.5 rounded-xl text-sm font-bold border transition-colors flex items-center gap-2 cursor-pointer bg-[#27272A] text-slate-300 border-[#3F3F46] hover:border-[#FFE169] hover:text-white">
+            <i class="fa-solid fa-database"></i> ความจุ
+            <span class="settings-tab-badge px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#4D4D4D]/60 text-white">0</span>
+        </button>
+        <button type="button" data-tab="productcondition" aria-pressed="false"
+            class="settings-tab-btn px-4 py-2.5 rounded-xl text-sm font-bold border transition-colors flex items-center gap-2 cursor-pointer bg-[#27272A] text-slate-300 border-[#3F3F46] hover:border-[#FFE169] hover:text-white">
+            <i class="fa-solid fa-star"></i> สภาพเครื่อง
+            <span class="settings-tab-badge px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#4D4D4D]/60 text-white">0</span>
+        </button>
+        <button type="button" data-tab="supplier" aria-pressed="false"
+            class="settings-tab-btn px-4 py-2.5 rounded-xl text-sm font-bold border transition-colors flex items-center gap-2 cursor-pointer bg-[#27272A] text-slate-300 border-[#3F3F46] hover:border-[#FFE169] hover:text-white">
+            <i class="fa-solid fa-truck-front"></i> ผู้จัดจำหน่าย
+            <span class="settings-tab-badge px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#4D4D4D]/60 text-white">0</span>
+        </button>
+        <button type="button" data-tab="financecompany" aria-pressed="false"
+            class="settings-tab-btn px-4 py-2.5 rounded-xl text-sm font-bold border transition-colors flex items-center gap-2 cursor-pointer bg-[#27272A] text-slate-300 border-[#3F3F46] hover:border-[#FFE169] hover:text-white">
+            <i class="fa-solid fa-hand-holding-dollar"></i> บริษัทจัดไฟแนนซ์
+            <span class="settings-tab-badge px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#4D4D4D]/60 text-white">0</span>
+        </button>
+    </div>
+
+    <!-- [3] การ์ดพาเนล — ฟอร์มเพิ่ม + ค้นหา + ชิป + รายการ อยู่ในการ์ดใบเดียว (ข้อ 11.1, 11.3) -->
+    <div class="bg-[#4D4D4D]/40 rounded-2xl shadow-lg overflow-hidden backdrop-blur-sm">
+        <div class="p-6 pb-0 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+            <h3 id="settings-panel-title" class="text-lg text-white flex items-center gap-2">
+                <i class="fa-solid fa-list-ul text-[#FFE169]"></i> ชื่อสินค้า
+            </h3>
+            <div class="flex flex-wrap items-center gap-2.5 w-full lg:w-auto">
+                <div class="relative group w-full sm:w-64">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <i class="fa-solid fa-search text-white group-focus-within:text-[#FFE169] transition-colors"></i>
                     </div>
+                    <label for="settings-search" class="sr-only">ค้นหาในหมวดนี้</label>
+                    <input id="settings-search" type="text" autocomplete="off" placeholder="ค้นหาในหมวดนี้..."
+                        class="bg-[#4D4D4D]/40 border border-[#3F3F46] rounded-[0.5rem] text-sm pl-10 pr-4 py-2 w-full text-white focus:outline-none focus:border-[#FFE169] focus:ring-1 focus:ring-[#FFE169] transition-all placeholder-white">
+                </div>
+            </div>
+        </div>
 
-                    <!-- Settings Tabs -->
-                    <div class="flex space-x-2 border-b border-hairline overflow-x-auto pb-px">
-                        <button
-                            class="settings-tab-btn active px-4 py-3 text-primary border-b-2 border-primary font-medium whitespace-nowrap transition-colors"
-                            data-tab="productname">ชื่อสินค้า</button>
-                        <button
-                            class="settings-tab-btn px-4 py-3 text-body-muted border-b-2 border-transparent hover:text-ink hover:border-hairline font-medium whitespace-nowrap transition-colors"
-                            data-tab="producttype">ประเภทสินค้า</button>
-                        <button
-                            class="settings-tab-btn px-4 py-3 text-body-muted border-b-2 border-transparent hover:text-ink hover:border-hairline font-medium whitespace-nowrap transition-colors"
-                            data-tab="productunit">หน่วยนับ</button>
-                        <button
-                            class="settings-tab-btn px-4 py-3 text-body-muted border-b-2 border-transparent hover:text-ink hover:border-hairline font-medium whitespace-nowrap transition-colors"
-                            data-tab="productcolor">สี</button>
-                        <button
-                            class="settings-tab-btn px-4 py-3 text-body-muted border-b-2 border-transparent hover:text-ink hover:border-hairline font-medium whitespace-nowrap transition-colors"
-                            data-tab="productcapacity">ความจุ</button>
-                        <button
-                            class="settings-tab-btn px-4 py-3 text-body-muted border-b-2 border-transparent hover:text-ink hover:border-hairline font-medium whitespace-nowrap transition-colors"
-                            data-tab="productcondition">สภาพเครื่อง</button>
-                        <button
-                            class="settings-tab-btn px-4 py-3 text-body-muted border-b-2 border-transparent hover:text-ink hover:border-hairline font-medium whitespace-nowrap transition-colors"
-                            data-tab="supplier">ผู้จัดจำหน่าย</button>
-                        <button
-                            class="settings-tab-btn px-4 py-3 text-body-muted border-b-2 border-transparent hover:text-ink hover:border-hairline font-medium whitespace-nowrap transition-colors"
-                            data-tab="financecompany">บริษัทจัดไฟแนนซ์</button>
+        <!-- ฟอร์มเพิ่มข้อมูล (ข้อ 11.9) -->
+        <div class="px-6 pt-5">
+            <div class="bg-[#27272A] border border-[#3F3F46] rounded-xl p-4">
+                <div class="flex flex-col sm:flex-row gap-3">
+                    <div class="flex-1 space-y-2">
+                        <label for="master-data-input" class="text-slate-200 font-medium flex items-center gap-2 text-xs">
+                            <i class="fa-solid fa-plus text-white"></i> เพิ่มข้อมูลใหม่ <span class="text-red-500">*</span>
+                        </label>
+                        <input type="text" id="master-data-input" autocomplete="off" placeholder="พิมพ์ข้อมูลใหม่..."
+                            class="w-full px-4 py-2.5 rounded-xl bg-[#18181B] border border-[#3F3F46] text-white focus:border-[#FFE169] focus:outline-none transition-all placeholder-slate-500 text-sm">
                     </div>
-
-                    <!-- Settings Content -->
-                    <div class="bg-canvas-elevated rounded-lg border border-hairline p-6">
-                        <div class="flex flex-col sm:flex-row gap-4 mb-8">
-                            <input type="text" id="master-data-input" placeholder="พิมพ์ข้อมูลใหม่..."
-                                class="flex-1 px-4 py-2.5 rounded-sm bg-surface-chip border border-divider-soft text-ink placeholder-ink-muted-48 focus:border-primary-focus focus:ring-1 focus:ring-primary-focus/40 focus:outline-none transition-all">
-                            <input type="text" id="master-data-code-input"
-                                placeholder="รหัสชื่อสินค้า (ไม่จำเป็นต้องระบุก็ได้)..."
-                                class="hidden px-4 py-2.5 rounded-sm bg-surface-chip border border-divider-soft text-ink placeholder-ink-muted-48 focus:border-primary-focus focus:ring-1 focus:ring-primary-focus/40 focus:outline-none transition-all sm:w-64">
-                            <button id="btn-add-master-data"
-                                class="px-6 py-2.5 bg-primary hover:bg-primary-pressed text-on-primary font-bold rounded-pill flex items-center justify-center gap-2 whitespace-nowrap">
-                                <i class="fa-solid fa-plus"></i> เพิ่ม
-                            </button>
-                        </div>
-
-                        <!-- Data List Container -->
-                        <div id="master-data-list"
-                            class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                            <!-- Items will be injected here via JS -->
-                        </div>
-
-                        <!-- Empty State (Hidden by default) -->
-                        <div id="master-data-empty" class="hidden text-center py-12">
-                            <div
-                                class="w-16 h-16 rounded-full bg-surface-chip flex items-center justify-center text-body-muted mx-auto mb-4">
-                                <i class="fa-solid fa-inbox text-2xl"></i>
-                            </div>
-                            <h4 class="text-ink font-medium">ไม่มีข้อมูล</h4>
-                            <p class="text-sm text-body-muted mt-1">ยังไม่มีข้อมูลในหมวดหมู่นี้ กรุณาเพิ่มข้อมูลใหม่</p>
-                        </div>
+                    <div id="master-data-code-wrap" class="space-y-2 sm:w-64">
+                        <label for="master-data-code-input" class="text-slate-200 font-medium flex items-center gap-2 text-xs">
+                            <i class="fa-solid fa-barcode text-white"></i> รหัสชื่อสินค้า (ไม่บังคับ)
+                        </label>
+                        <input type="text" id="master-data-code-input" autocomplete="off" placeholder="เช่น IP15PM"
+                            class="w-full px-4 py-2.5 rounded-xl bg-[#18181B] border border-[#3F3F46] text-white focus:border-[#FFE169] focus:outline-none transition-all placeholder-slate-500 text-sm font-mono">
                     </div>
+                    <div class="flex items-end">
+                        <button id="btn-add-master-data" type="button"
+                            class="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-[#FFE169] hover:bg-[#E2B93C] text-[#333333] font-semibold text-sm transition-colors flex items-center justify-center gap-2 cursor-pointer whitespace-nowrap">
+                            <i class="fa-solid fa-plus"></i> เพิ่ม
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ชิปตัวกรอง + ตัวนับผลลัพธ์ (ข้อ 11.5) -->
+        <div class="px-6 py-4">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div id="settings-active-filters" class="flex flex-wrap gap-2"></div>
+                <div id="settings-result-count" class="text-xs text-white font-medium"></div>
+            </div>
+        </div>
+
+        <!-- รายการข้อมูล — เนื้อในเขียนจาก js/page-settings.js -->
+        <div id="master-data-list" class="px-6 pb-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-3"></div>
+    </div>
 </div>

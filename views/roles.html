@@ -1,35 +1,52 @@
 <div id="view-roles">
-                    <!-- Header -->
-                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-                        <div>
-                            <h3 class="text-2xl font-bold text-ink flex items-center gap-3">
-                                <div
-                                    class="w-12 h-12 rounded-lg bg-surface-chip flex items-center justify-center">
-                                    <i class="fa-solid fa-shield-halved text-ink text-xl"></i>
-                                </div>
-                                ระดับสิทธิ์การใช้งานระบบแต่ละตำแหน่งงาน
-                            </h3>
-                            <p class="text-sm text-body-muted mt-2">กำหนดสิทธิ์การเข้าถึงระบบสำหรับแต่ละตำแหน่งงาน</p>
-                        </div>
-                        <button id="btn-add-role"
-                            class="px-6 py-3 bg-primary hover:bg-primary-pressed text-on-primary font-bold rounded-pill flex items-center justify-center gap-2 transition-all active:scale-95">
-                            <i class="fa-solid fa-plus"></i> เพิ่มบทบาทใหม่
-                        </button>
-                    </div>
+    <!-- [1] หัวหน้า — DESIGN.md ข้อ 11.2 -->
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div class="flex items-center gap-4">
+            <i class="bi bi-shield-check text-white w-5 text-2xl text-center"></i>
+            <h3 class="text-2xl text-white">ระดับสิทธิ์การใช้งาน</h3>
+        </div>
+        <button id="btn-add-role" type="button"
+            class="px-4 py-2 bg-[#FFE169] hover:bg-[#E2B93C] text-[#333333] font-medium rounded-xl transition-all flex items-center gap-2 w-fit cursor-pointer">
+            <i class="fa-solid fa-plus"></i>
+            <p>เพิ่มบทบาทใหม่</p>
+        </button>
+    </div>
 
-                    <!-- Roles Grid -->
-                    <div id="roles-grid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                        <!-- Rendered dynamically by JS -->
+    <!-- [2] การ์ดพาเนล — แถบควบคุม + ชิป + กริดบทบาท อยู่ในการ์ดใบเดียว (ข้อ 11.1, 11.3) -->
+    <div class="bg-[#4D4D4D]/40 rounded-2xl shadow-lg overflow-hidden backdrop-blur-sm">
+        <!-- 2a แถบควบคุม (ข้อ 11.4) -->
+        <div class="p-6 pb-0 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+            <h3 class="text-lg text-white flex items-center gap-2">
+                <i class="fa-solid fa-shield-halved text-[#FFE169]"></i> บทบาททั้งหมด
+                <span id="roles-count-badge"
+                    class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#4D4D4D]/60 text-white">0 บทบาท</span>
+            </h3>
+            <div class="flex flex-wrap items-center gap-2.5 w-full lg:w-auto">
+                <div class="relative group w-full sm:w-72">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <i class="fa-solid fa-search text-white group-focus-within:text-[#FFE169] transition-colors"></i>
                     </div>
+                    <label for="roles-search" class="sr-only">ค้นหาบทบาทหรือสิทธิ์</label>
+                    <input id="roles-search" type="text" autocomplete="off"
+                        placeholder="ค้นหาชื่อบทบาท / ชื่อสิทธิ์..."
+                        class="bg-[#4D4D4D]/40 border border-[#3F3F46] rounded-[0.5rem] text-sm pl-10 pr-4 py-2 w-full text-white focus:outline-none focus:border-[#FFE169] focus:ring-1 focus:ring-[#FFE169] transition-all placeholder-white">
+                </div>
+                <button id="btn-refresh-roles" type="button"
+                    class="px-3 py-2 bg-[#4D4D4D]/40 cursor-pointer text-white flex items-center justify-center gap-1.5 rounded-[0.5rem] text-sm hover:bg-[#5C5C5C] transition-colors w-full sm:w-auto">
+                    <i class="fa-solid fa-rotate"></i> รีเฟรช
+                </button>
+            </div>
+        </div>
 
-                    <div id="roles-empty"
-                        class="hidden text-center py-20 bg-canvas-elevated rounded-lg border border-dashed border-hairline">
-                        <div
-                            class="w-20 h-20 rounded-full bg-surface-chip flex items-center justify-center text-body-muted mx-auto mb-6">
-                            <i class="fa-solid fa-shield-halved text-3xl"></i>
-                        </div>
-                        <h4 class="text-ink text-lg font-semibold">ยังไม่มีข้อมูลระดับสิทธิ์</h4>
-                        <p class="text-body-muted mt-2 max-w-xs mx-auto">คุณสามารถเพิ่มบทบาทพนักงานใหม่ เช่น "แคชเชียร์"
-                            หรือ "พนักงานสต็อก" ได้ที่นี่</p>
-                    </div>
+        <!-- 2b ชิปตัวกรอง + ตัวนับผลลัพธ์ (ข้อ 11.5) -->
+        <div class="px-6 py-4">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div id="roles-active-filters" class="flex flex-wrap gap-2"></div>
+                <div id="roles-result-count" class="text-xs text-white font-medium"></div>
+            </div>
+        </div>
+
+        <!-- 2c กริดการ์ดบทบาท — เนื้อในเขียนจาก js/page-roles.js -->
+        <div id="roles-grid" class="px-6 pb-6 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4"></div>
+    </div>
 </div>

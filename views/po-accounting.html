@@ -1,423 +1,433 @@
 <div id="view-report-arrival">
-    <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-        <div>
-            <h3 class="text-2xl font-bold text-ink flex items-center gap-3">
-                <div class="w-12 h-12 rounded-lg bg-surface-chip flex items-center justify-center">
-                    <i class="fa-solid fa-truck-ramp-box text-ink text-xl"></i>
-                </div>
-                แจ้งของถึงสาขา (Report Arrival)
+    <!-- [1] หัวหน้า — ปุ่มขวาเปิดฟอร์มแจ้งสินค้านอกระบบ PO (เดิมเป็น accordion ท้ายหน้า) -->
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div class="flex items-center gap-4">
+            <i class="bi bi-truck-front text-white w-5 text-2xl text-center"></i>
+            <h3 class="text-2xl text-white">แจ้งของถึงสาขา</h3>
+        </div>
+        <button id="btn-open-nonpo-modal" type="button"
+            class="px-4 py-2.5 bg-[#4D4D4D]/60 hover:bg-[#5C5C5C] cursor-pointer text-white flex items-center gap-2 rounded-[0.5rem] text-sm transition-colors w-fit">
+            <i class="fa-regular fa-bell"></i> แจ้งเตือนสินค้านอกระบบ PO (กรณีพิเศษ)
+        </button>
+    </div>
+
+    <!-- [2] การ์ดพาเนลใบเดียว — หัวข้อ + แถบควบคุม + ตาราง + แบ่งหน้า -->
+    <div class="bg-[#4D4D4D]/40 rounded-2xl shadow-lg overflow-hidden backdrop-blur-sm">
+        <div class="p-6 pb-0 flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4">
+            <h3 class="text-lg text-white flex items-center gap-2 shrink-0">
+                <i class="fa-solid fa-clipboard-list text-[#FFE169]"></i>
+                ใบสั่งซื้อรอแจ้งของถึงสาขา <span class="text-sm text-white/70">(Pending Arrivals)</span>
             </h3>
-            <p class="text-sm text-body-muted mt-2">แจ้งยืนยันสินค้าสั่งซื้อ (PO) ส่งถึงร้าน
-                หรือรายงานสินค้านอกระบบเตรียมนำเข้า</p>
-        </div>
-    </div>
-
-    <!-- Tabs Navigation -->
-    <div class="flex border-b border-hairline pb-px gap-2">
-        <button id="tab-arrival-pending"
-            class="px-6 py-3.5 border-b-2 border-primary text-primary text-sm font-bold flex items-center gap-2 transition-all duration-200 focus:outline-none">
-            <i class="fa-solid fa-truck-fast"></i> อยู่ระหว่างจัดส่ง
-            <span id="badge-arrival-pending-count"
-                class="px-2.5 py-0.5 rounded-pill text-xs font-bold bg-primary/10 text-primary border border-primary/20">0</span>
-        </button>
-        <button id="tab-arrival-completed"
-            class="px-6 py-3.5 border-b-2 border-transparent text-body-muted hover:text-ink text-sm font-semibold flex items-center gap-2 transition-all duration-200 focus:outline-none">
-            <i class="fa-solid fa-circle-check"></i> ดำเนินการสำเร็จแล้ว
-            <span id="badge-arrival-completed-count"
-                class="px-2.5 py-0.5 rounded-pill text-xs font-bold bg-surface-chip text-body-muted border border-hairline">0</span>
-        </button>
-    </div>
-
-    <!-- Section: Pending Arrivals -->
-    <div id="section-arrival-pending" class="space-y-4 animate-fade-in">
-        <div class="bg-canvas-elevated rounded-lg border border-hairline p-6 space-y-4">
-            <div class="flex justify-between items-center">
-                <h4 class="text-base font-bold text-ink flex items-center gap-2">
-                    <i class="fa-solid fa-hourglass-half text-amber-400"></i> ใบสั่งซื้อรอแจ้งของถึงสาขา
-                    (Pending Arrivals)
-                </h4>
-                <button id="btn-refresh-arrival-po"
-                    class="px-3 py-1.5 bg-surface-chip border border-hairline text-body-muted rounded-md hover:bg-surface-tile-2 hover:text-ink transition-all text-xs font-semibold flex items-center gap-1.5 active:scale-95">
-                    <i class="fa-solid fa-rotate text-body-muted"></i> รีเฟรชรายการ
-                </button>
-            </div>
-            <div class="overflow-x-auto bg-surface-tile-3 rounded-md border border-hairline">
-                <table class="w-full text-left border-collapse">
-                    <thead class="text-body-muted text-xs uppercase tracking-wider border-b border-hairline">
-                        <tr>
-                            <th class="px-4 py-4 md:px-6 font-bold whitespace-nowrap">เลขที่ PO</th>
-                            <th class="px-4 py-4 md:px-6 font-bold whitespace-nowrap">วันที่สร้าง</th>
-                            <th class="px-4 py-4 md:px-6 font-bold whitespace-nowrap">Supplier</th>
-                            <th class="px-4 py-4 md:px-6 font-bold whitespace-nowrap">รายการสินค้า</th>
-                            <th class="px-4 py-4 md:px-6 font-bold text-center whitespace-nowrap">สถานะ
-                            </th>
-                            <th class="px-4 py-4 md:px-6 font-bold text-right whitespace-nowrap">จัดการ
-                            </th>
-                        </tr>
-                    </thead>
-                    <tbody id="table-body-arrival-po" class="divide-y divide-hairline">
-                        <tr>
-                            <td colspan="6" class="text-center py-8 text-body-muted text-sm">
-                                <i class="fa-solid fa-spinner fa-spin mr-2 text-body-muted"></i>
-                                กำลังโหลดข้อมูล...
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
+            <div class="flex flex-wrap items-center gap-2.5 w-full xl:w-auto">
+                <div class="relative group w-full sm:w-48">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <i class="fa-solid fa-search text-white group-focus-within:text-[#FFE169] transition-colors"></i>
+                    </div>
+                    <label for="arrival-search" class="sr-only">ค้นหาใบสั่งซื้อ</label>
+                    <input id="arrival-search" type="text" autocomplete="off" placeholder="ค้นหา..."
+                        class="bg-[#4D4D4D]/40 border border-[#3F3F46] rounded-[0.5rem] text-sm pl-10 pr-4 py-2 w-full text-white focus:outline-none focus:border-[#FFE169] focus:ring-1 focus:ring-[#FFE169] transition-all placeholder-white">
+                </div>
+                <label for="arrival-filter-status" class="sr-only">กรองตามสถานะ</label>
+                <select id="arrival-filter-status"
+                    class="bg-[#4D4D4D]/40 cursor-pointer text-sm rounded-[0.5rem] px-3 py-2 text-white focus:outline-none focus:ring-1 focus:ring-[#FFE169] w-full sm:w-auto [&>option]:bg-[#4D4D4D] [&>option:checked]:bg-[#FFE169] [&>option:checked]:text-[#333333]">
+                    <option value="">สถานะทั้งหมด</option>
+                </select>
+                <label for="arrival-filter-branch" class="sr-only">กรองตามสาขา</label>
+                <select id="arrival-filter-branch"
+                    class="bg-[#4D4D4D]/40 cursor-pointer text-sm rounded-[0.5rem] px-3 py-2 text-white focus:outline-none focus:ring-1 focus:ring-[#FFE169] w-full sm:w-auto [&>option]:bg-[#4D4D4D] [&>option:checked]:bg-[#FFE169] [&>option:checked]:text-[#333333]">
+                    <option value="">เลือกสาขา</option>
+                </select>
+                <label for="arrival-filter-start" class="sr-only">วันที่เริ่มต้น</label>
+                <input type="date" id="arrival-filter-start" aria-label="วันที่เริ่มต้น"
+                    class="bg-[#4D4D4D]/40 border border-[#3F3F46] rounded-[0.5rem] text-sm px-3 py-2 text-white focus:outline-none focus:border-[#FFE169] focus:ring-1 focus:ring-[#FFE169] [color-scheme:dark] w-full sm:w-auto">
+                <label for="arrival-filter-end" class="sr-only">วันที่สิ้นสุด</label>
+                <input type="date" id="arrival-filter-end" aria-label="วันที่สิ้นสุด"
+                    class="bg-[#4D4D4D]/40 border border-[#3F3F46] rounded-[0.5rem] text-sm px-3 py-2 text-white focus:outline-none focus:border-[#FFE169] focus:ring-1 focus:ring-[#FFE169] [color-scheme:dark] w-full sm:w-auto">
             </div>
         </div>
-    </div>
 
-    <!-- Section: Completed Arrivals -->
-    <div id="section-arrival-completed" class="hidden space-y-4 animate-fade-in">
-        <div class="bg-canvas-elevated rounded-lg border border-hairline p-6 space-y-4">
-            <div class="flex justify-between items-center">
-                <h4 class="text-base font-bold text-ink flex items-center gap-2">
-                    <i class="fa-solid fa-circle-check text-emerald-400"></i>
-                    ใบสั่งซื้อที่ดำเนินการเสร็จสิ้นแล้ว (Completed Arrivals)
-                </h4>
-                <span
-                    class="text-xs text-body-muted bg-surface-chip px-3 py-1 rounded-pill border border-hairline">ประวัติการสแกนรับสินค้าสาขา</span>
-            </div>
-            <div class="overflow-x-auto bg-surface-tile-3 rounded-md border border-hairline">
-                <table class="w-full text-left border-collapse">
-                    <thead class="text-body-muted text-xs uppercase tracking-wider border-b border-hairline">
-                        <tr>
-                            <th class="px-4 py-4 md:px-6 font-bold whitespace-nowrap">เลขที่ PO</th>
-                            <th class="px-4 py-4 md:px-6 font-bold whitespace-nowrap">วันที่อัปเดต</th>
-                            <th class="px-4 py-4 md:px-6 font-bold whitespace-nowrap">Supplier</th>
-                            <th class="px-4 py-4 md:px-6 font-bold whitespace-nowrap">รายการสินค้า</th>
-                            <th class="px-4 py-4 md:px-6 font-bold text-center whitespace-nowrap">สถานะ
-                            </th>
-                            <th class="px-4 py-4 md:px-6 font-bold text-right whitespace-nowrap">
-                                รายละเอียด</th>
-                        </tr>
-                    </thead>
-                    <tbody id="table-body-arrival-completed-po" class="divide-y divide-hairline">
-                        <tr>
-                            <td colspan="6" class="text-center py-8 text-body-muted text-sm">
-                                ไม่มีใบสั่งซื้อที่ดำเนินการเสร็จสมบูรณ์
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
+        <!-- ชิปตัวกรอง + ตัวนับผลลัพธ์ (DESIGN.md ข้อ 11.5) -->
+        <div class="px-6 py-4">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div id="arrival-active-filters" class="flex flex-wrap gap-2"></div>
+                <div id="arrival-result-count" class="text-xs text-white font-medium"></div>
             </div>
         </div>
+
+        <!-- ตารางเดียวรวมทุกสถานะ (ข้อ 11.6) -->
+        <div class="overflow-x-auto" tabindex="0">
+            <table class="w-full text-left text-sm whitespace-nowrap border-collapse">
+                <thead class="bg-[#4D4D4D]/40 text-white">
+                    <tr>
+                        <th class="px-6 py-4 font-semibold text-[15px]">เลขที่ PO</th>
+                        <th class="px-6 py-4 font-semibold text-[15px]">Supplier</th>
+                        <th class="px-6 py-4 font-semibold text-[15px] w-full">รายการสินค้า</th>
+                        <th class="px-6 py-4 font-semibold text-[15px]">วันที่สร้าง</th>
+                        <th class="px-6 py-4 font-semibold text-[15px]">สถานะ</th>
+                        <th class="px-6 py-4 font-semibold text-[15px] text-right">จัดการ</th>
+                    </tr>
+                </thead>
+                <tbody id="table-body-arrival-po" class="divide-y divide-[#464646]"></tbody>
+            </table>
+        </div>
+
+        <!-- แบ่งหน้า -->
+        <div id="arrival-pagination" class="px-6 py-5 flex items-center justify-center gap-2"></div>
     </div>
 
-    <!-- Legacy Report Form (Collapsible Accordion) -->
-    <div class="border-t border-hairline pt-6">
-        <details class="group bg-canvas-elevated rounded-lg border border-hairline overflow-hidden">
-            <summary
-                class="flex justify-between items-center px-6 py-4 cursor-pointer hover:bg-surface-chip/40 transition-colors select-none">
-                <h4 class="text-base font-bold text-body-muted flex items-center gap-2">
-                    <i class="fa-solid fa-clipboard text-body-muted"></i> แจ้งสินค้านอกระบบ PO
-                    (กรณีพิเศษ)
-                </h4>
-                <span class="text-body-muted group-open:rotate-180 transition-transform duration-300">
-                    <i class="fa-solid fa-chevron-down"></i>
-                </span>
-            </summary>
-            <div class="p-6 border-t border-hairline">
-                <div class="grid grid-cols-1 lg:grid-cols-5 gap-6">
-                    <!-- Left: Form -->
-                    <div class="lg:col-span-3 bg-surface-tile-2 rounded-lg border border-hairline p-6 space-y-5">
-                        <h4 class="text-base font-bold text-ink flex items-center gap-2">
-                            <i class="fa-solid fa-pen-to-square text-body-muted"></i>
-                            กรอกรายละเอียดสินค้าที่ถึง
-                        </h4>
+    <!-- [3] โมดัลแจ้งสินค้านอกระบบ PO (กรณีพิเศษ) — ข้อ 11.10 + กลุ่ม pill ข้อ 11.9 -->
+    <div id="modal-nonpo-arrival"
+        class="fixed inset-0 z-[70] flex items-center justify-center backdrop-blur-sm opacity-0 pointer-events-none transition-opacity duration-300 p-4">
+        <div tabindex="0"
+            class="modal-content relative w-[95%] xl:w-[1100px] max-h-[92vh] overflow-y-auto bg-[#18181B] rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.5)] border border-[#4D4D4D]">
+            <button aria-label="ปิด" id="btn-close-nonpo-modal" type="button"
+                class="absolute right-5 top-5 z-10 text-red-500 hover:text-red-400 transition-colors cursor-pointer">
+                <i class="fa-solid fa-xmark text-xl"></i>
+            </button>
 
-                        <div>
-                            <label class="text-sm font-medium text-body-muted mb-2 block">ชื่อสินค้า
-                                <span class="text-red-400">*</span></label>
-                            <select id="arrival-product-name"
-                                class="w-full px-4 py-3 rounded-sm bg-surface-chip border border-divider-soft text-ink focus:border-primary-focus focus:ring-1 focus:ring-primary-focus/40 focus:outline-none transition-all">
-                                <option value="">-- เลือกชื่อสินค้า --</option>
-                            </select>
-                        </div>
+            <div class="grid grid-cols-1 lg:grid-cols-5">
+                <!-- ซ้าย: ฟอร์ม (ข้อ 11.9) -->
+                <div class="lg:col-span-3 p-8 lg:border-r border-[#333333]">
+                    <h3 class="text-lg font-medium text-white flex items-center gap-2 mb-6">
+                        <i class="fa-solid fa-pen-to-square text-[#FFE169]"></i> แจ้งสินค้านอก PO
+                        <span class="text-sm text-white/70">(กรณีพิเศษ)</span>
+                    </h3>
 
-                        <div class="grid grid-cols-2 gap-4">
-                            <div>
-                                <label class="text-sm font-medium text-body-muted mb-2 block">ประเภทสินค้า</label>
-                                <select id="arrival-type-name"
-                                    class="w-full px-4 py-3 rounded-sm bg-surface-chip border border-divider-soft text-ink focus:border-primary-focus focus:ring-1 focus:ring-primary-focus/40 focus:outline-none transition-all">
-                                    <option value="">-- เลือกประเภทสินค้า --</option>
+                    <div id="arrival-edit-banner"
+                        class="hidden mb-5 px-4 py-2.5 rounded-xl bg-[#FF9F0A]/[0.12] border border-[#FF9F0A]/40 text-[#FF9F0A] text-xs flex items-center gap-2">
+                        <i class="fa-solid fa-pen-to-square"></i>
+                        กำลังแก้ไขรายการเดิม — เลือกค่าใหม่ได้ทุกช่อง แล้วกด "บันทึกการแก้ไข"
+                    </div>
+
+                    <div class="space-y-5 text-sm">
+                        <!-- ชื่อสินค้า (select) -->
+                        <div class="space-y-2">
+                            <label for="arrival-product-name" class="text-slate-200 font-medium text-xs block">
+                                ชื่อสินค้า <span class="text-red-500">*</span>
+                            </label>
+                            <div class="relative">
+                                <select id="arrival-product-name"
+                                    class="w-full appearance-none px-4 py-2.5 rounded-xl bg-[#27272A] border border-[#3F3F46] text-white focus:border-[#FFE169] focus:outline-none transition-all text-sm cursor-pointer">
+                                    <option value="">ระบุชื่อ</option>
                                 </select>
-                            </div>
-                            <div>
-                                <label class="text-sm font-medium text-body-muted mb-2 block">สภาพ</label>
-                                <select id="arrival-condition-name"
-                                    class="w-full px-4 py-3 rounded-sm bg-surface-chip border border-divider-soft text-ink focus:border-primary-focus focus:ring-1 focus:ring-primary-focus/40 focus:outline-none transition-all">
-                                    <option value="">-- เลือกสภาพ --</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label class="text-sm font-medium text-body-muted mb-2 block">สี</label>
-                                <select id="arrival-color-name"
-                                    class="w-full px-4 py-3 rounded-sm bg-surface-chip border border-divider-soft text-ink focus:border-primary-focus focus:ring-1 focus:ring-primary-focus/40 focus:outline-none transition-all">
-                                    <option value="">-- เลือกสี --</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label class="text-sm font-medium text-body-muted mb-2 block">ความจุ</label>
-                                <select id="arrival-capacity-name"
-                                    class="w-full px-4 py-3 rounded-sm bg-surface-chip border border-divider-soft text-ink focus:border-primary-focus focus:ring-1 focus:ring-primary-focus/40 focus:outline-none transition-all">
-                                    <option value="">-- เลือกความจุ --</option>
-                                </select>
+                                <div class="absolute right-4 top-[14px] pointer-events-none text-slate-400">
+                                    <i class="fa-solid fa-chevron-down text-xs"></i>
+                                </div>
                             </div>
                         </div>
 
-                        <div class="grid grid-cols-2 gap-4">
-                            <div>
-                                <label class="text-sm font-medium text-body-muted mb-2 block">Supplier /
-                                    แหล่งที่มา</label>
-                                <select id="arrival-supplier-name"
-                                    class="w-full px-4 py-3 rounded-sm bg-surface-chip border border-divider-soft text-ink focus:border-primary-focus focus:ring-1 focus:ring-primary-focus/40 focus:outline-none transition-all">
-                                    <option value="">-- เลือก Supplier --</option>
-                                </select>
+                        <!-- ประเภทสินค้า (pill) -->
+                        <div class="space-y-2 relative">
+                            <p id="lbl-arrival-type" class="text-slate-200 font-medium text-xs">ประเภทสินค้า</p>
+                            <select id="arrival-type-name" class="hidden"><option value=""></option></select>
+                            <div id="arrival-type-pills" role="group" aria-labelledby="lbl-arrival-type"
+                                class="flex items-center gap-2 overflow-x-auto hide-scrollbar pb-1 px-8"></div>
+                            <button aria-label="เลื่อนซ้าย" type="button" data-scroll="arrival-type-pills" data-dir="-1"
+                                class="arrival-pill-scroll absolute left-0 top-6 bottom-1 w-10 flex items-center justify-start bg-gradient-to-r from-[#18181B] via-[#18181B]/90 to-transparent pointer-events-none">
+                                <span class="w-5 h-5 bg-[#3F3F46] hover:bg-[#FFE169] rounded-full flex items-center justify-center pointer-events-auto cursor-pointer text-white hover:text-[#333333] transition-colors">
+                                    <i class="fa-solid fa-chevron-left text-[10px]"></i></span>
+                            </button>
+                            <button aria-label="เลื่อนขวา" type="button" data-scroll="arrival-type-pills" data-dir="1"
+                                class="arrival-pill-scroll absolute right-0 top-6 bottom-1 w-10 flex items-center justify-end bg-gradient-to-l from-[#18181B] via-[#18181B]/90 to-transparent pointer-events-none">
+                                <span class="w-5 h-5 bg-[#FFE169] rounded-full flex items-center justify-center pointer-events-auto cursor-pointer text-[#333333] transition-colors">
+                                    <i class="fa-solid fa-chevron-right text-[10px]"></i></span>
+                            </button>
+                        </div>
+
+                        <!-- สภาพ (pill) -->
+                        <div class="space-y-2 relative">
+                            <p id="lbl-arrival-condition" class="text-slate-200 font-medium text-xs">สภาพ</p>
+                            <select id="arrival-condition-name" class="hidden"><option value=""></option></select>
+                            <div id="arrival-condition-pills" role="group" aria-labelledby="lbl-arrival-condition"
+                                class="flex items-center gap-2 overflow-x-auto hide-scrollbar pb-1 px-8"></div>
+                            <button aria-label="เลื่อนซ้าย" type="button" data-scroll="arrival-condition-pills" data-dir="-1"
+                                class="arrival-pill-scroll absolute left-0 top-6 bottom-1 w-10 flex items-center justify-start bg-gradient-to-r from-[#18181B] via-[#18181B]/90 to-transparent pointer-events-none">
+                                <span class="w-5 h-5 bg-[#3F3F46] hover:bg-[#FFE169] rounded-full flex items-center justify-center pointer-events-auto cursor-pointer text-white hover:text-[#333333] transition-colors">
+                                    <i class="fa-solid fa-chevron-left text-[10px]"></i></span>
+                            </button>
+                            <button aria-label="เลื่อนขวา" type="button" data-scroll="arrival-condition-pills" data-dir="1"
+                                class="arrival-pill-scroll absolute right-0 top-6 bottom-1 w-10 flex items-center justify-end bg-gradient-to-l from-[#18181B] via-[#18181B]/90 to-transparent pointer-events-none">
+                                <span class="w-5 h-5 bg-[#FFE169] rounded-full flex items-center justify-center pointer-events-auto cursor-pointer text-[#333333] transition-colors">
+                                    <i class="fa-solid fa-chevron-right text-[10px]"></i></span>
+                            </button>
+                        </div>
+
+                        <!-- สี (swatch) -->
+                        <div class="space-y-2 relative">
+                            <p id="lbl-arrival-color" class="text-slate-200 font-medium text-xs">สี</p>
+                            <select id="arrival-color-name" class="hidden"><option value=""></option></select>
+                            <div id="arrival-color-swatches" role="group" aria-labelledby="lbl-arrival-color"
+                                class="flex items-center gap-3 overflow-x-auto hide-scrollbar py-1 px-8"></div>
+                            <button aria-label="เลื่อนซ้าย" type="button" data-scroll="arrival-color-swatches" data-dir="-1"
+                                class="arrival-pill-scroll absolute left-0 top-6 bottom-1 w-10 flex items-center justify-start bg-gradient-to-r from-[#18181B] via-[#18181B]/90 to-transparent pointer-events-none">
+                                <span class="w-5 h-5 bg-[#3F3F46] hover:bg-[#FFE169] rounded-full flex items-center justify-center pointer-events-auto cursor-pointer text-white hover:text-[#333333] transition-colors">
+                                    <i class="fa-solid fa-chevron-left text-[10px]"></i></span>
+                            </button>
+                            <button aria-label="เลื่อนขวา" type="button" data-scroll="arrival-color-swatches" data-dir="1"
+                                class="arrival-pill-scroll absolute right-0 top-6 bottom-1 w-10 flex items-center justify-end bg-gradient-to-l from-[#18181B] via-[#18181B]/90 to-transparent pointer-events-none">
+                                <span class="w-5 h-5 bg-[#FFE169] rounded-full flex items-center justify-center pointer-events-auto cursor-pointer text-[#333333] transition-colors">
+                                    <i class="fa-solid fa-chevron-right text-[10px]"></i></span>
+                            </button>
+                        </div>
+
+                        <!-- ความจุ (pill) -->
+                        <div class="space-y-2 relative">
+                            <p id="lbl-arrival-capacity" class="text-slate-200 font-medium text-xs">ความจุ</p>
+                            <select id="arrival-capacity-name" class="hidden"><option value=""></option></select>
+                            <div id="arrival-capacity-pills" role="group" aria-labelledby="lbl-arrival-capacity"
+                                class="flex items-center gap-2 overflow-x-auto hide-scrollbar pb-1 px-8"></div>
+                            <button aria-label="เลื่อนซ้าย" type="button" data-scroll="arrival-capacity-pills" data-dir="-1"
+                                class="arrival-pill-scroll absolute left-0 top-6 bottom-1 w-10 flex items-center justify-start bg-gradient-to-r from-[#18181B] via-[#18181B]/90 to-transparent pointer-events-none">
+                                <span class="w-5 h-5 bg-[#3F3F46] hover:bg-[#FFE169] rounded-full flex items-center justify-center pointer-events-auto cursor-pointer text-white hover:text-[#333333] transition-colors">
+                                    <i class="fa-solid fa-chevron-left text-[10px]"></i></span>
+                            </button>
+                            <button aria-label="เลื่อนขวา" type="button" data-scroll="arrival-capacity-pills" data-dir="1"
+                                class="arrival-pill-scroll absolute right-0 top-6 bottom-1 w-10 flex items-center justify-end bg-gradient-to-l from-[#18181B] via-[#18181B]/90 to-transparent pointer-events-none">
+                                <span class="w-5 h-5 bg-[#FFE169] rounded-full flex items-center justify-center pointer-events-auto cursor-pointer text-[#333333] transition-colors">
+                                    <i class="fa-solid fa-chevron-right text-[10px]"></i></span>
+                            </button>
+                        </div>
+
+                        <!-- Supplier (dropdown) + หน่วยนับ (pill) -->
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                            <div class="space-y-2">
+                                <label for="arrival-supplier-name" class="text-slate-200 font-medium text-xs block">Supplier / แหล่งที่มา</label>
+                                <div class="relative">
+                                    <select id="arrival-supplier-name"
+                                        class="w-full appearance-none px-4 py-2.5 rounded-xl bg-[#27272A] border border-[#3F3F46] text-white focus:border-[#FFE169] focus:outline-none transition-all text-sm cursor-pointer">
+                                        <option value="">เลือก Supplier</option>
+                                    </select>
+                                    <div class="absolute right-4 top-[14px] pointer-events-none text-slate-400">
+                                        <i class="fa-solid fa-chevron-down text-xs"></i>
+                                    </div>
+                                </div>
                             </div>
-                            <div>
-                                <label class="text-sm font-medium text-body-muted mb-2 block">หน่วยนับ</label>
-                                <select id="arrival-unit-name"
-                                    class="w-full px-4 py-3 rounded-sm bg-surface-chip border border-divider-soft text-ink focus:border-primary-focus focus:ring-1 focus:ring-primary-focus/40 focus:outline-none transition-all">
-                                    <option value="">-- เลือกหน่วยนับ --</option>
-                                </select>
+                            <div class="space-y-2">
+                                <p id="lbl-arrival-unit" class="text-slate-200 font-medium text-xs">หน่วยนับ</p>
+                                <select id="arrival-unit-name" class="hidden"><option value=""></option></select>
+                                <div id="arrival-unit-pills" role="group" aria-labelledby="lbl-arrival-unit" class="flex flex-wrap items-center gap-2 pb-1"></div>
                             </div>
                         </div>
 
-                        <div>
-                            <label class="text-sm font-medium text-body-muted mb-2 block flex items-center gap-2">
-                                <i class="fa-solid fa-barcode text-body-muted text-xs"></i>
+                        <!-- IMEI -->
+                        <div class="space-y-2">
+                            <label for="arrival-imeis" class="text-slate-200 font-medium text-xs block">
                                 เลข IMEI / Serial (สแกนหรือพิมพ์ทีละบรรทัด)
                             </label>
                             <div class="relative">
                                 <textarea id="arrival-imeis" rows="5"
-                                    placeholder="สแกนบาร์โค้ด IMEI ทีละเครื่อง&#10;350011234567890&#10;350011234567891"
-                                    class="w-full px-4 py-3 rounded-sm bg-surface-chip border border-divider-soft text-ink focus:border-primary-focus focus:ring-1 focus:ring-primary-focus/40 focus:outline-none transition-all placeholder-ink-muted-48 font-mono text-sm resize-none"></textarea>
+                                    class="w-full px-4 py-2.5 rounded-xl bg-[#27272A] border border-[#3F3F46] text-white focus:border-[#FFE169] focus:outline-none transition-all placeholder-slate-500 text-sm font-mono resize-none"></textarea>
                                 <span id="arrival-imei-count"
-                                    class="absolute bottom-3 right-4 text-xs text-body-muted font-mono">0
+                                    class="absolute right-3 bottom-3 text-[11px] text-white/70 font-medium pointer-events-none">0
                                     IMEI</span>
                             </div>
                         </div>
 
-                        <div>
-                            <label class="text-sm font-medium text-body-muted mb-2 block">หมายเหตุ</label>
-                            <input type="text" id="arrival-notes" placeholder="รายละเอียดเพิ่มเติม (ถ้ามี)"
-                                class="w-full px-4 py-3 rounded-sm bg-surface-chip border border-divider-soft text-ink focus:border-primary-focus focus:ring-1 focus:ring-primary-focus/40 focus:outline-none transition-all placeholder-ink-muted-48">
+                        <!-- หมายเหตุ -->
+                        <div class="space-y-2">
+                            <label for="arrival-notes" class="text-slate-200 font-medium text-xs block">หมายเหตุ</label>
+                            <input type="text" id="arrival-notes"
+                                class="w-full px-4 py-2.5 rounded-xl bg-[#27272A] border border-[#3F3F46] text-white focus:border-[#FFE169] focus:outline-none transition-all placeholder-slate-500 text-sm">
                         </div>
 
-                        <button id="btn-submit-arrival"
-                            class="w-full py-4 bg-primary hover:bg-primary-pressed text-on-primary font-bold rounded-pill flex items-center justify-center gap-3 transition-all active:scale-95">
-                            <i class="fa-solid fa-paper-plane text-lg"></i>
-                            แจ้งสินค้าถึงสาขา
-                        </button>
-                    </div>
-
-                    <!-- Right: My Recent Reports -->
-                    <div class="lg:col-span-2 bg-surface-tile-2 rounded-lg border border-hairline p-6 space-y-4">
-                        <h4 class="text-base font-bold text-ink flex items-center gap-2">
-                            <i class="fa-solid fa-clock-rotate-left text-body-muted"></i>
-                            รายการแจ้งล่าสุดของฉัน
-                        </h4>
-                        <div id="my-arrival-reports" class="space-y-3 max-h-[600px] overflow-y-auto">
-                            <div class="text-center py-10 text-body-muted">
-                                <i class="fa-solid fa-inbox text-3xl mb-3"></i>
-                                <p class="text-sm">ยังไม่มีรายการแจ้ง</p>
-                            </div>
+                        <div class="flex justify-center items-center gap-3 pt-1">
+                            <button id="btn-cancel-arrival-edit" type="button"
+                                class="hidden px-6 py-2.5 rounded-xl bg-[#27272A] border border-[#3F3F46] text-slate-300 hover:border-[#FFE169] hover:text-white font-semibold text-sm transition-colors cursor-pointer">
+                                ยกเลิกการแก้ไข
+                            </button>
+                            <button id="btn-submit-arrival" type="button"
+                                class="px-6 py-2.5 rounded-xl bg-[#FFE169] hover:bg-[#E2B93C] text-[#333333] font-semibold text-sm transition-colors flex items-center justify-center gap-2 cursor-pointer">
+                                <span id="btn-submit-arrival-text">แจ้งสินค้าถึงสาขา</span>
+                            </button>
                         </div>
                     </div>
                 </div>
+
+                <!-- ขวา: รายการแจ้งล่าสุดของฉัน -->
+                <div class="lg:col-span-2 p-8 bg-[#141416]">
+                    <h3 class="text-lg font-medium text-white flex items-center gap-2 mb-4 pr-8">
+                        <i class="fa-solid fa-clipboard-list text-[#FFE169]"></i> รายการแจ้งล่าสุดของฉัน
+                    </h3>
+                    <div id="my-arrival-reports" class="space-y-4 max-h-[62vh] overflow-y-auto pr-1" tabindex="0"></div>
+                </div>
             </div>
-        </details>
+        </div>
     </div>
+
 </div>
 
 <div id="view-approve-import">
-    <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-        <div>
-            <h3 class="text-2xl font-bold text-ink flex items-center gap-3">
-                <div class="w-12 h-12 rounded-lg bg-surface-chip flex items-center justify-center">
-                    <i class="fa-solid fa-clipboard-check text-ink text-xl"></i>
-                </div>
-                ตรวจสอบนำเข้าสินค้า
-            </h3>
-            <p class="text-sm text-body-muted mt-2">ตรวจสอบรายการสินค้าที่พนักงานแจ้ง
-                และอนุมัตินำเข้าสต็อกระบบ</p>
+    <!-- [1] หัวหน้า — DESIGN.md ข้อ 11.2 (ตัวกรองสาขา/รีเฟรชใช้ร่วมกันทุกแท็บ จึงอยู่บนหัวหน้า) -->
+    <div class="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4">
+        <div class="flex items-center gap-4">
+            <i class="bi bi-check-square text-white w-5 text-2xl text-center"></i>
+            <h3 class="text-2xl text-white">ตรวจสอบนำเข้าสินค้า</h3>
         </div>
-        <div class="flex items-center gap-3">
-            <button aria-label="โหลดข้อมูลใหม่" id="btn-reload-import-list"
-                class="p-3 bg-surface-chip hover:bg-surface-tile-2 border border-hairline text-body-muted rounded-md transition-all">
-                <i class="fa-solid fa-arrows-rotate"></i>
-            </button>
-            <select id="approve-import-filter-branch"
-                class="px-4 py-2.5 rounded-md bg-surface-chip border border-divider-soft text-ink focus:border-primary-focus focus:outline-none text-sm">
+        <div class="flex flex-wrap items-center gap-2.5">
+            <select id="approve-import-filter-branch" aria-label="กรองตามสาขา"
+                class="bg-transparent border border-white/30 rounded-[10px] cursor-pointer text-sm px-3 py-2 text-white focus:outline-none focus:ring-1 focus:ring-[#FFE169] w-full sm:w-auto [&>option]:bg-[#4D4D4D] [&>option:checked]:bg-[#FFE169] [&>option:checked]:text-[#333333]">
                 <option value="">ทุกสาขา</option>
             </select>
+            <button id="btn-reload-import-list" type="button" aria-label="โหลดข้อมูลใหม่"
+                class="px-3 py-2 bg-[#4D4D4D]/40 cursor-pointer text-white flex items-center justify-center gap-1.5 rounded-[0.5rem] text-sm hover:bg-[#5C5C5C] transition-colors">
+                <i class="fa-solid fa-arrows-rotate"></i> โหลดใหม่
+            </button>
         </div>
     </div>
 
-    <!-- Main Tabs -->
-    <div class="flex gap-2 bg-canvas-elevated border border-hairline rounded-lg p-1.5">
-        <button id="tab-btn-approve-po"
-            class="flex-1 py-2.5 px-4 rounded-md text-sm font-bold transition-all bg-primary/20 text-primary border border-primary/30">
-            <i class="fa-solid fa-file-invoice mr-1.5 text-primary"></i> นำเข้าใบสั่งซื้อ (PO)
+    <!-- [2] แท็บ — ปุ่มทึบเหลืองของหน้านี้มีได้ปุ่มเดียว = แท็บที่เลือกอยู่ (DESIGN.md ข้อ 6) -->
+    <div class="flex flex-wrap items-center gap-2">
+        <button id="tab-btn-approve-po" type="button" aria-pressed="true"
+            class="px-4 py-2.5 rounded-xl text-sm font-bold border transition-colors flex items-center gap-2 cursor-pointer bg-[#FFE169] text-[#333333] border-[#FFE169]">
+            <i class="fa-solid fa-file-invoice"></i> นำเข้าใบสั่งซื้อ (PO)
             <span id="po-approve-pending-count"
-                class="ml-1.5 bg-surface-chip text-ink text-[10px] font-bold px-1.5 py-0.5 rounded-pill hidden">0</span>
+                class="hidden px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#333333]/20">0</span>
         </button>
-        <button id="tab-btn-approve-nonpo"
-            class="flex-1 py-2.5 px-4 rounded-md text-sm font-bold transition-all text-body-muted hover:text-ink hover:bg-surface-chip">
-            <i class="fa-solid fa-circle-exclamation mr-1.5"></i> สินค้านอกระบบ PO (พิเศษ)
+        <button id="tab-btn-approve-nonpo" type="button" aria-pressed="false"
+            class="px-4 py-2.5 rounded-xl text-sm font-bold border transition-colors flex items-center gap-2 cursor-pointer bg-[#27272A] text-slate-300 border-[#3F3F46] hover:border-[#FFE169] hover:text-white">
+            <i class="fa-solid fa-circle-exclamation"></i> สินค้านอกระบบ PO
             <span id="nonpo-approve-pending-count"
-                class="ml-1.5 bg-surface-chip text-ink text-[10px] font-bold px-1.5 py-0.5 rounded-pill hidden">0</span>
+                class="hidden px-2 py-0.5 rounded-full text-[10px] font-bold bg-orange-500/[0.12] text-orange-400">0</span>
         </button>
-        <button id="tab-btn-approve-history"
-            class="flex-1 py-2.5 px-4 rounded-md text-sm font-bold transition-all text-body-muted hover:text-ink hover:bg-surface-chip">
-            <i class="fa-solid fa-clock-rotate-left mr-1.5"></i> ประวัติการอนุมัติ
+        <button id="tab-btn-approve-history" type="button" aria-pressed="false"
+            class="px-4 py-2.5 rounded-xl text-sm font-bold border transition-colors flex items-center gap-2 cursor-pointer bg-[#27272A] text-slate-300 border-[#3F3F46] hover:border-[#FFE169] hover:text-white">
+            <i class="fa-solid fa-clock-rotate-left"></i> ประวัติการอนุมัติ
         </button>
     </div>
 
-    <!-- TAB CONTENT 1: PO Import Approval -->
-    <div id="tab-content-approve-po" class="space-y-6">
-        <div class="overflow-x-auto bg-canvas-elevated rounded-lg border border-hairline">
-            <table class="w-full text-left border-collapse">
-                <thead class="bg-surface-tile-3 text-body-muted text-xs uppercase tracking-wider">
-                    <tr>
-                        <th class="px-6 py-4 font-bold">เลขที่ PO</th>
-                        <th class="px-6 py-4 font-bold">วันที่สร้าง</th>
-                        <th class="px-6 py-4 font-bold">Supplier</th>
-                        <th class="px-6 py-4 font-bold">สาขา</th>
-                        <th class="px-6 py-4 font-bold text-center">สแกนเสร็จ</th>
-                        <th class="px-6 py-4 font-bold text-right">ยอดรวม</th>
-                        <th class="px-6 py-4 font-bold text-right">จัดการ</th>
-                    </tr>
-                </thead>
-                <tbody id="table-body-approve-po" class="divide-y divide-hairline">
-                    <tr>
-                        <td colspan="7" class="text-center py-8 text-body-muted text-sm">
-                            <i class="fa-solid fa-spinner fa-spin mr-2 text-body-muted"></i>
-                            กำลังโหลดข้อมูล...
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
+    <!-- ============================================================ -->
+    <!-- แท็บ 1: ใบสั่งซื้อ (PO) ที่สแกนแล้ว รออนุมัตินำเข้าคลัง        -->
+    <!-- ============================================================ -->
+    <div id="tab-content-approve-po">
+        <div class="bg-[#4D4D4D]/40 rounded-2xl shadow-lg overflow-hidden backdrop-blur-sm">
+            <div class="p-6 pb-0 flex flex-wrap items-center justify-between gap-3">
+                <h3 class="text-lg text-white flex items-center gap-2">
+                    <i class="fa-solid fa-file-invoice text-[#FFE169]"></i> ใบสั่งซื้อที่รออนุมัตินำเข้าคลัง
+                </h3>
+                <div id="approve-po-result-count" class="text-xs text-white font-medium"></div>
+            </div>
+            <div class="mt-4 overflow-x-auto" tabindex="0">
+                <table class="w-full text-left text-sm whitespace-nowrap border-collapse">
+                    <thead class="bg-[#4D4D4D]/40 text-white">
+                        <tr>
+                            <th class="px-6 py-4 font-semibold text-[15px] w-full">เลขที่ PO / วันที่สร้าง</th>
+                            <th class="px-6 py-4 font-semibold text-[15px]">ซัพพลายเออร์ / สาขา</th>
+                            <th class="px-6 py-4 font-semibold text-[15px] text-center">สแกนแล้ว</th>
+                            <th class="px-6 py-4 font-semibold text-[15px] text-right">ยอดรวม</th>
+                            <th class="px-6 py-4 font-semibold text-[15px] text-right">จัดการ</th>
+                        </tr>
+                    </thead>
+                    <tbody id="table-body-approve-po" class="divide-y divide-[#464646]"></tbody>
+                </table>
+            </div>
         </div>
     </div>
 
-    <!-- TAB CONTENT 2: Non-PO Import Approval (Legacy) -->
-    <div id="tab-content-approve-nonpo" class="hidden space-y-6">
-        <div class="overflow-x-auto bg-canvas-elevated rounded-lg border border-hairline">
-            <table class="w-full text-left border-collapse">
-                <thead class="bg-surface-tile-3 text-body-muted text-xs uppercase tracking-wider">
-                    <tr>
-                        <th class="px-6 py-4 font-bold">วันที่แจ้ง</th>
-                        <th class="px-6 py-4 font-bold">สาขา</th>
-                        <th class="px-6 py-4 font-bold">ผู้แจ้ง</th>
-                        <th class="px-6 py-4 font-bold">ชื่อสินค้า</th>
-                        <th class="px-6 py-4 font-bold text-center">จำนวน IMEI</th>
-                        <th class="px-6 py-4 font-bold">หมายเหตุ</th>
-                        <th class="px-6 py-4 font-bold text-right">จัดการ</th>
-                    </tr>
-                </thead>
-                <tbody id="approve-import-table-body" class="divide-y divide-hairline">
-                    <tr>
-                        <td colspan="7" class="text-center py-8 text-body-muted text-sm">
-                            ไม่มีรายการรออนุมัติ
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
+    <!-- ============================================================ -->
+    <!-- แท็บ 2: สินค้านอกระบบ PO (แจ้งนำเข้าพิเศษ)                     -->
+    <!-- ============================================================ -->
+    <div id="tab-content-approve-nonpo" class="hidden">
+        <div class="bg-[#4D4D4D]/40 rounded-2xl shadow-lg overflow-hidden backdrop-blur-sm">
+            <div class="p-6 pb-0 flex flex-wrap items-center justify-between gap-3">
+                <h3 class="text-lg text-white flex items-center gap-2">
+                    <i class="fa-solid fa-circle-exclamation text-[#FFE169]"></i> สินค้านอกระบบ PO ที่รออนุมัติ
+                </h3>
+                <div id="approve-nonpo-result-count" class="text-xs text-white font-medium"></div>
+            </div>
+            <div class="mt-4 overflow-x-auto" tabindex="0">
+                <table class="w-full text-left text-sm whitespace-nowrap border-collapse">
+                    <thead class="bg-[#4D4D4D]/40 text-white">
+                        <tr>
+                            <th class="px-6 py-4 font-semibold text-[15px] w-full">ชื่อสินค้า</th>
+                            <th class="px-6 py-4 font-semibold text-[15px]">สาขา / ผู้แจ้ง</th>
+                            <th class="px-6 py-4 font-semibold text-[15px]">วันที่แจ้ง</th>
+                            <th class="px-6 py-4 font-semibold text-[15px] text-center">IMEI</th>
+                            <th class="px-6 py-4 font-semibold text-[15px]">หมายเหตุ</th>
+                            <th class="px-6 py-4 font-semibold text-[15px] text-right">จัดการ</th>
+                        </tr>
+                    </thead>
+                    <tbody id="approve-import-table-body" class="divide-y divide-[#464646]"></tbody>
+                </table>
+            </div>
         </div>
     </div>
 
-    <!-- TAB CONTENT 3: Approval History -->
+    <!-- ============================================================ -->
+    <!-- แท็บ 3: ประวัติการอนุมัติ (3 การ์ด)                            -->
+    <!-- ============================================================ -->
     <div id="tab-content-approve-history" class="hidden space-y-8">
-        <!-- History Section 1: PO Imports -->
-        <div class="space-y-4">
-            <h4 class="text-base font-bold text-ink flex items-center gap-2">
-                <i class="fa-solid fa-file-invoice text-body-muted"></i> ประวัติการอนุมัติใบสั่งซื้อ
-                (PO)
-            </h4>
-            <div class="overflow-x-auto bg-canvas-elevated rounded-lg border border-hairline">
-                <table class="w-full text-left border-collapse">
-                    <thead class="bg-surface-tile-3 text-body-muted text-xs uppercase tracking-wider">
+        <!-- 3a ประวัติอนุมัติ PO -->
+        <div class="bg-[#4D4D4D]/40 rounded-2xl shadow-lg overflow-hidden backdrop-blur-sm">
+            <div class="p-6 pb-0 flex flex-wrap items-center justify-between gap-3">
+                <h3 class="text-lg text-white flex items-center gap-2">
+                    <i class="fa-solid fa-file-invoice text-[#FFE169]"></i> ประวัติการอนุมัติใบสั่งซื้อ (PO)
+                </h3>
+                <div id="history-po-result-count" class="text-xs text-white font-medium"></div>
+            </div>
+            <div class="mt-4 overflow-x-auto" tabindex="0">
+                <table class="w-full text-left text-sm whitespace-nowrap border-collapse">
+                    <thead class="bg-[#4D4D4D]/40 text-white">
                         <tr>
-                            <th class="px-6 py-4 font-bold">เลขที่ PO</th>
-                            <th class="px-6 py-4 font-bold">วันที่อนุมัติ</th>
-                            <th class="px-6 py-4 font-bold">Supplier</th>
-                            <th class="px-6 py-4 font-bold">สาขา</th>
-                            <th class="px-6 py-4 font-bold text-center">จำนวนนำเข้า</th>
-                            <th class="px-6 py-4 font-bold text-right">ยอดรวม</th>
-                            <th class="px-6 py-4 font-bold">ผู้อนุมัติ/ตรวจรับ</th>
+                            <th class="px-6 py-4 font-semibold text-[15px] w-full">เลขที่ PO / วันที่อนุมัติ</th>
+                            <th class="px-6 py-4 font-semibold text-[15px]">ซัพพลายเออร์ / สาขา</th>
+                            <th class="px-6 py-4 font-semibold text-[15px] text-center">นำเข้า</th>
+                            <th class="px-6 py-4 font-semibold text-[15px] text-right">ยอดรวม</th>
+                            <th class="px-6 py-4 font-semibold text-[15px]">ผู้อนุมัติ</th>
                         </tr>
                     </thead>
-                    <tbody id="table-body-history-po" class="divide-y divide-hairline">
-                        <tr>
-                            <td colspan="7" class="text-center py-8 text-body-muted text-sm">
-                                ไม่มีประวัติการอนุมัติ PO
-                            </td>
-                        </tr>
-                    </tbody>
+                    <tbody id="table-body-history-po" class="divide-y divide-[#464646]"></tbody>
                 </table>
             </div>
         </div>
 
-        <!-- History Section 2: Non-PO Imports -->
-        <div class="space-y-4">
-            <h4 class="text-base font-bold text-ink flex items-center gap-2">
-                <i class="fa-solid fa-circle-exclamation text-body-muted"></i>
-                ประวัติการอนุมัติสินค้านอกระบบ PO (พิเศษ)
-            </h4>
-            <div class="overflow-x-auto bg-canvas-elevated rounded-lg border border-hairline">
-                <table class="w-full text-left border-collapse">
-                    <thead class="bg-surface-tile-3 text-body-muted text-xs uppercase tracking-wider">
+        <!-- 3b ประวัติอนุมัติสินค้านอกระบบ PO -->
+        <div class="bg-[#4D4D4D]/40 rounded-2xl shadow-lg overflow-hidden backdrop-blur-sm">
+            <div class="p-6 pb-0 flex flex-wrap items-center justify-between gap-3">
+                <h3 class="text-lg text-white flex items-center gap-2">
+                    <i class="fa-solid fa-circle-exclamation text-[#FFE169]"></i> ประวัติการอนุมัติสินค้านอกระบบ PO
+                </h3>
+                <div id="history-nonpo-result-count" class="text-xs text-white font-medium"></div>
+            </div>
+            <div class="mt-4 overflow-x-auto" tabindex="0">
+                <table class="w-full text-left text-sm whitespace-nowrap border-collapse">
+                    <thead class="bg-[#4D4D4D]/40 text-white">
                         <tr>
-                            <th class="px-6 py-4 font-bold">วันที่อนุมัติ</th>
-                            <th class="px-6 py-4 font-bold">สาขา</th>
-                            <th class="px-6 py-4 font-bold">ผู้แจ้ง</th>
-                            <th class="px-6 py-4 font-bold">ชื่อสินค้า</th>
-                            <th class="px-6 py-4 font-bold text-center">จำนวน IMEI</th>
-                            <th class="px-6 py-4 font-bold">ผู้อนุมัติ</th>
-                            <th class="px-6 py-4 font-bold">หมายเหตุ</th>
+                            <th class="px-6 py-4 font-semibold text-[15px] w-full">ชื่อสินค้า</th>
+                            <th class="px-6 py-4 font-semibold text-[15px]">สาขา / ผู้แจ้ง</th>
+                            <th class="px-6 py-4 font-semibold text-[15px]">วันที่อนุมัติ</th>
+                            <th class="px-6 py-4 font-semibold text-[15px] text-center">IMEI</th>
+                            <th class="px-6 py-4 font-semibold text-[15px]">ผู้อนุมัติ</th>
+                            <th class="px-6 py-4 font-semibold text-[15px]">หมายเหตุ</th>
                         </tr>
                     </thead>
-                    <tbody id="table-body-history-nonpo" class="divide-y divide-hairline">
-                        <tr>
-                            <td colspan="7" class="text-center py-8 text-body-muted text-sm">
-                                ไม่มีประวัติการอนุมัติสินค้านอกระบบ PO
-                            </td>
-                        </tr>
-                    </tbody>
+                    <tbody id="table-body-history-nonpo" class="divide-y divide-[#464646]"></tbody>
                 </table>
             </div>
         </div>
 
-        <!-- History Section 3: Direct Manual/Excel Imports -->
-        <div class="space-y-4 pt-4">
-            <h4 class="text-base font-bold text-ink flex items-center gap-2">
-                <i class="fa-solid fa-clock-rotate-left text-body-muted"></i>
-                ประวัติการนำเข้าคลังสินค้าโดยตรง (กรณีไม่มีใบสั่งซื้อ / Excel)
-            </h4>
-            <div class="overflow-x-auto bg-canvas-elevated rounded-lg border border-hairline">
-                <table class="w-full text-left border-collapse">
-                    <thead class="bg-surface-tile-3 text-body-muted text-xs uppercase tracking-wider">
+        <!-- 3c ประวัตินำเข้าคลังโดยตรง (ไม่มีใบสั่งซื้อ / Excel) -->
+        <div class="bg-[#4D4D4D]/40 rounded-2xl shadow-lg overflow-hidden backdrop-blur-sm">
+            <div class="p-6 pb-0 flex flex-wrap items-center justify-between gap-3">
+                <h3 class="text-lg text-white flex items-center gap-2">
+                    <i class="fa-solid fa-clock-rotate-left text-[#FFE169]"></i> ประวัติการนำเข้าคลังโดยตรง
+                    <span class="text-sm text-white/70">(ไม่มีใบสั่งซื้อ / Excel)</span>
+                </h3>
+                <div id="history-direct-result-count" class="text-xs text-white font-medium"></div>
+            </div>
+            <div class="mt-4 overflow-x-auto" tabindex="0">
+                <table class="w-full text-left text-sm whitespace-nowrap border-collapse">
+                    <thead class="bg-[#4D4D4D]/40 text-white">
                         <tr>
-                            <th class="px-6 py-4 font-bold">วันที่นำเข้า</th>
-                            <th class="px-6 py-4 font-bold">ประเภท</th>
-                            <th class="px-6 py-4 font-bold">สาขา</th>
-                            <th class="px-6 py-4 font-bold">ชื่อสินค้า</th>
-                            <th class="px-6 py-4 font-bold">รหัสสินค้า</th>
-                            <th class="px-6 py-4 font-bold text-center">จำนวน</th>
-                            <th class="px-6 py-4 font-bold">ผู้นำเข้า</th>
-                            <th class="px-6 py-4 font-bold">รายละเอียด IMEI</th>
+                            <th class="px-6 py-4 font-semibold text-[15px] w-full">ชื่อสินค้า / รหัส</th>
+                            <th class="px-6 py-4 font-semibold text-[15px]">ประเภท</th>
+                            <th class="px-6 py-4 font-semibold text-[15px]">สาขา</th>
+                            <th class="px-6 py-4 font-semibold text-[15px]">วันที่นำเข้า</th>
+                            <th class="px-6 py-4 font-semibold text-[15px] text-center">จำนวน</th>
+                            <th class="px-6 py-4 font-semibold text-[15px]">ผู้นำเข้า</th>
+                            <th class="px-6 py-4 font-semibold text-[15px]">IMEI</th>
                         </tr>
                     </thead>
-                    <tbody id="table-body-history-direct-imports" class="divide-y divide-hairline">
-                        <tr>
-                            <td colspan="8" class="text-center py-8 text-body-muted text-sm">
-                                ไม่มีประวัติการนำเข้าคลังสินค้าโดยตรง
-                            </td>
-                        </tr>
-                    </tbody>
+                    <tbody id="table-body-history-direct-imports" class="divide-y divide-[#464646]"></tbody>
                 </table>
             </div>
         </div>
@@ -642,370 +652,330 @@
 </div>
 
 <div id="view-accounting">
-    <!-- Dynamic Header -->
-    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div>
-            <h3 class="text-2xl font-bold text-ink flex items-center gap-3">
-                <div class="w-10 h-10 rounded-md bg-surface-chip flex items-center justify-center">
-                    <i class="fa-solid fa-chart-line text-ink"></i>
+    <!-- [1] หัวหน้า + ตัวกรองช่วงเวลา — เดินตามหน้า #dashboard -->
+    <div class="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4">
+        <div class="flex items-center gap-4">
+            <i class="bi bi-cash-stack text-white w-5 text-2xl text-center"></i>
+            <h3 class="text-2xl text-white">ระบบบัญชีและการเงิน</h3>
+        </div>
+        <div class="flex flex-wrap items-center gap-2.5">
+            <label for="accounting-start-date" class="sr-only">วันที่เริ่มต้น</label>
+            <input type="date" id="accounting-start-date"
+                class="bg-transparent border border-white/30 rounded-[10px] text-sm px-3 py-2 text-white focus:outline-none focus:ring-1 focus:ring-[#FFE169] [color-scheme:dark]">
+            <label for="accounting-end-date" class="sr-only">วันที่สิ้นสุด</label>
+            <input type="date" id="accounting-end-date"
+                class="bg-transparent border border-white/30 rounded-[10px] text-sm px-3 py-2 text-white focus:outline-none focus:ring-1 focus:ring-[#FFE169] [color-scheme:dark]">
+            <button id="btn-refresh-accounting" type="button"
+                class="px-3 py-2 bg-[#4D4D4D]/40 cursor-pointer text-white flex items-center justify-center gap-1.5 rounded-[0.5rem] text-sm hover:bg-[#5C5C5C] transition-colors">
+                <i class="fa-solid fa-rotate"></i> รีเฟรช
+            </button>
+            <button id="btn-open-expense-modal" type="button"
+                class="px-4 py-2 bg-[#FFE169] hover:bg-[#E2B93C] text-[#333333] font-medium rounded-xl transition-all flex items-center gap-2 cursor-pointer">
+                <i class="fa-solid fa-plus"></i>
+                <p>บันทึกค่าใช้จ่าย</p>
+            </button>
+        </div>
+    </div>
+
+    <!-- [2] การ์ดตัวเลขหลัก 4 ใบ — รูปทรงเดียวกับ KPI ของ #dashboard -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+        <div class="bg-[#4D4D4D]/40 rounded-2xl shadow-lg backdrop-blur-sm p-5 flex items-start gap-4">
+            <div class="w-11 h-11 rounded-full flex items-center justify-center shrink-0"
+                style="color:#20D500;background-color:#20D5001F;border:1px solid #20D50059;">
+                <i class="fa-solid fa-arrow-down text-lg"></i>
+            </div>
+            <div class="min-w-0 flex-1">
+                <p class="text-xs text-white/70 truncate">รายรับรวม</p>
+                <p id="kpi-revenue" class="text-2xl font-semibold text-white font-mono mt-0.5 truncate">฿0.00</p>
+                <p id="kpi-revenue-sub" class="text-xs text-white/50 mt-1">ยอดขายและรายรับอื่น</p>
+            </div>
+        </div>
+        <div class="bg-[#4D4D4D]/40 rounded-2xl shadow-lg backdrop-blur-sm p-5 flex items-start gap-4">
+            <div class="w-11 h-11 rounded-full flex items-center justify-center shrink-0"
+                style="color:#FE0000;background-color:#FE00001F;border:1px solid #FE000059;">
+                <i class="fa-solid fa-arrow-up text-lg"></i>
+            </div>
+            <div class="min-w-0 flex-1">
+                <p class="text-xs text-white/70 truncate">รายจ่ายรวม</p>
+                <p id="kpi-expense" class="text-2xl font-semibold text-white font-mono mt-0.5 truncate">฿0.00</p>
+                <p id="kpi-expense-sub" class="text-xs text-white/50 mt-1">ค่าสินค้า (PO) และค่าใช้จ่ายทั่วไป</p>
+            </div>
+        </div>
+        <div class="bg-[#4D4D4D]/40 rounded-2xl shadow-lg backdrop-blur-sm p-5 flex items-start gap-4">
+            <div class="w-11 h-11 rounded-full flex items-center justify-center shrink-0"
+                style="color:#FFE169;background-color:#FFE1691F;border:1px solid #FFE16959;">
+                <i class="fa-solid fa-chart-line text-lg"></i>
+            </div>
+            <div class="min-w-0 flex-1">
+                <p class="text-xs text-white/70 truncate">กำไรสุทธิ</p>
+                <p id="kpi-profit" class="text-2xl font-semibold text-white font-mono mt-0.5 truncate">฿0.00</p>
+                <p id="kpi-profit-sub" class="text-xs text-white/50 mt-1">รายรับรวม หัก รายจ่ายรวม</p>
+            </div>
+        </div>
+        <div class="bg-[#4D4D4D]/40 rounded-2xl shadow-lg backdrop-blur-sm p-5 flex items-start gap-4">
+            <div class="w-11 h-11 rounded-full flex items-center justify-center shrink-0"
+                style="color:#22D3EE;background-color:#22D3EE1F;border:1px solid #22D3EE59;">
+                <i class="fa-solid fa-receipt text-lg"></i>
+            </div>
+            <div class="min-w-0 flex-1">
+                <p class="text-xs text-white/70 truncate">ภาษีค้างจ่าย (VAT 7%)</p>
+                <p id="kpi-vat" class="text-2xl font-semibold text-white font-mono mt-0.5 truncate">฿0.00</p>
+                <p id="kpi-vat-sub" class="text-xs text-white/50 mt-1">ภาษีขาย หัก ภาษีซื้อ</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- [3] โครงสร้างรายรับ-รายจ่าย + ภาษีมูลค่าเพิ่ม — ใช้ฟิลด์ที่ API ส่งมาอยู่แล้วแต่เดิมไม่ได้แสดง -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
+        <div class="lg:col-span-8 bg-[#4D4D4D]/40 rounded-2xl shadow-lg overflow-hidden backdrop-blur-sm">
+            <div class="p-6 pb-0 flex flex-wrap items-center justify-between gap-3">
+                <h3 class="text-lg text-white flex items-center gap-2">
+                    <i class="fa-solid fa-money-bill-transfer text-[#FFE169]"></i>
+                    โครงสร้างรายรับ - รายจ่าย
+                    <span id="acc-breakdown-period" class="text-sm text-white/70"></span>
+                </h3>
+                <div class="flex flex-wrap items-center gap-4 text-xs text-white">
+                    <span class="flex items-center gap-2">
+                        <span class="w-2.5 h-2.5 rounded-full bg-[#20D500] shrink-0"></span> รายรับ
+                    </span>
+                    <span class="flex items-center gap-2">
+                        <span class="w-2.5 h-2.5 rounded-full bg-[#FE0000] shrink-0"></span> รายจ่าย
+                    </span>
                 </div>
-                ระบบบัญชีและการเงิน (Accounting & Finance)
-            </h3>
-            <p class="text-body-muted mt-1">จัดการหนี้สินเจ้าหนี้ รายงานงบกำไร-ขาดทุน และบันทึกค่าใช้จ่าย
-            </p>
-        </div>
-        <!-- Date range filters and actions -->
-        <div class="flex flex-wrap items-center gap-3 w-full md:w-auto">
-            <div
-                class="flex items-center gap-2 bg-surface-chip border border-hairline rounded-md px-3 py-1.5 text-xs text-body-muted">
-                <span class="font-medium text-body-muted">เริ่ม:</span>
-                <input type="date" id="accounting-start-date"
-                    class="bg-transparent text-ink focus:outline-none border-none [color-scheme:dark]">
-                <span class="font-medium text-body-muted">ถึง:</span>
-                <input type="date" id="accounting-end-date"
-                    class="bg-transparent text-ink focus:outline-none border-none [color-scheme:dark]">
             </div>
-            <button id="btn-refresh-accounting"
-                class="px-4 py-2.5 bg-surface-chip border border-hairline hover:border-hairline text-ink rounded-md hover:bg-surface-tile-2 transition-colors flex items-center gap-1.5 text-sm font-medium">
-                <i class="fa-solid fa-rotate text-body-muted animate-spin-hover"></i> รีเฟรช
-            </button>
-            <button id="btn-open-expense-modal"
-                class="px-4 py-2.5 bg-primary hover:bg-primary-pressed text-on-primary rounded-md transition-colors flex items-center gap-1.5 text-sm font-bold">
-                <i class="fa-solid fa-plus-circle"></i> บันทึกค่าใช้จ่าย
-            </button>
+            <div id="acc-breakdown-body" class="p-6"></div>
+        </div>
+
+        <div class="lg:col-span-4 bg-[#4D4D4D]/40 rounded-2xl shadow-lg overflow-hidden backdrop-blur-sm">
+            <div class="p-6 pb-0">
+                <h3 class="text-lg text-white flex items-center gap-2">
+                    <i class="fa-solid fa-receipt text-[#FFE169]"></i> ภาษีมูลค่าเพิ่ม
+                </h3>
+            </div>
+            <div id="acc-vat-body" class="p-6"></div>
         </div>
     </div>
 
-    <!-- Summary KPI Cards -->
-    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div class="bg-canvas-elevated border border-hairline rounded-lg p-5 relative overflow-hidden group">
-            <div class="text-xs font-semibold text-body-muted flex items-center gap-1.5">
-                <span class="w-2 h-2 rounded-full bg-emerald-500"></span> รายรับรวม
-            </div>
-            <div id="kpi-revenue" class="text-xl md:text-2xl font-black text-ink mt-2 font-mono">฿0.00
-            </div>
-            <p class="text-[10px] text-ink-muted-48 mt-1">ยอดรวมขายสินค้าและรายรับอื่น</p>
-        </div>
-        <div class="bg-canvas-elevated border border-hairline rounded-lg p-5 relative overflow-hidden group">
-            <div class="text-xs font-semibold text-body-muted flex items-center gap-1.5">
-                <span class="w-2 h-2 rounded-full bg-rose-500"></span> รายจ่ายรวม
-            </div>
-            <div id="kpi-expense" class="text-xl md:text-2xl font-black text-ink mt-2 font-mono">฿0.00
-            </div>
-            <p class="text-[10px] text-ink-muted-48 mt-1">ค่าสินค้า (PO) และค่าใช้จ่ายทั่วไป</p>
-        </div>
-        <div class="bg-canvas-elevated border border-hairline rounded-lg p-5 relative overflow-hidden group">
-            <div class="text-xs font-semibold text-body-muted flex items-center gap-1.5">
-                <span class="w-2 h-2 rounded-full bg-ink-muted-48"></span> กำไรสุทธิ
-            </div>
-            <div id="kpi-profit" class="text-xl md:text-2xl font-black text-ink mt-2 font-mono">
-                ฿0.00</div>
-            <p class="text-[10px] text-ink-muted-48 mt-1">รายรับรวม หัก รายจ่ายรวม</p>
-        </div>
-        <div class="bg-canvas-elevated border border-hairline rounded-lg p-5 relative overflow-hidden group">
-            <div class="text-xs font-semibold text-body-muted flex items-center gap-1.5">
-                <span class="w-2 h-2 rounded-full bg-ink-muted-48"></span> ภาษีค้างจ่าย (VAT 7%)
-            </div>
-            <div id="kpi-vat" class="text-xl md:text-2xl font-black text-ink mt-2 font-mono">
-                ฿0.00</div>
-            <p class="text-[10px] text-ink-muted-48 mt-1">ภาษีขาย หัก ภาษีซื้อสะสม</p>
-        </div>
-    </div>
-
-    <!-- Tabs Selector -->
-    <div class="flex border-b border-hairline">
-        <button id="tab-accounting-ap"
-            class="px-6 py-3.5 border-b-2 border-primary text-primary text-sm font-bold flex items-center gap-2 transition-all duration-200 focus:outline-none">
-            <i class="fa-solid fa-hourglass-half"></i> บัญชีเจ้าหนี้ (AP Queue)
+    <!-- [4] แท็บ — ปุ่มทึบเหลืองของหน้านี้คือปุ่ม "บันทึกค่าใช้จ่าย" แท็บจึงใช้สูตรแท็บมาตรฐาน -->
+    <div class="flex flex-wrap items-center gap-2">
+        <button id="tab-accounting-ap" type="button" aria-pressed="true"
+            class="px-4 py-2.5 rounded-xl text-sm font-bold border transition-colors flex items-center gap-2 cursor-pointer bg-[#FFE169] text-[#333333] border-[#FFE169]">
+            <i class="fa-solid fa-hourglass-half"></i> บัญชีเจ้าหนี้ (AP)
+            <span id="badge-acc-ap" class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#333333]/20">0</span>
         </button>
-        <button id="tab-accounting-pl"
-            class="px-6 py-3.5 border-b-2 border-transparent text-body-muted hover:text-ink text-sm font-semibold flex items-center gap-2 transition-all duration-200 focus:outline-none">
-            <i class="fa-solid fa-file-invoice-dollar"></i> รายงานงบกำไร-ขาดทุน
+        <button id="tab-accounting-pl" type="button" aria-pressed="false"
+            class="px-4 py-2.5 rounded-xl text-sm font-bold border transition-colors flex items-center gap-2 cursor-pointer bg-[#27272A] text-slate-300 border-[#3F3F46] hover:border-[#FFE169] hover:text-white">
+            <i class="fa-solid fa-file-invoice-dollar"></i> รายการเดินบัญชี
+            <span id="badge-acc-pl"
+                class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#4D4D4D]/60 text-white">0</span>
         </button>
-        <button id="tab-accounting-ar"
-            class="px-6 py-3.5 border-b-2 border-transparent text-body-muted hover:text-ink text-sm font-semibold flex items-center gap-2 transition-all duration-200 focus:outline-none">
-            <i class="fa-solid fa-hand-holding-dollar"></i> บัญชีลูกหนี้ (AR Finance)
+        <button id="tab-accounting-ar" type="button" aria-pressed="false"
+            class="px-4 py-2.5 rounded-xl text-sm font-bold border transition-colors flex items-center gap-2 cursor-pointer bg-[#27272A] text-slate-300 border-[#3F3F46] hover:border-[#FFE169] hover:text-white">
+            <i class="fa-solid fa-hand-holding-dollar"></i> บัญชีลูกหนี้ (AR)
+            <span id="badge-acc-ar"
+                class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-orange-500/[0.12] text-orange-400">0</span>
         </button>
     </div>
 
-    <!-- TAB 1: บัญชีเจ้าหนี้ (AP Queue) -->
+    <!-- ============================ แท็บ 1: บัญชีเจ้าหนี้ (AP) ============================ -->
     <div id="section-accounting-ap" class="space-y-4">
-        <!-- Supplier Summary Cards -->
-        <div id="ap-summary-widgets" class="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <!-- Dynamic summary cards injected here -->
-        </div>
+        <div id="ap-summary-widgets" class="grid grid-cols-1 md:grid-cols-3 gap-4"></div>
 
-        <!-- AP Filter Controls -->
-        <div
-            class="flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 bg-canvas-elevated rounded-lg border border-hairline">
-            <div class="flex items-center gap-2">
-                <label class="text-sm font-semibold text-body-muted"><i
-                        class="fa-solid fa-filter text-body-muted text-xs mr-1"></i>กรองคู่ค้า/Supplier:</label>
-                <select id="filter-ap-supplier"
-                    class="px-3 py-1.5 rounded-md bg-surface-chip border border-divider-soft text-ink text-xs font-semibold focus:outline-none focus:border-primary-focus transition-colors">
-                    <option value="">ทั้งหมด</option>
-                </select>
-            </div>
-        </div>
-
-        <!-- AP Table Container -->
-        <div class="w-full overflow-x-auto bg-canvas-elevated rounded-lg border border-hairline">
-            <table class="w-full text-left border-collapse min-w-[700px]">
-                <thead class="bg-surface-tile-3 text-body-muted text-sm">
-                    <tr>
-                        <th class="px-4 py-4 md:px-6 font-bold whitespace-nowrap">เลขที่ PO</th>
-                        <th class="px-4 py-4 md:px-6 font-bold whitespace-nowrap">วันที่สร้าง</th>
-                        <th class="px-4 py-4 md:px-6 font-bold whitespace-nowrap">Supplier</th>
-                        <th class="px-4 py-4 md:px-6 font-bold text-right whitespace-nowrap">ยอดรวม
-                            (ทุน)</th>
-                        <th class="px-4 py-4 md:px-6 font-bold text-right whitespace-nowrap">ชำระแล้ว
-                        </th>
-                        <th class="px-4 py-4 md:px-6 font-bold text-right whitespace-nowrap">ส่วนลด</th>
-                        <th class="px-4 py-4 md:px-6 font-bold text-right whitespace-nowrap">ยอดค้างชำระ
-                        </th>
-                        <th class="px-4 py-4 md:px-6 font-bold text-center whitespace-nowrap">
-                            สถานะชำระเงิน</th>
-                        <th class="px-4 py-4 md:px-6 font-bold text-right whitespace-nowrap">ดำเนินการ
-                        </th>
-                    </tr>
-                </thead>
-                <tbody id="table-body-accounting-ap" class="divide-y divide-hairline">
-                    <!-- Dynamic AP entries -->
-                </tbody>
-            </table>
-        </div>
-    </div>
-
-    <!-- TAB 3: บัญชีลูกหนี้ (AR Finance Queue) -->
-    <div id="section-accounting-ar" class="hidden space-y-4">
-        <!-- Finance Partner Summary Cards -->
-        <div id="finance-summary-widgets" class="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <!-- Dynamic summary cards injected here -->
-        </div>
-
-        <div class="overflow-x-auto bg-canvas-elevated rounded-lg border border-hairline">
-            <table class="w-full text-left border-collapse">
-                <thead class="bg-surface-tile-3 text-body-muted text-sm">
-                    <tr>
-                        <th class="px-4 py-4 md:px-6 font-bold whitespace-nowrap">เลขที่ใบเสร็จ</th>
-                        <th class="px-4 py-4 md:px-6 font-bold whitespace-nowrap">บริษัทไฟแนนซ์</th>
-                        <th class="px-4 py-4 md:px-6 font-bold whitespace-nowrap">วันที่ขายหน้าร้าน</th>
-                        <th class="px-4 py-4 md:px-6 font-bold whitespace-nowrap">วันที่รับยอดโอน</th>
-                        <th class="px-4 py-4 md:px-6 font-bold whitespace-nowrap">ยอดจัดค้างรับ</th>
-                        <th class="px-4 py-4 md:px-6 font-bold text-right whitespace-nowrap">ดำเนินการ
-                        </th>
-                    </tr>
-                </thead>
-                <tbody id="table-body-accounting-ar" class="divide-y divide-hairline">
-                    <!-- Dynamic AR entries -->
-                </tbody>
-            </table>
-        </div>
-    </div>
-
-    <!-- TAB 2: รายงานงบกำไร-ขาดทุน & Ledger -->
-    <div id="section-accounting-pl" class="hidden space-y-4">
-        <div class="overflow-x-auto bg-canvas-elevated rounded-lg border border-hairline">
-            <table class="w-full text-left border-collapse">
-                <thead class="bg-surface-tile-3 text-body-muted text-sm">
-                    <tr>
-                        <th class="px-4 py-4 md:px-6 font-bold whitespace-nowrap">เลขที่ธุรกรรม</th>
-                        <th class="px-4 py-4 md:px-6 font-bold whitespace-nowrap">วันที่บันทึก</th>
-                        <th class="px-4 py-4 md:px-6 font-bold whitespace-nowrap">ประเภท</th>
-                        <th class="px-4 py-4 md:px-6 font-bold whitespace-nowrap">หมวดหมู่</th>
-                        <th class="px-4 py-4 md:px-6 font-bold text-right whitespace-nowrap">จำนวนเงิน
-                        </th>
-                        <th class="px-4 py-4 md:px-6 font-bold whitespace-nowrap">ผู้บันทึก</th>
-                    </tr>
-                </thead>
-                <tbody id="table-body-accounting-pl" class="divide-y divide-hairline font-sans">
-                    <!-- Dynamic Ledger entries -->
-                </tbody>
-            </table>
-        </div>
-    </div>
-</div>
-
-<div id="view-branch-receive">
-    <div class="flex justify-between items-center">
-        <div>
-            <h3 class="text-4xl font-medium text-ink flex items-center gap-3">
-
-                ตรวจรับของเข้า (PO)
-            </h3>
-        </div>
-        <button id="btn-refresh-po-receive"
-            class="px-4 py-2.5 bg-surface-chip border border-hairline text-ink rounded-md hover:bg-surface-tile-2 transition-colors flex items-center gap-1.5 text-sm font-medium">
-            <i class="fa-solid fa-rotate text-body-muted"></i> รีเฟรช
-        </button>
-    </div>
-
-    <!-- Summary Cards -->
-    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-        <div class="flex flex-col p-4 bg-canvas-elevated border border-hairline rounded-lg text-left cursor-pointer hover:border-primary/40 transition-all"
-            data-status="all">
-            <div class="flex items-center gap-3 mb-2">
-                <div class="w-10 h-10 rounded-full bg-surface-chip flex items-center justify-center">
-                    <i class="fa-solid fa-cube text-body-muted text-lg"></i>
-                </div>
-                <div>
-                    <p class="text-[10px] text-ink-muted-48 font-medium">ทั้งหมด</p>
-                    <p class="text-ink font-bold"><span id="badge-receive-all">0</span> รายการ</p>
+        <div class="bg-[#4D4D4D]/40 rounded-2xl shadow-lg overflow-hidden backdrop-blur-sm">
+            <div class="p-6 pb-0 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+                <h3 class="text-lg text-white flex items-center gap-2">
+                    <i class="fa-solid fa-file-invoice text-[#FFE169]"></i> ใบสั่งซื้อค้างชำระ
+                </h3>
+                <div class="flex flex-wrap items-center gap-2.5 w-full lg:w-auto">
+                    <label for="filter-ap-supplier" class="sr-only">กรองตามซัพพลายเออร์</label>
+                    <select id="filter-ap-supplier"
+                        class="bg-[#4D4D4D]/40 cursor-pointer text-sm rounded-[0.5rem] px-3 py-2 text-white focus:outline-none focus:ring-1 focus:ring-[#FFE169] w-full sm:w-auto [&>option]:bg-[#4D4D4D] [&>option:checked]:bg-[#FFE169] [&>option:checked]:text-[#333333]">
+                        <option value="">ทุกซัพพลายเออร์</option>
+                    </select>
                 </div>
             </div>
-            <p class="text-[10px] text-emerald-500 mt-1"><i class="fa-solid fa-arrow-up"></i> 25 รายการ
-                จากเมื่อวาน</p>
-        </div>
-
-        <div class="flex flex-col p-4 bg-canvas-elevated border border-hairline rounded-lg text-left cursor-pointer hover:border-primary/40 transition-all"
-            data-status="รอจัดส่ง">
-            <div class="flex items-center gap-3 mb-2">
-                <div class="w-10 h-10 rounded-full bg-surface-chip flex items-center justify-center">
-                    <i class="fa-solid fa-truck text-amber-500 text-lg"></i>
-                </div>
-                <div>
-                    <p class="text-[10px] text-ink-muted-48 font-medium">จัดส่ง</p>
-                    <p class="text-ink font-bold"><span id="badge-receive-pending">0</span> รายการ</p>
+            <div class="px-6 py-4">
+                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <div id="acc-ap-filters" class="flex flex-wrap gap-2"></div>
+                    <div id="acc-ap-count" class="text-xs text-white font-medium"></div>
                 </div>
             </div>
-            <p class="text-[10px] text-emerald-500 mt-1"><i class="fa-solid fa-arrow-up"></i> 25 รายการ
-                จากเมื่อวาน</p>
-        </div>
-
-        <div class="flex flex-col p-4 bg-canvas-elevated border border-hairline rounded-lg text-left cursor-pointer hover:border-primary/40 transition-all"
-            data-status="ของถึงสาขาแล้ว">
-            <div class="flex items-center gap-3 mb-2">
-                <div class="w-10 h-10 rounded-full bg-surface-chip flex items-center justify-center">
-                    <i class="fa-solid fa-location-dot text-body-muted text-lg"></i>
-                </div>
-                <div>
-                    <p class="text-[10px] text-ink-muted-48 font-medium">ของถึงสาขาแล้ว</p>
-                    <p class="text-ink font-bold"><span id="badge-receive-arrived">0</span> รายการ</p>
-                </div>
-            </div>
-            <p class="text-[10px] text-emerald-500 mt-1"><i class="fa-solid fa-arrow-up"></i> 25 รายการ
-                จากเมื่อวาน</p>
-        </div>
-
-        <div class="flex flex-col p-4 bg-canvas-elevated border border-hairline rounded-lg text-left cursor-pointer hover:border-primary/40 transition-all"
-            data-status="กำลังตรวจรับ">
-            <div class="flex items-center gap-3 mb-2">
-                <div class="w-10 h-10 rounded-full bg-surface-chip flex items-center justify-center">
-                    <i class="fa-solid fa-clipboard-check text-body-muted text-lg"></i>
-                </div>
-                <div>
-                    <p class="text-[10px] text-ink-muted-48 font-medium">กำลังตรวจรับ</p>
-                    <p class="text-ink font-bold"><span id="badge-receive-checking">0</span> รายการ
-                    </p>
-                </div>
-            </div>
-            <p class="text-[10px] text-emerald-500 mt-1"><i class="fa-solid fa-arrow-up"></i> 25 รายการ
-                จากเมื่อวาน</p>
-        </div>
-
-        <div class="flex flex-col p-4 bg-canvas-elevated border border-hairline rounded-lg text-left cursor-pointer hover:border-primary/40 transition-all"
-            data-status="นำเข้าสำเร็จ">
-            <div class="flex items-center gap-3 mb-2">
-                <div class="w-10 h-10 rounded-full bg-surface-chip flex items-center justify-center">
-                    <i class="fa-solid fa-circle-check text-emerald-500 text-lg"></i>
-                </div>
-                <div>
-                    <p class="text-[10px] text-ink-muted-48 font-medium">นำเข้าสำเร็จ</p>
-                    <p class="text-ink font-bold"><span id="badge-receive-imported">0</span> รายการ
-                    </p>
-                </div>
-            </div>
-            <p class="text-[10px] text-emerald-500 mt-1"><i class="fa-solid fa-arrow-up"></i> 25 รายการ
-                จากเมื่อวาน</p>
-        </div>
-
-        <div class="flex flex-col p-4 bg-canvas-elevated border border-hairline rounded-lg text-left cursor-pointer hover:border-primary/40 transition-all"
-            data-status="ยกเลิก">
-            <div class="flex items-center gap-3 mb-2">
-                <div class="w-10 h-10 rounded-full bg-surface-chip flex items-center justify-center">
-                    <i class="fa-solid fa-xmark text-red-500 text-lg"></i>
-                </div>
-                <div>
-                    <p class="text-[10px] text-ink-muted-48 font-medium">ยกเลิก</p>
-                    <p class="text-ink font-bold"><span id="badge-receive-cancelled">0</span> รายการ
-                    </p>
-                </div>
-            </div>
-            <p class="text-[10px] text-emerald-500 mt-1"><i class="fa-solid fa-arrow-up"></i> 2 รายการ
-                จากเมื่อวาน</p>
-        </div>
-    </div>
-
-    <!-- Search and Filters Bar -->
-    <div class="bg-canvas-elevated rounded-lg border border-hairline overflow-hidden">
-        <div class="p-6 pb-0 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-            <h3 class="text-lg text-ink flex items-center gap-2">
-                <img src="icons_img/information 3.png" alt="" width="20" height="20">
-                ประวัติการตรวจรับสินค้าเข้าสาขา
-            </h3>
-            <div class="flex flex-wrap items-center gap-2.5 relative w-full lg:w-auto">
-                <div
-                    class="relative group w-full sm:w-64 cursor-pointer rounded-md overflow-hidden border border-hairline">
-                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <i
-                            class="fa-solid fa-search text-body-muted group-focus-within:text-primary transition-colors"></i>
-                    </div>
-                    <input id="search-receive-po" type="text" placeholder="ค้นหาเลขที่ PO, ชื่อผู้จัดจำหน่าย..."
-                        class="bg-transparent text-sm pl-10 pr-4 py-2 w-full text-ink focus:outline-none focus:border-primary-focus focus:ring-1 focus:ring-primary-focus/40 transition-all placeholder-ink-muted-48">
-                </div>
-
-                <select id="receive-filter-status"
-                    class="bg-surface-chip border border-divider-soft cursor-pointer text-sm rounded-md px-3 py-2 text-ink focus:outline-none focus:border-primary-focus focus:ring-1 focus:ring-primary-focus/40 w-full sm:w-auto [&>option]:bg-surface-chip [&>option:checked]:bg-primary [&>option:checked]:text-on-primary">
-                    <option value="all">สถานะทั้งหมด</option>
-                    <option value="รอจัดส่ง">รอจัดส่ง</option>
-                    <option value="ของถึงสาขาแล้ว">ของถึงสาขาแล้ว</option>
-                    <option value="กำลังตรวจรับ">กำลังตรวจรับ</option>
-                    <option value="นำเข้าสำเร็จ">นำเข้าสำเร็จ</option>
-                    <option value="ยกเลิก">ยกเลิก</option>
-                </select>
-                <select id="receive-filter-branch"
-                    class="bg-surface-chip border border-divider-soft cursor-pointer text-sm rounded-md px-3 py-2 text-ink focus:outline-none focus:border-primary-focus focus:ring-1 focus:ring-primary-focus/40 w-full sm:w-auto [&>option]:bg-surface-chip [&>option:checked]:bg-primary [&>option:checked]:text-on-primary">
-                    <option value="">เลือกสาขา</option>
-                </select>
-
-
-                <button id="btn-receive-export"
-                    class="px-4 py-2 bg-primary hover:bg-primary-pressed cursor-pointer text-on-primary flex items-center font-semibold rounded-md text-sm transition-colors w-full sm:w-auto"
-                    onclick="alert('กำลังพัฒนาระบบส่งออก')">
-                    <img src="icons_img/icons8-export-100 2.png" alt="" class="mr-1" width="16" height="16">
-                    ส่งออก
-                </button>
-            </div>
-        </div>
-
-        <!-- Active Filters -->
-        <div class="py-4">
-            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                <div class="flex flex-wrap gap-2">
-                    <div class="text-xs px-6 text-ink font-medium mb-3">
-                        ทั้งหมด <span id="receive-po-total-count">0</span> รายการ
-                    </div>
-                </div>
-            </div>
-
-            <div class="overflow-x-auto">
+            <div class="overflow-x-auto" tabindex="0">
                 <table class="w-full text-left text-sm whitespace-nowrap border-collapse">
-                    <thead class="bg-surface-tile-3 text-body-muted">
+                    <thead class="bg-[#4D4D4D]/40 text-white">
                         <tr>
-                            <th class="px-6 py-4 font-semibold text-[15px]">เวลา</th>
-                            <th class="px-6 py-4 font-semibold text-[15px]">เลขที่ PO</th>
-                            <th class="px-6 py-4 font-semibold text-[15px]">Supplier</th>
-                            <th class="px-6 py-4 font-semibold text-[15px]">สาขา</th>
-                            <th class="px-6 py-4 font-semibold text-[15px] text-center">ความคืบหน้า</th>
-                            <th class="px-6 py-4 font-semibold text-[15px] text-center">สถานะ</th>
+                            <th class="px-6 py-4 font-semibold text-[15px]">เลขที่ PO / วันที่</th>
+                            <th class="px-6 py-4 font-semibold text-[15px] w-full">ซัพพลายเออร์</th>
+                            <th class="px-6 py-4 font-semibold text-[15px] text-right">ยอดรวม (ทุน)</th>
+                            <th class="px-6 py-4 font-semibold text-[15px] text-right">ชำระแล้ว</th>
+                            <th class="px-6 py-4 font-semibold text-[15px] text-right">ส่วนลด</th>
+                            <th class="px-6 py-4 font-semibold text-[15px] text-right">ยอดค้างชำระ</th>
+                            <th class="px-6 py-4 font-semibold text-[15px]">สถานะชำระเงิน</th>
                             <th class="px-6 py-4 font-semibold text-[15px] text-right">จัดการ</th>
                         </tr>
                     </thead>
-                    <tbody id="table-body-receive-po" class="divide-y divide-hairline">
-                    </tbody>
+                    <tbody id="table-body-accounting-ap" class="divide-y divide-[#464646]"></tbody>
                 </table>
             </div>
         </div>
     </div>
 
+    <!-- ============================ แท็บ 2: รายการเดินบัญชี ============================ -->
+    <div id="section-accounting-pl" class="hidden space-y-4">
+        <div class="bg-[#4D4D4D]/40 rounded-2xl shadow-lg overflow-hidden backdrop-blur-sm">
+            <div class="p-6 pb-0 flex flex-wrap items-center justify-between gap-3">
+                <h3 class="text-lg text-white flex items-center gap-2">
+                    <i class="fa-solid fa-file-invoice-dollar text-[#FFE169]"></i> รายการเดินบัญชี (Ledger)
+                </h3>
+                <div id="acc-pl-count" class="text-xs text-white font-medium"></div>
+            </div>
+            <div class="mt-4 overflow-x-auto" tabindex="0">
+                <table class="w-full text-left text-sm whitespace-nowrap border-collapse">
+                    <thead class="bg-[#4D4D4D]/40 text-white">
+                        <tr>
+                            <th class="px-6 py-4 font-semibold text-[15px]">เลขที่ธุรกรรม / วันที่</th>
+                            <th class="px-6 py-4 font-semibold text-[15px]">ประเภท</th>
+                            <th class="px-6 py-4 font-semibold text-[15px] w-full">หมวดหมู่</th>
+                            <th class="px-6 py-4 font-semibold text-[15px] text-right">จำนวนเงิน</th>
+                            <th class="px-6 py-4 font-semibold text-[15px]">ผู้บันทึก</th>
+                        </tr>
+                    </thead>
+                    <tbody id="table-body-accounting-pl" class="divide-y divide-[#464646]"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================ แท็บ 3: บัญชีลูกหนี้ (AR) ============================ -->
+    <div id="section-accounting-ar" class="hidden space-y-4">
+        <div id="finance-summary-widgets" class="grid grid-cols-1 md:grid-cols-3 gap-4"></div>
+
+        <div class="bg-[#4D4D4D]/40 rounded-2xl shadow-lg overflow-hidden backdrop-blur-sm">
+            <div class="p-6 pb-0 flex flex-wrap items-center justify-between gap-3">
+                <h3 class="text-lg text-white flex items-center gap-2">
+                    <i class="fa-solid fa-hand-holding-dollar text-[#FFE169]"></i> ยอดจัดไฟแนนซ์ค้างรับ
+                </h3>
+                <div id="acc-ar-count" class="text-xs text-white font-medium"></div>
+            </div>
+            <div class="mt-4 overflow-x-auto" tabindex="0">
+                <table class="w-full text-left text-sm whitespace-nowrap border-collapse">
+                    <thead class="bg-[#4D4D4D]/40 text-white">
+                        <tr>
+                            <th class="px-6 py-4 font-semibold text-[15px]">เลขที่ใบเสร็จ / วันที่ขาย</th>
+                            <th class="px-6 py-4 font-semibold text-[15px] w-full">บริษัทไฟแนนซ์</th>
+                            <th class="px-6 py-4 font-semibold text-[15px]">วันที่รับยอดโอน</th>
+                            <th class="px-6 py-4 font-semibold text-[15px] text-right">ยอดจัดค้างรับ</th>
+                            <th class="px-6 py-4 font-semibold text-[15px] text-right">จัดการ</th>
+                        </tr>
+                    </thead>
+                    <tbody id="table-body-accounting-ar" class="divide-y divide-[#464646]"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="view-branch-receive">
+    <!-- [1] หัวหน้า — DESIGN.md ข้อ 11.2 -->
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div class="flex items-center gap-4">
+            <i class="bi bi-inbox text-white w-5 text-2xl text-center"></i>
+            <h3 class="text-2xl text-white">ตรวจรับของเข้า (PO)</h3>
+        </div>
+        <button id="btn-refresh-po-receive" type="button"
+            class="px-3 py-2 bg-[#4D4D4D]/40 cursor-pointer text-white flex items-center justify-center gap-1.5 rounded-[0.5rem] text-sm hover:bg-[#5C5C5C] transition-colors w-fit">
+            <i class="fa-solid fa-rotate"></i> รีเฟรชรายการ
+        </button>
+    </div>
+
+    <!-- [2] แท็บสถานะ — แทนการ์ดสรุปชุดเดิมที่มี cursor-pointer + data-status แต่ไม่เคยผูก handler
+         (กดไม่ได้จริง) และมีบรรทัดเปรียบเทียบกับวันก่อนหน้าที่ฮาร์ดโค้ดตัวเลขไว้ ไม่ใช่ข้อมูลจริง -->
+    <div id="receive-status-tabs" class="flex flex-wrap items-center gap-2">
+        <button type="button" data-status="all" aria-pressed="true"
+            class="receive-tab px-4 py-2.5 rounded-xl text-sm font-bold border transition-colors flex items-center gap-2 cursor-pointer bg-[#FFE169] text-[#333333] border-[#FFE169]">
+            <i class="fa-solid fa-cube"></i> ทั้งหมด
+            <span id="badge-receive-all" class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#333333]/20">0</span>
+        </button>
+        <button type="button" data-status="รอจัดส่ง" aria-pressed="false"
+            class="receive-tab px-4 py-2.5 rounded-xl text-sm font-bold border transition-colors flex items-center gap-2 cursor-pointer bg-[#27272A] text-slate-300 border-[#3F3F46] hover:border-[#FFE169] hover:text-white">
+            <i class="fa-solid fa-truck"></i> รอจัดส่ง
+            <span id="badge-receive-pending"
+                class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-orange-500/[0.12] text-orange-400">0</span>
+        </button>
+        <button type="button" data-status="ของถึงสาขาแล้ว" aria-pressed="false"
+            class="receive-tab px-4 py-2.5 rounded-xl text-sm font-bold border transition-colors flex items-center gap-2 cursor-pointer bg-[#27272A] text-slate-300 border-[#3F3F46] hover:border-[#FFE169] hover:text-white">
+            <i class="fa-solid fa-location-dot"></i> ของถึงสาขาแล้ว
+            <span id="badge-receive-arrived"
+                class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-orange-500/[0.12] text-orange-400">0</span>
+        </button>
+        <button type="button" data-status="กำลังตรวจรับ" aria-pressed="false"
+            class="receive-tab px-4 py-2.5 rounded-xl text-sm font-bold border transition-colors flex items-center gap-2 cursor-pointer bg-[#27272A] text-slate-300 border-[#3F3F46] hover:border-[#FFE169] hover:text-white">
+            <i class="fa-solid fa-clipboard-check"></i> กำลังตรวจรับ
+            <span id="badge-receive-checking"
+                class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-orange-500/[0.12] text-orange-400">0</span>
+        </button>
+        <button type="button" data-status="นำเข้าสำเร็จ" aria-pressed="false"
+            class="receive-tab px-4 py-2.5 rounded-xl text-sm font-bold border transition-colors flex items-center gap-2 cursor-pointer bg-[#27272A] text-slate-300 border-[#3F3F46] hover:border-[#FFE169] hover:text-white">
+            <i class="fa-solid fa-circle-check"></i> นำเข้าสำเร็จ
+            <span id="badge-receive-imported"
+                class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#42A231]/[0.12] text-[#20D500]">0</span>
+        </button>
+        <button type="button" data-status="ยกเลิก" aria-pressed="false"
+            class="receive-tab px-4 py-2.5 rounded-xl text-sm font-bold border transition-colors flex items-center gap-2 cursor-pointer bg-[#27272A] text-slate-300 border-[#3F3F46] hover:border-[#FFE169] hover:text-white">
+            <i class="fa-solid fa-ban"></i> ยกเลิก
+            <span id="badge-receive-cancelled"
+                class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#FE0000]/[0.12] text-[#FE0000]">0</span>
+        </button>
+    </div>
+
+    <!-- [3] การ์ดพาเนล — แถบควบคุม + ชิป + ตาราง อยู่ในการ์ดใบเดียว (ข้อ 11.1, 11.3) -->
+    <div class="bg-[#4D4D4D]/40 rounded-2xl shadow-lg overflow-hidden backdrop-blur-sm">
+        <!-- 2a แถบควบคุม (ข้อ 11.4) -->
+        <div class="p-6 pb-0 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+            <h3 id="receive-panel-title" class="text-lg text-white flex items-center gap-2">
+                <i class="fa-solid fa-boxes-packing text-[#FFE169]"></i> ใบสั่งซื้อทั้งหมด
+            </h3>
+            <div class="flex flex-wrap items-center gap-2.5 relative w-full lg:w-auto">
+                <div class="relative group w-full sm:w-72">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <i class="fa-solid fa-search text-white group-focus-within:text-[#FFE169] transition-colors"></i>
+                    </div>
+                    <label for="search-receive-po" class="sr-only">ค้นหาใบสั่งซื้อ</label>
+                    <input id="search-receive-po" type="text" autocomplete="off"
+                        placeholder="ค้นหาเลขที่ PO / ซัพพลายเออร์..."
+                        class="bg-[#4D4D4D]/40 border border-[#3F3F46] rounded-[0.5rem] text-sm pl-10 pr-4 py-2 w-full text-white focus:outline-none focus:border-[#FFE169] focus:ring-1 focus:ring-[#FFE169] transition-all placeholder-white">
+                </div>
+                <label for="receive-filter-branch" class="sr-only">กรองตามสาขา</label>
+                <select id="receive-filter-branch"
+                    class="bg-[#4D4D4D]/40 cursor-pointer text-sm rounded-[0.5rem] px-3 py-2 text-white focus:outline-none focus:ring-1 focus:ring-[#FFE169] w-full sm:w-auto [&>option]:bg-[#4D4D4D] [&>option:checked]:bg-[#FFE169] [&>option:checked]:text-[#333333]">
+                    <option value="">ทุกสาขา</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- 2b ชิปตัวกรอง + ตัวนับผลลัพธ์ (ข้อ 11.5) -->
+        <div class="px-6 py-4">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div id="receive-active-filters" class="flex flex-wrap gap-2"></div>
+                <div id="receive-po-total-count" class="text-xs text-white font-medium"></div>
+            </div>
+        </div>
+
+        <!-- 2c ตาราง (ข้อ 11.6) -->
+        <div class="overflow-x-auto" tabindex="0">
+            <table class="w-full text-left text-sm whitespace-nowrap border-collapse">
+                <thead class="bg-[#4D4D4D]/40 text-white">
+                    <tr>
+                        <th class="px-6 py-4 font-semibold text-[15px]">เลขที่ PO / วันที่</th>
+                        <th class="px-6 py-4 font-semibold text-[15px]">ซัพพลายเออร์</th>
+                        <th class="px-6 py-4 font-semibold text-[15px] w-full">สาขาปลายทาง</th>
+                        <th class="px-6 py-4 font-semibold text-[15px] text-center">ความคืบหน้า</th>
+                        <th class="px-6 py-4 font-semibold text-[15px]">สถานะ</th>
+                        <th class="px-6 py-4 font-semibold text-[15px] text-right">จัดการ</th>
+                    </tr>
+                </thead>
+                <tbody id="table-body-receive-po" class="divide-y divide-[#464646]"></tbody>
+            </table>
+        </div>
+    </div>
 </div>

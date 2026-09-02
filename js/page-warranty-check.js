@@ -1,94 +1,227 @@
 // Warranty Check Logic (เช็คประกัน)
 // แยกออกมาจาก script.js — โหลดแบบ dynamic เฉพาะตอนเปิดหน้า "เช็คประกัน" ครั้งแรกเท่านั้น
 // พึ่งพา window.authFetch, window.showToast, window.viewTransactionDetails, API_BASE_URL (global จาก script.js)
+//
+// เดินตามแบบแปลนหน้า #stock ใน DESIGN.md ข้อ 11.1 - 11.7:
+// หัวหน้า -> การ์ดพาเนลใบเดียวที่มีแถบค้นหา + ชิปตัวกรอง + ตาราง
+// เดิมหน้านี้เป็นการ์ดใบใหญ่ต่อหนึ่งผลลัพธ์ ซึ่งอ่านยากเมื่อค้นด้วยชื่อลูกค้าแล้วเจอหลายเครื่อง
 (function () {
-    const warrantySearchForm = document.getElementById('warranty-search-form');
-    const warrantySearchInput = document.getElementById('warranty-search-input');
-    const warrantyResultsContainer = document.getElementById('warranty-results-container');
-    const warrantyEmptyState = document.getElementById('warranty-empty-state');
+    const searchForm = document.getElementById('warranty-search-form');
+    const searchInput = document.getElementById('warranty-search-input');
+    const statusFilter = document.getElementById('warranty-filter-status');
+    const tbody = document.getElementById('warranty-results-container');
+    const chipsBox = document.getElementById('warranty-active-filters');
+    const countEl = document.getElementById('warranty-result-count');
 
-    const calculateRemainingDays = (expiryDate) => {
-        const now = new Date();
-        const exp = new Date(expiryDate);
-        const diffTime = exp.getTime() - now.getTime();
-        return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    const COLS = 8;
+    // จำนวนวันก่อนหมดประกันที่ถือว่า "ใกล้หมด" — ใช้โทนสีระหว่างดำเนินการ (ข้อ 11.6)
+    const SOON_DAYS = 30;
+
+    let _all = [];        // ผลลัพธ์ทั้งหมดจากการค้นครั้งล่าสุด
+    let _lastQuery = '';  // คำค้นที่ยิงไปจริง (ใช้ทำชิป ไม่ใช่ค่าที่กำลังพิมพ์อยู่)
+    let _searched = false;
+
+    const esc = (s) => String(s == null ? '' : s)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+
+    const dateTH = (d) => new Date(d).toLocaleDateString('th-TH',
+        { day: 'numeric', month: 'short', year: 'numeric' });
+
+    // ป้ายสถานะจุดสี — ชุดโทนเดียวกับ DESIGN.md ข้อ 11.6
+    const TONE = {
+        ok: { dot: 'bg-[#20D500]', bg: 'bg-[#42A231]/[0.12]', text: 'text-[#20D500]' },
+        soon: { dot: 'bg-orange-500', bg: 'bg-orange-500/[0.12]', text: 'text-orange-400' },
+        expired: { dot: 'bg-[#FE0000]', bg: 'bg-[#FE0000]/[0.12]', text: 'text-[#FE0000]' }
+    };
+    const badge = (tone, label) => {
+        const t = TONE[tone] || TONE.expired;
+        return `<div class="inline-flex items-center gap-2 px-2.5 py-1 rounded-[0.375rem] ${t.bg}">`
+            + `<div class="w-2 h-2 rounded-full ${t.dot}"></div>`
+            + `<span class="${t.text} font-medium text-xs">${esc(label)}</span></div>`;
     };
 
-    const renderWarrantyResults = (results) => {
-        if (!warrantyResultsContainer) return;
+    // นับวันคงเหลือแบบเทียบ "ต้นวัน" ทั้งคู่ ไม่งั้นเครื่องที่หมดประกันวันนี้ตอนบ่าย
+    // จะถูกนับเป็น -1 วันทั้งที่ยังไม่ควรถือว่าหมด
+    const remainingDays = (expiry) => {
+        const today = new Date(); today.setHours(0, 0, 0, 0);
+        const exp = new Date(expiry); exp.setHours(0, 0, 0, 0);
+        return Math.round((exp.getTime() - today.getTime()) / 86400000);
+    };
 
-        warrantyResultsContainer.innerHTML = '';
+    const statusOf = (item) => {
+        const d = remainingDays(item.warranty_expiry);
+        if (d < 0) return { key: 'expired', tone: 'expired', label: 'หมดประกันแล้ว', days: d };
+        if (d <= SOON_DAYS) return { key: 'soon', tone: 'soon', label: 'ใกล้หมดประกัน', days: d };
+        return { key: 'active', tone: 'ok', label: 'อยู่ในประกัน', days: d };
+    };
 
-        if (!results || results.length === 0) {
-            warrantyResultsContainer.innerHTML = `
-                <div class="flex flex-col items-center justify-center py-12 text-body-muted">
-                    <i class="fa-solid fa-box-open text-5xl mb-4 text-ink-muted-48 opacity-50"></i>
-                    <p class="font-medium text-lg">ไม่พบข้อมูลการรับประกัน</p>
-                    <p class="text-sm mt-1">กรุณาตรวจสอบ IMEI หรือชื่อลูกค้าอีกครั้ง</p>
-                </div>
-            `;
+    const stateRow = (msg, extraClass = 'text-white/50 italic') =>
+        `<tr><td colspan="${COLS}" class="px-6 py-8 text-center ${extraClass}">${esc(msg)}</td></tr>`;
+
+    // แถวโครงร่างระหว่างรอผลค้นหา — ต้องวางก่อน await เสมอ (ข้อ 11.7)
+    const renderSkeleton = (rows = 4) => {
+        if (!tbody) return;
+        const bar = (w) => `<div class="h-3.5 ${w} rounded-full bg-[#5c5c5c] animate-pulse"></div>`;
+        tbody.innerHTML = Array.from({ length: rows }).map(() => `
+            <tr>
+                <td class="px-6 py-4"><div class="space-y-1.5">${bar('w-44')}${bar('w-32 h-3')}</div></td>
+                <td class="px-6 py-4">${bar('w-28')}</td>
+                <td class="px-6 py-4">${bar('w-24')}</td>
+                <td class="px-6 py-4">${bar('w-24')}</td>
+                <td class="px-6 py-4">${bar('w-16')}</td>
+                <td class="px-6 py-4">${bar('w-24')}</td>
+                <td class="px-6 py-4">${bar('w-24')}</td>
+                <td class="px-6 py-4">${bar('w-8 ml-auto')}</td>
+            </tr>`).join('');
+    };
+
+    const selectedText = (sel) => {
+        if (!sel) return '';
+        const opt = sel.options[sel.selectedIndex];
+        return opt ? opt.textContent.trim() : '';
+    };
+
+    // ชิปตัวกรองที่ใช้อยู่ (ข้อ 11.5)
+    const renderChips = () => {
+        if (!chipsBox) return;
+        chipsBox.innerHTML = '';
+
+        const addChip = (label, onRemove) => {
+            const chip = document.createElement('button');
+            chip.type = 'button';
+            chip.className = 'px-4 py-2.5 rounded-xl bg-[#4D4D4D]/40 border border-[#3F3F46] text-white text-sm font-medium transition-colors flex items-center gap-2';
+            chip.innerHTML = `<span>${esc(label)}</span><i class="fa-solid fa-xmark text-[10px] opacity-80"></i>`;
+            chip.addEventListener('click', (e) => {
+                // ลบได้เฉพาะตอนคลิกที่กากบาท ตัวชิปเองไม่ตอบสนอง (ข้อ 11.5)
+                if (!e.target.closest('i.fa-xmark')) return;
+                onRemove();
+            });
+            chipsBox.appendChild(chip);
+        };
+
+        let active = 0;
+
+        if (_lastQuery) {
+            active++;
+            addChip(`ค้นหา: ${_lastQuery}`, () => {
+                if (searchInput) searchInput.value = '';
+                _lastQuery = '';
+                _all = [];
+                _searched = false;
+                render();
+            });
+        }
+        if (statusFilter && statusFilter.value) {
+            active++;
+            addChip(`สถานะ: ${selectedText(statusFilter)}`, () => {
+                statusFilter.value = '';
+                render();
+            });
+        }
+
+        // ปุ่มล้างทั้งหมดโผล่เมื่อมีตัวกรองมากกว่า 1 ตัวเท่านั้น (ข้อ 11.5)
+        if (active > 1) {
+            const clearBtn = document.createElement('button');
+            clearBtn.type = 'button';
+            clearBtn.className = 'px-2.5 py-1 bg-red-500/10 hover:bg-red-500/15 text-red-300 rounded-full text-xs font-medium border border-red-500/30 transition-colors';
+            clearBtn.textContent = 'ล้างทั้งหมด';
+            clearBtn.addEventListener('click', () => {
+                if (searchInput) searchInput.value = '';
+                if (statusFilter) statusFilter.value = '';
+                _lastQuery = '';
+                _all = [];
+                _searched = false;
+                render();
+            });
+            chipsBox.appendChild(clearBtn);
+        }
+    };
+
+    const rowHtml = (item) => {
+        const st = statusOf(item);
+        const memberName = item.member
+            ? `${item.member.first_name || ''} ${item.member.last_name || ''}`.trim() || 'ลูกค้าทั่วไป'
+            : 'ลูกค้าทั่วไป';
+        const phone = item.member && item.member.phone ? item.member.phone : '';
+        const branchName = item.branch && item.branch.name ? item.branch.name : '-';
+
+        // นับวันเหลือ/เกิน เป็นข้อความประกอบใต้วันหมดอายุ
+        const dayNote = st.days < 0
+            ? `<span class="text-[#FE0000]">เกินมา ${Math.abs(st.days)} วัน</span>`
+            : st.days === 0
+                ? `<span class="text-orange-400">หมดวันนี้</span>`
+                : `<span class="${st.key === 'soon' ? 'text-orange-400' : 'text-white/70'}">เหลืออีก ${st.days} วัน</span>`;
+
+        return `
+        <tr class="hover:bg-[#464646] transition-colors">
+            <td class="px-6 py-4">
+                <p class="font-medium text-white">${esc(item.product_name)}</p>
+                <p class="text-xs mt-0.5"><span class="font-mono font-semibold text-[#FFE169]">${esc(item.imei_sold)}</span></p>
+            </td>
+            <td class="px-6 py-4">
+                <p class="text-white">${esc(memberName)}</p>
+                ${phone ? `<p class="text-xs text-white/70 font-mono mt-0.5">${esc(phone)}</p>` : ''}
+            </td>
+            <td class="px-6 py-4 text-white">${esc(branchName)}</td>
+            <td class="px-6 py-4 text-white">${dateTH(item.created_at)}</td>
+            <td class="px-6 py-4 text-white">${item.warranty_period ? esc(item.warranty_period) : '<span class="text-white/50">-</span>'}</td>
+            <td class="px-6 py-4">
+                <p class="text-white">${dateTH(item.warranty_expiry)}</p>
+                <p class="text-xs mt-0.5">${dayNote}</p>
+            </td>
+            <td class="px-6 py-4">${badge(st.tone, st.label)}</td>
+            <td class="px-6 py-4 text-right">
+                <button type="button" class="warranty-receipt-link text-white hover:text-[#FFE169] transition-colors p-2"
+                    data-id="${esc(item.txn_id)}" title="ดูใบเสร็จ ${esc(item.receipt_number)}"
+                    aria-label="ดูใบเสร็จ ${esc(item.receipt_number)}">
+                    <i class="fa-solid fa-file-invoice"></i>
+                </button>
+            </td>
+        </tr>`;
+    };
+
+    // วาดตาราง + ชิป + ตัวนับ จากผลลัพธ์ที่มีอยู่ (กรองสถานะฝั่งหน้าเว็บ ไม่ต้องยิงซ้ำ)
+    const render = () => {
+        renderChips();
+        if (!tbody) return;
+
+        const want = statusFilter ? statusFilter.value : '';
+        const rows = want ? _all.filter(i => statusOf(i).key === want) : _all;
+
+        if (countEl) {
+            countEl.textContent = _all.length
+                ? `แสดง ${rows.length} จาก ${_all.length} รายการ`
+                : '';
+        }
+
+        if (!_searched) {
+            tbody.innerHTML = stateRow('ระบุ IMEI ชื่อลูกค้า หรือเบอร์โทรศัพท์ แล้วกดค้นหา');
+            return;
+        }
+        if (!_all.length) {
+            tbody.innerHTML = stateRow('ไม่พบข้อมูลการรับประกันที่ตรงกับคำค้นหา');
+            return;
+        }
+        if (!rows.length) {
+            tbody.innerHTML = stateRow('ไม่มีรายการในสถานะนี้');
             return;
         }
 
-        results.forEach(item => {
-            const expDate = new Date(item.warranty_expiry);
-            const remainingDays = calculateRemainingDays(item.warranty_expiry);
-            const isExpired = remainingDays < 0;
+        // เรียงให้เครื่องที่ใกล้หมด/หมดแล้วขึ้นก่อน เพราะเป็นเคสที่ต้องรีบจัดการ
+        const order = { soon: 0, expired: 1, active: 2 };
+        tbody.innerHTML = [..._all]
+            .filter(i => !want || statusOf(i).key === want)
+            .sort((a, b) => {
+                const sa = statusOf(a), sb = statusOf(b);
+                if (order[sa.key] !== order[sb.key]) return order[sa.key] - order[sb.key];
+                return sa.days - sb.days;
+            })
+            .map(rowHtml).join('');
 
-            const card = document.createElement('div');
-            card.className = `bg-canvas-elevated border ${isExpired ? 'border-red-500/30' : 'border-emerald-500/30'} rounded-lg p-6 relative overflow-hidden`;
-
-            card.innerHTML = `
-                <div class="flex flex-col md:flex-row justify-between gap-6 relative z-10">
-                    <div class="space-y-4">
-                        <div>
-                            <h4 class="text-xl font-bold text-ink leading-tight">${item.product_name}</h4>
-                            <div class="flex items-center gap-2 mt-1">
-                                <span class="text-body-muted font-mono text-sm bg-surface-chip px-2 py-0.5 rounded border border-hairline">IMEI: ${item.imei_sold}</span>
-                                <span class="text-body-muted text-xs">เลขที่ใบเสร็จ: <a href="#" class="warranty-receipt-link text-primary hover:underline" data-id="${item.txn_id}">${item.receipt_number}</a></span>
-                            </div>
-                        </div>
-                        <div class="flex flex-col items-start gap-1">
-                            <p class="text-sm text-body-muted"><i class="fa-solid fa-user text-body-muted mr-2"></i> ${item.member ? (item.member.first_name + ' ' + item.member.last_name) : 'ลูกค้าทั่วไป'}</p>
-                            ${item.member && item.member.phone ? `<p class="text-sm text-body-muted"><i class="fa-solid fa-phone text-body-muted mr-2"></i> ${item.member.phone}</p>` : ''}
-                        </div>
-                    </div>
-                    <div class="flex flex-col items-end justify-center min-w-[200px]">
-                        ${isExpired ? `
-                            <div class="bg-red-500/10 text-red-400 px-4 py-2 rounded-md border border-red-500/20 flex items-center gap-2 mb-3">
-                                <i class="fa-solid fa-circle-xmark"></i> <span class="font-bold">หมดประกันแล้ว</span>
-                            </div>
-                        ` : `
-                            <div class="bg-emerald-500/10 text-emerald-400 px-4 py-2 rounded-md border border-emerald-500/20 flex items-center gap-2 mb-3">
-                                <i class="fa-solid fa-shield-check"></i> <span class="font-bold">อยู่ในประกัน</span>
-                            </div>
-                        `}
-                        <div class="text-right w-full bg-surface-tile-3 p-3 rounded-md border border-hairline">
-                            <div class="flex justify-between text-xs mb-1">
-                                <span class="text-body-muted">วันที่ซื้อ:</span>
-                                <span class="text-ink">${new Date(item.created_at).toLocaleDateString('th-TH')}</span>
-                            </div>
-                            <div class="flex justify-between text-xs mb-1">
-                                <span class="text-body-muted">ระยะประกัน:</span>
-                                <span class="text-ink">${item.warranty_period}</span>
-                            </div>
-                            <div class="flex justify-between text-xs font-bold mt-2 pt-2 border-t border-hairline">
-                                <span class="text-body-muted">วันหมดอายุ:</span>
-                                <span class="${isExpired ? 'text-red-400' : 'text-emerald-400'}">${expDate.toLocaleDateString('th-TH')}</span>
-                            </div>
-                            ${!isExpired ? `<div class="text-right text-[10px] text-emerald-500 mt-1">เหลืออีก ${remainingDays} วัน</div>` : ''}
-                        </div>
-                    </div>
-                </div>
-            `;
-            warrantyResultsContainer.appendChild(card);
-        });
-
-        // Attach receipt link listeners
-        document.querySelectorAll('.warranty-receipt-link').forEach(link => {
-            link.addEventListener('click', (e) => {
-                e.preventDefault();
-                const txnId = e.currentTarget.getAttribute('data-id');
+        tbody.querySelectorAll('.warranty-receipt-link').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const txnId = btn.dataset.id;
                 if (txnId && typeof window.viewTransactionDetails === 'function') {
                     window.viewTransactionDetails(txnId);
                 }
@@ -97,32 +230,55 @@
     };
 
     const checkWarranty = async (query) => {
-        if (!query) return;
+        renderSkeleton();
         try {
-            const response = await window.authFetch(`${API_BASE_URL}/warranty/check?q=${encodeURIComponent(query)}`);
+            const response = await window.authFetch(
+                `${API_BASE_URL}/warranty/check?q=${encodeURIComponent(query)}`);
             const result = await response.json();
-            if (result.success) {
-                renderWarrantyResults(result.data);
-            } else {
+
+            if (!result.success) {
                 window.showToast('เกิดข้อผิดพลาดในการตรวจสอบประกัน: ' + result.message, 'error');
-                renderWarrantyResults([]);
+                _all = [];
+                render();
+                return;
             }
+            _all = result.data || [];
+            render();
+
         } catch (error) {
             console.error('Error checking warranty:', error);
-            window.showToast('เชื่อมต่อเซิร์ฟเวอร์ไม่ได้', 'error');
-            renderWarrantyResults([]);
+            // เซสชั่นหมดอายุ script.js เด้งไปหน้าล็อกอินเองอยู่แล้ว ไม่ต้องขึ้น toast ซ้อน
+            const expired = String(error && error.message || '').includes('เซสชั่นหมดอายุ');
+            if (!expired) window.showToast('เชื่อมต่อเซิร์ฟเวอร์ไม่ได้', 'error');
+            _all = [];
+            if (tbody) tbody.innerHTML = stateRow(
+                expired ? 'เซสชั่นหมดอายุ กรุณาเข้าสู่ระบบใหม่' : 'เชื่อมต่อเซิร์ฟเวอร์ไม่ได้ กรุณาลองใหม่อีกครั้ง',
+                'text-red-400');
+            renderChips();
+            if (countEl) countEl.textContent = '';
         }
     };
 
-    if (warrantySearchForm) {
-        warrantySearchForm.addEventListener('submit', (e) => {
+    if (searchForm) {
+        searchForm.addEventListener('submit', (e) => {
             e.preventDefault();
-            const query = warrantySearchInput.value.trim();
-            if (query) {
-                checkWarranty(query);
-            } else {
-                renderWarrantyResults([]);
+            const query = searchInput ? searchInput.value.trim() : '';
+            if (!query) {
+                _lastQuery = '';
+                _all = [];
+                _searched = false;
+                render();
+                return;
             }
+            _lastQuery = query;
+            _searched = true;
+            checkWarranty(query);
         });
     }
+
+    // เปลี่ยนสถานะ = กรองจากผลที่มีอยู่ ไม่ต้องยิง API ใหม่
+    if (statusFilter) statusFilter.addEventListener('change', render);
+
+    // สถานะเริ่มต้นก่อนค้นหาครั้งแรก
+    render();
 })();

@@ -95,7 +95,33 @@
         return text;
     }
 
+    // ---------- ตารางผังบัญชี (DESIGN.md ข้อ 11.5 - 11.7) ----------
+    const COA_COLS = 7, GRP_COLS = 4, PNL_COLS = 6;
+
+    const coaStateRow = (cols, msg, cls = 'text-white/50 italic') =>
+        `<tr><td colspan="${cols}" class="px-6 py-8 text-center ${cls}">${escapeHtml(msg)}</td></tr>`;
+
+    const coaSkeleton = (tbodyId, cols, rows = 4) => {
+        const tbody = document.getElementById(tbodyId);
+        if (!tbody) return;
+        const bar = '<div class="h-3.5 w-full rounded-full bg-[#5c5c5c] animate-pulse"></div>';
+        tbody.innerHTML = Array.from({ length: rows }).map(() =>
+            `<tr>${Array.from({ length: cols }).map(() =>
+                `<td class="px-6 py-4">${bar}</td>`).join('')}</tr>`).join('');
+    };
+
+    const coaSetText = (id, text) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = text;
+    };
+
+    // ป้ายเทาสำหรับหมวดหมู่/กลุ่ม (ข้อ 11.6 — ป้ายหมวดหมู่)
+    const coaChipLabel = (text) =>
+        `<span class="px-2.5 py-1 rounded-[0.375rem] text-xs font-medium bg-[#4D4D4D]/60 text-white">${escapeHtml(text)}</span>`;
+
     async function initAccountingSettings() {
+        coaSkeleton('coa-table-body', COA_COLS);
+        coaSkeleton('coa-groups-table-body', GRP_COLS);
         await loadCOAData();
         switchCOATab('accounts');
     }
@@ -111,17 +137,80 @@
                     accounts: data.accounts || []
                 };
 
-                // Populate filters
                 populateCategorySelect(document.getElementById('coa-filter-category'), 'ทุกหมวดหมู่');
+
+                coaSetText('badge-coa-accounts', _coaCache.accounts.length);
+                coaSetText('badge-coa-groups', _coaCache.groups.length);
 
                 renderCOATable(_coaCache.accounts);
                 renderCOAGroupsTable(_coaCache.groups);
             } else {
+                document.getElementById('coa-table-body').innerHTML =
+                    coaStateRow(COA_COLS, data.message || 'โหลดข้อมูลผังบัญชีไม่สำเร็จ', 'text-red-400');
+                document.getElementById('coa-groups-table-body').innerHTML =
+                    coaStateRow(GRP_COLS, data.message || 'โหลดข้อมูลกลุ่มบัญชีไม่สำเร็จ', 'text-red-400');
                 showToast(data.message || 'เกิดข้อผิดพลาดในการโหลดข้อมูลผังบัญชี', 'error');
             }
         } catch (error) {
             console.error('Error loadCOAData:', error);
+            const t1 = document.getElementById('coa-table-body');
+            const t2 = document.getElementById('coa-groups-table-body');
+            if (t1) t1.innerHTML = coaStateRow(COA_COLS, 'เชื่อมต่อเซิร์ฟเวอร์ผิดพลาด', 'text-red-400');
+            if (t2) t2.innerHTML = coaStateRow(GRP_COLS, 'เชื่อมต่อเซิร์ฟเวอร์ผิดพลาด', 'text-red-400');
             showToast('เชื่อมต่อเซิร์ฟเวอร์ผิดพลาด', 'error');
+        }
+    }
+
+    // ชิปตัวกรองที่ใช้อยู่ (ข้อ 11.5 — ลบได้เฉพาะตอนคลิกกากบาท)
+    function renderCOAChips() {
+        const box = document.getElementById('coa-active-filters');
+        if (!box) return;
+        box.innerHTML = '';
+
+        const searchEl = document.getElementById('coa-search');
+        const catEl = document.getElementById('coa-filter-category');
+        const chips = [];
+        if (searchEl && searchEl.value.trim()) chips.push({ key: 'search', label: `ค้นหา: ${searchEl.value.trim()}` });
+        if (catEl && catEl.value) {
+            const opt = catEl.options[catEl.selectedIndex];
+            chips.push({ key: 'category', label: `หมวดหมู่: ${opt ? opt.textContent : catEl.value}` });
+        }
+
+        const clearOne = (key) => {
+            const el = document.getElementById(key === 'search' ? 'coa-search' : 'coa-filter-category');
+            if (el) el.value = '';
+            filterCOATable();
+        };
+
+        chips.forEach(c => {
+            const chip = document.createElement('button');
+            chip.type = 'button';
+            chip.className = 'px-4 py-2.5 rounded-xl bg-[#4D4D4D]/40 border border-[#3F3F46] ' +
+                'text-white text-sm font-medium transition-colors flex items-center gap-2 cursor-pointer';
+            chip.innerHTML = `<span>${escapeHtml(c.label)}</span><i class="fa-solid fa-xmark text-[10px] opacity-80"></i>`;
+            chip.setAttribute('aria-label', `ลบตัวกรอง ${c.label}`);
+            chip.addEventListener('click', (e) => {
+                if (!e.target.closest('i.fa-xmark')) return;
+                clearOne(c.key);
+            });
+            box.appendChild(chip);
+        });
+
+        // ปุ่มล้างทั้งหมดโผล่เมื่อมีตัวกรองมากกว่า 1 ตัวเท่านั้น
+        if (chips.length > 1) {
+            const clearAll = document.createElement('button');
+            clearAll.type = 'button';
+            clearAll.className = 'px-2.5 py-1 bg-red-500/10 hover:bg-red-500/15 text-red-300 ' +
+                'rounded-full text-xs font-medium border border-red-500/30 transition-colors cursor-pointer';
+            clearAll.textContent = 'ล้างทั้งหมด';
+            clearAll.addEventListener('click', () => {
+                ['coa-search', 'coa-filter-category'].forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el) el.value = '';
+                });
+                filterCOATable();
+            });
+            box.appendChild(clearAll);
         }
     }
 
@@ -129,42 +218,57 @@
         const tbody = document.getElementById('coa-table-body');
         if (!tbody) return;
 
-        tbody.innerHTML = '';
-        if (!accountsToRender || accountsToRender.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="7" class="text-center text-body-muted py-4">ไม่พบข้อมูล</td></tr>';
+        renderCOAChips();
+        const rows = accountsToRender || [];
+        const total = (_coaCache.accounts || []).length;
+        coaSetText('coa-result-count', total ? `แสดง ${rows.length} จาก ${total} รายการ` : '');
+
+        if (!rows.length) {
+            tbody.innerHTML = coaStateRow(COA_COLS, total ? 'ไม่พบบัญชีที่ตรงกับตัวกรอง' : 'ยังไม่มีข้อมูลผังบัญชี');
             return;
         }
 
-        accountsToRender.forEach(acc => {
-            const accCatId = idOf(acc.category_id);
-            const accGrpId = idOf(acc.group_id);
-            const cat = _coaCache.categories.find(c => c._id === accCatId) || {};
-            const grp = _coaCache.groups.find(g => g._id === accGrpId) || {};
+        tbody.innerHTML = rows.map(acc => {
+            const cat = _coaCache.categories.find(c => c._id === idOf(acc.category_id)) || {};
+            const grp = _coaCache.groups.find(g => g._id === idOf(acc.group_id)) || {};
 
-            const tr = document.createElement('tr');
-            tr.className = 'border-b border-hairline hover:bg-surface-chip/40 text-ink';
-            tr.innerHTML = `
-                <td class="px-4 py-3 font-mono">${escapeHtml(acc.account_code)}</td>
-                <td class="px-4 py-3">${escapeHtml(acc.account_name)}</td>
-                <td class="px-4 py-3">${escapeHtml(cat.category_name) || '-'}</td>
-                <td class="px-4 py-3">${escapeHtml(grp.group_name) || '-'}</td>
-                <td class="px-4 py-3 text-center">${acc.level || ''}</td>
-                <td class="px-4 py-3 text-center">
-                    ${acc.is_system ? '<span class="bg-surface-chip text-body-muted text-xs px-2 py-0.5 rounded-md font-semibold">ระบบ</span>' : ''}
+            // บัญชีของระบบแก้/ลบไม่ได้ จึงไม่เรนเดอร์ปุ่มตั้งแต่แรก (ข้อ 11.12 ข้อ 11)
+            const actions = acc.is_system
+                ? '<span class="text-white/50">-</span>'
+                : `<button type="button" class="btn-coa-edit text-white hover:text-amber-400 transition-colors p-2 cursor-pointer"
+                        data-id="${escapeHtml(acc._id)}" title="แก้ไขบัญชี"
+                        aria-label="แก้ไขบัญชี ${escapeHtml(acc.account_code)}">
+                        <i class="fa-solid fa-pen-to-square"></i>
+                   </button>
+                   <button type="button" class="btn-coa-delete text-white hover:text-red-400 transition-colors p-2 cursor-pointer"
+                        data-id="${escapeHtml(acc._id)}" data-code="${escapeHtml(acc.account_code)}"
+                        data-name="${escapeHtml(acc.account_name)}" title="ลบบัญชี"
+                        aria-label="ลบบัญชี ${escapeHtml(acc.account_code)}">
+                        <i class="fa-solid fa-trash"></i>
+                   </button>`;
+
+            const typeBadge = acc.is_system
+                ? '<span class="px-2.5 py-1 rounded-[0.375rem] text-xs font-medium bg-[#4D4D4D]/60 text-white">ระบบ</span>'
+                : '<span class="px-2.5 py-1 rounded-[0.375rem] text-xs font-medium bg-[#42A231]/[0.12] text-[#20D500]">กำหนดเอง</span>';
+
+            return `
+            <tr class="hover:bg-[#464646] transition-colors">
+                <td class="px-6 py-4"><span class="font-mono font-semibold text-[#FFE169]">${escapeHtml(acc.account_code)}</span></td>
+                <td class="px-6 py-4 text-white">${escapeHtml(acc.account_name)}</td>
+                <td class="px-6 py-4">${cat.category_name ? coaChipLabel(cat.category_name) : '<span class="text-white/50">-</span>'}</td>
+                <td class="px-6 py-4">${grp.group_name ? coaChipLabel(grp.group_name) : '<span class="text-white/50">-</span>'}</td>
+                <td class="px-6 py-4 text-center text-white font-medium">${acc.level || '-'}</td>
+                <td class="px-6 py-4">${typeBadge}</td>
+                <td class="px-6 py-4 text-right">
+                    <div class="flex items-center justify-end gap-1">${actions}</div>
                 </td>
-                <td class="px-4 py-3 text-center space-x-2">
-                    ${!acc.is_system ? `
-                    <button type="button" class="text-body-muted hover:text-primary transition-colors" onclick="editAccountChart('${acc._id}')">
-                        <i class="fas fa-edit"></i>
-                    </button>
-                    <button type="button" class="text-rose-400 hover:text-rose-300 transition-colors" onclick="deleteAccountChart('${acc._id}')">
-                        <i class="fas fa-trash"></i>
-                    </button>
-                    ` : '-'}
-                </td>
-            `;
-            tbody.appendChild(tr);
-        });
+            </tr>`;
+        }).join('');
+
+        tbody.querySelectorAll('.btn-coa-edit').forEach(b =>
+            b.addEventListener('click', () => editAccountChart(b.dataset.id)));
+        tbody.querySelectorAll('.btn-coa-delete').forEach(b =>
+            b.addEventListener('click', () => deleteAccountChart(b.dataset.id, b.dataset.code, b.dataset.name)));
     }
 
     function filterCOATable() {
@@ -174,8 +278,7 @@
         const filtered = _coaCache.accounts.filter(acc => {
             const matchSearch = (acc.account_code || '').toLowerCase().includes(searchTxt) ||
                 (acc.account_name || '').toLowerCase().includes(searchTxt);
-            const accCatId = idOf(acc.category_id);
-            const matchCat = catId ? accCatId === catId : true;
+            const matchCat = catId ? idOf(acc.category_id) === catId : true;
             return matchSearch && matchCat;
         });
 
@@ -186,49 +289,51 @@
         const tbody = document.getElementById('coa-groups-table-body');
         if (!tbody) return;
 
-        tbody.innerHTML = '';
-        if (!groups || groups.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="4" class="text-center text-body-muted py-4">ไม่พบข้อมูล</td></tr>';
+        const rows = groups || [];
+        coaSetText('coa-groups-count', rows.length ? `ทั้งหมด ${rows.length} กลุ่ม` : '');
+
+        if (!rows.length) {
+            tbody.innerHTML = coaStateRow(GRP_COLS, 'ยังไม่มีกลุ่มบัญชี');
             return;
         }
 
-        groups.forEach(grp => {
-            const grpCatId = idOf(grp.category_id);
-            const cat = _coaCache.categories.find(c => c._id === grpCatId) || {};
-            const accCount = _coaCache.accounts.filter(a => {
-                const gId = idOf(a.group_id);
-                return gId === grp._id;
-            }).length;
-
-            const tr = document.createElement('tr');
-            tr.className = 'border-b border-hairline hover:bg-surface-chip/40 text-ink';
-            tr.innerHTML = `
-                <td class="px-4 py-3 font-mono">${escapeHtml(grp.group_code)}</td>
-                <td class="px-4 py-3">${escapeHtml(grp.group_name)}</td>
-                <td class="px-4 py-3">${escapeHtml(cat.category_name) || '-'}</td>
-                <td class="px-4 py-3 text-center font-bold text-ink">${accCount}</td>
-            `;
-            tbody.appendChild(tr);
-        });
+        tbody.innerHTML = rows.map(grp => {
+            const cat = _coaCache.categories.find(c => c._id === idOf(grp.category_id)) || {};
+            const accCount = _coaCache.accounts.filter(a => idOf(a.group_id) === grp._id).length;
+            return `
+            <tr class="hover:bg-[#464646] transition-colors">
+                <td class="px-6 py-4"><span class="font-mono font-semibold text-[#FFE169]">${escapeHtml(grp.group_code)}</span></td>
+                <td class="px-6 py-4 text-white">${escapeHtml(grp.group_name)}</td>
+                <td class="px-6 py-4">${cat.category_name ? coaChipLabel(cat.category_name) : '<span class="text-white/50">-</span>'}</td>
+                <td class="px-6 py-4 text-center text-white font-medium">${accCount}
+                    <span class="text-xs text-white font-normal">บัญชี</span></td>
+            </tr>`;
+        }).join('');
     }
+
+    // ---------- แท็บ ----------
+    const COA_TAB_BASE = 'px-4 py-2.5 rounded-xl text-sm font-bold border transition-colors flex items-center gap-2 cursor-pointer';
+    const COA_TAB_ON = 'bg-[#FFE169] text-[#333333] border-[#FFE169]';
+    const COA_TAB_OFF = 'bg-[#27272A] text-slate-300 border-[#3F3F46] hover:border-[#FFE169] hover:text-white';
+    const COA_BADGE_ON = 'px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#333333]/20';
+    const COA_BADGE_OFF = 'px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#4D4D4D]/60 text-white';
 
     function switchCOATab(tabName) {
         ['accounts', 'groups', 'pnl'].forEach(t => {
             const btn = document.getElementById(`coa-tab-${t}`);
             const content = document.getElementById(`coa-content-${t}`);
+            const badge = document.getElementById(`badge-coa-${t}`);
+            const on = t === tabName;
             if (btn) {
-                if (t === tabName) {
-                    btn.className = "px-4 py-2.5 text-sm font-medium rounded-t-lg bg-surface-tile-3 text-ink border-b-2 border-primary";
-                } else {
-                    btn.className = "px-4 py-2.5 text-sm font-medium rounded-t-lg text-body-muted hover:text-ink hover:bg-surface-chip/40 transition-all";
-                }
+                btn.className = `${COA_TAB_BASE} ${on ? COA_TAB_ON : COA_TAB_OFF}`;
+                btn.setAttribute('aria-pressed', String(on));
             }
-            if (content) {
-                content.classList.toggle('hidden', t !== tabName);
-            }
+            if (badge) badge.className = on ? COA_BADGE_ON : COA_BADGE_OFF;
+            if (content) content.classList.toggle('hidden', !on);
         });
 
         if (tabName === 'pnl') {
+            coaSkeleton('pnl-config-table-body', PNL_COLS, 3);
             loadPnLConfig();
         }
     }
@@ -335,9 +440,16 @@
         }
     }
 
-    async function deleteAccountChart(id) {
-        if (!confirm('ยืนยันการลบบัญชีนี้?')) return;
+    async function deleteAccountChart(id, code, name) {
+        // การลบย้อนไม่ได้ ต้องผ่าน showConfirm() ของระบบ (ข้อ 11.12 ข้อ 11)
+        const label = code || name
+            ? `<strong class="font-mono text-[#FFE169]">${escapeHtml(code || '')}</strong> ${escapeHtml(name || '')}`
+            : 'บัญชีนี้';
+        showConfirm('ลบรหัสบัญชี', `ต้องการลบ ${label} ออกจากผังบัญชีหรือไม่<br><span class="text-xs text-white/70">การลบนี้ย้อนกลับไม่ได้</span>`,
+            () => doDeleteAccountChart(id), 'ลบบัญชี', 'danger');
+    }
 
+    async function doDeleteAccountChart(id) {
         try {
             const res = await authFetch(`${API_BASE_URL}/acct/chart-of-accounts/${id}`, {
                 method: 'DELETE'
@@ -463,79 +575,115 @@
         const tbody = document.getElementById('pnl-config-table-body');
         if (!tbody) return;
 
+        const rows = configs || [];
+        coaSetText('badge-coa-pnl', rows.length);
+
         tbody.innerHTML = '';
-        configs.forEach((conf, idx) => {
-            const tr = createPnLRow(conf, idx);
-            tbody.appendChild(tr);
-        });
+        if (!rows.length) {
+            tbody.innerHTML = coaStateRow(PNL_COLS, 'ยังไม่มีรายการงบกำไรขาดทุน กด "เพิ่มรายการ" เพื่อเริ่มตั้งค่า');
+            return;
+        }
+        rows.forEach((conf, idx) => tbody.appendChild(createPnLRow(conf, idx)));
     }
 
     function createPnLRow(conf = {}, idx = 0) {
         const tr = document.createElement('tr');
-        tr.className = 'border-b border-hairline hover:bg-surface-chip/40 pnl-row';
+        tr.className = 'hover:bg-[#464646] transition-colors pnl-row';
 
         let accOptions = '<option value="">เลือกบัญชี (ออโต้รวม)</option>';
         _coaCache.accounts.forEach(a => {
-            const isSelected = conf.account_ids && conf.account_ids.some(acc => {
-                const id = typeof acc === 'object' ? acc._id : acc;
-                return id === a._id;
-            });
-            const sel = isSelected ? 'selected' : '';
-            accOptions += `<option value="${a._id}" ${sel}>${a.account_code} - ${a.account_name}</option>`;
+            const isSelected = conf.account_ids && conf.account_ids.some(acc => idOf(acc) === a._id);
+            accOptions += `<option value="${a._id}" ${isSelected ? 'selected' : ''}>${escapeHtml(a.account_code)} - ${escapeHtml(a.account_name)}</option>`;
         });
 
-        const sections = [
-            { value: 'revenue', label: 'รายได้' },
-            { value: 'expense', label: 'ค่าใช้จ่าย' }
-        ];
-        let secOptions = '';
-        sections.forEach(s => {
-            const sel = s.value === conf.section ? 'selected' : '';
-            secOptions += `<option value="${s.value}" ${sel}>${s.label}</option>`;
-        });
+        const sections = [{ value: 'revenue', label: 'รายได้' }, { value: 'expense', label: 'ค่าใช้จ่าย' }];
+        const secOptions = sections.map(s =>
+            `<option value="${s.value}" ${s.value === conf.section ? 'selected' : ''}>${s.label}</option>`).join('');
+
+        // ช่องกรอกในตารางใช้โทเคนชุดเดียวกับฟอร์ม (ข้อ 11.9) แต่ย่อ padding ให้พอดีความสูงแถว
+        const field = 'w-full px-3 py-2 rounded-xl bg-[#27272A] border border-[#3F3F46] text-white focus:border-[#FFE169] focus:outline-none transition-all text-sm';
 
         tr.innerHTML = `
-            <td class="px-4 py-2">
-                <input type="number" class="pnl-sort w-16 bg-surface-chip border border-divider-soft rounded-sm p-1 text-ink text-center font-mono text-sm" value="${conf.sort_order ?? (idx + 1) * 10}">
+            <td class="px-6 py-4">
+                <input type="number" inputmode="numeric" aria-label="ลำดับการแสดง"
+                    class="pnl-sort ${field} text-center font-mono" value="${conf.sort_order ?? (idx + 1) * 10}">
             </td>
-            <td class="px-4 py-2">
-                <input type="text" class="pnl-name w-full bg-surface-chip border border-divider-soft rounded-sm p-1 text-ink text-sm" value="${conf.display_name || ''}" placeholder="ชื่อรายการ">
+            <td class="px-6 py-4">
+                <input type="text" aria-label="ชื่อรายการ" placeholder="ชื่อรายการ"
+                    class="pnl-name ${field} placeholder-slate-500 min-w-[160px]" value="${escapeHtml(conf.display_name || '')}">
             </td>
-            <td class="px-4 py-2">
-                <select class="pnl-section w-full bg-surface-chip border border-divider-soft rounded-sm p-1 text-ink text-sm">
-                    ${secOptions}
-                </select>
+            <td class="px-6 py-4">
+                <div class="relative min-w-[130px]">
+                    <select class="pnl-section ${field} appearance-none pr-9 cursor-pointer" aria-label="ส่วนของงบ">
+                        ${secOptions}
+                    </select>
+                    <div class="absolute right-3 top-[11px] pointer-events-none text-slate-400">
+                        <i class="fa-solid fa-chevron-down text-xs"></i>
+                    </div>
+                </div>
             </td>
-            <td class="px-4 py-2">
-                <select class="pnl-account w-full bg-surface-chip border border-divider-soft rounded-sm p-1 text-ink text-sm">
-                    ${accOptions}
-                </select>
+            <td class="px-6 py-4">
+                <div class="relative min-w-[220px]">
+                    <select class="pnl-account ${field} appearance-none pr-9 cursor-pointer" aria-label="บัญชีที่เชื่อมโยง">
+                        ${accOptions}
+                    </select>
+                    <div class="absolute right-3 top-[11px] pointer-events-none text-slate-400">
+                        <i class="fa-solid fa-chevron-down text-xs"></i>
+                    </div>
+                </div>
             </td>
-            <td class="px-4 py-2 text-center">
-                <input type="checkbox" class="pnl-bold w-4 h-4 rounded border-divider-soft bg-surface-chip text-primary focus:ring-primary-focus" ${conf.is_bold ? 'checked' : ''}>
+            <td class="px-6 py-4 text-center">
+                <input type="checkbox" aria-label="แสดงเป็นตัวหนา"
+                    class="pnl-bold w-4 h-4 rounded border-[#3F3F46] bg-[#27272A] accent-[#FFE169] cursor-pointer"
+                    ${conf.is_bold ? 'checked' : ''}>
             </td>
-            <td class="px-4 py-2 text-center">
-                <button type="button" class="text-rose-400 hover:text-rose-300 transition-colors" onclick="removePnLLine(this)">
-                    <i class="fas fa-times"></i>
-                </button>
+            <td class="px-6 py-4 text-right">
+                <div class="flex items-center justify-end gap-1">
+                    <button type="button" class="btn-pnl-remove text-white hover:text-red-400 transition-colors p-2 cursor-pointer"
+                        title="ลบรายการนี้" aria-label="ลบรายการงบกำไรขาดทุน">
+                        <i class="fa-solid fa-trash"></i>
+                    </button>
+                </div>
             </td>
         `;
+
+        const rm = tr.querySelector('.btn-pnl-remove');
+        if (rm) rm.addEventListener('click', () => removePnLLine(rm));
         return tr;
     }
 
     function addPnLLine() {
         const tbody = document.getElementById('pnl-config-table-body');
         if (!tbody) return;
-
-        const tr = createPnLRow({}, tbody.children.length);
-        tbody.appendChild(tr);
+        // แถวสถานะว่างไม่ใช่ข้อมูลจริง ต้องเคลียร์ก่อนเพิ่มแถวแรก
+        if (!tbody.querySelector('.pnl-row')) tbody.innerHTML = '';
+        tbody.appendChild(createPnLRow({}, tbody.children.length));
+        coaSetText('badge-coa-pnl', tbody.querySelectorAll('.pnl-row').length);
     }
 
+    // การลบเป็นการกระทำที่ย้อนไม่ได้ ต้องผ่าน showConfirm() ของระบบ (ข้อ 11.12 ข้อ 11)
+    // ของเดิมใช้ confirm() ของเบราว์เซอร์ ซึ่งหน้าตาไม่เข้ากับธีมและบล็อกทั้งหน้า
     function removePnLLine(btn) {
-        if (confirm('ลบรายการนี้?')) {
-            const tr = btn.closest('tr');
-            if (tr) tr.remove();
-        }
+        const tr = btn.closest('tr');
+        if (!tr) return;
+        const name = (tr.querySelector('.pnl-name')?.value || '').trim();
+        showConfirm(
+            'ลบรายการงบกำไรขาดทุน',
+            name
+                ? `ต้องการลบรายการ <strong class="text-white">${escapeHtml(name)}</strong> ออกจากงบกำไรขาดทุนหรือไม่<br><span class="text-xs text-white/70">การเปลี่ยนแปลงจะมีผลเมื่อกดบันทึก</span>`
+                : 'ต้องการลบรายการนี้ออกจากงบกำไรขาดทุนหรือไม่',
+            () => {
+                tr.remove();
+                const tbody = document.getElementById('pnl-config-table-body');
+                if (tbody) {
+                    const left = tbody.querySelectorAll('.pnl-row').length;
+                    coaSetText('badge-coa-pnl', left);
+                    if (!left) tbody.innerHTML = coaStateRow(PNL_COLS, 'ยังไม่มีรายการงบกำไรขาดทุน กด "เพิ่มรายการ" เพื่อเริ่มตั้งค่า');
+                }
+            },
+            'ลบรายการ',
+            'danger'
+        );
     }
 
     async function savePnLConfig() {
@@ -725,52 +873,208 @@
         }
     }
 
+    // ---------- ตารางประวัติใบสำคัญจ่าย (DESIGN.md ข้อ 11.5 - 11.7) ----------
+    const DV_COLS = 6;
+    let _dvCache = [];
+    let _dvSearch = '';
+    let _dvBound = false;
+
+    const dvBaht = (n) => '฿' + Number(n || 0).toLocaleString('th-TH',
+        { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+    const dvDate = (d) => {
+        if (!d) return '-';
+        const dt = new Date(d);
+        if (isNaN(dt)) return '-';
+        return dt.toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' });
+    };
+
+    const dvStateRow = (msg, cls = 'text-white/50 italic') =>
+        `<tr><td colspan="${DV_COLS}" class="px-6 py-8 text-center ${cls}">${escapeHtml(msg)}</td></tr>`;
+
+    const dvSkeleton = (rows = 4) => {
+        const tbody = document.getElementById('dv-history-table-body');
+        if (!tbody) return;
+        const bar = '<div class="h-3.5 w-full rounded-full bg-[#5c5c5c] animate-pulse"></div>';
+        tbody.innerHTML = Array.from({ length: rows }).map(() =>
+            `<tr>${Array.from({ length: DV_COLS }).map(() =>
+                `<td class="px-6 py-4">${bar}</td>`).join('')}</tr>`).join('');
+    };
+
+    const dvAccountCell = (acc) => {
+        if (!acc) return '<span class="text-white/50">-</span>';
+        return `<p class="font-mono text-[#FFE169] text-xs">${escapeHtml(acc.account_code || '-')}</p>
+                <p class="text-white text-xs mt-0.5">${escapeHtml(acc.account_name || '-')}</p>`;
+    };
+
+    // ชิปตัวกรองที่ใช้อยู่ (ข้อ 11.5 — ลบได้เฉพาะตอนคลิกกากบาท)
+    const dvRenderChips = () => {
+        const box = document.getElementById('dv-active-filters');
+        if (!box) return;
+        box.innerHTML = '';
+
+        const startEl = document.getElementById('dv-filter-start');
+        const endEl = document.getElementById('dv-filter-end');
+        const chips = [];
+        if (_dvSearch.trim()) chips.push({ key: 'search', label: `ค้นหา: ${_dvSearch.trim()}` });
+        if (startEl && startEl.value) chips.push({ key: 'start', label: `ตั้งแต่: ${dvDate(startEl.value)}` });
+        if (endEl && endEl.value) chips.push({ key: 'end', label: `ถึง: ${dvDate(endEl.value)}` });
+
+        const clearOne = (key) => {
+            if (key === 'search') {
+                _dvSearch = '';
+                const s = document.getElementById('dv-search');
+                if (s) s.value = '';
+                dvRenderTable();
+                return;
+            }
+            const el = document.getElementById(key === 'start' ? 'dv-filter-start' : 'dv-filter-end');
+            if (el) el.value = '';
+            loadDisbursements();   // ช่วงวันที่กรองที่ฝั่งเซิร์ฟเวอร์ ต้องดึงใหม่
+        };
+
+        chips.forEach(c => {
+            const chip = document.createElement('button');
+            chip.type = 'button';
+            chip.className = 'px-4 py-2.5 rounded-xl bg-[#4D4D4D]/40 border border-[#3F3F46] ' +
+                'text-white text-sm font-medium transition-colors flex items-center gap-2 cursor-pointer';
+            chip.innerHTML = `<span>${escapeHtml(c.label)}</span><i class="fa-solid fa-xmark text-[10px] opacity-80"></i>`;
+            chip.setAttribute('aria-label', `ลบตัวกรอง ${c.label}`);
+            chip.addEventListener('click', (e) => {
+                if (!e.target.closest('i.fa-xmark')) return;
+                clearOne(c.key);
+            });
+            box.appendChild(chip);
+        });
+
+        // ปุ่มล้างทั้งหมดโผล่เมื่อมีตัวกรองมากกว่า 1 ตัวเท่านั้น
+        if (chips.length > 1) {
+            const clearAll = document.createElement('button');
+            clearAll.type = 'button';
+            clearAll.className = 'px-2.5 py-1 bg-red-500/10 hover:bg-red-500/15 text-red-300 ' +
+                'rounded-full text-xs font-medium border border-red-500/30 transition-colors cursor-pointer';
+            clearAll.textContent = 'ล้างทั้งหมด';
+            clearAll.addEventListener('click', () => {
+                _dvSearch = '';
+                ['dv-search', 'dv-filter-start', 'dv-filter-end'].forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el) el.value = '';
+                });
+                loadDisbursements();
+            });
+            box.appendChild(clearAll);
+        }
+    };
+
+    // เรนเดอร์จากชุดที่โหลดมาแล้ว (ช่องค้นหากรองในหน่วยความจำ ไม่ยิง API ซ้ำ)
+    const dvRenderTable = () => {
+        const tbody = document.getElementById('dv-history-table-body');
+        if (!tbody) return;
+
+        dvRenderChips();
+
+        const q = _dvSearch.trim().toLowerCase();
+        const rows = _dvCache.filter(v => {
+            if (!q) return true;
+            return [v.voucher_no, v.payee_name, v.remark,
+            v.debit_account_id && v.debit_account_id.account_name,
+            v.credit_account_id && v.credit_account_id.account_name]
+                .filter(Boolean).join(' ').toLowerCase().includes(q);
+        });
+
+        const countEl = document.getElementById('dv-result-count');
+        if (countEl) countEl.textContent = _dvCache.length ? `แสดง ${rows.length} จาก ${_dvCache.length} รายการ` : '';
+
+        if (!rows.length) {
+            tbody.innerHTML = dvStateRow(_dvCache.length
+                ? 'ไม่พบใบสำคัญจ่ายที่ตรงกับตัวกรอง'
+                : 'ยังไม่มีใบสำคัญจ่ายในช่วงเวลานี้');
+            return;
+        }
+
+        // ลำดับเซลล์ต้องตรงกับหัวตารางเป๊ะ
+        // (ของเดิมสลับกันอยู่: ผู้รับเงินไปโผล่ใต้หัว "บัญชีเดบิต" และยอดเงินไปอยู่ใต้ "ผู้รับเงิน")
+        tbody.innerHTML = rows.map(v => {
+            const total = v.total_amount != null ? v.total_amount : (v.amount || 0);
+            const hasVat = v.vat_type && v.vat_type !== 'NO_VAT' && (v.vat_amount || 0) > 0;
+            return `
+            <tr class="hover:bg-[#464646] transition-colors">
+                <td class="px-6 py-4">
+                    <p class="font-mono font-semibold text-[#FFE169]">${escapeHtml(v.voucher_no || '-')}</p>
+                    <p class="text-xs text-white/70 mt-0.5">${escapeHtml(dvDate(v.payment_date))}</p>
+                </td>
+                <td class="px-6 py-4 text-white">${escapeHtml(v.payee_name || '-')}</td>
+                <td class="px-6 py-4">${dvAccountCell(v.debit_account_id)}</td>
+                <td class="px-6 py-4">${dvAccountCell(v.credit_account_id)}</td>
+                <td class="px-6 py-4 text-right">
+                    <p class="text-white font-mono font-semibold">${dvBaht(total)}</p>
+                    ${hasVat ? `<p class="text-xs text-white/70 mt-0.5 font-mono">รวม VAT ${dvBaht(v.vat_amount)}</p>` : ''}
+                </td>
+                <td class="px-6 py-4 text-right">
+                    <div class="flex items-center justify-end gap-1">
+                        <button type="button" class="btn-print-dv text-white hover:text-[#FFE169] transition-colors p-2 cursor-pointer"
+                            data-id="${escapeHtml(v._id)}" title="พิมพ์ใบสำคัญจ่าย"
+                            aria-label="พิมพ์ใบสำคัญจ่าย ${escapeHtml(v.voucher_no || '')}">
+                            <i class="fa-solid fa-print"></i>
+                        </button>
+                    </div>
+                </td>
+            </tr>`;
+        }).join('');
+
+        tbody.querySelectorAll('.btn-print-dv').forEach(btn =>
+            btn.addEventListener('click', () => printDisbursementVoucher(btn.dataset.id)));
+    };
+
     async function loadDisbursements() {
+        const tbody = document.getElementById('dv-history-table-body');
+        if (!tbody) return;
+
+        // ผูก listener ครั้งเดียว (loadPageView แทรก HTML ครั้งเดียว)
+        if (!_dvBound) {
+            _dvBound = true;
+            const searchEl = document.getElementById('dv-search');
+            if (searchEl) {
+                let t = null;
+                searchEl.addEventListener('input', () => {
+                    clearTimeout(t);
+                    t = setTimeout(() => { _dvSearch = searchEl.value; dvRenderTable(); }, 200);
+                });
+            }
+            const refreshBtn = document.getElementById('btn-refresh-dv');
+            if (refreshBtn) refreshBtn.addEventListener('click', () => loadDisbursements());
+        }
+
+        dvSkeleton();
+
         const start = document.getElementById('dv-filter-start')?.value || '';
         const end = document.getElementById('dv-filter-end')?.value || '';
 
         try {
             let url = `${API_BASE_URL}/acct/disbursements`;
-            if (start || end) {
-                url += `?startDate=${start}&endDate=${end}`;
-            }
+            if (start || end) url += `?startDate=${start}&endDate=${end}`;
 
             const res = await authFetch(url);
             const data = await res.json();
 
-            const tbody = document.getElementById('dv-history-table-body');
-            if (!tbody) return;
-
-            tbody.innerHTML = '';
-            if (!data.success || !data.vouchers || data.vouchers.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="7" class="text-center text-body-muted py-4">ไม่พบข้อมูล</td></tr>';
+            if (!data.success) {
+                _dvCache = [];
+                tbody.innerHTML = dvStateRow(data.message || 'ดึงข้อมูลใบสำคัญจ่ายไม่สำเร็จ', 'text-red-400');
+                const c = document.getElementById('dv-result-count');
+                if (c) c.textContent = '';
+                dvRenderChips();
                 return;
             }
 
-            data.vouchers.forEach(v => {
-                const tr = document.createElement('tr');
-                tr.className = 'border-b border-hairline hover:bg-surface-chip/40';
-
-                const dt = new Date(v.payment_date).toLocaleDateString('th-TH');
-                const amt = (v.total_amount || v.amount || 0).toLocaleString('th-TH', { minimumFractionDigits: 2 });
-
-                tr.innerHTML = `
-                    <td class="px-4 py-2.5 font-mono font-bold text-ink">${escapeHtml(v.voucher_no) || '-'}</td>
-                    <td class="px-4 py-2.5 font-mono">${dt}</td>
-                    <td class="px-4 py-2.5 font-semibold text-ink">${escapeHtml(v.payee_name) || '-'}</td>
-                    <td class="px-4 py-2.5 text-xs text-body-muted">${escapeHtml(v.debit_account_id?.account_code) || '-'} - ${escapeHtml(v.debit_account_id?.account_name) || '-'}</td>
-                    <td class="px-4 py-2.5 text-xs text-body-muted">${escapeHtml(v.credit_account_id?.account_code) || '-'} - ${escapeHtml(v.credit_account_id?.account_name) || '-'}</td>
-                    <td class="px-4 py-2.5 text-right font-mono font-bold text-emerald-400">฿${amt}</td>
-                    <td class="px-4 py-2.5 text-center">
-                        <button type="button" class="text-body-muted hover:text-primary transition-colors" onclick="printDisbursementVoucher('${v._id}')">
-                            <i class="fas fa-print"></i>
-                        </button>
-                    </td>
-                `;
-                tbody.appendChild(tr);
-            });
+            _dvCache = data.vouchers || [];
+            dvRenderTable();
         } catch (error) {
             console.error('Error loadDisbursements:', error);
+            _dvCache = [];
+            tbody.innerHTML = dvStateRow('เชื่อมต่อเซิร์ฟเวอร์ผิดพลาด', 'text-red-400');
+            const c = document.getElementById('dv-result-count');
+            if (c) c.textContent = '';
+            dvRenderChips();
             showToast('เชื่อมต่อเซิร์ฟเวอร์ผิดพลาด', 'error');
         }
     }

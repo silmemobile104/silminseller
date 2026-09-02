@@ -958,46 +958,82 @@
     let cachedPOsData = [];
 
     let receiveSearchBranch = '';
+    let isBranchReceiveBound = false; // loadPageView แทรก HTML ครั้งเดียว จึงผูก listener ครั้งเดียวพอ
+
+    const RECEIVE_COLS = 6;
+
+    // แท็บสถานะ (ข้อ 11.5 - ป้ายนับต้องอ่านออกทั้งบนพื้นเหลืองและพื้นเข้ม จึงสลับสีตามสถานะแท็บ)
+    const RC_TAB_BASE = 'receive-tab px-4 py-2.5 rounded-xl text-sm font-bold border transition-colors flex items-center gap-2 cursor-pointer';
+    const RC_TAB_ON = 'bg-[#FFE169] text-[#333333] border-[#FFE169]';
+    const RC_TAB_OFF = 'bg-[#27272A] text-slate-300 border-[#3F3F46] hover:border-[#FFE169] hover:text-white';
+    const RC_BADGE_ON = 'px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#333333]/20';
+    const RC_BADGE_OFF = {
+        all: 'px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#4D4D4D]/60 text-white',
+        'รอจัดส่ง': 'px-2 py-0.5 rounded-full text-[10px] font-bold bg-orange-500/[0.12] text-orange-400',
+        'ของถึงสาขาแล้ว': 'px-2 py-0.5 rounded-full text-[10px] font-bold bg-orange-500/[0.12] text-orange-400',
+        'กำลังตรวจรับ': 'px-2 py-0.5 rounded-full text-[10px] font-bold bg-orange-500/[0.12] text-orange-400',
+        'นำเข้าสำเร็จ': 'px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#42A231]/[0.12] text-[#20D500]',
+        'ยกเลิก': 'px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#FE0000]/[0.12] text-[#FE0000]'
+    };
+    const RC_PANEL_TITLE = {
+        all: 'ใบสั่งซื้อทั้งหมด',
+        'รอจัดส่ง': 'ใบสั่งซื้อที่รอจัดส่ง',
+        'ของถึงสาขาแล้ว': 'ใบสั่งซื้อที่ของถึงสาขาแล้ว',
+        'กำลังตรวจรับ': 'ใบสั่งซื้อที่กำลังตรวจรับ',
+        'นำเข้าสำเร็จ': 'ใบสั่งซื้อที่นำเข้าสต็อกสำเร็จ',
+        'ยกเลิก': 'ใบสั่งซื้อที่ถูกยกเลิก'
+    };
+
+    const setReceiveTab = (status) => {
+        currentReceiveTab = status;
+        document.querySelectorAll('#receive-status-tabs .receive-tab').forEach(btn => {
+            const on = btn.dataset.status === status;
+            btn.className = `${RC_TAB_BASE} ${on ? RC_TAB_ON : RC_TAB_OFF}`;
+            btn.setAttribute('aria-pressed', String(on));
+            const badge = btn.querySelector('span');
+            if (badge) badge.className = on ? RC_BADGE_ON : (RC_BADGE_OFF[btn.dataset.status] || RC_BADGE_OFF.all);
+        });
+        const title = document.getElementById('receive-panel-title');
+        if (title) {
+            title.innerHTML = `<i class="fa-solid fa-boxes-packing text-[#FFE169]"></i> ${RC_PANEL_TITLE[status] || RC_PANEL_TITLE.all}`;
+        }
+        renderFilteredPOs();
+    };
 
     window.initBranchReceive = async () => {
-        // Setup Search Input Event Listener
         const searchInput = document.getElementById('search-receive-po');
-        if (searchInput) {
-            searchInput.value = '';
-            receiveSearchQuery = '';
-            searchInput.addEventListener('input', (e) => {
-                receiveSearchQuery = e.target.value.trim();
-                renderFilteredPOs();
-            });
-        }
-
-        const filterStatus = document.getElementById('receive-filter-status');
-        if (filterStatus) {
-            filterStatus.value = 'all';
-            filterStatus.addEventListener('change', (e) => {
-                currentReceiveTab = e.target.value;
-                renderFilteredPOs();
-            });
-        }
-
         const filterBranch = document.getElementById('receive-filter-branch');
-        if (filterBranch) {
-            filterBranch.value = '';
-            receiveSearchBranch = '';
-            filterBranch.addEventListener('change', (e) => {
-                receiveSearchBranch = e.target.value;
-                renderFilteredPOs();
-            });
-            // Populate branches
-            if (window.masterDataCache && window.masterDataCache.branches) {
-                filterBranch.innerHTML = '<option value="">เลือกสาขา</option>' +
-                    window.masterDataCache.branches.map(b => `<option value="${b._id}">${b.name}</option>`).join('');
-            }
+
+        // เติมรายชื่อสาขาใหม่ทุกครั้ง (master data อาจเพิ่งถูกแคชหลังเปิดหน้าครั้งแรก)
+        if (filterBranch && window.masterDataCache && window.masterDataCache.branches) {
+            const keep = filterBranch.value;
+            filterBranch.innerHTML = '<option value="">ทุกสาขา</option>' +
+                window.masterDataCache.branches.map(b => `<option value="${b._id}">${b.name}</option>`).join('');
+            filterBranch.value = keep;
         }
 
+        if (!isBranchReceiveBound) {
+            isBranchReceiveBound = true;
 
-
-
+            if (searchInput) {
+                let t = null;
+                searchInput.addEventListener('input', () => {
+                    clearTimeout(t);
+                    t = setTimeout(() => {
+                        receiveSearchQuery = searchInput.value.trim();
+                        renderFilteredPOs();
+                    }, 200);
+                });
+            }
+            if (filterBranch) {
+                filterBranch.addEventListener('change', () => {
+                    receiveSearchBranch = filterBranch.value;
+                    renderFilteredPOs();
+                });
+            }
+            document.querySelectorAll('#receive-status-tabs .receive-tab').forEach(btn =>
+                btn.addEventListener('click', () => setReceiveTab(btn.dataset.status)));
+        }
 
         loadPOs();
     };
@@ -1007,10 +1043,61 @@
     }
 
     // ==========================================
-    // Accounting & Finance Module Client Logic
+    // ระบบบัญชีและการเงิน — ดีไซน์แนวเดียวกับหน้า #dashboard
+    // การ์ด KPI / การ์ดพาเนล / ตาราง ใช้สูตรเดียวกับ DESIGN.md ข้อ 11.3, 11.6, 11.7
     // ==========================================
+    const AP_COLS = 8, PL_COLS = 5, AR_COLS = 5;
+
+    const accEsc = (s) => String(s == null ? '' : s)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+
+    const accBaht = (n) => '฿' + Number(n || 0).toLocaleString('th-TH',
+        { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+    const accDate = (d) => {
+        if (!d) return '-';
+        const dt = new Date(d);
+        if (isNaN(dt)) return '-';
+        return dt.toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' });
+    };
+
+    const accStateRow = (cols, msg, cls = 'text-white/50 italic') =>
+        `<tr><td colspan="${cols}" class="px-6 py-8 text-center ${cls}">${accEsc(msg)}</td></tr>`;
+
+    const accSkeleton = (tbodyId, cols, rows = 4) => {
+        const tbody = document.getElementById(tbodyId);
+        if (!tbody) return;
+        const bar = '<div class="h-3.5 w-full rounded-full bg-[#5c5c5c] animate-pulse"></div>';
+        tbody.innerHTML = Array.from({ length: rows }).map(() =>
+            `<tr>${Array.from({ length: cols }).map(() =>
+                `<td class="px-6 py-4">${bar}</td>`).join('')}</tr>`).join('');
+    };
+
+    const accSetText = (id, text) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = text;
+    };
+
+    // ---------- แท็บ ----------
+    const ACC_TAB_BASE = 'px-4 py-2.5 rounded-xl text-sm font-bold border transition-colors flex items-center gap-2 cursor-pointer';
+    const ACC_TAB_ON = 'bg-[#FFE169] text-[#333333] border-[#FFE169]';
+    const ACC_TAB_OFF = 'bg-[#27272A] text-slate-300 border-[#3F3F46] hover:border-[#FFE169] hover:text-white';
+    const ACC_BADGE_ON = 'px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#333333]/20';
+    const ACC_BADGE_OFF = {
+        'badge-acc-ap': 'px-2 py-0.5 rounded-full text-[10px] font-bold bg-orange-500/[0.12] text-orange-400',
+        'badge-acc-pl': 'px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#4D4D4D]/60 text-white',
+        'badge-acc-ar': 'px-2 py-0.5 rounded-full text-[10px] font-bold bg-orange-500/[0.12] text-orange-400'
+    };
+
+    let isAccountingBound = false;
+    // listener ของ select ซัพพลายเออร์ผูกครั้งเดียว (dataset.listenerWired) ถ้าปิดทับ apPOs
+    // ของรอบโหลดแรกไว้ พอโหลดข้อมูลใหม่หลังบันทึกจ่ายเงิน มันจะเรนเดอร์ด้วยข้อมูลเก่า
+    // จึงต้องให้ listener อ่านผ่านตัวแปรสองตัวนี้ที่อัปเดตทุกรอบโหลดแทน
+    let apPOsCache = [];
+    let apRender = null;
+
     const initAccounting = async () => {
-        // Set default dates if empty
         const startInput = document.getElementById('accounting-start-date');
         const endInput = document.getElementById('accounting-end-date');
 
@@ -1030,43 +1117,356 @@
             endInput.value = formatDateInput(new Date());
         }
 
-        const tabAp = document.getElementById('tab-accounting-ap');
-        const tabPl = document.getElementById('tab-accounting-pl');
-        const tabAr = document.getElementById('tab-accounting-ar');
-        const secAp = document.getElementById('section-accounting-ap');
-        const secPl = document.getElementById('section-accounting-pl');
-        const secAr = document.getElementById('section-accounting-ar');
+        const tabs = [
+            { tab: 'tab-accounting-ap', sec: 'section-accounting-ap', badge: 'badge-acc-ap' },
+            { tab: 'tab-accounting-pl', sec: 'section-accounting-pl', badge: 'badge-acc-pl' },
+            { tab: 'tab-accounting-ar', sec: 'section-accounting-ar', badge: 'badge-acc-ar' }
+        ];
 
-        if (tabAp && tabPl && tabAr && secAp && secPl && secAr) {
-            tabAp.onclick = () => {
-                tabAp.className = "px-6 py-3.5 border-b-2 border-primary text-primary text-sm font-bold flex items-center gap-2 transition-all duration-200 focus:outline-none";
-                tabPl.className = "px-6 py-3.5 border-b-2 border-transparent text-body-muted hover:text-ink text-sm font-semibold flex items-center gap-2 transition-all duration-200 focus:outline-none";
-                tabAr.className = "px-6 py-3.5 border-b-2 border-transparent text-body-muted hover:text-ink text-sm font-semibold flex items-center gap-2 transition-all duration-200 focus:outline-none";
-                secAp.classList.remove('hidden');
-                secPl.classList.add('hidden');
-                secAr.classList.add('hidden');
-            };
-            tabPl.onclick = () => {
-                tabPl.className = "px-6 py-3.5 border-b-2 border-primary text-primary text-sm font-bold flex items-center gap-2 transition-all duration-200 focus:outline-none";
-                tabAp.className = "px-6 py-3.5 border-b-2 border-transparent text-body-muted hover:text-ink text-sm font-semibold flex items-center gap-2 transition-all duration-200 focus:outline-none";
-                tabAr.className = "px-6 py-3.5 border-b-2 border-transparent text-body-muted hover:text-ink text-sm font-semibold flex items-center gap-2 transition-all duration-200 focus:outline-none";
-                secPl.classList.remove('hidden');
-                secAp.classList.add('hidden');
-                secAr.classList.add('hidden');
-            };
-            tabAr.onclick = () => {
-                tabAr.className = "px-6 py-3.5 border-b-2 border-primary text-primary text-sm font-bold flex items-center gap-2 transition-all duration-200 focus:outline-none";
-                tabAp.className = "px-6 py-3.5 border-b-2 border-transparent text-body-muted hover:text-ink text-sm font-semibold flex items-center gap-2 transition-all duration-200 focus:outline-none";
-                tabPl.className = "px-6 py-3.5 border-b-2 border-transparent text-body-muted hover:text-ink text-sm font-semibold flex items-center gap-2 transition-all duration-200 focus:outline-none";
-                secAr.classList.remove('hidden');
-                secAp.classList.add('hidden');
-                secPl.classList.add('hidden');
-            };
+        const activate = (activeId) => {
+            tabs.forEach(t => {
+                const btn = document.getElementById(t.tab);
+                const sec = document.getElementById(t.sec);
+                const badge = document.getElementById(t.badge);
+                const on = t.tab === activeId;
+                if (btn) {
+                    btn.className = `${ACC_TAB_BASE} ${on ? ACC_TAB_ON : ACC_TAB_OFF}`;
+                    btn.setAttribute('aria-pressed', String(on));
+                }
+                if (sec) sec.classList.toggle('hidden', !on);
+                if (badge) badge.className = on ? ACC_BADGE_ON : ACC_BADGE_OFF[t.badge];
+            });
+        };
+
+        if (!isAccountingBound) {
+            isAccountingBound = true;
+            tabs.forEach(t => {
+                const btn = document.getElementById(t.tab);
+                if (btn) btn.addEventListener('click', () => activate(t.tab));
+            });
         }
 
         await loadAccountingData();
     };
     window.initAccounting = initAccounting;
+
+    // ---------- กราฟรายรับ-รายจ่าย (ลอกวิธีวาดจาก renderSalesChart ในหน้า #dashboard) ----------
+    const ACC_IN = '#20D500';   // รายรับ
+    const ACC_OUT = '#FE0000';  // รายจ่าย
+
+    const accCompact = (n) => {
+        const v = Math.abs(n);
+        if (v >= 1e6) return `${(n / 1e6).toFixed(v % 1e6 === 0 ? 0 : 1)}M`;
+        if (v >= 1e3) return `${(n / 1e3).toFixed(v % 1e3 === 0 ? 0 : 1)}K`;
+        return String(Math.round(n));
+    };
+
+    const accNiceMax = (v) => {
+        if (v <= 0) return 1000;
+        const mag = Math.pow(10, Math.floor(Math.log10(v)));
+        const n = v / mag;
+        const step = n <= 1 ? 1 : n <= 2 ? 2 : n <= 2.5 ? 2.5 : n <= 5 ? 5 : 10;
+        return step * mag;
+    };
+
+    // เส้นโค้งแบบ monotone cubic (Fritsch–Carlson) — ห้ามใช้ Catmull-Rom ธรรมดา
+    // เพราะช่วงที่ยอดพุ่งขึ้นจุดเดียวจะทำให้เส้นแกว่งต่ำกว่าศูนย์ กลายเป็นภาพว่า "ยอดติดลบ"
+    const accSmoothPath = (pts) => {
+        const n = pts.length;
+        if (!n) return '';
+        if (n < 3) return pts.map((p, i) => `${i ? 'L' : 'M'}${p.x},${p.y}`).join(' ');
+
+        const dx = [], dy = [], delta = [];
+        for (let i = 0; i < n - 1; i++) {
+            dx[i] = pts[i + 1].x - pts[i].x;
+            dy[i] = pts[i + 1].y - pts[i].y;
+            delta[i] = dy[i] / dx[i];
+        }
+        const m = [delta[0]];
+        for (let i = 1; i < n - 1; i++) {
+            m[i] = (delta[i - 1] * delta[i] <= 0) ? 0 : (delta[i - 1] + delta[i]) / 2;
+        }
+        m[n - 1] = delta[n - 2];
+        for (let i = 0; i < n - 1; i++) {
+            if (delta[i] === 0) { m[i] = 0; m[i + 1] = 0; continue; }
+            const a = m[i] / delta[i], b = m[i + 1] / delta[i];
+            const s = a * a + b * b;
+            if (s > 9) {
+                const tau = 3 / Math.sqrt(s);
+                m[i] = tau * a * delta[i];
+                m[i + 1] = tau * b * delta[i];
+            }
+        }
+        let out = `M${pts[0].x},${pts[0].y}`;
+        for (let i = 0; i < n - 1; i++) {
+            const c1x = pts[i].x + dx[i] / 3, c1y = pts[i].y + (m[i] * dx[i]) / 3;
+            const c2x = pts[i + 1].x - dx[i] / 3, c2y = pts[i + 1].y - (m[i + 1] * dx[i]) / 3;
+            out += ` C${c1x},${c1y} ${c2x},${c2y} ${pts[i + 1].x},${pts[i + 1].y}`;
+        }
+        return out;
+    };
+
+    const ACC_MONTHS = ['ม.ค', 'ก.พ', 'มี.ค', 'เม.ย', 'พ.ค', 'มิ.ย', 'ก.ค', 'ส.ค', 'ก.ย', 'ต.ค', 'พ.ย', 'ธ.ค'];
+    const accYmd = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    const accYm = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+
+    // แบ่งช่วงเวลาเป็นถัง: ช่วงสั้นแบ่งรายวัน ช่วงยาวแบ่งรายเดือน
+    const accBuckets = (start, end) => {
+        const s = new Date(`${start}T00:00:00`);
+        const e = new Date(`${end}T00:00:00`);
+        if (isNaN(s) || isNaN(e) || e < s) return null;
+        const days = Math.round((e - s) / 86400000) + 1;
+
+        if (days <= 62) {
+            const arr = [];
+            for (let i = 0; i < days; i++) {
+                const d = new Date(s);
+                d.setDate(s.getDate() + i);
+                arr.push({
+                    key: accYmd(d),
+                    label: `${d.getDate()} ${ACC_MONTHS[d.getMonth()]}`,
+                    full: d.toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' })
+                });
+            }
+            return { mode: 'day', arr };
+        }
+
+        const arr = [];
+        const cur = new Date(s.getFullYear(), s.getMonth(), 1);
+        while (cur <= e) {
+            arr.push({
+                key: accYm(cur),
+                label: ACC_MONTHS[cur.getMonth()],
+                full: `${ACC_MONTHS[cur.getMonth()]} ${cur.getFullYear() + 543}`
+            });
+            cur.setMonth(cur.getMonth() + 1);
+        }
+        return { mode: 'month', arr };
+    };
+
+    // สร้างชุดข้อมูลกราฟแบบ "เกณฑ์คงค้าง" ให้ยอดรวมตรงกับการ์ด KPI ด้านบนเป๊ะ
+    //   รายรับ  = รายการเดินบัญชีฝั่งรายรับ (ยอดรวมเท่ากับ totalRevenue อยู่แล้ว)
+    //   รายจ่าย = ค่าใช้จ่ายอื่น (เงินสด) + ต้นทุน PO ที่ "นำเข้าสำเร็จ" ในช่วงนั้น
+    // ⚠️ ห้ามเอารายการ "ซื้อสินค้า (PO)" ในเดินบัญชีมาบวก เพราะนั่นคือตอน "จ่ายเงินให้ซัพพลายเออร์"
+    //    ส่วน KPI นับต้นทุนตอน "รับของเข้าสต็อก" ถ้าเอามารวมด้วยจะนับซ้ำและยอดไม่ตรงการ์ดด้านบน
+    const accSeries = (d, pos, start, end) => {
+        const b = accBuckets(start, end);
+        if (!b) return null;
+        const idx = new Map(b.arr.map((x, i) => [x.key, i]));
+        const keyOf = (dateVal) => {
+            const dt = new Date(dateVal);
+            if (isNaN(dt)) return null;
+            return b.mode === 'day' ? accYmd(dt) : accYm(dt);
+        };
+
+        const income = new Array(b.arr.length).fill(0);
+        const expense = new Array(b.arr.length).fill(0);
+
+        (d.ledger || []).forEach(item => {
+            const i = idx.get(keyOf(item.created_at));
+            if (i === undefined) return;
+            if (item.type === 'รายรับ') income[i] += item.amount || 0;
+            else if (item.category !== 'ซื้อสินค้า (PO)') expense[i] += item.amount || 0;
+        });
+
+        const s = new Date(`${start}T00:00:00`);
+        const e = new Date(`${end}T23:59:59`);
+        (pos || []).forEach(po => {
+            if (po.status !== 'นำเข้าสำเร็จ') return;
+            const at = new Date(po.updatedAt);
+            if (isNaN(at) || at < s || at > e) return;
+            const i = idx.get(keyOf(po.updatedAt));
+            if (i === undefined) return;
+            expense[i] += (po.items || []).reduce(
+                (sum, it) => sum + (it.cost_price || 0) * (it.received_qty || 0), 0);
+        });
+
+        return { buckets: b, income, expense };
+    };
+
+    let _accChartState = null;   // เก็บไว้วาดใหม่ตอนเปลี่ยนขนาดจอ
+    let _accResizeBound = false;
+
+    const renderAccBreakdown = (d, pos, start, end) => {
+        const host = document.getElementById('acc-breakdown-body');
+        if (!host) return;
+        _accChartState = { d, pos, start, end };
+
+        const series = accSeries(d, pos, start, end);
+        const totalIn = d.totalRevenue || 0, totalOut = d.totalExpense || 0;
+
+        if (!series || (totalIn <= 0 && totalOut <= 0)) {
+            host.innerHTML = '<p class="py-16 text-center text-white/50 italic">ยังไม่มีรายรับหรือรายจ่ายในช่วงเวลานี้</p>';
+            return;
+        }
+
+        const { buckets, income, expense } = series;
+        const n = buckets.arr.length;
+        const maxVal = Math.max(...income, ...expense, 0);
+
+        const W = Math.max(host.clientWidth || 560, 320);
+        const H = 280;
+        const PAD = { top: 12, right: 12, bottom: 28, left: 56 };
+        const plotW = W - PAD.left - PAD.right;
+        const plotH = H - PAD.top - PAD.bottom;
+        const top = accNiceMax(maxVal);
+        const GRID = 5;
+        const x = (i) => n === 1 ? PAD.left + plotW / 2 : PAD.left + (plotW * i) / (n - 1);
+        const y = (v) => PAD.top + plotH - (plotH * v) / top;
+
+        const inPts = income.map((v, i) => ({ x: x(i), y: y(v) }));
+        const outPts = expense.map((v, i) => ({ x: x(i), y: y(v) }));
+        const areaOf = (pts) =>
+            `${accSmoothPath(pts)} L${pts[pts.length - 1].x},${PAD.top + plotH} L${pts[0].x},${PAD.top + plotH} Z`;
+
+        let grid = '', yLabels = '';
+        for (let i = 0; i <= GRID; i++) {
+            const val = (top * i) / GRID;
+            const gy = y(val);
+            grid += `<line x1="${PAD.left}" y1="${gy}" x2="${W - PAD.right}" y2="${gy}"
+                        stroke="#FFFFFF" stroke-opacity="0.08" stroke-width="1" />`;
+            yLabels += `<text x="${PAD.left - 10}" y="${gy + 4}" text-anchor="end"
+                        fill="#FFFFFF" fill-opacity="0.5" font-size="11">${accCompact(val)}</text>`;
+        }
+
+        // ป้ายแกน X ไม่เกิน 8 ตัว ไม่งั้นตัวหนังสือทับกันตอนเลือกช่วงยาว
+        const stepLbl = Math.max(1, Math.ceil(n / 8));
+        const xLabels = buckets.arr.map((bk, i) =>
+            (i % stepLbl === 0 || i === n - 1)
+                ? `<text x="${x(i)}" y="${H - 8}" text-anchor="middle"
+                       fill="#FFFFFF" fill-opacity="0.5" font-size="11">${accEsc(bk.label)}</text>`
+                : '').join('');
+
+        const dots = (pts, vals, color) => pts.map((p, i) =>
+            vals[i] > 0
+                ? `<circle cx="${p.x}" cy="${p.y}" r="3.5" fill="${color}" stroke="#1F1F1F" stroke-width="1.5" />`
+                : '').join('');
+
+        const bandW = n > 1 ? plotW / (n - 1) : plotW;
+        const bands = buckets.arr.map((bk, i) =>
+            `<rect class="acc-band" data-i="${i}" x="${x(i) - bandW / 2}" y="${PAD.top}"
+                   width="${bandW}" height="${plotH}" fill="transparent" style="cursor:crosshair" />`).join('');
+
+        const net = d.netProfit || 0;
+        const netColor = net >= 0 ? ACC_IN : ACC_OUT;
+
+        host.innerHTML = `
+            <div class="relative w-full">
+                <svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img"
+                     aria-label="กราฟรายรับและรายจ่ายตามช่วงเวลาที่เลือก">
+                    <defs>
+                        <linearGradient id="accGradIn" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stop-color="${ACC_IN}" stop-opacity="0.35" />
+                            <stop offset="100%" stop-color="${ACC_IN}" stop-opacity="0" />
+                        </linearGradient>
+                        <linearGradient id="accGradOut" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stop-color="${ACC_OUT}" stop-opacity="0.35" />
+                            <stop offset="100%" stop-color="${ACC_OUT}" stop-opacity="0" />
+                        </linearGradient>
+                    </defs>
+                    ${grid}${yLabels}${xLabels}
+                    <path d="${areaOf(outPts)}" fill="url(#accGradOut)" />
+                    <path d="${areaOf(inPts)}" fill="url(#accGradIn)" />
+                    <path d="${accSmoothPath(outPts)}" fill="none" stroke="${ACC_OUT}" stroke-width="2"
+                          stroke-linecap="round" stroke-linejoin="round" />
+                    <path d="${accSmoothPath(inPts)}" fill="none" stroke="${ACC_IN}" stroke-width="2"
+                          stroke-linecap="round" stroke-linejoin="round" />
+                    ${dots(outPts, expense, ACC_OUT)}${dots(inPts, income, ACC_IN)}
+                    <line id="acc-hoverline" x1="0" y1="${PAD.top}" x2="0" y2="${PAD.top + plotH}"
+                          stroke="#FFFFFF" stroke-opacity="0.25" stroke-width="1" style="display:none" />
+                    ${bands}
+                </svg>
+                <div id="acc-tooltip"
+                     class="pointer-events-none absolute hidden z-10 rounded-xl bg-[#18181B] border border-[#4D4D4D] shadow-lg px-3 py-2.5 text-xs whitespace-nowrap"></div>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-4">
+                <div class="bg-[#27272A] border border-[#3F3F46] rounded-xl p-3">
+                    <p class="text-xs" style="color:${ACC_IN}">รายรับรวม</p>
+                    <p class="text-lg font-semibold font-mono" style="color:${ACC_IN}">${accBaht(totalIn)}</p>
+                    <p class="text-[11px] text-white/70 mt-1">ขายสินค้า ${accBaht(d.salesRevenue)} · อื่นๆ ${accBaht(d.otherRevenue)}</p>
+                </div>
+                <div class="bg-[#27272A] border border-[#3F3F46] rounded-xl p-3">
+                    <p class="text-xs" style="color:${ACC_OUT}">รายจ่ายรวม</p>
+                    <p class="text-lg font-semibold font-mono" style="color:${ACC_OUT}">${accBaht(totalOut)}</p>
+                    <p class="text-[11px] text-white/70 mt-1">ค่าสินค้า (PO) ${accBaht(d.poCost)} · อื่นๆ ${accBaht(d.otherExpenses)}</p>
+                </div>
+                <div class="bg-[#27272A] border border-[#3F3F46] rounded-xl p-3">
+                    <p class="text-xs text-white/70">กำไรสุทธิ</p>
+                    <p class="text-lg font-semibold font-mono" style="color:${netColor}">${accBaht(net)}</p>
+                    <p class="text-[11px] text-white/70 mt-1">${totalIn ? 'อัตรากำไร ' + ((net / totalIn) * 100).toFixed(1) + '%' : 'ยังไม่มีรายรับให้คิดอัตรากำไร'}</p>
+                </div>
+            </div>`;
+
+        // ---- tooltip ----
+        const svg = host.querySelector('svg');
+        const tip = host.querySelector('#acc-tooltip');
+        const hoverLine = host.querySelector('#acc-hoverline');
+
+        host.querySelectorAll('.acc-band').forEach(band => {
+            band.addEventListener('mouseenter', () => {
+                const i = Number(band.dataset.i);
+                const diff = income[i] - expense[i];
+                tip.innerHTML = `
+                    <p class="text-white font-medium mb-1.5">${accEsc(buckets.arr[i].full)}</p>
+                    <p class="flex items-center gap-2 text-white/80">
+                        <span class="w-2 h-2 rounded-full shrink-0" style="background:${ACC_IN}"></span>
+                        รายรับ <span class="ml-auto font-mono text-white">${accBaht(income[i])}</span></p>
+                    <p class="flex items-center gap-2 text-white/80 mt-1">
+                        <span class="w-2 h-2 rounded-full shrink-0" style="background:${ACC_OUT}"></span>
+                        รายจ่าย <span class="ml-auto font-mono text-white">${accBaht(expense[i])}</span></p>
+                    <p class="mt-1.5 pt-1.5 border-t border-[#333333] text-white/70">
+                        คงเหลือ <span class="font-mono ml-1" style="color:${diff >= 0 ? ACC_IN : ACC_OUT}">${accBaht(diff)}</span></p>`;
+                tip.classList.remove('hidden');
+
+                const px = x(i);
+                hoverLine.setAttribute('x1', px);
+                hoverLine.setAttribute('x2', px);
+                hoverLine.style.display = '';
+
+                const tw = tip.offsetWidth || 190;
+                tip.style.left = `${Math.max(0, Math.min(px - tw / 2, W - tw))}px`;
+                tip.style.top = `${PAD.top + 8}px`;
+            });
+        });
+        svg.addEventListener('mouseleave', () => {
+            tip.classList.add('hidden');
+            hoverLine.style.display = 'none';
+        });
+
+        // วาดใหม่เมื่อความกว้างเปลี่ยน (SVG กำหนดความกว้างเป็นพิกเซลตายตัว)
+        if (!_accResizeBound) {
+            _accResizeBound = true;
+            let t = null;
+            window.addEventListener('resize', () => {
+                clearTimeout(t);
+                t = setTimeout(() => {
+                    if (_accChartState && document.getElementById('acc-breakdown-body')) {
+                        const st = _accChartState;
+                        renderAccBreakdown(st.d, st.pos, st.start, st.end);
+                    }
+                }, 200);
+            });
+        }
+    };
+
+    // ---------- แผงภาษีมูลค่าเพิ่ม ----------
+    const renderAccVat = (d) => {
+        const host = document.getElementById('acc-vat-body');
+        if (!host) return;
+        const row = (label, value, color) => `
+            <div class="flex items-center justify-between py-2.5 border-b border-[#3F3F46] last:border-0">
+                <span class="text-xs text-white/70">${accEsc(label)}</span>
+                <span class="text-sm font-mono font-semibold" style="color:${color}">${accBaht(value)}</span>
+            </div>`;
+        host.innerHTML = `
+            <div class="bg-[#27272A] border border-[#3F3F46] rounded-xl px-4 py-2">
+                ${row('ภาษีขาย (Output VAT)', d.outputVat, '#20D500')}
+                ${row('ภาษีซื้อ (Input VAT)', d.inputVat, '#FE0000')}
+                ${row('ภาษีค้างจ่ายสุทธิ', d.taxPayable, '#FFE169')}
+            </div>
+            <p class="text-[11px] text-white/50 mt-3">
+                ภาษีค้างจ่ายเป็น 0 เมื่อภาษีซื้อมากกว่าภาษีขาย (ยกไปเครดิตงวดถัดไป)</p>`;
+    };
 
     const loadAccountingData = async () => {
         const startInput = document.getElementById('accounting-start-date');
@@ -1074,452 +1474,522 @@
         const start = startInput ? startInput.value : '';
         const end = endInput ? endInput.value : '';
 
+        // แถวโครงร่างก่อน await ทุกตาราง (ข้อ 11.7)
+        accSkeleton('table-body-accounting-ap', AP_COLS);
+        accSkeleton('table-body-accounting-pl', PL_COLS);
+        accSkeleton('table-body-accounting-ar', AR_COLS);
+
+        const period = start && end ? `(${accDate(start)} - ${accDate(end)})` : '';
+        accSetText('acc-breakdown-period', period);
+
+        // กราฟต้องใช้ทั้งงบกำไร-ขาดทุนและรายการ PO จึงวาดหลังโหลดครบทั้งสองชุด
+        let plData = null;
+        let poListForChart = null;
+
         try {
-            // Fetch P&L data
+            // ---------------- งบกำไร-ขาดทุน + Ledger ----------------
             const res = await authFetch(`${API_BASE_URL}/accounting/profit-loss?startDate=${start}&endDate=${end}`);
             const json = await res.json();
 
             if (json.success) {
                 const data = json.data;
-                const formatThaiBaht = (num) => '฿' + Number(num || 0).toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-                // Render KPI values
-                document.getElementById('kpi-revenue').textContent = formatThaiBaht(data.totalRevenue);
-                document.getElementById('kpi-expense').textContent = formatThaiBaht(data.totalExpense);
+                accSetText('kpi-revenue', accBaht(data.totalRevenue));
+                accSetText('kpi-revenue-sub', `ขายสินค้า ${accBaht(data.salesRevenue)} · อื่นๆ ${accBaht(data.otherRevenue)}`);
+                accSetText('kpi-expense', accBaht(data.totalExpense));
+                accSetText('kpi-expense-sub', `ค่าสินค้า ${accBaht(data.poCost)} · อื่นๆ ${accBaht(data.otherExpenses)}`);
 
                 const profitEl = document.getElementById('kpi-profit');
-                profitEl.textContent = formatThaiBaht(data.netProfit);
-                if (data.netProfit >= 0) {
-                    profitEl.className = "text-xl md:text-2xl font-black text-emerald-400 mt-2 font-mono";
-                } else {
-                    profitEl.className = "text-xl md:text-2xl font-black text-rose-500 mt-2 font-mono";
+                if (profitEl) {
+                    profitEl.textContent = accBaht(data.netProfit);
+                    profitEl.className = 'text-2xl font-semibold font-mono mt-0.5 truncate ' +
+                        (data.netProfit >= 0 ? 'text-[#20D500]' : 'text-[#FE0000]');
                 }
+                accSetText('kpi-profit-sub', data.netProfit >= 0 ? 'กำไรจากการดำเนินงาน' : 'ขาดทุนจากการดำเนินงาน');
 
-                document.getElementById('kpi-vat').textContent = formatThaiBaht(data.taxPayable);
+                accSetText('kpi-vat', accBaht(data.taxPayable));
+                accSetText('kpi-vat-sub', `ภาษีขาย ${accBaht(data.outputVat)} · ภาษีซื้อ ${accBaht(data.inputVat)}`);
 
-                // Render Tab 2: P&L Ledger
+                plData = data;
+                renderAccVat(data);
+
+                // ---------------- แท็บ 2: รายการเดินบัญชี ----------------
                 const plTbody = document.getElementById('table-body-accounting-pl');
+                const ledger = data.ledger || [];
+                accSetText('badge-acc-pl', ledger.length);
+                accSetText('acc-pl-count', ledger.length ? `แสดง ${ledger.length} จาก ${ledger.length} รายการ` : '');
+
                 if (plTbody) {
-                    plTbody.innerHTML = '';
-                    if (data.ledger.length === 0) {
-                        plTbody.innerHTML = '<tr><td colspan="6" class="text-center py-8 text-body-muted text-sm"><i class="fa-solid fa-inbox text-slate-650 text-xl block mb-2"></i>ไม่มีรายการเดินบัญชีในช่วงเวลานี้</td></tr>';
+                    if (!ledger.length) {
+                        plTbody.innerHTML = accStateRow(PL_COLS, 'ไม่มีรายการเดินบัญชีในช่วงเวลานี้');
                     } else {
-                        data.ledger.forEach(item => {
-                            const tr = document.createElement('tr');
-                            tr.className = 'border-b border-hairline hover:bg-surface-chip/20 transition-all duration-150';
-
-                            const badgeType = item.type === 'รายรับ'
-                                ? `<span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 whitespace-nowrap inline-block"><i class="fa-solid fa-arrow-down text-[10px] mr-1"></i>รายรับ</span>`
-                                : `<span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-rose-500/10 text-rose-400 border border-rose-500/20 whitespace-nowrap inline-block"><i class="fa-solid fa-arrow-up text-[10px] mr-1"></i>รายจ่าย</span>`;
-
-                            const amountVal = item.type === 'รายรับ'
-                                ? `<span class="text-emerald-400 font-bold font-mono whitespace-nowrap">+฿${item.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>`
-                                : `<span class="text-rose-400 font-bold font-mono whitespace-nowrap">-฿${item.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>`;
-
-                            tr.innerHTML = `
-                                <td class="px-4 py-4 md:px-6 font-mono font-bold text-body-muted text-sm whitespace-nowrap">${item.transaction_id}</td>
-                                <td class="px-4 py-4 md:px-6 text-sm text-body-muted whitespace-nowrap">${new Date(item.created_at).toLocaleString('th-TH')}</td>
-                                <td class="px-4 py-4 md:px-6 whitespace-nowrap">${badgeType}</td>
-                                <td class="px-4 py-4 md:px-6 text-sm text-body-muted whitespace-nowrap">${item.category}</td>
-                                <td class="px-4 py-4 md:px-6 text-right whitespace-nowrap">${amountVal}</td>
-                                <td class="px-4 py-4 md:px-6 text-sm text-body-muted whitespace-nowrap">${item.recorded_by || 'Admin'}</td>
-                            `;
-                            plTbody.appendChild(tr);
-                        });
+                        plTbody.innerHTML = ledger.map(item => {
+                            const isIncome = item.type === 'รายรับ';
+                            const badge = isIncome
+                                ? `<div class="inline-flex items-center gap-2 px-2.5 py-1 rounded-[0.375rem] bg-[#42A231]/[0.12]">
+                                       <div class="w-2 h-2 rounded-full bg-[#20D500]"></div>
+                                       <span class="text-[#20D500] font-medium text-xs">รายรับ</span></div>`
+                                : `<div class="inline-flex items-center gap-2 px-2.5 py-1 rounded-[0.375rem] bg-[#FE0000]/[0.12]">
+                                       <div class="w-2 h-2 rounded-full bg-[#FE0000]"></div>
+                                       <span class="text-[#FE0000] font-medium text-xs">รายจ่าย</span></div>`;
+                            const amount = isIncome
+                                ? `<span class="text-[#20D500] font-mono font-semibold">+${accBaht(item.amount)}</span>`
+                                : `<span class="text-[#FE0000] font-mono font-semibold">-${accBaht(item.amount)}</span>`;
+                            return `
+                            <tr class="hover:bg-[#464646] transition-colors">
+                                <td class="px-6 py-4">
+                                    <p class="font-mono font-semibold text-[#FFE169]">${accEsc(item.transaction_id)}</p>
+                                    <p class="text-xs text-white/70 mt-0.5">${accEsc(accDate(item.created_at))}</p>
+                                </td>
+                                <td class="px-6 py-4">${badge}</td>
+                                <td class="px-6 py-4 text-white">${accEsc(item.category || '-')}</td>
+                                <td class="px-6 py-4 text-right">${amount}</td>
+                                <td class="px-6 py-4 text-white">${accEsc(item.recorded_by || '-')}</td>
+                            </tr>`;
+                        }).join('');
                     }
                 }
             } else {
                 showToast(json.message || 'ดึงข้อมูลบัญชีผิดพลาด', 'error');
+                const plTbody = document.getElementById('table-body-accounting-pl');
+                if (plTbody) plTbody.innerHTML = accStateRow(PL_COLS, json.message || 'ดึงข้อมูลบัญชีผิดพลาด', 'text-red-400');
             }
 
-            // Fetch POs for AP Queue
+            // ---------------- แท็บ 1: บัญชีเจ้าหนี้ (AP) ----------------
             const poRes = await authFetch(`${API_BASE_URL}/purchase-orders`);
             const poJson = await poRes.json();
             if (poJson.success) {
-                const apPOs = poJson.data.filter(po => po.status !== 'ยกเลิก');
+                const apPOs = (poJson.data || []).filter(po => po.status !== 'ยกเลิก');
 
-                // Populate Supplier Dropdown Filter
                 const supplierSelect = document.getElementById('filter-ap-supplier');
                 const selectedSupplier = supplierSelect ? supplierSelect.value : '';
                 const uniqueSuppliers = [...new Set(apPOs.map(po => po.supplier_name))].sort();
 
                 if (supplierSelect) {
-                    supplierSelect.innerHTML = '<option value="">ทั้งหมด</option>';
-                    uniqueSuppliers.forEach(sup => {
-                        const opt = document.createElement('option');
-                        opt.value = sup;
-                        opt.textContent = sup;
-                        supplierSelect.appendChild(opt);
-                    });
+                    supplierSelect.innerHTML = '<option value="">ทุกซัพพลายเออร์</option>' +
+                        uniqueSuppliers.map(s => `<option value="${accEsc(s)}">${accEsc(s)}</option>`).join('');
                     supplierSelect.value = selectedSupplier;
 
                     if (!supplierSelect.dataset.listenerWired) {
                         supplierSelect.dataset.listenerWired = 'true';
                         supplierSelect.addEventListener('change', () => {
-                            renderAPTable(apPOs, supplierSelect.value);
+                            if (apRender) apRender(apPOsCache, supplierSelect.value);
                         });
                     }
                 }
 
-                // Helper to render filtered AP table rows
+                // ชิปตัวกรองซัพพลายเออร์ (ข้อ 11.5)
+                const renderApChips = (filterVal) => {
+                    const box = document.getElementById('acc-ap-filters');
+                    if (!box) return;
+                    box.innerHTML = '';
+                    if (!filterVal) return;
+                    const chip = document.createElement('button');
+                    chip.type = 'button';
+                    chip.className = 'px-4 py-2.5 rounded-xl bg-[#4D4D4D]/40 border border-[#3F3F46] ' +
+                        'text-white text-sm font-medium transition-colors flex items-center gap-2 cursor-pointer';
+                    chip.innerHTML = `<span>ซัพพลายเออร์: ${accEsc(filterVal)}</span><i class="fa-solid fa-xmark text-[10px] opacity-80"></i>`;
+                    chip.setAttribute('aria-label', `ลบตัวกรองซัพพลายเออร์ ${filterVal}`);
+                    chip.addEventListener('click', (e) => {
+                        if (!e.target.closest('i.fa-xmark')) return;
+                        if (supplierSelect) supplierSelect.value = '';
+                        renderAPTable(apPOs, '');
+                    });
+                    box.appendChild(chip);
+                };
+
                 const renderAPTable = (poList, filterVal) => {
                     const apTbody = document.getElementById('table-body-accounting-ap');
                     if (!apTbody) return;
-                    apTbody.innerHTML = '';
 
-                    const filteredList = filterVal ? poList.filter(po => po.supplier_name === filterVal) : poList;
+                    const list = filterVal ? poList.filter(po => po.supplier_name === filterVal) : poList;
+                    renderApChips(filterVal);
+                    accSetText('acc-ap-count', poList.length ? `แสดง ${list.length} จาก ${poList.length} รายการ` : '');
 
-                    if (filteredList.length === 0) {
-                        apTbody.innerHTML = '<tr><td colspan="9" class="text-center py-8 text-body-muted text-sm"><i class="fa-solid fa-check-double text-slate-650 text-xl block mb-2"></i>ไม่มีหนี้สินใบสั่งซื้อค้างจ่าย</td></tr>';
-                    } else {
-                        filteredList.forEach(po => {
-                            const totalCost = po.items.reduce((sum, item) => sum + (item.cost_price * item.ordered_qty), 0);
-                            const paidAmount = po.paid_amount || 0;
-                            const discount = po.discount || 0;
-                            const outstanding = Math.max(0, totalCost - paidAmount - discount);
-
-                            const tr = document.createElement('tr');
-                            tr.className = 'border-b border-hairline hover:bg-surface-chip/20 transition-all duration-150';
-
-                            let statusBadge = '';
-                            if (po.payment_status === 'ชำระเงินแล้ว') {
-                                statusBadge = `<span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-green-500/10 text-green-400 border border-green-500/20 whitespace-nowrap inline-block"><i class="fa-solid fa-circle-check text-[10px] mr-1"></i>ชำระเงินแล้ว</span>`;
-                            } else if (po.payment_status === 'ชำระเงินบางส่วน') {
-                                statusBadge = `<span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-500/10 text-blue-400 border border-blue-500/20 whitespace-nowrap inline-block"><i class="fa-solid fa-circle-info text-[10px] mr-1"></i>ชำระบางส่วน</span>`;
-                            } else {
-                                statusBadge = `<span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20 whitespace-nowrap inline-block"><i class="fa-solid fa-hourglass text-[10px] mr-1"></i>ยังไม่ได้ชำระ</span>`;
-                            }
-
-                            const payAction = po.payment_status !== 'ชำระเงินแล้ว'
-                                ? `<button class="btn-pay-po px-3 py-1.5 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 border border-amber-500/35 hover:border-amber-500/60 rounded-xl text-xs font-bold transition-all inline-flex items-center gap-1.5 active:scale-95 whitespace-nowrap shrink-0" data-id="${po._id}" data-no="${po.po_number}" data-amount="${totalCost}" data-paid="${paidAmount}" data-discount="${discount}" data-outstanding="${outstanding}">
-                                     <i class="fa-solid fa-money-bill-wave"></i> กดจ่ายเงิน
-                                   </button>`
-                                : `<span class="text-xs text-emerald-400 font-bold bg-emerald-500/10 border border-emerald-500/25 px-2.5 py-1.5 rounded-xl inline-flex items-center gap-1 whitespace-nowrap"><i class="fa-solid fa-circle-check text-[10px]"></i> จ่ายแล้ว วันที่ ${new Date(po.paid_at || po.updatedAt).toLocaleDateString('th-TH')}</span>`;
-
-                            tr.innerHTML = `
-                                <td class="px-4 py-4 md:px-6 font-mono font-bold text-body-muted text-sm whitespace-nowrap">${po.po_number}</td>
-                                <td class="px-4 py-4 md:px-6 text-sm text-body-muted whitespace-nowrap">${new Date(po.createdAt).toLocaleDateString('th-TH')}</td>
-                                <td class="px-4 py-4 md:px-6 text-sm text-body-muted whitespace-nowrap">${po.supplier_name}</td>
-                                <td class="px-4 py-4 md:px-6 font-mono text-sm text-body-muted text-right whitespace-nowrap">฿${totalCost.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
-                                <td class="px-4 py-4 md:px-6 font-mono text-sm text-emerald-400 text-right whitespace-nowrap">฿${paidAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
-                                <td class="px-4 py-4 md:px-6 font-mono text-sm text-rose-400 text-right cursor-help whitespace-nowrap" title="${po.discount_remark || 'ไม่มีส่วนลด'}">฿${discount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
-                                <td class="px-4 py-4 md:px-6 font-mono text-sm text-amber-400 font-bold text-right whitespace-nowrap">฿${outstanding.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
-                                <td class="px-4 py-4 md:px-6 text-center whitespace-nowrap">${statusBadge}</td>
-                                <td class="px-4 py-4 md:px-6 text-right whitespace-nowrap">
-                                    <div class="flex items-center justify-end gap-2 whitespace-nowrap">
-                                        <button class="btn-view-po-detail px-3 py-1.5 bg-surface-chip text-ink hover:bg-surface-tile-2 border border-hairline hover:border-primary/40 rounded-xl text-xs font-bold transition-all inline-flex items-center gap-1.5 active:scale-95 whitespace-nowrap shrink-0">
-                                            <i class="fa-solid fa-eye"></i> ดูรายละเอียด
-                                        </button>
-                                        ${payAction}
-                                    </div>
-                                </td>
-                            `;
-                            apTbody.appendChild(tr);
-
-                            // Bind view details click handler
-                            const viewBtn = tr.querySelector('.btn-view-po-detail');
-                            if (viewBtn) {
-                                viewBtn.onclick = () => {
-                                    openViewPOModal(po);
-                                };
-                            }
-
-                            // Bind pay click handler
-                            const payBtn = tr.querySelector('.btn-pay-po');
-                            if (payBtn) {
-                                payBtn.onclick = () => {
-                                    const poId = payBtn.dataset.id;
-                                    const poNo = payBtn.dataset.no;
-                                    const poAmount = Number(payBtn.dataset.amount);
-                                    const poPaid = Number(payBtn.dataset.paid);
-                                    const poDiscount = Number(payBtn.dataset.discount);
-                                    const poOutstanding = Number(payBtn.dataset.outstanding);
-
-                                    const todayStr = new Date().toLocaleDateString('en-CA');
-                                    showConfirm(
-                                        `บันทึกจ่ายเงินใบสั่งซื้อ (${poNo})`,
-                                        `<div class="text-left space-y-4">
-                                            <!-- Financial Summary -->
-                                            <div class="grid grid-cols-2 gap-2 bg-surface-tile-3 p-4 rounded-2xl border border-hairline text-xs text-body-muted">
-                                                <div>ยอดรวม PO:</div>
-                                                <div class="text-right font-mono text-ink">฿${poAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
-                                                <div>ชำระก่อนหน้า:</div>
-                                                <div class="text-right font-mono text-emerald-400">฿${poPaid.toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
-                                                <div>ส่วนลดสะสม:</div>
-                                                <div class="text-right font-mono text-rose-400">฿${poDiscount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
-                                                <div class="font-bold text-ink border-t border-hairline pt-1 mt-1">ยอดค้างชำระ:</div>
-                                                <div class="text-right font-mono text-amber-400 font-bold border-t border-hairline pt-1 mt-1">฿${poOutstanding.toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
-                                            </div>
-
-                                            <!-- Form Inputs -->
-                                            <div class="space-y-3 bg-surface-tile-3 p-4 rounded-2xl border border-hairline">
-                                                <div>
-                                                    <label class="text-xs font-semibold text-body-muted block mb-1">วันที่ชำระเงิน:</label>
-                                                    <input type="date" id="ap-pay-date-input" class="w-full bg-surface-tile-3 border border-hairline rounded-xl px-3 py-2  focus:outline-none focus:border-primary-focus text-sm" value="${todayStr}">
-                                                </div>
-                                                <div class="grid grid-cols-2 gap-3">
-                                                    <div>
-                                                        <label class="text-xs font-semibold text-body-muted block mb-1">จำนวนเงินที่จ่ายรอบนี้:</label>
-                                                        <input type="number" id="ap-pay-amount-input" step="any" min="0" max="${poOutstanding}" class="w-full bg-surface-tile-3 border border-hairline rounded-xl px-3 py-2  focus:outline-none focus:border-primary-focus text-sm font-mono text-right" value="${poOutstanding.toFixed(2)}">
-                                                    </div>
-                                                    <div>
-                                                        <label class="text-xs font-semibold text-body-muted block mb-1">ส่วนลดรอบนี้:</label>
-                                                        <input type="number" id="ap-pay-discount-input" step="any" min="0" max="${poOutstanding}" class="w-full bg-surface-tile-3 border border-hairline rounded-xl px-3 py-2  focus:outline-none focus:border-primary-focus text-sm font-mono text-right" value="0.00">
-                                                    </div>
-                                                </div>
-                                                <div>
-                                                    <label class="text-xs font-semibold text-body-muted block mb-1">หมายเหตุส่วนลด (ระบุหากได้ส่วนลด):</label>
-                                                    <input type="text" id="ap-pay-discount-remark-input" placeholder="เช่น ชำระก่อนครบกำหนดรับส่วนลด 2%" class="w-full bg-surface-tile-3 border border-hairline rounded-xl px-3 py-2  focus:outline-none focus:border-primary-focus text-sm">
-                                                </div>
-                                                <div id="ap-pay-calc-result" class="text-[11px] font-bold text-body-muted text-right pt-1">
-                                                    คงเหลือหลังชำระ: ฿0.00
-                                                </div>
-                                            </div>
-                                         </div>`,
-                                        async () => {
-                                            try {
-                                                const payDateVal = document.getElementById('ap-pay-date-input')?.value || todayStr;
-                                                const payAmtVal = Number(document.getElementById('ap-pay-amount-input')?.value || 0);
-                                                const discountVal = Number(document.getElementById('ap-pay-discount-input')?.value || 0);
-                                                const remarkVal = document.getElementById('ap-pay-discount-remark-input')?.value || '';
-
-                                                if (payAmtVal === 0 && discountVal === 0) {
-                                                    showToast('กรุณากรอกจำนวนเงินชำระหรือส่วนลดรอบนี้อย่างใดอย่างหนึ่ง', 'error');
-                                                    return;
-                                                }
-                                                if (discountVal > 0 && !remarkVal.trim()) {
-                                                    showToast('กรุณาระบุหมายเหตุของส่วนลดเพื่อใช้เป็นหลักฐานทางบัญชี', 'error');
-                                                    return;
-                                                }
-                                                if (payAmtVal + discountVal > poOutstanding + 0.01) {
-                                                    showToast('ยอดจ่ายรวมส่วนลด เกินยอดค้างชำระปัจจุบัน', 'error');
-                                                    return;
-                                                }
-
-                                                const payRes = await authFetch(`${API_BASE_URL}/accounting/po-pay/${poId}`, {
-                                                    method: 'PUT',
-                                                    headers: { 'Content-Type': 'application/json' },
-                                                    body: JSON.stringify({
-                                                        payment_date: payDateVal,
-                                                        payment_amount: payAmtVal,
-                                                        discount_amount: discountVal,
-                                                        discount_remark: remarkVal
-                                                    })
-                                                });
-                                                const payJson = await payRes.json();
-                                                if (payJson.success) {
-                                                    showToast('บันทึกการชำระเงินสำเร็จ!', 'success');
-                                                    loadAccountingData();
-                                                } else {
-                                                    showToast(payJson.message || 'ไม่สามารถทำรายการได้', 'error');
-                                                }
-                                            } catch (err) {
-                                                console.error(err);
-                                                showToast('เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์', 'error');
-                                            }
-                                        },
-                                        'ยืนยันชำระเงิน',
-                                        'warning',
-                                        'max-w-lg'
-                                    );
-
-                                    // Dynamic calculation handler inside the confirm modal
-                                    setTimeout(() => {
-                                        const amtInp = document.getElementById('ap-pay-amount-input');
-                                        const discInp = document.getElementById('ap-pay-discount-input');
-                                        const calcRes = document.getElementById('ap-pay-calc-result');
-
-                                        const updateCalc = () => {
-                                            if (!amtInp || !discInp || !calcRes) return;
-                                            const amt = Number(amtInp.value || 0);
-                                            const disc = Number(discInp.value || 0);
-                                            const left = Math.max(0, poOutstanding - amt - disc);
-                                            calcRes.textContent = `คงเหลือหลังชำระ: ฿${left.toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
-                                            if (amt + disc > poOutstanding + 0.01) {
-                                                calcRes.className = 'text-[11px] font-bold text-rose-400 text-right pt-1';
-                                                calcRes.textContent = `เกินยอดค้างชำระ: ฿${Math.abs(poOutstanding - amt - disc).toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
-                                            } else {
-                                                calcRes.className = 'text-[11px] font-bold text-emerald-400 text-right pt-1';
-                                            }
-                                        };
-
-                                        if (amtInp && discInp) {
-                                            amtInp.addEventListener('input', updateCalc);
-                                            discInp.addEventListener('input', updateCalc);
-                                            updateCalc();
-                                        }
-                                    }, 100);
-                                };
-                            }
-                        });
+                    if (!list.length) {
+                        apTbody.innerHTML = accStateRow(AP_COLS, poList.length
+                            ? 'ไม่พบใบสั่งซื้อของซัพพลายเออร์ที่เลือก'
+                            : 'ไม่มีหนี้สินใบสั่งซื้อค้างจ่าย');
+                        return;
                     }
+
+                    apTbody.innerHTML = list.map(po => {
+                        const totalCost = (po.items || []).reduce((sum, i) => sum + (i.cost_price || 0) * (i.ordered_qty || 0), 0);
+                        const paidAmount = po.paid_amount || 0;
+                        const discount = po.discount || 0;
+                        const outstanding = Math.max(0, totalCost - paidAmount - discount);
+                        const isPaid = po.payment_status === 'ชำระเงินแล้ว';
+
+                        let statusBadge;
+                        if (isPaid) {
+                            statusBadge = `<div class="inline-flex items-center gap-2 px-2.5 py-1 rounded-[0.375rem] bg-[#42A231]/[0.12]">
+                                    <div class="w-2 h-2 rounded-full bg-[#20D500]"></div>
+                                    <span class="text-[#20D500] font-medium text-xs">ชำระเงินแล้ว</span></div>`;
+                        } else if (po.payment_status === 'ชำระเงินบางส่วน') {
+                            statusBadge = `<div class="inline-flex items-center gap-2 px-2.5 py-1 rounded-[0.375rem] bg-orange-500/[0.12]">
+                                    <div class="w-2 h-2 rounded-full bg-orange-500"></div>
+                                    <span class="text-orange-400 font-medium text-xs">ชำระบางส่วน</span></div>`;
+                        } else {
+                            statusBadge = `<div class="inline-flex items-center gap-2 px-2.5 py-1 rounded-[0.375rem] bg-[#FE0000]/[0.12]">
+                                    <div class="w-2 h-2 rounded-full bg-[#FE0000]"></div>
+                                    <span class="text-[#FE0000] font-medium text-xs">ยังไม่ได้ชำระ</span></div>`;
+                        }
+
+                        const payAction = !isPaid
+                            ? `<button type="button" class="btn-pay-po px-3 py-1.5 bg-[#FFE169] hover:bg-[#E2B93C] text-[#333333] font-semibold rounded-[0.375rem] text-xs transition-colors inline-flex items-center gap-1.5 cursor-pointer"
+                                    data-id="${accEsc(po._id)}" data-no="${accEsc(po.po_number)}" data-amount="${totalCost}"
+                                    data-paid="${paidAmount}" data-discount="${discount}" data-outstanding="${outstanding}">
+                                    <i class="fa-solid fa-money-bill-wave"></i> จ่ายเงิน
+                               </button>`
+                            : `<span class="text-xs text-white/70">จ่ายแล้ว ${accEsc(accDate(po.paid_at || po.updatedAt))}</span>`;
+
+                        return `
+                        <tr class="hover:bg-[#464646] transition-colors">
+                            <td class="px-6 py-4">
+                                <p class="font-mono font-semibold text-[#FFE169]">${accEsc(po.po_number)}</p>
+                                <p class="text-xs text-white/70 mt-0.5">${accEsc(accDate(po.createdAt))}</p>
+                            </td>
+                            <td class="px-6 py-4 text-white">${accEsc(po.supplier_name || '-')}</td>
+                            <td class="px-6 py-4 text-right text-white font-mono">${accBaht(totalCost)}</td>
+                            <td class="px-6 py-4 text-right text-[#20D500] font-mono">${accBaht(paidAmount)}</td>
+                            <td class="px-6 py-4 text-right text-white/70 font-mono" title="${accEsc(po.discount_remark || 'ไม่มีส่วนลด')}">${accBaht(discount)}</td>
+                            <td class="px-6 py-4 text-right font-mono font-semibold ${outstanding > 0 ? 'text-orange-400' : 'text-white'}">${accBaht(outstanding)}</td>
+                            <td class="px-6 py-4">${statusBadge}</td>
+                            <td class="px-6 py-4 text-right">
+                                <div class="flex items-center justify-end gap-1">
+                                    ${payAction}
+                                    <button type="button" class="btn-view-po-detail text-white hover:text-indigo-400 transition-colors p-2 cursor-pointer"
+                                        data-id="${accEsc(po._id)}" title="ดูรายละเอียดใบสั่งซื้อ"
+                                        aria-label="ดูรายละเอียดใบสั่งซื้อ ${accEsc(po.po_number)}">
+                                        <i class="fa-solid fa-eye"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>`;
+                    }).join('');
+
+                    apTbody.querySelectorAll('.btn-view-po-detail').forEach(btn => {
+                        const po = list.find(p => String(p._id) === btn.dataset.id);
+                        if (po) btn.addEventListener('click', () => openViewPOModal(po));
+                    });
+
+                    apTbody.querySelectorAll('.btn-pay-po').forEach(payBtn => {
+                        payBtn.addEventListener('click', () => {
+                            const poId = payBtn.dataset.id;
+                            const poNo = payBtn.dataset.no;
+                            const poAmount = Number(payBtn.dataset.amount);
+                            const poPaid = Number(payBtn.dataset.paid);
+                            const poDiscount = Number(payBtn.dataset.discount);
+                            const poOutstanding = Number(payBtn.dataset.outstanding);
+                            const todayStr = new Date().toLocaleDateString('en-CA');
+
+                            const fieldCls = 'w-full px-4 py-2.5 rounded-xl bg-[#27272A] border border-[#3F3F46] text-white focus:border-[#FFE169] focus:outline-none transition-all text-sm';
+                            const labelCls = 'text-slate-200 font-medium flex items-center gap-2 text-xs mb-1.5';
+
+                            showConfirm(
+                                `บันทึกจ่ายเงินใบสั่งซื้อ (${poNo})`,
+                                `<div class="text-left space-y-4">
+                                    <div class="grid grid-cols-2 gap-2 bg-[#27272A] border border-[#3F3F46] p-4 rounded-xl text-xs text-white/70">
+                                        <div>ยอดรวม PO:</div>
+                                        <div class="text-right font-mono text-white">${accBaht(poAmount)}</div>
+                                        <div>ชำระก่อนหน้า:</div>
+                                        <div class="text-right font-mono text-[#20D500]">${accBaht(poPaid)}</div>
+                                        <div>ส่วนลดสะสม:</div>
+                                        <div class="text-right font-mono text-[#FE0000]">${accBaht(poDiscount)}</div>
+                                        <div class="font-semibold text-white border-t border-[#3F3F46] pt-2 mt-1">ยอดค้างชำระ:</div>
+                                        <div class="text-right font-mono text-orange-400 font-semibold border-t border-[#3F3F46] pt-2 mt-1">${accBaht(poOutstanding)}</div>
+                                    </div>
+                                    <div class="space-y-4 bg-[#27272A] border border-[#3F3F46] p-4 rounded-xl">
+                                        <div>
+                                            <label for="ap-pay-date-input" class="${labelCls}">
+                                                <i class="fa-solid fa-calendar text-white"></i> วันที่ชำระเงิน</label>
+                                            <input type="date" id="ap-pay-date-input" class="${fieldCls} [color-scheme:dark]" value="${todayStr}">
+                                        </div>
+                                        <div class="grid grid-cols-2 gap-4">
+                                            <div>
+                                                <label for="ap-pay-amount-input" class="${labelCls}">
+                                                    <i class="fa-solid fa-money-bill-wave text-white"></i> จ่ายรอบนี้</label>
+                                                <input type="number" inputmode="numeric" id="ap-pay-amount-input" step="any" min="0" max="${poOutstanding}"
+                                                    class="${fieldCls} font-mono text-right" value="${poOutstanding.toFixed(2)}">
+                                            </div>
+                                            <div>
+                                                <label for="ap-pay-discount-input" class="${labelCls}">
+                                                    <i class="fa-solid fa-tag text-white"></i> ส่วนลดรอบนี้</label>
+                                                <input type="number" inputmode="numeric" id="ap-pay-discount-input" step="any" min="0" max="${poOutstanding}"
+                                                    class="${fieldCls} font-mono text-right" value="0.00">
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label for="ap-pay-discount-remark-input" class="${labelCls}">
+                                                <i class="fa-solid fa-pen text-white"></i> หมายเหตุส่วนลด (ระบุหากได้ส่วนลด)</label>
+                                            <input type="text" id="ap-pay-discount-remark-input"
+                                                placeholder="เช่น ชำระก่อนครบกำหนดรับส่วนลด 2%" class="${fieldCls} placeholder-slate-500">
+                                        </div>
+                                        <div id="ap-pay-calc-result" class="text-[11px] font-semibold text-white/70 text-right">
+                                            คงเหลือหลังชำระ: ฿0.00
+                                        </div>
+                                    </div>
+                                 </div>`,
+                                async () => {
+                                    try {
+                                        const payDateVal = document.getElementById('ap-pay-date-input')?.value || todayStr;
+                                        const payAmtVal = Number(document.getElementById('ap-pay-amount-input')?.value || 0);
+                                        const discountVal = Number(document.getElementById('ap-pay-discount-input')?.value || 0);
+                                        const remarkVal = document.getElementById('ap-pay-discount-remark-input')?.value || '';
+
+                                        if (payAmtVal === 0 && discountVal === 0) {
+                                            showToast('กรุณากรอกจำนวนเงินชำระหรือส่วนลดรอบนี้อย่างใดอย่างหนึ่ง', 'error');
+                                            return;
+                                        }
+                                        if (discountVal > 0 && !remarkVal.trim()) {
+                                            showToast('กรุณาระบุหมายเหตุของส่วนลดเพื่อใช้เป็นหลักฐานทางบัญชี', 'error');
+                                            return;
+                                        }
+                                        if (payAmtVal + discountVal > poOutstanding + 0.01) {
+                                            showToast('ยอดจ่ายรวมส่วนลด เกินยอดค้างชำระปัจจุบัน', 'error');
+                                            return;
+                                        }
+
+                                        const payRes = await authFetch(`${API_BASE_URL}/accounting/po-pay/${poId}`, {
+                                            method: 'PUT',
+                                            headers: { 'Content-Type': 'application/json' },
+                                            body: JSON.stringify({
+                                                payment_date: payDateVal,
+                                                payment_amount: payAmtVal,
+                                                discount_amount: discountVal,
+                                                discount_remark: remarkVal
+                                            })
+                                        });
+                                        const payJson = await payRes.json();
+                                        if (payJson.success) {
+                                            showToast('บันทึกการชำระเงินสำเร็จ!', 'success');
+                                            loadAccountingData();
+                                        } else {
+                                            showToast(payJson.message || 'ไม่สามารถทำรายการได้', 'error');
+                                        }
+                                    } catch (err) {
+                                        console.error(err);
+                                        showToast('เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์', 'error');
+                                    }
+                                },
+                                'ยืนยันชำระเงิน',
+                                'warning',
+                                'max-w-lg'
+                            );
+
+                            // ตัวคำนวณยอดคงเหลือสดๆ ในโมดัลยืนยัน
+                            setTimeout(() => {
+                                const amtInp = document.getElementById('ap-pay-amount-input');
+                                const discInp = document.getElementById('ap-pay-discount-input');
+                                const calcRes = document.getElementById('ap-pay-calc-result');
+                                const updateCalc = () => {
+                                    if (!amtInp || !discInp || !calcRes) return;
+                                    const amt = Number(amtInp.value || 0);
+                                    const disc = Number(discInp.value || 0);
+                                    if (amt + disc > poOutstanding + 0.01) {
+                                        calcRes.className = 'text-[11px] font-semibold text-[#FE0000] text-right';
+                                        calcRes.textContent = `เกินยอดค้างชำระ: ${accBaht(Math.abs(poOutstanding - amt - disc))}`;
+                                    } else {
+                                        calcRes.className = 'text-[11px] font-semibold text-[#20D500] text-right';
+                                        calcRes.textContent = `คงเหลือหลังชำระ: ${accBaht(Math.max(0, poOutstanding - amt - disc))}`;
+                                    }
+                                };
+                                if (amtInp && discInp) {
+                                    amtInp.addEventListener('input', updateCalc);
+                                    discInp.addEventListener('input', updateCalc);
+                                    updateCalc();
+                                }
+                            }, 100);
+                        });
+                    });
                 };
 
-                // Initial render with current filter value
+                apPOsCache = apPOs;
+                apRender = renderAPTable;
+                poListForChart = poJson.data || [];
+
+                const unpaidCount = apPOs.filter(po => po.payment_status !== 'ชำระเงินแล้ว').length;
+                accSetText('badge-acc-ap', unpaidCount);
                 renderAPTable(apPOs, selectedSupplier);
+            } else {
+                const apTbody = document.getElementById('table-body-accounting-ap');
+                if (apTbody) apTbody.innerHTML = accStateRow(AP_COLS, poJson.message || 'ดึงข้อมูลใบสั่งซื้อไม่สำเร็จ', 'text-red-400');
             }
 
-            // Fetch and Render Supplier Summary widgets
+            // วาดกราฟเมื่อมีครบทั้งสองชุด ถ้าดึง PO ไม่สำเร็จก็ไม่วาด
+            // เพราะเส้นรายจ่ายจะขาดต้นทุน PO ไปทั้งก้อนแล้วไม่ตรงกับการ์ด KPI ด้านบน
+            if (plData) {
+                if (poListForChart) {
+                    renderAccBreakdown(plData, poListForChart, start, end);
+                } else {
+                    const host = document.getElementById('acc-breakdown-body');
+                    if (host) host.innerHTML = '<p class="py-16 text-center text-white/50 italic">ดึงข้อมูลใบสั่งซื้อไม่สำเร็จ จึงยังวาดกราฟรายจ่ายไม่ได้</p>';
+                }
+            }
+
+            // ---------------- การ์ดสรุปหนี้ค้างจ่ายรายซัพพลายเออร์ ----------------
             try {
                 const summaryRes = await authFetch(`${API_BASE_URL}/accounting/ap-summary`);
                 const summaryJson = await summaryRes.json();
                 if (summaryJson.success) {
-                    const apSummaries = summaryJson.data;
-                    const summaryContainer = document.getElementById('ap-summary-widgets');
-                    if (summaryContainer) {
-                        summaryContainer.innerHTML = '';
-                        if (apSummaries.length === 0) {
-                            summaryContainer.innerHTML = '<div class="col-span-full text-center py-6 text-body-muted text-sm border border-dashed border-hairline rounded-2xl">ไม่มีหนี้สินค้างจ่ายกับ Supplier</div>';
-                        } else {
-                            apSummaries.forEach(sum => {
-                                const card = document.createElement('div');
-                                card.className = 'bg-surface-tile-3 border border-hairline rounded-2xl p-4 flex flex-col justify-between hover:border-primary/40 transition-all duration-200';
-                                card.innerHTML = `
-                                    <div class="flex items-center justify-between mb-2">
-                                        <span class="text-sm font-bold text-ink">${sum.supplier_name}</span>
-                                        <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20">${sum.pending_bill_count} ใบ</span>
+                    const box = document.getElementById('ap-summary-widgets');
+                    const list = summaryJson.data || [];
+                    if (box) {
+                        box.innerHTML = list.length
+                            ? list.map(sum => `
+                                <div class="bg-[#4D4D4D]/40 rounded-2xl shadow-lg backdrop-blur-sm p-5">
+                                    <div class="flex items-center justify-between gap-3">
+                                        <span class="text-sm font-semibold text-white truncate">${accEsc(sum.supplier_name)}</span>
+                                        <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-orange-500/[0.12] text-orange-400 shrink-0">${sum.pending_bill_count} ใบ</span>
                                     </div>
-                                    <div class="flex justify-between text-xs items-center mt-2">
-                                        <span class="text-body-muted">ยอดค้างจ่ายรวมทั้งหมด:</span>
-                                        <span class="font-mono text-amber-400 font-bold">฿${(sum.total_outstanding || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                                    </div>
-                                `;
-                                summaryContainer.appendChild(card);
-                            });
-                        }
+                                    <p class="text-xs text-white/70 mt-3">ยอดค้างจ่ายรวม</p>
+                                    <p class="text-xl font-semibold font-mono text-orange-400 mt-0.5">${accBaht(sum.total_outstanding)}</p>
+                                </div>`).join('')
+                            : `<div class="col-span-full bg-[#4D4D4D]/40 rounded-2xl shadow-lg backdrop-blur-sm px-6 py-8 text-center text-white/50 italic">
+                                   ไม่มีหนี้สินค้างจ่ายกับซัพพลายเออร์</div>`;
                     }
                 }
             } catch (apSumErr) {
                 console.error('Error fetching AP summary:', apSumErr);
             }
 
-            // Fetch Receivables for AR Queue
+            // ---------------- แท็บ 3: บัญชีลูกหนี้ (AR) ----------------
             const arRes = await authFetch(`${API_BASE_URL}/accounting/receivables`);
             const arJson = await arRes.json();
             if (arJson.success) {
-                const receivables = arJson.data;
+                const receivables = arJson.data || [];
                 const arTbody = document.getElementById('table-body-accounting-ar');
+                const pendingAr = receivables.filter(r =>
+                    r.status !== 'ชำระแล้ว' && r.status !== 'ได้รับเงินครบแล้ว' && r.status !== 'ยกเลิก').length;
+                accSetText('badge-acc-ar', pendingAr);
+                accSetText('acc-ar-count', receivables.length ? `แสดง ${receivables.length} จาก ${receivables.length} รายการ` : '');
+
                 if (arTbody) {
-                    arTbody.innerHTML = '';
-                    if (receivables.length === 0) {
-                        arTbody.innerHTML = '<tr><td colspan="6" class="text-center py-8 text-body-muted text-sm"><i class="fa-solid fa-check-double text-slate-650 text-xl block mb-2"></i>ไม่มีรายการค้างโอนจากไฟแนนซ์</td></tr>';
+                    if (!receivables.length) {
+                        arTbody.innerHTML = accStateRow(AR_COLS, 'ไม่มีรายการค้างโอนจากไฟแนนซ์');
                     } else {
-                        receivables.forEach(rec => {
-                            const tr = document.createElement('tr');
-                            tr.className = 'border-b border-hairline hover:bg-surface-chip/20 transition-all duration-150';
-
+                        arTbody.innerHTML = receivables.map(rec => {
                             const isSettled = rec.status === 'ชำระแล้ว' || rec.status === 'ได้รับเงินครบแล้ว';
-                            const settledDateVal = isSettled && rec.settled_at
-                                ? new Date(rec.settled_at).toLocaleDateString('th-TH')
-                                : `<span class="px-2 py-0.5 rounded-full text-xs bg-amber-500/10 text-amber-400 border border-amber-500/20 inline-flex items-center gap-1 font-semibold whitespace-nowrap">⏳ รอรับเงิน</span>`;
-
-                            let payAction = '';
-                            if (!isSettled && rec.status !== 'ยกเลิก') {
-                                payAction = `
-                                    <button class="btn-settle-ar px-3 py-1.5 bg-green-500/10 text-green-400 hover:bg-green-500/20 border border-green-500/35 hover:border-green-500/60 rounded-xl text-xs font-bold transition-all inline-flex items-center gap-1.5 active:scale-95 whitespace-nowrap shrink-0" data-id="${rec._id}" data-no="${rec.transaction_id ? rec.transaction_id.receipt_number : ''}" data-amount="${rec.financed_amount}">
-                                        <i class="fa-solid fa-circle-check"></i> บันทึกยอดรับเงิน
-                                    </button>
-                                `;
-                            } else if (isSettled) {
-                                payAction = `<span class="text-xs text-body-muted italic whitespace-nowrap">ผ่านรายการสำเร็จ (${new Date(rec.settled_at).toLocaleDateString('th-TH')})</span>`;
-                            } else {
-                                payAction = `<span class="text-xs text-rose-500 italic whitespace-nowrap">ยกเลิกแล้ว</span>`;
-                            }
-
+                            const isCancelled = rec.status === 'ยกเลิก';
                             const receiptNum = rec.transaction_id ? rec.transaction_id.receipt_number : '-';
-                            const createdDate = rec.transaction_id
-                                ? new Date(rec.transaction_id.created_at || rec.transaction_id.createdAt).toLocaleDateString('th-TH', { day: '2-digit', month: '2-digit', year: '2-digit' })
-                                : new Date(rec.createdAt).toLocaleDateString('th-TH', { day: '2-digit', month: '2-digit', year: '2-digit' });
+                            const soldDate = rec.transaction_id
+                                ? (rec.transaction_id.created_at || rec.transaction_id.createdAt)
+                                : rec.createdAt;
 
-                            tr.innerHTML = `
-                                <td class="px-4 py-4 md:px-6 font-mono font-bold text-body-muted text-sm whitespace-nowrap">${receiptNum}</td>
-                                <td class="px-4 py-4 md:px-6 text-sm text-body-muted whitespace-nowrap">${rec.finance_company}</td>
-                                <td class="px-4 py-4 md:px-6 text-sm text-body-muted whitespace-nowrap">${createdDate}</td>
-                                <td class="px-4 py-4 md:px-6 text-sm whitespace-nowrap">${settledDateVal}</td>
-                                <td class="px-4 py-4 md:px-6 font-mono text-sm text-ink font-bold whitespace-nowrap">฿${rec.financed_amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                                <td class="px-4 py-4 md:px-6 text-right whitespace-nowrap">${payAction}</td>
-                            `;
-                            arTbody.appendChild(tr);
+                            const settledCell = isSettled
+                                ? `<div class="inline-flex items-center gap-2 px-2.5 py-1 rounded-[0.375rem] bg-[#42A231]/[0.12]">
+                                       <div class="w-2 h-2 rounded-full bg-[#20D500]"></div>
+                                       <span class="text-[#20D500] font-medium text-xs">${accEsc(accDate(rec.settled_at))}</span></div>`
+                                : isCancelled
+                                    ? `<div class="inline-flex items-center gap-2 px-2.5 py-1 rounded-[0.375rem] bg-[#FE0000]/[0.12]">
+                                           <div class="w-2 h-2 rounded-full bg-[#FE0000]"></div>
+                                           <span class="text-[#FE0000] font-medium text-xs">ยกเลิกแล้ว</span></div>`
+                                    : `<div class="inline-flex items-center gap-2 px-2.5 py-1 rounded-[0.375rem] bg-orange-500/[0.12]">
+                                           <div class="w-2 h-2 rounded-full bg-orange-500"></div>
+                                           <span class="text-orange-400 font-medium text-xs">รอรับเงิน</span></div>`;
 
-                            const settleBtn = tr.querySelector('.btn-settle-ar');
-                            if (settleBtn) {
-                                settleBtn.onclick = () => {
-                                    const arId = settleBtn.dataset.id;
-                                    const recNo = settleBtn.dataset.no;
-                                    const amount = Number(settleBtn.dataset.amount);
+                            const action = (!isSettled && !isCancelled)
+                                ? `<button type="button" class="btn-settle-ar px-3 py-1.5 bg-[#FFE169] hover:bg-[#E2B93C] text-[#333333] font-semibold rounded-[0.375rem] text-xs transition-colors inline-flex items-center gap-1.5 cursor-pointer"
+                                        data-id="${accEsc(rec._id)}" data-no="${accEsc(receiptNum)}" data-amount="${rec.financed_amount}">
+                                        <i class="fa-solid fa-circle-check"></i> บันทึกรับเงิน
+                                   </button>`
+                                : `<span class="text-xs text-white/70">${isSettled ? 'รับเงินครบแล้ว' : 'ยกเลิกแล้ว'}</span>`;
 
-                                    const todayStr = new Date().toLocaleDateString('en-CA');
-                                    showConfirm(
-                                        `ยืนยันการรับเงินโอน`,
-                                        `คุณต้องการยืนยันการได้รับยอดเงินโอนจากบริษัทไฟแนนซ์ สำหรับใบเสร็จเลขที่ <strong class="font-mono text-ink">${recNo}</strong><br>เป็นจำนวนเงินค้างโอน <strong class="text-green-400 font-mono">฿${amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</strong> หรือไม่?<br><br>
-                                         <div class="text-left bg-surface-tile-3 p-4 rounded-2xl border border-hairline space-y-2 mt-3">
-                                             <label class="text-xs font-semibold text-body-muted block">ระบุวันที่ได้รับเงิน (รับจากไฟแนนซ์):</label>
-                                             <input type="date" id="ar-pay-date-input" class="w-full bg-surface-chip border border-hairline rounded-xl px-3 py-2 focus:outline-none focus:border-primary-focus text-sm" value="${todayStr}">
-                                         </div>`,
-                                        async () => {
-                                            try {
-                                                const payDateVal = document.getElementById('ar-pay-date-input')?.value || todayStr;
-                                                const settleRes = await authFetch(`${API_BASE_URL}/finance/payout/${arId}`, {
-                                                    method: 'POST',
-                                                    headers: { 'Content-Type': 'application/json' },
-                                                    body: JSON.stringify({ settled_at: payDateVal })
-                                                });
-                                                const settleJson = await settleRes.json();
-                                                if (settleJson.success) {
-                                                    showToast('บันทึกการชำระเงินลูกหนี้จัดไฟแนนซ์สำเร็จ!', 'success');
-                                                    loadAccountingData();
-                                                } else {
-                                                    showToast(settleJson.message || 'ไม่สามารถทำรายการได้', 'error');
-                                                }
-                                            } catch (err) {
-                                                console.error(err);
-                                                showToast('เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์', 'error');
+                            return `
+                            <tr class="hover:bg-[#464646] transition-colors">
+                                <td class="px-6 py-4">
+                                    <p class="font-mono font-semibold text-[#FFE169]">${accEsc(receiptNum)}</p>
+                                    <p class="text-xs text-white/70 mt-0.5">${accEsc(accDate(soldDate))}</p>
+                                </td>
+                                <td class="px-6 py-4 text-white">${accEsc(rec.finance_company || '-')}</td>
+                                <td class="px-6 py-4">${settledCell}</td>
+                                <td class="px-6 py-4 text-right text-white font-mono font-semibold">${accBaht(rec.financed_amount)}</td>
+                                <td class="px-6 py-4 text-right">
+                                    <div class="flex items-center justify-end gap-1">${action}</div>
+                                </td>
+                            </tr>`;
+                        }).join('');
+
+                        arTbody.querySelectorAll('.btn-settle-ar').forEach(settleBtn => {
+                            settleBtn.addEventListener('click', () => {
+                                const arId = settleBtn.dataset.id;
+                                const recNo = settleBtn.dataset.no;
+                                const amount = Number(settleBtn.dataset.amount);
+                                const todayStr = new Date().toLocaleDateString('en-CA');
+
+                                showConfirm(
+                                    'ยืนยันการรับเงินโอน',
+                                    `<div class="text-left space-y-4">
+                                        <p class="text-sm text-white/70">ยืนยันว่าได้รับยอดโอนจากบริษัทไฟแนนซ์ สำหรับใบเสร็จเลขที่
+                                            <strong class="font-mono text-[#FFE169]">${accEsc(recNo)}</strong>
+                                            จำนวน <strong class="font-mono text-[#20D500]">${accBaht(amount)}</strong> หรือไม่</p>
+                                        <div class="bg-[#27272A] border border-[#3F3F46] p-4 rounded-xl">
+                                            <label for="ar-pay-date-input" class="text-slate-200 font-medium flex items-center gap-2 text-xs mb-1.5">
+                                                <i class="fa-solid fa-calendar text-white"></i> วันที่ได้รับเงินจากไฟแนนซ์</label>
+                                            <input type="date" id="ar-pay-date-input" value="${todayStr}"
+                                                class="w-full px-4 py-2.5 rounded-xl bg-[#27272A] border border-[#3F3F46] text-white focus:border-[#FFE169] focus:outline-none transition-all text-sm [color-scheme:dark]">
+                                        </div>
+                                     </div>`,
+                                    async () => {
+                                        try {
+                                            const payDateVal = document.getElementById('ar-pay-date-input')?.value || todayStr;
+                                            const settleRes = await authFetch(`${API_BASE_URL}/finance/payout/${arId}`, {
+                                                method: 'POST',
+                                                headers: { 'Content-Type': 'application/json' },
+                                                body: JSON.stringify({ settled_at: payDateVal })
+                                            });
+                                            const settleJson = await settleRes.json();
+                                            if (settleJson.success) {
+                                                showToast('บันทึกการชำระเงินลูกหนี้จัดไฟแนนซ์สำเร็จ!', 'success');
+                                                loadAccountingData();
+                                            } else {
+                                                showToast(settleJson.message || 'ไม่สามารถทำรายการได้', 'error');
                                             }
-                                        },
-                                        'ยืนยันรับยอด',
-                                        'success'
-                                    );
-                                };
-                            }
+                                        } catch (err) {
+                                            console.error(err);
+                                            showToast('เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์', 'error');
+                                        }
+                                    },
+                                    'ยืนยันรับยอด',
+                                    'success'
+                                );
+                            });
                         });
                     }
                 }
+            } else {
+                const arTbody = document.getElementById('table-body-accounting-ar');
+                if (arTbody) arTbody.innerHTML = accStateRow(AR_COLS, arJson.message || 'ดึงข้อมูลลูกหนี้ไม่สำเร็จ', 'text-red-400');
             }
 
-            // Fetch and Render Finance Partner Summary Cards
+            // ---------------- การ์ดสรุปรายบริษัทไฟแนนซ์ ----------------
             try {
                 const summaryRes = await authFetch(`${API_BASE_URL}/finance/summary`);
                 const summaryJson = await summaryRes.json();
                 if (summaryJson.success) {
-                    const summaries = summaryJson.data;
-                    const summaryContainer = document.getElementById('finance-summary-widgets');
-                    if (summaryContainer) {
-                        summaryContainer.innerHTML = '';
-                        if (summaries.length === 0) {
-                            summaryContainer.innerHTML = '<div class="col-span-full text-center py-6 text-body-muted text-sm border border-dashed border-hairline rounded-2xl">ไม่มีข้อมูลสรุปสำหรับบริษัทไฟแนนซ์</div>';
-                        } else {
-                            summaries.forEach(sum => {
-                                const card = document.createElement('div');
-                                card.className = 'bg-surface-tile-3 border border-hairline rounded-2xl p-4 flex flex-col justify-between hover:border-primary/40 transition-all duration-200';
-                                card.innerHTML = `
-                                    <div class="flex items-center justify-between mb-2">
-                                        <span class="text-sm font-bold text-ink">${sum.finance_partner_name}</span>
-                                        <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-surface-chip text-ink border border-hairline">จัดไฟแนนซ์</span>
+                    const box = document.getElementById('finance-summary-widgets');
+                    const list = summaryJson.data || [];
+                    if (box) {
+                        box.innerHTML = list.length
+                            ? list.map(sum => `
+                                <div class="bg-[#4D4D4D]/40 rounded-2xl shadow-lg backdrop-blur-sm p-5">
+                                    <div class="flex items-center justify-between gap-3">
+                                        <span class="text-sm font-semibold text-white truncate">${accEsc(sum.finance_partner_name)}</span>
+                                        <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#4D4D4D]/60 text-white shrink-0">จัดไฟแนนซ์</span>
                                     </div>
-                                    <div class="space-y-1.5 mt-2">
-                                        <div class="flex justify-between text-xs items-center">
-                                            <span class="text-body-muted">ยอดรวมค้างโอน:</span>
-                                            <span class="font-mono text-amber-400 font-bold">฿${(sum.total_pending || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                                        </div>
-                                        <div class="flex justify-between text-xs items-center">
-                                            <span class="text-body-muted">ยอดโอนสำเร็จแล้ว:</span>
-                                            <span class="font-mono text-green-400 font-bold">฿${(sum.payout_received || sum.total_settled || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                                        </div>
+                                    <div class="mt-3 space-y-2">
+                                        <p class="flex items-center justify-between text-xs">
+                                            <span class="text-white/70">ยอดรวมค้างโอน</span>
+                                            <span class="font-mono font-semibold text-orange-400">${accBaht(sum.total_pending)}</span>
+                                        </p>
+                                        <p class="flex items-center justify-between text-xs">
+                                            <span class="text-white/70">ยอดโอนสำเร็จแล้ว</span>
+                                            <span class="font-mono font-semibold text-[#20D500]">${accBaht(sum.payout_received || sum.total_settled)}</span>
+                                        </p>
                                     </div>
-                                `;
-                                summaryContainer.appendChild(card);
-                            });
-                        }
+                                </div>`).join('')
+                            : `<div class="col-span-full bg-[#4D4D4D]/40 rounded-2xl shadow-lg backdrop-blur-sm px-6 py-8 text-center text-white/50 italic">
+                                   ไม่มีข้อมูลสรุปสำหรับบริษัทไฟแนนซ์</div>`;
                     }
                 }
             } catch (sumErr) {
@@ -1528,6 +1998,13 @@
         } catch (e) {
             console.error('Error loading accounting data:', e);
             showToast('เกิดข้อผิดพลาดขณะโหลดข้อมูลบัญชี', 'error');
+            [['table-body-accounting-ap', AP_COLS], ['table-body-accounting-pl', PL_COLS],
+            ['table-body-accounting-ar', AR_COLS]].forEach(([id, cols]) => {
+                const el = document.getElementById(id);
+                if (el && el.querySelector('.animate-pulse')) {
+                    el.innerHTML = accStateRow(cols, 'เกิดข้อผิดพลาดในการโหลดข้อมูล', 'text-red-400');
+                }
+            });
         }
     };
 
@@ -1808,136 +2285,220 @@
         }
     };
 
+    // ---------- ตัวช่วยเรนเดอร์หน้าตรวจรับ (DESIGN.md ข้อ 11.6 - 11.7) ----------
+    const rcEsc = (s) => String(s == null ? '' : s)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+
+    const rcStateRow = (msg, cls = 'text-white/50 italic') =>
+        `<tr><td colspan="${RECEIVE_COLS}" class="px-6 py-8 text-center ${cls}">${rcEsc(msg)}</td></tr>`;
+
+    const rcDate = (d) => {
+        if (!d) return '-';
+        const dt = new Date(d);
+        if (isNaN(dt)) return '-';
+        return dt.toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' });
+    };
+
+    // สถานะของ PO ยุบเหลือ 3 โทนตามตารางข้อ 11.6 (ข้อความในป้ายยังแยกสถานะได้อยู่)
+    const rcStatusTone = (status) => {
+        if (status === 'นำเข้าสำเร็จ' || status === 'รับของครบแล้ว')
+            return { dot: 'bg-[#20D500]', bg: 'bg-[#42A231]/[0.12]', text: 'text-[#20D500]' };
+        if (status === 'ยกเลิก')
+            return { dot: 'bg-[#FE0000]', bg: 'bg-[#FE0000]/[0.12]', text: 'text-[#FE0000]' };
+        return { dot: 'bg-orange-500', bg: 'bg-orange-500/[0.12]', text: 'text-orange-400' };
+    };
+
+    const rcStatusBadge = (status) => {
+        const t = rcStatusTone(status);
+        const label = (status === 'นำเข้าสำเร็จ' || status === 'รับของครบแล้ว') ? 'นำเข้าสำเร็จ' : status;
+        return `<div class="inline-flex items-center gap-2 px-2.5 py-1 rounded-[0.375rem] ${t.bg}">
+                    <div class="w-2 h-2 rounded-full ${t.dot}"></div>
+                    <span class="${t.text} font-medium text-xs">${rcEsc(label)}</span>
+                </div>`;
+    };
+
+    const rcSkeleton = (rows = 4) => {
+        const tbody = document.getElementById('table-body-receive-po');
+        if (!tbody) return;
+        const bar = (w) => `<div class="h-3.5 ${w} rounded-full bg-[#5c5c5c] animate-pulse"></div>`;
+        tbody.innerHTML = Array.from({ length: rows }).map(() => `
+            <tr>
+                <td class="px-6 py-4">${bar('w-36')}</td>
+                <td class="px-6 py-4">${bar('w-24')}</td>
+                <td class="px-6 py-4">${bar('w-full')}</td>
+                <td class="px-6 py-4">${bar('w-20')}</td>
+                <td class="px-6 py-4">${bar('w-24')}</td>
+                <td class="px-6 py-4">${bar('w-16')}</td>
+            </tr>`).join('');
+    };
+
+    // ชิปตัวกรองที่ใช้อยู่ (ข้อ 11.5 — ลบได้เฉพาะตอนคลิกกากบาท)
+    const renderReceiveChips = () => {
+        const box = document.getElementById('receive-active-filters');
+        if (!box) return;
+        box.innerHTML = '';
+
+        const chips = [];
+        if (receiveSearchQuery) chips.push({ key: 'search', label: `ค้นหา: ${receiveSearchQuery}` });
+        if (receiveSearchBranch) {
+            const sel = document.getElementById('receive-filter-branch');
+            const opt = sel ? sel.querySelector(`option[value="${receiveSearchBranch}"]`) : null;
+            chips.push({ key: 'branch', label: `สาขา: ${opt ? opt.textContent : receiveSearchBranch}` });
+        }
+
+        const clearOne = (key) => {
+            if (key === 'search') {
+                receiveSearchQuery = '';
+                const s = document.getElementById('search-receive-po');
+                if (s) s.value = '';
+            } else if (key === 'branch') {
+                receiveSearchBranch = '';
+                const b = document.getElementById('receive-filter-branch');
+                if (b) b.value = '';
+            }
+            renderFilteredPOs();
+        };
+
+        chips.forEach(c => {
+            const chip = document.createElement('button');
+            chip.type = 'button';
+            chip.className = 'px-4 py-2.5 rounded-xl bg-[#4D4D4D]/40 border border-[#3F3F46] ' +
+                'text-white text-sm font-medium transition-colors flex items-center gap-2 cursor-pointer';
+            chip.innerHTML = `<span>${rcEsc(c.label)}</span><i class="fa-solid fa-xmark text-[10px] opacity-80"></i>`;
+            chip.setAttribute('aria-label', `ลบตัวกรอง ${c.label}`);
+            chip.addEventListener('click', (e) => {
+                if (!e.target.closest('i.fa-xmark')) return;
+                clearOne(c.key);
+            });
+            box.appendChild(chip);
+        });
+
+        // ปุ่มล้างทั้งหมดโผล่เมื่อมีตัวกรองมากกว่า 1 ตัวเท่านั้น
+        if (chips.length > 1) {
+            const clearAll = document.createElement('button');
+            clearAll.type = 'button';
+            clearAll.className = 'px-2.5 py-1 bg-red-500/10 hover:bg-red-500/15 text-red-300 ' +
+                'rounded-full text-xs font-medium border border-red-500/30 transition-colors cursor-pointer';
+            clearAll.textContent = 'ล้างทั้งหมด';
+            clearAll.addEventListener('click', () => {
+                receiveSearchQuery = '';
+                receiveSearchBranch = '';
+                const s = document.getElementById('search-receive-po');
+                const b = document.getElementById('receive-filter-branch');
+                if (s) s.value = '';
+                if (b) b.value = '';
+                renderFilteredPOs();
+            });
+            box.appendChild(clearAll);
+        }
+    };
+
     const renderFilteredPOs = () => {
         const tbody = document.getElementById('table-body-receive-po');
         if (!tbody) return;
 
-        const filtered = cachedPOsData.filter(po => {
-            // 1. Tab filtering
-            if (currentReceiveTab !== 'all') {
-                if (currentReceiveTab === 'นำเข้าสำเร็จ') {
-                    if (po.status !== 'นำเข้าสำเร็จ' && po.status !== 'รับของครบแล้ว') return false;
-                } else {
-                    if (po.status !== currentReceiveTab) return false;
-                }
-            }
-            // 2. Search query filtering
-            if (receiveSearchQuery) {
-                const q = receiveSearchQuery.toLowerCase();
+        // จำนวนของแท็บนับจากข้อมูลดิบเสมอ ไม่ขึ้นกับช่องค้นหา/สาขาที่เลือกอยู่
+        const byTab = cachedPOsData.filter(po => {
+            if (currentReceiveTab === 'all') return true;
+            if (currentReceiveTab === 'นำเข้าสำเร็จ')
+                return po.status === 'นำเข้าสำเร็จ' || po.status === 'รับของครบแล้ว';
+            return po.status === currentReceiveTab;
+        });
+
+        const q = receiveSearchQuery.toLowerCase();
+        const filtered = byTab.filter(po => {
+            if (q) {
                 const poNum = (po.po_number || '').toLowerCase();
                 const sup = (po.supplier_name || '').toLowerCase();
-                if (!(poNum.includes(q) || sup.includes(q))) return false;
+                if (!poNum.includes(q) && !sup.includes(q)) return false;
             }
-            // 3. Branch filtering
-            // A PO with no branch_id should NOT match a specific branch filter — the
-            // previous `&& po.branch_id` guard let branch-less POs through regardless
-            // of which branch was selected.
+            // PO ที่ไม่มีสาขาต้องไม่ผ่านตัวกรองสาขาที่เจาะจง
             if (receiveSearchBranch) {
                 const bId = po.branch_id && typeof po.branch_id === 'object' ? po.branch_id._id : po.branch_id;
-                if (bId !== receiveSearchBranch) return false;
+                if (String(bId) !== String(receiveSearchBranch)) return false;
             }
             return true;
         });
 
-        const countDisplay = document.getElementById('receive-po-total-count');
-        if (countDisplay) countDisplay.textContent = filtered.length;
+        renderReceiveChips();
 
-        tbody.innerHTML = '';
-        if (filtered.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="6" class="text-center py-10 text-body-muted text-sm font-medium">
-                <i class="fa-solid fa-folder-open text-body-muted text-2xl block mb-2"></i>
-                ไม่พบข้อมูลใบสั่งซื้อตามที่ค้นหา
-            </td></tr>`;
+        const countDisplay = document.getElementById('receive-po-total-count');
+        if (countDisplay) {
+            countDisplay.textContent = byTab.length ? `แสดง ${filtered.length} จาก ${byTab.length} รายการ` : '';
+        }
+
+        if (!filtered.length) {
+            tbody.innerHTML = rcStateRow(byTab.length
+                ? 'ไม่พบใบสั่งซื้อที่ตรงกับตัวกรอง'
+                : 'ไม่มีใบสั่งซื้อในสถานะนี้');
             return;
         }
 
-        filtered.forEach(po => {
-            const statusStyles = {
-                'รอจัดส่ง': { icon: 'fa-truck', class: 'bg-[#B45309]/20 text-[#F59E0B] ' },
-                'ของถึงสาขาแล้ว': { icon: 'fa-location-dot', class: 'bg-[#0E7490]/20 text-[#06B6D4] ' },
-                'กำลังตรวจรับ': { icon: 'fa-clipboard-check', class: 'bg-[#6B21A8]/20 text-[#A855F7] ' },
-                'นำเข้าสำเร็จ': { icon: 'fa-circle-check', class: 'bg-[#15803D]/20 text-[#22C55E] ' },
-                'รับของครบแล้ว': { icon: 'fa-circle-check', class: 'bg-[#15803D]/20 text-[#22C55E] ' },
-                'ยกเลิก': { icon: 'fa-xmark', class: 'bg-[#991B1B]/20 text-[#EF4444] ' }
-            };
-            const style = statusStyles[po.status] || { icon: 'fa-circle-info', class: 'bg-slate-500/20 text-body-muted ' };
-            const displayStatus = po.status === 'นำเข้าสำเร็จ' || po.status === 'รับของครบแล้ว' ? 'นำเข้าสำเร็จ' : po.status;
-            const branchName = po.branch_id ? po.branch_id.name : '-';
+        tbody.innerHTML = filtered.map(po => {
+            const branchName = (po.branch_id && po.branch_id.name) ? po.branch_id.name : '-';
+            const items = po.items || [];
+            const totalOrdered = items.reduce((sum, i) => sum + (i.ordered_qty || 0), 0);
+            let totalReceived = items.reduce((sum, i) => sum + (i.received_qty || 0), 0);
+            if (po.status === 'นำเข้าสำเร็จ' || po.status === 'รับของครบแล้ว') totalReceived = totalOrdered;
+            const pct = totalOrdered ? Math.round((totalReceived / totalOrdered) * 100) : 0;
+            const barColor = pct >= 100 ? 'bg-[#20D500]' : pct > 0 ? 'bg-[#FFE169]' : 'bg-[#5c5c5c]';
 
-            // Calculate progress
-            let totalOrdered = 0;
-            let totalReceived = 0;
-            if (po.items && po.items.length > 0) {
-                totalOrdered = po.items.reduce((sum, i) => sum + i.ordered_qty, 0);
-                totalReceived = po.items.reduce((sum, i) => sum + (i.received_qty || 0), 0);
-                if (po.status === 'นำเข้าสำเร็จ' || po.status === 'รับของครบแล้ว') {
-                    totalReceived = totalOrdered; // For display aesthetics
-                }
+            // ปุ่มการกระทำขึ้นกับสถานะ: แจ้งของถึง -> ตรวจรับ -> ดูอย่างเดียว
+            let action;
+            if (po.status === 'รอจัดส่ง') {
+                action = `<button type="button" class="btn-action-arrival px-3 py-1.5 bg-[#FFE169] hover:bg-[#E2B93C] text-[#333333] font-semibold rounded-[0.375rem] text-xs transition-colors inline-flex items-center gap-1.5 cursor-pointer"
+                        data-id="${rcEsc(po._id)}">
+                        <i class="fa-solid fa-truck-ramp-box"></i> แจ้งของถึงสาขา
+                    </button>`;
+            } else if (po.status === 'ของถึงสาขาแล้ว' || po.status === 'กำลังตรวจรับ') {
+                action = `<button type="button" class="btn-open-receive px-3 py-1.5 bg-[#FFE169] hover:bg-[#E2B93C] text-[#333333] font-semibold rounded-[0.375rem] text-xs transition-colors inline-flex items-center gap-1.5 cursor-pointer"
+                        data-id="${rcEsc(po._id)}">
+                        <i class="fa-solid fa-boxes-packing"></i> ตรวจรับของ
+                    </button>`;
+            } else {
+                action = `<button type="button" class="btn-view-po text-white hover:text-indigo-400 transition-colors p-2 cursor-pointer"
+                        data-id="${rcEsc(po._id)}" title="ดูข้อมูลใบสั่งซื้อ"
+                        aria-label="ดูข้อมูลใบสั่งซื้อ ${rcEsc(po.po_number)}">
+                        <i class="fa-solid fa-eye"></i>
+                    </button>`;
             }
 
-            const tr = document.createElement('tr');
-            tr.className = 'hover:bg-surface-chip/40 transition-colors group duration-200 text-sm';
-            tr.innerHTML = `
-                <td class="px-6 py-4 font-normal whitespace-nowrap text-body-muted">
-                    <i class="fa-regular fa-clock mr-1"></i> ${new Date(po.createdAt).toLocaleDateString('th-TH')}
+            return `
+            <tr class="hover:bg-[#464646] transition-colors">
+                <td class="px-6 py-4">
+                    <p class="font-mono font-semibold text-[#FFE169]">${rcEsc(po.po_number)}</p>
+                    <p class="text-xs text-white/70 mt-0.5">${rcEsc(rcDate(po.createdAt))}</p>
                 </td>
-                <td class="px-6 py-4 font-normal whitespace-nowrap text-ink">
-                    ${po.po_number}
+                <td class="px-6 py-4 text-white">${rcEsc(po.supplier_name || '-')}</td>
+                <td class="px-6 py-4 text-white">${rcEsc(branchName)}</td>
+                <td class="px-6 py-4 text-center">
+                    <p class="text-white font-medium">${totalReceived}/${totalOrdered}
+                        <span class="text-xs text-white font-normal">ชิ้น</span></p>
+                    <div class="mt-1.5 h-1 w-24 mx-auto rounded-full bg-[#5c5c5c]/50 overflow-hidden">
+                        <div class="h-full ${barColor} rounded-full" style="width:${pct}%"></div>
+                    </div>
                 </td>
-                <td class="px-6 py-4 text-body-muted font-normal whitespace-nowrap">
-                    ${po.supplier_name}
+                <td class="px-6 py-4">${rcStatusBadge(po.status)}</td>
+                <td class="px-6 py-4 text-right">
+                    <div class="flex items-center justify-end gap-1">${action}</div>
                 </td>
-                <td class="px-6 py-4 text-body-muted font-normal whitespace-nowrap">
-                    <div class="flex items-center gap-1.5"><i class="fa-solid fa-location-dot text-body-muted text-xs"></i> ${branchName}</div>
-                </td>
-                <td class="px-6 py-4 text-center whitespace-nowrap text-body-muted">
-                    ${totalReceived}/${totalOrdered} ชิ้น
-                </td>
-                <td class="px-6 py-4 text-center whitespace-nowrap">
-                    <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-medium ${style.class} whitespace-nowrap">
-                        <i class="fa-solid ${style.icon}"></i> ${displayStatus}
-                    </span>
-                </td>
-                <td class="px-6 py-4 text-right whitespace-nowrap shrink-0">
-                    ${po.status === 'รอจัดส่ง' ? `
-                        <button class="btn-action-arrival text-xs px-4 py-1.5 bg-slate-700 hover:bg-slate-600 text-ink rounded-lg transition-colors flex items-center justify-center gap-2 ml-auto shrink-0" data-id="${po._id}">
-                            <i class="fa-solid fa-truck text-body-muted"></i> ของถึงสาขา
-                        </button>
-                    ` : (po.status === 'ของถึงสาขาแล้ว' || po.status === 'กำลังตรวจรับ') ? `
-                        <button class="btn-open-receive text-xs px-4 py-1.5 bg-slate-700 hover:bg-slate-600 text-ink rounded-lg transition-colors flex items-center justify-center gap-2 ml-auto shrink-0" data-id="${po._id}">
-                            <i class="fa-solid fa-boxes-packing text-body-muted"></i> ตรวจรับของ
-                        </button>
-                    ` : `
-                        <button class="btn-view-po text-xs px-4 py-1.5 bg-slate-700 hover:bg-slate-600 text-ink rounded-lg transition-colors flex items-center justify-center gap-2 ml-auto shrink-0" data-id="${po._id}">
-                            <i class="fa-solid fa-eye text-body-muted"></i> ดูข้อมูล
-                        </button>
-                    `}
-                </td>
-            `;
-            tbody.appendChild(tr);
+            </tr>`;
+        }).join('');
 
-            // Bind click event handlers
-            const btnArrival = tr.querySelector('.btn-action-arrival');
-            if (btnArrival) {
-                btnArrival.addEventListener('click', () => openArrivalModal(po));
-            }
-
-            const btnReceive = tr.querySelector('.btn-open-receive');
-            if (btnReceive) {
-                btnReceive.addEventListener('click', () => openReceiveModal(po));
-            }
-
-            const btnView = tr.querySelector('.btn-view-po');
-            if (btnView) {
-                btnView.addEventListener('click', () => openViewPOModal(po));
-            }
-        });
+        const byId = (id) => filtered.find(p => String(p._id) === String(id));
+        tbody.querySelectorAll('.btn-action-arrival').forEach(b =>
+            b.addEventListener('click', () => { const po = byId(b.dataset.id); if (po) openArrivalModal(po); }));
+        tbody.querySelectorAll('.btn-open-receive').forEach(b =>
+            b.addEventListener('click', () => { const po = byId(b.dataset.id); if (po) openReceiveModal(po); }));
+        tbody.querySelectorAll('.btn-view-po').forEach(b =>
+            b.addEventListener('click', () => { const po = byId(b.dataset.id); if (po) openViewPOModal(po); }));
     };
 
     const loadPOs = async () => {
         const tbody = document.getElementById('table-body-receive-po');
         if (!tbody) return;
-        tbody.innerHTML = '<tr><td colspan="6" class="text-center py-10"><i class="fa-solid fa-circle-notch fa-spin text-body-muted text-xl"></i><span class="text-xs text-body-muted block mt-2">กำลังดึงข้อมูลใบสั่งซื้อ...</span></td></tr>';
+        rcSkeleton();
 
         try {
             const res = await authFetch(`${API_BASE_URL}/purchase-orders`);
@@ -1945,35 +2506,33 @@
             if (json.success) {
                 cachedPOsData = json.data || [];
 
-                // Update live status counts in tabs
-                const allCount = cachedPOsData.length;
-                const pendingCount = cachedPOsData.filter(po => po.status === 'รอจัดส่ง').length;
-                const arrivedCount = cachedPOsData.filter(po => po.status === 'ของถึงสาขาแล้ว').length;
-                const checkingCount = cachedPOsData.filter(po => po.status === 'กำลังตรวจรับ').length;
-                const importedCount = cachedPOsData.filter(po => po.status === 'นำเข้าสำเร็จ' || po.status === 'รับของครบแล้ว').length;
-                const cancelledCount = cachedPOsData.filter(po => po.status === 'ยกเลิก').length;
-
-                const badgeAll = document.getElementById('badge-receive-all');
-                const badgePending = document.getElementById('badge-receive-pending');
-                const badgeArrived = document.getElementById('badge-receive-arrived');
-                const badgeChecking = document.getElementById('badge-receive-checking');
-                const badgeImported = document.getElementById('badge-receive-imported');
-                const badgeCancelled = document.getElementById('badge-receive-cancelled');
-
-                if (badgeAll) badgeAll.textContent = allCount;
-                if (badgePending) badgePending.textContent = pendingCount;
-                if (badgeArrived) badgeArrived.textContent = arrivedCount;
-                if (badgeChecking) badgeChecking.textContent = checkingCount;
-                if (badgeImported) badgeImported.textContent = importedCount;
-                if (badgeCancelled) badgeCancelled.textContent = cancelledCount;
+                // ป้ายนับบนแท็บ นับจากข้อมูลทั้งชุด
+                const counts = {
+                    'badge-receive-all': cachedPOsData.length,
+                    'badge-receive-pending': cachedPOsData.filter(po => po.status === 'รอจัดส่ง').length,
+                    'badge-receive-arrived': cachedPOsData.filter(po => po.status === 'ของถึงสาขาแล้ว').length,
+                    'badge-receive-checking': cachedPOsData.filter(po => po.status === 'กำลังตรวจรับ').length,
+                    'badge-receive-imported': cachedPOsData.filter(po => po.status === 'นำเข้าสำเร็จ' || po.status === 'รับของครบแล้ว').length,
+                    'badge-receive-cancelled': cachedPOsData.filter(po => po.status === 'ยกเลิก').length
+                };
+                Object.entries(counts).forEach(([id, n]) => {
+                    const el = document.getElementById(id);
+                    if (el) el.textContent = n;
+                });
 
                 renderFilteredPOs();
             } else {
-                tbody.innerHTML = `<tr><td colspan="6" class="text-center py-6 text-red-400">เกิดข้อผิดพลาด: ${json.message}</td></tr>`;
+                cachedPOsData = [];
+                tbody.innerHTML = rcStateRow(json.message || 'ดึงข้อมูลใบสั่งซื้อไม่สำเร็จ', 'text-red-400');
+                const c = document.getElementById('receive-po-total-count');
+                if (c) c.textContent = '';
             }
         } catch (e) {
             console.error(e);
-            tbody.innerHTML = '<tr><td colspan="6" class="text-center py-6 text-red-400">เชื่อมต่อบริการล้มเหลว</td></tr>';
+            cachedPOsData = [];
+            tbody.innerHTML = rcStateRow('เชื่อมต่อบริการล้มเหลว', 'text-red-400');
+            const c = document.getElementById('receive-po-total-count');
+            if (c) c.textContent = '';
         }
     };
 
@@ -2770,366 +3329,901 @@
 
     // ==========================================
     // Connected PO Workflow: แจ้งของถึงสาขา (Sales/Front Store)
+    // ตารางเดียวรวมทุกสถานะ + ตัวกรอง + แบ่งหน้า (ตามแบบที่ผู้ใช้กำหนด)
     // ==========================================
-    let isArrivalTabsInitialized = false;
+    const ARRIVAL_COLS = 6;
+    const ARRIVAL_PER_PAGE = 10;
+    let _arrivalCache = [];
+    let _arrivalPage = 1;
+    let _arrivalBound = false;
+
+    const arEsc = (s) => String(s == null ? '' : s)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+
+    const arStateRow = (msg, cls = 'text-white/50 italic') =>
+        `<tr><td colspan="${ARRIVAL_COLS}" class="px-6 py-8 text-center ${cls}">${arEsc(msg)}</td></tr>`;
+
+    const arSkeleton = (rows = 6) => {
+        const tbody = document.getElementById('table-body-arrival-po');
+        if (!tbody) return;
+        const bar = (w) => `<div class="h-3.5 ${w} rounded-full bg-[#5c5c5c] animate-pulse"></div>`;
+        tbody.innerHTML = Array.from({ length: rows }).map(() => `
+            <tr>
+                <td class="px-6 py-4">${bar('w-36')}</td>
+                <td class="px-6 py-4">${bar('w-20')}</td>
+                <td class="px-6 py-4">${bar('w-full')}</td>
+                <td class="px-6 py-4">${bar('w-20')}</td>
+                <td class="px-6 py-4">${bar('w-24')}</td>
+                <td class="px-6 py-4">${bar('w-28')}</td>
+            </tr>`).join('');
+    };
+
+    const arDate = (d) => {
+        if (!d) return '-';
+        const dt = new Date(d);
+        if (isNaN(dt)) return '-';
+        return `${dt.getDate()}/${dt.getMonth() + 1}/${dt.getFullYear() + 543}`;
+    };
+
+    const arSetText = (id, text) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = text;
+    };
+
+    // สถานะ 4 ระดับตามแบบ: รอจัดส่ง (ฟ้า) → แจ้งถึงร้านแล้ว (เหลืองอำพัน) → นำเข้าสต็อกแล้ว (เขียว) · ยกเลิก (แดง)
+    const AR_STATUS = {
+        'รอจัดส่ง': { label: 'รอจัดส่ง', hex: '#0A84FF' },
+        'ของถึงสาขาแล้ว': { label: 'แจ้งถึงร้านแล้ว', hex: '#FF9F0A' },
+        'กำลังตรวจรับ': { label: 'กำลังตรวจรับ', hex: '#FF9F0A' },
+        'นำเข้าสำเร็จ': { label: 'นำเข้าสต็อกแล้ว', hex: '#20D500' },
+        'รับของครบแล้ว': { label: 'นำเข้าสต็อกแล้ว', hex: '#20D500' },
+        'ยกเลิก': { label: 'ยกเลิกแล้ว', hex: '#FE0000' }
+    };
+    const arStatusConf = (s) => AR_STATUS[s] || { label: s || '-', hex: '#8E8E93' };
+
+    const arStatusBadge = (status) => {
+        const c = arStatusConf(status);
+        return `<span class="inline-flex items-center px-2.5 py-1 rounded-[0.375rem] text-xs font-medium"
+                      style="color:${c.hex};background-color:${c.hex}1F;">${arEsc(c.label)}</span>`;
+    };
+
+    const arItemsDesc = (po) => {
+        const items = po.items || [];
+        if (!items.length) return '-';
+        return items.map(i => `${i.product_name} (${i.ordered_qty} ชิ้น)`).join(', ');
+    };
+
+    // ยังแจ้งของถึงไม่ได้เมื่อของยังไม่ออกจากสถานะ "รอจัดส่ง"
+    const arCanConfirm = (po) => po.status === 'รอจัดส่ง';
+
+    const arBranchOf = (po) => (po.branch_id && po.branch_id.name) ? po.branch_id.name : '';
+    const arBranchId = (po) => po.branch_id ? String(po.branch_id._id || po.branch_id) : '';
+
+    // เติมตัวเลือกตัวกรองจากข้อมูลจริงที่โหลดมา
+    const arFillFilters = () => {
+        const st = document.getElementById('arrival-filter-status');
+        if (st && st.options.length <= 1) {
+            const seen = [];
+            _arrivalCache.forEach(po => { if (!seen.includes(po.status)) seen.push(po.status); });
+            st.innerHTML = '<option value="">สถานะทั้งหมด</option>' +
+                seen.map(s => `<option value="${arEsc(s)}">${arEsc(arStatusConf(s).label)}</option>`).join('');
+        }
+        const br = document.getElementById('arrival-filter-branch');
+        if (br) {
+            const keep = br.value;
+            const map = new Map();
+            _arrivalCache.forEach(po => { const id = arBranchId(po); if (id && arBranchOf(po)) map.set(id, arBranchOf(po)); });
+            br.innerHTML = '<option value="">เลือกสาขา</option>' +
+                [...map.entries()].sort((a, b) => a[1].localeCompare(b[1], 'th'))
+                    .map(([id, name]) => `<option value="${arEsc(id)}">${arEsc(name)}</option>`).join('');
+            br.value = keep;
+        }
+    };
+
+    const arFilters = () => ({
+        q: (document.getElementById('arrival-search')?.value || '').trim().toLowerCase(),
+        status: document.getElementById('arrival-filter-status')?.value || '',
+        branch: document.getElementById('arrival-filter-branch')?.value || '',
+        start: document.getElementById('arrival-filter-start')?.value || '',
+        end: document.getElementById('arrival-filter-end')?.value || ''
+    });
+
+    // ชิปตัวกรองที่ใช้อยู่ (ข้อ 11.5 — ลบได้เฉพาะตอนคลิกกากบาท)
+    const arRenderChips = () => {
+        const box = document.getElementById('arrival-active-filters');
+        if (!box) return;
+        box.innerHTML = '';
+        const f = arFilters();
+        const brSel = document.getElementById('arrival-filter-branch');
+
+        const chips = [];
+        if (f.q) chips.push({ key: 'arrival-search', label: `ค้นหา: ${f.q}` });
+        if (f.status) chips.push({ key: 'arrival-filter-status', label: `สถานะ: ${arStatusConf(f.status).label}` });
+        if (f.branch) {
+            const opt = brSel ? brSel.querySelector(`option[value="${f.branch}"]`) : null;
+            chips.push({ key: 'arrival-filter-branch', label: `สาขา: ${opt ? opt.textContent : f.branch}` });
+        }
+        if (f.start) chips.push({ key: 'arrival-filter-start', label: `ตั้งแต่: ${arDate(f.start)}` });
+        if (f.end) chips.push({ key: 'arrival-filter-end', label: `ถึง: ${arDate(f.end)}` });
+
+        const clearOne = (id) => {
+            const el = document.getElementById(id);
+            if (el) el.value = '';
+            _arrivalPage = 1;
+            renderArrivalTable();
+        };
+
+        chips.forEach(c => {
+            const chip = document.createElement('button');
+            chip.type = 'button';
+            chip.className = 'px-4 py-2.5 rounded-xl bg-[#4D4D4D]/40 border border-[#3F3F46] ' +
+                'text-white text-sm font-medium transition-colors flex items-center gap-2 cursor-pointer';
+            chip.innerHTML = `<span>${arEsc(c.label)}</span><i class="fa-solid fa-xmark text-[10px] opacity-80"></i>`;
+            chip.setAttribute('aria-label', `ลบตัวกรอง ${c.label}`);
+            chip.addEventListener('click', (e) => {
+                if (!e.target.closest('i.fa-xmark')) return;
+                clearOne(c.key);
+            });
+            box.appendChild(chip);
+        });
+
+        // ปุ่มล้างทั้งหมดโผล่เมื่อมีตัวกรองมากกว่า 1 ตัวเท่านั้น
+        if (chips.length > 1) {
+            const clearAll = document.createElement('button');
+            clearAll.type = 'button';
+            clearAll.className = 'px-2.5 py-1 bg-red-500/10 hover:bg-red-500/15 text-red-300 ' +
+                'rounded-full text-xs font-medium border border-red-500/30 transition-colors cursor-pointer';
+            clearAll.textContent = 'ล้างทั้งหมด';
+            clearAll.addEventListener('click', () => {
+                ['arrival-search', 'arrival-filter-status', 'arrival-filter-branch',
+                    'arrival-filter-start', 'arrival-filter-end'].forEach(id => {
+                        const el = document.getElementById(id);
+                        if (el) el.value = '';
+                    });
+                _arrivalPage = 1;
+                renderArrivalTable();
+            });
+            box.appendChild(clearAll);
+        }
+    };
+
+    // จุดแบ่งหน้า — กดเลือกหน้าได้ ถ้าหน้าเยอะจะสลับเป็นปุ่มก่อนหน้า/ถัดไป
+    const arRenderPagination = (totalPages) => {
+        const box = document.getElementById('arrival-pagination');
+        if (!box) return;
+        box.innerHTML = '';
+        if (totalPages <= 1) return;
+
+        const go = (p) => { _arrivalPage = p; renderArrivalTable(); };
+
+        if (totalPages <= 8) {
+            for (let p = 1; p <= totalPages; p++) {
+                const dot = document.createElement('button');
+                dot.type = 'button';
+                const on = p === _arrivalPage;
+                dot.className = `rounded-full transition-all cursor-pointer ${on
+                    ? 'w-2.5 h-2.5 bg-[#FFE169]' : 'w-2 h-2 bg-white/30 hover:bg-white/60'}`;
+                dot.setAttribute('aria-label', `ไปหน้า ${p}`);
+                dot.setAttribute('aria-current', on ? 'page' : 'false');
+                dot.addEventListener('click', () => go(p));
+                box.appendChild(dot);
+            }
+            return;
+        }
+
+        const mk = (label, page, disabled) => {
+            const b = document.createElement('button');
+            b.type = 'button';
+            b.disabled = !!disabled;
+            b.className = 'px-3 py-2 bg-[#4D4D4D]/40 cursor-pointer text-white flex items-center gap-1.5 ' +
+                'rounded-[0.5rem] text-sm hover:bg-[#5C5C5C] transition-colors disabled:opacity-30 disabled:pointer-events-none';
+            b.innerHTML = label;
+            b.addEventListener('click', () => go(page));
+            return b;
+        };
+        box.appendChild(mk('<i class="fa-solid fa-chevron-left text-xs"></i> ก่อนหน้า', _arrivalPage - 1, _arrivalPage <= 1));
+        const info = document.createElement('span');
+        info.className = 'px-4 py-2 bg-[#27272A] border border-[#3F3F46] text-white rounded-[0.5rem] text-sm font-mono';
+        info.textContent = `${_arrivalPage} / ${totalPages}`;
+        box.appendChild(info);
+        box.appendChild(mk('ถัดไป <i class="fa-solid fa-chevron-right text-xs"></i>', _arrivalPage + 1, _arrivalPage >= totalPages));
+    };
+
+    const renderArrivalTable = () => {
+        const tbody = document.getElementById('table-body-arrival-po');
+        if (!tbody) return;
+
+        arRenderChips();
+        const f = arFilters();
+        const startTs = f.start ? new Date(`${f.start}T00:00:00`).getTime() : null;
+        const endTs = f.end ? new Date(`${f.end}T23:59:59`).getTime() : null;
+
+        const rows = _arrivalCache.filter(po => {
+            if (f.status && po.status !== f.status) return false;
+            if (f.branch && arBranchId(po) !== f.branch) return false;
+            if (startTs || endTs) {
+                const ts = new Date(po.createdAt).getTime();
+                if (isNaN(ts)) return false;
+                if (startTs && ts < startTs) return false;
+                if (endTs && ts > endTs) return false;
+            }
+            if (!f.q) return true;
+            return [po.po_number, po.supplier_name, arBranchOf(po), arItemsDesc(po)]
+                .filter(Boolean).join(' ').toLowerCase().includes(f.q);
+        });
+
+        arSetText('arrival-result-count',
+            _arrivalCache.length ? `แสดง ${rows.length} จาก ${_arrivalCache.length} รายการ` : '');
+
+        if (!rows.length) {
+            tbody.innerHTML = arStateRow(_arrivalCache.length
+                ? 'ไม่พบใบสั่งซื้อที่ตรงกับตัวกรอง'
+                : 'ยังไม่มีใบสั่งซื้อในระบบ');
+            arRenderPagination(0);
+            return;
+        }
+
+        const totalPages = Math.max(1, Math.ceil(rows.length / ARRIVAL_PER_PAGE));
+        if (_arrivalPage > totalPages) _arrivalPage = totalPages;
+        const pageRows = rows.slice((_arrivalPage - 1) * ARRIVAL_PER_PAGE, _arrivalPage * ARRIVAL_PER_PAGE);
+
+        tbody.innerHTML = pageRows.map(po => {
+            const desc = arItemsDesc(po);
+            const canConfirm = arCanConfirm(po);
+            const btnClass = 'px-4 py-2 bg-[#4D4D4D]/60 hover:bg-[#5C5C5C] text-white text-xs font-medium ' +
+                'rounded-[0.5rem] transition-colors cursor-pointer whitespace-nowrap';
+            const action = canConfirm
+                ? `<button type="button" class="btn-confirm-arrival ${btnClass}" data-id="${arEsc(po._id)}"
+                        aria-label="ยืนยันของถึงร้าน ใบสั่งซื้อ ${arEsc(po.po_number)}">ยืนยันของถึงร้าน</button>`
+                : `<button type="button" class="btn-view-arrival-details ${btnClass}" data-id="${arEsc(po._id)}"
+                        aria-label="ดูรายละเอียดใบสั่งซื้อ ${arEsc(po.po_number)}">ดูรายละเอียด</button>`;
+
+            return `
+            <tr class="hover:bg-[#464646] transition-colors">
+                <td class="px-6 py-4"><span class="font-mono font-semibold text-[#FFE169]">${arEsc(po.po_number)}</span></td>
+                <td class="px-6 py-4 text-white">${arEsc(po.supplier_name || '-')}</td>
+                <td class="px-6 py-4">
+                    <span class="text-white block max-w-[360px] truncate" title="${arEsc(desc)}">${arEsc(desc)}</span>
+                </td>
+                <td class="px-6 py-4 text-white">${arEsc(arDate(po.createdAt))}</td>
+                <td class="px-6 py-4">${arStatusBadge(po.status)}</td>
+                <td class="px-6 py-4 text-right">
+                    <div class="flex items-center justify-end gap-1">${action}</div>
+                </td>
+            </tr>`;
+        }).join('');
+
+        const byId = (id) => pageRows.find(p => String(p._id) === String(id));
+        tbody.querySelectorAll('.btn-confirm-arrival').forEach(btn =>
+            btn.addEventListener('click', () => { const po = byId(btn.dataset.id); if (po) openArrivalModal(po); }));
+        tbody.querySelectorAll('.btn-view-arrival-details').forEach(btn =>
+            btn.addEventListener('click', () => { const po = byId(btn.dataset.id); if (po) showCompletedPODetails(po); }));
+
+        arRenderPagination(totalPages);
+    };
 
     const loadArrivalPOs = async () => {
         const tbody = document.getElementById('table-body-arrival-po');
-        const tbodyCompleted = document.getElementById('table-body-arrival-completed-po');
-        const badgePending = document.getElementById('badge-arrival-pending-count');
-        const badgeCompleted = document.getElementById('badge-arrival-completed-count');
-
-        // Tab click listeners initialization
-        const tabArrivalPending = document.getElementById('tab-arrival-pending');
-        const tabArrivalCompleted = document.getElementById('tab-arrival-completed');
-        const sectionArrivalPending = document.getElementById('section-arrival-pending');
-        const sectionArrivalCompleted = document.getElementById('section-arrival-completed');
-
-        if (!isArrivalTabsInitialized && tabArrivalPending && tabArrivalCompleted) {
-            tabArrivalPending.addEventListener('click', () => {
-                tabArrivalPending.className = "px-6 py-3.5 border-b-2 border-primary text-primary text-sm font-bold flex items-center gap-2 transition-all duration-200 focus:outline-none";
-                tabArrivalCompleted.className = "px-6 py-3.5 border-b-2 border-transparent text-body-muted hover:text-ink text-sm font-semibold flex items-center gap-2 transition-all duration-200 focus:outline-none";
-                if (sectionArrivalPending) sectionArrivalPending.classList.remove('hidden');
-                if (sectionArrivalCompleted) sectionArrivalCompleted.classList.add('hidden');
-            });
-
-            tabArrivalCompleted.addEventListener('click', () => {
-                tabArrivalCompleted.className = "px-6 py-3.5 border-b-2 border-primary text-primary text-sm font-bold flex items-center gap-2 transition-all duration-200 focus:outline-none";
-                tabArrivalPending.className = "px-6 py-3.5 border-b-2 border-transparent text-body-muted hover:text-ink text-sm font-semibold flex items-center gap-2 transition-all duration-200 focus:outline-none";
-                if (sectionArrivalCompleted) sectionArrivalCompleted.classList.remove('hidden');
-                if (sectionArrivalPending) sectionArrivalPending.classList.add('hidden');
-            });
-            isArrivalTabsInitialized = true;
-        }
-
         if (!tbody) return;
-        tbody.innerHTML = '<tr><td colspan="6" class="text-center py-6 text-body-muted"><i class="fa-solid fa-spinner fa-spin mr-2 text-green-400"></i>กำลังโหลดข้อมูลใบสั่งซื้อ...</td></tr>';
-        if (tbodyCompleted) {
-            tbodyCompleted.innerHTML = '<tr><td colspan="6" class="text-center py-6 text-body-muted"><i class="fa-solid fa-spinner fa-spin mr-2 text-green-400"></i>กำลังโหลดข้อมูลใบสั่งซื้อ...</td></tr>';
+
+        // ผูก listener ครั้งเดียว (loadPageView แทรก HTML ครั้งเดียว)
+        if (!_arrivalBound) {
+            _arrivalBound = true;
+            const s = document.getElementById('arrival-search');
+            if (s) {
+                let t = null;
+                s.addEventListener('input', () => {
+                    clearTimeout(t);
+                    t = setTimeout(() => { _arrivalPage = 1; renderArrivalTable(); }, 200);
+                });
+            }
+            ['arrival-filter-status', 'arrival-filter-branch', 'arrival-filter-start', 'arrival-filter-end']
+                .forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el) el.addEventListener('change', () => { _arrivalPage = 1; renderArrivalTable(); });
+                });
+
+            // โมดัลแจ้งสินค้านอกระบบ PO
+            const openBtn = document.getElementById('btn-open-nonpo-modal');
+            const closeBtn = document.getElementById('btn-close-nonpo-modal');
+            const modal = document.getElementById('modal-nonpo-arrival');
+            if (openBtn && modal) {
+                openBtn.addEventListener('click', async () => {
+                    modal.classList.remove('opacity-0', 'pointer-events-none');
+                    // เรนเดอร์ตัวเลือกใหม่ทุกครั้งที่เปิด — ถ้าเรียกแค่ตอนสลับเข้าหน้า
+                    // แล้ว masterDataCache ยังมาไม่ถึง กลุ่ม pill จะว่างถาวรและเลือกอะไรไม่ได้เลย
+                    if (typeof window.ensureMasterDataLoaded === 'function') {
+                        await window.ensureMasterDataLoaded();
+                    }
+                    window.populateArrivalPickers();
+                    window.npBindScrollButtons();
+                });
+            }
+            if (closeBtn && modal) {
+                closeBtn.addEventListener('click', () => {
+                    modal.classList.add('opacity-0', 'pointer-events-none');
+                    window.npCancelEdit();   // ปิดแล้วต้องไม่ค้างโหมดแก้ไขไว้
+                });
+            }
+            const cancelEditBtn = document.getElementById('btn-cancel-arrival-edit');
+            if (cancelEditBtn) {
+                cancelEditBtn.addEventListener('click', () => window.npExitEditAndClear());
+            }
         }
+
+        arSkeleton();
 
         try {
             const res = await authFetch(`${API_BASE_URL}/purchase-orders`);
             const json = await res.json();
-            if (json.success) {
-                tbody.innerHTML = '';
-                if (tbodyCompleted) tbodyCompleted.innerHTML = '';
-
-                // Filter POs heading to branch (status: 'รอจัดส่ง' หรือที่มีการลบ IMEI/สแกนไม่ครบในภายหลัง)
-                const pendingPOs = json.data.filter(po => {
-                    if (po.status === 'รอจัดส่ง') return true;
-
-                    if (po.status === 'ของถึงสาขาแล้ว' || po.status === 'กำลังตรวจรับ') {
-                        // เช็คว่ามีสินค้าตัวใดสแกนไม่ครบหรือไม่
-                        return po.items.some(item => {
-                            if (item.track_imei) {
-                                const currentImeisCount = Array.isArray(item.imeis_scanned) ? item.imeis_scanned.length : 0;
-                                return currentImeisCount < item.ordered_qty;
-                            } else {
-                                return (item.received_qty || 0) < item.ordered_qty;
-                            }
-                        });
-                    }
-                    return false;
-                });
-
-                // Filter POs completed (status: 'ของถึงสาขาแล้ว'/'กำลังตรวจรับ' ที่สแกนครบถ้วน หรือ 'นำเข้าสำเร็จ'/'รับของครบแล้ว')
-                const completedPOs = json.data.filter(po => {
-                    if (po.status === 'นำเข้าสำเร็จ' || po.status === 'รับของครบแล้ว') return true;
-                    if (po.status === 'ของถึงสาขาแล้ว' || po.status === 'กำลังตรวจรับ') {
-                        const isIncomplete = po.items.some(item => {
-                            if (item.track_imei) {
-                                const currentImeisCount = Array.isArray(item.imeis_scanned) ? item.imeis_scanned.length : 0;
-                                return currentImeisCount < item.ordered_qty;
-                            } else {
-                                return (item.received_qty || 0) < item.ordered_qty;
-                            }
-                        });
-                        return !isIncomplete;
-                    }
-                    return false;
-                });
-
-                // Update Badges
-                if (badgePending) badgePending.textContent = pendingPOs.length;
-                if (badgeCompleted) badgeCompleted.textContent = completedPOs.length;
-
-                // 1. Render Pending POs
-                if (pendingPOs.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="6" class="text-center py-8 text-body-muted text-sm"><i class="fa-solid fa-inbox text-slate-650 text-xl block mb-2"></i>ไม่มีใบสั่งซื้อที่อยู่ระหว่างจัดส่งถึงสาขานี้</td></tr>';
-                } else {
-                    pendingPOs.forEach(po => {
-                        const tr = document.createElement('tr');
-                        tr.className = 'border-b border-hairline hover:bg-surface-chip/30 transition-all duration-150';
-                        const itemsDesc = po.items.map(item => `${item.product_name} (${item.ordered_qty} ชิ้น)`).join(', ');
-
-                        tr.innerHTML = `
-                            <td class="px-4 py-4 md:px-6 font-mono font-bold text-ink whitespace-nowrap">${po.po_number}</td>
-                            <td class="px-4 py-4 md:px-6 text-sm text-body-muted whitespace-nowrap">${new Date(po.createdAt).toLocaleDateString('th-TH')}</td>
-                            <td class="px-4 py-4 md:px-6 text-sm text-body-muted whitespace-nowrap">${po.supplier_name}</td>
-                            <td class="px-4 py-4 md:px-6 text-sm text-body-muted max-w-[250px] truncate font-medium whitespace-nowrap" title="${itemsDesc}">${itemsDesc}</td>
-                            <td class="px-4 py-4 md:px-6 text-center whitespace-nowrap">
-                                <span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20 whitespace-nowrap inline-block">${po.status}</span>
-                            </td>
-                            <td class="px-4 py-4 md:px-6 text-right whitespace-nowrap">
-                                <button class="btn-confirm-arrival px-3 py-1.5 bg-green-500/10 text-green-400 hover:bg-green-500/20 border border-green-500/35 hover:border-green-500/60 rounded-xl text-xs font-bold transition-all inline-flex items-center gap-1.5 active:scale-95 whitespace-nowrap shrink-0" data-id="${po._id}">
-                                    <i class="fa-solid fa-truck-circle-check"></i> ยืนยันของถึงร้าน
-                                </button>
-                            </td>
-                        `;
-                        tbody.appendChild(tr);
-
-                        tr.querySelector('.btn-confirm-arrival').addEventListener('click', () => {
-                            openArrivalModal(po);
-                        });
-                    });
-                }
-
-                // 2. Render Completed POs
-                if (tbodyCompleted) {
-                    if (completedPOs.length === 0) {
-                        tbodyCompleted.innerHTML = '<tr><td colspan="6" class="text-center py-8 text-body-muted text-sm"><i class="fa-solid fa-clipboard-check text-slate-650 text-xl block mb-2"></i>ไม่มีใบสั่งซื้อที่ดำเนินการเสร็จสมบูรณ์</td></tr>';
-                    } else {
-                        completedPOs.forEach(po => {
-                            const tr = document.createElement('tr');
-                            tr.className = 'border-b border-hairline hover:bg-surface-chip/20 transition-all duration-150 opacity-90 hover:opacity-100';
-                            const itemsDesc = po.items.map(item => `${item.product_name} (${item.ordered_qty} ชิ้น)`).join(', ');
-
-                            let statusBadge = '';
-                            if (po.status === 'นำเข้าสำเร็จ' || po.status === 'รับของครบแล้ว') {
-                                statusBadge = `<span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-green-500/10 text-green-400 border border-green-500/20 whitespace-nowrap inline-block"><i class="fa-solid fa-circle-check text-[10px] mr-1"></i>นำเข้าสต็อกแล้ว</span>`;
-                            } else {
-                                statusBadge = `<span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 whitespace-nowrap inline-block"><i class="fa-solid fa-check text-[10px] mr-1"></i>แจ้งของถึงร้านแล้ว</span>`;
-                            }
-
-                            tr.innerHTML = `
-                                <td class="px-4 py-4 md:px-6 font-mono font-bold text-body-muted whitespace-nowrap">${po.po_number}</td>
-                                <td class="px-4 py-4 md:px-6 text-sm text-body-muted whitespace-nowrap">${new Date(po.updatedAt || po.createdAt).toLocaleDateString('th-TH')}</td>
-                                <td class="px-4 py-4 md:px-6 text-sm text-body-muted whitespace-nowrap">${po.supplier_name}</td>
-                                <td class="px-4 py-4 md:px-6 text-sm text-body-muted max-w-[250px] truncate whitespace-nowrap" title="${itemsDesc}">${itemsDesc}</td>
-                                <td class="px-4 py-4 md:px-6 text-center whitespace-nowrap">
-                                    ${statusBadge}
-                                </td>
-                                <td class="px-4 py-4 md:px-6 text-right whitespace-nowrap">
-                                    <button class="btn-view-arrival-details px-3 py-1.5 bg-surface-chip text-body-muted hover:bg-surface-tile-2 hover:text-ink border border-hairline hover:border-primary/40 rounded-xl text-xs font-semibold transition-all inline-flex items-center gap-1.5 active:scale-95 whitespace-nowrap shrink-0" data-id="${po._id}">
-                                        <i class="fa-solid fa-eye"></i> ดูรายละเอียด
-                                    </button>
-                                </td>
-                            `;
-                            tbodyCompleted.appendChild(tr);
-
-                            tr.querySelector('.btn-view-arrival-details').addEventListener('click', () => {
-                                showCompletedPODetails(po);
-                            });
-                        });
-                    }
-                }
+            if (!json.success) {
+                _arrivalCache = [];
+                tbody.innerHTML = arStateRow(json.message || 'ดึงข้อมูลใบสั่งซื้อไม่สำเร็จ', 'text-red-400');
+                arSetText('arrival-result-count', '');
+                return;
             }
+            _arrivalCache = json.data || [];
+            arFillFilters();
+            renderArrivalTable();
         } catch (e) {
             console.error(e);
-            tbody.innerHTML = '<tr><td colspan="6" class="text-center py-6 text-red-400">เกิดข้อผิดพลาดในการโหลดข้อมูล</td></tr>';
-            if (tbodyCompleted) tbodyCompleted.innerHTML = '<tr><td colspan="6" class="text-center py-6 text-red-400">เกิดข้อผิดพลาดในการโหลดข้อมูล</td></tr>';
+            _arrivalCache = [];
+            tbody.innerHTML = arStateRow('เกิดข้อผิดพลาดในการโหลดข้อมูล', 'text-red-400');
+            arSetText('arrival-result-count', '');
         }
     };
-
-    // Helper to render PO details inside custom confirm modal
-    const showCompletedPODetails = (po) => {
-        let itemsHtml = `
-            <div class="text-left space-y-3 font-sans max-h-[350px] overflow-y-auto pr-1">
-                <div class="flex justify-between items-center border-b border-hairline pb-2 mb-2">
-                    <span class="text-body-muted text-xs">เลขที่สั่งซื้อ: <strong class="text-ink font-mono text-sm">${po.po_number}</strong></span>
-                    <span class="text-body-muted text-xs">ซัพพลายเออร์: <strong class="text-ink">${po.supplier_name}</strong></span>
-                </div>
-        `;
-
-        po.items.forEach(item => {
-            const hasImeis = item.track_imei && Array.isArray(item.imeis_scanned) && item.imeis_scanned.length > 0;
-            itemsHtml += `
-                <div class="bg-surface-tile-3 border border-hairline rounded-xl p-3 space-y-2">
-                    <div class="flex justify-between items-center">
-                        <span class="text-sm font-bold text-ink flex items-center gap-1.5 font-sans">
-                            <i class="${item.track_imei ? 'fa-solid fa-mobile-screen text-ink' : 'fa-solid fa-plug text-ink'} text-xs"></i>
-                            ${item.product_name}
-                        </span>
-                        <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-surface-chip text-emerald-400 border border-hairline">
-                            ครบ ${item.ordered_qty} ชิ้น
-                        </span>
-                    </div>
-            `;
-
-            if (hasImeis) {
-                itemsHtml += `
-                    <div class="flex flex-wrap gap-1.5 pt-1">
-                `;
-                item.imeis_scanned.forEach(imei => {
-                    itemsHtml += `
-                        <span class="bg-surface-chip border border-hairline text-body-muted px-2 py-0.5 rounded text-[10px] font-mono select-all tracking-tight hover:text-ink transition-colors">${imei}</span>
-                    `;
-                });
-                itemsHtml += `
-                    </div>
-                `;
-            } else if (item.track_imei) {
-                itemsHtml += `
-                    <div class="text-xs text-rose-400 italic font-sans">ไม่มีหมายเลข IMEI ที่ถูกบันทึก</div>
-                `;
-            } else {
-                itemsHtml += `
-                    <div class="text-[11px] text-body-muted italic font-sans">สินค้าอุปกรณ์เสริม/ทั่วไป ไม่ต้องสแกน IMEI</div>
-                `;
-            }
-
-            itemsHtml += `</div>`;
-        });
-
-        itemsHtml += `</div>`;
-
-        // Check if the PO status is NOT fully imported or received
-        const isEditable = po.status !== 'นำเข้าสำเร็จ' && po.status !== 'รับของครบแล้ว';
-
-        showConfirm(
-            `รายละเอียดการรับสินค้า`,
-            itemsHtml,
-            () => { },
-            'ปิดหน้าต่าง',
-            'info'
-        );
-
-        const cancelBtn = document.getElementById('confirm-cancel-btn');
-        const okBtn = document.getElementById('confirm-ok-btn');
-
-        if (isEditable && cancelBtn) {
-            cancelBtn.style.display = 'block';
-            cancelBtn.textContent = 'แก้ไขข้อมูลการรับ';
-            cancelBtn.className = "flex-1 py-2.5 rounded-xl text-sm font-bold text-body-muted bg-surface-chip border border-hairline hover:bg-surface-tile-2 hover:text-ink transition-all active:scale-[0.98]";
-
-            cancelBtn.onclick = () => {
-                // Close confirm modal
-                const modal = document.getElementById('custom-confirm-modal');
-                if (modal) {
-                    modal.classList.add('opacity-0', 'pointer-events-none');
-                    setTimeout(() => modal.classList.add('hidden'), 300);
-                }
-
-                // Open edit arrival modal
-                openArrivalModal(po);
-            };
-        } else if (cancelBtn) {
-            cancelBtn.style.display = 'none';
-        }
-
-        if (okBtn) {
-            const origClick = okBtn.onclick;
-            okBtn.onclick = (e) => {
-                if (origClick) origClick(e);
-                if (cancelBtn) {
-                    cancelBtn.style.display = 'block';
-                    cancelBtn.textContent = 'ยกเลิก';
-                }
-            };
-        }
-    };
+    // switchView ใน script.js เรียกผ่านชื่อ global (typeof loadArrivalPOs) จึงต้อง export ออกไป
     window.loadArrivalPOs = loadArrivalPOs;
+
+    // ---------- กลุ่ม pill / swatch ของฟอร์มแจ้งสินค้านอกระบบ PO (DESIGN.md ข้อ 11.9, 11.14) ----------
+    // สัญญาเดียวกับ .filter-pill ในหน้า #stock: ค่าจริงเก็บใน <select class="hidden"> ที่ data-target ชี้ไป
+    // แล้ว dispatch change — ตัวส่งฟอร์มเดิมใน script.js จึงอ่านค่าทางเดิมได้โดยไม่ต้องแก้
+    const NP_PILL_BASE = 'flex-shrink-0 px-4 py-2.5 bg-[#27272A] rounded-xl text-sm transition-colors cursor-pointer filter-pill';
+    const NP_PILL_OFF = 'border border-[#3F3F46] text-slate-300 hover:border-[#FFE169] hover:text-white';
+    const NP_PILL_ON = 'border border-[#FFE169] text-[#FFE169]';
+
+    // ตั้งค่าให้ <select> โดยกันกรณีค่าที่บันทึกไว้ถูกลบออกจากข้อมูลพื้นฐานไปแล้ว
+    // ถ้าไม่เติม <option> ให้ ช่องจะเด้งกลับเป็นตัวเลือกว่าง แล้วค่าเดิมหายตอนบันทึก
+    const npSetSelectValue = (selectId, value) => {
+        const sel = document.getElementById(selectId);
+        if (!sel) return;
+        const v = value || '';
+        if (v && !sel.querySelector(`option[value="${CSS.escape(v)}"]`)) {
+            const opt = document.createElement('option');
+            opt.value = v;
+            opt.textContent = `${v} (ไม่มีในข้อมูลพื้นฐานแล้ว)`;
+            sel.appendChild(opt);
+        }
+        sel.value = v;
+    };
+
+    const npSetPillValue = (containerId, targetId, value) => {
+        const container = document.getElementById(containerId);
+        const target = document.getElementById(targetId);
+        if (!container) return;
+
+        // ค่าที่เคยบันทึกไว้อาจถูกลบออกจากข้อมูลพื้นฐานไปแล้ว ถ้าไม่มี pill รองรับ
+        // การกดแก้ไขจะเห็นเป็นช่องว่าง แล้วพอกดบันทึกค่าเดิมจะหายไปเงียบๆ
+        // จึงเติม pill ชั่วคราวให้ค่านั้นเพื่อให้เห็นและถูกส่งกลับไปตามเดิม
+        if (value && !container.querySelector(`.filter-pill[data-value="${CSS.escape(value)}"]`)) {
+            const ghost = document.createElement('button');
+            ghost.type = 'button';
+            ghost.className = `${NP_PILL_BASE} ${NP_PILL_OFF}`;
+            ghost.dataset.target = targetId;
+            ghost.dataset.value = value;
+            ghost.dataset.ghost = '1';
+            ghost.title = 'ค่านี้ไม่มีอยู่ในข้อมูลพื้นฐานแล้ว';
+            ghost.textContent = value;
+            ghost.addEventListener('click', () => {
+                const already = ghost.classList.contains('active');
+                npSetPillValue(containerId, targetId, already ? '' : value);
+            });
+            container.appendChild(ghost);
+            if (target && !target.querySelector(`option[value="${CSS.escape(value)}"]`)) {
+                const opt = document.createElement('option');
+                opt.value = value;
+                opt.textContent = value;
+                target.appendChild(opt);
+            }
+        }
+
+        container.querySelectorAll('.filter-pill').forEach(p => {
+            const on = p.dataset.value === value;
+            p.className = `${NP_PILL_BASE} ${on ? NP_PILL_ON : NP_PILL_OFF}`;
+            p.classList.toggle('active', on);
+            p.setAttribute('aria-pressed', String(on));
+        });
+        if (target) {
+            target.value = value || '';
+            target.dispatchEvent(new Event('change'));
+        }
+    };
+
+    const npRenderPills = (containerId, targetId, items) => {
+        const container = document.getElementById(containerId);
+        const target = document.getElementById(targetId);
+        if (!container || !target) return;
+
+        // <select class="hidden"> ต้องมี option ครบ ไม่งั้น select.value = ... จะไม่ติด
+        target.innerHTML = '<option value=""></option>' +
+            (items || []).map(i => `<option value="${arEsc(i.name)}">${arEsc(i.name)}</option>`).join('');
+
+        container.innerHTML = '';
+        (items || []).forEach(item => {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = `${NP_PILL_BASE} ${NP_PILL_OFF}`;
+            btn.dataset.target = targetId;
+            btn.dataset.value = item.name;
+            btn.setAttribute('aria-pressed', 'false');
+            btn.textContent = item.name;
+            // กด pill ที่เลือกอยู่ซ้ำ = ยกเลิกการเลือก (ฟอร์มนี้ไม่มีปุ่ม "ทั้งหมด")
+            btn.addEventListener('click', () => {
+                const already = btn.classList.contains('active');
+                npSetPillValue(containerId, targetId, already ? '' : item.name);
+            });
+            container.appendChild(btn);
+        });
+    };
+
+    // จานสี — สีมาจากตัวแปลงกลาง window.resolveProductColorHex เท่านั้น (ข้อ 11.14)
+    const npRenderSwatches = (containerId, targetId, items) => {
+        const container = document.getElementById(containerId);
+        const target = document.getElementById(targetId);
+        if (!container || !target) return;
+
+        target.innerHTML = '<option value=""></option>' +
+            (items || []).map(i => `<option value="${arEsc(i.name)}">${arEsc(i.name)}</option>`).join('');
+
+        container.innerHTML = '';
+        (items || []).forEach(item => {
+            const hex = (typeof window.toSixDigitHex === 'function' && typeof window.resolveProductColorHex === 'function')
+                ? window.toSixDigitHex(window.resolveProductColorHex(item.name, item))
+                : '#8E8E93';
+
+            const wrap = document.createElement('button');
+            wrap.type = 'button';
+            wrap.className = 'np-swatch flex flex-col items-center gap-1 shrink-0 cursor-pointer';
+            wrap.dataset.value = item.name;
+            wrap.setAttribute('aria-pressed', 'false');
+            wrap.setAttribute('aria-label', `เลือกสี ${item.name}`);
+            wrap.innerHTML = `
+                <span class="np-swatch-dot w-7 h-7 rounded-full border-2 border-transparent transition-all"
+                      style="background-color:${hex};"></span>
+                <span class="np-swatch-label text-[10px] text-slate-400 whitespace-nowrap transition-colors">${arEsc(item.name)}</span>`;
+
+            wrap.addEventListener('click', () => {
+                const already = wrap.getAttribute('aria-pressed') === 'true';
+                npSetSwatchValue(containerId, targetId, already ? '' : item.name);
+            });
+            container.appendChild(wrap);
+        });
+    };
+
+    const npSetSwatchValue = (containerId, targetId, value) => {
+        const container = document.getElementById(containerId);
+        const target = document.getElementById(targetId);
+        if (!container) return;
+
+        // เหตุผลเดียวกับ npSetPillValue — สีที่ถูกลบออกจากข้อมูลพื้นฐานต้องยังเห็นและไม่หายตอนบันทึก
+        if (value && !container.querySelector(`.np-swatch[data-value="${CSS.escape(value)}"]`)) {
+            const hex = (typeof window.toSixDigitHex === 'function' && typeof window.resolveProductColorHex === 'function')
+                ? window.toSixDigitHex(window.resolveProductColorHex(value, null))
+                : '#8E8E93';
+            const ghost = document.createElement('button');
+            ghost.type = 'button';
+            ghost.className = 'np-swatch flex flex-col items-center gap-1 shrink-0 cursor-pointer';
+            ghost.dataset.value = value;
+            ghost.dataset.ghost = '1';
+            ghost.title = 'สีนี้ไม่มีอยู่ในข้อมูลพื้นฐานแล้ว';
+            ghost.setAttribute('aria-pressed', 'false');
+            ghost.setAttribute('aria-label', `เลือกสี ${value}`);
+            ghost.innerHTML = `
+                <span class="np-swatch-dot w-7 h-7 rounded-full border-2 border-transparent transition-all"
+                      style="background-color:${hex};"></span>
+                <span class="np-swatch-label text-[10px] text-slate-400 whitespace-nowrap transition-colors">${arEsc(value)}</span>`;
+            ghost.addEventListener('click', () => {
+                const already = ghost.getAttribute('aria-pressed') === 'true';
+                npSetSwatchValue(containerId, targetId, already ? '' : value);
+            });
+            container.appendChild(ghost);
+            if (target && !target.querySelector(`option[value="${CSS.escape(value)}"]`)) {
+                const opt = document.createElement('option');
+                opt.value = value;
+                opt.textContent = value;
+                target.appendChild(opt);
+            }
+        }
+
+        container.querySelectorAll('.np-swatch').forEach(w => {
+            const on = w.dataset.value === value;
+            w.setAttribute('aria-pressed', String(on));
+            const dot = w.querySelector('.np-swatch-dot');
+            const label = w.querySelector('.np-swatch-label');
+            if (dot) {
+                dot.classList.toggle('border-[#FFE169]', on);
+                dot.classList.toggle('scale-110', on);
+                dot.classList.toggle('border-transparent', !on);
+            }
+            if (label) {
+                label.classList.toggle('text-[#FFE169]', on);
+                label.classList.toggle('text-slate-400', !on);
+            }
+        });
+        if (target) {
+            target.value = value || '';
+            target.dispatchEvent(new Event('change'));
+        }
+    };
+
+    // เติมตัวเลือกทั้งฟอร์มจาก masterDataCache
+    window.populateArrivalPickers = () => {
+        const md = window.masterDataCache;
+        if (!md) return;
+        // เรนเดอร์ใหม่สร้าง pill ทั้งแถวใหม่หมด จึงต้องจำค่าที่เลือกอยู่แล้วใส่กลับ
+        const keepPicked = {};
+        ['arrival-type-name', 'arrival-condition-name', 'arrival-color-name',
+         'arrival-capacity-name', 'arrival-unit-name'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) keepPicked[id] = el.value;
+        });
+        const sel = document.getElementById('arrival-product-name');
+        if (sel) {
+            const keep = sel.value;
+            sel.innerHTML = '<option value="">ระบุชื่อ</option>' +
+                (md.productNames || []).map(i => `<option value="${arEsc(i.name)}">${arEsc(i.name)}</option>`).join('');
+            npSetSelectValue('arrival-product-name', keep);
+        }
+
+        const supSel = document.getElementById('arrival-supplier-name');
+        if (supSel) {
+            const keep = supSel.value;
+            supSel.innerHTML = '<option value="">เลือก Supplier</option>' +
+                (md.suppliers || []).map(i => `<option value="${arEsc(i.name)}">${arEsc(i.name)}</option>`).join('');
+            npSetSelectValue('arrival-supplier-name', keep);
+        }
+        npRenderPills('arrival-type-pills', 'arrival-type-name', md.productTypes);
+        npRenderPills('arrival-condition-pills', 'arrival-condition-name', md.productConditions);
+        npRenderSwatches('arrival-color-swatches', 'arrival-color-name', md.productColors);
+        npRenderPills('arrival-capacity-pills', 'arrival-capacity-name', md.productCapacities);
+        npRenderPills('arrival-unit-pills', 'arrival-unit-name', md.productUnits);
+
+        npSetPillValue('arrival-type-pills', 'arrival-type-name', keepPicked['arrival-type-name'] || '');
+        npSetPillValue('arrival-condition-pills', 'arrival-condition-name', keepPicked['arrival-condition-name'] || '');
+        npSetSwatchValue('arrival-color-swatches', 'arrival-color-name', keepPicked['arrival-color-name'] || '');
+        npSetPillValue('arrival-capacity-pills', 'arrival-capacity-name', keepPicked['arrival-capacity-name'] || '');
+        npSetPillValue('arrival-unit-pills', 'arrival-unit-name', keepPicked['arrival-unit-name'] || '');
+    };
+
+    // ---------- การ์ด "รายการแจ้งล่าสุดของฉัน" ----------
+    const NP_STATUS = {
+        'รอดำเนินการ': { bg: 'bg-orange-500/[0.12]', text: 'text-orange-400' },
+        'อนุมัติแล้ว': { bg: 'bg-[#42A231]/[0.12]', text: 'text-[#20D500]' },
+        'ปฏิเสธ': { bg: 'bg-[#FE0000]/[0.12]', text: 'text-[#FE0000]' }
+    };
+
+    const npInfoRow = (label, value, extra = '') => value
+        ? `<p class="text-xs text-white/70">${arEsc(label)} : ${extra}<span class="text-white">${arEsc(value)}</span></p>`
+        : '';
+
+    window.renderMyArrivalReports = (list) => {
+        const box = document.getElementById('my-arrival-reports');
+        if (!box) return;
+
+        if (!list || !list.length) {
+            box.innerHTML = '<p class="py-10 text-center text-white/50 italic text-sm">ยังไม่มีรายการแจ้งของคุณ</p>';
+            return;
+        }
+
+        box.innerHTML = list.map(item => {
+            const imeis = item.imeis || [];
+            const shown = imeis.slice(0, 4);
+            const rest = imeis.length - shown.length;
+            const tone = NP_STATUS[item.status] || NP_STATUS['รอดำเนินการ'];
+            // แก้ไข/ลบ ได้เฉพาะรายการที่ยังรอดำเนินการ (ตรงกับที่ฝั่งเซิร์ฟเวอร์บังคับไว้)
+            const editable = item.status === 'รอดำเนินการ';
+
+            const colorDot = item.color_name && typeof window.productColorDot === 'function'
+                ? window.productColorDot(item.color_name, null)
+                : '';
+
+            return `
+            <div class="bg-[#27272A] border border-[#3F3F46] rounded-xl p-4">
+                <div class="flex items-start justify-between gap-2">
+                    <h4 class="text-base font-semibold text-white truncate" title="${arEsc(item.product_name)}">${arEsc(item.product_name)}</h4>
+                    <span class="px-2 py-0.5 rounded-[0.375rem] text-[10px] font-medium shrink-0 ${tone.bg} ${tone.text}">${arEsc(item.status)}</span>
+                </div>
+                <div class="mt-2 space-y-1">
+                    ${npInfoRow('ประเภทสินค้า', item.type_name)}
+                    ${npInfoRow('สภาพ', item.condition_name)}
+                    ${item.color_name ? `<p class="text-xs text-white/70 flex items-center gap-1.5">
+                        <span>สี :</span>
+                        <span class="w-4 h-4 rounded-full shrink-0 ring-1 ring-white/25 flex items-center justify-center">${colorDot}</span>
+                        <span class="text-white">${arEsc(item.color_name)}</span>
+                    </p>` : ''}
+                    ${npInfoRow('ความจุ', item.capacity_name)}
+                    ${npInfoRow('Supplier / แหล่งที่มา', item.supplier_name)}
+                    ${npInfoRow('หน่วยนับ', item.unit_name)}
+                    ${npInfoRow('หมายเหตุ', item.notes)}
+                </div>
+                ${imeis.length ? `
+                <p class="text-xs text-white/70 mt-3">เลข IMEI :</p>
+                <div class="mt-1.5 grid grid-cols-2 gap-1.5">
+                    ${shown.map(i => `<span class="px-2 py-1 rounded-[0.375rem] bg-[#18181B] border border-[#3F3F46] text-[11px] font-mono text-white text-center truncate">${arEsc(i)}</span>`).join('')}
+                </div>
+                ${rest > 0 ? `
+                <details class="mt-1.5 group">
+                    <summary class="text-[11px] text-white/70 hover:text-white cursor-pointer list-none flex items-center justify-center gap-1">
+                        เพิ่มเติม ... <i class="fa-solid fa-chevron-down text-[9px] group-open:rotate-180 transition-transform"></i>
+                    </summary>
+                    <div class="mt-1.5 grid grid-cols-2 gap-1.5">
+                        ${imeis.slice(4).map(i => `<span class="px-2 py-1 rounded-[0.375rem] bg-[#18181B] border border-[#3F3F46] text-[11px] font-mono text-white text-center truncate">${arEsc(i)}</span>`).join('')}
+                    </div>
+                </details>` : ''}` : ''}
+                ${editable ? `
+                <div class="flex items-center justify-end gap-2 mt-3 pt-3 border-t border-[#3F3F46]">
+                    <button type="button" class="btn-edit-notif px-3 py-1.5 rounded-[0.375rem] bg-[#FF9F0A]/[0.12] border border-[#FF9F0A]/40 text-[#FF9F0A] hover:bg-[#FF9F0A]/20 text-xs font-medium transition-colors inline-flex items-center gap-1.5 cursor-pointer"
+                        data-id="${arEsc(item._id)}" aria-label="แก้ไขรายการแจ้ง ${arEsc(item.product_name)}">
+                        <i class="fa-solid fa-pen-to-square"></i> แก้ไข
+                    </button>
+                    <button type="button" class="btn-delete-notif px-3 py-1.5 rounded-[0.375rem] bg-[#FE0000]/[0.12] border border-[#FE0000]/40 text-[#FF6B6B] hover:bg-[#FE0000]/20 text-xs font-medium transition-colors inline-flex items-center gap-1.5 cursor-pointer"
+                        data-id="${arEsc(item._id)}" data-name="${arEsc(item.product_name)}"
+                        aria-label="ลบรายการแจ้ง ${arEsc(item.product_name)}">
+                        <i class="fa-solid fa-trash"></i> ลบ
+                    </button>
+                </div>` : ''}
+            </div>`;
+        }).join('');
+
+        const byId = (id) => list.find(x => String(x._id) === String(id));
+        box.querySelectorAll('.btn-edit-notif').forEach(b =>
+            b.addEventListener('click', () => { const it = byId(b.dataset.id); if (it) npStartEdit(it); }));
+        box.querySelectorAll('.btn-delete-notif').forEach(b =>
+            b.addEventListener('click', () => npDeleteNotif(b.dataset.id, b.dataset.name)));
+    };
+
+    // ---------- แก้ไข / ลบ ----------
+    let _npEditingId = null;
+
+    const npSetSubmitLabel = () => {
+        const t = document.getElementById('btn-submit-arrival-text');
+        if (t) t.textContent = _npEditingId ? 'บันทึกการแก้ไข' : 'แจ้งสินค้าถึงสาขา';
+        const c = document.getElementById('btn-cancel-arrival-edit');
+        if (c) c.classList.toggle('hidden', !_npEditingId);
+        const banner = document.getElementById('arrival-edit-banner');
+        if (banner) banner.classList.toggle('hidden', !_npEditingId);
+    };
+
+    const npStartEdit = async (item) => {
+        _npEditingId = item._id;
+        // ต้องมั่นใจว่าตัวเลือกทั้งหมดถูกเรนเดอร์แล้ว ไม่งั้นจะเห็นแต่ค่าเดิมและเลือกอย่างอื่นไม่ได้
+        if (typeof window.ensureMasterDataLoaded === 'function') await window.ensureMasterDataLoaded();
+        window.npResetPickers();          // ล้างก่อน ไม่งั้น ghost pill ของรายการที่แก้ก่อนหน้าจะค้าง
+        window.populateArrivalPickers();
+        window.npBindScrollButtons();
+        const set = (id, v) => { const el = document.getElementById(id); if (el) el.value = v || ''; };
+
+        npSetSelectValue('arrival-product-name', item.product_name || '');
+        set('arrival-imeis', (item.imeis || []).join('\n'));
+        set('arrival-notes', item.notes);
+        npSetPillValue('arrival-type-pills', 'arrival-type-name', item.type_name || '');
+        npSetPillValue('arrival-condition-pills', 'arrival-condition-name', item.condition_name || '');
+        npSetSwatchValue('arrival-color-swatches', 'arrival-color-name', item.color_name || '');
+        npSetPillValue('arrival-capacity-pills', 'arrival-capacity-name', item.capacity_name || '');
+        npSetSelectValue('arrival-supplier-name', item.supplier_name || '');
+        npSetPillValue('arrival-unit-pills', 'arrival-unit-name', item.unit_name || '');
+        npSetSubmitLabel();
+        const imeiEl = document.getElementById('arrival-imeis');
+        if (imeiEl) imeiEl.dispatchEvent(new Event('input', { bubbles: true }));
+        const card = document.querySelector('#modal-nonpo-arrival .modal-content');
+        if (card) card.scrollTo({ top: 0, behavior: 'smooth' });
+        showToast(`กำลังแก้ไขรายการ "${item.product_name}"`);
+    };
+
+    window.npCancelEdit = () => { _npEditingId = null; npSetSubmitLabel(); };
+
+    // ออกจากโหมดแก้ไขแล้วล้างฟอร์ม กลับไปเป็นการแจ้งรายการใหม่
+    window.npExitEditAndClear = () => {
+        window.npCancelEdit();
+        ['arrival-product-name', 'arrival-imeis', 'arrival-notes'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.value = '';
+        });
+        window.npResetPickers();
+        const imeiEl = document.getElementById('arrival-imeis');
+        if (imeiEl) imeiEl.dispatchEvent(new Event('input', { bubbles: true }));
+    };
+
+    // ล้างค่าที่เลือกไว้ในกลุ่ม pill และจานสี หลังส่งฟอร์มสำเร็จ
+    window.npResetPickers = () => {
+        npSetPillValue('arrival-type-pills', 'arrival-type-name', '');
+        npSetPillValue('arrival-condition-pills', 'arrival-condition-name', '');
+        npSetSwatchValue('arrival-color-swatches', 'arrival-color-name', '');
+        npSetPillValue('arrival-capacity-pills', 'arrival-capacity-name', '');
+        npSetSelectValue('arrival-supplier-name', '');
+        npSetPillValue('arrival-unit-pills', 'arrival-unit-name', '');
+    };
+    window.npGetEditingId = () => _npEditingId;
+
+    const npDeleteNotif = (id, name) => {
+        showConfirm('ลบรายการแจ้งสินค้า',
+            `ต้องการลบรายการแจ้ง <strong class="text-white">${arEsc(name || '')}</strong> ใช่หรือไม่<br><span class="text-xs text-white/70">ลบได้เฉพาะรายการที่ยังไม่ถูกอนุมัติ และย้อนกลับไม่ได้</span>`,
+            async () => {
+                try {
+                    const res = await authFetch(`${API_BASE_URL}/import-notifications/${id}`, { method: 'DELETE' });
+                    const json = await res.json();
+                    if (json.success) {
+                        showToast('ลบรายการแจ้งสำเร็จ');
+                        if (_npEditingId === id) window.npCancelEdit();
+                        if (typeof window.loadMyArrivalReports === 'function') window.loadMyArrivalReports();
+                    } else {
+                        showToast(json.message || 'ลบรายการแจ้งไม่สำเร็จ', 'error');
+                    }
+                } catch (err) {
+                    console.error(err);
+                    showToast('เชื่อมต่อเซิร์ฟเวอร์ไม่สำเร็จ', 'error');
+                }
+            }, 'ลบรายการ', 'danger');
+    };
+
+    // ปุ่มเลื่อนกลุ่ม pill (ผูกครั้งเดียวตอนโหลดหน้า)
+    const npBindScrollButtons = () => {
+        document.querySelectorAll('.arrival-pill-scroll').forEach(btn => {
+            if (btn.dataset.bound) return;
+            btn.dataset.bound = '1';
+            btn.addEventListener('click', () => {
+                const box = document.getElementById(btn.dataset.scroll);
+                if (box) box.scrollBy({ left: 150 * Number(btn.dataset.dir || 1), behavior: 'smooth' });
+            });
+        });
+    };
+    window.npBindScrollButtons = npBindScrollButtons;
 
     // ==========================================
     // Connected PO Workflow: ตรวจสอบนำเข้า (Stock Manager / Approver)
+    // เดินตามแบบแปลนหน้า #stock ใน DESIGN.md ข้อ 11.5 - 11.7
     // ==========================================
+    const AI_COLS = { po: 5, nonpo: 6, histPo: 5, histNonPo: 6, histDirect: 7 };
+
+    const aiEsc = (s) => String(s == null ? '' : s)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    const aiBaht = (n) => `฿${Number(n || 0).toLocaleString('th-TH', { maximumFractionDigits: 0 })}`;
+    const aiDate = (d) => d ? new Date(d).toLocaleDateString('th-TH',
+        { day: 'numeric', month: 'short', year: 'numeric' }) : '-';
+    const aiDateTime = (d) => d ? new Date(d).toLocaleString('th-TH',
+        { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-';
+
+    const aiStateRow = (cols, msg, cls = 'text-white/50 italic') =>
+        `<tr><td colspan="${cols}" class="px-6 py-8 text-center ${cls}">${aiEsc(msg)}</td></tr>`;
+
+    // แถวโครงร่างระหว่างรอข้อมูล — ต้องเรียกก่อน await เสมอ (ข้อ 11.7)
+    const aiSkeleton = (tbody, cols, rows = 4) => {
+        if (!tbody) return;
+        const bar = (w) => `<div class="h-3.5 ${w} rounded-full bg-[#5c5c5c] animate-pulse"></div>`;
+        tbody.innerHTML = Array.from({ length: rows }).map(() =>
+            `<tr>${Array.from({ length: cols }).map(() =>
+                `<td class="px-6 py-4">${bar('w-full')}</td>`).join('')}</tr>`).join('');
+    };
+
+    // เซลล์สองบรรทัด (สูตร "ชื่อ + คำบรรยาย" ข้อ 11.6) ใช้ยุบคอลัมน์ที่เคยแยกกัน
+    const aiTwoLine = (main, sub) => `
+        <div>
+            <p class="font-medium text-white">${main}</p>
+            <p class="text-xs text-white/70 mt-0.5">${sub}</p>
+        </div>`;
+
+    const aiSetCount = (id, shown, total) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.textContent = total ? `แสดง ${shown} จาก ${total} รายการ` : '';
+    };
+
+    // สรุปยอดของใบสั่งซื้อหนึ่งใบ (สแกนแล้ว/สั่งไป และมูลค่ารวม)
+    const aiPoTotals = (po) => {
+        let ordered = 0, scanned = 0, total = 0;
+        (po.items || []).forEach(item => {
+            ordered += item.ordered_qty || 0;
+            scanned += item.received_qty || 0;
+            total += (item.cost_price || 0) * (item.ordered_qty || 0);
+        });
+        return { ordered, scanned, total: po.grand_total || total };
+    };
+
+    // ตัวเลข "สแกนแล้ว x / y" — ครบแล้วเป็นเขียว ยังไม่ครบเป็นส้ม (โทนตามข้อ 11.6)
+    const aiScanCell = (scanned, ordered) => {
+        const done = ordered > 0 && scanned >= ordered;
+        const color = done ? 'text-[#20D500]' : 'text-orange-400';
+        return `<span class="font-mono font-medium ${color}">${scanned}</span>`
+            + `<span class="text-white/70 font-mono"> / ${ordered}</span>`;
+    };
+
     const loadApprovePOs = async () => {
         const tbody = document.getElementById('table-body-approve-po');
         const badgeCount = document.getElementById('po-approve-pending-count');
         if (!tbody) return;
-        tbody.innerHTML = '<tr><td colspan="7" class="text-center py-6 text-body-muted"><i class="fa-solid fa-spinner fa-spin mr-2 text-ink"></i>กำลังโหลดรายการใบสั่งซื้อ...</td></tr>';
+        aiSkeleton(tbody, AI_COLS.po);
 
         try {
             const res = await authFetch(`${API_BASE_URL}/purchase-orders`);
             const json = await res.json();
-            if (json.success) {
-                tbody.innerHTML = '';
-                // Filter POs awaiting finalization (status: 'กำลังตรวจรับ')
-                const pendingApprovePOs = json.data.filter(po => po.status === 'กำลังตรวจรับ');
+            if (!json.success) {
+                tbody.innerHTML = aiStateRow(AI_COLS.po, json.message || 'ดึงข้อมูลใบสั่งซื้อไม่สำเร็จ', 'text-red-400');
+                aiSetCount('approve-po-result-count', 0, 0);
+                return;
+            }
 
-                if (badgeCount) {
-                    if (pendingApprovePOs.length > 0) {
-                        badgeCount.textContent = pendingApprovePOs.length;
-                        badgeCount.classList.remove('hidden');
-                    } else {
-                        badgeCount.classList.add('hidden');
-                    }
-                }
+            // เฉพาะใบที่สแกนรับของครบแล้วและรออนุมัตินำเข้าคลัง
+            const pending = json.data.filter(po => po.status === 'กำลังตรวจรับ');
 
-                if (pendingApprovePOs.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="7" class="text-center py-8 text-body-muted text-sm">ไม่มีใบสั่งซื้อที่สแกนรออนุมัตินำเข้าคลังในขณะนี้</td></tr>';
-                    return;
-                }
+            if (badgeCount) {
+                badgeCount.textContent = pending.length;
+                badgeCount.classList.toggle('hidden', pending.length === 0);
+            }
+            aiSetCount('approve-po-result-count', pending.length, pending.length);
 
-                pendingApprovePOs.forEach(po => {
-                    const tr = document.createElement('tr');
-                    tr.className = 'border-b border-hairline/50 hover:bg-slate-700/20 transition-colors';
-                    const branchName = po.branch_id ? po.branch_id.name : '-';
+            if (!pending.length) {
+                tbody.innerHTML = aiStateRow(AI_COLS.po, 'ไม่มีใบสั่งซื้อที่รออนุมัตินำเข้าคลังในขณะนี้');
+                return;
+            }
 
-                    // Count scanned items vs total items ordered
-                    let totalOrdered = 0;
-                    let totalScanned = 0;
-                    let grandTotal = 0;
-                    po.items.forEach(item => {
-                        totalOrdered += item.ordered_qty;
-                        totalScanned += item.received_qty || 0;
-                        grandTotal += (item.cost_price || 0) * (item.ordered_qty || 0);
-                    });
+            tbody.innerHTML = pending.map(po => {
+                const t = aiPoTotals(po);
+                const branchName = po.branch_id ? po.branch_id.name : '-';
+                return `
+                <tr class="hover:bg-[#464646] transition-colors">
+                    <td class="px-6 py-4">
+                        <p class="font-mono font-semibold text-[#FFE169]">${aiEsc(po.po_number)}</p>
+                        <p class="text-xs text-white/70 mt-0.5">สร้างเมื่อ ${aiDate(po.createdAt)}</p>
+                    </td>
+                    <td class="px-6 py-4">${aiTwoLine(aiEsc(po.supplier_name), aiEsc(branchName))}</td>
+                    <td class="px-6 py-4 text-center">${aiScanCell(t.scanned, t.ordered)}</td>
+                    <td class="px-6 py-4 text-right text-white font-mono">${aiBaht(t.total)}</td>
+                    <td class="px-6 py-4 text-right">
+                        <button type="button" class="btn-finalize-import px-3 py-1.5 bg-[#FFE169] hover:bg-[#E2B93C] text-[#333333] font-semibold rounded-[0.375rem] text-xs transition-colors inline-flex items-center gap-1.5 cursor-pointer"
+                            data-id="${aiEsc(po._id)}">
+                            <i class="fa-solid fa-clipboard-check"></i> อนุมัตินำเข้าสต็อก
+                        </button>
+                    </td>
+                </tr>`;
+            }).join('');
 
-                    tr.innerHTML = `
-                        <td class="px-6 py-4 font-mono font-bold text-ink">${po.po_number}</td>
-                        <td class="px-6 py-4 text-sm text-body-muted">${new Date(po.createdAt).toLocaleDateString('th-TH')}</td>
-                        <td class="px-6 py-4 text-sm text-body-muted">${po.supplier_name}</td>
-                        <td class="px-6 py-4 text-sm text-body-muted">${branchName}</td>
-                        <td class="px-6 py-4 text-center text-sm font-mono font-semibold">
-                            <span class="text-ink font-bold">${totalScanned}</span> <span class="text-body-muted">/</span> <span class="text-body-muted">${totalOrdered}</span>
-                        </td>
-                        <td class="px-6 py-4 text-right font-mono text-sm font-bold text-ink">฿${(po.grand_total || grandTotal).toLocaleString()}</td>
-                        <td class="px-6 py-4 text-right">
-                            <button class="btn-finalize-import px-3 py-1.5 bg-surface-chip text-ink hover:bg-surface-tile-2 rounded-lg text-xs font-bold transition-all inline-flex items-center gap-1" data-id="${po._id}">
-                                <i class="fa-solid fa-clipboard-check"></i> อนุมัตินำเข้าสต็อก
-                            </button>
-                        </td>
-                    `;
-                    tbody.appendChild(tr);
-
-                    tr.querySelector('.btn-finalize-import').addEventListener('click', async (e) => {
-                        const btnFinalize = e.currentTarget;
-                        const poId = btnFinalize.dataset.id;
-                        showConfirm('ยืนยันนำเข้าสินค้า', 'ยืนยันนำเข้าสินค้าใบสั่งซื้อนี้เข้าสต็อกสาขา?', async () => {
-                            try {
-                                btnFinalize.disabled = true;
-                                btnFinalize.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> อนุมัติ...';
-
-                                const finalRes = await authFetch(`${API_BASE_URL}/po/${poId}/finalize-import`, {
-                                    method: 'POST'
-                                });
-                                const finalJson = await finalRes.json();
-
-                                if (finalJson.success) {
-                                    showToast('อนุมัตินำเข้าสต็อกสำเร็จ! เพิ่มยอดสินค้าสั่งซื้อเข้าคลังสาขาเรียบร้อยแล้ว', 'success');
-                                    loadApprovePOs();
-                                    if (typeof fetchProducts === 'function') fetchProducts();
-                                    if (typeof loadDashboardData === 'function') loadDashboardData();
-                                } else {
-                                    showToast(finalJson.message || 'เกิดข้อผิดพลาดในการอนุมัติ', 'error');
-                                    btnFinalize.disabled = false;
-                                    btnFinalize.innerHTML = '<i class="fa-solid fa-clipboard-check"></i> อนุมัตินำเข้าสต็อก';
-                                }
-                            } catch (err) {
-                                console.error(err);
-                                showToast(err.message || 'เกิดข้อผิดพลาดในการทำรายการอนุมัติ', 'error');
-                                btnFinalize.disabled = false;
-                                btnFinalize.innerHTML = '<i class="fa-solid fa-clipboard-check"></i> อนุมัตินำเข้าสต็อก';
+            // การกระทำที่ย้อนไม่ได้ ต้องผ่าน showConfirm() ก่อนยิง API (ข้อ 11.6)
+            tbody.querySelectorAll('.btn-finalize-import').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const poId = btn.dataset.id;
+                    const original = btn.innerHTML;
+                    showConfirm('ยืนยันนำเข้าสินค้า', 'ยืนยันนำเข้าสินค้าใบสั่งซื้อนี้เข้าสต็อกสาขา?', async () => {
+                        try {
+                            btn.disabled = true;
+                            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> กำลังอนุมัติ...';
+                            const finalRes = await authFetch(`${API_BASE_URL}/po/${poId}/finalize-import`, { method: 'POST' });
+                            const finalJson = await finalRes.json();
+                            if (finalJson.success) {
+                                showToast('อนุมัตินำเข้าสต็อกสำเร็จ! เพิ่มยอดสินค้าสั่งซื้อเข้าคลังสาขาเรียบร้อยแล้ว', 'success');
+                                loadApprovePOs();
+                                if (typeof fetchProducts === 'function') fetchProducts();
+                                if (typeof loadDashboardData === 'function') loadDashboardData();
+                            } else {
+                                showToast(finalJson.message || 'เกิดข้อผิดพลาดในการอนุมัติ', 'error');
+                                btn.disabled = false;
+                                btn.innerHTML = original;
                             }
-                        });
+                        } catch (err) {
+                            console.error(err);
+                            showToast(err.message || 'เกิดข้อผิดพลาดในการทำรายการอนุมัติ', 'error');
+                            btn.disabled = false;
+                            btn.innerHTML = original;
+                        }
                     });
                 });
-            }
+            });
+
         } catch (e) {
             console.error(e);
-            tbody.innerHTML = '<tr><td colspan="7" class="text-center py-6 text-red-400">เกิดข้อผิดพลาดในการโหลดข้อมูล</td></tr>';
+            tbody.innerHTML = aiStateRow(AI_COLS.po, 'เกิดข้อผิดพลาดในการโหลดข้อมูล', 'text-red-400');
+            aiSetCount('approve-po-result-count', 0, 0);
         }
     };
     window.loadApprovePOs = loadApprovePOs;
@@ -3137,169 +4231,129 @@
     const loadApproveHistory = async () => {
         const tbodyPo = document.getElementById('table-body-history-po');
         const tbodyNonPo = document.getElementById('table-body-history-nonpo');
+        const tbodyDirect = document.getElementById('table-body-history-direct-imports');
         const filterBranch = document.getElementById('approve-import-filter-branch');
         const selectedBranchId = filterBranch ? filterBranch.value : '';
 
-        if (tbodyPo) {
-            tbodyPo.innerHTML = '<tr><td colspan="7" class="text-center py-6 text-body-muted"><i class="fa-solid fa-spinner fa-spin mr-2 text-ink"></i>กำลังโหลดประวัติ PO...</td></tr>';
-        }
-        if (tbodyNonPo) {
-            tbodyNonPo.innerHTML = '<tr><td colspan="7" class="text-center py-6 text-body-muted"><i class="fa-solid fa-spinner fa-spin mr-2 text-body-muted"></i>กำลังโหลดประวัติพิเศษ...</td></tr>';
-        }
+        aiSkeleton(tbodyPo, AI_COLS.histPo);
+        aiSkeleton(tbodyNonPo, AI_COLS.histNonPo);
+        aiSkeleton(tbodyDirect, AI_COLS.histDirect);
 
+        // ---------- ประวัติอนุมัติ PO ----------
         try {
             const res = await authFetch(`${API_BASE_URL}/purchase-orders`);
             const json = await res.json();
             if (json.success && tbodyPo) {
-                tbodyPo.innerHTML = '';
-                let approvedPOs = json.data.filter(po => po.status === 'นำเข้าสำเร็จ');
-                if (selectedBranchId) {
-                    approvedPOs = approvedPOs.filter(po => po.branch_id && (po.branch_id._id === selectedBranchId || po.branch_id === selectedBranchId));
-                }
+                const all = json.data.filter(po => po.status === 'นำเข้าสำเร็จ');
+                const rows = selectedBranchId
+                    ? all.filter(po => po.branch_id && (po.branch_id._id === selectedBranchId || po.branch_id === selectedBranchId))
+                    : all;
+                aiSetCount('history-po-result-count', rows.length, all.length);
 
-                if (approvedPOs.length === 0) {
-                    tbodyPo.innerHTML = '<tr><td colspan="7" class="text-center py-8 text-body-muted text-sm">ไม่มีประวัติการอนุมัติ PO</td></tr>';
-                } else {
-                    approvedPOs.forEach(po => {
-                        const tr = document.createElement('tr');
-                        tr.className = 'border-b border-hairline/50 hover:bg-slate-700/20 transition-colors';
-                        const branchName = po.branch_id ? po.branch_id.name : '-';
-                        const approverName = po.received_by ? po.received_by.name : '-';
-
-                        let totalOrdered = 0;
-                        let totalScanned = 0;
-                        let grandTotal = 0;
-                        po.items.forEach(item => {
-                            totalOrdered += item.ordered_qty;
-                            totalScanned += item.received_qty || 0;
-                            grandTotal += (item.cost_price || 0) * (item.ordered_qty || 0);
-                        });
-
-                        const approvalDate = po.updatedAt ? new Date(po.updatedAt).toLocaleString('th-TH') : '-';
-
-                        tr.innerHTML = `
-                            <td class="px-6 py-4 font-mono font-bold text-ink">${po.po_number}</td>
-                            <td class="px-6 py-4 text-sm text-body-muted">${approvalDate}</td>
-                            <td class="px-6 py-4 text-sm text-body-muted">${po.supplier_name}</td>
-                            <td class="px-6 py-4 text-sm text-body-muted">${branchName}</td>
-                            <td class="px-6 py-4 text-center text-sm font-mono font-semibold">
-                                <span class="text-ink font-bold">${totalScanned}</span> <span class="text-body-muted">/</span> <span class="text-body-muted">${totalOrdered}</span>
-                            </td>
-                            <td class="px-6 py-4 text-right font-mono text-sm font-bold text-ink">฿${(po.grand_total || grandTotal).toLocaleString()}</td>
-                            <td class="px-6 py-4 text-sm text-body-muted">${approverName}</td>
-                        `;
-                        tbodyPo.appendChild(tr);
-                    });
-                }
+                tbodyPo.innerHTML = rows.length ? rows.map(po => {
+                    const t = aiPoTotals(po);
+                    return `
+                    <tr class="hover:bg-[#464646] transition-colors">
+                        <td class="px-6 py-4">
+                            <p class="font-mono font-semibold text-[#FFE169]">${aiEsc(po.po_number)}</p>
+                            <p class="text-xs text-white/70 mt-0.5">${aiDateTime(po.updatedAt)}</p>
+                        </td>
+                        <td class="px-6 py-4">${aiTwoLine(aiEsc(po.supplier_name), aiEsc(po.branch_id ? po.branch_id.name : '-'))}</td>
+                        <td class="px-6 py-4 text-center">${aiScanCell(t.scanned, t.ordered)}</td>
+                        <td class="px-6 py-4 text-right text-white font-mono">${aiBaht(t.total)}</td>
+                        <td class="px-6 py-4 text-white">${aiEsc(po.received_by ? po.received_by.name : '-')}</td>
+                    </tr>`;
+                }).join('') : aiStateRow(AI_COLS.histPo,
+                    all.length ? 'ไม่มีประวัติของสาขาที่เลือก' : 'ยังไม่มีประวัติการอนุมัติ PO');
             }
         } catch (err) {
             console.error('Error loading PO history:', err);
-            if (tbodyPo) tbodyPo.innerHTML = '<tr><td colspan="7" class="text-center py-6 text-red-400">เกิดข้อผิดพลาดในการโหลดประวัติ PO</td></tr>';
+            if (tbodyPo) tbodyPo.innerHTML = aiStateRow(AI_COLS.histPo, 'เกิดข้อผิดพลาดในการโหลดประวัติ PO', 'text-red-400');
+            aiSetCount('history-po-result-count', 0, 0);
         }
 
+        // ---------- ประวัติอนุมัติสินค้านอกระบบ PO ----------
         try {
             let url = `${API_BASE_URL}/import-notifications?status=อนุมัติแล้ว`;
-            if (selectedBranchId) {
-                url += `&branch_id=${selectedBranchId}`;
-            }
+            if (selectedBranchId) url += `&branch_id=${selectedBranchId}`;
             const res = await authFetch(url);
             const json = await res.json();
             if (json.success && tbodyNonPo) {
-                tbodyNonPo.innerHTML = '';
-                const approvedNonPOs = json.data || [];
+                const rows = json.data || [];
+                aiSetCount('history-nonpo-result-count', rows.length, rows.length);
 
-                if (approvedNonPOs.length === 0) {
-                    tbodyNonPo.innerHTML = '<tr><td colspan="7" class="text-center py-8 text-body-muted text-sm">ไม่มีประวัติการอนุมัติสินค้านอกระบบ PO</td></tr>';
-                } else {
-                    approvedNonPOs.forEach(item => {
-                        const tr = document.createElement('tr');
-                        tr.className = 'border-b border-hairline/50 hover:bg-slate-700/20 transition-colors';
-                        const branchName = item.branch_id ? item.branch_id.name : '-';
-                        const reporterName = item.reported_by ? item.reported_by.name : '-';
-                        const approverName = item.approved_by ? item.approved_by.name : '-';
-                        const approvalDate = item.approved_at ? new Date(item.approved_at).toLocaleString('th-TH') : '-';
-
-                        tr.innerHTML = `
-                            <td class="px-6 py-4 text-sm text-body-muted">${approvalDate}</td>
-                            <td class="px-6 py-4 text-sm text-body-muted">${branchName}</td>
-                            <td class="px-6 py-4 text-sm text-body-muted">${reporterName}</td>
-                            <td class="px-6 py-4 text-sm font-medium text-ink">${item.product_name}</td>
-                            <td class="px-6 py-4 text-sm text-ink font-mono">${item.imeis ? item.imeis.length : 0}</td>
-                            <td class="px-6 py-4 text-sm text-body-muted">${approverName}</td>
-                            <td class="px-6 py-4 text-sm text-body-muted">${item.notes || '-'}</td>
-                        `;
-                        tbodyNonPo.appendChild(tr);
-                    });
-                }
+                tbodyNonPo.innerHTML = rows.length ? rows.map(item => `
+                    <tr class="hover:bg-[#464646] transition-colors">
+                        <td class="px-6 py-4 text-white font-medium">${aiEsc(item.product_name)}</td>
+                        <td class="px-6 py-4">${aiTwoLine(
+                    aiEsc(item.branch_id ? item.branch_id.name : '-'),
+                    aiEsc(item.reported_by ? item.reported_by.name : '-'))}</td>
+                        <td class="px-6 py-4 text-white">${aiDateTime(item.approved_at)}</td>
+                        <td class="px-6 py-4 text-center text-white font-mono">${item.imeis ? item.imeis.length : 0}</td>
+                        <td class="px-6 py-4 text-white">${aiEsc(item.approved_by ? item.approved_by.name : '-')}</td>
+                        <td class="px-6 py-4 text-white/70">${item.notes ? aiEsc(item.notes) : '<span class="text-white/50">-</span>'}</td>
+                    </tr>`).join('') : aiStateRow(AI_COLS.histNonPo, 'ยังไม่มีประวัติการอนุมัติสินค้านอกระบบ PO');
             }
         } catch (err) {
             console.error('Error loading Non-PO history:', err);
-            if (tbodyNonPo) tbodyNonPo.innerHTML = '<tr><td colspan="7" class="text-center py-6 text-red-400">เกิดข้อผิดพลาดในการโหลดประวัติสินค้านอกระบบ PO</td></tr>';
+            if (tbodyNonPo) tbodyNonPo.innerHTML = aiStateRow(AI_COLS.histNonPo, 'เกิดข้อผิดพลาดในการโหลดประวัติสินค้านอกระบบ PO', 'text-red-400');
+            aiSetCount('history-nonpo-result-count', 0, 0);
         }
 
-        const tbodyDirect = document.getElementById('table-body-history-direct-imports');
-        if (tbodyDirect) {
-            tbodyDirect.innerHTML = '<tr><td colspan="8" class="text-center py-6 text-body-muted"><i class="fa-solid fa-spinner fa-spin mr-2 text-emerald-400"></i>กำลังโหลดประวัตินำเข้าโดยตรง...</td></tr>';
-        }
-
+        // ---------- ประวัตินำเข้าคลังโดยตรง ----------
         try {
             const res = await authFetch(`${API_BASE_URL}/products/direct-imports-history`);
             const json = await res.json();
             if (json.success && tbodyDirect) {
-                tbodyDirect.innerHTML = '';
-                let directLogs = json.data || [];
+                const all = json.data || [];
+                const rows = selectedBranchId
+                    ? all.filter(log => log.details && log.details.branch_id === selectedBranchId)
+                    : all;
+                aiSetCount('history-direct-result-count', rows.length, all.length);
 
-                // Filter by branch if selected
-                if (selectedBranchId) {
-                    directLogs = directLogs.filter(log => log.details && log.details.branch_id === selectedBranchId);
-                }
+                tbodyDirect.innerHTML = rows.length ? rows.map(log => {
+                    const d = log.details || {};
+                    const isExcel = d.import_source === 'EXCEL';
+                    // ป้ายประเภทใช้จุดสี + tint 12% เหมือนป้ายสถานะอื่นทั้งระบบ (ข้อ 11.6)
+                    const typeBadge = isExcel
+                        ? `<div class="inline-flex items-center gap-2 px-2.5 py-1 rounded-[0.375rem] bg-[#42A231]/[0.12]">
+                               <div class="w-2 h-2 rounded-full bg-[#20D500]"></div>
+                               <span class="text-[#20D500] font-medium text-xs">Excel</span></div>`
+                        : `<div class="inline-flex items-center gap-2 px-2.5 py-1 rounded-[0.375rem] bg-[#4D4D4D]/40">
+                               <div class="w-2 h-2 rounded-full bg-white/40"></div>
+                               <span class="text-white/70 font-medium text-xs">คลังปกติ</span></div>`;
 
-                if (directLogs.length === 0) {
-                    tbodyDirect.innerHTML = '<tr><td colspan="8" class="text-center py-8 text-body-muted text-sm">ไม่มีประวัติการนำเข้าคลังสินค้าโดยตรง</td></tr>';
-                } else {
-                    directLogs.forEach(log => {
-                        const tr = document.createElement('tr');
-                        tr.className = 'border-b border-hairline/50 hover:bg-slate-700/20 transition-colors';
+                    const imeis = Array.isArray(d.imeis) ? d.imeis : [];
+                    const imeiCell = imeis.length
+                        ? `<span class="font-mono text-xs text-white/70 block max-w-[220px] truncate"
+                                 title="${aiEsc(imeis.join(', '))}">${aiEsc(imeis.join(', '))}</span>`
+                        : '<span class="text-white/50">-</span>';
 
-                        const importDate = log.createdAt ? new Date(log.createdAt).toLocaleString('th-TH') : '-';
-                        const details = log.details || {};
-                        const typeText = details.import_source === 'EXCEL' ?
-                            '<span class="px-2 py-1 rounded bg-emerald-500/10 text-emerald-400 text-xs font-semibold border border-emerald-500/20">Excel</span>' :
-                            '<span class="px-2 py-1 rounded bg-blue-500/10 text-blue-400 text-xs font-semibold border border-blue-500/20">คลังปกติ</span>';
-
-                        const branchName = details.branch_name || '-';
-                        const productName = details.product_name || '-';
-                        const productCode = details.product_code || '-';
-                        const qty = details.quantity || 0;
-                        const importer = log.user_name || '-';
-
-                        let imeiStr = '-';
-                        if (Array.isArray(details.imeis) && details.imeis.length > 0) {
-                            imeiStr = `<div class="max-w-xs truncate font-mono text-xs text-body-muted" title="${details.imeis.join(', ')}">${details.imeis.join(', ')}</div>`;
-                        }
-
-                        tr.innerHTML = `
-                            <td class="px-6 py-4 text-sm text-body-muted">${importDate}</td>
-                            <td class="px-6 py-4 text-sm">${typeText}</td>
-                            <td class="px-6 py-4 text-sm text-body-muted">${branchName}</td>
-                            <td class="px-6 py-4 text-sm font-medium text-ink">${productName}</td>
-                            <td class="px-6 py-4 text-sm text-body-muted font-mono">${productCode}</td>
-                            <td class="px-6 py-4 text-sm text-center text-ink font-mono font-bold">${qty}</td>
-                            <td class="px-6 py-4 text-sm text-body-muted">${importer}</td>
-                            <td class="px-6 py-4 text-sm">${imeiStr}</td>
-                        `;
-                        tbodyDirect.appendChild(tr);
-                    });
-                }
+                    return `
+                    <tr class="hover:bg-[#464646] transition-colors">
+                        <td class="px-6 py-4">${aiTwoLine(
+                        aiEsc(d.product_name || '-'),
+                        `<span class="font-mono">${aiEsc(d.product_code || '-')}</span>`)}</td>
+                        <td class="px-6 py-4">${typeBadge}</td>
+                        <td class="px-6 py-4 text-white">${aiEsc(d.branch_name || '-')}</td>
+                        <td class="px-6 py-4 text-white">${aiDateTime(log.createdAt)}</td>
+                        <td class="px-6 py-4 text-center text-white font-mono">${d.quantity || 0}</td>
+                        <td class="px-6 py-4 text-white">${aiEsc(log.user_name || '-')}</td>
+                        <td class="px-6 py-4">${imeiCell}</td>
+                    </tr>`;
+                }).join('') : aiStateRow(AI_COLS.histDirect,
+                    all.length ? 'ไม่มีประวัติของสาขาที่เลือก' : 'ยังไม่มีประวัติการนำเข้าคลังโดยตรง');
             }
         } catch (err) {
             console.error('Error loading Direct Imports history:', err);
-            if (tbodyDirect) tbodyDirect.innerHTML = '<tr><td colspan="8" class="text-center py-6 text-red-400">เกิดข้อผิดพลาดในการโหลดประวัติการนำเข้าโดยตรง</td></tr>';
+            if (tbodyDirect) tbodyDirect.innerHTML = aiStateRow(AI_COLS.histDirect, 'เกิดข้อผิดพลาดในการโหลดประวัติการนำเข้าโดยตรง', 'text-red-400');
+            aiSetCount('history-direct-result-count', 0, 0);
         }
     };
     window.loadApproveHistory = loadApproveHistory;
 
     // Tab toggle logic inside ตรวจสอบนำเข้าสินค้า (Approve Import)
+    // แท็บที่เลือกอยู่คือปุ่มทึบเหลืองปุ่มเดียวของหน้านี้ (DESIGN.md ข้อ 6) ที่เหลือเป็นปุ่มขอบ
     const tabBtnApprovePO = document.getElementById('tab-btn-approve-po');
     const tabBtnApproveNonPO = document.getElementById('tab-btn-approve-nonpo');
     const tabBtnApproveHistory = document.getElementById('tab-btn-approve-history');
@@ -3307,44 +4361,52 @@
     const tabContentApproveNonPO = document.getElementById('tab-content-approve-nonpo');
     const tabContentApproveHistory = document.getElementById('tab-content-approve-history');
 
-    if (tabBtnApprovePO && tabBtnApproveNonPO && tabBtnApproveHistory && tabContentApprovePO && tabContentApproveNonPO && tabContentApproveHistory) {
-        tabBtnApprovePO.addEventListener('click', () => {
-            tabBtnApprovePO.className = 'flex-1 py-2.5 px-4 rounded-xl text-sm font-bold transition-all bg-surface-chip text-ink border border-hairline';
-            tabBtnApproveNonPO.className = 'flex-1 py-2.5 px-4 rounded-xl text-sm font-bold transition-all text-body-muted hover:text-ink hover:bg-slate-700';
-            tabBtnApproveHistory.className = 'flex-1 py-2.5 px-4 rounded-xl text-sm font-bold transition-all text-body-muted hover:text-ink hover:bg-slate-700';
-            tabContentApprovePO.classList.remove('hidden');
-            tabContentApproveNonPO.classList.add('hidden');
-            tabContentApproveHistory.classList.add('hidden');
-            loadApprovePOs();
-        });
+    if (tabBtnApprovePO && tabBtnApproveNonPO && tabBtnApproveHistory
+        && tabContentApprovePO && tabContentApproveNonPO && tabContentApproveHistory) {
 
+        const TAB_BASE = 'px-4 py-2.5 rounded-xl text-sm font-bold border transition-colors flex items-center gap-2 cursor-pointer';
+        const TAB_ON = 'bg-[#FFE169] text-[#333333] border-[#FFE169]';
+        const TAB_OFF = 'bg-[#27272A] text-slate-300 border-[#3F3F46] hover:border-[#FFE169] hover:text-white';
+
+        // ป้ายตัวเลขบนแท็บต้องอ่านออกทั้งตอนพื้นเหลืองและพื้นเข้ม จึงสลับสีตามสถานะแท็บด้วย
+        const BADGE_ON = 'px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#333333]/20';
+        const BADGE_OFF_PO = 'px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#FFE169]/20 text-[#FFE169]';
+        const BADGE_OFF_NONPO = 'px-2 py-0.5 rounded-full text-[10px] font-bold bg-orange-500/[0.12] text-orange-400';
+
+        const setBadge = (el, cls) => {
+            if (!el) return;
+            const hidden = el.classList.contains('hidden');
+            el.className = cls + (hidden ? ' hidden' : '');
+        };
+
+        const activate = (which) => {
+            const map = {
+                po: tabBtnApprovePO, nonpo: tabBtnApproveNonPO, history: tabBtnApproveHistory
+            };
+            Object.entries(map).forEach(([key, btn]) => {
+                const on = key === which;
+                btn.className = `${TAB_BASE} ${on ? TAB_ON : TAB_OFF}`;
+                btn.setAttribute('aria-pressed', String(on));
+            });
+            setBadge(document.getElementById('po-approve-pending-count'),
+                which === 'po' ? BADGE_ON : BADGE_OFF_PO);
+            setBadge(document.getElementById('nonpo-approve-pending-count'),
+                which === 'nonpo' ? BADGE_ON : BADGE_OFF_NONPO);
+
+            tabContentApprovePO.classList.toggle('hidden', which !== 'po');
+            tabContentApproveNonPO.classList.toggle('hidden', which !== 'nonpo');
+            tabContentApproveHistory.classList.toggle('hidden', which !== 'history');
+        };
+
+        tabBtnApprovePO.addEventListener('click', () => { activate('po'); loadApprovePOs(); });
         tabBtnApproveNonPO.addEventListener('click', () => {
-            tabBtnApproveNonPO.className = 'flex-1 py-2.5 px-4 rounded-xl text-sm font-bold transition-all bg-surface-chip text-ink border border-hairline';
-            tabBtnApprovePO.className = 'flex-1 py-2.5 px-4 rounded-xl text-sm font-bold transition-all text-body-muted hover:text-ink hover:bg-slate-700';
-            tabBtnApproveHistory.className = 'flex-1 py-2.5 px-4 rounded-xl text-sm font-bold transition-all text-body-muted hover:text-ink hover:bg-slate-700';
-            tabContentApproveNonPO.classList.remove('hidden');
-            tabContentApprovePO.classList.add('hidden');
-            tabContentApproveHistory.classList.add('hidden');
+            activate('nonpo');
             if (typeof window.loadImportNotifications === 'function') window.loadImportNotifications();
         });
-
-        tabBtnApproveHistory.addEventListener('click', () => {
-            tabBtnApproveHistory.className = 'flex-1 py-2.5 px-4 rounded-xl text-sm font-bold transition-all bg-surface-chip text-ink border border-hairline';
-            tabBtnApprovePO.className = 'flex-1 py-2.5 px-4 rounded-xl text-sm font-bold transition-all text-body-muted hover:text-ink hover:bg-slate-700';
-            tabBtnApproveNonPO.className = 'flex-1 py-2.5 px-4 rounded-xl text-sm font-bold transition-all text-body-muted hover:text-ink hover:bg-slate-700';
-            tabContentApproveHistory.classList.remove('hidden');
-            tabContentApprovePO.classList.add('hidden');
-            tabContentApproveNonPO.classList.add('hidden');
-            loadApproveHistory();
-        });
+        tabBtnApproveHistory.addEventListener('click', () => { activate('history'); loadApproveHistory(); });
     }
 
     // Refresh triggers & Navigation linkages
-    const btnRefreshArrivalPO = document.getElementById('btn-refresh-arrival-po');
-    if (btnRefreshArrivalPO) {
-        btnRefreshArrivalPO.addEventListener('click', loadArrivalPOs);
-    }
-
     const btnReloadImportList = document.getElementById('btn-reload-import-list');
     if (btnReloadImportList) {
         btnReloadImportList.addEventListener('click', () => {

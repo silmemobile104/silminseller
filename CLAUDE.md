@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Multi-branch retail management system for a Thai mobile-phone chain (บริษัท ชิลมีน โมบาย จำกัด) — POS, IMEI-level stock per branch, inter-branch transfers, deposits/financing, accounting, and physical stock audits in one app.
 
-**The UI, all comments, and most identifiers are Thai.** Write new comments and user-facing strings in Thai to match. `PRODUCT.md` holds the product/domain contract; `DESIGN.md` holds the design system (dark theme, `#FFE169` as the *only* accent color — read it before any UI work).
+**The UI, all comments, and most identifiers are Thai.** Write new comments and user-facing strings in Thai to match. `PRODUCT.md` holds the product/domain contract; `DESIGN.md` holds the design system (dark theme, `#FFE169` as the *only* accent color — read it before any UI work). Its §1–10 are the token layer; **§11 is the concrete page blueprint** — `#stock` is the reference every list/filter/table page copies (page skeleton, control bar, filter chips, table cell recipes, drawer, form, modal) and §12 lists where that page and the token layer still disagree. Two traps §11 documents: the radius scale is overridden for `xs/sm/md/lg` but *not* `xl/2xl`, so `rounded-lg` (18px) is **larger** than `rounded-xl` (12px); and `glow-button` / `custom-pill` / `animate-fade-in` / `custom-scrollbar` have no CSS at all (unlike `.modal-content` and `.filter-pill`, which are JS hooks).
 
 ## Commands
 

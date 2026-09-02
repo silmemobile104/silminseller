@@ -112,7 +112,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // โหลดสคริปต์เฉพาะหน้า (js/page-<name>.js) แบบ dynamic ครั้งเดียว แล้ว cache ไว้
     // PAGE_SCRIPT_VERSION: บัมพ์เลขนี้ทุกครั้งที่แก้ไฟล์ใน js/ เพื่อไม่ให้เบราว์เซอร์ใช้ของเก่าที่ cache ไว้
-    const PAGE_SCRIPT_VERSION = 'po_view_modal_design_match_v1';
+    const PAGE_SCRIPT_VERSION = 'nonpo_modal_v5';
     const __loadedPageScripts = {};
     function loadPageScript(name) {
         if (__loadedPageScripts[name]) return __loadedPageScripts[name];
@@ -165,7 +165,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // ไม่ได้รอ init function ถ้า HTML ยังไม่ถูกแทรกเข้า DOM ก่อน ตัวแปรที่ query ไว้จะเป็น null ถาวร
     // ชื่อ name ต้องตรงกับชื่อที่ใช้ใน loadPageScript — ไฟล์เดียวอาจมีหลาย <div id="view-XXX"> รวมกัน
     // ถ้าหน้านั้นถูก share โดยสคริปต์เดียวกันหลาย view (ดูตาราง mapping ในแผน)
-    const VIEW_FRAGMENT_VERSION = 'v8'; // บัมพ์เลขนี้ทุกครั้งที่แก้ไฟล์ใน views/
+    const VIEW_FRAGMENT_VERSION = 'v39'; // บัมพ์เลขนี้ทุกครั้งที่แก้ไฟล์ใน views/
     const __loadedPageViews = {};
     function loadPageView(name) {
         if (__loadedPageViews[name]) return __loadedPageViews[name];
@@ -265,6 +265,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const catLower = categoryName.toLowerCase();
         return deviceKeywords.some(keyword => catLower.includes(keyword));
     };
+    // export ไว้ให้ js/page-*.js เรียกใช้ได้ ไม่ต้องก็อปรายการคำค้นไปไว้อีกที่
+    // (แนวเดียวกับ window.resolveProductColorHex — ตารางกลางมีชุดเดียว)
+    window.checkIsDevice = checkIsDevice;
 
     // Helper to safely set PO row values (including SELECT elements)
     const setPoRowValue = (row, name, val) => {
@@ -452,21 +455,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const promptOkBtn = document.getElementById('prompt-ok-btn');
     const promptCancelBtn = document.getElementById('prompt-cancel-btn');
 
-    // Transfer DOM Elements
-    const btnOpenCreateTransfer = document.getElementById('btn-open-create-transfer');
-    const modalCreateTransfer = document.getElementById('modal-create-transfer');
-    const btnCloseCreateTransfer = document.getElementById('btn-close-create-transfer');
-    const transferToBranch = document.getElementById('transfer-to-branch');
-    const transferScanInput = document.getElementById('transfer-scan-input');
-    const transferCartItems = document.getElementById('transfer-cart-items');
-    const transferCartEmpty = document.getElementById('transfer-cart-empty');
-    const transferCartCount = document.getElementById('transfer-cart-count');
-    const btnSubmitTransfer = document.getElementById('btn-submit-transfer');
-    const transferTabIncoming = document.getElementById('transfer-tab-incoming');
-    const transferTabHistory = document.getElementById('transfer-tab-history');
-    const transferTableBody = document.getElementById('transfer-table-body');
-    const transferEmpty = document.getElementById('transfer-empty');
-    const transferBranchHint = document.getElementById('transfer-branch-hint');
+    // element ของหน้าโอนย้ายถูกย้ายไป js/page-transfers.js แล้ว (ดึงเองตอนโหลดหน้า)
+    // ตัวแปรชุดเดิมตรงนี้เป็น null เสมอเพราะ fragment ยังไม่ถูก inject ตอน DOMContentLoaded
 
     // Barcode Modal Elements
     const barcodeModal = document.getElementById('barcode-modal');
@@ -943,6 +933,7 @@ document.addEventListener('DOMContentLoaded', () => {
         'ทอง': '#FFD700', 'gold': '#FFD700', 'rose gold': '#B76E79', 'โรสโกลด์': '#B76E79',
         'ชมพู': '#FF2D55', 'pink': '#FF2D55',
         'ไทเทเนียม': '#878681', 'titanium': '#878681', 'natural titanium': '#878681', 'เนเชอรัล': '#878681',
+        'ธรรมชาติ': '#878681',
         'ไวท์ไทเทเนียม': '#ECE9E3', 'ไทเทเนียมดำ': '#3E3F43', 'กราไฟต์': '#3E3F43',
         'บรอนซ์': '#CD7F32', 'ทะเลทราย': '#EDC9AF', 'เนื้อ': '#EDC9AF'
     };
@@ -960,6 +951,89 @@ document.addEventListener('DOMContentLoaded', () => {
         return hex;
     };
     window.resolveProductColorHex = resolveProductColorHex;
+
+    // '#abc' -> '#aabbcc' และกันค่าที่ไม่ใช่ hex
+    // จำเป็นเพราะไอคอนสินค้าใช้ `${hex}33` ทำพื้นโปร่ง 20% ซึ่งต่อท้ายได้เฉพาะ hex 6 หลัก
+    // ถ้าแอดมินตั้ง color_code เป็น rgb(...) จะกลายเป็น 'rgb(...)33' ที่เบราว์เซอร์อ่านไม่ออก พื้นหลังจะหายไปเฉยๆ
+    const toSixDigitHex = (v, fallback = '#8E8E93') => {
+        const s = String(v || '').trim();
+        if (/^#[0-9a-fA-F]{6}$/.test(s)) return s;
+        if (/^#[0-9a-fA-F]{3}$/.test(s)) return '#' + s.slice(1).split('').map(c => c + c).join('');
+        return fallback;
+    };
+    window.toSixDigitHex = toSixDigitHex;
+
+    // ไอคอนสินค้าประจำแถวตาราง — ไอคอนสีเต็ม พื้นสีเดียวกันที่ 20% ขอบสีเต็ม 1px
+    // รวมไว้ที่เดียวเพื่อให้ทุกหน้าที่มีคอลัมน์ "ชื่อสินค้า" ได้หน้าตาเหมือนกันจริง
+    // (ดู DESIGN.md ข้อ 11.6 — "ไอคอนวงกลมประจำแถว")
+    const productIconHtml = (colorName, colorDoc, product, fallbackHex = '#8E8E93') => {
+        const hex = toSixDigitHex(resolveProductColorHex(colorName, colorDoc, fallbackHex), fallbackHex);
+        const categoryName = (product && product.type_id && product.type_id.name) ? product.type_id.name : '';
+        const isDevice = checkIsDevice(categoryName, product);
+        return `<div class="w-10 h-10 flex items-center py-1 px-0.5 rounded-full justify-center shrink-0"` +
+            ` style="color: ${hex}; background-color: ${hex}33; border: 1px solid ${hex};">` +
+            `<i class="fa-solid ${isDevice ? 'fa-mobile-screen' : 'fa-box'} text-xl"></i></div>`;
+    };
+    window.productIconHtml = productIconHtml;
+
+    // แจ้งเตือนช่องที่ยังไม่ได้กรอกแบบ inline — ขอบแดง + ข้อความใต้ช่อง + toast บอกเหตุผลเจาะจง
+    // เดิมฟังก์ชันนี้ซ่อนอยู่ในตัวจัดการ submit ของฟอร์มเพิ่มสินค้า ใช้ได้ที่เดียว
+    // ย้ายมาไว้ตรงนี้แล้ว export เพื่อให้ฟอร์มในหน้าอื่นใช้ตัวเดียวกัน หน้าตาการเตือนจะได้ตรงกันทุกหน้า
+    //
+    // ช่องที่เป็น <input type="hidden"> (เช่น สี/ความจุ ที่เลือกด้วย swatch/pill) จะไฮไลต์
+    // ที่กล่องตัวเลือกแทน โดยหาจาก id ตามแบบแผน `<id ของ hidden input>-container`
+    const highlightInvalidInput = (element, message) => {
+        if (!element) return;
+        showToast(message, 'error');
+
+        let displayElement = element;
+        let isButton = false;
+
+        if (element.tagName === 'SELECT' || element.type === 'hidden') {
+            isButton = true;
+        }
+
+        if (element.type === 'hidden') {
+            const container = document.getElementById(element.id + '-container');
+            if (container) displayElement = container;
+        }
+
+        if (element.focus && typeof element.focus === 'function' && element.type !== 'hidden') {
+            element.focus();
+        } else if (displayElement.scrollIntoView) {
+            displayElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+
+        // ล้างไฮไลต์และข้อความของรอบก่อนออกก่อนเสมอ ให้เตือนทีละช่อง
+        document.querySelectorAll('.invalid-highlight').forEach(el => {
+            el.classList.remove('!border-red-500', '!ring-2', '!ring-red-500/20', 'invalid-highlight');
+        });
+        document.querySelectorAll('.invalid-inline-msg').forEach(el => el.remove());
+
+        displayElement.classList.add('!border-red-500', '!ring-2', '!ring-red-500/20', 'invalid-highlight');
+        if (displayElement !== element) {
+            displayElement.classList.add('p-2', 'rounded-xl'); // เว้นระยะให้กล่อง pill/swatch
+        }
+
+        const errorText = document.createElement('p');
+        errorText.className = 'invalid-inline-msg text-red-500 text-[11px] mt-1.5 ml-1 font-medium animate-pulse';
+        const prefixMsg = isButton ? 'กรุณาเลือกข้อมูล' : 'กรุณากรอกข้อมูล';
+        errorText.innerHTML = `<i class="fa-solid fa-circle-exclamation mr-1"></i> ${prefixMsg}`;
+        displayElement.parentNode.insertBefore(errorText, displayElement.nextSibling);
+
+        // พอผู้ใช้เริ่มแก้ ให้เอาไฮไลต์กับข้อความออกทันที
+        const removeHighlight = () => {
+            displayElement.classList.remove('!border-red-500', '!ring-2', '!ring-red-500/20', 'invalid-highlight');
+            if (errorText.parentNode) errorText.remove();
+            element.removeEventListener('input', removeHighlight);
+            element.removeEventListener('change', removeHighlight);
+            displayElement.removeEventListener('click', removeHighlight);
+        };
+        element.addEventListener('input', removeHighlight);
+        element.addEventListener('change', removeHighlight);
+        displayElement.addEventListener('click', removeHighlight);
+    };
+    window.highlightInvalidInput = highlightInvalidInput;
 
 
     const hexToRgb = (hex) => {
@@ -998,6 +1072,16 @@ document.addEventListener('DOMContentLoaded', () => {
             border: hexToRgba(icon, 0.34)
         };
     };
+
+    // จุดสีสินค้า — วงกลมเล็กสีตามสีเครื่อง ใช้ร่วมกันที่หน้าขาย (#transactions) และหน้าจัดการสต็อก (#stock)
+    // ใช้สีดิบจาก resolveProductColorHex ไม่ใช่สีที่ปรับให้สว่างขึ้น เพราะจุดนี้คือ "สีเครื่อง" ตรงๆ
+    // เป็นวงกลมสีล้วนไม่มีขอบ ตามที่กำหนดไว้ — สีเครื่องที่เข้มมาก (เช่น 'ดำ' #000000)
+    // จะกลืนกับพื้นการ์ดสีเข้ม เป็นข้อแลกที่ยอมรับแล้ว
+    const productColorDot = (colorName, colorDoc) => {
+        const hex = toSixDigitHex(resolveProductColorHex(colorName, colorDoc));
+        return `<span class="w-4 h-4 rounded-full shrink-0" style="background-color:${hex};"></span>`;
+    };
+    window.productColorDot = productColorDot;
 
     const renderFilterSwatches = (containerId, targetId, dataArray) => {
         const container = document.getElementById(containerId);
@@ -1658,19 +1742,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 }
 
-                const pendingCard = document.getElementById('card-pending-transfer');
-                const statPending = document.getElementById('stat-pending-transfers');
-                if (pendingCard && statPending) {
-                    pendingCard.classList.remove('hidden');
-                    statPending.textContent = count;
-                    if (count > 0) {
-                        statPending.classList.add('text-amber-400');
-                        statPending.classList.remove('text-ink');
-                    } else {
-                        statPending.classList.add('text-ink');
-                        statPending.classList.remove('text-amber-400');
-                    }
-                }
+                // เดิมมีการ์ด "รายการรอรับสินค้า" บนแดชบอร์ดที่อัพเดตตรงนี้ด้วย
+                // ตอนนี้แดชบอร์ดถูกออกแบบใหม่ตามแบบที่ตกลงกันแล้วไม่มีการ์ดใบนั้น
+                // จำนวนที่รอรับยังเห็นได้จากป้ายตัวเลขข้างเมนู "โอนย้ายสินค้า" (transfer-nav-badge) ด้านบน
 
                 const newIds = new Set(pendingList.map(t => t._id));
 
@@ -2292,9 +2366,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const capacityName = product.capacity_id ? product.capacity_id.name : '';
             const conditionName = product.condition_id ? product.condition_id.name : '';
 
-            const iconColorHex = colorName
-                ? resolveProductColorHex(colorName, product.color_id, '#cbd5e1')
-                : '#cbd5e1'; // default slate-300
 
             const isDevice = checkIsDevice(categoryName, product);
             const stockDisplay = isDevice
@@ -2319,12 +2390,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 </td>
                 <td class="px-6 py-4">
                     <div class="flex items-center gap-3">
-                        <div class="w-10 h-10 flex items-center py-1 px-0.5 rounded-full justify-center" style="color: ${iconColorHex}; background-color: ${iconColorHex}33; border: 1px solid ${iconColorHex};">
-                            <i class="fa-solid ${isDevice ? 'fa-mobile-screen' : 'fa-box'} text-xl"></i>
-                        </div>
                         <div>
-                            <p class="font-medium text-white">${product.name}</p>
-                            <p class="text-xs text-white/70">${capacityName} ${colorName} ${conditionName}</p>
+                            <p class="font-medium text-white flex items-center gap-2">
+                                ${productColorDot(colorName, product.color_id)}<span>${product.name}</span>
+                            </p>
+                            <p class="text-xs pl-6 text-white/70">${capacityName} ${colorName} ${conditionName}</p>
                         </div>
                     </div>
                 </td>
@@ -2986,66 +3056,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Build payload
                 const nameValue = productName ? productName.value.trim() : '';
 
-                // Highlight helper function
-                const highlightInvalidInput = (element, message) => {
-                    if (!element) return;
-                    showToast(message, 'error');
-
-                    let displayElement = element;
-                    let isButton = false;
-
-                    if (element.tagName === 'SELECT' || element.type === 'hidden') {
-                        isButton = true;
-                    }
-
-                    // If input is hidden (e.g. category, color), highlight its container instead
-                    if (element.type === 'hidden') {
-                        const container = document.getElementById(element.id + '-container');
-                        if (container) displayElement = container;
-                    }
-
-                    if (element.focus && typeof element.focus === 'function' && element.type !== 'hidden') {
-                        element.focus();
-                    } else if (displayElement.scrollIntoView) {
-                        displayElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    }
-
-                    // Remove any existing highlights first
-                    document.querySelectorAll('.invalid-highlight').forEach(el => {
-                        // Do not remove p-2 or rounded-xl to avoid stripping them from elements that inherently have them
-                        el.classList.remove('!border-red-500', '!ring-2', '!ring-red-500/20', 'invalid-highlight');
-                    });
-
-                    // Remove any existing inline text messages
-                    document.querySelectorAll('.invalid-inline-msg').forEach(el => el.remove());
-
-                    // Highlight current element
-                    displayElement.classList.add('!border-red-500', '!ring-2', '!ring-red-500/20', 'invalid-highlight');
-                    if (displayElement !== element) {
-                        displayElement.classList.add('p-2', 'rounded-xl'); // Add padding for pill containers
-                    }
-
-                    // Create inline error text
-                    const errorText = document.createElement('p');
-                    errorText.className = 'invalid-inline-msg text-red-500 text-[11px] mt-1.5 ml-1 font-medium animate-pulse';
-                    const prefixMsg = isButton ? 'กรุณาเลือกข้อมูล' : 'กรุณากรอกข้อมูล';
-                    errorText.innerHTML = `<i class="fa-solid fa-circle-exclamation mr-1"></i> ${prefixMsg}`;
-
-                    // Insert the error text right after the display element
-                    displayElement.parentNode.insertBefore(errorText, displayElement.nextSibling);
-
-                    // Remove highlight when user types or selects
-                    const removeHighlight = () => {
-                        displayElement.classList.remove('!border-red-500', '!ring-2', '!ring-red-500/20', 'invalid-highlight');
-                        if (errorText.parentNode) errorText.remove();
-                        element.removeEventListener('input', removeHighlight);
-                        element.removeEventListener('change', removeHighlight);
-                        displayElement.removeEventListener('click', removeHighlight);
-                    };
-                    element.addEventListener('input', removeHighlight);
-                    element.addEventListener('change', removeHighlight);
-                    displayElement.addEventListener('click', removeHighlight);
-                };
+                // ตัวช่วยไฮไลต์ช่องที่ยังไม่กรอก ย้ายไปไว้ระดับโมดูลแล้ว (window.highlightInvalidInput)
+                // เพื่อให้ฟอร์มในหน้าอื่นเรียกใช้ได้ด้วย ไม่ต้องก็อปตรรกะไปซ้ำ
 
                 // Manual Validation for Required inputs (in visual order)
                 if (!nameValue) {
@@ -3373,20 +3385,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 activateView(viewDashboard, navDashboard);
                 await loadPageView('dashboard');
                 await loadPageScript('dashboard');
+                // loadDashboardData ชี้ไปที่ initDashboard ใน js/page-dashboard.js
+                // ซึ่งตั้งค่าเริ่มต้นของตัวกรอง ผูก event (ครั้งเดียว) แล้วค่อยโหลดข้อมูล
                 if (typeof loadDashboardData === 'function') loadDashboardData();
-                if (!window.__isDashboardCardBound) {
-                    window.__isDashboardCardBound = true;
-                    const cardPendingTransfer = document.getElementById('card-pending-transfer');
-                    if (cardPendingTransfer) {
-                        cardPendingTransfer.addEventListener('click', async () => {
-                            if (navTransfers) {
-                                await switchView('transfers');
-                                const tabIncoming = document.getElementById('transfer-tab-incoming');
-                                if (tabIncoming) tabIncoming.click();
-                            }
-                        });
-                    }
-                }
             }
             else if (viewName === 'stock') {
                 activateView(viewStock, navStock);
@@ -4029,13 +4030,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const modalAppliedDepositRow = document.getElementById('modal-applied-deposit-row');
     const modalAppliedDepositDisplay = document.getElementById('modal-applied-deposit-display');
 
-    // Sales History DOM Elements
-    const salesHistorySearch = document.getElementById('sales-history-search');
-    const salesHistoryDate = document.getElementById('sales-history-date');
-    const salesHistoryBranch = document.getElementById('sales-history-branch');
-    const salesHistoryBranchFilter = document.getElementById('sales-history-branch-filter');
-    const salesHistoryTableBody = document.getElementById('sales-history-table-body');
-    const salesHistoryEmpty = document.getElementById('sales-history-empty');
+    // (ตัวแปร DOM ของหน้าประวัติการขายเคยอยู่ตรงนี้ 6 ตัว — ตกค้างมาตั้งแต่ก่อนแยกหน้าออกไป
+    //  js/page-sales-history.js ดึงเองหมดแล้ว และ 6 ตัวนั้นไม่มีจุดไหนในไฟล์นี้เรียกใช้เลย จึงลบทิ้ง)
 
     // Transaction Details Modal DOM
     const transactionDetailModal = document.getElementById('modal-transaction-details');
@@ -4413,13 +4409,12 @@ document.addEventListener('DOMContentLoaded', () => {
             firstImei,
             imeiCount,
             colorName,
-            colorTheme: getProductColorTheme(colorName, product.color_id),
+            colorDot: productColorDot(colorName, product.color_id),
             branchName: (product.branch_id && product.branch_id.name) ? product.branch_id.name : '',
             conditionName: (product.condition_id && product.condition_id.name) ? product.condition_id.name : '',
             unitName: (product.unit_id && product.unit_id.name) ? product.unit_id.name : 'ชิ้น',
             isOutOfStock: stockQty <= 0,
             nameFull: `${product.name} ${capacityName} ${colorName}`.trim(),
-            isDevice: typeof checkIsDevice === 'function' ? checkIsDevice(categoryName, product) : false,
             qtyInCart: typeof cart !== 'undefined'
                 ? cart.filter(item => item.product_id === product._id).reduce((sum, item) => sum + item.quantity, 0)
                 : 0,
@@ -4446,16 +4441,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const renderPosProductCard = (product) => {
         const d = buildPosCardData(product);
         const card = document.createElement('div');
-        card.className = `pos-card relative bg-surface-tile-3 border rounded-md p-3.5 transition-colors ${d.isOutOfStock ? 'border-hairline opacity-60' : 'border-hairline hover:border-primary/40'}`;
+        card.className = `pos-card relative bg-surface-tile-3 border rounded-md p-3.5 transition-all hover:-translate-y-1 hover:shadow-2xl border-none`;
         card.setAttribute('data-product-id', product._id);
         card.innerHTML = `
             <div class="flex items-start gap-3">
-                <div class="w-10 h-10 rounded-full border flex items-center justify-center shrink-0" style="color:${d.colorTheme.icon};background-color:${d.colorTheme.bg};border-color:${d.colorTheme.border};">
-                    <i class="fa-solid ${d.isDevice ? 'fa-mobile-screen' : posCategoryIcon(d.categoryName)} text-base"></i>
-                </div>
                 <div class="min-w-0 flex-1">
                     <div class="flex items-start gap-2">
-                        <h4 class="flex-1 min-w-0 font-bold text-ink text-[13px] leading-snug truncate">${d.nameFull}</h4>
+                        <h4 class="flex-1 min-w-0 flex items-center gap-2 font-bold text-ink text-[13px] leading-snug">
+                            ${d.colorDot}<span class="truncate">${d.nameFull}</span>
+                        </h4>
                         <span class="shrink-0 flex items-center gap-1.5 max-w-[46%] px-2 py-1 rounded-pill bg-surface-chip text-[10px] font-bold ${d.branchName ? 'text-body-muted' : 'text-ink-muted-48'}">
                             <i class="fa-solid fa-shop text-[9px] text-ink-muted-48 shrink-0"></i>
                             <span class="truncate">${d.branchName || 'ไม่ระบุสาขา'}</span>
@@ -4463,7 +4457,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>
                     <p class="text-[11px] text-body-muted mt-0.5">คงเหลือ: ${d.stockQty}</p>
                     <div class="inline-flex items-center gap-2 mt-2">
-                        <span class="inline-flex items-center gap-2 px-2.5 py-1.5 rounded-sm bg-primary/10 border border-primary/40 max-w-full">
+                        <span class="inline-flex items-center gap-2 px-2.5 py-1.5 rounded-sm bg-primary/10  max-w-full">
                             <i class="fa-solid fa-barcode text-primary text-[10px] shrink-0"></i>
                             <span class="font-mono font-extrabold text-[12px] text-primary tracking-widest truncate">${product.product_code || '-'}</span>
                         </span>
@@ -4487,9 +4481,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <tr class="pos-card bg-canvas-elevated hover:bg-surface-tile-2 transition-colors ${d.isOutOfStock ? 'opacity-60' : ''}" data-product-id="${product._id}">
                 <td class="px-4 py-3.5 align-middle">
                     <div class="flex items-center gap-3">
-                        <div class="w-10 h-10 rounded-full border flex items-center justify-center shrink-0" style="color:${d.colorTheme.icon};background-color:${d.colorTheme.bg};border-color:${d.colorTheme.border};">
-                            <i class="fa-solid ${d.isDevice ? 'fa-mobile-screen' : posCategoryIcon(d.categoryName)} text-base"></i>
-                        </div>
+                        ${d.colorDot}
                         <div class="min-w-0">
                             <p class="font-bold text-ink text-[13px] leading-snug truncate">${d.nameFull}</p>
                         </div>
@@ -7104,6 +7096,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     window.populateArrivalDropdowns = () => {
         if (!window.masterDataCache) return;
+        // ฟอร์มแจ้งสินค้านอกระบบ PO เปลี่ยนเป็นกลุ่ม pill + จานสีแล้ว (ข้อ 11.9, 11.14)
+        // ตัวสร้างอยู่ใน js/page-po-accounting.js เพราะมาร์กอัปอยู่ใน fragment ของหน้านั้น
+        if (typeof window.populateArrivalPickers === 'function') {
+            window.populateArrivalPickers();
+            if (typeof window.npBindScrollButtons === 'function') window.npBindScrollButtons();
+            return;
+        }
+        // เผื่อสคริปต์หน้ายังโหลดไม่เสร็จ — เติมแบบ select ธรรมดาไว้ก่อน
         populateArrivalDropdown('arrival-product-name', window.masterDataCache.productNames);
         populateArrivalDropdown('arrival-type-name', window.masterDataCache.productTypes);
         populateArrivalDropdown('arrival-condition-name', window.masterDataCache.productConditions);
@@ -7292,20 +7292,28 @@ document.addEventListener('DOMContentLoaded', () => {
                         imeis: arrivalImeis.value
                     };
 
-                    const res = await authFetch(`${API_BASE_URL}/import-notifications`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(payload)
-                    });
+                    // การ์ดในคอลัมน์ขวามีปุ่ม "แก้ไข" ซึ่งจะตั้ง id ค้างไว้ — ถ้ามี id ให้ PUT แทน POST
+                    const editingId = typeof window.npGetEditingId === 'function' ? window.npGetEditingId() : null;
+                    const res = await authFetch(
+                        editingId
+                            ? `${API_BASE_URL}/import-notifications/${editingId}`
+                            : `${API_BASE_URL}/import-notifications`,
+                        {
+                            method: editingId ? 'PUT' : 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(payload)
+                        });
 
                     const data = await res.json();
                     if (data.success) {
-                        showToast('ส่งแจ้งของถึงสาขาเรียบร้อยแล้ว รอการอนุมัติ', 'success');
+                        showToast(editingId ? 'แก้ไขรายการแจ้งเรียบร้อยแล้ว' : 'ส่งแจ้งของถึงสาขาเรียบร้อยแล้ว รอการอนุมัติ', 'success');
+                        if (typeof window.npCancelEdit === 'function') window.npCancelEdit();
                         // Reset form
                         arrivalProductName.value = '';
                         arrivalImeis.value = '';
                         arrivalNotes.value = '';
-                        if (arrivalImeiCount) arrivalImeiCount.textContent = 'จำนวน: 0 IMEI';
+                        if (typeof window.npResetPickers === 'function') window.npResetPickers();
+                        if (arrivalImeiCount) arrivalImeiCount.textContent = '0 IMEI';
                         loadMyArrivalReports();
                     } else {
                         showToast(data.message, 'error');
@@ -7315,7 +7323,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     showToast('เกิดข้อผิดพลาดในการเชื่อมต่อ', 'error');
                 } finally {
                     btnSubmitArrival.disabled = false;
-                    btnSubmitArrival.innerHTML = '<i class="fa-solid fa-paper-plane mr-2"></i> ส่งแจ้งของถึงสาขา';
+                    btnSubmitArrival.innerHTML = '<span id="btn-submit-arrival-text">แจ้งสินค้าถึงสาขา</span>';
+                    if (typeof window.npCancelEdit === 'function' && window.npGetEditingId && window.npGetEditingId()) {
+                        // ยังอยู่โหมดแก้ไข (เช่นบันทึกไม่สำเร็จ) — คืนข้อความปุ่มให้ตรงสถานะ
+                        const t = document.getElementById('btn-submit-arrival-text');
+                        if (t) t.textContent = 'บันทึกการแก้ไข';
+                    }
                 }
             });
         }
@@ -7339,25 +7352,12 @@ document.addEventListener('DOMContentLoaded', () => {
             const res = await authFetch(`${API_BASE_URL}/import-notifications?reported_by=${user.id || user.employee_id}`);
             const data = await res.json();
             if (data.success) {
-                myArrivalReports.innerHTML = '';
-                if (data.data.length === 0) {
-                    myArrivalReports.innerHTML = '<div class="text-center py-8 text-body-muted">ไม่มีประวัติการแจ้ง</div>';
-                    return;
+                // การ์ดถูกวาดใน js/page-po-accounting.js (มาร์กอัปอยู่ใน fragment ของหน้านั้น)
+                if (typeof window.renderMyArrivalReports === 'function') {
+                    window.renderMyArrivalReports(data.data);
+                } else {
+                    myArrivalReports.innerHTML = '';
                 }
-                data.data.forEach(item => {
-                    const statusColor = item.status === 'รอดำเนินการ' ? 'text-amber-400' : (item.status === 'อนุมัติแล้ว' ? 'text-emerald-400' : 'text-red-400');
-                    const html = `
-                        <div class="bg-surface-tile-3 p-3 rounded-md border border-hairline text-sm">
-                            <div class="flex justify-between items-start mb-1">
-                                <span class="font-bold text-ink">${item.product_name}</span>
-                                <span class="${statusColor} text-xs font-bold">${item.status}</span>
-                            </div>
-                            <div class="text-xs text-body-muted">IMEI: ${item.imeis.length} รายการ</div>
-                            <div class="text-[10px] text-body-muted mt-1">${new Date(item.created_at).toLocaleString('th-TH')}</div>
-                        </div>
-                    `;
-                    myArrivalReports.innerHTML += html;
-                });
             }
         } catch (err) {
             console.error(err);
@@ -7365,56 +7365,79 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     window.loadMyArrivalReports = loadMyArrivalReports;
 
+    // ตารางแท็บ "สินค้านอกระบบ PO" ในหน้าตรวจสอบนำเข้าสินค้า
+    // เดินตามแบบแปลนหน้า #stock ใน DESIGN.md ข้อ 11.6 - 11.7 (เซลล์ px-6 py-4, แถวโครงร่างก่อน await)
     window.loadImportNotifications = async () => {
+        const NONPO_COLS = 6;
         const tbody = document.getElementById('approve-import-table-body');
         const filterBranch = document.getElementById('approve-import-filter-branch');
+        const countEl = document.getElementById('approve-nonpo-result-count');
+        const badge = document.getElementById('nonpo-approve-pending-count');
         if (!tbody) return;
 
+        const esc = (s) => String(s == null ? '' : s)
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+        const stateRow = (msg, cls = 'text-white/50 italic') =>
+            `<tr><td colspan="${NONPO_COLS}" class="px-6 py-8 text-center ${cls}">${esc(msg)}</td></tr>`;
+
+        // แถวโครงร่างก่อนยิง API เสมอ ไม่ปล่อยตารางว่างระหว่างรอ (ข้อ 11.7)
+        const bar = (w) => `<div class="h-3.5 ${w} rounded-full bg-[#5c5c5c] animate-pulse"></div>`;
+        tbody.innerHTML = Array.from({ length: 4 }).map(() =>
+            `<tr>${Array.from({ length: NONPO_COLS }).map(() =>
+                `<td class="px-6 py-4">${bar('w-full')}</td>`).join('')}</tr>`).join('');
+
         try {
-            tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-body-muted"><i class="fa-solid fa-spinner fa-spin mr-2"></i>กำลังโหลด...</td></tr>';
             let url = `${API_BASE_URL}/import-notifications?status=รอดำเนินการ`;
-            if (filterBranch && filterBranch.value) {
-                url += `&branch_id=${filterBranch.value}`;
-            }
+            if (filterBranch && filterBranch.value) url += `&branch_id=${filterBranch.value}`;
 
             const res = await authFetch(url);
             const data = await res.json();
-
-            if (data.success) {
-                tbody.innerHTML = '';
-                if (data.data.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="7" class="text-center py-8 text-body-muted">ไม่มีรายการรออนุมัติ</td></tr>';
-                    if (approveImportBadge) approveImportBadge.classList.add('hidden');
-                    return;
-                }
-
-                if (approveImportBadge) {
-                    approveImportBadge.textContent = data.data.length;
-                    approveImportBadge.classList.remove('hidden');
-                }
-
-                data.data.forEach(item => {
-                    const tr = document.createElement('tr');
-                    tr.className = 'border-b border-hairline hover:bg-surface-chip/40 transition-colors';
-                    tr.innerHTML = `
-                        <td class="px-6 py-4 text-sm text-body-muted">${new Date(item.created_at).toLocaleString('th-TH')}</td>
-                        <td class="px-6 py-4 text-sm text-body-muted">${item.branch_id ? item.branch_id.name : '-'}</td>
-                        <td class="px-6 py-4 text-sm text-body-muted">${item.reported_by ? item.reported_by.name : '-'}</td>
-                        <td class="px-6 py-4 text-sm font-medium text-ink">${item.product_name}</td>
-                        <td class="px-6 py-4 text-sm text-ink font-mono">${item.imeis.length}</td>
-                        <td class="px-6 py-4 text-sm text-body-muted">${item.notes || '-'}</td>
-                        <td class="px-6 py-4 text-sm text-right">
-                            <button onclick="approveImport('${item._id}')" class="px-3 py-1.5 bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 rounded-pill text-xs font-medium transition-colors">
-                                <i class="fa-solid fa-check mr-1"></i> อนุมัติ
-                            </button>
-                        </td>
-                    `;
-                    tbody.appendChild(tr);
-                });
+            if (!data.success) {
+                tbody.innerHTML = stateRow(data.message || 'ดึงข้อมูลไม่สำเร็จ', 'text-red-400');
+                if (countEl) countEl.textContent = '';
+                return;
             }
+
+            const rows = data.data || [];
+            if (countEl) countEl.textContent = rows.length ? `แสดง ${rows.length} จาก ${rows.length} รายการ` : '';
+
+            // ป้ายตัวเลขข้างเมนู (nav) และบนแท็บ ใช้จำนวนที่รออนุมัติชุดเดียวกัน
+            if (approveImportBadge) approveImportBadge.classList.toggle('hidden', rows.length === 0);
+            if (approveImportBadge && rows.length) approveImportBadge.textContent = rows.length;
+            if (badge) {
+                badge.textContent = rows.length;
+                badge.classList.toggle('hidden', rows.length === 0);
+            }
+
+            if (!rows.length) {
+                tbody.innerHTML = stateRow('ไม่มีรายการรออนุมัติ');
+                return;
+            }
+
+            tbody.innerHTML = rows.map(item => `
+                <tr class="hover:bg-[#464646] transition-colors">
+                    <td class="px-6 py-4 text-white font-medium">${esc(item.product_name)}</td>
+                    <td class="px-6 py-4">
+                        <p class="font-medium text-white">${esc(item.branch_id ? item.branch_id.name : '-')}</p>
+                        <p class="text-xs text-white/70 mt-0.5">${esc(item.reported_by ? item.reported_by.name : '-')}</p>
+                    </td>
+                    <td class="px-6 py-4 text-white">${new Date(item.created_at).toLocaleString('th-TH',
+            { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</td>
+                    <td class="px-6 py-4 text-center text-white font-mono">${item.imeis ? item.imeis.length : 0}</td>
+                    <td class="px-6 py-4 text-white/70">${item.notes ? esc(item.notes) : '<span class="text-white/50">-</span>'}</td>
+                    <td class="px-6 py-4 text-right">
+                        <button type="button" onclick="approveImport('${esc(item._id)}')"
+                            class="px-3 py-1.5 bg-[#FFE169] hover:bg-[#E2B93C] text-[#333333] font-semibold rounded-[0.375rem] text-xs transition-colors inline-flex items-center gap-1.5 cursor-pointer">
+                            <i class="fa-solid fa-check"></i> อนุมัติ
+                        </button>
+                    </td>
+                </tr>`).join('');
+
         } catch (err) {
             console.error(err);
-            tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-red-400">เกิดข้อผิดพลาดในการโหลดข้อมูล</td></tr>';
+            tbody.innerHTML = stateRow('เกิดข้อผิดพลาดในการโหลดข้อมูล', 'text-red-400');
+            if (countEl) countEl.textContent = '';
         }
     };
 

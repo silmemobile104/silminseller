@@ -1,48 +1,102 @@
 <div id="view-transfers">
-                    <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-                        <div>
-                            <h3 class="text-2xl font-bold text-ink">โอนย้ายสินค้า</h3>
-                            <p class="text-body-muted mt-1">สร้างรายการโอนย้าย และรับเข้าสินค้าระหว่างสาขา</p>
-                        </div>
-                        <button id="btn-open-create-transfer"
-                            class="px-5 py-3 rounded-pill bg-primary hover:bg-primary-pressed text-on-primary font-bold transition-all flex items-center gap-2">
-                            <i class="fa-solid fa-plus"></i>
-                            สร้างรายการโอนย้าย
-                        </button>
+    <!-- [1] หัวหน้า — DESIGN.md ข้อ 11.2 -->
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div class="flex items-center gap-4">
+            <i class="bi bi-arrow-left-right text-white w-5 text-2xl text-center"></i>
+            <h3 class="text-2xl text-white">โอนย้ายสินค้า</h3>
+        </div>
+        <div class="flex items-center gap-3">
+            <button id="btn-open-create-transfer" type="button"
+                class="px-4 py-2 bg-[#FFE169] hover:bg-[#E2B93C] text-[#333333] font-medium rounded-xl transition-all flex items-center gap-2 w-fit cursor-pointer">
+                <i class="fa-solid fa-plus"></i>
+                <p>สร้างรายการโอนย้าย</p>
+            </button>
+        </div>
+    </div>
+
+    <!-- [2] แท็บ — ปุ่มทึบเหลืองของหน้านี้มีได้ปุ่มเดียว แท็บที่เลือกอยู่จึงใช้ขอบ+พื้นแทน (ข้อ 6) -->
+    <div class="flex flex-wrap items-center gap-2">
+        <button id="transfer-tab-incoming" type="button" aria-pressed="true"
+            class="px-4 py-2.5 rounded-xl text-sm font-bold border transition-colors flex items-center gap-2 cursor-pointer bg-[#FFE169] text-[#333333] border-[#FFE169]">
+            <i class="fa-solid fa-clock"></i> รอดำเนินการ
+            <span id="badge-transfer-pending-count"
+                class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#333333]/20">0</span>
+        </button>
+        <button id="transfer-tab-history" type="button" aria-pressed="false"
+            class="px-4 py-2.5 rounded-xl text-sm font-bold border transition-colors flex items-center gap-2 cursor-pointer bg-[#27272A] text-slate-300 border-[#3F3F46] hover:border-[#FFE169] hover:text-white">
+            <i class="fa-solid fa-list-check"></i> ประวัติทั้งหมด
+            <span id="badge-transfer-history-count"
+                class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#4D4D4D]/60 text-white">0</span>
+        </button>
+    </div>
+
+    <!-- [3] การ์ดพาเนล — แถบควบคุม + ชิป + ตาราง อยู่ในการ์ดใบเดียว (ข้อ 11.1, 11.3) -->
+    <div class="bg-[#4D4D4D]/40 rounded-2xl shadow-lg overflow-hidden backdrop-blur-sm">
+        <!-- 2a แถบควบคุม (ข้อ 11.4) -->
+        <div class="p-6 pb-0 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+            <h3 id="transfer-panel-title" class="text-lg text-white flex items-center gap-2">
+                <i class="fa-solid fa-right-left text-[#FFE169]"></i> ใบโอนที่รอดำเนินการ
+            </h3>
+            <div class="flex flex-wrap items-center gap-2.5 relative w-full lg:w-auto">
+                <!-- เส้นขอบอยู่ที่ตัว input เอง ไม่ใช่กล่องครอบ focus:border จึงมีเส้นให้เปลี่ยนสีจริง
+                     (ข้อ 11.13 เตือนไว้ว่าของเดิมใส่ focus:border บนช่องที่ไม่มีคลาส border = ไม่เกิดอะไร) -->
+                <div class="relative group w-full sm:w-64">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <i class="fa-solid fa-search text-white group-focus-within:text-[#FFE169] transition-colors"></i>
                     </div>
+                    <label for="transfer-search-input" class="sr-only">ค้นหาใบโอนย้าย</label>
+                    <input id="transfer-search-input" type="text" autocomplete="off"
+                        placeholder="ค้นหาเลขที่โอน / สาขา / สินค้า..."
+                        class="bg-[#4D4D4D]/40 border border-[#3F3F46] rounded-[0.5rem] text-sm pl-10 pr-4 py-2 w-full text-white focus:outline-none focus:border-[#FFE169] focus:ring-1 focus:ring-[#FFE169] transition-all placeholder-white">
+                </div>
+                <label for="transfer-filter-direction" class="sr-only">กรองตามทิศทางการโอน</label>
+                <select id="transfer-filter-direction"
+                    class="bg-[#4D4D4D]/40 cursor-pointer text-sm rounded-[0.5rem] px-3 py-2 text-white focus:outline-none focus:ring-1 focus:ring-[#FFE169] w-full sm:w-auto [&>option]:bg-[#4D4D4D] [&>option:checked]:bg-[#FFE169] [&>option:checked]:text-[#333333]">
+                    <option value="">ทุกทิศทาง</option>
+                    <option value="in">ขาเข้า (รับจากสาขาอื่น)</option>
+                    <option value="out">ขาออก (ส่งไปสาขาอื่น)</option>
+                </select>
+                <!-- ตัวกรองสถานะมีความหมายเฉพาะแท็บ "ประวัติทั้งหมด" — JS สลับคลาสของ wrapper นี้ -->
+                <div id="transfer-status-filter-wrap" class="hidden">
+                    <label for="transfer-filter-status" class="sr-only">กรองตามสถานะ</label>
+                    <select id="transfer-filter-status"
+                        class="bg-[#4D4D4D]/40 cursor-pointer text-sm rounded-[0.5rem] px-3 py-2 text-white focus:outline-none focus:ring-1 focus:ring-[#FFE169] w-full sm:w-auto [&>option]:bg-[#4D4D4D] [&>option:checked]:bg-[#FFE169] [&>option:checked]:text-[#333333]">
+                        <option value="">ทุกสถานะ</option>
+                        <option value="รอดำเนินการ">รอดำเนินการ</option>
+                        <option value="รับเข้าแล้ว">รับเข้าแล้ว</option>
+                        <option value="ยกเลิกแล้ว">ยกเลิกแล้ว</option>
+                    </select>
+                </div>
+                <button id="btn-transfer-refresh" type="button"
+                    class="px-3 py-2 bg-[#4D4D4D]/40 cursor-pointer text-white flex items-center justify-center gap-1.5 rounded-[0.5rem] text-sm hover:bg-[#5C5C5C] transition-colors w-full sm:w-auto">
+                    <i class="fa-solid fa-rotate"></i> รีเฟรช
+                </button>
+            </div>
+        </div>
 
-                    <div class="bg-canvas-elevated rounded-lg border border-hairline overflow-hidden">
-                        <div class="p-4 border-b border-hairline flex items-center gap-3">
-                            <button id="transfer-tab-incoming"
-                                class="px-4 py-2 rounded-pill text-sm font-bold bg-primary/10 text-primary border border-primary/20 transition-all">
-                                รายการรอรับเข้า
-                            </button>
-                            <button id="transfer-tab-history"
-                                class="px-4 py-2 rounded-pill text-sm font-bold bg-surface-tile-3 text-body-muted border border-hairline hover:border-primary/30 transition-all">
-                                ประวัติการโอนย้าย
-                            </button>
-                            <div class="ml-auto text-xs text-body-muted" id="transfer-branch-hint">
-                                แสดงเฉพาะรายการที่เกี่ยวข้องกับสาขาของคุณ</div>
-                        </div>
+        <!-- 2b ชิปตัวกรอง + ตัวนับผลลัพธ์ (ข้อ 11.5) -->
+        <div class="px-6 py-4">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div id="transfer-active-filters" class="flex flex-wrap gap-2"></div>
+                <div id="transfer-result-count" class="text-xs text-white font-medium"></div>
+            </div>
+        </div>
 
-                        <div class="overflow-x-auto">
-                            <table class="w-full text-left text-sm whitespace-nowrap">
-                                <thead class="bg-surface-tile-3 text-body-muted">
-                                    <tr>
-                                        <th class="px-6 py-4 font-medium">วันที่</th>
-                                        <th class="px-6 py-4 font-medium">เลขที่โอน</th>
-                                        <th class="px-6 py-4 font-medium">ต้นทาง</th>
-                                        <th class="px-6 py-4 font-medium">ปลายทาง</th>
-                                        <th class="px-6 py-4 font-medium">สถานะ</th>
-                                        <th class="px-6 py-4 font-medium text-right">การทำงาน</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="transfer-table-body" class="divide-y divide-hairline"></tbody>
-                            </table>
-                        </div>
-
-                        <div id="transfer-empty" class="hidden p-10 text-center text-body-muted">
-                            ไม่พบรายการโอนย้าย
-                        </div>
-                    </div>
+        <!-- 2c ตาราง (ข้อ 11.6) -->
+        <div class="overflow-x-auto" tabindex="0">
+            <table class="w-full text-left text-sm whitespace-nowrap border-collapse">
+                <thead class="bg-[#4D4D4D]/40 text-white">
+                    <tr>
+                        <th class="px-6 py-4 font-semibold text-[15px]">เลขที่โอน / วันที่</th>
+                        <th class="px-6 py-4 font-semibold text-[15px]">ทิศทาง</th>
+                        <th class="px-6 py-4 font-semibold text-[15px]">เส้นทาง</th>
+                        <th class="px-6 py-4 font-semibold text-[15px] w-full">รายการสินค้า</th>
+                        <th class="px-6 py-4 font-semibold text-[15px]">สถานะ</th>
+                        <th class="px-6 py-4 font-semibold text-[15px] text-right">จัดการ</th>
+                    </tr>
+                </thead>
+                <tbody id="transfer-table-body" class="divide-y divide-[#464646]"></tbody>
+            </table>
+        </div>
+    </div>
 </div>

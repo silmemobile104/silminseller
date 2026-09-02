@@ -18,17 +18,31 @@
     const transferTabIncoming = document.getElementById('transfer-tab-incoming');
     const transferTabHistory = document.getElementById('transfer-tab-history');
     const transferTableBody = document.getElementById('transfer-table-body');
-    const transferEmpty = document.getElementById('transfer-empty');
     const btnCloseCreateTransfer = document.getElementById('btn-close-create-transfer');
     const transferToBranchError = document.getElementById('transfer-to-branch-error');
     const transferCartError = document.getElementById('transfer-cart-error');
     const transferCartBox = document.getElementById('transfer-cart-box');
+    // แถบควบคุม + ชิปตัวกรอง (DESIGN.md ข้อ 11.4 - 11.5)
+    const transferSearchInput = document.getElementById('transfer-search-input');
+    const transferFilterDirection = document.getElementById('transfer-filter-direction');
+    const transferFilterStatus = document.getElementById('transfer-filter-status');
+    const transferActiveFilters = document.getElementById('transfer-active-filters');
+    const transferResultCount = document.getElementById('transfer-result-count');
+    const transferPanelTitle = document.getElementById('transfer-panel-title');
+    const badgeTransferPending = document.getElementById('badge-transfer-pending-count');
+    const badgeTransferHistory = document.getElementById('badge-transfer-history-count');
+    const btnTransferRefresh = document.getElementById('btn-transfer-refresh');
 
     // Transfer State (ดึงมาจาก core เดิม — ย้ายมาเป็น local state ของไฟล์นี้)
     let transferCart = [];
-    let currentTransferTab = 'incoming'; // 'incoming' or 'history'
+    let currentTransferTab = 'incoming'; // 'incoming' = รอดำเนินการ, 'history' = ทั้งหมด
     let transfersData = [];
     let branchesForTransfer = []; // รายชื่อสาขาทั้งหมด (cache ไว้ใช้กรองสาขาปลายทาง)
+    let transferSearchTerm = '';
+    let transferDirectionFilter = ''; // '' | 'in' | 'out'
+    let transferStatusFilter = '';    // '' | รอดำเนินการ | รับเข้าแล้ว | ยกเลิกแล้ว
+
+    const TRANSFER_COLS = 6;
 
     // ผู้ใช้ปัจจุบัน + สาขาของตัวเอง
     function getCurrentUser() {
@@ -52,7 +66,7 @@
             errorEl.classList.remove('hidden');
         }
         if (inputEl) {
-            inputEl.classList.remove('border-divider-soft', 'border-hairline');
+            inputEl.classList.remove('border-[#3F3F46]');
             inputEl.classList.add('border-red-500');
         }
     }
@@ -63,8 +77,7 @@
         }
         if (inputEl) {
             inputEl.classList.remove('border-red-500');
-            if (inputEl === transferCartBox) inputEl.classList.add('border-hairline');
-            else inputEl.classList.add('border-divider-soft');
+            inputEl.classList.add('border-[#3F3F46]');
         }
     }
     function clearAllTransferFieldErrors() {
@@ -81,9 +94,9 @@
             return;
         }
         const style = type === 'error'
-            ? 'bg-red-500/10 text-red-300 border border-red-500/30'
-            : 'bg-emerald-500/10 text-emerald-300 border border-emerald-500/30';
-        transferScanStatus.className = `mx-4 mt-4 px-3 py-2.5 rounded-xl text-xs font-medium ${style}`;
+            ? 'bg-[#FE0000]/[0.12] text-[#FE0000] border border-[#FE0000]/30'
+            : 'bg-[#42A231]/[0.12] text-[#20D500] border border-[#42A231]/30';
+        transferScanStatus.className = `px-3 py-2.5 rounded-xl text-xs font-medium ${style}`;
         transferScanStatus.textContent = message;
     }
 
@@ -104,78 +117,308 @@
     // TRANSFERS MODULE (โอนย้ายสินค้าระหว่างสาขา)
     // ==========================================
 
+    // ---------- ตัวช่วยเรนเดอร์ (DESIGN.md ข้อ 11.6 - 11.7) ----------
+    const tfEsc = (s) => String(s == null ? '' : s)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+
+    const tfStateRow = (msg, cls = 'text-white/50 italic') =>
+        `<tr><td colspan="${TRANSFER_COLS}" class="px-6 py-8 text-center ${cls}">${tfEsc(msg)}</td></tr>`;
+
+    // แถวโครงร่างกระพริบ เรียกก่อน await ทุกครั้ง ไม่ปล่อยตารางว่างระหว่างรอ (ข้อ 11.7)
+    const tfSkeleton = (rows = 4) => {
+        if (!transferTableBody) return;
+        const bar = (w) => `<div class="h-3.5 ${w} rounded-full bg-[#5c5c5c] animate-pulse"></div>`;
+        transferTableBody.innerHTML = Array.from({ length: rows }).map(() => `
+            <tr>
+                <td class="px-6 py-4">${bar('w-32')}</td>
+                <td class="px-6 py-4">${bar('w-16')}</td>
+                <td class="px-6 py-4">${bar('w-40')}</td>
+                <td class="px-6 py-4">${bar('w-full')}</td>
+                <td class="px-6 py-4">${bar('w-20')}</td>
+                <td class="px-6 py-4">${bar('w-12')}</td>
+            </tr>`).join('');
+    };
+
+    const tfDateTime = (d) => {
+        if (!d) return '-';
+        const dt = new Date(d);
+        if (isNaN(dt)) return '-';
+        return dt.toLocaleString('th-TH', {
+            day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
+        });
+    };
+
+    // สาขาของผู้ใช้ที่ล็อกอิน — ใช้ตัดสินว่าใบโอนใบนี้เป็นขาเข้าหรือขาออก
+    function myBranchId() {
+        const user = getCurrentUser();
+        return user.branch ? String(user.branch._id || user.branch) : '';
+    }
+
+    const branchIdOf = (b) => (b ? String(b._id || b) : '');
+
+    // ทิศทางของใบโอนเทียบกับสาขาตัวเอง ('in' = รับเข้า, 'out' = ส่งออก, '' = ไม่เกี่ยวข้อง)
+    function transferDirection(transfer) {
+        const mine = myBranchId();
+        if (!mine) return '';
+        if (branchIdOf(transfer.to_branch) === mine) return 'in';
+        if (branchIdOf(transfer.from_branch) === mine) return 'out';
+        return '';
+    }
+
+    // สิทธิ์ต่อใบโอนหนึ่งใบ — ใช้ชุดเดียวกันทั้งปุ่มในตารางและปุ่มในโมดัล
+    // กฎธุรกิจ: สาขาต้นทางเท่านั้นที่ยกเลิกได้ · สาขาปลายทางเท่านั้นที่รับเข้าได้ (สลับกันไม่ได้แม้เป็นแอดมิน)
+    function transferPermissions(transfer) {
+        const currentUser = getCurrentUser();
+        const mine = myBranchId();
+        const myRole = currentUser.role || '';
+        const isPrivilegedRole = myRole === 'Administrator' || myRole === 'แอดมิน' || myRole === 'ผู้จัดการ';
+        const branchIsSource = mine && mine === branchIdOf(transfer.from_branch);
+        const branchIsDest = mine && mine === branchIdOf(transfer.to_branch);
+        return {
+            canReceive: transfer.status === 'รอดำเนินการ' && branchIsDest,
+            canCancel: transfer.status === 'รอดำเนินการ' && (branchIsSource || (isPrivilegedRole && !branchIsDest))
+        };
+    }
+
     // Load Transfers
     async function loadTransfers() {
         if (!transferTableBody) return;
+        tfSkeleton();
         try {
             const response = await authFetch(`${API_BASE_URL}/transfers`);
             const result = await response.json();
             if (result.success) {
-                transfersData = result.data;
+                transfersData = Array.isArray(result.data) ? result.data : [];
                 renderTransfersTable();
             } else {
+                transfersData = [];
+                transferTableBody.innerHTML = tfStateRow(result.message || 'ไม่สามารถโหลดรายการโอนย้ายได้', 'text-red-400');
+                if (transferResultCount) transferResultCount.textContent = '';
                 showToast(result.message || 'ไม่สามารถโหลดรายการโอนย้ายได้', 'error');
             }
         } catch (err) {
+            transfersData = [];
+            transferTableBody.innerHTML = tfStateRow('ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้', 'text-red-400');
+            if (transferResultCount) transferResultCount.textContent = '';
             showToast('ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้', 'error');
         }
     }
     window.loadTransfers = loadTransfers;
 
-    // สีป้ายสถานะใบโอนย้าย
-    function transferStatusClass(status) {
-        if (status === 'รอดำเนินการ') return 'bg-amber-500/10 text-amber-400 border border-amber-500/20';
-        if (status === 'ยกเลิกแล้ว') return 'bg-red-500/10 text-red-400 border border-red-500/20';
-        return 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20';
+    // โทนสีป้ายสถานะใบโอนย้าย (ข้อ 11.6 — จุดสี + พื้น tint 12%)
+    function transferStatusTone(status) {
+        if (status === 'รับเข้าแล้ว') return { dot: 'bg-[#20D500]', bg: 'bg-[#42A231]/[0.12]', text: 'text-[#20D500]' };
+        if (status === 'ยกเลิกแล้ว') return { dot: 'bg-[#FE0000]', bg: 'bg-[#FE0000]/[0.12]', text: 'text-[#FE0000]' };
+        return { dot: 'bg-orange-500', bg: 'bg-orange-500/[0.12]', text: 'text-orange-400' };
+    }
+
+    function transferStatusBadge(status) {
+        const t = transferStatusTone(status);
+        return `<div class="inline-flex items-center gap-2 px-2.5 py-1 rounded-[0.375rem] ${t.bg}">
+                    <div class="w-2 h-2 rounded-full ${t.dot}"></div>
+                    <span class="${t.text} font-medium text-xs">${tfEsc(status)}</span>
+                </div>`;
+    }
+
+    // ป้ายทิศทาง — ขาเข้า/ขาออก เทียบกับสาขาของผู้ใช้
+    function transferDirectionBadge(dir) {
+        if (dir === 'in') {
+            return `<div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[0.375rem] bg-[#4D4D4D]/60">
+                        <i class="fa-solid fa-arrow-down text-[#20D500] text-[10px]"></i>
+                        <span class="text-white font-medium text-xs">ขาเข้า</span>
+                    </div>`;
+        }
+        if (dir === 'out') {
+            return `<div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[0.375rem] bg-[#4D4D4D]/60">
+                        <i class="fa-solid fa-arrow-up text-[#FFE169] text-[10px]"></i>
+                        <span class="text-white font-medium text-xs">ขาออก</span>
+                    </div>`;
+        }
+        return '<span class="text-white/50">-</span>';
+    }
+
+    // สรุปรายการสินค้าในใบโอนให้อยู่ในบรรทัดเดียว
+    function transferItemsDesc(transfer) {
+        const items = transfer.items || [];
+        if (!items.length) return '-';
+        const totalQty = items.reduce((sum, i) => sum + (i.quantity || 1), 0);
+        const names = items.map(i => i.product_name).join(', ');
+        return `${names} · รวม ${totalQty} ชิ้น`;
+    }
+
+    // กรองตามแท็บ + ช่องค้นหา + ตัวกรองด่วน
+    function filteredTransfers() {
+        const byTab = transfersData.filter(t =>
+            currentTransferTab === 'incoming' ? t.status === 'รอดำเนินการ' : true);
+
+        const term = transferSearchTerm.trim().toLowerCase();
+        const matched = byTab.filter(t => {
+            if (transferDirectionFilter && transferDirection(t) !== transferDirectionFilter) return false;
+            if (transferStatusFilter && t.status !== transferStatusFilter) return false;
+            if (!term) return true;
+            const haystack = [
+                t.transfer_number,
+                t.from_branch && t.from_branch.name,
+                t.to_branch && t.to_branch.name,
+                ...(t.items || []).map(i => i.product_name),
+                ...(t.items || []).map(i => i.product_code)
+            ].filter(Boolean).join(' ').toLowerCase();
+            return haystack.includes(term);
+        });
+
+        return { total: byTab.length, rows: matched };
+    }
+
+    // ชิปตัวกรองที่ใช้อยู่ (ข้อ 11.5 — ป้ายเป็นรูป "หมวด: ค่า" ลบได้เฉพาะตอนคลิกกากบาท)
+    function renderTransferFilterChips() {
+        if (!transferActiveFilters) return;
+        transferActiveFilters.innerHTML = '';
+
+        const chips = [];
+        if (transferSearchTerm.trim()) chips.push({ key: 'search', label: `ค้นหา: ${transferSearchTerm.trim()}` });
+        if (transferDirectionFilter) {
+            chips.push({
+                key: 'direction',
+                label: `ทิศทาง: ${transferDirectionFilter === 'in' ? 'ขาเข้า' : 'ขาออก'}`
+            });
+        }
+        if (transferStatusFilter) chips.push({ key: 'status', label: `สถานะ: ${transferStatusFilter}` });
+
+        const clearOne = (key) => {
+            if (key === 'search') {
+                transferSearchTerm = '';
+                if (transferSearchInput) transferSearchInput.value = '';
+            } else if (key === 'direction') {
+                transferDirectionFilter = '';
+                if (transferFilterDirection) transferFilterDirection.value = '';
+            } else if (key === 'status') {
+                transferStatusFilter = '';
+                if (transferFilterStatus) transferFilterStatus.value = '';
+            }
+            renderTransfersTable();
+        };
+
+        chips.forEach(c => {
+            const chip = document.createElement('button');
+            chip.type = 'button';
+            chip.className = 'px-4 py-2.5 rounded-xl bg-[#4D4D4D]/40 border border-[#3F3F46] ' +
+                'text-white text-sm font-medium transition-colors flex items-center gap-2 cursor-pointer';
+            chip.innerHTML = `<span>${tfEsc(c.label)}</span><i class="fa-solid fa-xmark text-[10px] opacity-80"></i>`;
+            chip.setAttribute('aria-label', `ลบตัวกรอง ${c.label}`);
+            // ตัวชิปเองไม่ตอบสนอง ต้องคลิกที่กากบาทเท่านั้น
+            chip.addEventListener('click', (e) => {
+                if (!e.target.closest('i.fa-xmark')) return;
+                clearOne(c.key);
+            });
+            transferActiveFilters.appendChild(chip);
+        });
+
+        // ปุ่มล้างทั้งหมดโผล่เมื่อมีตัวกรองมากกว่า 1 ตัวเท่านั้น
+        if (chips.length > 1) {
+            const clearAll = document.createElement('button');
+            clearAll.type = 'button';
+            clearAll.className = 'px-2.5 py-1 bg-red-500/10 hover:bg-red-500/15 text-red-300 ' +
+                'rounded-full text-xs font-medium border border-red-500/30 transition-colors cursor-pointer';
+            clearAll.textContent = 'ล้างทั้งหมด';
+            clearAll.addEventListener('click', () => {
+                transferSearchTerm = '';
+                transferDirectionFilter = '';
+                transferStatusFilter = '';
+                if (transferSearchInput) transferSearchInput.value = '';
+                if (transferFilterDirection) transferFilterDirection.value = '';
+                if (transferFilterStatus) transferFilterStatus.value = '';
+                renderTransfersTable();
+            });
+            transferActiveFilters.appendChild(clearAll);
+        }
     }
 
     // Render Transfers Table
     function renderTransfersTable() {
         if (!transferTableBody) return;
-        transferTableBody.innerHTML = '';
 
-        const filteredTransfers = transfersData.filter(t => {
-            if (currentTransferTab === 'incoming') {
-                return t.status === 'รอดำเนินการ';
-            } else {
-                return true; // แสดงทั้งหมดในประวัติ
-            }
-        });
+        // ป้ายตัวเลขบนแท็บนับจากข้อมูลดิบเสมอ ไม่ขึ้นกับตัวกรองที่เลือกอยู่
+        const pendingCount = transfersData.filter(t => t.status === 'รอดำเนินการ').length;
+        if (badgeTransferPending) badgeTransferPending.textContent = pendingCount;
+        if (badgeTransferHistory) badgeTransferHistory.textContent = transfersData.length;
 
-        if (filteredTransfers.length === 0) {
-            if (transferEmpty) transferEmpty.classList.remove('hidden');
+        renderTransferFilterChips();
+
+        const { total, rows } = filteredTransfers();
+        if (transferResultCount) {
+            transferResultCount.textContent = total ? `แสดง ${rows.length} จาก ${total} รายการ` : '';
+        }
+
+        if (!rows.length) {
+            transferTableBody.innerHTML = tfStateRow(total
+                ? 'ไม่พบรายการที่ตรงกับตัวกรอง'
+                : (currentTransferTab === 'incoming'
+                    ? 'ไม่มีใบโอนย้ายที่รอดำเนินการ'
+                    : 'ยังไม่มีประวัติการโอนย้ายของสาขานี้'));
             return;
         }
 
-        if (transferEmpty) transferEmpty.classList.add('hidden');
+        transferTableBody.innerHTML = rows.map(transfer => {
+            const dir = transferDirection(transfer);
+            const perms = transferPermissions(transfer);
+            const fromBranch = (transfer.from_branch && transfer.from_branch.name) || '-';
+            const toBranch = (transfer.to_branch && transfer.to_branch.name) || '-';
+            const desc = transferItemsDesc(transfer);
 
-        filteredTransfers.forEach(transfer => {
-            const row = document.createElement('tr');
-            row.className = 'hover:bg-surface-chip/40 transition-colors';
+            // ปุ่มที่ย้อนไม่ได้ต้องตรวจสิทธิ์ก่อนเรนเดอร์ และยังผ่าน showConfirm() ตอนกดอีกชั้น
+            const receiveBtn = perms.canReceive
+                ? `<button type="button" class="btn-transfer-receive text-white hover:text-[#20D500] transition-colors p-2 cursor-pointer"
+                        data-id="${tfEsc(transfer._id)}" title="ยืนยันรับเข้าสต็อก"
+                        aria-label="ยืนยันรับเข้าสต็อก ใบโอน ${tfEsc(transfer.transfer_number)}">
+                        <i class="fa-solid fa-circle-check"></i>
+                   </button>`
+                : '';
+            const cancelBtn = perms.canCancel
+                ? `<button type="button" class="btn-transfer-cancel text-white hover:text-red-400 transition-colors p-2 cursor-pointer"
+                        data-id="${tfEsc(transfer._id)}" title="ยกเลิกการโอนย้าย"
+                        aria-label="ยกเลิกการโอนย้าย ใบโอน ${tfEsc(transfer.transfer_number)}">
+                        <i class="fa-solid fa-ban"></i>
+                   </button>`
+                : '';
 
-            const dateStr = new Date(transfer.created_at).toLocaleString('th-TH');
-            const fromBranch = transfer.from_branch?.name || '-';
-            const toBranch = transfer.to_branch?.name || '-';
-            const statusClass = transferStatusClass(transfer.status);
-
-            const actionButtons = `<div class="flex items-center justify-end gap-2">
-                    <button onclick="openTransferDetailModal('${transfer._id}')" class="px-3 py-1.5 rounded-pill bg-primary hover:bg-primary-pressed text-on-primary text-xs font-bold transition-all">
-                        ดูรายละเอียด
-                    </button>
-                   </div>`;
-
-            row.innerHTML = `
-                <td class="px-6 py-4 text-body-muted">${dateStr}</td>
-                <td class="px-6 py-4 text-ink font-mono">${transfer.transfer_number}</td>
-                <td class="px-6 py-4 text-body-muted">${fromBranch}</td>
-                <td class="px-6 py-4 text-body-muted">${toBranch}</td>
+            return `
+            <tr class="hover:bg-[#464646] transition-colors">
                 <td class="px-6 py-4">
-                    <span class="px-2.5 py-1 rounded-lg text-xs font-bold ${statusClass}">${transfer.status}</span>
+                    <p class="font-mono font-semibold text-[#FFE169]">${tfEsc(transfer.transfer_number)}</p>
+                    <p class="text-xs text-white/70 mt-0.5">${tfEsc(tfDateTime(transfer.created_at))}</p>
                 </td>
-                <td class="px-6 py-4 text-right">${actionButtons}</td>
-            `;
-            transferTableBody.appendChild(row);
-        });
+                <td class="px-6 py-4">${transferDirectionBadge(dir)}</td>
+                <td class="px-6 py-4">
+                    <span class="text-white inline-flex items-center gap-2">
+                        <span>${tfEsc(fromBranch)}</span>
+                        <i class="fa-solid fa-arrow-right text-white/50 text-[10px]"></i>
+                        <span>${tfEsc(toBranch)}</span>
+                    </span>
+                </td>
+                <td class="px-6 py-4">
+                    <span class="text-white block max-w-[360px] truncate" title="${tfEsc(desc)}">${tfEsc(desc)}</span>
+                </td>
+                <td class="px-6 py-4">${transferStatusBadge(transfer.status)}</td>
+                <td class="px-6 py-4">
+                    <div class="flex items-center justify-end gap-1">
+                        ${receiveBtn}${cancelBtn}
+                        <button type="button" class="btn-transfer-detail text-white hover:text-indigo-400 transition-colors p-2 cursor-pointer"
+                            data-id="${tfEsc(transfer._id)}" title="ดูรายละเอียด"
+                            aria-label="ดูรายละเอียดใบโอน ${tfEsc(transfer.transfer_number)}">
+                            <i class="fa-solid fa-eye"></i>
+                        </button>
+                    </div>
+                </td>
+            </tr>`;
+        }).join('');
+
+        transferTableBody.querySelectorAll('.btn-transfer-detail').forEach(btn =>
+            btn.addEventListener('click', () => openTransferDetailModal(btn.dataset.id)));
+        transferTableBody.querySelectorAll('.btn-transfer-receive').forEach(btn =>
+            btn.addEventListener('click', () => receiveTransfer(btn.dataset.id)));
+        transferTableBody.querySelectorAll('.btn-transfer-cancel').forEach(btn =>
+            btn.addEventListener('click', () => cancelTransfer(btn.dataset.id)));
     }
 
     // Open View Transfer Modal
@@ -199,20 +442,20 @@
         if (numEl) numEl.textContent = transfer.transfer_number;
 
         if (statusEl) {
-            statusEl.textContent = transfer.status;
-            statusEl.className = 'px-2.5 py-1 rounded text-xs font-bold ' + transferStatusClass(transfer.status);
+            statusEl.className = 'inline-flex';
+            statusEl.innerHTML = transferStatusBadge(transfer.status);
         }
 
         if (fromEl) fromEl.textContent = transfer.from_branch?.name || '-';
         if (toEl) toEl.textContent = transfer.to_branch?.name || '-';
-        if (dateEl) dateEl.textContent = new Date(transfer.created_at).toLocaleString('th-TH');
+        if (dateEl) dateEl.textContent = tfDateTime(transfer.created_at);
         if (senderEl) senderEl.textContent = transfer.created_by?.name || '-';
 
         if (itemsBody) {
             itemsBody.innerHTML = '';
             (transfer.items || []).forEach(item => {
                 const tr = document.createElement('tr');
-                tr.className = 'border-b border-hairline';
+                tr.className = '';
 
                 const colorStr = item.color ? `สี: ${item.color}` : '';
                 const capStr = item.capacity ? `ความจุ: ${item.capacity}` : '';
@@ -220,18 +463,18 @@
 
                 const imeiHtml = item.imeis && item.imeis.length > 0
                     ? `<div class="flex flex-wrap gap-1 mt-1.5">
-                        ${item.imeis.map(imei => `<span class="bg-surface-chip text-ink px-1.5 py-0.5 rounded text-[10px] font-mono border border-hairline">${imei}</span>`).join('')}
+                        ${item.imeis.map(imei => `<span class="bg-[#18181B] text-white px-1.5 py-0.5 rounded-[0.375rem] text-[10px] font-mono border border-[#3F3F46]">${imei}</span>`).join('')}
                        </div>`
                     : '';
 
                 tr.innerHTML = `
                     <td class="px-4 py-3">
-                        <div class="font-medium text-ink">${item.product_name}</div>
-                        <div class="text-body-muted text-xs font-mono">${item.product_code}</div>
+                        <div class="font-medium text-white">${item.product_name}</div>
+                        <div class="text-xs font-mono text-[#FFE169] mt-0.5">${item.product_code}</div>
                         ${imeiHtml}
                     </td>
-                    <td class="px-4 py-3 text-body-muted text-xs">${details}</td>
-                    <td class="px-4 py-3 text-right text-ink font-bold font-mono">${item.quantity} ${item.unit || 'ชิ้น'}</td>
+                    <td class="px-4 py-3 text-white/70 text-xs">${details}</td>
+                    <td class="px-4 py-3 text-right text-white font-semibold font-mono">${item.quantity} <span class="text-xs font-normal">${item.unit || 'ชิ้น'}</span></td>
                 `;
                 itemsBody.appendChild(tr);
             });
@@ -300,17 +543,41 @@
     if (btnTransferViewCloseModal) btnTransferViewCloseModal.onclick = closeTransferViewModal;
 
     // Switch Transfer Tab
+    const TF_TAB_BASE = 'px-4 py-2.5 rounded-xl text-sm font-bold border transition-colors flex items-center gap-2 cursor-pointer';
+    const TF_TAB_ON = 'bg-[#FFE169] text-[#333333] border-[#FFE169]';
+    const TF_TAB_OFF = 'bg-[#27272A] text-slate-300 border-[#3F3F46] hover:border-[#FFE169] hover:text-white';
+    // ป้ายตัวเลขต้องอ่านออกทั้งบนพื้นเหลือง (แท็บที่เลือก) และพื้นเข้ม จึงสลับสีตามสถานะแท็บ
+    const TF_BADGE_ON = 'px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#333333]/20';
+    const TF_BADGE_OFF_PENDING = 'px-2 py-0.5 rounded-full text-[10px] font-bold bg-orange-500/[0.12] text-orange-400';
+    const TF_BADGE_OFF_HISTORY = 'px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#4D4D4D]/60 text-white';
+
     function switchTransferTab(tab) {
         currentTransferTab = tab;
+        const onPending = tab === 'incoming';
+
         if (transferTabIncoming && transferTabHistory) {
-            if (tab === 'incoming') {
-                transferTabIncoming.className = 'px-4 py-2 rounded-pill text-sm font-bold bg-primary/10 text-primary border border-primary/20 transition-all';
-                transferTabHistory.className = 'px-4 py-2 rounded-pill text-sm font-bold bg-surface-tile-3 text-body-muted border border-hairline hover:border-primary/30 transition-all';
-            } else {
-                transferTabHistory.className = 'px-4 py-2 rounded-pill text-sm font-bold bg-primary/10 text-primary border border-primary/20 transition-all';
-                transferTabIncoming.className = 'px-4 py-2 rounded-pill text-sm font-bold bg-surface-tile-3 text-body-muted border border-hairline hover:border-primary/30 transition-all';
-            }
+            transferTabIncoming.className = `${TF_TAB_BASE} ${onPending ? TF_TAB_ON : TF_TAB_OFF}`;
+            transferTabHistory.className = `${TF_TAB_BASE} ${onPending ? TF_TAB_OFF : TF_TAB_ON}`;
+            transferTabIncoming.setAttribute('aria-pressed', String(onPending));
+            transferTabHistory.setAttribute('aria-pressed', String(!onPending));
         }
+        if (badgeTransferPending) badgeTransferPending.className = onPending ? TF_BADGE_ON : TF_BADGE_OFF_PENDING;
+        if (badgeTransferHistory) badgeTransferHistory.className = onPending ? TF_BADGE_OFF_HISTORY : TF_BADGE_ON;
+
+        if (transferPanelTitle) {
+            transferPanelTitle.innerHTML = onPending
+                ? '<i class="fa-solid fa-right-left text-[#FFE169]"></i> ใบโอนที่รอดำเนินการ'
+                : '<i class="fa-solid fa-right-left text-[#FFE169]"></i> ประวัติการโอนย้ายทั้งหมด';
+        }
+
+        // แท็บ "รอดำเนินการ" ทุกแถวเป็นสถานะเดียวกันอยู่แล้ว ตัวกรองสถานะจึงไม่มีความหมาย — ซ่อนและล้างค่า
+        const statusWrap = document.getElementById('transfer-status-filter-wrap');
+        if (statusWrap) statusWrap.className = onPending ? 'hidden' : 'hidden md:block';
+        if (onPending && transferStatusFilter) {
+            transferStatusFilter = '';
+            if (transferFilterStatus) transferFilterStatus.value = '';
+        }
+
         renderTransfersTable();
     }
 
@@ -535,20 +802,24 @@
         transferCartItems.innerHTML = '';
         transferCart.forEach((item, index) => {
             const div = document.createElement('div');
-            div.className = 'flex items-center justify-between bg-surface-tile-3 rounded-md p-3 border border-hairline';
+            div.className = 'flex items-start justify-between gap-3 bg-[#18181B] rounded-xl p-3 border border-[#3F3F46]';
             div.innerHTML = `
-                <div class="flex-1">
-                    <div class="text-ink font-medium">${item.product_name}</div>
-                    <div class="text-body-muted text-xs">${item.product_code} | จำนวน: ${item.quantity}</div>
+                <div class="flex-1 min-w-0">
+                    <div class="text-white font-medium">${item.product_name}</div>
+                    <div class="text-white/70 text-xs mt-0.5">
+                        <span class="font-mono text-[#FFE169]">${item.product_code}</span> · จำนวน ${item.quantity}
+                    </div>
                     ${item.imeis && item.imeis.length > 0 ? `
                         <div class="flex flex-wrap gap-1 mt-1.5">
                             ${item.imeis.map(imei => `
-                                <span class="bg-surface-chip text-ink px-2 py-0.5 rounded text-[10px] font-mono border border-hairline">${imei}</span>
+                                <span class="bg-[#27272A] text-white px-2 py-0.5 rounded-[0.375rem] text-[10px] font-mono border border-[#3F3F46]">${imei}</span>
                             `).join('')}
                         </div>
                     ` : ''}
                 </div>
-                <button onclick="removeFromTransferCart(${index})" class="text-red-400 hover:text-red-300 p-2">
+                <button type="button" onclick="removeFromTransferCart(${index})" title="นำออกจากใบโอน"
+                    aria-label="นำ ${item.product_name} ออกจากใบโอน"
+                    class="shrink-0 text-white hover:text-red-400 transition-colors p-2 cursor-pointer">
                     <i class="fa-solid fa-trash"></i>
                 </button>
             `;
@@ -724,6 +995,32 @@
     if (btnOpenCreateTransfer) btnOpenCreateTransfer.addEventListener('click', openTransferModal);
     if (btnCloseCreateTransfer) btnCloseCreateTransfer.addEventListener('click', closeTransferModal);
     if (transferToBranch) transferToBranch.addEventListener('change', () => clearFieldError(transferToBranchError, transferToBranch));
+
+    // แถบควบคุม — กรองในหน่วยความจำทั้งหมด ไม่ยิง API ซ้ำ (ข้อมูลชุดเดียวถูกโหลดมาแล้ว)
+    if (transferSearchInput) {
+        let searchTimer = null;
+        transferSearchInput.addEventListener('input', () => {
+            clearTimeout(searchTimer);
+            searchTimer = setTimeout(() => {
+                transferSearchTerm = transferSearchInput.value;
+                renderTransfersTable();
+            }, 200);
+        });
+    }
+    if (transferFilterDirection) {
+        transferFilterDirection.addEventListener('change', () => {
+            transferDirectionFilter = transferFilterDirection.value;
+            renderTransfersTable();
+        });
+    }
+    if (transferFilterStatus) {
+        transferFilterStatus.addEventListener('change', () => {
+            transferStatusFilter = transferFilterStatus.value;
+            renderTransfersTable();
+        });
+    }
+    if (btnTransferRefresh) btnTransferRefresh.addEventListener('click', () => loadTransfers());
+
     // ยิงค้นหาสินค้าจากช่องสแกน (ใช้ร่วมกันทั้งกด Enter และกดปุ่ม "เพิ่ม")
     function submitScanInput() {
         if (!transferScanInput) return;

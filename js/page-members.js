@@ -24,7 +24,78 @@
         if (cancelBtn) cancelBtn.style.display = 'none';
     };
 
+    // ==========================================
+    // ชิ้นส่วน UI ที่ใช้ซ้ำ — เดินตามแบบแปลนหน้า #stock ใน DESIGN.md ข้อ 11.5 - 11.7
+    // ==========================================
+
+    const MEMBER_TABLE_COLS = 6;
+
+    // แถวโครงร่างระหว่างรอข้อมูล — ต้องเรียกก่อน await เสมอ ไม่ปล่อยตารางว่าง (ข้อ 11.7)
+    const renderMemberSkeleton = (rowCount = 6) => {
+        const tbody = document.getElementById('member-table-body');
+        if (!tbody) return;
+        const bar = (w) => `<div class="h-3.5 ${w} rounded-full bg-[#5c5c5c] animate-pulse"></div>`;
+        let html = '';
+        for (let i = 0; i < rowCount; i++) {
+            html += `
+                <tr>
+                    <td class="px-6 py-4"><div class="space-y-2">${bar('w-24')}${bar('w-20')}</div></td>
+                    <td class="px-6 py-4">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-full bg-[#5c5c5c] animate-pulse shrink-0"></div>
+                            <div class="space-y-2">${bar('w-36')}${bar('w-24')}</div>
+                        </div>
+                    </td>
+                    <td class="px-6 py-4">${bar('w-32')}</td>
+                    <td class="px-6 py-4">${bar('w-24')}</td>
+                    <td class="px-6 py-4">${bar('w-20')}</td>
+                    <td class="px-6 py-4">
+                        <div class="flex items-center justify-end gap-2">
+                            <div class="w-8 h-8 rounded-[0.375rem] bg-[#5c5c5c] animate-pulse"></div>
+                            <div class="w-8 h-8 rounded-[0.375rem] bg-[#5c5c5c] animate-pulse"></div>
+                        </div>
+                    </td>
+                </tr>
+            `;
+        }
+        tbody.innerHTML = html;
+    };
+
+    const memberStateRow = (message, extraClass = 'text-white/50 italic') =>
+        `<tr><td colspan="${MEMBER_TABLE_COLS}" class="px-6 py-8 text-center ${extraClass}">${message}</td></tr>`;
+
+    // ตัวนับผลลัพธ์ — หน้านี้กรองในเครื่องจาก membersData ทั้งก้อน จึงบอก "จาก M" ได้จริง
+    const updateMemberCount = (shown) => {
+        const el = document.getElementById('member-result-count');
+        if (!el) return;
+        el.textContent = membersData.length ? `แสดง ${shown} จาก ${membersData.length} รายการ` : '';
+    };
+
+    const renderMemberChips = () => {
+        const box = document.getElementById('member-active-filters');
+        if (!box) return;
+        box.innerHTML = '';
+        const input = document.getElementById('member-search-input');
+        const term = (input && input.value || '').trim();
+        if (!term) return;
+
+        const chip = document.createElement('button');
+        chip.type = 'button';
+        chip.className = 'px-4 py-2.5 rounded-xl bg-[#4D4D4D]/40 border border-[#3F3F46] text-white text-sm font-medium transition-colors flex items-center gap-2';
+        chip.innerHTML = `<span>ค้นหา: ${term}</span><i class="fa-solid fa-xmark text-[10px] opacity-80"></i>`;
+        chip.addEventListener('click', (e) => {
+            // ลบได้เฉพาะตอนคลิกที่กากบาท ตัวชิปเองไม่ตอบสนอง (ข้อ 11.5)
+            if (!e.target.closest('i.fa-xmark')) return;
+            input.value = '';
+            renderMemberTable(membersData);
+        });
+        box.appendChild(chip);
+    };
+
     const loadMembers = async () => {
+        renderMemberChips();
+        updateMemberCount(0);
+        renderMemberSkeleton();
         try {
             const response = await authFetch(`${API_BASE_URL}/members`);
             const json = await response.json();
@@ -34,6 +105,9 @@
             }
         } catch (error) {
             console.error('Error loading members:', error);
+            const tbody = document.getElementById('member-table-body');
+            if (tbody) tbody.innerHTML = memberStateRow('เกิดข้อผิดพลาดในการโหลดข้อมูลสมาชิก', 'text-red-400');
+            updateMemberCount(0);
         }
     };
     window.loadMembers = loadMembers;
@@ -43,52 +117,61 @@
         if (!tbody) return;
         tbody.innerHTML = '';
 
+        renderMemberChips();
+        updateMemberCount(members.length);
+
         if (members.length === 0) {
-            tbody.innerHTML = `
-                <tr>
-                    <td colspan="8" class="px-6 py-12 text-center">
-                        <div class="flex flex-col items-center text-body-muted">
-                            <i class="fa-solid fa-users text-4xl mb-3 text-ink-muted-48"></i>
-                            <p class="font-medium text-body-muted">ยังไม่มีข้อมูลสมาชิก</p>
-                            <p class="text-sm text-ink-muted-48 mt-1">กดปุ่ม "เพิ่มสมาชิก" เพื่อเริ่มต้น</p>
-                        </div>
-                    </td>
-                </tr>
-            `;
+            // ข้อความต่างกันระหว่าง "ยังไม่มีสมาชิกเลย" กับ "ค้นหาแล้วไม่เจอ"
+            tbody.innerHTML = memberStateRow(
+                membersData.length
+                    ? 'ไม่พบสมาชิกที่ค้นหา'
+                    : 'ยังไม่มีข้อมูลสมาชิก — กดปุ่ม "เพิ่มสมาชิก" เพื่อเริ่มต้น'
+            );
             return;
         }
 
         members.forEach(m => {
             const row = document.createElement('tr');
-            row.className = 'hover:bg-surface-chip/40 transition-colors';
+            row.className = 'hover:bg-[#464646] transition-colors';
 
             const fullName = `${m.prefix || ''} ${m.first_name || ''} ${m.last_name || ''}`.trim();
             const citizenDisplay = m.citizen_id ? m.citizen_id.replace(/(\d{1})(\d{4})(\d{5})(\d{2})(\d{1})/, '$1-$2-$3-$4-$5') : '-';
             const dateStr = m.createdAt ? new Date(m.createdAt).toLocaleDateString('th-TH', { year: 'numeric', month: 'short', day: 'numeric' }) : '-';
+            const nameEn = `${m.first_name_en || ''} ${m.last_name_en || ''}`.trim();
 
+            // รูปสมาชิกทำหน้าที่เดียวกับไอคอนวงกลมประจำแถวในหน้า #stock (ข้อ 11.6)
+            // จึงย้ายเข้ามาอยู่ในเซลล์ชื่อ แทนที่จะกินคอลัมน์ของตัวเอง
             const photoHtml = m.photo
-                ? `<img src="${memberPhotoSrc(m.photo)}" class="w-10 h-10 rounded-sm object-cover border border-hairline">`
-                : `<div class="w-10 h-10 rounded-sm bg-surface-chip flex items-center justify-center text-body-muted"><i class="fa-solid fa-user"></i></div>`;
+                ? `<img src="${memberPhotoSrc(m.photo)}" alt="" class="w-10 h-10 rounded-full object-cover shrink-0 ring-1 ring-white/20">`
+                : `<div class="w-10 h-10 rounded-full bg-[#3F3F46] flex items-center justify-center text-white/70 shrink-0"><i class="fa-solid fa-user"></i></div>`;
 
             const referralBadge = m.referral_source
-                ? `<span class="px-2 py-1 bg-surface-chip text-body-muted rounded-md text-xs font-medium border border-hairline">${m.referral_source}</span>`
-                : '<span class="text-ink-muted-48">-</span>';
+                ? `<span class="px-2.5 py-1 bg-[#3F3F46] text-white/70 rounded-[0.375rem] text-xs font-medium">${m.referral_source}</span>`
+                : '<span class="text-white/50">-</span>';
 
             row.innerHTML = `
-                <td class="px-6 py-4">${photoHtml}</td>
-                <td class="px-6 py-4 font-bold text-ink font-mono">${m.member_number || '-'}</td>
                 <td class="px-6 py-4">
-                    <p class="font-medium text-ink">${fullName}</p>
-                    ${m.first_name_en || m.last_name_en ? `<p class="text-xs text-body-muted">${(m.first_name_en || '')} ${(m.last_name_en || '')}</p>` : ''}
+                    <div>
+                        <p class="font-mono font-semibold text-[#FFE169]">${m.member_number || '-'}</p>
+                        <p class="text-xs text-white/70 mt-0.5">${dateStr}</p>
+                    </div>
                 </td>
-                <td class="px-6 py-4 text-body-muted font-mono text-xs">${citizenDisplay}</td>
-                <td class="px-6 py-4 text-body-muted">${m.phone || '-'}</td>
+                <td class="px-6 py-4">
+                    <div class="flex items-center gap-3">
+                        ${photoHtml}
+                        <div>
+                            <p class="font-medium text-white">${fullName || '-'}</p>
+                            <p class="text-xs text-white/70 mt-0.5">${nameEn || '-'}</p>
+                        </div>
+                    </div>
+                </td>
+                <td class="px-6 py-4 text-white font-mono">${citizenDisplay}</td>
+                <td class="px-6 py-4 text-white font-mono">${m.phone || '-'}</td>
                 <td class="px-6 py-4">${referralBadge}</td>
-                <td class="px-6 py-4 text-ink-muted-48 text-sm">${dateStr}</td>
                 <td class="px-6 py-4 text-right">
                     <div class="flex items-center justify-end gap-1">
-                        <button class="view-member-btn text-body-muted hover:text-primary transition-colors p-2" data-id="${m._id}" title="ดูรายละเอียด"><i class="fa-solid fa-eye"></i></button>
-                        <button class="delete-member-btn text-body-muted hover:text-red-400 transition-colors p-2" data-id="${m._id}"><i class="fa-solid fa-trash"></i></button>
+                        <button type="button" class="view-member-btn text-white hover:text-indigo-400 transition-colors p-2" data-id="${m._id}" title="ดูรายละเอียด"><i class="fa-solid fa-eye"></i></button>
+                        <button type="button" class="delete-member-btn text-white hover:text-red-400 transition-colors p-2" data-id="${m._id}" title="ลบสมาชิก"><i class="fa-solid fa-trash"></i></button>
                     </div>
                 </td>
             `;

@@ -1,25 +1,52 @@
 <div id="view-branches">
-                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                        <div>
-                            <h3 class="text-2xl font-bold text-ink">จัดการสาขา</h3>
-                            <p class="text-body-muted mt-1">เพิ่ม ลบ และจัดการข้อมูลสาขาของระบบ</p>
-                        </div>
-                        <button id="btn-add-branch"
-                            class="px-4 py-2 bg-primary hover:bg-primary-pressed text-on-primary font-medium rounded-pill transition-all flex items-center gap-2 w-fit">
-                            <i class="fa-solid fa-plus"></i>
-                            เพิ่มสาขาใหม่
-                        </button>
-                    </div>
+    <!-- [1] หัวหน้า — DESIGN.md ข้อ 11.2 -->
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div class="flex items-center gap-4">
+            <i class="bi bi-building text-white w-5 text-2xl text-center"></i>
+            <h3 class="text-2xl text-white">จัดการสาขา</h3>
+        </div>
+        <button id="btn-add-branch" type="button"
+            class="px-4 py-2 bg-[#FFE169] hover:bg-[#E2B93C] text-[#333333] font-medium rounded-xl transition-all flex items-center gap-2 w-fit cursor-pointer">
+            <i class="fa-solid fa-plus"></i>
+            <p>เพิ่มสาขาใหม่</p>
+        </button>
+    </div>
 
-                    <div id="branch-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        <!-- Branch cards injected here -->
+    <!-- [2] การ์ดพาเนล — แถบควบคุม + ชิป + กริดสาขา อยู่ในการ์ดใบเดียว (ข้อ 11.1, 11.3) -->
+    <div class="bg-[#4D4D4D]/40 rounded-2xl shadow-lg overflow-hidden backdrop-blur-sm">
+        <!-- 2a แถบควบคุม (ข้อ 11.4) -->
+        <div class="p-6 pb-0 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+            <h3 class="text-lg text-white flex items-center gap-2">
+                <i class="fa-solid fa-store text-[#FFE169]"></i> สาขาทั้งหมด
+                <span id="branch-count-badge"
+                    class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#4D4D4D]/60 text-white">0 สาขา</span>
+            </h3>
+            <div class="flex flex-wrap items-center gap-2.5 w-full lg:w-auto">
+                <div class="relative group w-full sm:w-72">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <i class="fa-solid fa-search text-white group-focus-within:text-[#FFE169] transition-colors"></i>
                     </div>
+                    <label for="branch-search" class="sr-only">ค้นหาสาขา</label>
+                    <input id="branch-search" type="text" autocomplete="off"
+                        placeholder="ค้นหาชื่อสาขา / ที่อยู่ / เบอร์โทร..."
+                        class="bg-[#4D4D4D]/40 border border-[#3F3F46] rounded-[0.5rem] text-sm pl-10 pr-4 py-2 w-full text-white focus:outline-none focus:border-[#FFE169] focus:ring-1 focus:ring-[#FFE169] transition-all placeholder-white">
+                </div>
+                <button id="btn-refresh-branches" type="button"
+                    class="px-3 py-2 bg-[#4D4D4D]/40 cursor-pointer text-white flex items-center justify-center gap-1.5 rounded-[0.5rem] text-sm hover:bg-[#5C5C5C] transition-colors w-full sm:w-auto">
+                    <i class="fa-solid fa-rotate"></i> รีเฟรช
+                </button>
+            </div>
+        </div>
 
-                    <!-- Empty State for Branches -->
-                    <div id="branch-empty-state"
-                        class="hidden flex flex-col items-center justify-center p-12 border-2 border-dashed border-hairline rounded-lg">
-                        <i class="fa-solid fa-store-slash text-5xl text-ink-muted-48 mb-4"></i>
-                        <h4 class="text-lg font-medium text-ink">ยังไม่มีข้อมูลสาขา</h4>
-                        <p class="text-body-muted mt-1">กรุณาเพิ่มสาขาใหม่เพื่อเริ่มใช้งาน</p>
-                    </div>
+        <!-- 2b ชิปตัวกรอง + ตัวนับผลลัพธ์ (ข้อ 11.5) -->
+        <div class="px-6 py-4">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div id="branch-active-filters" class="flex flex-wrap gap-2"></div>
+                <div id="branch-result-count" class="text-xs text-white font-medium"></div>
+            </div>
+        </div>
+
+        <!-- 2c กริดการ์ดสาขา — เนื้อในเขียนจาก js/page-branches.js -->
+        <div id="branch-grid" class="px-6 pb-6 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4"></div>
+    </div>
 </div>

@@ -4,6 +4,8 @@
 
 โครงสร้างทั้งหมด — ระบบตัวอักษร จังหวะ spacing ไวยากรณ์รูปทรง breakpoints — **ไม่เปลี่ยน** สิ่งที่เปลี่ยนคือชั้นสีและกฎที่ตามมาจากการที่ accent กลายเป็นสีสว่าง
 
+> **จะทำหน้าใหม่ อ่านข้อ 11 ก่อน** — ข้อ 1–10 คือระบบสี/รูปทรงระดับโทเคน ส่วน **[ข้อ 11](#11-หน้าต้นแบบของแอป--stock-จัดการสต็อก)** คือแบบแปลนหน้าจริงที่หน้ารายการข้อมูลทุกหน้าต้องเดินตาม (ยึดหน้า `#stock` เป็นต้นแบบ) และ **[ข้อ 12](#12-จุดที่หน้า-stock-ขัดกับข้อ-110--ต้องตัดสินใจ)** คือจุดที่สองส่วนนี้ยังไม่ตรงกัน
+
 ---
 
 ## 1. สิ่งที่เปลี่ยนตรรกะ ไม่ใช่แค่เปลี่ยนค่าสี
@@ -206,3 +208,567 @@
 - โทเคนสำหรับ "สำเร็จ / เตือน" — เหลืองถูกจองเป็น accent แล้ว ห้ามนำไปสื่อความหมายเชิงสถานะ ไม่งั้นผู้ใช้จะสับสนว่าอะไรกดได้
 - ค่า blur ที่แน่นอนของ backdrop-filter ยังไม่ถูกทำเป็นโทเคน ใช้ `saturate(180%) blur(20px)` เป็นค่าตั้งต้น
 - โหมดสว่างคู่ขนาน — ถ้าต้องรองรับทั้งสองโหมด #FFE169 ใช้บนพื้นสว่างไม่ได้ ต้องสลับเป็น `{colors.primary-on-light}` ซึ่งจะทำให้ "สีแบรนด์" ดูเป็นคนละสีระหว่างสองโหมด นี่เป็นข้อจำกัดที่แก้ไม่ได้ของ accent สีสว่าง ควรตัดสินใจแต่เนิ่นๆ ว่าจะทำโหมดสว่างหรือไม่
+
+---
+
+## 11. หน้าต้นแบบของแอป — `#stock` (จัดการสต็อก)
+
+ข้อ 1–10 คือระบบสี/รูปทรงระดับโทเคน **ข้อนี้คือแบบแปลนหน้าจริง** ที่หน้ารายการข้อมูลทุกหน้าต้องเดินตาม
+
+**ต้นฉบับที่ต้องไปอ่านของจริง**
+
+| ส่วน | ที่อยู่ |
+|---|---|
+| โครงหน้า + แถบควบคุม + ตาราง | `index.html` → `#view-stock` |
+| พาเนลกรองละเอียด (drawer) | `index.html` → `#stock-filter-panel` |
+| โมดัลฟอร์ม | `index.html` → `#add-product-modal` |
+| เรนเดอร์แถวตาราง + สถานะ | `script.js` → `renderProductTable` |
+| ชิปตัวกรองที่ใช้อยู่ | `script.js` → `renderActiveFilterChips` |
+| แถวโครงร่างตอนรอข้อมูล | `script.js` → `renderStockTableSkeleton` |
+| ตรรกะ pill group | `script.js` → บริเวณ `.filter-pill` |
+
+**ขอบเขต:** ทุกหน้าที่เป็น "รายการข้อมูล + ตัวกรอง + ตาราง" — สต็อก, รายการขาย, ใบสั่งซื้อ, สมาชิก, บุคลากร, สาขา, บัญชี
+หน้าที่มีไวยากรณ์ของตัวเอง (POS `#transactions`, แดชบอร์ด) ไม่ต้องบังคับตามข้อนี้ แต่ยังต้องอยู่ใต้ข้อ 1–10
+
+---
+
+### 11.1 โครงหน้า 3 ชั้น
+
+```
+<main class="bg-black">            ← canvas ดำสนิท ไม่มีข้อยกเว้น
+└─ #main-content                    p-4 pb-24 sm:p-6 sm:pb-6 lg:p-8 lg:pb-8
+   └─ #view-<ชื่อ>                  class="hidden space-y-8 animate-fade-in"
+      ├─ [1] หัวหน้า                ไอคอน + ชื่อหน้า (ซ้าย) · ปุ่มการกระทำหลัก (ขวา)
+      └─ [2] การ์ดพาเนล             ครอบ 2a + 2b + 2c ไว้ในกล่องเดียว
+         ├─ 2a แถบควบคุม           ค้นหา · ตัวกรองด่วน · ปุ่มกรองละเอียด · ส่งออก
+         ├─ 2b ชิปตัวกรอง + ตัวนับ
+         └─ 2c ตาราง
+```
+
+กฎของโครง:
+
+- ระยะระหว่างบล็อกระดับบนสุด = `space-y-8` (32px) เสมอ
+- **ห้ามใส่พื้นหลังให้ `#view-*`** — พื้นทั้งหมดต้องมาจากการ์ดพาเนล ไม่งั้นจะได้กล่องซ้อนกล่องสีเดียวกัน
+- **แถบควบคุมกับตารางอยู่ในการ์ดใบเดียวกัน** ไม่แยกเป็นสองการ์ด — นี่คือลายเซ็นของหน้านี้
+- หน้ามีการ์ดพาเนลใบเดียว ถ้าต้องมีหลายใบให้ทบทวนว่ามันควรเป็นคนละหน้าหรือไม่
+
+---
+
+### 11.2 หัวหน้า
+
+```html
+<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <div class="flex items-center gap-4">
+        <i class="bi bi-box-seam text-white w-5 text-2xl text-center"></i>
+        <h3 class="text-2xl text-white">จัดการสต็อก</h3>
+    </div>
+    <div class="flex items-center gap-3">
+        <!-- ปุ่มการกระทำหลักของหน้า -->
+    </div>
+</div>
+```
+
+- ชื่อหน้าเป็น `<h3>` (`<h1>`/`<h2>` ถูกใช้ในโครงแอปแล้ว — **ห้ามข้ามระดับหัวข้อ** ดูหัวข้อ Accessibility ใน `CLAUDE.md`)
+- ไอคอนนำหน้าเป็น Bootstrap Icons ที่ `text-2xl` + `w-5 text-center` เพื่อให้ความกว้างคงที่ ชื่อหน้าจึงไม่ขยับตามไอคอน
+- ไม่ใส่ `font-bold` — `text-2xl` เปล่าคือน้ำหนักของหัวหน้าในระบบนี้
+
+**ปุ่มการกระทำหลัก** (ทึบ accent — หนึ่งหน้ามีได้ปุ่มเดียว ตามกฎข้อ 6):
+
+```html
+<button class="px-4 py-2 bg-[#FFE169] hover:bg-[#E2B93C] text-[#333333] font-medium
+               rounded-xl transition-all flex items-center gap-2 w-fit cursor-pointer relative">
+    <i class="fa-solid fa-plus"></i>
+    <p>เพิ่มสินค้าในสต็อก</p>
+</button>
+```
+
+ถ้าปุ่มต้องมีคำอธิบายกำกับ ใช้ป้ายลอยมุมบนขวา: `text-xs absolute -top-3 right-0 px-2 py-1 bg-white rounded-full`
+
+---
+
+### 11.3 การ์ดพาเนล
+
+```html
+<div class="bg-[#4D4D4D]/40 rounded-2xl shadow-lg overflow-hidden backdrop-blur-sm">
+```
+
+- `bg-[#4D4D4D]/40` บนพื้นดำได้สีจริง **#1F1F1F** ซึ่งห่างจากโทเคน `canvas-elevated` (#1d1d1f) แค่ 2 จุด — ตาแยกไม่ออก จะเขียนแบบไหนก็ได้ผลเดียวกัน
+- `overflow-hidden` **จำเป็น** ไม่งั้นหัวตารางกับมุมโค้ง 16px จะชนกัน
+- `backdrop-blur-sm` ไม่มีผลตอนวางบนพื้นทึบ แต่คงไว้เพื่อให้ยังถูกเมื่อมีอะไรอยู่ข้างหลัง
+
+---
+
+### 11.4 แถบควบคุม (2a)
+
+```html
+<div class="p-6 pb-0 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+    <h3 class="text-lg text-white flex items-center gap-2">
+        <img src="icons_img/information 3.png" alt="" width="20" height="20"> ภาพรวมคลังสินค้า
+    </h3>
+    <div class="flex flex-wrap items-center gap-2.5 relative w-full lg:w-auto">
+        <!-- ค้นหา · select · ปุ่มกรอง · ส่งออก -->
+    </div>
+</div>
+```
+
+ยุบตัวที่ `lg`: ต่ำกว่านั้นหัวข้อกับกลุ่มคอนโทรลเรียงลงมาเป็นสองแถว คอนโทรลกินเต็มความกว้าง (`w-full lg:w-auto`)
+
+**ช่องค้นหา** — ไอคอนเปลี่ยนเป็นเหลืองตอนโฟกัสด้วย `group-focus-within`
+
+```html
+<div class="relative group w-full sm:w-64 cursor-pointer rounded-[0.5rem] overflow-hidden">
+    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+        <i class="fa-solid fa-search text-white group-focus-within:text-[#FFE169] transition-colors"></i>
+    </div>
+    <input id="<หน้า>-search-input" type="text" placeholder="ค้นหา..."
+        class="bg-transparent text-sm pl-10 pr-4 py-2 w-full text-white focus:outline-none
+               focus:ring-1 focus:ring-[#FFE169] transition-all placeholder-white">
+</div>
+```
+
+**Select ตัวกรองด่วน** — ต้องเขียน `[&>option]` เอง เพราะ `<option>` ไม่รับสไตล์จาก parent
+
+```html
+<select class="bg-[#4D4D4D]/40 cursor-pointer text-sm rounded-[0.5rem] px-3 py-2 text-white
+               focus:outline-none focus:ring-1 focus:ring-[#FFE169] w-full sm:w-auto
+               [&>option]:bg-[#4D4D4D]
+               [&>option:checked]:bg-[#FFE169] [&>option:checked]:text-[#333333]">
+```
+
+ตัวกรองรองที่ไม่จำเป็นบนจอเล็กให้ซ่อนด้วย `hidden md:block` (หน้านี้ซ่อน "หมวดหมู่" กับ "สถานะ") ค่าเหล่านั้นยังเข้าถึงได้จาก drawer เสมอ
+
+**ปุ่มกรองละเอียด (ghost)** — ป้ายต้องบอกจำนวนตัวกรองที่ใช้อยู่ `เพิ่มเติม (3)`
+
+```html
+<button class="px-3 py-2 bg-[#4D4D4D]/40 cursor-pointer text-white flex items-center
+               rounded-[0.5rem] text-sm hover:bg-[#5C5C5C] transition-colors w-full sm:w-auto">
+    <img src="icons_img/filter 3.png" alt="" class="mr-1" width="16">
+    <span id="<หน้า>-filter-text">เพิ่มเติม</span>
+</button>
+```
+
+**ปุ่มส่งออก (ทึบเล็ก)** — `px-4 py-2 bg-[#FFE169] text-[#333333] flex items-center font-semibold rounded-[0.5rem] text-sm hover:bg-[#E2B93C] transition-colors w-full sm:w-auto`
+
+---
+
+### 11.5 ชิปตัวกรอง + ตัวนับผลลัพธ์ (2b)
+
+```html
+<div class="px-6 py-4">
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div id="<หน้า>-active-filters" class="flex flex-wrap gap-2"></div>
+        <div id="<หน้า>-result-count" class="text-xs text-white font-medium"></div>
+    </div>
+</div>
+```
+
+ตัวนับใช้ข้อความ **`แสดง N จาก M รายการ`** เสมอ
+
+**ชิปหนึ่งตัว** (สร้างจาก JS):
+
+```js
+chip.className = 'px-4 py-2.5 rounded-xl bg-[#4D4D4D]/40 border border-[#3F3F46] ' +
+                 'text-white text-sm font-medium transition-colors flex items-center gap-2';
+chip.innerHTML = `<span>${label}</span><i class="fa-solid fa-xmark text-[10px] opacity-80"></i>`;
+```
+
+กฎของชิป:
+
+- ป้ายเป็นรูป **`หมวด: ค่า`** เสมอ (`สาขา: สาขาหาดใหญ่`, `ราคาขาย: ฿15,000 - ฿30,000`) ไม่ใช่ค่าลอยๆ
+- **ลบได้เฉพาะตอนคลิกที่กากบาท** — ตัวชิปเองไม่ตอบสนอง: `if (!e.target.closest('i.fa-xmark')) return;`
+- ช่วงตัวเลขที่เปิดปลายข้างหนึ่งใช้คำว่า `0` และ `ไม่จำกัด` ไม่ใช่ค่าว่าง
+- **ปุ่ม "ล้างทั้งหมด" โผล่เมื่อมีตัวกรองมากกว่า 1 ตัวเท่านั้น** ตัวเดียวไม่ต้องมี — ผู้ใช้กดกากบาทเร็วกว่าอยู่แล้ว
+
+```js
+clearBtn.className = 'px-2.5 py-1 bg-red-500/10 hover:bg-red-500/15 text-red-300 ' +
+                     'rounded-full text-xs font-medium border border-red-500/30 transition-colors';
+```
+
+---
+
+### 11.6 ตาราง (2c)
+
+```html
+<div class="overflow-x-auto">
+    <table class="w-full text-left text-sm whitespace-nowrap border-collapse">
+        <thead class="bg-[#4D4D4D]/40 text-white">
+            <tr><th class="px-6 py-4 font-semibold text-[15px]">รหัสสินค้า</th>…</tr>
+        </thead>
+        <tbody id="<หน้า>-table-body" class="divide-y divide-[#464646]"></tbody>
+    </table>
+</div>
+```
+
+- ทุกเซลล์ `px-6 py-4` — **ค่าเดียว ไม่มีตารางแน่นตารางโปร่ง**
+- หัวตาราง `text-[15px] font-semibold` ใหญ่กว่าเนื้อ (`text-sm` = 14px) 1px พอดี
+- แถว `hover:bg-[#464646] transition-colors` และเส้นคั่น `divide-[#464646]` เป็นสีเดียวกัน — เวลาชี้ แถวจะดูกลืนเส้นเป็นก้อนเดียว
+- `whitespace-nowrap` + `overflow-x-auto` คือกลยุทธ์มือถือของตารางในระบบนี้ — **ไม่ยุบเป็นการ์ด**
+- ถ้ากล่องเลื่อนได้จริงบนจอที่รองรับ ให้ใส่ `tabindex="0"` ที่ `.overflow-x-auto` (WCAG 2.1.1 — ดู `CLAUDE.md`)
+- การจัดชิด: ข้อความ = ซ้าย (ค่าเริ่มต้น), เงิน = `text-right`, จำนวน = `text-center`, คอลัมน์จัดการ = `text-right`
+
+**สูตรเซลล์ตามชนิดข้อมูล**
+
+| ชนิด | สูตร |
+|---|---|
+| รหัส/เลขที่เอกสาร | `<span class="font-mono font-semibold text-[#FFE169]">` — **รหัสเป็นสีเหลืองเสมอ** เป็นจุดยึดสายตาของแถว |
+| ชื่อ + คำบรรยาย | จุดสี 16px หน้าชื่อ + `<p class="font-medium text-white">` ทับ `<p class="text-xs text-white/70">` |
+| ข้อความทั่วไป | `text-white text-sm` และใช้ `-` เมื่อไม่มีค่า (ไม่ปล่อยว่าง) |
+| ป้ายหมวดหมู่ | `px-2.5 py-1 rounded-[0.375rem] text-xs font-medium` บนพื้นเทา |
+| เงิน | `text-right text-white font-mono` นำหน้าด้วย `฿` และผ่าน `toLocaleString()` |
+| จำนวน + หน่วย | `text-center text-white font-medium` โดยหน่วยเป็น `<span class="text-xs text-white font-normal">` |
+| สถานะ | ป้ายจุด (ดูล่าง) |
+| ปุ่มจัดการ | `flex items-center justify-end gap-1` |
+
+**ตัวบอกสีสินค้า** — จุดสี 16px วางหน้าชื่อในบรรทัดเดียวกัน:
+
+```html
+<p class="font-medium text-white flex items-center gap-2">
+    <span class="w-4 h-4 rounded-full shrink-0" style="background-color:#RRGGBB;"></span>
+    <span>ชื่อสินค้า</span>
+</p>
+```
+
+สร้างจาก `window.productColorDot()` เท่านั้น ห้ามเขียนมาร์กอัปเอง
+รายละเอียดครบ (อีกแบบหนึ่ง เกณฑ์เลือกใช้ กับดัก และที่มาของสี) อยู่ที่ **ข้อ 11.14**
+
+**ป้ายสถานะ** — จุดสี + ข้อความ ในกล่อง tint 12%
+
+```html
+<div class="inline-flex items-center gap-2 px-2.5 py-1 rounded-[0.375rem] {พื้น}">
+    <div class="w-2 h-2 rounded-full {จุด}"></div>
+    <span class="{ตัวอักษร} font-medium text-xs">{ข้อความ}</span>
+</div>
+```
+
+| ความหมาย | จุด | พื้น | ตัวอักษร |
+|---|---|---|---|
+| ปกติ / สำเร็จ | `bg-[#20D500]` | `bg-[#42A231]/[0.12]` | `text-[#20D500]` |
+| หมด / ล้มเหลว | `bg-[#FE0000]` | `bg-[#FE0000]/[0.12]` | `text-[#FE0000]` |
+| ระหว่างดำเนินการ | `bg-orange-500` | `bg-orange-500/[0.12]` | `text-orange-400` |
+
+> แถว "กำลังโอนย้าย" ใน `script.js` ยังใช้ `bg-orange-50 border border-orange-200` + `text-orange-600` ซึ่งเป็นชุดสีของธีมสว่าง (พื้นเกือบขาว) — **อย่าลอกของเดิม** ใช้ค่าในตารางนี้
+
+**ปุ่มไอคอนในคอลัมน์จัดการ** — ไม่มีพื้น มีแค่สีตอนชี้ และต้องมี `title`
+
+```html
+<button class="text-white hover:text-amber-400 transition-colors p-2" title="พิมพ์บาร์โค้ด">
+<button class="text-white hover:text-indigo-400 transition-colors p-2" title="ดูรายละเอียด">
+<button class="text-white hover:text-red-400  transition-colors p-2" title="ลบ">
+```
+
+การกระทำที่ย้อนไม่ได้ (ลบ) ต้อง**ทั้ง** ตรวจสิทธิ์ก่อนเรนเดอร์ปุ่ม **และ** ผ่าน `showConfirm()` ก่อนยิง API
+
+---
+
+### 11.7 สถานะว่าง และแถวโครงร่าง
+
+**ว่าง** — แถวเดียวกินเต็มความกว้าง ไม่ใช่ภาพประกอบกลางจอ:
+
+```html
+<tr><td colspan="9" class="px-6 py-8 text-center text-white/50 italic">ไม่พบสินค้าที่ค้นหา</td></tr>
+```
+
+**กำลังโหลด** — เรียก skeleton **ก่อน** `await` ทุกครั้ง ไม่ปล่อยตารางว่างระหว่างรอ
+
+- แท่ง: `h-3.5 <w-*> rounded-full bg-[#5c5c5c] animate-pulse`
+- วงกลม: `w-10 h-10 rounded-full bg-[#5c5c5c] animate-pulse flex-shrink-0`
+- 8 แถวเป็นค่าตั้งต้น และโครงต้องมีคอลัมน์/ความกว้างใกล้เคียงของจริง ไม่งั้นตารางจะกระตุกตอนข้อมูลมาแทน
+
+---
+
+### 11.8 พาเนลกรองละเอียด (drawer เลื่อนจากขวา)
+
+ตัวกรองด่วนอยู่บนแถบควบคุม ส่วนที่เหลือทั้งหมดอยู่ใน drawer — **แถบควบคุมห้ามยาวจนล้นสองบรรทัดบนเดสก์ท็อป**
+
+```html
+<div id="…-filter-panel"
+     class="fixed inset-0 z-50 flex justify-end opacity-0 pointer-events-none transition-opacity duration-300">
+    <div class="modal-content relative w-[90%] md:w-[600px] h-full overflow-y-auto p-8
+                bg-[#18181B] shadow-[-10px_0_40px_rgba(0,0,0,0.5)] border-l border-[#4D4D4D]
+                translate-x-full transition-transform duration-300">
+```
+
+เปิด/ปิดด้วยสองชั้น: กล่องนอกสลับ `opacity-0 pointer-events-none` (300ms) กล่องในสลับ `translate-x-full` (300ms)
+
+**หัว drawer / modal — สูตรเดียวกันทุกที่:**
+
+```html
+<div class="flex items-center justify-between mb-6 pb-2 border-b border-[#333333]">
+    <h3 class="text-lg font-medium text-white flex items-center gap-2">
+        <i class="fa-solid fa-filter text-[#FFE169]"></i> ตัวกรองคลังสินค้าอย่างละเอียด
+    </h3>
+    <button aria-label="ปิด" class="text-red-500 hover:text-red-400 transition-colors">
+        <i class="fa-solid fa-xmark text-xl"></i>
+    </button>
+</div>
+```
+
+ไอคอนนำหัวข้อเป็น **เหลือง** ส่วนปุ่มปิดเป็น **แดง** และต้องมี `aria-label="ปิด"` เพราะไม่มีข้อความ
+
+**ท้าย drawer:**
+
+```html
+<div class="flex items-center justify-center gap-4 pt-4 border-t border-[#333333]">
+    <button class="px-10 py-2.5 rounded-xl bg-[#E4E4E7] text-[#18181B] text-[15px] font-bold hover:bg-white transition-colors w-1/2">ล้างทั้งหมด</button>
+    <button class="px-12 py-2.5 rounded-xl bg-[#FFE169] text-[#333333] text-[15px] font-bold hover:bg-[#E2B93C] transition-colors flex items-center justify-center gap-2 w-1/2">ตกลง</button>
+</div>
+```
+
+ซ้าย = การกระทำรอง (เทาอ่อน) · ขวา = การกระทำหลัก (เหลือง) · ใน drawer ให้ `w-1/2` ทั้งคู่ ในโมดัลปล่อยตามเนื้อหา
+
+---
+
+### 11.9 ฟอร์ม (ใช้ร่วมกันทั้ง drawer และโมดัล)
+
+ตัวฟอร์ม: `space-y-5 text-sm` · แต่ละฟิลด์: `space-y-2` · สองคอลัมน์: `grid grid-cols-1 md:grid-cols-2 gap-5`
+
+**ป้ายกำกับ**
+
+```html
+<label for="<id ของช่อง>" class="text-slate-200 font-medium flex items-center gap-2 text-xs">
+    <i class="fa-solid fa-mobile-screen text-white"></i> ชื่อสินค้า <span class="text-red-500">*</span>
+</label>
+```
+
+ป้ายอยู่**เหนือ**ช่องเสมอ ตัวเล็ก (`text-xs`) มีไอคอนนำ และ **ต้องมี `for=`** — ความใกล้กันไม่ผูกป้ายกับช่องให้ (ดูหัวข้อ Accessibility ใน `CLAUDE.md`) ดอกจันแดงใช้เฉพาะฟิลด์บังคับ
+
+**ช่องกรอก / select**
+
+```html
+class="w-full px-4 py-2.5 rounded-xl bg-[#27272A] border border-[#3F3F46] text-white
+       focus:border-[#FFE169] focus:outline-none transition-all placeholder-slate-500 text-sm"
+```
+
+`<select>` เพิ่ม `appearance-none` แล้ววาดลูกศรเอง (ลูกศรของระบบเป็นสีอ่อนอ่านไม่ออกบนพื้นมืด):
+
+```html
+<div class="absolute right-4 top-[14px] pointer-events-none text-slate-400">
+    <i class="fa-solid fa-chevron-down text-xs"></i>
+</div>
+```
+
+ช่องตัวเลขต้องมี `type="number" inputmode="numeric"` และช่วงค่าใช้สองช่อง `ต่ำสุด`/`สูงสุด` ใน `grid grid-cols-2 gap-5`
+ค่าที่ผู้ใช้เลือกบ่อยให้ทำเป็นปุ่มเติมค่าใต้ช่อง: `px-2 py-0.5 bg-[#3F3F46] rounded text-[10px] text-slate-300 hover:text-white hover:bg-[#5C5C5C]`
+
+**กลุ่ม pill — ใช้แทน select เมื่อตัวเลือกมีไม่มากและอยากให้เห็นทั้งหมด**
+
+```html
+<input type="hidden" id="…">                        <!-- หรือ <select class="hidden"> -->
+<div id="…-container" class="flex items-center gap-2 overflow-x-auto hide-scrollbar pb-1 px-8">
+    <button type="button" data-target="…" data-value=""
+        class="flex-shrink-0 px-4 py-2.5 bg-[#27272A] border border-[#FFE169] rounded-xl
+               text-[#FFE169] text-sm hover:border-[#FFE169] hover:text-white
+               transition-colors filter-pill active">ทั้งหมด</button>
+    <button type="button" data-target="…" data-value="iPhone"
+        class="flex-shrink-0 px-4 py-2.5 bg-[#27272A] border border-[#3F3F46] rounded-xl
+               text-slate-300 text-sm hover:border-[#FFE169] hover:text-white
+               transition-colors filter-pill">iPhone</button>
+</div>
+```
+
+สัญญาของ pill group (JS พึ่งพาทั้งหมดนี้):
+
+- `.filter-pill` เป็น hook ของ JS — **ห้ามเปลี่ยนชื่อ**
+- สถานะเลือก = สลับ `border-[#3F3F46]`+`text-slate-300` ↔ `border-[#FFE169]`+`text-[#FFE169]` **พื้นไม่เปลี่ยน** (ตรงกับ `configurator-option-chip` ในข้อ 6 — เลือกแล้วเปลี่ยนขอบ ไม่ใช่เปลี่ยนพื้น)
+- ปุ่มแรกคือ `ทั้งหมด` ที่ `data-value=""` เสมอ และกด pill ที่เลือกอยู่ซ้ำ = กลับไป `ทั้งหมด`
+- ค่าจริงเก็บใน `<input type="hidden">` / `<select class="hidden">` ที่ `data-target` ชี้ไป แล้ว dispatch `change` — ตัวกรองและฟอร์มจึงอ่านค่าทางเดียวกันหมด
+- `hide-scrollbar` ซ่อนแถบเลื่อน (นิยามอยู่ใน `style.css`) และ `px-8` เว้นที่ให้ปุ่มเลื่อนซ้าย/ขวาทับ
+
+ปุ่มเลื่อนซ้าย/ขวาของ pill group ใช้ gradient fade เป็น mask ปิดขอบ — **ข้อยกเว้นเดียวของกฎ "ไม่มี gradient"** ดูข้อ 12
+
+---
+
+### 11.10 โมดัลฟอร์ม
+
+```html
+<div class="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-sm
+            opacity-0 pointer-events-none transition-opacity duration-300 p-4">
+    <div class="modal-content relative w-[95%] md:w-[650px] max-h-[90vh] overflow-y-auto p-8
+                bg-[#18181B] rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.5)] border border-[#4D4D4D]">
+```
+
+- **`.modal-content` เป็น hook ของ JS** (`querySelector('.modal-content')` ใน `js/page-deposits.js`, `js/page-sales-history.js`, `js/page-stock-audit.js`) — ต้องมี ห้ามลบ
+- `z-50` สำหรับโมดัลปกติ · `z-[60]` เมื่อโมดัลซ้อนบนโมดัล (เช่น เลือก IMEI ระหว่างขาย)
+- ความกว้าง: ฟอร์ม `md:w-[650px]` · drawer `md:w-[600px]` · ตารางในโมดัล `md:w-[900px]` · ยืนยันสั้นๆ `max-w-md`
+- หัวข้อโมดัล **ต้องมีข้อความจริงใน HTML ตั้งแต่แรก** ห้ามปล่อยว่างให้ JS เติม (หัวข้อเปล่า = โปรแกรมอ่านหน้าจออ่านไม่ได้)
+
+---
+
+### 11.11 ตารางค่าอ้างอิงของหน้านี้
+
+| บทบาท | ค่าที่เขียนจริง | สีจริงหลังซ้อน | โทเคนที่ตรงกัน |
+|---|---|---|---|
+| canvas | `bg-black` (บน `<main>`) | `#000000` | `canvas` ✅ |
+| พื้นการ์ดพาเนล | `bg-[#4D4D4D]/40` บนดำ | **`#1F1F1F`** | `canvas-elevated` (#1d1d1f) — ห่าง 2 จุด |
+| พื้นหัวตาราง | `bg-[#4D4D4D]/40` บนพาเนล | **`#313131`** | ไม่มีโทเคน (ใกล้ `surface-chip`) |
+| แถวชี้ / เส้นคั่นแถว | `#464646` | | ไม่มีโทเคน |
+| พื้น drawer / โมดัล | `#18181B` | | ไม่มีโทเคน (ใกล้ `surface-tile-3` #161618) |
+| พื้นช่องกรอก / pill | `#27272A` | | ไม่มีโทเคน (ใกล้ `surface-chip` #2a2a2c) |
+| ขอบช่องกรอก / pill | `#3F3F46` | | ไม่มีโทเคน (ใกล้ `hairline` #38383a) |
+| เส้นคั่นหัว/ท้ายฟอร์ม | `#333333` | | ≈ `hairline` |
+| ขอบ drawer / โมดัล | `#4D4D4D` | | สว่างกว่า `hairline` |
+| accent | `#FFE169` | | `primary` ✅ |
+| accent ตอนชี้ | `#E2B93C` | | ⚠️ ต่างจาก `primary-pressed` (#F5D24E) |
+| ตัวอักษรบน accent | `#333333` | | ⚠️ ต่างจาก `on-primary` (#1d1d1f) |
+| ตัวอักษรหลัก | `text-white` | `#ffffff` | ⚠️ ต่างจาก `ink` (#f5f5f7) |
+| ตัวอักษรรอง | `text-white/70` | | ≈ `body-muted` |
+| ป้ายกำกับฟอร์ม | `text-slate-200` | `#e2e8f0` | ⚠️ นอกพาเลตต์ |
+| placeholder | `placeholder-slate-500` | `#64748b` | ⚠️ นอกพาเลตต์ |
+| ปุ่มรอง (พื้นสว่าง) | `#E4E4E7` / ตัวอักษร `#18181B` | | ไม่มีโทเคน |
+| แท่ง skeleton | `#5c5c5c` | | ไม่มีโทเคน |
+
+**รัศมี — หน้านี้ใช้ 4 ค่า**
+
+| ใช้กับ | คลาส | ค่าจริง |
+|---|---|---|
+| การ์ดพาเนล, โมดัล | `rounded-2xl` | 16px |
+| ชิป, pill, ช่องกรอก, ปุ่มในฟอร์ม, ปุ่มหัวหน้า | `rounded-xl` | 12px |
+| คอนโทรลในแถบควบคุม (ค้นหา/select/ปุ่ม) | `rounded-[0.5rem]` | 8px |
+| ป้ายเล็ก (หมวดหมู่, สถานะ) | `rounded-[0.375rem]` | 6px |
+| จุดสถานะ, ไอคอนวงกลม, ปุ่มล้างทั้งหมด | `rounded-full` | — |
+
+> ⚠️ **กับดักที่หลอกตาที่สุดในโปรเจกต์นี้:** `src/tailwind-input.css` เขียนทับ `--radius-xs/sm/md/lg` เป็น 5/8/11/**18**px แต่ **ไม่ได้เขียนทับ `xl`/`2xl`** สองตัวนั้นจึงยังเป็นค่าเริ่มต้นของ Tailwind (12/16px) ผลคือ `rounded-lg` (18px) **ใหญ่กว่า** `rounded-xl` (12px) ในโปรเจกต์นี้ — สลับกับที่ทุกคนคุ้นเคย ให้ยึดค่าจากตารางข้างบน อย่าเดาจากชื่อคลาส
+
+**ระยะ** — `p-6` (พาเนล) · `px-6 py-4` (เซลล์ตาราง, แถวชิป) · `p-8` (drawer/โมดัล) · `gap-2` ชิป · `gap-2.5` คอนโทรล · `gap-3`/`gap-4` กลุ่มปุ่ม · `space-y-2` ในฟิลด์ · `space-y-5` ระหว่างฟิลด์ · `space-y-8` ระหว่างบล็อกหลัก
+
+**Breakpoint ที่ใช้จริง** — `sm` ยุบหัวหน้า/แถวชิป · `md` ซ่อนตัวกรองรอง + กำหนดความกว้าง drawer/โมดัล · `lg` ยุบแถบควบคุม
+
+---
+
+### 11.12 เช็กลิสต์ก่อนบอกว่าหน้าใหม่เสร็จ
+
+1. `#view-*` เป็น `hidden space-y-8` ไม่มีพื้นหลังของตัวเอง
+2. หัวหน้า = ไอคอน + `<h3 class="text-2xl text-white">` + ปุ่มหลัก **ทึบเหลืองไม่เกินหนึ่งปุ่ม**
+3. แถบควบคุม + ชิป + ตาราง อยู่ในการ์ด `bg-[#4D4D4D]/40 rounded-2xl overflow-hidden` **ใบเดียว**
+4. ช่องค้นหามีไอคอนที่เปลี่ยนเป็นเหลืองตอนโฟกัส
+5. มีตัวนับ `แสดง N จาก M รายการ` และชิปรูป `หมวด: ค่า` ที่ลบได้จากกากบาท
+6. ตัวกรองที่ไม่ใช่ตัวหลักอยู่ใน drawer และปุ่มเปิด drawer โชว์จำนวนที่ใช้อยู่
+7. ทุกเซลล์ `px-6 py-4` · รหัสเป็น `font-mono text-[#FFE169]` · เงินเป็น `font-mono text-right` มี `฿` และคั่นหลักพัน
+8. สถานะใช้ป้ายจุด + tint 12% จากตารางในข้อ 11.6 เท่านั้น
+9. มี skeleton ก่อน `await` และมีแถวสถานะว่างที่ `colspan` ตรงกับจำนวนคอลัมน์
+10. ทุก `<label>` มี `for=` · ปุ่มที่มีแต่ไอคอนมี `aria-label` · หัวข้อไม่ข้ามระดับ · กล่องที่เลื่อนได้มี `tabindex="0"`
+11. การกระทำที่ย้อนไม่ได้ ตรวจสิทธิ์ก่อนเรนเดอร์ปุ่ม **และ** ผ่าน `showConfirm()`
+12. บัมพ์เวอร์ชัน cache ตามตารางใน `CLAUDE.md` (`VIEW_FRAGMENT_VERSION` / `PAGE_SCRIPT_VERSION` / `?v=`)
+
+---
+
+### 11.13 อย่าลอกไปใช้ — เศษที่ค้างอยู่ในหน้านี้
+
+หน้านี้เป็นต้นแบบของ *เลย์เอาต์* ไม่ใช่ของ *ทุกคลาสที่เขียนอยู่* ของพวกนี้เป็นซากธีมเก่า (cyan/slate) และคลาสที่ไม่มีอยู่จริง — ห้ามขยายต่อ และเก็บกวาดได้เมื่อแตะไฟล์นั้นอยู่แล้ว
+
+| ที่พบ | ปัญหา | ใช้แทนด้วย |
+|---|---|---|
+| `shadow-lg shadow-cyan-500/20` (ปุ่มเพิ่มสินค้า) | เงาเรืองสีฟ้าจากธีมเดิม | ตัดทิ้ง |
+| `glow-button`, `custom-pill`, `animate-fade-in`, `custom-scrollbar` | **ไม่มี CSS รองรับเลยสักบรรทัด** ไม่มีผลใดๆ | ตัดทิ้ง (แต่ `.modal-content` และ `.filter-pill` เป็น hook ของ JS — เก็บไว้) |
+| `focus:border-cyan-500` (select หมวดหมู่) | โฟกัสเป็นสีฟ้า ต่างจาก select ข้างๆ | `focus:ring-1 focus:ring-[#FFE169]` |
+| `hover:bg-slate-700`, `bg-slate-700 text-slate-300` | พาเลตต์ slate ปนเข้ามา | `hover:bg-[#5C5C5C]`, พื้นเทาจากตาราง 11.11 |
+| `text-slate-400 italic` (แถวว่าง) | นอกพาเลตต์ | `text-white/50 italic` |
+| `bg-orange-50 border border-orange-200` (สถานะโอนย้าย) | พื้นเกือบขาวจากธีมสว่าง | `bg-orange-500/[0.12]` + `text-orange-400` |
+| `text-md` (เซลล์รหัสสินค้า) | **ไม่มีคลาสนี้ใน Tailwind** เขียนไปก็ไม่เกิดอะไร | ตัดทิ้ง หรือระบุ `text-[15px]` |
+| `rounded-2xl` + `rounded-[0.5rem]` บนอีลีเมนต์เดียวกัน (select ตัวกรอง) | รัศมีสองค่าชนกัน ผลลัพธ์ขึ้นกับลำดับใน CSS ที่ build ออกมา ไม่ใช่ลำดับใน `class=` | เหลือค่าเดียว (`rounded-[0.5rem]`) |
+| `focus:border-[#FFE169]` บนช่องค้นหาที่ไม่มีคลาส `border` | ไม่มีเส้นขอบให้เปลี่ยนสี (ความหนาเป็น 0) | อาศัย `focus:ring-1` อย่างเดียว หรือเพิ่ม `border` |
+
+---
+
+### 11.14 ตัวบอกสีสินค้า — จุดสี vs ไอคอนวงกลม
+
+สีของเครื่องเป็น **ข้อมูล ไม่ใช่พาเลตต์** จึงเป็น inline style เสมอ ห้ามพยายามทำเป็นคลาส Tailwind
+ระบบมีสองแบบ ใช้ตัวสร้างกลางใน `script.js` ทั้งคู่ **ห้ามเขียนมาร์กอัปเองซ้ำ**
+
+| | จุดสี 16px | ไอคอนวงกลม 40px |
+|---|---|---|
+| ตัวสร้าง | `window.productColorDot(colorName, colorDoc)` | `window.productIconHtml(colorName, colorDoc, product, fallbackHex?)` |
+| บอกอะไร | สีเครื่องอย่างเดียว | สีเครื่อง **+ ประเภท** (มือถือ/ของทั่วไป) |
+| กินที่ | น้อยมาก ใส่ในบรรทัดข้อความได้ | สูงเท่าสองบรรทัด ต้องมีคอลัมน์ของตัวเอง |
+| สีเข้มจัด (`ดำ` #000000) | **กลืนกับพื้น** | อ่านออก เพราะมีขอบสีเต็ม |
+| ใช้อยู่ที่ | `#stock` · `#transactions` · `#branch-inventory` · `#deposits` | *(ยังไม่มีหน้าไหนใช้อยู่ตอนนี้ — เก็บไว้เป็นทางเลือกสำรองตามเกณฑ์ด้านล่าง)* |
+
+**เลือกยังไง:** ตารางที่มีคอลัมน์บอกประเภท/หมวดหมู่อยู่แล้ว → ใช้จุดสี (กระชับกว่า)
+ตารางที่ไม่มีที่บอกประเภทเลย หรือมีสินค้าสีเข้มเยอะจนจุดสีอ่านไม่ออก → ใช้ไอคอนวงกลม
+
+#### จุดสี 16px
+
+```html
+<span class="w-4 h-4 rounded-full shrink-0" style="background-color:#RRGGBB;"></span>
+```
+
+วางไว้ **หน้าชื่อสินค้าในบรรทัดเดียวกัน** ไม่ใช่หน้ากล่องเนื้อหาทั้งก้อน — ทำให้จุดผูกกับชื่อจริงๆ
+ไม่ลอยอยู่ข้างบล็อกที่มีทั้งชื่อ ป้ายสาขา ราคา ปนกัน
+
+ในเซลล์ตาราง:
+
+```html
+<p class="font-medium text-white flex items-center gap-2">
+    <span class="w-4 h-4 rounded-full shrink-0" style="background-color:#RRGGBB;"></span>
+    <span>ชื่อสินค้า</span>
+</p>
+```
+
+ในการ์ด (ชื่อถูกตัดด้วย `truncate`):
+
+```html
+<h4 class="flex-1 min-w-0 flex items-center gap-2 font-bold text-ink text-[13px] leading-snug">
+    ${d.colorDot}<span class="truncate">${d.nameFull}</span>
+</h4>
+```
+
+⚠️ **สองกับดักที่เจอมาแล้วทั้งคู่:**
+
+1. ถ้าของเดิมมี `truncate` อยู่บนแท็กชื่อ **ต้องย้าย `truncate` ไปที่ `<span>` ที่ครอบเฉพาะชื่อ**
+   ไม่งั้นชื่อยาวๆ จะตัดจุดสีหายไปด้วย
+2. จุดต้องมี **`shrink-0` เสมอ** ไม่งั้น flex จะบีบให้กลายเป็นวงรี
+
+#### ไอคอนวงกลม 40px
+
+```html
+<div class="w-10 h-10 flex items-center py-1 px-0.5 rounded-full justify-center shrink-0"
+     style="color:#RRGGBB; background-color:#RRGGBB33; border:1px solid #RRGGBB;">
+    <i class="fa-solid fa-mobile-screen text-xl"></i>
+</div>
+```
+
+ไอคอนใช้สีเต็ม พื้นใช้สีเดียวกันที่ alpha `33` (20%) ขอบใช้สีเต็ม — สูตรนี้อ่านออกทุกสีบนพื้นมืด
+ไอคอนสลับ `fa-mobile-screen` / `fa-box` ตาม `window.checkIsDevice()`
+
+#### ที่มาของสี (ทั้งสองแบบใช้ทางเดียวกัน)
+
+```
+window.resolveProductColorHex(colorName, colorDoc)  →  hex
+    1. colorDoc.color_code ที่แอดมินตั้งเองในหน้าตั้งค่า  ชนะเสมอ
+    2. ไม่มีก็จับคำจากชื่อสี (ไทย/อังกฤษ) ใน PRODUCT_COLOR_MAP แบบ substring
+    3. ไม่ตรงเลย  →  #8E8E93 (เทากลาง)
+
+window.toSixDigitHex(hex)  →  กัน '#abc' และค่าที่ไม่ใช่ hex
+```
+
+⚠️ **`toSixDigitHex` ไม่ใช่ของประดับ** — ไอคอนวงกลมทำพื้นโปร่งด้วยการต่อ `${hex}33`
+ซึ่งต่อได้เฉพาะ hex 6 หลัก ถ้าแอดมินตั้ง `color_code` เป็น `rgb(200,200,200)` จะกลายเป็น
+`rgb(200,200,200)33` ที่เบราว์เซอร์อ่านไม่ออก **พื้นหลังหายไปเงียบๆ** โดยไม่มี error
+
+⚠️ **ห้ามก็อป `PRODUCT_COLOR_MAP` ไปไว้ที่อื่น** — ตารางนี้เคยถูกก็อปกระจายหลายที่
+แล้วตกหล่นตอนเพิ่มสีใหม่ จึงถูกยุบมาไว้ที่เดียวใน `script.js` แล้ว
+---
+
+## 12. จุดที่หน้า `#stock` ขัดกับข้อ 1–10 — ต้องตัดสินใจ
+
+หน้า `#stock` เขียนด้วย hex ตรงๆ ส่วนโทเคนในข้อ 1–10 ถูกประกาศไว้ที่ `src/tailwind-input.css` แล้ว และหน้า `#transactions` (POS) กับหน้า login **ใช้โทเคนอยู่จริง** — ตอนนี้ระบบจึงมีสองภาษาปนกัน
+
+รายการที่ขัดกันจริง (ไม่ใช่แค่เขียนคนละแบบแต่ได้ผลเท่ากัน):
+
+| ประเด็น | `#stock` ทำ | ข้อ 1–10 บอก | ผลกระทบ |
+|---|---|---|---|
+| ตัวอักษรหลัก | `#ffffff` | `#f5f5f7` — "อย่าใช้ขาวสนิท" | เห็นต่างเล็กน้อยเมื่อวางเทียบกับหน้า POS |
+| ตัวอักษรบนปุ่มเหลือง | `#333333` | `#1d1d1f` | ทั้งคู่ผ่าน contrast อย่างสบาย เป็นเรื่องความสม่ำเสมอล้วนๆ |
+| สีเหลืองตอนชี้/กด | `#E2B93C` (เข้มลงและออกส้ม) | `#F5D24E` | สองหน้าตอบสนองการกดคนละสี |
+| เงา | `shadow-lg` บนการ์ด/ปุ่ม/ช่องค้นหา | "เงามีชุดเดียว ใช้กับภาพสินค้าเท่านั้น ห้ามใส่การ์ด ปุ่ม" | ขัดกันตรงๆ |
+| รัศมี | 16 / 12 / 8 / 6px | สเกล 5 / 8 / 11 / 18px | เป็นคนละสเกลกันคนละชุด |
+| สีบอกสถานะ | เขียว `#20D500` แดง `#FE0000` ส้ม | "เหลืองถูกจองเป็น accent ห้ามเติมสีเชิงสถานะ" (ข้อ 10) | ขัดกันตรงๆ |
+| Gradient | ใช้เป็น fade mask ที่ปุ่มเลื่อน pill | "ยังคงไม่มีอย่างเด็ดขาด" | ขัดกันตรงๆ |
+| ป้ายกำกับฟอร์ม | `text-slate-200`, `placeholder-slate-500` | ไม่มี slate ในพาเลตต์ | สีหลุดพาเลตต์ 2 สี |
+
+**ข้อเสนอ** (ยังไม่ได้ทำ รอตัดสินใจ):
+
+1. **สีบอกสถานะควรได้เป็นข้อยกเว้นอย่างเป็นทางการ** — เขียว/แดง/ส้มในตารางข้อมูลไม่ได้แข่งกับ accent เพราะมันไม่ใช่สิ่งที่กดได้ และระบบสต็อกที่แยก "มีของ" กับ "ของหมด" ไม่ออกในหนึ่งวินาทีคือปัญหาการใช้งานจริง ทางที่ตรงกว่าคือ **เขียนสามสีนี้เป็นโทเคน** (`--color-state-ok` / `-danger` / `-pending`) แล้วประกาศชัดว่าใช้ได้เฉพาะป้ายสถานะที่กดไม่ได้ ดีกว่าปล่อยให้เป็น hex ลอยกระจายอยู่ใน `script.js`
+2. **gradient ที่ pill group เป็น fade mask ไม่ใช่การตกแต่ง** ควรเขียนข้อยกเว้นให้ชัด ไม่ใช่ปล่อยให้ดูเหมือนคนแหกกฎ
+3. **เงา, รัศมี, ขาวสนิท, `#E2B93C`, `#333333`, slate** ควรไล่ให้ตรงกันในทางใดทางหนึ่ง — จะแก้ข้อ 1–10 ให้ตามหน้า `#stock` หรือแก้หน้า `#stock` ให้ตามข้อ 1–10 ก็ได้ แต่ **ต้องเลือกก่อนจะทำหน้าใหม่เพิ่ม** ไม่งั้นหนี้จะโตตามจำนวนหน้า
+4. ระหว่างที่ยังไม่ตัดสินใจ **ให้หน้าใหม่ลอกข้อ 11 ตรงๆ** — ระบบที่สม่ำเสมอแบบผิดหลักบางข้อ ยังใช้งานง่ายกว่าระบบที่แต่ละหน้าถูกคนละครึ่ง

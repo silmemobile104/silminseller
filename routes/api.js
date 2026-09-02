@@ -2703,14 +2703,19 @@ router.get('/sales/daily-summary', async (req, res) => {
                 cashReceived += txn.total_amount || 0;
             }
 
+            // นับจำนวนเครื่องแยกรายบิลไว้ด้วย หน้าสรุปยอดขายรายวันเอาไปรวมเป็นยอดรายพนักงาน
+            // (คิดจากลูปเดิมที่มี unitName อยู่แล้ว ไม่ได้ยิง query เพิ่ม)
+            let txnDevices = 0;
             for (const item of txn.items) {
                 const unitName = item.product_id
                     ? (unitNameById.get(item.product_id.toString()) || '')
                     : '';
                 if (unitName === 'เครื่อง') {
-                    devicesSold += item.quantity || 0;
+                    txnDevices += item.quantity || 0;
                 }
             }
+            txn.devices_count = txnDevices;
+            devicesSold += txnDevices;
         }
 
         const cashAccount = await AccountChart.findOne({ account_code: '110101' }).lean();
@@ -2756,121 +2761,276 @@ router.get('/sales/daily-summary', async (req, res) => {
 // Dashboard Statistics API (สถิติแดชบอร์ด)
 // ==========================================
 
-// GET /api/dashboard-stats
-// หน้าที่: คำนวณสถิติแบบ real-time จากฐานข้อมูล
+// GET /api/dashboard-stats?branch_id=&start=&end=&status=
+// หน้าที่: รวมตัวเลขทุกการ์ดของหน้าแดชบอร์ดไว้ใน request เดียว
+//
+// ⚠️ ทุกตัวเลขที่ส่งออกจาก endpoint นี้ต้องคำนวณจากข้อมูลจริงในฐานข้อมูลเท่านั้น
+//    ช่องไหนที่ระบบยังไม่มีข้อมูลต้นทาง (เช่น "เป้าหมายยอดขายรายสาขา" ที่ Branch ไม่มี field เก็บ)
+//    ห้ามใส่ค่าสมมติมาแทน — ให้ตัดช่องนั้นออกจากทั้ง API และหน้าจอไปเลย
+//
+// ช่วงเวลา: start/end เป็น YYYY-MM-DD (ไม่ส่งมา = วันนี้)
+// ตัวเลข % เทียบกับ "ช่วงก่อนหน้าที่ยาวเท่ากัน" เสมอ เช่น ช่วงวันนี้ -> เทียบเมื่อวาน
 router.get('/dashboard-stats', async (req, res) => {
     try {
-        // กำหนดช่วงเวลาวันนี้ (00:00 - 23:59)
-        const todayStart = new Date();
-        todayStart.setHours(0, 0, 0, 0);
-        const todayEnd = new Date();
-        todayEnd.setHours(23, 59, 59, 999);
+        const DEVICE_UNIT = 'เครื่อง'; // ProductUnit ที่ถือเป็น "เครื่อง" ที่เหลือนับเป็นอุปกรณ์เสริม
 
+        // ---------- ช่วงเวลา ----------
+        const parseDay = (s, endOfDay) => {
+            const d = s ? new Date(`${s}T00:00:00`) : new Date();
+            if (isNaN(d.getTime())) return null;
+            if (endOfDay) d.setHours(23, 59, 59, 999); else d.setHours(0, 0, 0, 0);
+            return d;
+        };
+        const periodStart = parseDay(req.query.start, false) || parseDay(null, false);
+        const periodEnd = parseDay(req.query.end || req.query.start, true) || parseDay(null, true);
+
+        // ช่วงก่อนหน้าที่ยาวเท่ากัน (ต่อท้ายกันพอดี ไม่ทับซ้อน)
+        const spanMs = periodEnd.getTime() - periodStart.getTime();
+        const prevEnd = new Date(periodStart.getTime() - 1);
+        const prevStart = new Date(prevEnd.getTime() - spanMs);
+
+        const isSingleDay = periodStart.toDateString() === periodEnd.toDateString();
+        const comparisonLabel = isSingleDay ? 'จากเมื่อวาน' : 'จากช่วงก่อนหน้า';
+
+        // ---------- ขอบเขตสาขา ----------
+        // ต้องผ่าน getRequestedBranchId เสมอ ห้ามอ่าน req.query.branch_id ตรงๆ (ดู CLAUDE.md)
+        const requestedBranch = getRequestedBranchId(req);
         const branchFilter = {};
-        if (req.user && req.user.role === 'พนักงานขาย') {
-            branchFilter.branch_id = req.user.branch_id;
+        if (requestedBranch && requestedBranch !== 'ALL') {
+            branchFilter.branch_id = new mongoose.Types.ObjectId(requestedBranch);
         }
 
-        // 1. ยอดขายวันนี้ (Today's Sales)
-        const todayTransactions = await Transaction.find({
-            created_at: { $gte: todayStart, $lte: todayEnd },
-            ...branchFilter
-        }).populate('branch_id', 'name').lean();
+        // ---------- สถานะบิล ----------
+        const statusFilter = {};
+        if (req.query.status) statusFilter.status = req.query.status;
 
-        const todaySales = todayTransactions.reduce((sum, t) => sum + (t.total_amount || 0), 0);
-        const todayTransactionCount = todayTransactions.length;
+        const txnFields = 'branch_id items total_amount status created_at';
+        const txnQuery = (from, to) => Transaction.find({
+            created_at: { $gte: from, $lte: to },
+            ...branchFilter,
+            ...statusFilter
+        }, txnFields).lean();
 
-        // 2. กำไรโดยประมาณวันนี้ (Estimated Profit)
-        // คำนวณจาก selling_price - cost_price ของสินค้าที่ขายวันนี้
-        // ดึงต้นทุนสินค้าทุกตัวที่ขายวันนี้ในรอบเดียวด้วย $in แทนการวน findById ทีละชิ้น
-        // เดิมเป็น N+1: บิล 50 ใบ = 50+ query ต่อเนื่อง ที่ ~79ms ต่อรอบไป Atlas = ช้าเป็นวินาที
-        const soldProductIds = [...new Set(
-            todayTransactions.flatMap(t => (t.items || [])
-                .filter(i => i.product_id)
-                .map(i => i.product_id.toString()))
-        )];
-        const soldProducts = soldProductIds.length
-            ? await Product.find({ _id: { $in: soldProductIds } }, 'cost_price').lean()
-            : [];
-        const costById = new Map(soldProducts.map(p => [p._id.toString(), p.cost_price || 0]));
+        // ---------- ยิงงานที่ไม่ขึ้นต่อกันพร้อมกันทีเดียว ----------
+        const yearStart = new Date(periodEnd.getFullYear(), 0, 1, 0, 0, 0, 0);
+        const yearEnd = new Date(periodEnd.getFullYear(), 11, 31, 23, 59, 59, 999);
 
-        let estimatedProfit = 0;
-        for (const txn of todayTransactions) {
-            for (const item of txn.items) {
-                if (item.product_id && costById.has(item.product_id.toString())) {
-                    const cost = costById.get(item.product_id.toString());
-                    estimatedProfit += (item.price - cost) * item.quantity;
-                }
-            }
-        }
-
-        // 3. จำนวนสินค้าในคลัง (Total Stock) + 4. สินค้าใกล้หมด (Low Stock: quantity < 5)
-        // หมายเหตุ: Product ไม่มี field `branch_id`/`quantity` ตรงๆ แล้วตั้งแต่ย้ายไปโครงสร้าง ERP
-        // (ดู migrateProductsToERP ใน models/index.js) สต็อกอยู่ใน stock_balances[] แยกตามสาขาแทน
-        // จึงต้อง $unwind ก่อนแล้วรวมยอดต่อสินค้า ก่อน group รวมทั้งหมดอีกที
-        const stockBranchMatch = Object.keys(branchFilter).length > 0
-            ? [{ $match: { 'stock_balances.branch_id': new mongoose.Types.ObjectId(branchFilter.branch_id) } }]
+        const stockBranchMatch = branchFilter.branch_id
+            ? [{ $match: { 'stock_balances.branch_id': branchFilter.branch_id } }]
             : [];
 
-        const stockAgg = await Product.aggregate([
-            { $unwind: { path: '$stock_balances', preserveNullAndEmptyArrays: true } },
-            ...stockBranchMatch,
-            {
-                $group: {
-                    _id: '$_id',
-                    productQty: { $sum: { $ifNull: ['$stock_balances.quantity', 0] } }
+        const [
+            periodTxns, prevTxns, yearTxns,
+            stockAgg, newMembers, prevNewMembers,
+            cashMovements, recentPOs, cache
+        ] = await Promise.all([
+            txnQuery(periodStart, periodEnd),
+            txnQuery(prevStart, prevEnd),
+            Transaction.find({
+                created_at: { $gte: yearStart, $lte: yearEnd },
+                ...branchFilter, ...statusFilter
+            }, 'items total_amount created_at').lean(),
+
+            // สต็อก: จำนวนชิ้นรวม + มูลค่าตามราคาทุน (คิดจาก stock_balances เท่านั้น
+            // เพราะ Product ไม่มี quantity ระดับบนสุดแล้วหลัง migrateProductsToERP)
+            Product.aggregate([
+                { $unwind: { path: '$stock_balances', preserveNullAndEmptyArrays: false } },
+                ...stockBranchMatch,
+                {
+                    $group: {
+                        _id: null,
+                        totalQty: { $sum: { $ifNull: ['$stock_balances.quantity', 0] } },
+                        totalValue: {
+                            $sum: {
+                                $multiply: [
+                                    { $ifNull: ['$stock_balances.quantity', 0] },
+                                    { $ifNull: ['$cost_price', 0] }
+                                ]
+                            }
+                        }
+                    }
                 }
-            },
-            {
-                $group: {
-                    _id: null,
-                    totalQuantity: { $sum: '$productQty' },
-                    totalProducts: { $sum: 1 },
-                    lowStockProducts: { $sum: { $cond: [{ $lt: ['$productQty', 5] }, 1, 0] } }
-                }
-            }
+            ]),
+
+            Member.countDocuments({ createdAt: { $gte: periodStart, $lte: periodEnd } }),
+            Member.countDocuments({ createdAt: { $gte: prevStart, $lte: prevEnd } }),
+
+            CashMovement.find({ created_at: { $gte: periodStart, $lte: periodEnd } },
+                'type category amount created_at').lean(),
+
+            PurchaseOrder.find(branchFilter.branch_id ? { branch_id: branchFilter.branch_id } : {},
+                'po_number supplier_name status items discount createdAt')
+                .sort({ createdAt: -1 }).limit(5).lean(),
+
+            mdCache.get()
         ]);
-        const totalStock = stockAgg.length > 0 ? stockAgg[0].totalQuantity : 0;
-        const totalProducts = stockAgg.length > 0 ? stockAgg[0].totalProducts : 0;
-        const lowStockCount = stockAgg.length > 0 ? stockAgg[0].lowStockProducts : 0;
 
-        // 5. ยอดขายแยกตามสาขา (Sales by Branch) - วันนี้
-        const salesByBranch = {};
-        for (const txn of todayTransactions) {
-            const branchName = txn.branch_id ? txn.branch_id.name : 'ไม่ระบุสาขา';
-            if (!salesByBranch[branchName]) {
-                salesByBranch[branchName] = { total: 0, count: 0 };
+        // ---------- ต้นทุน/หมวดหมู่ของสินค้าที่ขายไป (query เดียวด้วย $in ไม่วน findById) ----------
+        const allTxns = [...periodTxns, ...prevTxns, ...yearTxns];
+        const soldIds = [...new Set(
+            allTxns.flatMap(t => (t.items || []).filter(i => i.product_id).map(i => String(i.product_id)))
+        )];
+        const soldProducts = soldIds.length
+            ? await Product.find({ _id: { $in: soldIds } }, 'cost_price unit_id').lean()
+            : [];
+
+        const unitMap = cache.maps.productUnits;
+        const productInfo = new Map(soldProducts.map(p => {
+            const unit = p.unit_id ? unitMap.get(String(p.unit_id)) : null;
+            return [String(p._id), {
+                cost: p.cost_price || 0,
+                isDevice: !!(unit && unit.name === DEVICE_UNIT),
+                known: !!unit
+            }];
+        }));
+
+        // ยอดขาย/กำไร/หมวดหมู่ของบิลชุดหนึ่ง
+        const summarise = (txns) => {
+            let sales = 0, profit = 0, device = 0, accessory = 0, unknown = 0;
+            for (const t of txns) {
+                sales += t.total_amount || 0;
+                for (const item of (t.items || [])) {
+                    const line = (item.price || 0) * (item.quantity || 0);
+                    const info = item.product_id ? productInfo.get(String(item.product_id)) : null;
+                    if (info) {
+                        profit += line - (info.cost * (item.quantity || 0));
+                        if (!info.known) unknown += line;
+                        else if (info.isDevice) device += line;
+                        else accessory += line;
+                    } else {
+                        unknown += line; // สินค้าถูกลบไปแล้ว — นับยอดไว้แต่ไม่เดาหมวดหมู่
+                    }
+                }
             }
-            salesByBranch[branchName].total += txn.total_amount || 0;
-            salesByBranch[branchName].count += 1;
+            return { sales, profit, orders: txns.length, device, accessory, unknown };
+        };
+
+        const cur = summarise(periodTxns);
+        const prev = summarise(prevTxns);
+
+        // เทียบเป็น % — ถ้าช่วงก่อนหน้าเป็น 0 จะหารไม่ได้ ส่ง null ไปให้หน้าจอไม่ต้องแสดงบรรทัดนั้น
+        const pctChange = (now, before) => {
+            if (!before) return null;
+            return ((now - before) / before) * 100;
+        };
+
+        // ---------- ยอดขายรายเดือนของปีนี้ แยกเครื่อง/อุปกรณ์เสริม ----------
+        const monthly = Array.from({ length: 12 }, (_, i) => ({
+            month: i + 1, device: 0, accessory: 0, unknown: 0, total: 0
+        }));
+        for (const t of yearTxns) {
+            const m = new Date(t.created_at).getMonth();
+            for (const item of (t.items || [])) {
+                const line = (item.price || 0) * (item.quantity || 0);
+                const info = item.product_id ? productInfo.get(String(item.product_id)) : null;
+                if (info && info.known) {
+                    if (info.isDevice) monthly[m].device += line; else monthly[m].accessory += line;
+                } else {
+                    monthly[m].unknown += line;
+                }
+            }
+            monthly[m].total += t.total_amount || 0;
         }
 
-        // 6. รายการขายล่าสุด (Recent Transactions) - 10 รายการ
-        const recentTransactions = await Transaction.find(branchFilter)
-            .populate('branch_id', 'name')
-            .sort({ created_at: -1 })
-            .limit(10)
-            .lean();
+        // ---------- ผลการดำเนินการรายสาขา ----------
+        // ไม่มีคอลัมน์ "เป้าหมาย/บรรลุ" เพราะ Branch ไม่มี field เก็บเป้ายอดขาย
+        const branchMap = cache.maps.branches;
+        const byBranch = new Map();
+        for (const t of periodTxns) {
+            const key = t.branch_id ? String(t.branch_id) : 'unknown';
+            if (!byBranch.has(key)) {
+                const b = t.branch_id ? branchMap.get(key) : null;
+                byBranch.set(key, { branch: b ? b.name : 'ไม่ระบุสาขา', sales: 0, profit: 0, orders: 0 });
+            }
+            const row = byBranch.get(key);
+            row.sales += t.total_amount || 0;
+            row.orders += 1;
+            for (const item of (t.items || [])) {
+                const info = item.product_id ? productInfo.get(String(item.product_id)) : null;
+                if (info) row.profit += ((item.price || 0) - info.cost) * (item.quantity || 0);
+            }
+        }
+        const branchPerformance = [...byBranch.values()].sort((a, b) => b.sales - a.sales);
+
+        // ---------- สินค้าขายดี ----------
+        const productSales = new Map();
+        for (const t of periodTxns) {
+            for (const item of (t.items || [])) {
+                const name = item.product_name || 'ไม่ระบุชื่อสินค้า';
+                if (!productSales.has(name)) productSales.set(name, { name, qty: 0, amount: 0 });
+                const row = productSales.get(name);
+                row.qty += item.quantity || 0;
+                row.amount += (item.price || 0) * (item.quantity || 0);
+            }
+        }
+        const topProducts = [...productSales.values()].sort((a, b) => b.amount - a.amount).slice(0, 5);
+
+        // ---------- รายรับ - รายจ่าย ----------
+        const cashIn = cashMovements.filter(c => c.type === 'รายรับ');
+        const cashOut = cashMovements.filter(c => c.type === 'รายจ่าย');
+        const sumBy = (rows) => {
+            const byCat = new Map();
+            let total = 0;
+            for (const r of rows) {
+                total += r.amount || 0;
+                byCat.set(r.category, (byCat.get(r.category) || 0) + (r.amount || 0));
+            }
+            return {
+                total,
+                breakdown: [...byCat.entries()]
+                    .map(([label, amount]) => ({ label, amount }))
+                    .sort((a, b) => b.amount - a.amount)
+            };
+        };
+        const income = sumBy(cashIn);
+        const expense = sumBy(cashOut);
+        const netProfit = income.total - expense.total;
+
+        // ---------- ใบสั่งซื้อล่าสุด ----------
+        const poRows = recentPOs.map(po => {
+            const amount = (po.items || []).reduce(
+                (s, i) => s + (i.cost_price || 0) * (i.ordered_qty || 0), 0
+            ) - (po.discount || 0);
+            return {
+                po_number: po.po_number,
+                supplier_name: po.supplier_name,
+                amount,
+                status: po.status,
+                created_at: po.createdAt
+            };
+        });
 
         res.status(200).json({
             success: true,
             data: {
-                todaySales,
-                todayTransactionCount,
-                estimatedProfit,
-                totalStock,
-                totalProducts,
-                lowStockCount,
-                salesByBranch,
-                recentTransactions: recentTransactions.map(t => ({
-                    _id: t._id,
-                    receipt_number: t.receipt_number,
-                    total_amount: t.total_amount,
-                    payment_method: t.payment_method,
-                    items_count: t.items.length,
-                    branch_name: t.branch_id ? t.branch_id.name : '-',
-                    created_at: t.created_at
-                }))
+                period: {
+                    start: periodStart, end: periodEnd,
+                    isSingleDay, comparisonLabel,
+                    generatedAt: new Date()
+                },
+                kpi: {
+                    sales: { value: cur.sales, changePct: pctChange(cur.sales, prev.sales) },
+                    grossProfit: { value: cur.profit, changePct: pctChange(cur.profit, prev.profit) },
+                    orders: { value: cur.orders, changePct: pctChange(cur.orders, prev.orders) },
+                    newMembers: { value: newMembers, changePct: pctChange(newMembers, prevNewMembers) },
+                    stockQty: stockAgg.length ? stockAgg[0].totalQty : 0,
+                    stockValue: stockAgg.length ? stockAgg[0].totalValue : 0
+                },
+                monthlySales: monthly,
+                branchPerformance,
+                categoryMix: {
+                    device: cur.device,
+                    accessory: cur.accessory,
+                    unknown: cur.unknown,
+                    total: cur.device + cur.accessory + cur.unknown
+                },
+                cashflow: { income, expense, netProfit },
+                topProducts,
+                recentPurchaseOrders: poRows,
+                branches: cache.lists.branches
+                    .map(b => ({ _id: b._id, name: b.name }))
+                    .sort((a, b) => a.name.localeCompare(b.name, 'th')),
+                scope: { branchId: requestedBranch === 'ALL' ? '' : String(requestedBranch || '') }
             }
         });
 
@@ -3508,6 +3668,102 @@ router.post('/import-notifications/:id/approve', async (req, res) => {
         res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการอนุมัตินำเข้า' });
     }
 });
+
+// PUT /api/import-notifications/:id - แก้ไขรายการแจ้งสินค้านอกระบบ PO ของตัวเอง
+// แก้ได้เฉพาะรายการที่ยัง "รอดำเนินการ" และเฉพาะคนที่แจ้งเอง
+// (อนุมัติแล้ว = สินค้าเข้าสต็อกไปแล้ว แก้ย้อนหลังจะทำให้สต็อกกับใบแจ้งไม่ตรงกัน)
+router.put('/import-notifications/:id', async (req, res) => {
+    try {
+        const notification = await ImportNotification.findById(req.params.id);
+        if (!notification) {
+            return res.status(404).json({ success: false, message: 'ไม่พบรายการแจ้งนี้' });
+        }
+        if (String(notification.reported_by) !== String(req.user.employee_id)) {
+            return res.status(403).json({ success: false, message: 'แก้ไขได้เฉพาะรายการที่คุณแจ้งเองเท่านั้น' });
+        }
+        if (notification.status !== 'รอดำเนินการ') {
+            return res.status(400).json({
+                success: false,
+                message: `รายการนี้${notification.status}แล้ว จึงแก้ไขไม่ได้`
+            });
+        }
+
+        const {
+            product_name, imeis, color_name, capacity_name,
+            type_name, condition_name, supplier_name, unit_name, notes
+        } = req.body;
+
+        if (!product_name || !product_name.trim()) {
+            return res.status(400).json({ success: false, message: 'กรุณากรอกชื่อสินค้า' });
+        }
+
+        const cleanImeis = Array.isArray(imeis)
+            ? imeis.map(x => x.toString().trim()).filter(Boolean)
+            : (typeof imeis === 'string' ? imeis.split('\n').map(x => x.trim()).filter(Boolean) : []);
+
+        notification.product_name = product_name.trim();
+        notification.imeis = cleanImeis;
+        notification.color_name = color_name || '';
+        notification.capacity_name = capacity_name || '';
+        notification.type_name = type_name || '';
+        notification.condition_name = condition_name || '';
+        notification.supplier_name = supplier_name || '';
+        notification.unit_name = unit_name || '';
+        notification.notes = notes || '';
+        await notification.save();
+
+        await logActivity(req, 'UPDATE', 'STOCK',
+            `แก้ไขรายการแจ้งสินค้านอกระบบ PO: ${notification.product_name} (${cleanImeis.length} IMEI)`,
+            '', notification._id.toString(), { imeis: cleanImeis });
+
+        res.status(200).json({ success: true, message: 'แก้ไขรายการแจ้งสำเร็จ', data: notification });
+    } catch (error) {
+        console.error('API Error PUT /api/import-notifications/:id:', error);
+        res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการแก้ไขรายการแจ้ง' });
+    }
+});
+
+// DELETE /api/import-notifications/:id - ลบรายการแจ้งสินค้านอกระบบ PO ของตัวเอง
+// เงื่อนไขเดียวกับการแก้ไข: เจ้าของรายการ และต้องยัง "รอดำเนินการ" เท่านั้น
+router.delete('/import-notifications/:id', async (req, res) => {
+    try {
+        const notification = await ImportNotification.findById(req.params.id);
+        if (!notification) {
+            return res.status(404).json({ success: false, message: 'ไม่พบรายการแจ้งนี้' });
+        }
+        if (String(notification.reported_by) !== String(req.user.employee_id)) {
+            return res.status(403).json({ success: false, message: 'ลบได้เฉพาะรายการที่คุณแจ้งเองเท่านั้น' });
+        }
+        if (notification.status !== 'รอดำเนินการ') {
+            return res.status(400).json({
+                success: false,
+                message: `รายการนี้${notification.status}แล้ว จึงลบไม่ได้`
+            });
+        }
+
+        const snapshot = {
+            product_name: notification.product_name,
+            imeis: notification.imeis,
+            type_name: notification.type_name,
+            condition_name: notification.condition_name,
+            color_name: notification.color_name,
+            capacity_name: notification.capacity_name,
+            supplier_name: notification.supplier_name,
+            unit_name: notification.unit_name
+        };
+        await notification.deleteOne();
+
+        await logActivity(req, 'DELETE', 'STOCK',
+            `ลบรายการแจ้งสินค้านอกระบบ PO: ${snapshot.product_name} (${(snapshot.imeis || []).length} IMEI)`,
+            '', req.params.id, snapshot);
+
+        res.status(200).json({ success: true, message: 'ลบรายการแจ้งสำเร็จ' });
+    } catch (error) {
+        console.error('API Error DELETE /api/import-notifications/:id:', error);
+        res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการลบรายการแจ้ง' });
+    }
+});
+
 
 // GET /api/warranty/check - ตรวจสอบประกัน
 router.get('/warranty/check', async (req, res) => {

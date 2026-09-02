@@ -7,26 +7,26 @@
     <meta name="description" content="SilminMobile — ระบบจัดการคลังสินค้า การขาย และบัญชีสำหรับร้านมือถือ">
     <title>SilminMobile - ระบบจัดการคลังสินค้า</title>
 
-    <!-- preconnect ต้องมาก่อน resource ที่มันช่วยเร่ง ไม่งั้นแทบไม่มีผล
+    <!-- preconnect ไป jsdelivr/cdnjs ถูกลบแล้ว — jsdelivr ไม่ถูกอ้างถึงที่ไหนในโค้ดเลย (ซากจากธีมเดิม)
+         ส่วน cdnjs ใช้แค่ตอนโหลด xlsx แบบ on-demand (ensureXlsxLoaded ใน script.js) ซึ่งเกิดขึ้นนานๆ ครั้งตอนเปิด modal นำเข้า Excel
+         preconnect ล่วงหน้าทุกครั้งที่โหลดหน้าเว็บจึงเสียเวลา DNS/TLS handshake ไปฟรีๆ โดยแทบไม่มีใครได้ใช้
          หมายเหตุ: ไม่ต้อง preconnect ไป fonts.googleapis / fonts.gstatic แล้ว
          เพราะฟอนต์ Prompt ย้ายมา self-host เองที่ vendor/fonts/ (ดู tools/build-fonts.js) -->
-    <link rel="preconnect" href="https://cdn.jsdelivr.net">
-    <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
 
     <link rel="icon" type="image/png" href="logo.png?v=2">
-    <link rel="stylesheet" href="tailwind.css?v=11">
+    <link rel="stylesheet" href="tailwind.css?v=48">
     <!-- xlsx ถูกย้ายไปโหลดแบบ on-demand ตอนเปิด modal นำเข้า Excel แล้ว (ดู ensureXlsxLoaded ใน script.js)
          เดิมโหลดตรงนี้แบบ render-blocking ทุกครั้งที่เข้าเว็บ ทั้งที่ใช้แค่ฟีเจอร์เดียว -->
     <!-- ไอคอน: self-host + ตัดเหลือเฉพาะที่ใช้จริง (Font Awesome 144 + Bootstrap Icons 28)
          จากเดิมโหลด CSS เต็มชุด 2 เจ้าจาก CDN (~200KB, ~2,000 ไอคอน) เหลือ ~24KB
          ⚠️ เพิ่มไอคอนใหม่ที่ไม่เคยใช้มาก่อน ต้องรัน `npm run build:icons` ก่อน deploy -->
-    <link rel="stylesheet" href="vendor/icons/icons.css?v=6">
+    <link rel="stylesheet" href="vendor/icons/icons.css?v=9">
     <!-- preload ฟอนต์ไอคอนที่ subset แล้ว (รวมกันเหลือ ~17KB) เพื่อตัด waterfall
          ปกติเบราว์เซอร์ต้องรอ parse CSS จบก่อนถึงจะรู้ว่าต้องโหลดฟอนต์ -->
     <!-- ⚠️ ?v= ต้องตรงกับ FONT_VERSION ใน tools/build-icons.js เป๊ะๆ
          ถ้าไม่ตรง เบราว์เซอร์จะมองเป็นคนละไฟล์แล้วโหลดฟอนต์ซ้ำสองรอบ -->
-    <link rel="preload" as="font" type="font/woff2" crossorigin href="vendor/icons/webfonts/fa-solid-900.woff2?v=6">
-    <link rel="preload" as="font" type="font/woff2" crossorigin href="vendor/icons/webfonts/bootstrap-icons.woff2?v=6">
+    <link rel="preload" as="font" type="font/woff2" crossorigin href="vendor/icons/webfonts/fa-solid-900.woff2?v=9">
+    <link rel="preload" as="font" type="font/woff2" crossorigin href="vendor/icons/webfonts/bootstrap-icons.woff2?v=9">
     <!-- Prompt: self-host เอง ตัด origin ภายนอก 2 เจ้าทิ้ง (googleapis + gstatic) พร้อม DNS/TLS handshake
          และตัด waterfall ที่ต้องรอ CSS จาก googleapis ก่อนถึงจะเริ่มโหลดไฟล์ฟอนต์จาก gstatic
          น้ำหนัก 400-900 + italic 400 (ตัด 300 ออกเพราะไม่มี font-light ใช้เลยในโปรเจกต์)
@@ -95,7 +95,7 @@
             <!-- Sidebar Header -->
             <div class="h-24 flex items-center px-4 py-6">
                 <div class="flex items-center gap-3 mt-6 w-full align-center justify-center">
-                    <img src="/logo_silminmobile.png?v=2" alt="" width="120">
+                    <img src="/logo_silminmobile.png?v=2" alt="" width="120" height="120">
                 </div>
             </div>
 
@@ -310,7 +310,7 @@
             <!-- Sidebar Footer / Logout -->
             <div class="p-4 border-t border-slate-700">
                 <button id="logout-btn" class="w-full flex items-center justify-center px-3 py-2 rounded-xl">
-                    <img src="icons_img/logout-4.png?v=2" alt="" width="19">
+                    <img src="icons_img/logout-4.png?v=2" alt="" width="19" height="19">
                     <span class="sidebar-text ml-2 font-medium text-slate-100">ออกจากระบบ</span>
                 </button>
             </div>
@@ -324,7 +324,7 @@
                 <div class="flex items-center gap-4 min-w-0">
                     <button aria-label="เปิดหรือปิดเมนู" id="toggle-sidebar"
                         class="text-ink hover:text-ink transition-colors focus:outline-none p-2 rounded-sm shrink-0">
-                        <img src="icon/menu.png?v=2" alt="" width="26">
+                        <img src="icon/menu.png?v=2" alt="" width="26" height="26">
                     </button>
                     <!-- Global System Information: เหมือนกันทุกหน้า ห้ามใส่ชื่อหน้า (ชื่อหน้าอยู่ที่ Page Header เท่านั้น) -->
                     <div id="navbar-global-info"
@@ -355,7 +355,7 @@
                     <!-- Notifications -->
                     <button aria-label="การแจ้งเตือน"
                         class="relative text-body-muted hover:text-ink transition-colors focus:outline-none">
-                        <img src="icon/bell.png?v=2" alt="" width="20"> <span
+                        <img src="icon/bell.png?v=2" alt="" width="20" height="20"> <span
                             class="absolute -top-0.5 -right-0.6 w-2.5 h-2.5 bg-red-500 rounded-full border border-canvas"></span>
                     </button>
 
@@ -377,7 +377,7 @@
                             <!-- Avatar (Right side) -->
                             <div
                                 class="w-9 h-9 rounded-full bg-surface-chip overflow-hidden flex-shrink-0 transition-transform duration-300 group-hover:scale-105">
-                                <img id="topbar-user-avatar"
+                                <img id="topbar-user-avatar" width="36" height="36"
                                     alt="User" class="w-full h-full object-cover">
                             </div>
 
@@ -400,7 +400,7 @@
 
                             <div class="flex flex-col items-center pb-4 border-b border-hairline relative">
                                 <div class="w-16 h-16 rounded-full bg-surface-chip overflow-hidden mb-3">
-                                    <img id="popup-user-avatar"
+                                    <img id="popup-user-avatar" width="64" height="64"
                                         alt="User" class="w-full h-full object-cover">
                                 </div>
                                 <span id="popup-user-name" class="text-base font-bold text-ink">กำลังโหลด...</span>
@@ -449,7 +449,7 @@
                 <!-- VIEW: STOCK AUDIT — ตรวจนับสต็อกประจำวัน (พนักงานขาย)       -->
                 <!-- ============================================================ -->
                 <!-- เนื้อหาแยกไปที่ views/stock-audit.html แล้ว โหลดแบบ dynamic ผ่าน loadPageView('stock-audit') (ดู switchView case 'stock-audit') -->
-                <div id="view-stock-audit" class="hidden space-y-5 animate-fade-in">
+                <div id="view-stock-audit" class="hidden space-y-8 animate-fade-in">
                 </div>
 
                 <!-- ============================================================ -->
@@ -461,7 +461,7 @@
 
                 <!-- VIEW: Branch Inventory -->
                 <!-- เนื้อหาแยกไปที่ views/branch-inventory.html แล้ว โหลดแบบ dynamic ผ่าน loadPageView('branch-inventory') (ดู switchView case 'branch-inventory') -->
-                <div id="view-branch-inventory" class="hidden space-y-6 animate-fade-in">
+                <div id="view-branch-inventory" class="hidden space-y-8 animate-fade-in">
                 </div>
                 <!-- VIEW: Stock -->
                 <div id="view-stock" class="hidden space-y-8 animate-fade-in">
@@ -514,7 +514,7 @@
                                 </select>
                                 <button id="btn-stock-filter" type="button"
                                     class="px-3 py-2 bg-[#4D4D4D]/40 cursor-pointer text-white flex items-center rounded-[0.5rem] text-sm hover:bg-slate-700 transition-colors relative w-full sm:w-auto">
-                                    <img src="icons_img/filter 3.png" alt="" class="mr-1" width="16">
+                                    <img src="icons_img/filter 3.png" alt="" class="mr-1" width="16" height="16">
                                     <span id="btn-stock-filter-text">เพิ่มเติม</span>
                                 </button>
                                 <button
@@ -744,7 +744,7 @@
 
                 <!-- VIEW: AUDIT LOGS (ประวัติกิจกรรมพนักงานและระบบ) -->
                 <!-- เนื้อหาแยกไปที่ views/audit-logs.html แล้ว โหลดแบบ dynamic ผ่าน loadPageView('audit-logs') (ดู switchView case 'audit-logs') -->
-                <div id="view-audit-logs" class="hidden space-y-6 animate-fade-in">
+                <div id="view-audit-logs" class="hidden space-y-8 animate-fade-in">
                 </div>
                 <!-- MODAL: AUDIT DETAIL (ดูข้อมูล JSON ละเอียด) -->
                 <div id="modal-audit-detail"
@@ -826,12 +826,12 @@
 
                 <!-- VIEW: DAILY SUMMARY (สรุปยอดขายรายวัน) -->
                 <!-- เนื้อหาแยกไปที่ views/sales-history.html แล้ว โหลดแบบ dynamic ผ่าน loadPageView('sales-history') (ดู switchView case 'daily-summary') -->
-                <div id="view-daily-summary" class="hidden space-y-6 animate-fade-in">
+                <div id="view-daily-summary" class="hidden space-y-8 animate-fade-in">
                 </div>
 
                 <!-- VIEW: TRANSFERS (โอนย้ายสินค้า) -->
                 <!-- เนื้อหาแยกไปที่ views/transfers.html แล้ว โหลดแบบ dynamic ผ่าน loadPageView('transfers') (ดู switchView case 'transfers') -->
-                <div id="view-transfers" class="hidden space-y-6 animate-fade-in">
+                <div id="view-transfers" class="hidden space-y-8 animate-fade-in">
                 </div>
 
                 <!-- VIEW: DEPOSITS (การมัดจำสินค้า) -->
@@ -879,12 +879,12 @@
 
                 <!-- VIEW: ตั้งค่าผังบัญชี (Chart of Accounts Settings) -->
                 <!-- เนื้อหาแยกไปที่ views/accounting-settings.html แล้ว โหลดแบบ dynamic ผ่าน loadPageView('accounting-settings') (ดู switchView case 'accounting-settings') -->
-                <div id="view-accounting-settings" class="hidden space-y-6 animate-fade-in">
+                <div id="view-accounting-settings" class="hidden space-y-8 animate-fade-in">
                 </div>
 
                 <!-- VIEW: ใบสำคัญจ่าย (Disbursement Voucher) -->
                 <!-- เนื้อหาแยกไปที่ views/accounting-settings.html แล้ว โหลดแบบ dynamic ผ่าน loadPageView('accounting-settings') (ดู switchView case 'disbursement') -->
-                <div id="view-disbursement" class="hidden space-y-6 animate-fade-in">
+                <div id="view-disbursement" class="hidden space-y-8 animate-fade-in">
                 </div>
 
                 <!-- Modal: เพิ่ม/แก้ไขรหัสบัญชี -->
@@ -970,7 +970,7 @@
                 </div>
                 <!-- VIEW: Receive PO (Branch) -->
                 <!-- เนื้อหาแยกไปที่ views/po-accounting.html แล้ว โหลดแบบ dynamic ผ่าน loadPageView('po-accounting') (ดู switchView case 'branch-receive') -->
-                <div id="view-branch-receive" class="hidden space-y-6 animate-fade-in">
+                <div id="view-branch-receive" class="hidden space-y-8 animate-fade-in">
                 </div>
         </main>
         <!-- MOBILE BOTTOM NAVIGATION -->
@@ -1250,61 +1250,100 @@
         </div>
     </div>
     <!-- MODAL: CREATE TRANSFER -->
+    <!-- MODAL: สร้างรายการโอนย้ายสินค้า — เปลือกตาม DESIGN.md ข้อ 11.10 ฟอร์มตามข้อ 11.9
+         z-[70] เพราะ custom-confirm-modal (z-[100]) ต้องเด้งทับได้ตอนสแกนไม่เจอสินค้า -->
     <div id="modal-create-transfer"
-        class="fixed inset-0 z-[70] flex items-center justify-center backdrop-blur-[20px] backdrop-saturate-[1.8] opacity-0 pointer-events-none transition-opacity duration-300 p-4">
-        <div
-            class="modal-content relative w-[95%] md:w-[600px] max-h-[90vh] overflow-y-auto flex flex-col bg-canvas-elevated rounded-lg ">
-            <div class="p-5 border-b border-hairline flex items-center justify-between">
-                <h4 class="text-lg font-bold text-ink flex items-center gap-2">
-                    <i class="fa-solid fa-right-left text-body-muted"></i> สร้างรายการโอนย้ายสินค้า
-                </h4>
-                <button aria-label="ปิด" id="btn-close-create-transfer"
-                    class="modal-close-btn text-body-muted hover:text-red-400 transition-colors p-1">
-                    <i class="fa-solid fa-xmark text-lg"></i>
+        class="fixed inset-0 z-[70] flex items-center justify-center backdrop-blur-sm opacity-0 pointer-events-none transition-opacity duration-300 p-4">
+        <div tabindex="0"
+            class="modal-content relative w-[95%] md:w-[650px] max-h-[90vh] overflow-y-auto p-8 bg-[#18181B] rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.5)] border border-[#4D4D4D]">
+            <div class="flex items-center justify-between mb-6 pb-2 border-b border-[#333333]">
+                <h3 class="text-lg font-medium text-white flex items-center gap-2">
+                    <i class="fa-solid fa-right-left text-[#FFE169]"></i> สร้างรายการโอนย้ายสินค้า
+                </h3>
+                <button aria-label="ปิด" id="btn-close-create-transfer" type="button"
+                    class="text-red-500 hover:text-red-400 transition-colors cursor-pointer">
+                    <i class="fa-solid fa-xmark text-xl"></i>
                 </button>
             </div>
-            <div tabindex="0" class="p-5 space-y-4 overflow-y-auto">
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+
+            <div class="space-y-5 text-sm">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
                     <div class="space-y-2">
-                        <label for="transfer-from-branch" class="text-sm font-medium text-body-muted">สาขาต้นทาง</label>
-                        <select id="transfer-from-branch"
-                            class="w-full px-4 py-3 rounded-sm bg-surface-chip border border-divider-soft text-ink focus:border-primary-focus focus:ring-1 focus:ring-primary-focus/40 focus:outline-none transition-all disabled:opacity-50">
-                            <option value="" disabled selected>-- เลือกสาขาต้นทาง --</option>
-                        </select>
+                        <label for="transfer-from-branch"
+                            class="text-slate-200 font-medium flex items-center gap-2 text-xs">
+                            <i class="fa-solid fa-shop text-white"></i> สาขาต้นทาง
+                        </label>
+                        <div class="relative">
+                            <!-- ยึดตามสาขาของผู้ใช้ที่ล็อกอินเสมอ เลือกเองไม่ได้ -->
+                            <select id="transfer-from-branch" disabled
+                                class="w-full appearance-none px-4 py-2.5 rounded-xl bg-[#27272A] border border-[#3F3F46] text-white focus:border-[#FFE169] focus:outline-none transition-all text-sm disabled:opacity-60 disabled:cursor-not-allowed">
+                                <option value="" disabled selected>-- เลือกสาขาต้นทาง --</option>
+                            </select>
+                        </div>
                     </div>
                     <div class="space-y-2">
-                        <label for="transfer-to-branch" class="text-sm font-medium text-body-muted">สาขาปลายทาง</label>
-                        <select id="transfer-to-branch"
-                            class="w-full px-4 py-3 rounded-sm bg-surface-chip border border-divider-soft text-ink focus:border-primary-focus focus:ring-1 focus:ring-primary-focus/40 focus:outline-none transition-all">
-                            <option value="" disabled selected>-- เลือกสาขาปลายทาง --</option>
-                        </select>
+                        <label for="transfer-to-branch"
+                            class="text-slate-200 font-medium flex items-center gap-2 text-xs">
+                            <i class="fa-solid fa-shop text-white"></i> สาขาปลายทาง
+                            <span class="text-red-500">*</span>
+                        </label>
+                        <div class="relative">
+                            <select id="transfer-to-branch"
+                                class="w-full appearance-none px-4 py-2.5 rounded-xl bg-[#27272A] border border-[#3F3F46] text-white focus:border-[#FFE169] focus:outline-none transition-all text-sm cursor-pointer">
+                                <option value="" disabled selected>-- เลือกสาขาปลายทาง --</option>
+                            </select>
+                            <div class="absolute right-4 top-[14px] pointer-events-none text-slate-400">
+                                <i class="fa-solid fa-chevron-down text-xs"></i>
+                            </div>
+                        </div>
                         <p id="transfer-to-branch-error" class="hidden text-xs text-red-400"></p>
                     </div>
                 </div>
+
                 <div class="space-y-2">
-                    <label class="text-sm font-medium text-body-muted">สแกนบาร์โค้ด / IMEI</label>
-                    <input type="text" id="transfer-scan-input" autocomplete="off"
-                        placeholder="สแกนรหัสสินค้า หรือสแกน IMEI แล้วกด Enter..."
-                        class="w-full px-4 py-3 rounded-sm bg-surface-chip border-2 border-divider-soft text-ink focus:border-primary-focus focus:ring-2 focus:ring-primary-focus/30 transition-all placeholder-ink-muted-48 font-medium" />
-                    <p class="text-xs text-body-muted">ค้นหาจากสต็อกของ <span id="transfer-scan-hint"
-                            class="text-primary font-medium">สาขาต้นทางที่เลือก</span></p>
-                </div>
-                <div class="bg-surface-tile-3  rounded-lg overflow-hidden" id="transfer-cart-box">
-                    <div class="p-4 border-b border-hairline flex items-center justify-between">
-                        <div class="text-ink font-bold">รายการสินค้าในใบโอน</div>
-                        <div class="text-xs text-body-muted" id="transfer-cart-count">0 รายการ</div>
+                    <label for="transfer-scan-input"
+                        class="text-slate-200 font-medium flex items-center gap-2 text-xs">
+                        <i class="fa-solid fa-barcode text-white"></i> สแกนบาร์โค้ด / IMEI
+                    </label>
+                    <div class="flex items-center gap-2">
+                        <input type="text" id="transfer-scan-input" autocomplete="off"
+                            placeholder="สแกนรหัสสินค้า หรือ IMEI แล้วกด Enter..."
+                            class="flex-1 min-w-0 px-4 py-2.5 rounded-xl bg-[#27272A] border border-[#3F3F46] text-white focus:border-[#FFE169] focus:outline-none transition-all placeholder-slate-500 text-sm font-medium">
+                        <button type="button" id="btn-transfer-scan-add"
+                            class="shrink-0 px-4 py-2.5 rounded-xl bg-[#FFE169] hover:bg-[#E2B93C] text-[#333333] font-semibold text-sm transition-colors flex items-center gap-1.5 cursor-pointer">
+                            <i class="fa-solid fa-plus"></i> เพิ่ม
+                        </button>
                     </div>
-                    <div id="transfer-cart-items" class="p-4 space-y-3">
-                        <div id="transfer-cart-empty" class="text-center text-body-muted py-10">
-                            ยังไม่มีสินค้าในรายการโอนย้าย</div>
-                    </div>
+                    <p class="text-xs text-white/70">ค้นหาจากสต็อกของ <span id="transfer-scan-hint"
+                            class="text-[#FFE169] font-medium">สาขาต้นทาง</span></p>
+                    <!-- ผลการสแกนค้างไว้ให้อ่านทัน (toast เด้ง 3 วิแล้วหาย) — JS เขียนทับ class ทั้งชุด -->
+                    <div id="transfer-scan-status" class="hidden"></div>
                 </div>
-                <p id="transfer-cart-error" class="hidden text-xs text-red-400 -mt-2"></p>
+
+                <div class="space-y-2">
+                    <div id="transfer-cart-box"
+                        class="bg-[#27272A] border border-[#3F3F46] rounded-xl overflow-hidden">
+                        <div class="px-4 py-3 border-b border-[#3F3F46] flex items-center justify-between">
+                            <h4 class="text-white font-semibold text-sm flex items-center gap-2">
+                                <i class="fa-solid fa-box text-[#FFE169]"></i> รายการสินค้าในใบโอน
+                            </h4>
+                            <span id="transfer-cart-count" class="text-xs text-white/70 font-medium">0 รายการ</span>
+                        </div>
+                        <div id="transfer-cart-items" tabindex="0"
+                            class="p-4 space-y-3 max-h-[240px] overflow-y-auto">
+                            <div id="transfer-cart-empty" class="text-center text-white/50 italic py-8 text-xs">
+                                ยังไม่มีสินค้าในรายการโอนย้าย</div>
+                        </div>
+                    </div>
+                    <p id="transfer-cart-error" class="hidden text-xs text-red-400"></p>
+                </div>
             </div>
-            <div class="p-5 border-t border-hairline bg-canvas-elevated flex items-center justify-end gap-3">
-                <button id="btn-submit-transfer"
-                    class="px-6 py-3 rounded-pill bg-primary hover:bg-primary-pressed text-on-primary font-bold transition-all">
-                    ยืนยันการโอนย้าย </button>
+
+            <div class="flex items-center justify-end gap-3 mt-6 pt-5 border-t border-[#333333]">
+                <button id="btn-submit-transfer" type="button"
+                    class="px-5 py-2.5 rounded-xl bg-[#FFE169] hover:bg-[#E2B93C] text-[#333333] font-semibold text-sm transition-colors flex items-center gap-2 cursor-pointer">
+                    <i class="fa-solid fa-paper-plane"></i> ยืนยันการโอนย้าย
+                </button>
             </div>
         </div>
     </div>
@@ -3874,237 +3913,336 @@
         </div>
     </div>
     <!-- MODAL: VIEW TRANSFER DETAILS -->
+    <!-- MODAL: รายละเอียดใบโอนย้ายสินค้า — เปลือกตาม DESIGN.md ข้อ 11.10 -->
     <div id="modal-transfer-view"
-        class="fixed inset-0 z-[70] flex items-center justify-center backdrop-blur-[20px] backdrop-saturate-[1.8] opacity-0 pointer-events-none transition-opacity duration-300 p-4">
-        <div
-            class="modal-content relative w-[95%] md:w-[650px] max-h-[90vh] overflow-y-auto flex flex-col bg-canvas-elevated rounded-lg  transform scale-95 transition-transform duration-300">
-            <!-- Header -->
-            <div class="p-5 border-b border-hairline flex items-center justify-between">
-                <h4 class="text-lg font-bold text-ink flex items-center gap-2">
-                    <i class="fa-solid fa-file-invoice text-ink"></i> รายละเอียดใบโอนย้ายสินค้า
-                </h4>
-                <button aria-label="ปิด" id="btn-close-transfer-view"
-                    class="text-body-muted hover:text-red-400 transition-colors p-1">
-                    <i class="fa-solid fa-xmark text-lg"></i>
+        class="fixed inset-0 z-[70] flex items-center justify-center backdrop-blur-sm opacity-0 pointer-events-none transition-opacity duration-300 p-4">
+        <div tabindex="0"
+            class="modal-content relative w-[95%] md:w-[650px] max-h-[90vh] overflow-y-auto p-8 bg-[#18181B] rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.5)] border border-[#4D4D4D] transform scale-95 transition-transform duration-300">
+            <div class="flex items-center justify-between mb-6 pb-2 border-b border-[#333333]">
+                <h3 class="text-lg font-medium text-white flex items-center gap-2">
+                    <i class="fa-solid fa-file-invoice text-[#FFE169]"></i> รายละเอียดใบโอนย้ายสินค้า
+                </h3>
+                <button aria-label="ปิด" id="btn-close-transfer-view" type="button"
+                    class="text-red-500 hover:text-red-400 transition-colors cursor-pointer">
+                    <i class="fa-solid fa-xmark text-xl"></i>
                 </button>
             </div>
-            <!-- Body -->
-            <div class="p-5 space-y-4 overflow-y-auto text-body-muted">
-                <!-- Info Section -->
-                <div class="grid grid-cols-2 gap-4 bg-surface-tile-3 p-4 rounded-md ">
-                    <div>
-                        <span class="text-xs text-body-muted block">เลขที่ใบโอน</span>
-                        <span id="transfer-view-number" class="text-sm font-bold text-ink font-mono">-</span>
+
+            <div class="space-y-5 text-sm">
+                <!-- หัวเรื่องใบโอน -->
+                <div class="bg-[#27272A] border border-[#3F3F46] rounded-xl p-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div class="space-y-1">
+                        <span class="text-xs text-white/70 block">เลขที่ใบโอน</span>
+                        <span id="transfer-view-number"
+                            class="text-sm font-mono font-semibold text-[#FFE169]">-</span>
                     </div>
-                    <div>
-                        <span class="text-xs text-body-muted block">สถานะ</span>
-                        <span id="transfer-view-status" class="px-2 py-0.5 rounded text-xs font-bold">-</span>
+                    <div class="space-y-1">
+                        <span class="text-xs text-white/70 block">สถานะ</span>
+                        <span id="transfer-view-status" class="inline-flex">-</span>
                     </div>
-                    <div>
-                        <span class="text-xs text-body-muted block">สาขาต้นทาง</span>
-                        <span id="transfer-view-from" class="text-sm text-ink">-</span>
+                    <div class="space-y-1">
+                        <span class="text-xs text-white/70 block">สาขาต้นทาง</span>
+                        <span id="transfer-view-from" class="text-sm text-white">-</span>
                     </div>
-                    <div>
-                        <span class="text-xs text-body-muted block">สาขาปลายทาง</span>
-                        <span id="transfer-view-to" class="text-sm text-ink">-</span>
+                    <div class="space-y-1">
+                        <span class="text-xs text-white/70 block">สาขาปลายทาง</span>
+                        <span id="transfer-view-to" class="text-sm text-white">-</span>
                     </div>
-                    <div>
-                        <span class="text-xs text-body-muted block">วันที่โอน</span>
-                        <span id="transfer-view-date" class="text-sm text-ink">-</span>
+                    <div class="space-y-1">
+                        <span class="text-xs text-white/70 block">วันที่โอน</span>
+                        <span id="transfer-view-date" class="text-sm text-white">-</span>
                     </div>
-                    <div>
-                        <span class="text-xs text-body-muted block">ผู้ทำรายการ</span>
-                        <span id="transfer-view-sender" class="text-sm text-ink">-</span>
+                    <div class="space-y-1">
+                        <span class="text-xs text-white/70 block">ผู้ทำรายการ</span>
+                        <span id="transfer-view-sender" class="text-sm text-white">-</span>
                     </div>
                 </div>
-                <!-- Items Table -->
+
+                <!-- รายการสินค้า -->
                 <div class="space-y-2">
-                    <label class="text-sm font-medium text-body-muted font-semibold block">รายการสินค้า</label>
-                    <div class="overflow-x-auto  rounded-md">
-                        <table class="w-full text-left text-sm text-body-muted">
-                            <thead class="bg-surface-chip text-body-muted text-xs uppercase font-semibold">
-                                <tr>
-                                    <th class="px-4 py-3">สินค้า</th>
-                                    <th class="px-4 py-3">สี/ความจุ</th>
-                                    <th class="px-4 py-3 text-right">จำนวน</th>
-                                </tr>
-                            </thead>
-                            <tbody id="transfer-view-items-body" class="divide-y divide-hairline">
-                                <!-- Dynamic rows -->
-                            </tbody>
-                        </table>
+                    <h4 class="text-slate-200 font-medium flex items-center gap-2 text-xs">
+                        <i class="fa-solid fa-box text-white"></i> รายการสินค้า
+                    </h4>
+                    <div class="bg-[#27272A] border border-[#3F3F46] rounded-xl overflow-hidden">
+                        <div class="overflow-x-auto" tabindex="0">
+                            <table class="w-full text-left text-sm border-collapse">
+                                <thead class="bg-[#4D4D4D]/40 text-white">
+                                    <tr>
+                                        <th class="px-4 py-3 font-semibold">สินค้า</th>
+                                        <th class="px-4 py-3 font-semibold">สี / ความจุ</th>
+                                        <th class="px-4 py-3 font-semibold text-right">จำนวน</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="transfer-view-items-body" class="divide-y divide-[#3F3F46]"></tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
             </div>
-            <!-- Footer -->
-            <div class="p-5 border-t border-hairline bg-surface-tile-3 flex items-center justify-between gap-3">
-                <button id="btn-transfer-view-print"
-                    class="px-4 py-2.5 rounded-md bg-surface-chip hover:bg-surface-tile-2 text-ink font-bold transition-all text-sm flex items-center gap-1.5">
-                    <i class="fa-solid fa-print"></i> พิมพ์ใบโอน </button>
-                <div class="flex gap-2">
-                    <button id="btn-transfer-view-close-modal"
-                        class="px-4 py-2.5 rounded-md bg-surface-chip hover:bg-surface-tile-2 text-body-muted font-bold transition-all text-sm ">
-                        ปิดหน้าต่าง </button>
-                    <button id="btn-transfer-view-cancel"
-                        class="px-5 py-2.5 rounded-md bg-surface-chip hover:bg-red-500 hover:text-white text-red-400 font-bold transition-all text-sm flex items-center gap-1.5  hidden">
-                        <i class="fa-solid fa-ban"></i> ยกเลิกการโอนย้าย </button>
-                    <button id="btn-transfer-view-receive"
-                        class="px-5 py-2.5 rounded-md bg-primary hover:bg-primary-pressed text-on-primary font-bold transition-all text-sm flex items-center gap-1.5 hidden">
-                        <i class="fa-solid fa-circle-check"></i> ยืนยันรับเข้าสต็อก </button>
+
+            <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 mt-6 pt-5 border-t border-[#333333]">
+                <button id="btn-transfer-view-print" type="button"
+                    class="px-4 py-2.5 rounded-xl bg-[#27272A] border border-[#3F3F46] hover:border-[#FFE169] hover:text-white text-slate-300 font-semibold text-sm transition-colors flex items-center justify-center gap-1.5 cursor-pointer">
+                    <i class="fa-solid fa-print"></i> พิมพ์ใบโอน
+                </button>
+                <div class="flex flex-wrap items-center gap-2 sm:justify-end">
+                    <button id="btn-transfer-view-close-modal" type="button"
+                        class="px-4 py-2.5 rounded-xl bg-[#27272A] border border-[#3F3F46] hover:border-[#FFE169] hover:text-white text-slate-300 font-semibold text-sm transition-colors cursor-pointer">
+                        ปิดหน้าต่าง
+                    </button>
+                    <button id="btn-transfer-view-cancel" type="button"
+                        class="hidden px-4 py-2.5 rounded-xl bg-[#FE0000]/[0.12] border border-[#FE0000]/30 text-[#FE0000] hover:bg-[#FE0000]/20 font-semibold text-sm transition-colors flex items-center gap-1.5 cursor-pointer">
+                        <i class="fa-solid fa-ban"></i> ยกเลิกการโอนย้าย
+                    </button>
+                    <button id="btn-transfer-view-receive" type="button"
+                        class="hidden px-4 py-2.5 rounded-xl bg-[#FFE169] hover:bg-[#E2B93C] text-[#333333] font-semibold text-sm transition-colors flex items-center gap-1.5 cursor-pointer">
+                        <i class="fa-solid fa-circle-check"></i> ยืนยันรับเข้าสต็อก
+                    </button>
                 </div>
             </div>
         </div>
     </div>
     <!-- MODAL: CREATE/EDIT DEPOSIT -->
+    <!-- โมดัลนี้ลอกไวยากรณ์ดีไซน์จาก #add-product-modal (โมดัล "เพิ่มสินค้าใหม่" หน้า #stock) ทุกจุด
+         เปลือก / หัว / ระยะ / ป้ายกำกับ / ช่องกรอก / pill / swatch / ปุ่มท้ายฟอร์ม ใช้คลาสชุดเดียวกัน
+         ต่างกันแค่ "ข้อมูล" ที่กรอก ซึ่งยังเป็นฟิลด์เดิมของใบมัดจำครบทุกช่อง -->
     <div id="modal-create-deposit"
-        class="fixed inset-0 z-[70] flex items-center justify-center backdrop-blur-[20px] backdrop-saturate-[1.8] opacity-0 pointer-events-none transition-opacity duration-300 p-4">
+        class="fixed inset-0 z-[70] flex items-center justify-center backdrop-blur-sm opacity-0 pointer-events-none transition-opacity duration-300 p-4">
         <div
-            class="modal-content relative w-[95%] md:w-[650px] max-h-[90vh] overflow-y-auto flex flex-col bg-canvas-elevated rounded-lg  transform scale-95 transition-transform duration-300">
-            <!-- Header -->
-            <div class="p-5 border-b border-hairline flex items-center justify-between bg-canvas-elevated rounded-t-lg">
-                <h4 id="deposit-modal-title" class="text-lg font-bold text-ink flex items-center gap-2">
-                    <i class="fa-solid fa-wallet text-body-muted"></i> บันทึกรายการจองมัดจำใหม่
-                </h4>
-                <button aria-label="ปิด" id="btn-close-create-deposit"
-                    class="text-body-muted hover:text-ink transition-colors p-1">
-                    <i class="fa-solid fa-xmark text-lg"></i>
+            class="modal-content relative w-[95%] md:w-[650px] max-h-[90vh] overflow-y-auto p-8 bg-[#18181B] rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.5)] border border-[#4D4D4D] custom-scrollbar transform scale-95 transition-transform duration-300">
+            <!-- Modal Header -->
+            <div class="flex items-center justify-between mb-6 pb-2 border-b border-[#333333]">
+                <!-- ต้องมีข้อความจริงตั้งแต่แรก ไม่ปล่อยว่างให้ JS เติม (หัวข้อเปล่า = โปรแกรมอ่านหน้าจออ่านไม่ได้) -->
+                <h3 id="deposit-modal-title" class="text-lg font-medium text-white flex items-center gap-2">
+                    บันทึกรายการจองมัดจำใหม่</h3>
+                <button aria-label="ปิด" id="btn-close-create-deposit" type="button"
+                    class="text-red-500 hover:text-red-400 transition-colors">
+                    <i class="fa-solid fa-xmark text-xl"></i>
                 </button>
             </div>
             <!-- Form -->
-            <form id="deposit-form" class="p-5 space-y-4 overflow-y-auto text-sm text-body-muted bg-canvas-elevated">
+            <form id="deposit-form" novalidate class="space-y-5 text-sm">
                 <input type="hidden" id="edit-deposit-id" value="">
-                <!-- Customer Details -->
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div class="space-y-1.5">
-                        <label class="text-xs font-semibold text-body-muted">ชื่อลูกค้า <span
-                                class="text-red-500">*</span></label>
+
+                <!-- ข้อมูลลูกค้า -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <div class="space-y-2">
+                        <label for="modal-deposit-customer-name"
+                            class="text-slate-200 font-medium flex items-center gap-2 text-xs">
+                            <i class="fa-solid fa-user text-white"></i> ชื่อลูกค้า <span class="text-red-500">*</span>
+                        </label>
                         <input type="text" id="modal-deposit-customer-name" required placeholder="ระบุชื่อลูกค้า..."
-                            class="w-full bg-surface-chip border border-divider-soft rounded-sm px-4 py-2.5 text-ink placeholder-ink-muted-48 focus:outline-none focus:border-primary-focus" />
+                            class="w-full px-4 py-2.5 rounded-xl bg-[#27272A] border border-[#3F3F46] text-white focus:border-[#FFE169] focus:outline-none transition-all placeholder-slate-500 text-sm">
                     </div>
-                    <div class="space-y-1.5">
-                        <label class="text-xs font-semibold text-body-muted">เบอร์โทรลูกค้า <span
-                                class="text-red-500">*</span></label>
+                    <div class="space-y-2">
+                        <label for="modal-deposit-customer-phone"
+                            class="text-slate-200 font-medium flex items-center gap-2 text-xs">
+                            <i class="fa-solid fa-user text-white"></i> เบอร์โทรลูกค้า <span
+                                class="text-red-500">*</span>
+                        </label>
                         <input type="text" id="modal-deposit-customer-phone" required placeholder="ระบุเบอร์โทร..."
-                            class="w-full bg-surface-chip border border-divider-soft rounded-sm px-4 py-2.5 text-ink placeholder-ink-muted-48 focus:outline-none focus:border-primary-focus font-mono" />
+                            class="w-full px-4 py-2.5 rounded-xl bg-[#27272A] border border-[#3F3F46] text-white focus:border-[#FFE169] focus:outline-none transition-all placeholder-slate-500 text-sm font-mono">
                     </div>
                 </div>
-                <!-- Product Details -->
-                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                    <div class="space-y-1.5 sm:col-span-2 lg:col-span-1">
-                        <label class="text-xs font-semibold text-body-muted">เลือกสินค้าจอง <span
-                                class="text-red-500">*</span></label>
-                        <input type="text" id="modal-deposit-product-id" required
-                            placeholder="พิมพ์เพื่อค้นหาหรือเลือกสินค้า..." list="deposit-products-datalist"
-                            class="w-full bg-surface-chip border border-divider-soft rounded-sm px-4 py-2.5 text-ink placeholder-ink-muted-48 focus:outline-none focus:border-primary-focus" />
-                        <datalist id="deposit-products-datalist"></datalist>
-                    </div>
-                    <div class="space-y-1.5">
-                        <label class="text-xs font-semibold text-body-muted">เลือกสี <span
-                                class="text-red-500">*</span></label>
-                        <input type="text" id="modal-deposit-color" required placeholder="พิมพ์ค้นหาหรือเลือกสี..."
-                            list="deposit-colors-datalist"
-                            class="w-full bg-surface-chip border border-divider-soft rounded-sm px-4 py-2.5 text-ink placeholder-ink-muted-48 focus:outline-none focus:border-primary-focus" />
-                        <datalist id="deposit-colors-datalist"></datalist>
-                    </div>
-                    <div class="space-y-1.5">
-                        <label class="text-xs font-semibold text-body-muted">เลือกความจุ <span
-                                class="text-red-500">*</span></label>
-                        <input type="text" id="modal-deposit-capacity" required
-                            placeholder="พิมพ์ค้นหาหรือเลือกความจุ..." list="deposit-capacities-datalist"
-                            class="w-full bg-surface-chip border border-divider-soft rounded-sm px-4 py-2.5 text-ink placeholder-ink-muted-48 focus:outline-none focus:border-primary-focus" />
-                        <datalist id="deposit-capacities-datalist"></datalist>
-                    </div>
-                    <div class="space-y-1.5">
-                        <label class="text-xs font-semibold text-body-muted">ระบุ IMEI (ถ้ามี)</label>
-                        <input type="text" id="modal-deposit-imei" placeholder="สแกนหรือระบุ IMEI..."
-                            class="w-full bg-surface-chip border border-divider-soft rounded-sm px-4 py-2.5 text-ink placeholder-ink-muted-48 focus:outline-none focus:border-primary-focus font-mono" />
-                    </div>
-                </div>
-                <!-- Prices -->
-                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <div class="space-y-1.5">
-                        <label class="text-xs font-semibold text-body-muted">ราคาเต็มสินค้า (บาท) <span
-                                class="text-red-500">*</span></label>
-                        <input type="number" id="modal-deposit-product-price" required min="0" placeholder="0"
-                            class="w-full bg-surface-chip border border-divider-soft rounded-sm px-4 py-2.5 text-ink focus:outline-none focus:border-primary-focus font-mono font-bold" />
-                    </div>
-                    <div class="space-y-1.5">
-                        <label class="text-xs font-semibold text-body-muted">ยอดเงินมัดจำ (บาท) <span
-                                class="text-red-500">*</span></label>
-                        <input type="number" id="modal-deposit-amount" required min="0" placeholder="0"
-                            class="w-full bg-surface-chip border border-divider-soft rounded-sm px-4 py-2.5 text-ink focus:outline-none focus:border-primary-focus font-mono font-bold" />
-                    </div>
-                    <div class="space-y-1.5">
-                        <label for="modal-deposit-remaining" class="text-xs font-semibold text-body-muted">ยอดค้างชำระ (บาท)</label>
-                        <input type="number" id="modal-deposit-remaining" readonly disabled value="0"
-                            class="w-full bg-surface-tile-3  rounded-sm px-4 py-2.5 text-ink font-mono font-bold" />
-                    </div>
-                </div>
-                <!-- Payment Method -->
-                <div class="bg-canvas-elevated p-4  rounded-sm space-y-4">
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div class="space-y-1.5">
-                            <label for="modal-deposit-payment-method" class="text-xs font-semibold text-body-muted">ช่องทางการชำระมัดจำ <span
-                                    class="text-red-500">*</span></label>
-                            <select id="modal-deposit-payment-method" required
-                                class="w-full bg-surface-chip border border-divider-soft rounded-sm px-4 py-2.5 text-ink focus:outline-none focus:border-primary-focus">
-                                <option value="เงินสด" class="text-ink">เงินสด</option>
-                                <option value="โอนเงิน" class="text-ink">โอนเงิน</option>
-                                <option value="ผสม" class="text-ink">ผสม (เงินสด + โอนเงิน)</option>
+
+                <!-- สินค้าที่จอง + IMEI -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <div class="space-y-2">
+                        <label for="modal-deposit-product-id"
+                            class="text-slate-200 font-medium flex items-center gap-2 text-xs">
+                            <i class="fa-solid fa-mobile-screen text-white"></i> สินค้าที่จอง <span
+                                class="text-red-500">*</span>
+                        </label>
+                        <div class="relative">
+                            <select id="modal-deposit-product-id" required
+                                class="w-full px-4 py-2.5 rounded-xl bg-[#27272A] border border-[#3F3F46] text-white focus:border-[#FFE169] focus:outline-none transition-all text-sm appearance-none cursor-pointer pr-10">
+                                <option value="">-- เลือกสินค้าที่จอง --</option>
                             </select>
-                        </div>
-                        <div class="space-y-1.5">
-                            <label for="modal-deposit-appointment" class="text-xs font-semibold text-body-muted">วันที่นัดรับเครื่อง <span
-                                    class="text-red-500">*</span></label>
-                            <input type="date" id="modal-deposit-appointment" required
-                                class="w-full bg-surface-chip border border-divider-soft rounded-sm px-4 py-2 text-ink focus:outline-none focus:border-primary-focus font-medium" />
+                            <div class="absolute right-4 top-[14px] pointer-events-none text-slate-400">
+                                <i class="fa-solid fa-chevron-down text-xs"></i>
+                            </div>
                         </div>
                     </div>
-                    <!-- Split Payment Row (Hidden by default unless method is'ผสม') -->
-                    <div id="deposit-split-row" class="grid grid-cols-2 gap-4 hidden">
-                        <div class="space-y-1.5">
-                            <label class="text-xs font-semibold text-body-muted">ระบุ ยอดเงินสด</label>
-                            <input type="number" id="modal-deposit-cash-amount" min="0" placeholder="0"
-                                class="w-full bg-surface-chip border border-divider-soft rounded-sm px-4 py-2.5 text-ink focus:outline-none focus:border-primary-focus font-mono" />
+                    <div class="space-y-2">
+                        <label for="modal-deposit-imei"
+                            class="text-slate-200 font-medium flex items-center gap-2 text-xs">
+                            <i class="fa-solid fa-barcode text-white"></i> ระบุ IMEI (ถ้ามี)
+                        </label>
+                        <input type="text" id="modal-deposit-imei" placeholder="สแกนหรือระบุ IMEI..."
+                            class="w-full px-4 py-2.5 rounded-xl bg-[#27272A] border border-[#3F3F46] text-white focus:border-[#FFE169] focus:outline-none transition-all placeholder-slate-500 text-sm font-mono">
+                    </div>
+                </div>
+
+                <!-- สี (Swatches) — โครงเดียวกับ #product-color-container ในโมดัลเพิ่มสินค้า -->
+                <div class="space-y-2 relative group">
+                    <label class="text-slate-200 font-medium flex items-center gap-2 text-xs">
+                        <i class="fa-solid fa-palette text-white"></i> สี <span class="text-red-500">*</span>
+                    </label>
+                    <input type="hidden" id="modal-deposit-color" required>
+                    <div id="modal-deposit-color-container"
+                        class="flex items-center gap-3 overflow-x-auto hide-scrollbar py-2 px-8">
+                        <!-- Swatches injected by JS -->
+                    </div>
+                    <button aria-label="ก่อนหน้า" type="button"
+                        onclick="document.getElementById('modal-deposit-color-container').scrollBy({left: -150, behavior: 'smooth'})"
+                        class="absolute left-0 top-6 bottom-2 w-10 flex items-center justify-start bg-gradient-to-r from-[#18181B] via-[#18181B]/90 to-transparent pointer-events-none">
+                        <div
+                            class="w-5 h-5 bg-[#3F3F46] hover:bg-[#FFE169] rounded-full flex items-center justify-center pointer-events-auto cursor-pointer shadow-md text-white hover:text-[#333333] transition-colors hover:scale-110 transition-transform">
+                            <i class="fa-solid fa-chevron-left text-[10px]"></i>
                         </div>
-                        <div class="space-y-1.5">
-                            <label class="text-xs font-semibold text-body-muted">ระบุ ยอดโอนเงิน</label>
-                            <input type="number" id="modal-deposit-transfer-amount" min="0" placeholder="0"
-                                class="w-full bg-surface-chip border border-divider-soft rounded-sm px-4 py-2.5 text-ink focus:outline-none focus:border-primary-focus font-mono" />
+                    </button>
+                    <button aria-label="ถัดไป" type="button"
+                        onclick="document.getElementById('modal-deposit-color-container').scrollBy({left: 150, behavior: 'smooth'})"
+                        class="absolute right-0 top-6 bottom-2 w-10 flex items-center justify-end bg-gradient-to-l from-[#18181B] via-[#18181B]/90 to-transparent pointer-events-none">
+                        <div
+                            class="w-5 h-5 bg-[#FFE169] rounded-full flex items-center justify-center pointer-events-auto cursor-pointer shadow-md text-[#333333] hover:scale-110 transition-transform">
+                            <i class="fa-solid fa-chevron-right text-[10px]"></i>
+                        </div>
+                    </button>
+                </div>
+
+                <!-- ความจุ (Pills) — โครงเดียวกับ #product-capacity-container -->
+                <div class="space-y-2">
+                    <label class="text-slate-200 font-medium flex items-center gap-2 text-xs">
+                        <i class="fa-solid fa-microchip text-white"></i> ความจุ <span class="text-red-500">*</span>
+                    </label>
+                    <input type="hidden" id="modal-deposit-capacity" required>
+                    <div id="modal-deposit-capacity-container"
+                        class="flex items-center gap-2 overflow-x-auto hide-scrollbar pb-1">
+                        <!-- Pills injected by JS -->
+                    </div>
+                </div>
+
+                <!-- ยอดเงิน -->
+                <div class="grid grid-cols-2 gap-5 pt-2">
+                    <div class="space-y-2">
+                        <label for="modal-deposit-product-price"
+                            class="text-slate-200 font-medium flex items-center gap-2 text-xs">
+                            <i class="fa-solid fa-money-bill text-white"></i> ราคาเต็มสินค้า <span
+                                class="text-red-500">*</span>
+                        </label>
+                        <input type="number" id="modal-deposit-product-price" required min="0" step="any"
+                            inputmode="numeric" placeholder="0"
+                            class="w-full px-4 py-2.5 rounded-xl bg-[#27272A] border border-[#3F3F46] text-white focus:border-[#FFE169] focus:outline-none transition-all placeholder-slate-500 text-sm">
+                    </div>
+                    <div class="space-y-2">
+                        <label for="modal-deposit-amount"
+                            class="text-slate-200 font-medium flex items-center gap-2 text-xs">
+                            <i class="fa-solid fa-tag text-white"></i> ยอดเงินมัดจำ <span class="text-red-500">*</span>
+                        </label>
+                        <input type="number" id="modal-deposit-amount" required min="0" step="any" inputmode="numeric"
+                            placeholder="0"
+                            class="w-full px-4 py-2.5 rounded-xl bg-[#27272A] border border-[#3F3F46] text-white focus:border-[#FFE169] focus:outline-none transition-all placeholder-slate-500 text-sm">
+                    </div>
+                </div>
+
+                <!-- ยอดค้างชำระ + วันนัดรับ -->
+                <div class="grid grid-cols-2 gap-5">
+                    <div class="space-y-2">
+                        <label for="modal-deposit-remaining"
+                            class="text-slate-200 font-medium flex items-center gap-2 text-xs">
+                            <i class="fa-solid fa-money-bill text-white"></i> ยอดค้างชำระ
+                        </label>
+                        <!-- คำนวณให้อัตโนมัติ แก้เองไม่ได้ จึงใช้พื้นเข้มกว่าช่องอื่นเพื่อสื่อว่าอ่านอย่างเดียว -->
+                        <input type="number" id="modal-deposit-remaining" readonly disabled value="0"
+                            class="w-full px-4 py-2.5 rounded-xl bg-[#18181B] border border-[#3F3F46] text-white/70 text-sm font-mono">
+                    </div>
+                    <div class="space-y-2">
+                        <label for="modal-deposit-appointment"
+                            class="text-slate-200 font-medium flex items-center gap-2 text-xs">
+                            <i class="fa-solid fa-calendar text-white"></i> วันที่นัดรับเครื่อง <span
+                                class="text-red-500">*</span>
+                        </label>
+                        <input type="date" id="modal-deposit-appointment" required
+                            class="w-full px-4 py-2.5 rounded-xl bg-[#27272A] border border-[#3F3F46] text-white focus:border-[#FFE169] focus:outline-none transition-all text-sm">
+                    </div>
+                </div>
+
+                <!-- ช่องทางชำระ + ขั้นตอน -->
+                <div class="grid grid-cols-2 gap-5">
+                    <div class="space-y-2">
+                        <label for="modal-deposit-payment-method"
+                            class="text-slate-200 font-medium flex items-center gap-2 text-xs">
+                            <i class="fa-solid fa-money-bill text-white"></i> ช่องทางการชำระมัดจำ <span
+                                class="text-red-500">*</span>
+                        </label>
+                        <div class="relative">
+                            <select id="modal-deposit-payment-method" required
+                                class="w-full px-4 py-2.5 rounded-xl bg-[#27272A] border border-[#3F3F46] text-white focus:border-[#FFE169] focus:outline-none transition-all text-sm appearance-none cursor-pointer pr-10">
+                                <option value="เงินสด">เงินสด</option>
+                                <option value="โอนเงิน">โอนเงิน</option>
+                                <option value="ผสม">ผสม (เงินสด + โอนเงิน)</option>
+                            </select>
+                            <div class="absolute right-4 top-[14px] pointer-events-none text-slate-400">
+                                <i class="fa-solid fa-chevron-down text-xs"></i>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="space-y-2">
+                        <label for="modal-deposit-stage"
+                            class="text-slate-200 font-medium flex items-center gap-2 text-xs">
+                            <i class="fa-solid fa-list-check text-white"></i> ขั้นตอนการดำเนินงาน <span
+                                class="text-red-500">*</span>
+                        </label>
+                        <div class="relative">
+                            <select id="modal-deposit-stage" required
+                                class="w-full px-4 py-2.5 rounded-xl bg-[#27272A] border border-[#3F3F46] text-white focus:border-[#FFE169] focus:outline-none transition-all text-sm appearance-none cursor-pointer pr-10">
+                                <option value="" disabled selected>-- เลือกขั้นตอน --</option>
+                                <option value="รอโอนย้ายจากสาขาอื่น">รอโอนย้ายจากสาขาอื่น</option>
+                                <option value="รอฝ่ายจัดซื้อสั่งสินค้า">รอฝ่ายจัดซื้อสั่งสินค้า</option>
+                                <option value="สินค้าเข้า">รอจัดส่งจาก Supplier</option>
+                                <option value="รอลูกค้ารับเครื่อง">รอลูกค้ามารับเครื่อง</option>
+                                <option value="สำเร็จ">สำเร็จ</option>
+                                <option value="ยกเลิก">ยกเลิก</option>
+                            </select>
+                            <div class="absolute right-4 top-[14px] pointer-events-none text-slate-400">
+                                <i class="fa-solid fa-chevron-down text-xs"></i>
+                            </div>
                         </div>
                     </div>
                 </div>
-                <!-- Stage and Notes -->
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div class="space-y-1.5">
-                        <label for="modal-deposit-stage" class="text-xs font-semibold text-body-muted">ขั้นตอนการดำเนินงาน <span
-                                class="text-red-500">*</span></label>
-                        <select id="modal-deposit-stage" required
-                            class="w-full bg-surface-chip border border-divider-soft rounded-sm px-4 py-2.5 text-ink focus:outline-none focus:border-primary-focus">
-                            <option value="" disabled selected class="text-ink">-- เลือกขั้นตอน --</option>
-                            <option value="รอโอนย้ายจากสาขาอื่น" class="text-ink">รอโอนย้ายจากสาขาอื่น</option>
-                            <option value="รอฝ่ายจัดซื้อสั่งสินค้า" class="text-ink">รอฝ่ายจัดซื้อสั่งสินค้า</option>
-                            <option value="สินค้าเข้า" class="text-ink">รอจัดส่งจากSupplier</option>
-                            <option value="รอลูกค้ารับเครื่อง" class="text-ink">รอลูกค้ามารับเครื่อง</option>
-                            <option value="สำเร็จ" class="text-ink">สำเร็จ</option>
-                            <option value="ยกเลิก" class="text-ink">ยกเลิก</option>
-                        </select>
+
+                <!-- แสดงเฉพาะตอนเลือกช่องทาง "ผสม" -->
+                <div id="deposit-split-row" class="grid grid-cols-2 gap-5 hidden">
+                    <div class="space-y-2">
+                        <label for="modal-deposit-cash-amount"
+                            class="text-slate-200 font-medium flex items-center gap-2 text-xs">
+                            <i class="fa-solid fa-money-bill text-white"></i> ระบุ ยอดเงินสด
+                        </label>
+                        <input type="number" id="modal-deposit-cash-amount" min="0" inputmode="numeric" placeholder="0"
+                            class="w-full px-4 py-2.5 rounded-xl bg-[#27272A] border border-[#3F3F46] text-white focus:border-[#FFE169] focus:outline-none transition-all placeholder-slate-500 text-sm font-mono">
                     </div>
-                    <div class="space-y-1.5">
-                        <label class="text-xs font-semibold text-body-muted">หมายเหตุเพิ่มเติม</label>
-                        <input type="text" id="modal-deposit-notes" placeholder="ระบุรายละเอียดเพิ่มเติม..."
-                            class="w-full bg-surface-chip border border-divider-soft rounded-sm px-4 py-2.5 text-ink placeholder-ink-muted-48 focus:outline-none focus:border-primary-focus" />
+                    <div class="space-y-2">
+                        <label for="modal-deposit-transfer-amount"
+                            class="text-slate-200 font-medium flex items-center gap-2 text-xs">
+                            <i class="fa-solid fa-money-bill text-white"></i> ระบุ ยอดโอนเงิน
+                        </label>
+                        <input type="number" id="modal-deposit-transfer-amount" min="0" inputmode="numeric"
+                            placeholder="0"
+                            class="w-full px-4 py-2.5 rounded-xl bg-[#27272A] border border-[#3F3F46] text-white focus:border-[#FFE169] focus:outline-none transition-all placeholder-slate-500 text-sm font-mono">
                     </div>
                 </div>
-                <!-- Footer / Buttons -->
-                <div
-                    class="pt-4 border-t border-hairline flex items-center justify-end gap-3 bg-canvas-elevated rounded-b-lg">
+
+                <!-- หมายเหตุ -->
+                <div class="space-y-2">
+                    <label for="modal-deposit-notes" class="text-slate-200 font-medium flex items-center gap-2 text-xs">
+                        <i class="fa-solid fa-tag text-white"></i> หมายเหตุเพิ่มเติม
+                    </label>
+                    <input type="text" id="modal-deposit-notes" placeholder="ระบุรายละเอียดเพิ่มเติม..."
+                        class="w-full px-4 py-2.5 rounded-xl bg-[#27272A] border border-[#3F3F46] text-white focus:border-[#FFE169] focus:outline-none transition-all placeholder-slate-500 text-sm">
+                </div>
+
+                <!-- Actions -->
+                <div class="flex items-center justify-center gap-4 pt-6 mt-2 pb-2">
                     <button type="button" id="btn-cancel-create-deposit"
-                        class="px-5 py-2.5 rounded-sm bg-surface-chip hover:bg-surface-tile-2 text-body-muted hover:text-ink font-bold transition-all text-xs">
-                        ยกเลิก </button>
+                        class="px-10 py-2.5 rounded-xl bg-[#E4E4E7] text-[#18181B] text-[15px] font-bold hover:bg-white transition-colors">
+                        ยกเลิก
+                    </button>
                     <button type="submit" id="btn-submit-deposit"
-                        class="px-6 py-2.5 rounded-pill bg-primary hover:bg-primary-pressed text-on-primary font-bold transition-all text-xs flex items-center gap-1.5">
-                        <i class="fa-solid fa-save"></i> บันทึกข้อมูล </button>
+                        class="px-12 py-2.5 rounded-xl bg-[#FFE169] text-[#333333] text-[15px] font-bold hover:bg-[#E2B93C] transition-colors flex items-center gap-2">
+                        <i class="fa-regular fa-floppy-disk"></i>
+                        บันทึกข้อมูล
+                    </button>
                 </div>
             </form>
         </div>
@@ -4113,172 +4251,211 @@
     <div id="modal-deposit-details"
         class="fixed inset-0 z-[70] flex items-center justify-center backdrop-blur-[20px] backdrop-saturate-[1.8] opacity-0 pointer-events-none transition-opacity duration-300 p-4">
         <div
-            class="modal-content relative w-[95%] md:w-[650px] max-h-[90vh] overflow-y-auto flex flex-col bg-canvas-elevated rounded-lg  transform scale-95 transition-transform duration-300">
+            class="modal-content relative w-[95%] md:w-[720px] max-h-[90vh] overflow-y-auto flex flex-col p-8 bg-[#18181B] rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.5)] border border-[#4D4D4D] transform scale-95 transition-transform duration-300">
             <!-- Header -->
-            <div class="p-5 border-b border-hairline flex items-center justify-between bg-surface-tile-3 rounded-t-lg">
-                <h4 class="text-lg font-bold text-ink flex items-center gap-2">
-                    <i class="fa-solid fa-circle-info text-body-muted"></i> รายละเอียดข้อมูลใบมัดจำสินค้า
+            <div class="flex items-center justify-between mb-6 pb-2 border-b border-[#333333]">
+                <h4 class="text-lg font-medium text-white flex items-center gap-2">
+                    <i class="fa-solid fa-circle-info text-[#FFE169]"></i> รายละเอียดใบมัดจำสินค้า
                 </h4>
-                <button aria-label="ปิด" id="btn-close-deposit-details"
-                    class="text-body-muted hover:text-body-muted transition-colors p-1">
-                    <i class="fa-solid fa-xmark text-lg"></i>
+                <button aria-label="ปิด" id="btn-close-deposit-details" type="button"
+                    class="text-red-500 hover:text-red-400 transition-colors">
+                    <i class="fa-solid fa-xmark text-xl"></i>
                 </button>
             </div>
-            <!-- Body -->
-            <div tabindex="0" class="p-5 space-y-4 overflow-y-auto text-xs text-ink bg-canvas-elevated">
-                <!-- Info Grid -->
-                <div class="grid grid-cols-2 gap-4 bg-surface-tile-3 p-4 rounded-sm border text-ink border-hairline">
+
+            <div tabindex="0" class="space-y-5 text-sm">
+                <!-- สรุปข้อมูลใบมัดจำ -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-5 bg-[#27272A] border border-[#3F3F46] rounded-xl p-5">
                     <div>
-                        <span class="text-body-muted block font-medium">เลขที่ใบมัดจำ</span>
-                        <span id="detail-deposit-number" class="text-sm font-bold font-mono">-</span>
+                        <span class="text-slate-200 text-xs font-medium block mb-1">เลขที่ใบมัดจำ</span>
+                        <span id="detail-deposit-number" class="text-sm font-mono font-semibold text-[#FFE169]">-</span>
                     </div>
                     <div>
-                        <span class="text-body-muted block font-medium">สถานะรายการ</span>
-                        <span id="detail-deposit-status" class="px-2 py-0.5 rounded text-[10px] font-bold">-</span>
+                        <span class="text-slate-200 text-xs font-medium block mb-1">สถานะรายการ</span>
+                        <span id="detail-deposit-status"></span>
                     </div>
                     <div>
-                        <span class="text-body-muted block font-medium">ชื่อลูกค้า</span>
-                        <span id="detail-deposit-customer" class="text-sm text-ink font-semibold">-</span>
+                        <span class="text-slate-200 text-xs font-medium block mb-1">ชื่อลูกค้า</span>
+                        <span id="detail-deposit-customer" class="text-sm text-white font-medium">-</span>
                     </div>
                     <div>
-                        <span class="text-body-muted block font-medium">เบอร์โทรศัพท์</span>
-                        <span id="detail-deposit-phone" class="text-sm text-ink font-mono">-</span>
+                        <span class="text-slate-200 text-xs font-medium block mb-1">เบอร์โทรศัพท์</span>
+                        <span id="detail-deposit-phone" class="text-sm text-white font-mono">-</span>
                     </div>
                     <div>
-                        <span class="text-body-muted block font-medium">สินค้าที่มัดจำ</span>
-                        <span id="detail-deposit-product" class="text-sm text-ink font-semibold">-</span>
+                        <span class="text-slate-200 text-xs font-medium block mb-1">สินค้าที่มัดจำ</span>
+                        <span id="detail-deposit-product" class="text-sm text-white font-medium">-</span>
                     </div>
                     <div>
-                        <span class="text-body-muted block font-medium">เลข IMEI เครื่องจอง</span>
-                        <span id="detail-deposit-imei-text" class="text-sm text-ink font-mono">-</span>
+                        <span class="text-slate-200 text-xs font-medium block mb-1">เลข IMEI เครื่องจอง</span>
+                        <span id="detail-deposit-imei-text" class="text-sm text-white font-mono">-</span>
                     </div>
                     <div>
-                        <span class="text-body-muted block font-medium">ราคาขายเต็ม</span>
-                        <span id="detail-deposit-price" class="text-sm text-ink font-mono font-bold">-</span>
+                        <span class="text-slate-200 text-xs font-medium block mb-1">ราคาขายเต็ม</span>
+                        <span id="detail-deposit-price" class="text-sm text-white font-mono">-</span>
                     </div>
-                    <div class="grid grid-cols-2 gap-2">
+                    <div class="grid grid-cols-2 gap-3">
                         <div>
-                            <span class="text-body-muted block font-medium">ยอดมัดจำแล้ว</span>
-                            <span id="detail-deposit-paid" class="text-sm text-emerald-700 font-mono font-bold">-</span>
+                            <span class="text-slate-200 text-xs font-medium block mb-1">ยอดมัดจำแล้ว</span>
+                            <span id="detail-deposit-paid" class="text-sm text-white font-mono">-</span>
                         </div>
                         <div>
-                            <span class="text-body-muted block font-medium">ยอดคงค้าง</span>
-                            <span id="detail-deposit-remaining"
-                                class="text-sm text-red-600 font-mono font-bold">-</span>
+                            <span class="text-slate-200 text-xs font-medium block mb-1">ยอดคงค้าง</span>
+                            <span id="detail-deposit-remaining" class="text-sm text-[#FE0000] font-mono">-</span>
                         </div>
                     </div>
                     <div>
-                        <span class="text-body-muted block font-medium">วันที่จอง / นัดหมายรับ</span>
-                        <span id="detail-deposit-dates" class="text-xs text-ink font-medium">-</span>
+                        <span class="text-slate-200 text-xs font-medium block mb-1">วันที่จอง / นัดหมายรับ</span>
+                        <span id="detail-deposit-dates" class="text-xs text-white/70">-</span>
                     </div>
                     <div>
-                        <span class="text-body-muted block font-medium">ผู้ทำรายการ / สาขา</span>
-                        <span id="detail-deposit-sender" class="text-xs text-ink font-medium">-</span>
+                        <span class="text-slate-200 text-xs font-medium block mb-1">ผู้ทำรายการ / สาขา</span>
+                        <span id="detail-deposit-sender" class="text-xs text-white/70">-</span>
                     </div>
                 </div>
-                <!-- Complete / Handover Section (Only visible for'รอดำเนินการ') -->
+
+                <!-- ส่งมอบเครื่อง — แสดงเฉพาะรายการที่ยัง "รอดำเนินการ" -->
                 <div id="detail-action-complete-section"
-                    class="bg-surface-tile-3 p-4 border border-emerald-500/20 rounded-sm space-y-3 hidden">
-                    <h5 class="text-sm font-bold text-ink flex items-center gap-1.5 border-b border-hairline pb-2">
-                        <i class="fa-solid fa-hand-holding-hand"></i> ดำเนินการส่งมอบเครื่อง (ปิดใบเสร็จ POS)
+                    class="bg-[#27272A] border border-[#3F3F46] rounded-xl p-5 space-y-4 hidden">
+                    <h5 class="text-sm font-medium text-white flex items-center gap-2 border-b border-[#3F3F46] pb-3">
+                        <i class="fa-solid fa-hand-holding-hand text-[#FFE169]"></i> ดำเนินการส่งมอบเครื่อง (ปิดใบเสร็จ
+                        POS)
                     </h5>
-                    <!-- IMEI Assignment (If IMEI was empty) -->
-                    <div id="detail-assign-imei-row" class="space-y-1.5 hidden">
-                        <label class="text-[10px] uppercase font-bold text-body-muted">ระบุเลข IMEI ที่ส่งมอบสินค้าจริง
-                            <span class="text-red-500">*</span></label>
+
+                    <!-- แสดงเฉพาะใบที่ยังไม่ได้ผูก IMEI ตอนจอง -->
+                    <div id="detail-assign-imei-row" class="space-y-2 hidden">
+                        <label for="detail-assign-imei-select"
+                            class="text-slate-200 font-medium flex items-center gap-2 text-xs">
+                            <i class="fa-solid fa-barcode text-white"></i> เลข IMEI ที่ส่งมอบจริง <span
+                                class="text-red-500">*</span>
+                        </label>
                         <input type="text" id="detail-assign-imei-select" placeholder="ระบุเลข IMEI..."
-                            class="w-full bg-surface-chip border border-divider-soft rounded-sm px-3 py-2 text-xs text-ink focus:outline-none focus:border-primary-focus font-mono" />
+                            class="w-full px-4 py-2.5 rounded-xl bg-[#18181B] border border-[#3F3F46] text-white focus:border-[#FFE169] focus:outline-none transition-all placeholder-slate-500 text-sm font-mono" />
                     </div>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <div class="space-y-1.5">
-                            <label class="text-[10px] uppercase font-bold text-body-muted">ช่องทางการชำระยอดที่เหลือ
-                                <span class="text-red-500">*</span></label>
-                            <select id="detail-pickup-payment-method"
-                                class="w-full bg-surface-chip border border-divider-soft rounded-sm px-3 py-2 text-xs text-ink focus:outline-none focus:border-primary-focus">
-                                <option value="เงินสด">เงินสด</option>
-                                <option value="โอนเงิน">โอนเงิน</option>
-                                <option value="ผสม">ผสม (เงินสด + โอนเงิน)</option>
-                            </select>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                        <div class="space-y-2">
+                            <label for="detail-pickup-payment-method"
+                                class="text-slate-200 font-medium flex items-center gap-2 text-xs">
+                                <i class="fa-solid fa-money-bill text-white"></i> ช่องทางชำระยอดที่เหลือ <span
+                                    class="text-red-500">*</span>
+                            </label>
+                            <div class="relative">
+                                <select id="detail-pickup-payment-method"
+                                    class="w-full px-4 py-2.5 rounded-xl bg-[#18181B] border border-[#3F3F46] text-white focus:border-[#FFE169] focus:outline-none transition-all text-sm appearance-none">
+                                    <option value="เงินสด">เงินสด</option>
+                                    <option value="โอนเงิน">โอนเงิน</option>
+                                    <option value="ผสม">ผสม (เงินสด + โอนเงิน)</option>
+                                </select>
+                                <div class="absolute right-4 top-[14px] pointer-events-none text-slate-400">
+                                    <i class="fa-solid fa-chevron-down text-xs"></i>
+                                </div>
+                            </div>
                         </div>
-                        <div class="space-y-1.5">
-                            <label class="text-[10px] uppercase font-bold text-body-muted">ยอดที่ต้องจ่ายส่วนต่างวันนี้
-                                (บาท)</label>
+                        <div class="space-y-2">
+                            <label for="detail-pickup-to-pay"
+                                class="text-slate-200 font-medium flex items-center gap-2 text-xs">
+                                <i class="fa-solid fa-money-bill text-white"></i> ยอดต้องจ่ายวันนี้ (บาท)
+                            </label>
                             <input type="text" id="detail-pickup-to-pay" readonly disabled
-                                class="w-full bg-surface-tile-3  rounded-sm px-3 py-2 text-xs text-amber-700 font-mono font-bold" />
+                                class="w-full px-4 py-2.5 rounded-xl bg-[#18181B] border border-[#3F3F46] text-white text-sm font-mono" />
                         </div>
                     </div>
-                    <!-- Split payment details -->
-                    <div id="detail-pickup-split-row" class="grid grid-cols-2 gap-3 hidden">
-                        <div class="space-y-1.5">
-                            <label class="text-[10px] uppercase font-bold text-body-muted">จ่ายส่วนต่าง เงินสด</label>
-                            <input type="number" id="detail-pickup-cash-amount" min="0" placeholder="0"
-                                class="w-full bg-surface-chip border border-divider-soft rounded-sm px-3 py-2 text-xs text-ink font-mono" />
+
+                    <!-- แสดงเฉพาะตอนเลือกช่องทาง "ผสม" -->
+                    <div id="detail-pickup-split-row" class="grid grid-cols-2 gap-5 hidden">
+                        <div class="space-y-2">
+                            <label for="detail-pickup-cash-amount"
+                                class="text-slate-200 font-medium flex items-center gap-2 text-xs">
+                                <i class="fa-solid fa-money-bill text-white"></i> จ่ายส่วนต่าง เงินสด
+                            </label>
+                            <input type="number" id="detail-pickup-cash-amount" min="0" inputmode="numeric"
+                                placeholder="0"
+                                class="w-full px-4 py-2.5 rounded-xl bg-[#18181B] border border-[#3F3F46] text-white focus:border-[#FFE169] focus:outline-none transition-all placeholder-slate-500 text-sm font-mono" />
                         </div>
-                        <div class="space-y-1.5">
-                            <label class="text-[10px] uppercase font-bold text-body-muted">จ่ายส่วนต่าง เงินโอน</label>
-                            <input type="number" id="detail-pickup-transfer-amount" min="0" placeholder="0"
-                                class="w-full bg-surface-chip border border-divider-soft rounded-sm px-3 py-2 text-xs text-ink font-mono" />
+                        <div class="space-y-2">
+                            <label for="detail-pickup-transfer-amount"
+                                class="text-slate-200 font-medium flex items-center gap-2 text-xs">
+                                <i class="fa-solid fa-money-bill text-white"></i> จ่ายส่วนต่าง เงินโอน
+                            </label>
+                            <input type="number" id="detail-pickup-transfer-amount" min="0" inputmode="numeric"
+                                placeholder="0"
+                                class="w-full px-4 py-2.5 rounded-xl bg-[#18181B] border border-[#3F3F46] text-white focus:border-[#FFE169] focus:outline-none transition-all placeholder-slate-500 text-sm font-mono" />
                         </div>
                     </div>
-                    <div class="pt-2 flex justify-end">
+
+                    <div class="pt-1 flex justify-end">
                         <button type="button" id="btn-submit-complete-deposit"
-                            class="w-full sm:w-auto bg-primary hover:bg-primary-pressed text-on-primary font-bold py-2.5 px-5 rounded-pill flex items-center justify-center gap-1.5 transition-all text-xs">
-                            <i class="fa-solid fa-circle-check"></i> ยืนยันส่งมอบและปิดบิลขาย </button>
+                            class="w-full sm:w-auto px-12 py-2.5 rounded-xl bg-[#FFE169] text-[#333333] text-[15px] font-bold hover:bg-[#E2B93C] transition-colors flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-circle-check"></i> ยืนยันส่งมอบและปิดบิลขาย
+                        </button>
                     </div>
                 </div>
-                <!-- Cancel Section (Only visible for'รอดำเนินการ') -->
+
+                <!-- ยกเลิกรายการ — การกระทำที่ย้อนกลับไม่ได้ จึงใช้ขอบแดงกำกับ
+                     แต่ยังเป็นปุ่มโปร่ง ไม่ใช่ปุ่มทึบ เพราะหนึ่งหน้าจอมีปุ่มทึบได้ปุ่มเดียว (DESIGN.md ข้อ 6) -->
                 <div id="detail-action-cancel-section"
-                    class="bg-surface-tile-3 p-4 border border-rose-500/20 rounded-sm space-y-3 hidden">
-                    <h5 class="text-sm font-bold text-ink flex items-center gap-1.5 border-b border-hairline pb-2">
-                        <i class="fa-solid fa-ban"></i> ยกเลิกรายการมัดจำ
+                    class="bg-[#27272A] border border-red-500/30 rounded-xl p-5 space-y-4 hidden">
+                    <h5 class="text-sm font-medium text-white flex items-center gap-2 border-b border-[#3F3F46] pb-3">
+                        <i class="fa-solid fa-ban text-red-400"></i> ยกเลิกรายการมัดจำ
                     </h5>
-                    <div class="space-y-1.5">
-                        <label class="text-[10px] uppercase font-bold text-body-muted">เหตุผลที่ยกเลิกการมัดจำ <span
-                                class="text-red-500">*</span></label>
+                    <div class="space-y-2">
+                        <label for="detail-cancel-reason"
+                            class="text-slate-200 font-medium flex items-center gap-2 text-xs">
+                            <i class="fa-solid fa-tag text-white"></i> เหตุผลที่ยกเลิก <span
+                                class="text-red-500">*</span>
+                        </label>
                         <input type="text" id="detail-cancel-reason" placeholder="ระบุเหตุผลการยกเลิกใบมัดจำนี้..."
-                            class="w-full bg-surface-chip border border-divider-soft rounded-sm px-3 py-2 text-xs text-ink focus:outline-none focus:border-primary-focus" />
+                            class="w-full px-4 py-2.5 rounded-xl bg-[#18181B] border border-[#3F3F46] text-white focus:border-[#FFE169] focus:outline-none transition-all placeholder-slate-500 text-sm" />
                     </div>
                     <div class="flex justify-end">
                         <button type="button" id="btn-submit-cancel-deposit"
-                            class="w-full sm:w-auto bg-rose-600 hover:bg-rose-500 text-white font-bold py-2 px-4 rounded-pill flex items-center justify-center gap-1.5 transition-all text-xs">
-                            <i class="fa-solid fa-ban"></i> ยืนยันยกเลิกรายการจอง </button>
+                            class="w-full sm:w-auto px-8 py-2.5 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-300 border border-red-500/30 text-[15px] font-bold transition-colors flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-ban"></i> ยืนยันยกเลิกรายการจอง
+                        </button>
                     </div>
                 </div>
-                <!-- Finished History Info (Visible for'สำเร็จ' or 'ยกเลิก') -->
-                <div id="detail-history-info-section" class="bg-surface-tile-3 p-4  rounded-sm space-y-2 hidden">
-                    <h5 class="text-sm font-bold text-ink border-b border-hairline pb-1">
-                        ข้อมูลการบันทึกเมื่อสิ้นสุดรายการ</h5>
-                    <div class="grid grid-cols-2 gap-3 text-[11px]">
+
+                <!-- ประวัติเมื่อจบรายการ — แสดงเฉพาะสถานะ "สำเร็จ" หรือ "ยกเลิก" -->
+                <div id="detail-history-info-section"
+                    class="bg-[#27272A] border border-[#3F3F46] rounded-xl p-5 space-y-4 hidden">
+                    <h5 class="text-sm font-medium text-white flex items-center gap-2 border-b border-[#3F3F46] pb-3">
+                        <i class="fa-solid fa-clock-rotate-left text-[#FFE169]"></i> ข้อมูลเมื่อสิ้นสุดรายการ
+                    </h5>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
                         <div>
-                            <span class="text-body-muted block font-medium"
+                            <span class="text-slate-200 text-xs font-medium block mb-1"
                                 id="detail-history-completed-by-label">ผู้ทำรายการรับเครื่อง / ยกเลิก</span>
-                            <span id="detail-history-completed-by" class="text-ink font-semibold">-</span>
+                            <span id="detail-history-completed-by" class="text-sm text-white font-medium">-</span>
                         </div>
                         <div>
-                            <span class="text-body-muted block font-medium"
+                            <span class="text-slate-200 text-xs font-medium block mb-1"
                                 id="detail-history-completed-at-label">วันเวลาเสร็จสิ้น</span>
-                            <span id="detail-history-completed-at" class="text-ink font-mono">-</span>
+                            <span id="detail-history-completed-at" class="text-sm text-white font-mono">-</span>
                         </div>
-                        <div class="col-span-2" id="detail-history-bill-row">
-                            <span class="text-body-muted block font-medium">เลขที่บิลเสร็จขายจริง (POS)</span>
-                            <span id="detail-history-bill" class="text-ink font-mono font-bold">-</span>
+                        <div class="sm:col-span-2" id="detail-history-bill-row">
+                            <span class="text-slate-200 text-xs font-medium block mb-1">เลขที่บิลเสร็จขายจริง
+                                (POS)</span>
+                            <span id="detail-history-bill" class="text-sm font-mono font-semibold text-[#FFE169]">-</span>
                         </div>
-                        <div class="col-span-2 hidden" id="detail-history-reason-row">
-                            <span class="text-body-muted block font-medium">เหตุผลการยกเลิก</span>
-                            <span id="detail-history-reason" class="text-rose-700 font-semibold">-</span>
+                        <div class="sm:col-span-2 hidden" id="detail-history-reason-row">
+                            <span class="text-slate-200 text-xs font-medium block mb-1">เหตุผลการยกเลิก</span>
+                            <span id="detail-history-reason" class="text-sm text-red-400 font-medium">-</span>
                         </div>
                     </div>
                 </div>
             </div>
-            <!-- Footer -->
-            <div
-                class="p-5 border-t border-hairline bg-surface-tile-3 flex items-center justify-between gap-3 rounded-b-lg">
+
+            <!-- Footer — ทั้งสองปุ่มเป็นการกระทำรอง ไม่มีปุ่มทึบ -->
+            <div class="flex items-center justify-between gap-4 pt-6 mt-6 border-t border-[#333333]">
                 <button type="button" id="btn-deposit-detail-print"
-                    class="px-4 py-2 rounded-sm bg-surface-chip hover:bg-surface-tile-2 text-ink font-bold transition-all text-xs flex items-center gap-1.5">
-                    <i class="fa-solid fa-print"></i> พิมพ์ใบจองมัดจำ </button>
+                    class="px-6 py-2.5 rounded-xl bg-[#4D4D4D]/40 hover:bg-[#5C5C5C] text-white text-sm font-medium transition-colors flex items-center gap-2">
+                    <i class="fa-solid fa-print"></i> พิมพ์ใบจองมัดจำ
+                </button>
                 <button type="button" id="btn-close-deposit-detail-modal"
-                    class="px-4 py-2 rounded-pill bg-surface-chip hover:bg-surface-tile-2 text-body-muted font-bold transition-all text-xs">
-                    ปิดหน้าต่าง </button>
+                    class="px-10 py-2.5 rounded-xl bg-[#E4E4E7] text-[#18181B] text-[15px] font-bold hover:bg-white transition-colors">
+                    ปิดหน้าต่าง
+                </button>
             </div>
         </div>
     </div>
@@ -4533,114 +4710,132 @@
             class="cart-fab-badge absolute -top-1 -right-1 w-5 h-5 rounded-full bg-primary text-on-primary text-[11px] font-bold flex items-center justify-center"
             id="cart-fab-badge-count" style="display: none;">0</span>
     </button>
-    <!-- Audit Verify Modal (หน้าต่างเด้งสำหรับยืนยันและถ่ายรูปกล่อง) -->
-    <div id="modal-audit-verify" class="fixed inset-0 z-50 flex items-center justify-center  backdrop-blur-sm hidden">
+    <!-- Audit Verify Modal (หน้าต่างเด้งสำหรับยืนยันและถ่ายรูปกล่อง) — DESIGN.md ข้อ 11.10 -->
+    <div id="modal-audit-verify"
+        class="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-sm p-4 hidden">
         <div
-            class="modal-content relative w-[95%] max-w-md bg-canvas-elevated rounded-lg  p-6 flex flex-col gap-4 transform scale-95 transition-all duration-300">
-            <!-- Modal Header -->
-            <div class="flex items-center justify-between border-b border-hairline pb-3">
-                <div class="flex items-center gap-2">
-                    <span id="audit-modal-status-indicator" class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
-                    <h3 id="audit-modal-title" class="font-bold text-base text-white">พบสินค้าในระบบ</h3>
-                </div>
-                <button aria-label="ปิด" onclick="closeAuditVerifyModal()"
-                    class="text-body-muted hover:text-red-500 transition-all">
-                    <i class="fa-solid fa-xmark text-lg"></i>
+            class="modal-content relative w-[95%] md:w-[650px] max-h-[90vh] overflow-y-auto p-8 bg-[#18181B] rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.5)] border border-[#4D4D4D] transform scale-95 transition-all duration-300">
+            <!-- หัวโมดัล — สูตรเดียวกับ drawer/โมดัลอื่นทั้งระบบ (ข้อ 11.8) -->
+            <div class="flex items-center justify-between mb-6 pb-2 border-b border-[#333333]">
+                <h3 class="text-lg font-medium text-white flex items-center gap-2">
+                    <i class="fa-solid fa-qrcode text-[#FFE169]"></i>
+                    <!-- ข้อความจริงต้องมีมาตั้งแต่แรก ห้ามปล่อยหัวข้อว่างให้ JS เติม (ข้อ 11.10) -->
+                    <span id="audit-modal-title">พบสินค้าในระบบ</span>
+                </h3>
+                <button type="button" aria-label="ปิด" onclick="closeAuditVerifyModal()"
+                    class="text-red-500 hover:text-red-400 transition-colors">
+                    <i class="fa-solid fa-xmark text-xl"></i>
                 </button>
             </div>
-            <!-- Details -->
-            <div>
-                <p class="text-body-muted text-xs uppercase tracking-wider font-semibold mb-1">รหัสที่สแกน (IMEI)</p>
-                <p id="audit-modal-imei-display" class="text-ink font-mono text-xl font-black">56446</p>
-                <p id="audit-modal-product-name" class="text-body-muted text-sm mt-1 font-medium">—</p>
-            </div>
-            <!-- Box Photo Selection (Mandatory) -->
-            <div class="space-y-2">
-                <label class="block text-xs font-bold text-body-muted uppercase tracking-wider"> *
-                    ถ่ายภาพ/อัปโหลดภาพหลักฐาน </label>
-                <div class="relative">
+
+            <div class="space-y-5 text-sm">
+                <!-- IMEI ที่สแกนได้ -->
+                <div class="space-y-2">
+                    <p class="text-slate-200 font-medium flex items-center gap-2 text-xs">
+                        <i class="fa-solid fa-barcode text-white"></i> รหัสที่สแกน (IMEI)
+                    </p>
+                    <p id="audit-modal-imei-display" class="font-mono font-semibold text-[#FFE169] text-xl"></p>
+                    <!-- ป้ายสถานะ + ชื่อสินค้า ถูกเขียนจาก verifyAuditImei() -->
+                    <div id="audit-modal-product-name"></div>
+                </div>
+
+                <!-- รูปกล่องสินค้า (บังคับ) -->
+                <div class="space-y-2">
+                    <p class="text-slate-200 font-medium flex items-center gap-2 text-xs">
+                        <i class="fa-solid fa-camera text-white"></i> ถ่ายภาพ / อัปโหลดภาพหลักฐาน
+                        <span class="text-red-500">*</span>
+                    </p>
                     <input id="audit-modal-photo-input" type="file" accept="image/*" capture="environment"
-                        class="hidden" />
-                    <!-- Camera Button -->
-                    <button id="btn-audit-modal-camera"
+                        class="hidden" aria-label="เลือกไฟล์รูปกล่องสินค้า" />
+                    <button id="btn-audit-modal-camera" type="button"
                         onclick="document.getElementById('audit-modal-photo-input').click()"
-                        class="w-full py-3.5 bg-surface-chip hover:bg-surface-tile-2 text-ink rounded-sm  hover:border-primary/40 font-bold text-sm transition-all flex items-center justify-center gap-2">
+                        class="w-full px-4 py-2.5 rounded-xl bg-[#27272A] border border-[#3F3F46] text-white hover:border-[#FFE169] transition-colors flex items-center justify-center gap-2 text-sm cursor-pointer">
                         <i class="fa-solid fa-camera text-base"></i>
                         <span>เปิดกล้อง / เลือกรูป</span>
                     </button>
-                    <!-- Photo Preview -->
-                    <img id="audit-modal-photo-preview" src="" alt="preview"
-                        class="hidden w-full h-[160px] object-cover rounded-md  mt-3" />
+                    <img id="audit-modal-photo-preview" src="" alt="ตัวอย่างรูปกล่องสินค้าที่เลือกไว้"
+                        class="hidden w-full h-[160px] object-cover rounded-xl border border-[#3F3F46] mt-1" />
+                </div>
+
+                <!-- หมายเหตุ -->
+                <div class="space-y-2">
+                    <label for="audit-modal-notes" class="text-slate-200 font-medium flex items-center gap-2 text-xs">
+                        <i class="fa-solid fa-pen text-white"></i> หมายเหตุ (ถ้ามี)
+                    </label>
+                    <textarea id="audit-modal-notes" rows="2" placeholder="บันทึกเพิ่มเติม..."
+                        class="w-full px-4 py-2.5 rounded-xl bg-[#27272A] border border-[#3F3F46] text-white focus:border-[#FFE169] focus:outline-none transition-all placeholder-slate-500 text-sm resize-none"></textarea>
                 </div>
             </div>
-            <!-- Notes -->
-            <div>
-                <label class="block text-xs font-bold text-body-muted uppercase tracking-wider mb-2"> หมายเหตุ (ถ้ามี)
-                </label>
-                <textarea id="audit-modal-notes" rows="2" placeholder="บันทึกเพิ่มเติม..."
-                    class="w-full px-4 py-2.5 bg-surface-chip border border-divider-soft rounded-sm text-ink placeholder-ink-muted-48 focus:outline-none focus:border-primary-focus text-sm transition-all resize-none"></textarea>
-            </div>
-            <!-- Actions -->
-            <div class="flex gap-3 pt-2">
-                <button onclick="closeAuditVerifyModal()"
-                    class="flex-1 py-3 bg-surface-chip hover:bg-surface-tile-2 text-body-muted rounded-pill font-bold text-sm transition-all">
-                    ยกเลิก </button>
-                <button id="btn-audit-modal-submit" onclick="submitModalAuditItem()"
-                    class="flex-[2] py-3 bg-primary hover:bg-primary-pressed text-on-primary rounded-pill font-bold text-sm transition-all flex items-center justify-center gap-2">
+
+            <!-- ท้ายโมดัล — ซ้าย = การกระทำรอง · ขวา = การกระทำหลัก (ข้อ 11.8) -->
+            <div class="flex items-center justify-center gap-4 pt-6 mt-2 pb-2">
+                <button type="button" onclick="closeAuditVerifyModal()"
+                    class="px-10 py-2.5 rounded-xl bg-[#E4E4E7] text-[#18181B] text-[15px] font-bold hover:bg-white transition-colors cursor-pointer">
+                    ยกเลิก
+                </button>
+                <button id="btn-audit-modal-submit" type="button" onclick="submitModalAuditItem()"
+                    class="px-12 py-2.5 rounded-xl bg-[#FFE169] text-[#333333] text-[15px] font-bold hover:bg-[#E2B93C] transition-colors flex items-center gap-2 cursor-pointer">
                     <i class="fa-solid fa-circle-check"></i>
                     <span>ยืนยันการตรวจสอบ</span>
                 </button>
             </div>
         </div>
     </div>
-    <!-- Audit Review Item Modal (หน้าต่างป๊อปอัปตรวจสอบรูปและยืนยันสถานะสำหรับผู้จัดการ) -->
+    <!-- Audit Review Item Modal (หน้าต่างป๊อปอัปตรวจสอบรูปและยืนยันสถานะสำหรับผู้จัดการ) — DESIGN.md ข้อ 11.10 -->
     <div id="modal-audit-review-item"
-        class="fixed inset-0 z-50 flex items-center justify-center  backdrop-blur-sm hidden">
+        class="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-sm p-4 hidden">
         <div
-            class="modal-content relative w-[95%] max-w-lg bg-canvas-elevated rounded-lg  p-6 flex flex-col gap-4 transform scale-95 transition-all duration-300 max-h-[90vh] overflow-y-auto">
-            <!-- Modal Header -->
-            <div class="flex items-center justify-between border-b border-hairline pb-3">
-                <div class="flex items-center gap-2">
-                    <span id="audit-review-modal-indicator" class="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
-                    <h3 class="font-bold text-base">ตรวจสอบรายการสแกน</h3>
-                </div>
-                <button aria-label="ปิด" onclick="closeAuditReviewItemModal()"
-                    class="text-body-muted hover:text-ink transition-all">
-                    <i class="fa-solid fa-xmark text-lg"></i>
+            class="modal-content relative w-[95%] md:w-[650px] max-h-[90vh] overflow-y-auto p-8 bg-[#18181B] rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.5)] border border-[#4D4D4D] transform scale-95 transition-all duration-300">
+            <!-- หัวโมดัล — สูตรเดียวกับ drawer/โมดัลอื่นทั้งระบบ (ข้อ 11.8) -->
+            <div class="flex items-center justify-between mb-6 pb-2 border-b border-[#333333]">
+                <h3 class="text-lg font-medium text-white flex items-center gap-2">
+                    <i class="fa-solid fa-magnifying-glass text-[#FFE169]"></i>
+                    <span>ตรวจสอบรายการสแกน</span>
+                </h3>
+                <button type="button" aria-label="ปิด" onclick="closeAuditReviewItemModal()"
+                    class="text-red-500 hover:text-red-400 transition-colors">
+                    <i class="fa-solid fa-xmark text-xl"></i>
                 </button>
             </div>
-            <!-- Details -->
-            <div class="grid grid-cols-2 gap-3 bg-canvas p-4 rounded-md ">
-                <div>
-                    <p class="text-body-muted text-[10px] uppercase font-bold">หมายเลข IMEI</p>
-                    <p id="audit-review-modal-imei" class="text-ink font-mono text-base font-bold mt-0.5">—</p>
+
+            <div class="space-y-5 text-sm">
+                <!-- ป้ายสถานะปัจจุบัน — เขียนจาก openAuditReviewItemModal() ด้วย statusBadge() -->
+                <div id="audit-review-modal-indicator" class="flex"></div>
+
+                <!-- รายละเอียดสินค้า -->
+                <div class="grid grid-cols-2 gap-4 bg-[#27272A] border border-[#3F3F46] rounded-xl p-4">
+                    <div>
+                        <p class="text-[10px] text-white/70 uppercase font-bold">หมายเลข IMEI</p>
+                        <p id="audit-review-modal-imei" class="font-mono font-semibold text-[#FFE169] text-base mt-0.5">—</p>
+                    </div>
+                    <div>
+                        <p class="text-[10px] text-white/70 uppercase font-bold">ชื่อสินค้า</p>
+                        <p id="audit-review-modal-product" class="text-white text-sm font-medium mt-0.5 truncate">—</p>
+                    </div>
+                    <div class="col-span-2 border-t border-[#3F3F46] pt-3">
+                        <p class="text-[10px] text-white/70 uppercase font-bold">ผู้สแกน / บันทึกเพิ่มเติม</p>
+                        <p id="audit-review-modal-scanner" class="text-white/70 text-xs font-medium mt-0.5">—</p>
+                    </div>
                 </div>
-                <div>
-                    <p class="text-body-muted text-[10px] uppercase font-bold">ชื่อสินค้า</p>
-                    <p id="audit-review-modal-product" class="text-body-muted text-xs font-semibold mt-0.5 truncate">—
+
+                <!-- รูปกล่องสินค้า -->
+                <div class="space-y-2">
+                    <p class="text-slate-200 font-medium flex items-center gap-2 text-xs">
+                        <i class="fa-solid fa-camera text-white"></i> ภาพหลักฐานกล่องสินค้า
                     </p>
+                    <div id="audit-review-modal-photo-container">
+                        <!-- รูปหรือ placeholder ถูกเขียนจาก JS -->
+                    </div>
                 </div>
-                <div class="col-span-2 border-t border-hairline pt-2">
-                    <p class="text-body-muted text-[10px] uppercase font-bold">ผู้สแกน / บันทึกเพิ่มเติม</p>
-                    <p id="audit-review-modal-scanner" class="text-body-muted text-xs font-medium mt-0.5">—</p>
-                </div>
-            </div>
-            <!-- Box Photo Preview -->
-            <div class="space-y-1.5">
-                <label class="block text-xs font-bold text-body-muted uppercase tracking-wider"> ภาพหลักฐานกล่องสินค้า
-                </label>
-                <div id="audit-review-modal-photo-container">
-                    <!-- Photo injected dynamically -->
+
+                <!-- หมายเหตุ (โผล่เฉพาะตอนยังตรวจสอบได้) -->
+                <div id="audit-review-modal-notes-area" class="space-y-2">
+                    <!-- ถูกเขียนจาก JS -->
                 </div>
             </div>
-            <!-- Notes Input -->
-            <div id="audit-review-modal-notes-area">
-                <!-- Notes input injected dynamically -->
-            </div>
-            <!-- Actions -->
-            <div id="audit-review-modal-actions-area" class="flex gap-2 pt-2">
-                <!-- Action buttons or status indicator injected dynamically -->
-            </div>
+
+            <!-- การกระทำ / สรุปผล — เขียนจาก JS -->
+            <div id="audit-review-modal-actions-area" class="flex flex-col sm:flex-row gap-2 pt-6 mt-6 border-t border-[#333333]"></div>
         </div>
     </div>
     <!-- Mobile POS Cart Overlay -->
@@ -4722,7 +4917,7 @@
     <!-- defer: ปล่อยให้ parse HTML จบก่อนค่อย execute
          ปลอดภัยเพราะทั้งไฟล์ห่ออยู่ใน DOMContentLoaded listener อยู่แล้ว
          และสคริปต์ defer จะ execute ก่อน event DOMContentLoaded ยิงเสมอ -->
-    <script defer src="script.js?v=authfetch_timeout_retry_v1"></script>
+    <script defer src="script.js?v=nonpo_modal_v5"></script>
     <script>
         // ลงทะเบียน Service Worker เพื่อแคช asset คงที่ (css/js/font/icon/รูป) ไว้ฝั่งเครื่อง
         // เข้าเว็บครั้งถัดไปเร็วขึ้นมาก โดยเฉพาะตอนเน็ตช้าหรือหลุดชั่วคราว — ดูรายละเอียดที่ sw.js
