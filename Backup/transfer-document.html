@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ใบโอนย้ายที่เก็บสินค้า</title>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --border-color: #000;
+        }
+
+        body {
+            font-family: 'Sarabun', sans-serif;
+            background: #f0f0f0;
+            margin: 0;
+            padding: 20px;
+            color: #000;
+            font-size: 14px;
+        }
+
+        .page {
+            background: #fff;
+            max-width: 210mm; /* A4 width */
+            min-height: 297mm; /* A4 height */
+            margin: 0 auto;
+            padding: 15mm;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .content-area {
+            flex: 1;
+        }
+
+        /* Header Section */
+        .header-container {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+
+        .company-info {
+            flex: 1;
+        }
+
+        .company-name {
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+
+        .company-address {
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        .document-info {
+            flex: 1;
+            text-align: right;
+        }
+
+        .doc-title {
+            font-size: 22px;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+
+        .copy-badge {
+            display: inline-block;
+            border: 1px solid var(--border-color);
+            padding: 2px 15px;
+            font-size: 14px;
+            margin-bottom: 15px;
+        }
+
+        .meta-grid {
+            display: grid;
+            grid-template-columns: auto 1fr;
+            gap: 5px 15px;
+            font-size: 14px;
+            text-align: left;
+            margin-left: auto;
+            width: fit-content;
+        }
+
+        .meta-label {
+            font-weight: 600;
+            text-align: right;
+        }
+
+        /* Transfer Details Section */
+        .transfer-details {
+            margin-bottom: 20px;
+            font-size: 14px;
+            line-height: 1.8;
+        }
+
+        /* Table Section */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 30px;
+            font-size: 13px;
+        }
+
+        th, td {
+            border: 1px solid var(--border-color);
+            padding: 8px 5px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #f8f8f8;
+            font-weight: 600;
+            text-align: center;
+        }
+
+        td.center { text-align: center; }
+        td.right { text-align: right; }
+
+        .summary-row td {
+            font-weight: 600;
+            background-color: #f8f8f8;
+        }
+
+        /* Signatures Section */
+        .signatures {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 50px;
+            padding: 0 20px;
+        }
+
+        .sign-box {
+            text-align: center;
+            width: 30%;
+        }
+
+        .sign-line {
+            margin-top: 40px;
+            border-bottom: 1px dotted var(--border-color);
+            margin-bottom: 5px;
+        }
+
+        .sign-name {
+            margin-bottom: 20px;
+        }
+
+        .company-seal {
+            width: 120px;
+            height: 120px;
+            border: 1px solid var(--border-color);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto;
+            color: #999;
+            font-size: 12px;
+        }
+
+        /* Print adjustments */
+        @media print {
+            body { background: #fff; padding: 0; }
+            .page { box-shadow: none; margin: 0; padding: 10mm; max-width: none; min-height: 297mm; }
+            .content-area { flex: 1; }
+            @page { size: A4; margin: 0; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="page">
+    
+    <div class="content-area">
+    <!-- Header -->
+    <div class="header-container">
+        <div class="company-info">
+            <div class="company-name">บริษัท ซิลมีน โมบาย จำกัด</div>
+            <div class="company-name">(สาขา<span id="doc-company-address"></span>)</div>
+            <div class="company-address">ที่อยู่: <span id="doc-branch-address"></span></div>
+            <div class="company-tax">
+                เลขประจำตัวผู้เสียภาษี : 0955562000701<br>
+            </div>
+        </div>
+        <div class="document-info">
+            <div class="doc-title">ใบโอนย้ายที่เก็บสินค้า</div>
+            <div class="meta-grid">
+                <div class="meta-label">เลขที่เอกสาร :</div>
+                <div id="doc-number">-</div>
+                <div class="meta-label">วันที่ :</div>
+                <div id="doc-date">-</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Transfer Details -->
+    <div class="transfer-details">
+        <div><strong>พนักงานผู้โอน :</strong> <span id="doc-employee"></span></div>
+        <div><strong>โอนย้ายจากคลัง :</strong> <span id="doc-from-branch"></span></div>
+        <div><strong>โอนย้ายไปคลัง :</strong> <span id="doc-to-branch"></span></div>
+    </div>
+
+    <!-- Data Table -->
+    <table>
+        <thead>
+            <tr>
+                <th style="width: 50px;">ลำดับ</th>
+                <th style="width: 150px;">รหัสสินค้า</th>
+                <th>ชื่อสินค้า</th>
+                <th style="width: 100px;">จากที่เก็บ</th>
+                <th style="width: 100px;">ไปที่เก็บ</th>
+                <th style="width: 80px;">จำนวน</th>
+                <th style="width: 60px;">หน่วย</th>
+            </tr>
+        </thead>
+        <tbody id="doc-table-body">
+                <!-- Dynamic rows will be inserted here -->
+            </tbody>
+        <tfoot>
+            <tr class="summary-row">
+                <td colspan="5" class="right" style="padding-right: 15px;">รวมทั้งหมด</td>
+                <td class="right" id="doc-total-qty">-</td>
+                <td class="center">รายการ</td>
+            </tr>
+        </tfoot>
+    </table>
+
+    </div>
+
+    <!-- Signatures -->
+    <div class="signatures">
+        <div class="sign-box">
+            <div style="font-weight: 600;">ผู้อนุมัติ / Approved By</div>
+            <div class="sign-line"></div>
+            <div class="sign-name">(...................................................)</div>
+            <div>วันที่ ......../......../........</div>
+        </div>
+        <div class="sign-box">
+            <div style="font-weight: 600;">ผู้รับสินค้า / Received By</div>
+            <div class="sign-line"></div>
+            <div class="sign-name">(...................................................)</div>
+            <div>วันที่ ......../......../........</div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+  // Function to populate the document with data
+  function populateTransferDocument(data) {
+    // Header - Company Info
+    document.getElementById('doc-company-address').textContent = data.from_branch_name || '';
+    document.getElementById('doc-branch-address').textContent = data.from_branch_address || '';
+
+    // Meta - Document Info
+    document.getElementById('doc-number').textContent = data.transfer_number || '';
+    
+    // Format date
+    if (data.created_at) {
+      const date = new Date(data.created_at);
+      const day = date.getDate().toString().padStart(2, '0');
+      const month = (date.getMonth() + 1).toString().padStart(2, '0');
+      const year = date.getFullYear();
+      document.getElementById('doc-date').textContent = `${day}/${month}/${year}`;
+    }
+
+    // Transfer Details
+    document.getElementById('doc-employee').textContent = data.employee_name || '';
+    document.getElementById('doc-from-branch').textContent = data.from_branch_name || '';
+    document.getElementById('doc-to-branch').textContent = data.to_branch_name || '';
+
+    // Table
+    const tbody = document.getElementById('doc-table-body');
+    tbody.innerHTML = '';
+
+    let totalQty = 0;
+    let rowIndex = 1;
+    let mainUnit = 'ชิ้น';
+
+    if (data.items && data.items.length > 0) {
+      data.items.forEach(item => {
+        const itemUnit = item.unit || 'ชิ้น';
+        // Build product name with additional details
+        let productName = item.product_name || '';
+        const details = [];
+        if (item.color) details.push(item.color);
+        if (item.capacity) details.push(item.capacity);
+        if (item.condition) details.push(item.condition);
+        if (details.length > 0) {
+          productName += ` ${details.join(' ')}`;
+        }
+
+        if (item.imeis && item.imeis.length > 0) {
+          // Mobile phones: one row per IMEI
+          mainUnit = itemUnit; // Use the unit from item
+          item.imeis.forEach(imei => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+              <td class="center">${rowIndex++}</td>
+              <td>${imei}</td>
+              <td>${productName}</td>
+              <td class="center">${data.from_branch_name || ''}</td>
+              <td class="center">${data.to_branch_name || ''}</td>
+              <td class="right">1.00</td>
+              <td class="center">${itemUnit}</td>
+            `;
+            tbody.appendChild(row);
+            totalQty += 1;
+          });
+        } else {
+          // Accessories: one row with total quantity
+          const row = document.createElement('tr');
+          row.innerHTML = `
+            <td class="center">${rowIndex++}</td>
+            <td>${item.product_code || ''}</td>
+            <td>${productName}</td>
+            <td class="center">${data.from_branch_name || ''}</td>
+            <td class="center">${data.to_branch_name || ''}</td>
+            <td class="right">${(item.quantity || 0).toFixed(2)}</td>
+            <td class="center">${itemUnit}</td>
+          `;
+          tbody.appendChild(row);
+          totalQty += (item.quantity || 0);
+        }
+      });
+    }
+
+    // Summary
+    document.getElementById('doc-total-qty').textContent = totalQty.toFixed(2);
+    document.getElementById('doc-total-unit').textContent = mainUnit;
+  }
+
+  // Auto print if data is passed via URL param
+  window.onload = function() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const transferData = urlParams.get('data');
+    if (transferData) {
+      try {
+        const data = JSON.parse(decodeURIComponent(transferData));
+        populateTransferDocument(data);
+        setTimeout(() => window.print(), 500);
+      } catch (e) {
+        console.error('Error parsing transfer data:', e);
+      }
+    }
+  };
+</script>
+
+</body>
+</html>
