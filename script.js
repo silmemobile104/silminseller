@@ -112,7 +112,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // โหลดสคริปต์เฉพาะหน้า (js/page-<name>.js) แบบ dynamic ครั้งเดียว แล้ว cache ไว้
     // PAGE_SCRIPT_VERSION: บัมพ์เลขนี้ทุกครั้งที่แก้ไฟล์ใน js/ เพื่อไม่ให้เบราว์เซอร์ใช้ของเก่าที่ cache ไว้
-    const PAGE_SCRIPT_VERSION = 'nonpo_modal_v5';
+    const PAGE_SCRIPT_VERSION = 'db_menu_v4';
     const __loadedPageScripts = {};
     function loadPageScript(name) {
         if (__loadedPageScripts[name]) return __loadedPageScripts[name];
@@ -165,7 +165,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // ไม่ได้รอ init function ถ้า HTML ยังไม่ถูกแทรกเข้า DOM ก่อน ตัวแปรที่ query ไว้จะเป็น null ถาวร
     // ชื่อ name ต้องตรงกับชื่อที่ใช้ใน loadPageScript — ไฟล์เดียวอาจมีหลาย <div id="view-XXX"> รวมกัน
     // ถ้าหน้านั้นถูก share โดยสคริปต์เดียวกันหลาย view (ดูตาราง mapping ในแผน)
-    const VIEW_FRAGMENT_VERSION = 'v39'; // บัมพ์เลขนี้ทุกครั้งที่แก้ไฟล์ใน views/
+    const VIEW_FRAGMENT_VERSION = 'v40'; // บัมพ์เลขนี้ทุกครั้งที่แก้ไฟล์ใน views/
     const __loadedPageViews = {};
     function loadPageView(name) {
         if (__loadedPageViews[name]) return __loadedPageViews[name];
@@ -349,6 +349,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const navAccountingPO = document.getElementById('nav-accounting-po');
     const navBranchReceive = document.getElementById('nav-branch-receive');
     const navAuditLogs = document.getElementById('nav-audit-logs');
+    const navDatabase = document.getElementById('nav-database');
     const navAccounting = document.getElementById('nav-accounting');
     const navDailySummary = document.getElementById('nav-daily-summary');
     const navStockAudit = document.getElementById('nav-stock-audit');
@@ -383,6 +384,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const viewAccountingPO = document.getElementById('view-accounting-po');
     const viewBranchReceive = document.getElementById('view-branch-receive');
     const viewAuditLogs = document.getElementById('view-audit-logs');
+    const viewDatabase = document.getElementById('view-database');
     const viewAccounting = document.getElementById('view-accounting');
     const viewDailySummary = document.getElementById('view-daily-summary');
     const viewStockAudit = document.getElementById('view-stock-audit');
@@ -2242,6 +2244,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Toggle Audit Logs Sidebar view
         setVisible(navAuditLogs, permissions.view_audit_logs);
+        setVisible(navDatabase, permissions.manage_database);
 
         // ซ่อน/แสดง ปุ่มเพิ่มสินค้า + ลบสินค้า
         const btnAdd = document.getElementById('btn-add-product');
@@ -3229,7 +3232,8 @@ document.addEventListener('DOMContentLoaded', () => {
             'stock-audit': 'do_stock_audit',
             'stock-audit-review': 'manage_stock_audit',
             'accounting-settings': 'manage_finance',
-            'disbursement': 'manage_finance'
+            'disbursement': 'manage_finance',
+            'database': 'manage_database'
         };
 
         for (const [view, perm] of Object.entries(viewPermissionMap)) {
@@ -3272,7 +3276,8 @@ document.addEventListener('DOMContentLoaded', () => {
             'stock-audit': 'do_stock_audit',
             'stock-audit-review': 'manage_stock_audit',
             'accounting-settings': 'manage_finance',
-            'disbursement': 'manage_finance'
+            'disbursement': 'manage_finance',
+            'database': 'manage_database'
         };
 
         const requiredPermission = viewPermissionMap[viewName];
@@ -3346,7 +3351,7 @@ document.addEventListener('DOMContentLoaded', () => {
             viewBranchInventory, viewAccountingPO, viewBranchReceive,
             viewAuditLogs, viewAccounting, viewDailySummary,
             viewStockAudit, viewStockAuditReview, viewDeposits,
-            viewAccountingSettings, viewDisbursement
+            viewAccountingSettings, viewDisbursement, viewDatabase
         ];
         views.forEach(view => {
             if (view) {
@@ -3527,6 +3532,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 await loadPageScript('po-accounting');
                 if (typeof initAccounting === 'function') initAccounting();
             }
+            else if (viewName === 'database') {
+                activateView(viewDatabase, navDatabase);
+                await loadPageView('database');
+                await loadPageScript('database');
+                if (typeof window.loadDatabaseOverview === 'function') window.loadDatabaseOverview();
+            }
             else if (viewName === 'audit-logs') {
                 activateView(viewAuditLogs, navAuditLogs);
                 await loadPageView('audit-logs');
@@ -3588,6 +3599,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (navAccounting) navAccounting.style.display = 'none'; // Will be managed by applyPermissions
     if (navAccounting) navAccounting.addEventListener('click', (e) => { e.preventDefault(); switchView('accounting'); });
     if (navAuditLogs) navAuditLogs.addEventListener('click', (e) => { e.preventDefault(); switchView('audit-logs'); });
+    if (navDatabase) navDatabase.addEventListener('click', (e) => { e.preventDefault(); switchView('database'); });
     if (navAccountingSettings) navAccountingSettings.style.display = 'none'; // Will be managed by applyPermissions
     if (navAccountingSettings) navAccountingSettings.addEventListener('click', (e) => { e.preventDefault(); switchView('accounting-settings'); });
     if (navDisbursement) navDisbursement.style.display = 'none'; // Will be managed by applyPermissions
@@ -3626,6 +3638,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 .then(res => res.json())
                 .then(result => {
                     if (result.success && result.data) {
+                        // เก็บ token ใหม่ที่มีสิทธิ์ล่าสุด ไม่งั้นเมนูจะโผล่แต่เรียก API แล้วได้ 403
+                        if (result.token) localStorage.setItem('silmin_token', result.token);
                         localStorage.setItem('silmin_user', JSON.stringify(result.data));
                         updateTopBar(result.data);
                         applyPermissions(result.data.permissions);

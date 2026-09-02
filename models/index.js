@@ -34,7 +34,8 @@ const roleSchema = new mongoose.Schema({
         view_daily_summary: { type: Boolean, default: true }, // อนุญาตให้ดูรายงานสรุปยอดขายรายวัน
         manage_stock_audit: { type: Boolean, default: false }, // อนุญาตให้ตรวจสอบและอนุมัติผลการตรวจนับสต็อกประจำวัน
         do_stock_audit: { type: Boolean, default: false }, // อนุญาตให้ตรวจนับสต็อกประจำวัน
-        manage_deposits: { type: Boolean, default: false } // อนุญาตให้จัดการมัดจำสินค้า
+        manage_deposits: { type: Boolean, default: false }, // อนุญาตให้จัดการมัดจำสินค้า
+        manage_database: { type: Boolean, default: false } // อนุญาตให้ดูแคตตาล็อกฐานข้อมูล (อ่านอย่างเดียว)
     }
 }, { timestamps: true });
 const Role = mongoose.model('Role', roleSchema, 'role');
@@ -50,7 +51,8 @@ const seedDefaultRoles = async () => {
                 manage_settings: true, manage_roles: true, filter_stock_branch: true, cancel_sale: true,
                 report_arrival: true, approve_import: true, manage_po: true, receive_po: true,
                 manage_transfers: true, manage_finance: true, view_audit_logs: true, view_branch_inventory: true,
-                view_daily_summary: true, manage_stock_audit: true, do_stock_audit: true, manage_deposits: true
+                view_daily_summary: true, manage_stock_audit: true, do_stock_audit: true, manage_deposits: true,
+                manage_database: true
             }
         },
         {
@@ -61,7 +63,8 @@ const seedDefaultRoles = async () => {
                 manage_settings: true, manage_roles: false, filter_stock_branch: true, cancel_sale: true,
                 report_arrival: true, approve_import: false, manage_po: true, receive_po: true,
                 manage_transfers: true, manage_finance: true, view_audit_logs: true, view_branch_inventory: true,
-                view_daily_summary: true, manage_stock_audit: true, do_stock_audit: true, manage_deposits: true
+                view_daily_summary: true, manage_stock_audit: true, do_stock_audit: true, manage_deposits: true,
+                manage_database: false
             }
         },
         {
@@ -72,7 +75,8 @@ const seedDefaultRoles = async () => {
                 manage_settings: false, manage_roles: false, filter_stock_branch: false, cancel_sale: false,
                 report_arrival: true, approve_import: false, manage_po: false, receive_po: true,
                 manage_transfers: false, manage_finance: false, view_audit_logs: false, view_branch_inventory: false,
-                view_daily_summary: true, manage_stock_audit: false, do_stock_audit: true, manage_deposits: true
+                view_daily_summary: true, manage_stock_audit: false, do_stock_audit: true, manage_deposits: true,
+                manage_database: false
             }
         }
     ];
@@ -105,6 +109,7 @@ const seedDefaultRoles = async () => {
                 existing.permissions.manage_stock_audit = true;
                 existing.permissions.do_stock_audit = true;
                 existing.permissions.manage_deposits = true;
+                existing.permissions.manage_database = true;
                 changed = true;
             }
             // Ensure ผู้จัดการ gets manage_stock_audit & do_stock_audit

@@ -96,6 +96,9 @@ app.use('/api', apiRoutes);
 const acctRoutes = require('./routes/accounting');
 app.use('/api/acct', acctRoutes);
 
+const dbRoutes = require('./routes/database');
+app.use('/api/database', dbRoutes);
+
 // ==========================================
 // Frontend Routes
 // ==========================================

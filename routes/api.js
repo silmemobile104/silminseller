@@ -1377,8 +1377,33 @@ router.get('/auth/me', async (req, res) => {
             do_stock_audit: dbPerms.do_stock_audit !== undefined ? dbPerms.do_stock_audit : (employee.role === 'แอดมิน' || employee.role === 'ผู้จัดการ' || dbPerms.do_pos || false)
         };
 
+        // ออก token ใหม่ที่มีสิทธิ์ล่าสุดด้วย
+        // เดิม /auth/me ซิงก์เฉพาะ permissions ลง localStorage แต่ไม่ได้ออก token ใหม่
+        // พอเพิ่มสิทธิ์ข้อใหม่ เมนูจะโผล่ (หน้าเว็บอ่านจาก localStorage) แต่เซิร์ฟเวอร์ตอบ 403
+        // (เซิร์ฟเวอร์อ่านจาก JWT) จนกว่าผู้ใช้จะออกจากระบบแล้วเข้าใหม่
+        //
+        // คงเวลาหมดอายุเดิมไว้ ไม่ต่ออายุ session ให้ยาวขึ้นทุกครั้งที่เปิดหน้า
+        let refreshedToken = null;
+        try {
+            const remainingSec = req.user.exp ? req.user.exp - Math.floor(Date.now() / 1000) : 0;
+            if (remainingSec > 0) {
+                refreshedToken = jwt.sign({
+                    employee_id: employee._id,
+                    emp_id: employee.emp_id,
+                    name: employee.name,
+                    role: employee.role,
+                    permissions,
+                    branch_id: employee.branch_id ? employee.branch_id._id : null
+                }, JWT_SECRET, { expiresIn: remainingSec });
+            }
+        } catch (e) {
+            // ออก token ใหม่ไม่สำเร็จไม่ควรทำให้ทั้งหน้าใช้ไม่ได้ — ใช้ token เดิมต่อไป
+            console.error('[AUTH] ออก token ใหม่ใน /auth/me ไม่สำเร็จ:', e.message);
+        }
+
         res.status(200).json({
             success: true,
+            token: refreshedToken,
             data: {
                 id: employee._id,
                 name: employee.name,

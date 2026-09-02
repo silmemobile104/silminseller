@@ -14,7 +14,7 @@
          เพราะฟอนต์ Prompt ย้ายมา self-host เองที่ vendor/fonts/ (ดู tools/build-fonts.js) -->
 
     <link rel="icon" type="image/png" href="logo.png?v=2">
-    <link rel="stylesheet" href="tailwind.css?v=48">
+    <link rel="stylesheet" href="tailwind.css?v=50">
     <!-- xlsx ถูกย้ายไปโหลดแบบ on-demand ตอนเปิด modal นำเข้า Excel แล้ว (ดู ensureXlsxLoaded ใน script.js)
          เดิมโหลดตรงนี้แบบ render-blocking ทุกครั้งที่เข้าเว็บ ทั้งที่ใช้แค่ฟีเจอร์เดียว -->
     <!-- ไอคอน: self-host + ตัดเหลือเฉพาะที่ใช้จริง (Font Awesome 144 + Bootstrap Icons 28)
@@ -304,6 +304,12 @@
                     <i class="bi bi-file-text text-slate-400 w-5 text-center text-xl"></i>
                     <span class="sidebar-text ml-3 font-medium">ประวัติกิจกรรมระบบ</span>
 
+                </a>
+
+                <a href="#" id="nav-database" data-tooltip="จัดการฐานข้อมูล"
+                    class="flex items-center px-3 py-3 rounded-xl text-slate-300 hover:bg-slate-700/50 hover:text-white transition-all group nav-menu-item hidden">
+                    <i class="bi bi-diagram-3 text-slate-400 w-5 text-center text-xl"></i>
+                    <span class="sidebar-text ml-3 font-medium">จัดการฐานข้อมูล</span>
                 </a>
             </nav>
 
@@ -745,6 +751,11 @@
                 <!-- VIEW: AUDIT LOGS (ประวัติกิจกรรมพนักงานและระบบ) -->
                 <!-- เนื้อหาแยกไปที่ views/audit-logs.html แล้ว โหลดแบบ dynamic ผ่าน loadPageView('audit-logs') (ดู switchView case 'audit-logs') -->
                 <div id="view-audit-logs" class="hidden space-y-8 animate-fade-in">
+                </div>
+
+                <!-- VIEW: DATABASE (แคตตาล็อกฐานข้อมูล อ่านอย่างเดียว) -->
+                <!-- เนื้อหาแยกไปที่ views/database.html โหลดผ่าน loadPageView('database') (ดู switchView case 'database') -->
+                <div id="view-database" class="hidden space-y-8">
                 </div>
                 <!-- MODAL: AUDIT DETAIL (ดูข้อมูล JSON ละเอียด) -->
                 <div id="modal-audit-detail"
@@ -2935,6 +2946,22 @@
                                 </div>
                             </label>
                         </div>
+                        <!-- Toggle: manage_database -->
+                        <div
+                            class="flex items-center justify-between p-3 bg-surface-tile-3 rounded-md  hover:bg-surface-chip transition-colors">
+                            <div class="flex items-center gap-3">
+                                <div class="w-8 h-8 rounded-lg bg-cyan-500/10 flex items-center justify-center">
+                                    <i class="fa-solid fa-database text-cyan-400 text-sm"></i>
+                                </div>
+                                <span class="text-sm font-medium text-ink">จัดการฐานข้อมูล</span>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" id="perm-manage_database" class="sr-only peer" aria-label="จัดการฐานข้อมูล">
+                                <div
+                                    class="w-10 h-5 bg-surface-chip peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-ink-muted-48 after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary peer-checked:after:bg-on-primary">
+                                </div>
+                            </label>
+                        </div>
                         <!-- Toggle: filter_stock_branch -->
                         <div
                             class="flex items-center justify-between p-3 bg-surface-tile-3 rounded-md  hover:bg-surface-chip transition-colors">
@@ -4917,7 +4944,7 @@
     <!-- defer: ปล่อยให้ parse HTML จบก่อนค่อย execute
          ปลอดภัยเพราะทั้งไฟล์ห่ออยู่ใน DOMContentLoaded listener อยู่แล้ว
          และสคริปต์ defer จะ execute ก่อน event DOMContentLoaded ยิงเสมอ -->
-    <script defer src="script.js?v=nonpo_modal_v5"></script>
+    <script defer src="script.js?v=db_menu_v4"></script>
     <script>
         // ลงทะเบียน Service Worker เพื่อแคช asset คงที่ (css/js/font/icon/รูป) ไว้ฝั่งเครื่อง
         // เข้าเว็บครั้งถัดไปเร็วขึ้นมาก โดยเฉพาะตอนเน็ตช้าหรือหลุดชั่วคราว — ดูรายละเอียดที่ sw.js

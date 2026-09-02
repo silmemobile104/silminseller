@@ -104,4 +104,64 @@ const entries = [
         process.exit(1);
     }
     console.log('✅ global ที่เรียกข้ามไฟล์/จาก onclick ถูก export ครบ');
+
+    // ตรวจว่าทุก model มีคำอธิบายใน utils/dbCatalogue.js
+    // หน้า "จัดการฐานข้อมูล" อ่านจากไฟล์นั้น ถ้าเพิ่ม collection ใหม่แล้วลืมเขียนคำอธิบาย
+    // หน้าจะแสดงไม่ครบโดยไม่มีอะไรฟ้อง จึงดักไว้ตรงนี้
+    const mongoose = require('mongoose');
+    const dbModels = require(path.join(root, 'models'));
+    const { catalogue } = require(path.join(root, 'utils/dbCatalogue'));
+    const declaredModels = Object.keys(dbModels)
+        .filter(k => dbModels[k] && dbModels[k].prototype instanceof mongoose.Model);
+    const documented = new Set(catalogue.map(c => c.model));
+    const undocumented = declaredModels.filter(m => !documented.has(m));
+    const stale = catalogue.map(c => c.model).filter(m => !declaredModels.includes(m));
+    const wrongKey = catalogue
+        .filter(c => dbModels[c.model] && dbModels[c.model].collection.name !== c.key)
+        .map(c => `${c.model} (แคตตาล็อกเขียน '${c.key}' แต่จริงคือ '${dbModels[c.model].collection.name}')`);
+
+    if (undocumented.length || stale.length || wrongKey.length) {
+        if (undocumented.length) console.error('\n❌ model เหล่านี้ยังไม่มีคำอธิบายใน utils/dbCatalogue.js:', undocumented.join(', '));
+        if (stale.length) console.error('\n❌ แคตตาล็อกอ้างถึง model ที่ไม่มีแล้ว:', stale.join(', '));
+        if (wrongKey.length) console.error('\n❌ ชื่อ collection ในแคตตาล็อกไม่ตรงของจริง:', wrongKey.join(', '));
+        process.exit(1);
+    }
+    console.log(`✅ แคตตาล็อกฐานข้อมูลครบ ${catalogue.length} collection`);
+
+    // ตรวจว่าทุกคีย์สิทธิ์ใน permKeys มีสวิตช์ในโมดัลแก้ไขบทบาท
+    // ตอนบันทึก page-roles.js เขียน permissions[key] = el ? el.checked : false
+    // และ PUT /roles เขียนทับ permissions ทั้งก้อน ดังนั้นคีย์ที่ไม่มีสวิตช์
+    // จะถูกตั้งเป็น false เงียบๆ ทุกครั้งที่มีคนกดบันทึกบทบาท — ไม่ใช่แค่มองไม่เห็น
+    const rolesSrc = fs.readFileSync(path.join(root, 'js/page-roles.js'), 'utf8');
+    const keysMatch = rolesSrc.match(/const permKeys = \[([\s\S]*?)\];/);
+    if (!keysMatch) {
+        console.error('\n❌ หา permKeys ใน js/page-roles.js ไม่เจอ');
+        process.exit(1);
+    }
+    const permKeys = [...keysMatch[1].matchAll(/'([a-z_]+)'/g)].map(m => m[1]);
+    const indexSrc = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
+    const noToggle = permKeys.filter(k => !indexSrc.includes(`id="perm-${k}"`));
+    if (noToggle.length) {
+        console.error('\n❌ คีย์สิทธิ์เหล่านี้ไม่มีสวิตช์ในโมดัลแก้ไขบทบาท (index.html) จะถูกตั้งเป็น false ทุกครั้งที่บันทึกบทบาท:', noToggle.join(', '));
+        process.exit(1);
+    }
+    console.log(`✅ สิทธิ์ทั้ง ${permKeys.length} ข้อมีสวิตช์ในโมดัลแก้ไขบทบาทครบ`);
+
+    // ตรวจว่าทุก view ที่ switchView เปิดได้ อยู่ในอาเรย์ที่ใช้ซ่อนหน้าอื่นด้วย
+    // switchView ซ่อนทุกหน้าจากรายชื่อคงที่ก่อน แล้วค่อยเปิดหน้าที่ต้องการ
+    // ถ้า view ใหม่ไม่อยู่ในรายชื่อนั้น มันจะไม่ถูกซ่อนตอนสลับไปหน้าอื่น = ค้างอยู่ทุกหน้า
+    const scriptSrc = fs.readFileSync(path.join(root, 'script.js'), 'utf8');
+    const hideListMatch = scriptSrc.match(/const views = \[([\s\S]*?)\];/);
+    if (!hideListMatch) {
+        console.error('\n❌ หาอาเรย์ views ที่ใช้ซ่อนหน้าใน script.js ไม่เจอ');
+        process.exit(1);
+    }
+    const hidden = new Set([...hideListMatch[1].matchAll(/\bview[A-Z]\w*/g)].map(m => m[0]));
+    const activated = new Set([...scriptSrc.matchAll(/activateView\(\s*(view[A-Z]\w*)/g)].map(m => m[1]));
+    const neverHidden = [...activated].filter(v => !hidden.has(v));
+    if (neverHidden.length) {
+        console.error('\n❌ view เหล่านี้ถูกเปิดด้วย activateView แต่ไม่อยู่ในอาเรย์ที่ใช้ซ่อน จะค้างอยู่ทุกหน้า:', neverHidden.join(', '));
+        process.exit(1);
+    }
+    console.log(`✅ view ทั้ง ${activated.size} หน้าถูกซ่อนตอนสลับหน้าครบ`);
 })().catch(err => { console.error(err); process.exit(1); });

@@ -1,0 +1,127 @@
+<div id="view-database">
+    <!-- [1] หัวหน้า — DESIGN.md ข้อ 11.2 -->
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div class="flex items-center gap-4">
+            <i class="bi bi-diagram-3 text-white w-5 text-2xl text-center"></i>
+            <h3 class="text-2xl text-white">จัดการฐานข้อมูล</h3>
+        </div>
+        <button id="btn-clear-db-filters" type="button"
+            class="px-3 py-2 bg-[#4D4D4D]/40 cursor-pointer text-white flex items-center justify-center gap-1.5 rounded-[0.5rem] text-sm hover:bg-[#5C5C5C] transition-colors w-fit">
+            <i class="fa-solid fa-filter-circle-xmark"></i> ล้างตัวกรอง
+        </button>
+    </div>
+
+    <!-- [2] สรุปภาพรวม -->
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div class="bg-[#4D4D4D]/40 rounded-2xl shadow-lg backdrop-blur-sm p-6 flex items-center gap-4">
+            <div class="w-12 h-12 rounded-full flex items-center justify-center shrink-0"
+                style="color:#FFE169;background-color:#27272A;border:1px solid #FFE16959;">
+                <i class="fa-solid fa-database text-lg"></i>
+            </div>
+            <div class="min-w-0">
+                <p class="text-xs text-white/70">Collection ทั้งหมด</p>
+                <p id="db-stat-collections" class="text-2xl font-semibold text-white font-mono">-</p>
+            </div>
+        </div>
+        <div class="bg-[#4D4D4D]/40 rounded-2xl shadow-lg backdrop-blur-sm p-6 flex items-center gap-4">
+            <div class="w-12 h-12 rounded-full flex items-center justify-center shrink-0"
+                style="color:#20D500;background-color:#27272A;border:1px solid #20D50059;">
+                <i class="fa-solid fa-layer-group text-lg"></i>
+            </div>
+            <div class="min-w-0">
+                <p class="text-xs text-white/70">จำนวนเอกสารรวม</p>
+                <p id="db-stat-documents" class="text-2xl font-semibold text-white font-mono">-</p>
+            </div>
+        </div>
+        <div class="bg-[#4D4D4D]/40 rounded-2xl shadow-lg backdrop-blur-sm p-6 flex items-center gap-4">
+            <div class="w-12 h-12 rounded-full flex items-center justify-center shrink-0"
+                style="color:#5AB0FF;background-color:#27272A;border:1px solid #5AB0FF59;">
+                <i class="fa-solid fa-hard-drive text-lg"></i>
+            </div>
+            <div class="min-w-0">
+                <p class="text-xs text-white/70">ชื่อฐานข้อมูล</p>
+                <p id="db-stat-name" class="text-lg font-semibold text-white font-mono truncate">-</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- [3] การ์ดพาเนล — แถบควบคุม + ชิป + ตาราง อยู่ในการ์ดใบเดียว (ข้อ 11.1, 11.3) -->
+    <div class="bg-[#4D4D4D]/40 rounded-2xl shadow-lg overflow-hidden backdrop-blur-sm">
+        <!-- 3a แถบควบคุม (ข้อ 11.4) -->
+        <div class="p-6 pb-0 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+            <h3 class="text-lg text-white flex items-center gap-2">
+                <i class="fa-solid fa-list text-[#FFE169]"></i> รายการ Collection
+            </h3>
+            <div class="flex flex-wrap items-center gap-2.5 w-full lg:w-auto">
+                <div class="relative group w-full sm:w-64">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <i class="fa-solid fa-search text-white group-focus-within:text-[#FFE169] transition-colors"></i>
+                    </div>
+                    <label for="db-filter-search" class="sr-only">ค้นหาชื่อ collection คำอธิบาย หรือชื่อหน้า</label>
+                    <input type="text" id="db-filter-search" autocomplete="off"
+                        placeholder="ค้นหาชื่อ / คำอธิบาย / หน้าที่ใช้..."
+                        class="bg-[#4D4D4D]/40 border border-[#3F3F46] rounded-[0.5rem] text-sm pl-10 pr-4 py-2 w-full text-white focus:outline-none focus:border-[#FFE169] focus:ring-1 focus:ring-[#FFE169] transition-all placeholder-white">
+                </div>
+                <label for="db-filter-group" class="sr-only">กรองตามกลุ่มข้อมูล</label>
+                <select id="db-filter-group"
+                    class="bg-[#4D4D4D]/40 cursor-pointer text-sm rounded-[0.5rem] px-3 py-2 text-white focus:outline-none focus:ring-1 focus:ring-[#FFE169] w-full sm:w-auto [&>option]:bg-[#4D4D4D] [&>option:checked]:bg-[#FFE169] [&>option:checked]:text-[#333333]">
+                    <option value="ALL">ทุกกลุ่ม</option>
+                </select>
+                <label for="db-filter-importance" class="sr-only">กรองตามระดับความสำคัญ</label>
+                <select id="db-filter-importance"
+                    class="hidden md:block bg-[#4D4D4D]/40 cursor-pointer text-sm rounded-[0.5rem] px-3 py-2 text-white focus:outline-none focus:ring-1 focus:ring-[#FFE169] [&>option]:bg-[#4D4D4D] [&>option:checked]:bg-[#FFE169] [&>option:checked]:text-[#333333]">
+                    <option value="ALL">ทุกระดับความสำคัญ</option>
+                    <option value="critical">สำคัญสูงสุด</option>
+                    <option value="high">สำคัญมาก</option>
+                    <option value="normal">ทั่วไป</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- 3b ชิปตัวกรอง + ตัวนับผลลัพธ์ (ข้อ 11.5) -->
+        <div class="px-6 py-4">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div id="db-active-filters" class="flex flex-wrap gap-2"></div>
+                <div id="db-result-count" class="text-xs text-white font-medium"></div>
+            </div>
+        </div>
+
+        <!-- 3c ตาราง (ข้อ 11.6) -->
+        <div class="overflow-x-auto" tabindex="0">
+            <table class="w-full text-left text-sm whitespace-nowrap border-collapse">
+                <thead class="bg-[#4D4D4D]/40 text-white">
+                    <tr>
+                        <th class="px-6 py-4 font-semibold text-[15px]">Collection</th>
+                        <th class="px-6 py-4 font-semibold text-[15px]">กลุ่ม</th>
+                        <th class="px-6 py-4 font-semibold text-[15px] text-right">จำนวนเอกสาร</th>
+                        <th class="px-6 py-4 font-semibold text-[15px] w-full">เก็บอะไร</th>
+                        <th class="px-6 py-4 font-semibold text-[15px]">หน้าที่ใช้</th>
+                        <th class="px-6 py-4 font-semibold text-[15px]">ความสำคัญ</th>
+                        <th class="px-6 py-4 font-semibold text-[15px] text-right">จัดการ</th>
+                    </tr>
+                </thead>
+                <tbody id="db-table-body" class="divide-y divide-[#464646]"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- [4] ลิ้นชักรายละเอียด (ข้อ 11.10) -->
+    <div id="db-detail-drawer"
+        class="fixed inset-0 z-[70] flex items-center justify-center backdrop-blur-sm opacity-0 pointer-events-none transition-opacity duration-300 p-4">
+        <div tabindex="0"
+            class="modal-content relative w-[95%] xl:w-[820px] max-h-[92vh] overflow-y-auto bg-[#18181B] rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.5)] border border-[#4D4D4D]">
+            <button aria-label="ปิด" id="btn-close-db-drawer" type="button"
+                class="absolute right-5 top-5 z-10 text-red-500 hover:text-red-400 transition-colors cursor-pointer">
+                <i class="fa-solid fa-xmark text-xl"></i>
+            </button>
+            <div class="p-8">
+                <div class="flex items-center gap-3 mb-1 pr-8">
+                    <i class="fa-solid fa-database text-[#FFE169]"></i>
+                    <h3 id="db-drawer-title" class="text-lg font-medium text-white">รายละเอียด Collection</h3>
+                </div>
+                <p id="db-drawer-key" class="font-mono text-sm text-[#FFE169] mb-6">-</p>
+                <div id="db-drawer-body" class="space-y-6 text-sm"></div>
+            </div>
+        </div>
+    </div>
+</div>
