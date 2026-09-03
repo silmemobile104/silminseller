@@ -14,7 +14,7 @@
          เพราะฟอนต์ Prompt ย้ายมา self-host เองที่ vendor/fonts/ (ดู tools/build-fonts.js) -->
 
     <link rel="icon" type="image/png" href="logo.png?v=2">
-    <link rel="stylesheet" href="tailwind.css?v=51">
+    <link rel="stylesheet" href="tailwind.css?v=52">
     <!-- xlsx ถูกย้ายไปโหลดแบบ on-demand ตอนเปิด modal นำเข้า Excel แล้ว (ดู ensureXlsxLoaded ใน script.js)
          เดิมโหลดตรงนี้แบบ render-blocking ทุกครั้งที่เข้าเว็บ ทั้งที่ใช้แค่ฟีเจอร์เดียว -->
     <!-- ไอคอน: self-host + ตัดเหลือเฉพาะที่ใช้จริง (Font Awesome 144 + Bootstrap Icons 28)
@@ -3702,6 +3702,10 @@
                     <h4 class="text-sm font-bold text-ink mb-4 flex items-center gap-2">
                         <i class="fa-solid fa-thai-baht-sign text-body-muted"></i> ตั้งราคา (ข้อมูลการเงิน)
                     </h4>
+                    <p id="approve-price-from-reporter"
+                        class="hidden mb-3 px-3 py-2 rounded-sm bg-[#FF9F0A]/[0.12] border border-[#FF9F0A]/40 text-[#FF9F0A] text-xs flex items-center gap-2">
+                        <i class="fa-solid fa-circle-info"></i> ราคานี้ผู้แจ้งกรอกมาให้แล้ว ตรวจสอบและแก้ทับได้ก่อนยืนยัน
+                    </p>
                     <div class="grid grid-cols-2 gap-4">
                         <div>
                             <label for="approve-cost-price"
@@ -4978,7 +4982,7 @@
     <!-- defer: ปล่อยให้ parse HTML จบก่อนค่อย execute
          ปลอดภัยเพราะทั้งไฟล์ห่ออยู่ใน DOMContentLoaded listener อยู่แล้ว
          และสคริปต์ defer จะ execute ก่อน event DOMContentLoaded ยิงเสมอ -->
-    <script defer src="script.js?v=db_docs_v3"></script>
+    <script defer src="script.js?v=nonpo_price_v1"></script>
     <script>
         // ลงทะเบียน Service Worker เพื่อแคช asset คงที่ (css/js/font/icon/รูป) ไว้ฝั่งเครื่อง
         // เข้าเว็บครั้งถัดไปเร็วขึ้นมาก โดยเฉพาะตอนเน็ตช้าหรือหลุดชั่วคราว — ดูรายละเอียดที่ sw.js

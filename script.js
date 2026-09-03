@@ -112,7 +112,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // โหลดสคริปต์เฉพาะหน้า (js/page-<name>.js) แบบ dynamic ครั้งเดียว แล้ว cache ไว้
     // PAGE_SCRIPT_VERSION: บัมพ์เลขนี้ทุกครั้งที่แก้ไฟล์ใน js/ เพื่อไม่ให้เบราว์เซอร์ใช้ของเก่าที่ cache ไว้
-    const PAGE_SCRIPT_VERSION = 'db_docs_v3';
+    const PAGE_SCRIPT_VERSION = 'nonpo_price_v1';
     const __loadedPageScripts = {};
     function loadPageScript(name) {
         if (__loadedPageScripts[name]) return __loadedPageScripts[name];
@@ -165,7 +165,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // ไม่ได้รอ init function ถ้า HTML ยังไม่ถูกแทรกเข้า DOM ก่อน ตัวแปรที่ query ไว้จะเป็น null ถาวร
     // ชื่อ name ต้องตรงกับชื่อที่ใช้ใน loadPageScript — ไฟล์เดียวอาจมีหลาย <div id="view-XXX"> รวมกัน
     // ถ้าหน้านั้นถูก share โดยสคริปต์เดียวกันหลาย view (ดูตาราง mapping ในแผน)
-    const VIEW_FRAGMENT_VERSION = 'v42'; // บัมพ์เลขนี้ทุกครั้งที่แก้ไฟล์ใน views/
+    const VIEW_FRAGMENT_VERSION = 'v43'; // บัมพ์เลขนี้ทุกครั้งที่แก้ไฟล์ใน views/
     const __loadedPageViews = {};
     function loadPageView(name) {
         if (__loadedPageViews[name]) return __loadedPageViews[name];
@@ -7093,6 +7093,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let btnSubmitArrival, arrivalProductName, arrivalTypeName, arrivalConditionName,
         arrivalColorName, arrivalCapacityName, arrivalSupplierName, arrivalUnitName,
         arrivalImeis, arrivalImeiCount, arrivalNotes, myArrivalReports,
+        arrivalCostPrice, arrivalSellingPrice,
         importArrivalBadge, approveImportBadge;
     let isImportWorkflowBound = false;
     let pendingImportRows = {}; // { [notification_id]: notification } สำหรับ prefill โมดัลอนุมัติ
@@ -7264,6 +7265,8 @@ document.addEventListener('DOMContentLoaded', () => {
         arrivalImeis = document.getElementById('arrival-imeis');
         arrivalImeiCount = document.getElementById('arrival-imei-count');
         arrivalNotes = document.getElementById('arrival-notes');
+        arrivalCostPrice = document.getElementById('arrival-cost-price');
+        arrivalSellingPrice = document.getElementById('arrival-selling-price');
         myArrivalReports = document.getElementById('my-arrival-reports');
         importArrivalBadge = document.getElementById('import-arrival-badge');
         approveImportBadge = document.getElementById('approve-import-badge');
@@ -7293,9 +7296,23 @@ document.addEventListener('DOMContentLoaded', () => {
                     showToast('กรุณาระบุชื่อสินค้า', 'error');
                     return;
                 }
+                const costRaw = arrivalCostPrice ? arrivalCostPrice.value.trim() : '';
+                const sellRaw = arrivalSellingPrice ? arrivalSellingPrice.value.trim() : '';
+                if ((costRaw && Number(costRaw) < 0) || (sellRaw && Number(sellRaw) < 0)) {
+                    showToast('ราคาต้องไม่ติดลบ', 'error');
+                    return;
+                }
                 try {
                     btnSubmitArrival.disabled = true;
                     btnSubmitArrival.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> กำลังส่ง...';
+
+                    // ราคาไม่บังคับ — เว้นว่างส่ง null ไม่ใช่ 0 (0 = ของฟรี คนละความหมายกับยังไม่ระบุ)
+                    const priceOf = (el) => {
+                        const v = el ? el.value.trim() : '';
+                        if (!v) return null;
+                        const n = Number(v);
+                        return Number.isFinite(n) && n >= 0 ? n : null;
+                    };
 
                     const payload = {
                         product_name: arrivalProductName.value,
@@ -7305,6 +7322,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         capacity_name: arrivalCapacityName.value,
                         supplier_name: arrivalSupplierName.value,
                         unit_name: arrivalUnitName.value,
+                        cost_price: priceOf(arrivalCostPrice),
+                        selling_price: priceOf(arrivalSellingPrice),
                         notes: arrivalNotes.value,
                         imeis: arrivalImeis.value
                     };
@@ -7329,6 +7348,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         arrivalProductName.value = '';
                         arrivalImeis.value = '';
                         arrivalNotes.value = '';
+                        if (arrivalCostPrice) arrivalCostPrice.value = '';
+                        if (arrivalSellingPrice) arrivalSellingPrice.value = '';
                         if (typeof window.npResetPickers === 'function') window.npResetPickers();
                         if (arrivalImeiCount) arrivalImeiCount.textContent = '0 IMEI';
                         loadMyArrivalReports();
@@ -7526,10 +7547,18 @@ document.addEventListener('DOMContentLoaded', () => {
             codeInput.value = '';
             codeInput.disabled = imeis.length > 0;
         }
+        // ผู้แจ้งอาจกรอกราคามาแล้วจากหน้าแจ้งสินค้านอก PO — เติมให้เลย ผู้อนุมัติแก้ทับได้
         const costInput = document.getElementById('approve-cost-price');
         const sellInput = document.getElementById('approve-selling-price');
-        if (costInput) costInput.value = '';
-        if (sellInput) sellInput.value = '';
+        if (costInput) costInput.value = (item.cost_price === 0 || item.cost_price) ? item.cost_price : '';
+        if (sellInput) sellInput.value = (item.selling_price === 0 || item.selling_price) ? item.selling_price : '';
+
+        const priceNote = document.getElementById('approve-price-from-reporter');
+        if (priceNote) {
+            const hasAny = (item.cost_price === 0 || item.cost_price)
+                || (item.selling_price === 0 || item.selling_price);
+            priceNote.classList.toggle('hidden', !hasAny);
+        }
 
         const idInput = document.getElementById('approve-notification-id');
         if (idInput) idInput.value = item._id;

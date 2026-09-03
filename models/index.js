@@ -362,6 +362,8 @@ const importNotificationSchema = new mongoose.Schema({
     condition_name: { type: String },
     supplier_name: { type: String },
     unit_name: { type: String },
+    cost_price: { type: Number, default: null },    // ผู้แจ้งกรอกได้ ผู้อนุมัติแก้ทับได้ตอนอนุมัติ
+    selling_price: { type: Number, default: null },
     notes: { type: String },
     branch_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Branch', required: true },
     reported_by: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee', required: true },

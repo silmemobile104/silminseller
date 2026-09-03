@@ -3907,6 +3907,11 @@
         ? `<p class="text-xs text-white/70">${arEsc(label)} : ${extra}<span class="text-white">${arEsc(value)}</span></p>`
         : '';
 
+    // แยกจาก npInfoRow เพราะราคา 0 เป็นค่าที่ถูกต้อง แต่ falsy — npInfoRow จะกลืนหายไป
+    const npPriceRow = (label, value) => (value === 0 || value)
+        ? `<p class="text-xs text-white/70">${arEsc(label)} : <span class="text-white font-mono">฿${Number(value).toLocaleString('th-TH')}</span></p>`
+        : '';
+
     window.renderMyArrivalReports = (list) => {
         const box = document.getElementById('my-arrival-reports');
         if (!box) return;
@@ -3945,6 +3950,8 @@
                     ${npInfoRow('ความจุ', item.capacity_name)}
                     ${npInfoRow('Supplier / แหล่งที่มา', item.supplier_name)}
                     ${npInfoRow('หน่วยนับ', item.unit_name)}
+                    ${npPriceRow('ราคาทุน', item.cost_price)}
+                    ${npPriceRow('ราคาขาย', item.selling_price)}
                     ${npInfoRow('หมายเหตุ', item.notes)}
                 </div>
                 ${imeis.length ? `
@@ -4007,6 +4014,13 @@
         npSetSelectValue('arrival-product-name', item.product_name || '');
         set('arrival-imeis', (item.imeis || []).join('\n'));
         set('arrival-notes', item.notes);
+        // ราคา 0 ต้องเติมกลับด้วย จึงเทียบกับ null/undefined ตรง ๆ แทนการใช้ set() ที่ตก 0 เป็น ''
+        const setPrice = (id, v) => {
+            const el = document.getElementById(id);
+            if (el) el.value = (v === 0 || v) ? v : '';
+        };
+        setPrice('arrival-cost-price', item.cost_price);
+        setPrice('arrival-selling-price', item.selling_price);
         npSetPillValue('arrival-type-pills', 'arrival-type-name', item.type_name || '');
         npSetPillValue('arrival-condition-pills', 'arrival-condition-name', item.condition_name || '');
         npSetSwatchValue('arrival-color-swatches', 'arrival-color-name', item.color_name || '');
@@ -4026,7 +4040,8 @@
     // ออกจากโหมดแก้ไขแล้วล้างฟอร์ม กลับไปเป็นการแจ้งรายการใหม่
     window.npExitEditAndClear = () => {
         window.npCancelEdit();
-        ['arrival-product-name', 'arrival-imeis', 'arrival-notes'].forEach(id => {
+        ['arrival-product-name', 'arrival-imeis', 'arrival-notes',
+            'arrival-cost-price', 'arrival-selling-price'].forEach(id => {
             const el = document.getElementById(id);
             if (el) el.value = '';
         });

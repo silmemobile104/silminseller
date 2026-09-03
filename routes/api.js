@@ -3475,13 +3475,22 @@ router.delete('/members/:id', async (req, res) => {
 // Import Notifications (แจ้งสินค้าถึงสาขา / ตรวจสอบนำเข้า)
 // ==========================================
 
+// ราคาจากฟอร์มแจ้งเป็นตัวเลือก — ช่องว่างต้องเก็บเป็น null ไม่ใช่ 0
+// (0 แปลว่า "ของฟรี" ซึ่งคนละความหมายกับ "ยังไม่ระบุ" และจะไปโผล่ในต้นทุนสต็อก)
+const parseOptionalPrice = (v) => {
+    if (v === undefined || v === null || v === '') return null;
+    const n = Number(v);
+    return Number.isFinite(n) && n >= 0 ? n : null;
+};
+
 // POST /api/import-notifications - พนักงานขายแจ้งของถึงสาขา
 router.post('/import-notifications', async (req, res) => {
     try {
         const {
             product_name, imeis, color_name, capacity_name,
-            type_name, condition_name, supplier_name, unit_name, notes, branch_id
-        } = req.body;
+            type_name, condition_name, supplier_name, unit_name, notes, branch_id,
+            cost_price, selling_price
+        } = req.body || {};
 
         if (!product_name) {
             return res.status(400).json({ success: false, message: 'กรุณากรอกชื่อสินค้า' });
@@ -3505,6 +3514,8 @@ router.post('/import-notifications', async (req, res) => {
             condition_name: condition_name || '',
             supplier_name: supplier_name || '',
             unit_name: unit_name || '',
+            cost_price: parseOptionalPrice(cost_price),
+            selling_price: parseOptionalPrice(selling_price),
             notes: notes || '',
             branch_id: targetBranchId,
             reported_by: req.user.employee_id,
@@ -3557,15 +3568,20 @@ router.post('/import-notifications/:id/approve', async (req, res) => {
         // destructure ตรง ๆ จะโยน TypeError กลายเป็น 500 แทนที่จะเป็น 400 ที่บอกสาเหตุได้
         const { cost_price, selling_price, type_id, color_id, capacity_id, condition_id, supplier_id, unit_id, product_code } = req.body || {};
 
-        if (!cost_price || !selling_price) {
-            return res.status(400).json({ success: false, message: 'กรุณากรอกราคาทุนและราคาขาย' });
-        }
         if (!type_id) {
             return res.status(400).json({ success: false, message: 'กรุณาเลือกหมวดหมู่สินค้า' });
         }
 
         const notification = await ImportNotification.findById(req.params.id);
         if (!notification) return res.status(404).json({ success: false, message: 'ไม่พบรายการที่ระบุ' });
+
+        // ผู้แจ้งอาจกรอกราคามาแล้วตั้งแต่ตอนแจ้ง — ถ้าผู้อนุมัติไม่ได้แก้ ก็ใช้ค่านั้น
+        const finalCostPrice = parseOptionalPrice(cost_price) ?? notification.cost_price;
+        const finalSellingPrice = parseOptionalPrice(selling_price) ?? notification.selling_price;
+        if (finalCostPrice === null || finalCostPrice === undefined
+            || finalSellingPrice === null || finalSellingPrice === undefined) {
+            return res.status(400).json({ success: false, message: 'กรุณากรอกราคาทุนและราคาขาย' });
+        }
         // สถานะของ ImportNotification คือ 'รอดำเนินการ' | 'อนุมัติแล้ว' | 'ปฏิเสธ'
         // ('นำเข้าสำเร็จ' เป็นสถานะของใบสั่งซื้อ (PO) คนละ enum กัน — ใส่ผิดแล้ว save() ไม่ผ่าน validation)
         if (notification.status === 'อนุมัติแล้ว') {
@@ -3591,8 +3607,8 @@ router.post('/import-notifications/:id/approve', async (req, res) => {
                     product = new Product({
                         product_code: imei,
                         name: notification.product_name,
-                        cost_price: Number(cost_price),
-                        selling_price: Number(selling_price),
+                        cost_price: finalCostPrice,
+                        selling_price: finalSellingPrice,
                         type_id,
                         color_id: color_id || null,
                         capacity_id: capacity_id || null,
@@ -3602,8 +3618,8 @@ router.post('/import-notifications/:id/approve', async (req, res) => {
                         stock_balances: []
                     });
                 } else {
-                    product.cost_price = Number(cost_price);
-                    product.selling_price = Number(selling_price);
+                    product.cost_price = finalCostPrice;
+                    product.selling_price = finalSellingPrice;
                 }
 
                 const bal = ensureBranchBalance(product, branchId);
@@ -3647,8 +3663,8 @@ router.post('/import-notifications/:id/approve', async (req, res) => {
                 product = new Product({
                     product_code: product_code || '',
                     name: notification.product_name,
-                    cost_price: Number(cost_price),
-                    selling_price: Number(selling_price),
+                    cost_price: finalCostPrice,
+                    selling_price: finalSellingPrice,
                     type_id,
                     color_id: color_id || null,
                     capacity_id: capacity_id || null,
@@ -3658,8 +3674,8 @@ router.post('/import-notifications/:id/approve', async (req, res) => {
                     stock_balances: []
                 });
             } else {
-                product.cost_price = Number(cost_price);
-                product.selling_price = Number(selling_price);
+                product.cost_price = finalCostPrice;
+                product.selling_price = finalSellingPrice;
             }
 
             const bal = ensureBranchBalance(product, branchId);
@@ -3695,8 +3711,8 @@ router.post('/import-notifications/:id/approve', async (req, res) => {
                 product_ids: savedProducts.map(p => p._id),
                 imeis: incomingImeis,
                 branch_id: branchId,
-                cost_price: Number(cost_price),
-                selling_price: Number(selling_price)
+                cost_price: finalCostPrice,
+                selling_price: finalSellingPrice
             });
 
         console.log(`[นำเข้า] อนุมัตินำเข้าสต็อกสำเร็จ: ${notification.product_name} → สาขา ${branchId} (${savedProducts.length} รายการ)`);
@@ -3731,8 +3747,9 @@ router.put('/import-notifications/:id', async (req, res) => {
 
         const {
             product_name, imeis, color_name, capacity_name,
-            type_name, condition_name, supplier_name, unit_name, notes
-        } = req.body;
+            type_name, condition_name, supplier_name, unit_name, notes,
+            cost_price, selling_price
+        } = req.body || {};
 
         if (!product_name || !product_name.trim()) {
             return res.status(400).json({ success: false, message: 'กรุณากรอกชื่อสินค้า' });
@@ -3750,6 +3767,8 @@ router.put('/import-notifications/:id', async (req, res) => {
         notification.condition_name = condition_name || '';
         notification.supplier_name = supplier_name || '';
         notification.unit_name = unit_name || '';
+        notification.cost_price = parseOptionalPrice(cost_price);
+        notification.selling_price = parseOptionalPrice(selling_price);
         notification.notes = notes || '';
         await notification.save();
 
