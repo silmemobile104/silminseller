@@ -112,7 +112,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // โหลดสคริปต์เฉพาะหน้า (js/page-<name>.js) แบบ dynamic ครั้งเดียว แล้ว cache ไว้
     // PAGE_SCRIPT_VERSION: บัมพ์เลขนี้ทุกครั้งที่แก้ไฟล์ใน js/ เพื่อไม่ให้เบราว์เซอร์ใช้ของเก่าที่ cache ไว้
-    const PAGE_SCRIPT_VERSION = 'db_menu_v4';
+    const PAGE_SCRIPT_VERSION = 'db_docs_v3';
     const __loadedPageScripts = {};
     function loadPageScript(name) {
         if (__loadedPageScripts[name]) return __loadedPageScripts[name];
@@ -165,7 +165,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // ไม่ได้รอ init function ถ้า HTML ยังไม่ถูกแทรกเข้า DOM ก่อน ตัวแปรที่ query ไว้จะเป็น null ถาวร
     // ชื่อ name ต้องตรงกับชื่อที่ใช้ใน loadPageScript — ไฟล์เดียวอาจมีหลาย <div id="view-XXX"> รวมกัน
     // ถ้าหน้านั้นถูก share โดยสคริปต์เดียวกันหลาย view (ดูตาราง mapping ในแผน)
-    const VIEW_FRAGMENT_VERSION = 'v40'; // บัมพ์เลขนี้ทุกครั้งที่แก้ไฟล์ใน views/
+    const VIEW_FRAGMENT_VERSION = 'v42'; // บัมพ์เลขนี้ทุกครั้งที่แก้ไฟล์ใน views/
     const __loadedPageViews = {};
     function loadPageView(name) {
         if (__loadedPageViews[name]) return __loadedPageViews[name];
@@ -3192,7 +3192,7 @@ document.addEventListener('DOMContentLoaded', () => {
         'sales-history', 'daily-summary', 'transfers', 'deposits', 'movements', 'members',
         'report-arrival', 'approve-import', 'warranty-check', 'branch-inventory', 'accounting-po',
         'branch-receive', 'accounting', 'audit-logs', 'stock-audit', 'stock-audit-review',
-        'accounting-settings', 'disbursement'
+        'accounting-settings', 'disbursement', 'database'
     ]);
     // อ่านชื่อ view จาก URL hash (เช่น #deposits) — คืนค่า null ถ้าไม่มีหรือไม่ใช่ view ที่รู้จัก
     const getViewFromHash = () => {
@@ -7095,6 +7095,7 @@ document.addEventListener('DOMContentLoaded', () => {
         arrivalImeis, arrivalImeiCount, arrivalNotes, myArrivalReports,
         importArrivalBadge, approveImportBadge;
     let isImportWorkflowBound = false;
+    let pendingImportRows = {}; // { [notification_id]: notification } สำหรับ prefill โมดัลอนุมัติ
 
     // Auto populate dropdowns when master data is loaded
     // This is handled by renderSettingsList/fetchMasterData implicitly or we can just populate here if needed
@@ -7270,6 +7271,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (isImportWorkflowBound) return; // loadPageView cache ผลลัพธ์ไว้ (__loadedPageViews) inject แค่ครั้งแรกครั้งเดียว จึงผูก listener ครั้งเดียวพอ
         isImportWorkflowBound = true;
 
+        bindApproveImportModal();
+
         if (arrivalImeis && arrivalImeiCount) {
             arrivalImeis.addEventListener('paste', () => {
                 isPasting = true;
@@ -7416,6 +7419,10 @@ document.addEventListener('DOMContentLoaded', () => {
             const rows = data.data || [];
             if (countEl) countEl.textContent = rows.length ? `แสดง ${rows.length} จาก ${rows.length} รายการ` : '';
 
+            // เก็บข้อมูลเต็มของแต่ละแถวไว้ ให้โมดัลอนุมัติ prefill ได้โดยไม่ต้องยิง API ซ้ำ
+            pendingImportRows = {};
+            rows.forEach(item => { pendingImportRows[item._id] = item; });
+
             // ป้ายตัวเลขข้างเมนู (nav) และบนแท็บ ใช้จำนวนที่รออนุมัติชุดเดียวกัน
             if (approveImportBadge) approveImportBadge.classList.toggle('hidden', rows.length === 0);
             if (approveImportBadge && rows.length) approveImportBadge.textContent = rows.length;
@@ -7455,31 +7462,180 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
+    // ---------- โมดัลอนุมัตินำเข้าสต็อก (#modal-approve-import อยู่ใน index.html) ----------
+    // POST /import-notifications/:id/approve บังคับ cost_price, selling_price และ type_id เสมอ
+    // (ยิงแบบไม่มี body จะพังตั้งแต่ req.body — Express 5 ไม่ได้ตั้ง req.body = {} ให้แล้ว จึงได้ 500)
+    // จึงต้องเปิดโมดัลให้ผู้อนุมัติตั้งราคาและผูก Master Catalog ก่อนส่ง
+    const aiSelectOptions = (selectId, list, placeholder, matchName) => {
+        const select = document.getElementById(selectId);
+        if (!select) return;
+        const items = Array.isArray(list) ? list : [];
+        select.innerHTML = `<option value="">${placeholder}</option>`;
+        items.forEach(item => {
+            const opt = document.createElement('option');
+            opt.value = item._id;
+            opt.textContent = item.name;
+            select.appendChild(opt);
+        });
+        // ใบแจ้งเก็บไว้เป็น "ชื่อ" (type_name/color_name/...) ไม่ใช่ _id จึงจับคู่ด้วยชื่อ
+        const matched = matchName ? items.find(x => x.name === matchName) : null;
+        select.value = matched ? matched._id : '';
+    };
+
+    const openApproveImportModal = async (item) => {
+        const modal = document.getElementById('modal-approve-import');
+        if (!modal || !item) return;
+
+        if (typeof window.ensureMasterDataLoaded === 'function') await window.ensureMasterDataLoaded();
+        const md = window.masterDataCache || {};
+
+        const esc = (s) => String(s == null ? '' : s)
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+
+        const title = document.getElementById('approve-modal-product-title');
+        if (title) title.textContent = item.product_name || '-';
+
+        const imeis = Array.isArray(item.imeis) ? item.imeis : [];
+        const summary = document.getElementById('approve-modal-summary');
+        if (summary) {
+            const line = (label, value) =>
+                `<div class="flex justify-between gap-4"><span class="text-body-muted">${label}</span><span class="text-ink font-medium text-right">${value}</span></div>`;
+            summary.innerHTML = [
+                line('สินค้า', esc(item.product_name || '-')),
+                line('สาขา', esc(item.branch_id ? item.branch_id.name : '-')),
+                line('ผู้แจ้ง', esc(item.reported_by ? item.reported_by.name : '-')),
+                line('จำนวน IMEI', `${imeis.length} เครื่อง`),
+                item.notes ? line('หมายเหตุ', esc(item.notes)) : '',
+                imeis.length
+                    ? `<div tabindex="0" class="max-h-24 overflow-y-auto rounded-sm bg-surface-chip p-2 font-mono text-xs text-body-muted leading-5">${imeis.map(esc).join('<br>')}</div>`
+                    : ''
+            ].join('');
+        }
+
+        aiSelectOptions('approve-type-id', md.productTypes, '-- เลือกหมวดหมู่ --', item.type_name);
+        aiSelectOptions('approve-condition-id', md.productConditions, '-- เลือกสภาพ --', item.condition_name);
+        aiSelectOptions('approve-color-id', md.productColors, '-- เลือกสี --', item.color_name);
+        aiSelectOptions('approve-capacity-id', md.productCapacities, '-- เลือกความจุ --', item.capacity_name);
+        aiSelectOptions('approve-supplier-id', md.suppliers, '-- เลือก Supplier --', item.supplier_name);
+        aiSelectOptions('approve-unit-id', md.productUnits, '-- เลือกหน่วยนับ --', item.unit_name);
+
+        // มี IMEI = ฝั่ง server สร้างสินค้าแยกตัวต่อ IMEI อยู่แล้ว ไม่ได้ใช้ product_code
+        const codeInput = document.getElementById('approve-product-code');
+        if (codeInput) {
+            codeInput.value = '';
+            codeInput.disabled = imeis.length > 0;
+        }
+        const costInput = document.getElementById('approve-cost-price');
+        const sellInput = document.getElementById('approve-selling-price');
+        if (costInput) costInput.value = '';
+        if (sellInput) sellInput.value = '';
+
+        const idInput = document.getElementById('approve-notification-id');
+        if (idInput) idInput.value = item._id;
+
+        modal.classList.remove('hidden');
+        void modal.offsetWidth; // force reflow ให้ transition ทำงาน
+        modal.classList.remove('opacity-0', 'pointer-events-none');
+        if (costInput) costInput.focus();
+    };
+
+    const closeApproveImportModal = () => {
+        const modal = document.getElementById('modal-approve-import');
+        if (!modal) return;
+        modal.classList.add('opacity-0', 'pointer-events-none');
+        setTimeout(() => modal.classList.add('hidden'), 300);
+    };
+
+    const submitApproveImport = async () => {
+        const btn = document.getElementById('btn-confirm-import-approve');
+        const idInput = document.getElementById('approve-notification-id');
+        const id = idInput ? idInput.value : '';
+        if (!id) return;
+
+        const val = (elId) => {
+            const el = document.getElementById(elId);
+            return el ? el.value.trim() : '';
+        };
+        const costPrice = val('approve-cost-price');
+        const sellingPrice = val('approve-selling-price');
+        const typeId = val('approve-type-id');
+
+        if (!costPrice || !sellingPrice) {
+            showToast('กรุณากรอกราคาทุนและราคาขาย', 'error');
+            return;
+        }
+        if (Number(costPrice) <= 0 || Number(sellingPrice) <= 0) {
+            showToast('ราคาทุนและราคาขายต้องมากกว่า 0', 'error');
+            return;
+        }
+        if (!typeId) {
+            showToast('กรุณาเลือกหมวดหมู่สินค้า', 'error');
+            return;
+        }
+
+        const payload = {
+            cost_price: Number(costPrice),
+            selling_price: Number(sellingPrice),
+            type_id: typeId,
+            color_id: val('approve-color-id') || null,
+            capacity_id: val('approve-capacity-id') || null,
+            condition_id: val('approve-condition-id') || null,
+            supplier_id: val('approve-supplier-id') || null,
+            unit_id: val('approve-unit-id') || null,
+            product_code: val('approve-product-code')
+        };
+
+        const originalHtml = btn ? btn.innerHTML : '';
+        try {
+            if (btn) {
+                btn.disabled = true;
+                btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-lg"></i> กำลังนำเข้า...';
+            }
+            const res = await authFetch(`${API_BASE_URL}/import-notifications/${id}/approve`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const data = await res.json();
+            if (data.success) {
+                showToast('อนุมัตินำเข้าสต็อกสำเร็จ', 'success');
+                closeApproveImportModal();
+                window.loadImportNotifications();
+                if (typeof loadDashboardData === 'function') loadDashboardData();
+                if (typeof loadApproveHistory === 'function') loadApproveHistory();
+            } else {
+                showToast(data.message || 'อนุมัตินำเข้าไม่สำเร็จ', 'error');
+            }
+        } catch (err) {
+            console.error(err);
+            showToast('เกิดข้อผิดพลาดในการเชื่อมต่อ', 'error');
+        } finally {
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = originalHtml;
+            }
+        }
+    };
+
+    const bindApproveImportModal = () => {
+        const modal = document.getElementById('modal-approve-import');
+        if (!modal) return;
+        const btnClose = document.getElementById('btn-close-approve-modal');
+        if (btnClose) btnClose.onclick = () => closeApproveImportModal();
+        const btnConfirm = document.getElementById('btn-confirm-import-approve');
+        if (btnConfirm) btnConfirm.onclick = () => submitApproveImport();
+        // คลิกพื้นหลังนอกกล่อง = ปิด (เหมือนโมดัลอื่นในระบบ)
+        modal.onclick = (e) => { if (e.target === modal) closeApproveImportModal(); };
+    };
+
     window.approveImport = (id) => {
-        showConfirm(
-            'อนุมัตินำเข้าสต็อก',
-            'ยืนยันการนำเข้าสต็อกและอนุมัติรายการนี้? สินค้าจะถูกเพิ่มเข้าสู่คลังของสาขาคุณและบันทึกข้อมูลเรียบร้อย',
-            async () => {
-                try {
-                    const res = await authFetch(`${API_BASE_URL}/import-notifications/${id}/approve`, {
-                        method: 'POST'
-                    });
-                    const data = await res.json();
-                    if (data.success) {
-                        showToast('อนุมัตินำเข้าสต็อกสำเร็จ', 'success');
-                        window.loadImportNotifications();
-                        if (typeof loadDashboardData === 'function') loadDashboardData();
-                    } else {
-                        showToast(data.message, 'error');
-                    }
-                } catch (err) {
-                    console.error(err);
-                    showToast('เกิดข้อผิดพลาด', 'error');
-                }
-            },
-            'อนุมัติรับของ',
-            'success'
-        );
+        const item = pendingImportRows[id];
+        if (!item) {
+            showToast('ไม่พบข้อมูลรายการ กรุณารีเฟรชหน้าอีกครั้ง', 'error');
+            return;
+        }
+        openApproveImportModal(item);
     };
 
     // Initialize triggers

@@ -14,7 +14,7 @@
          เพราะฟอนต์ Prompt ย้ายมา self-host เองที่ vendor/fonts/ (ดู tools/build-fonts.js) -->
 
     <link rel="icon" type="image/png" href="logo.png?v=2">
-    <link rel="stylesheet" href="tailwind.css?v=50">
+    <link rel="stylesheet" href="tailwind.css?v=51">
     <!-- xlsx ถูกย้ายไปโหลดแบบ on-demand ตอนเปิด modal นำเข้า Excel แล้ว (ดู ensureXlsxLoaded ใน script.js)
          เดิมโหลดตรงนี้แบบ render-blocking ทุกครั้งที่เข้าเว็บ ทั้งที่ใช้แค่ฟีเจอร์เดียว -->
     <!-- ไอคอน: self-host + ตัดเหลือเฉพาะที่ใช้จริง (Font Awesome 144 + Bootstrap Icons 28)
@@ -383,8 +383,8 @@
                             <!-- Avatar (Right side) -->
                             <div
                                 class="w-9 h-9 rounded-full bg-surface-chip overflow-hidden flex-shrink-0 transition-transform duration-300 group-hover:scale-105">
-                                <img id="topbar-user-avatar" width="36" height="36"
-                                    alt="User" class="w-full h-full object-cover">
+                                <img id="topbar-user-avatar" width="36" height="36" alt="User"
+                                    class="w-full h-full object-cover">
                             </div>
 
                             <!-- Hidden elements for JS compatibility -->
@@ -406,8 +406,8 @@
 
                             <div class="flex flex-col items-center pb-4 border-b border-hairline relative">
                                 <div class="w-16 h-16 rounded-full bg-surface-chip overflow-hidden mb-3">
-                                    <img id="popup-user-avatar" width="64" height="64"
-                                        alt="User" class="w-full h-full object-cover">
+                                    <img id="popup-user-avatar" width="64" height="64" alt="User"
+                                        class="w-full h-full object-cover">
                                 </div>
                                 <span id="popup-user-name" class="text-base font-bold text-ink">กำลังโหลด...</span>
                                 <span id="popup-user-username"
@@ -1073,7 +1073,8 @@
                                     <p id="member-error-prefix" class="hidden text-xs text-red-400 mt-1"></p>
                                 </div>
                                 <div>
-                                    <label for="member-gender" class="text-xs font-medium text-body-muted mb-1 block">เพศ <span
+                                    <label for="member-gender"
+                                        class="text-xs font-medium text-body-muted mb-1 block">เพศ <span
                                             class="text-red-400">*</span></label>
                                     <select id="member-gender"
                                         class="w-full px-4 py-2.5 rounded-sm bg-surface-chip border border-divider-soft text-ink focus:border-primary-focus focus:ring-1 focus:ring-primary-focus/40 focus:outline-none transition-all appearance-none">
@@ -1188,7 +1189,8 @@
                                     <p id="member-error-line-id" class="hidden text-xs text-red-400 mt-1"></p>
                                 </div>
                                 <div>
-                                    <label for="member-referral" class="text-xs font-medium text-body-muted mb-1 block">แหล่งที่รู้จัก <span
+                                    <label for="member-referral"
+                                        class="text-xs font-medium text-body-muted mb-1 block">แหล่งที่รู้จัก <span
                                             class="text-red-400">*</span></label>
                                     <select id="member-referral"
                                         class="w-full px-4 py-2.5 rounded-sm bg-surface-chip border border-divider-soft text-ink focus:border-primary-focus focus:ring-1 focus:ring-primary-focus/40 focus:outline-none transition-all appearance-none">
@@ -1312,8 +1314,7 @@
                 </div>
 
                 <div class="space-y-2">
-                    <label for="transfer-scan-input"
-                        class="text-slate-200 font-medium flex items-center gap-2 text-xs">
+                    <label for="transfer-scan-input" class="text-slate-200 font-medium flex items-center gap-2 text-xs">
                         <i class="fa-solid fa-barcode text-white"></i> สแกนบาร์โค้ด / IMEI
                     </label>
                     <div class="flex items-center gap-2">
@@ -1332,16 +1333,14 @@
                 </div>
 
                 <div class="space-y-2">
-                    <div id="transfer-cart-box"
-                        class="bg-[#27272A] border border-[#3F3F46] rounded-xl overflow-hidden">
+                    <div id="transfer-cart-box" class="bg-[#27272A] border border-[#3F3F46] rounded-xl overflow-hidden">
                         <div class="px-4 py-3 border-b border-[#3F3F46] flex items-center justify-between">
                             <h4 class="text-white font-semibold text-sm flex items-center gap-2">
                                 <i class="fa-solid fa-box text-[#FFE169]"></i> รายการสินค้าในใบโอน
                             </h4>
                             <span id="transfer-cart-count" class="text-xs text-white/70 font-medium">0 รายการ</span>
                         </div>
-                        <div id="transfer-cart-items" tabindex="0"
-                            class="p-4 space-y-3 max-h-[240px] overflow-y-auto">
+                        <div id="transfer-cart-items" tabindex="0" class="p-4 space-y-3 max-h-[240px] overflow-y-auto">
                             <div id="transfer-cart-empty" class="text-center text-white/50 italic py-8 text-xs">
                                 ยังไม่มีสินค้าในรายการโอนย้าย</div>
                         </div>
@@ -1558,7 +1557,8 @@
                 <!-- Supplier & Unit -->
                 <div class="grid grid-cols-2 gap-5">
                     <div class="space-y-2 relative">
-                        <label for="product-supplier" class="text-slate-200 font-medium flex items-center gap-2 text-xs">
+                        <label for="product-supplier"
+                            class="text-slate-200 font-medium flex items-center gap-2 text-xs">
                             <i class="fa-solid fa-truck text-white"></i> Supplier / แหล่งที่มา <span
                                 class="text-red-500">*</span>
                         </label>
@@ -2764,7 +2764,8 @@
                                 <span class="text-sm font-medium text-ink">แดชบอร์ด</span>
                             </div>
                             <label class="relative inline-flex items-center cursor-pointer">
-                                <input type="checkbox" id="perm-view_dashboard" class="sr-only peer" aria-label="แดชบอร์ด">
+                                <input type="checkbox" id="perm-view_dashboard" class="sr-only peer"
+                                    aria-label="แดชบอร์ด">
                                 <div
                                     class="w-10 h-5 bg-surface-chip peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-ink-muted-48 after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary peer-checked:after:bg-on-primary">
                                 </div>
@@ -2780,7 +2781,8 @@
                                 <span class="text-sm font-medium text-ink">ดูสรุปยอดขายรายวัน</span>
                             </div>
                             <label class="relative inline-flex items-center cursor-pointer">
-                                <input type="checkbox" id="perm-view_daily_summary" class="sr-only peer" aria-label="ดูสรุปยอดขายรายวัน">
+                                <input type="checkbox" id="perm-view_daily_summary" class="sr-only peer"
+                                    aria-label="ดูสรุปยอดขายรายวัน">
                                 <div
                                     class="w-10 h-5 bg-surface-chip peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-ink-muted-48 after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary peer-checked:after:bg-on-primary">
                                 </div>
@@ -2812,7 +2814,8 @@
                                 <span class="text-sm font-medium text-ink">จัดการสต็อก</span>
                             </div>
                             <label class="relative inline-flex items-center cursor-pointer">
-                                <input type="checkbox" id="perm-manage_stock" class="sr-only peer" aria-label="จัดการสต็อก">
+                                <input type="checkbox" id="perm-manage_stock" class="sr-only peer"
+                                    aria-label="จัดการสต็อก">
                                 <div
                                     class="w-10 h-5 bg-surface-chip peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-ink-muted-48 after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary peer-checked:after:bg-on-primary">
                                 </div>
@@ -2828,7 +2831,8 @@
                                 <span class="text-sm font-medium text-ink">ลบสินค้า</span>
                             </div>
                             <label class="relative inline-flex items-center cursor-pointer">
-                                <input type="checkbox" id="perm-delete_stock" class="sr-only peer" aria-label="ลบสินค้า">
+                                <input type="checkbox" id="perm-delete_stock" class="sr-only peer"
+                                    aria-label="ลบสินค้า">
                                 <div
                                     class="w-10 h-5 bg-surface-chip peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-ink-muted-48 after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary peer-checked:after:bg-on-primary">
                                 </div>
@@ -2844,7 +2848,8 @@
                                 <span class="text-sm font-medium text-ink">โอนย้ายสินค้า</span>
                             </div>
                             <label class="relative inline-flex items-center cursor-pointer">
-                                <input type="checkbox" id="perm-manage_transfers" class="sr-only peer" aria-label="โอนย้ายสินค้า">
+                                <input type="checkbox" id="perm-manage_transfers" class="sr-only peer"
+                                    aria-label="โอนย้ายสินค้า">
                                 <div
                                     class="w-10 h-5 bg-surface-chip peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-ink-muted-48 after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary peer-checked:after:bg-on-primary">
                                 </div>
@@ -2860,7 +2865,8 @@
                                 <span class="text-sm font-medium text-ink">จัดการมัดจำสินค้า</span>
                             </div>
                             <label class="relative inline-flex items-center cursor-pointer">
-                                <input type="checkbox" id="perm-manage_deposits" class="sr-only peer" aria-label="จัดการมัดจำสินค้า">
+                                <input type="checkbox" id="perm-manage_deposits" class="sr-only peer"
+                                    aria-label="จัดการมัดจำสินค้า">
                                 <div
                                     class="w-10 h-5 bg-surface-chip peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-ink-muted-48 after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary peer-checked:after:bg-on-primary">
                                 </div>
@@ -2876,7 +2882,8 @@
                                 <span class="text-sm font-medium text-ink">จัดการพนักงาน</span>
                             </div>
                             <label class="relative inline-flex items-center cursor-pointer">
-                                <input type="checkbox" id="perm-manage_personnel" class="sr-only peer" aria-label="จัดการพนักงาน">
+                                <input type="checkbox" id="perm-manage_personnel" class="sr-only peer"
+                                    aria-label="จัดการพนักงาน">
                                 <div
                                     class="w-10 h-5 bg-surface-chip peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-ink-muted-48 after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary peer-checked:after:bg-on-primary">
                                 </div>
@@ -2892,7 +2899,8 @@
                                 <span class="text-sm font-medium text-ink">จัดการสาขา</span>
                             </div>
                             <label class="relative inline-flex items-center cursor-pointer">
-                                <input type="checkbox" id="perm-manage_branches" class="sr-only peer" aria-label="จัดการสาขา">
+                                <input type="checkbox" id="perm-manage_branches" class="sr-only peer"
+                                    aria-label="จัดการสาขา">
                                 <div
                                     class="w-10 h-5 bg-surface-chip peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-ink-muted-48 after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary peer-checked:after:bg-on-primary">
                                 </div>
@@ -2908,7 +2916,8 @@
                                 <span class="text-sm font-medium text-ink">ตั้งค่าระบบ</span>
                             </div>
                             <label class="relative inline-flex items-center cursor-pointer">
-                                <input type="checkbox" id="perm-manage_settings" class="sr-only peer" aria-label="ตั้งค่าระบบ">
+                                <input type="checkbox" id="perm-manage_settings" class="sr-only peer"
+                                    aria-label="ตั้งค่าระบบ">
                                 <div
                                     class="w-10 h-5 bg-surface-chip peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-ink-muted-48 after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary peer-checked:after:bg-on-primary">
                                 </div>
@@ -2924,7 +2933,8 @@
                                 <span class="text-sm font-medium text-ink">จัดการสิทธิ์</span>
                             </div>
                             <label class="relative inline-flex items-center cursor-pointer">
-                                <input type="checkbox" id="perm-manage_roles" class="sr-only peer" aria-label="จัดการสิทธิ์">
+                                <input type="checkbox" id="perm-manage_roles" class="sr-only peer"
+                                    aria-label="จัดการสิทธิ์">
                                 <div
                                     class="w-10 h-5 bg-surface-chip peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-ink-muted-48 after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary peer-checked:after:bg-on-primary">
                                 </div>
@@ -2940,7 +2950,8 @@
                                 <span class="text-sm font-medium text-ink">ประวัติกิจกรรมระบบ</span>
                             </div>
                             <label class="relative inline-flex items-center cursor-pointer">
-                                <input type="checkbox" id="perm-view_audit_logs" class="sr-only peer" aria-label="ประวัติกิจกรรมระบบ">
+                                <input type="checkbox" id="perm-view_audit_logs" class="sr-only peer"
+                                    aria-label="ประวัติกิจกรรมระบบ">
                                 <div
                                     class="w-10 h-5 bg-surface-chip peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-ink-muted-48 after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary peer-checked:after:bg-on-primary">
                                 </div>
@@ -2956,7 +2967,8 @@
                                 <span class="text-sm font-medium text-ink">จัดการฐานข้อมูล</span>
                             </div>
                             <label class="relative inline-flex items-center cursor-pointer">
-                                <input type="checkbox" id="perm-manage_database" class="sr-only peer" aria-label="จัดการฐานข้อมูล">
+                                <input type="checkbox" id="perm-manage_database" class="sr-only peer"
+                                    aria-label="จัดการฐานข้อมูล">
                                 <div
                                     class="w-10 h-5 bg-surface-chip peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-ink-muted-48 after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary peer-checked:after:bg-on-primary">
                                 </div>
@@ -2972,7 +2984,8 @@
                                 <span class="text-sm font-medium text-ink">กรองสาขาในเมนู จัดการสต็อก</span>
                             </div>
                             <label class="relative inline-flex items-center cursor-pointer">
-                                <input type="checkbox" id="perm-filter_stock_branch" class="sr-only peer" aria-label="กรองสาขาในเมนู จัดการสต็อก">
+                                <input type="checkbox" id="perm-filter_stock_branch" class="sr-only peer"
+                                    aria-label="กรองสาขาในเมนู จัดการสต็อก">
                                 <div
                                     class="w-10 h-5 bg-surface-chip peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-ink-muted-48 after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary peer-checked:after:bg-on-primary">
                                 </div>
@@ -2988,7 +3001,8 @@
                                 <span class="text-sm font-medium text-ink">ยกเลิกบิลขาย</span>
                             </div>
                             <label class="relative inline-flex items-center cursor-pointer">
-                                <input type="checkbox" id="perm-cancel_sale" class="sr-only peer" aria-label="ยกเลิกบิลขาย">
+                                <input type="checkbox" id="perm-cancel_sale" class="sr-only peer"
+                                    aria-label="ยกเลิกบิลขาย">
                                 <div
                                     class="w-10 h-5 bg-surface-chip peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-ink-muted-48 after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary peer-checked:after:bg-on-primary">
                                 </div>
@@ -3007,7 +3021,8 @@
                                 </div>
                             </div>
                             <label class="relative inline-flex items-center cursor-pointer">
-                                <input type="checkbox" id="perm-report_arrival" class="sr-only peer" aria-label="แจ้งของถึงสาขา">
+                                <input type="checkbox" id="perm-report_arrival" class="sr-only peer"
+                                    aria-label="แจ้งของถึงสาขา">
                                 <div
                                     class="w-10 h-5 bg-surface-chip peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-ink-muted-48 after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary peer-checked:after:bg-on-primary">
                                 </div>
@@ -3026,7 +3041,8 @@
                                 </div>
                             </div>
                             <label class="relative inline-flex items-center cursor-pointer">
-                                <input type="checkbox" id="perm-approve_import" class="sr-only peer" aria-label="อนุมัตินำเข้าสต็อก">
+                                <input type="checkbox" id="perm-approve_import" class="sr-only peer"
+                                    aria-label="อนุมัตินำเข้าสต็อก">
                                 <div
                                     class="w-10 h-5 bg-surface-chip peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-ink-muted-48 after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary peer-checked:after:bg-on-primary">
                                 </div>
@@ -3045,7 +3061,8 @@
                                 </div>
                             </div>
                             <label class="relative inline-flex items-center cursor-pointer">
-                                <input type="checkbox" id="perm-view_branch_inventory" class="sr-only peer" aria-label="ดูสินค้าในสาขา">
+                                <input type="checkbox" id="perm-view_branch_inventory" class="sr-only peer"
+                                    aria-label="ดูสินค้าในสาขา">
                                 <div
                                     class="w-10 h-5 bg-surface-chip peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-ink-muted-48 after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary peer-checked:after:bg-on-primary">
                                 </div>
@@ -3073,7 +3090,8 @@
                                 </div>
                             </div>
                             <label class="relative inline-flex items-center cursor-pointer">
-                                <input type="checkbox" id="perm-do_stock_audit" class="sr-only peer" aria-label="ตรวจนับสต็อกประจำวัน">
+                                <input type="checkbox" id="perm-do_stock_audit" class="sr-only peer"
+                                    aria-label="ตรวจนับสต็อกประจำวัน">
                                 <div
                                     class="w-10 h-5 bg-surface-chip peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-ink-muted-48 after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary peer-checked:after:bg-on-primary">
                                 </div>
@@ -3092,7 +3110,8 @@
                                 </div>
                             </div>
                             <label class="relative inline-flex inline-flex items-center cursor-pointer">
-                                <input type="checkbox" id="perm-manage_stock_audit" class="sr-only peer" aria-label="ตรวจสอบผลสต็อก (จัดการ/อนุมัติ)">
+                                <input type="checkbox" id="perm-manage_stock_audit" class="sr-only peer"
+                                    aria-label="ตรวจสอบผลสต็อก (จัดการ/อนุมัติ)">
                                 <div
                                     class="w-10 h-5 bg-surface-chip peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-ink-muted-48 after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary peer-checked:after:bg-on-primary">
                                 </div>
@@ -3119,7 +3138,8 @@
                                 </div>
                             </div>
                             <label class="relative inline-flex items-center cursor-pointer">
-                                <input type="checkbox" id="perm-manage_po" class="sr-only peer" aria-label="จัดการระบบสั่งซื้อ (PO)">
+                                <input type="checkbox" id="perm-manage_po" class="sr-only peer"
+                                    aria-label="จัดการระบบสั่งซื้อ (PO)">
                                 <div
                                     class="w-10 h-5 bg-surface-chip peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-ink-muted-48 after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary peer-checked:after:bg-on-primary">
                                 </div>
@@ -3138,7 +3158,8 @@
                                 </div>
                             </div>
                             <label class="relative inline-flex items-center cursor-pointer">
-                                <input type="checkbox" id="perm-receive_po" class="sr-only peer" aria-label="ตรวจรับสินค้าเข้าสาขา">
+                                <input type="checkbox" id="perm-receive_po" class="sr-only peer"
+                                    aria-label="ตรวจรับสินค้าเข้าสาขา">
                                 <div
                                     class="w-10 h-5 bg-surface-chip peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-ink-muted-48 after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary peer-checked:after:bg-on-primary">
                                 </div>
@@ -3166,7 +3187,8 @@
                                 </div>
                             </div>
                             <label class="relative inline-flex items-center cursor-pointer">
-                                <input type="checkbox" id="perm-manage_finance" class="sr-only peer" aria-label="จัดการระบบบัญชีและการเงิน">
+                                <input type="checkbox" id="perm-manage_finance" class="sr-only peer"
+                                    aria-label="จัดการระบบบัญชีและการเงิน">
                                 <div
                                     class="w-10 h-5 bg-surface-chip peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-ink-muted-48 after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary peer-checked:after:bg-on-primary">
                                 </div>
@@ -3590,14 +3612,14 @@
     </div>
     <!-- APPROVE IMPORT MODAL -->
     <div id="modal-approve-import"
-        class="fixed inset-0 z-[60] flex items-center justify-center backdrop-blur-[20px] backdrop-saturate-[1.8] opacity-0 pointer-events-none transition-all duration-300 p-4">
+        class="hidden fixed inset-0 z-[60] flex items-center justify-center backdrop-blur-[20px] backdrop-saturate-[1.8] opacity-0 pointer-events-none transition-all duration-300 p-4">
         <div
             class="modal-content relative w-full max-w-2xl bg-canvas-elevated rounded-lg  transform scale-95 transition-transform duration-300 max-h-[90vh] overflow-y-auto">
             <!-- Header -->
             <div
                 class="sticky top-0 bg-canvas-elevated border-b border-hairline px-6 py-4 flex items-center justify-between rounded-t-3xl z-10">
                 <div>
-                    <h3 class="text-lg font-bold flex items-center gap-2">
+                    <h3 class="text-lg font-bold flex items-center gap-2 text-white">
                         <i class="fa-solid fa-clipboard-check text-body-muted"></i> อนุมัตินำเข้าสต็อก
                     </h3>
                     <p id="approve-modal-product-title" class="text-sm text-body-muted mt-0.5">-</p>
@@ -3619,7 +3641,8 @@
                     </h4>
                     <div class="grid grid-cols-2 gap-4">
                         <div>
-                            <label for="approve-type-id" class="text-xs font-medium text-body-muted mb-1.5 block">หมวดหมู่ <span
+                            <label for="approve-type-id"
+                                class="text-xs font-medium text-body-muted mb-1.5 block">หมวดหมู่ <span
                                     class="text-red-400">*</span></label>
                             <select id="approve-type-id"
                                 class="w-full px-3 py-2.5 rounded-sm bg-surface-chip border border-divider-soft text-ink focus:border-primary-focus focus:outline-none text-sm">
@@ -3627,42 +3650,48 @@
                             </select>
                         </div>
                         <div>
-                            <label for="approve-condition-id" class="text-xs font-medium text-body-muted mb-1.5 block">สภาพ</label>
+                            <label for="approve-condition-id"
+                                class="text-xs font-medium text-body-muted mb-1.5 block">สภาพ</label>
                             <select id="approve-condition-id"
                                 class="w-full px-3 py-2.5 rounded-sm bg-surface-chip border border-divider-soft text-ink focus:border-primary-focus focus:outline-none text-sm">
                                 <option value="">-- เลือกสภาพ --</option>
                             </select>
                         </div>
                         <div>
-                            <label for="approve-color-id" class="text-xs font-medium text-body-muted mb-1.5 block">สี</label>
+                            <label for="approve-color-id"
+                                class="text-xs font-medium text-body-muted mb-1.5 block">สี</label>
                             <select id="approve-color-id"
                                 class="w-full px-3 py-2.5 rounded-sm bg-surface-chip border border-divider-soft text-ink focus:border-primary-focus focus:outline-none text-sm">
                                 <option value="">-- เลือกสี --</option>
                             </select>
                         </div>
                         <div>
-                            <label for="approve-capacity-id" class="text-xs font-medium text-body-muted mb-1.5 block">ความจุ</label>
+                            <label for="approve-capacity-id"
+                                class="text-xs font-medium text-body-muted mb-1.5 block">ความจุ</label>
                             <select id="approve-capacity-id"
                                 class="w-full px-3 py-2.5 rounded-sm bg-surface-chip border border-divider-soft text-ink focus:border-primary-focus focus:outline-none text-sm">
                                 <option value="">-- เลือกความจุ --</option>
                             </select>
                         </div>
                         <div>
-                            <label for="approve-supplier-id" class="text-xs font-medium text-body-muted mb-1.5 block">Supplier</label>
+                            <label for="approve-supplier-id"
+                                class="text-xs font-medium text-body-muted mb-1.5 block">Supplier</label>
                             <select id="approve-supplier-id"
                                 class="w-full px-3 py-2.5 rounded-sm bg-surface-chip border border-divider-soft text-ink focus:border-primary-focus focus:outline-none text-sm">
                                 <option value="">-- เลือก Supplier --</option>
                             </select>
                         </div>
                         <div>
-                            <label for="approve-unit-id" class="text-xs font-medium text-body-muted mb-1.5 block">หน่วยนับ</label>
+                            <label for="approve-unit-id"
+                                class="text-xs font-medium text-body-muted mb-1.5 block">หน่วยนับ</label>
                             <select id="approve-unit-id"
                                 class="w-full px-3 py-2.5 rounded-sm bg-surface-chip border border-divider-soft text-ink focus:border-primary-focus focus:outline-none text-sm">
                                 <option value="">-- เลือกหน่วยนับ --</option>
                             </select>
                         </div>
                         <div>
-                            <label class="text-xs font-medium text-body-muted mb-1.5 block">รหัสสินค้า (SKU)</label>
+                            <label for="approve-product-code"
+                                class="text-xs font-medium text-body-muted mb-1.5 block">รหัสสินค้า (SKU)</label>
                             <input type="text" id="approve-product-code" placeholder="ถ้ามี SKU เดิม"
                                 class="w-full px-3 py-2.5 rounded-sm bg-surface-chip border border-divider-soft text-ink focus:border-primary-focus focus:outline-none text-sm placeholder-ink-muted-48">
                         </div>
@@ -3675,7 +3704,8 @@
                     </h4>
                     <div class="grid grid-cols-2 gap-4">
                         <div>
-                            <label class="text-xs font-medium text-body-muted mb-1.5 block">ราคาทุน (บาท) <span
+                            <label for="approve-cost-price"
+                                class="text-xs font-medium text-body-muted mb-1.5 block">ราคาทุน (บาท) <span
                                     class="text-red-400">*</span></label>
                             <div class="relative">
                                 <span
@@ -3685,7 +3715,8 @@
                             </div>
                         </div>
                         <div>
-                            <label class="text-xs font-medium text-body-muted mb-1.5 block">ราคาขาย (บาท) <span
+                            <label for="approve-selling-price"
+                                class="text-xs font-medium text-body-muted mb-1.5 block">ราคาขาย (บาท) <span
                                     class="text-red-400">*</span></label>
                             <div class="relative">
                                 <span
@@ -3960,8 +3991,7 @@
                 <div class="bg-[#27272A] border border-[#3F3F46] rounded-xl p-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div class="space-y-1">
                         <span class="text-xs text-white/70 block">เลขที่ใบโอน</span>
-                        <span id="transfer-view-number"
-                            class="text-sm font-mono font-semibold text-[#FFE169]">-</span>
+                        <span id="transfer-view-number" class="text-sm font-mono font-semibold text-[#FFE169]">-</span>
                     </div>
                     <div class="space-y-1">
                         <span class="text-xs text-white/70 block">สถานะ</span>
@@ -4007,7 +4037,8 @@
                 </div>
             </div>
 
-            <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 mt-6 pt-5 border-t border-[#333333]">
+            <div
+                class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 mt-6 pt-5 border-t border-[#333333]">
                 <button id="btn-transfer-view-print" type="button"
                     class="px-4 py-2.5 rounded-xl bg-[#27272A] border border-[#3F3F46] hover:border-[#FFE169] hover:text-white text-slate-300 font-semibold text-sm transition-colors flex items-center justify-center gap-1.5 cursor-pointer">
                     <i class="fa-solid fa-print"></i> พิมพ์ใบโอน
@@ -4463,7 +4494,8 @@
                         <div class="sm:col-span-2" id="detail-history-bill-row">
                             <span class="text-slate-200 text-xs font-medium block mb-1">เลขที่บิลเสร็จขายจริง
                                 (POS)</span>
-                            <span id="detail-history-bill" class="text-sm font-mono font-semibold text-[#FFE169]">-</span>
+                            <span id="detail-history-bill"
+                                class="text-sm font-mono font-semibold text-[#FFE169]">-</span>
                         </div>
                         <div class="sm:col-span-2 hidden" id="detail-history-reason-row">
                             <span class="text-slate-200 text-xs font-medium block mb-1">เหตุผลการยกเลิก</span>
@@ -4833,7 +4865,8 @@
                 <div class="grid grid-cols-2 gap-4 bg-[#27272A] border border-[#3F3F46] rounded-xl p-4">
                     <div>
                         <p class="text-[10px] text-white/70 uppercase font-bold">หมายเลข IMEI</p>
-                        <p id="audit-review-modal-imei" class="font-mono font-semibold text-[#FFE169] text-base mt-0.5">—</p>
+                        <p id="audit-review-modal-imei" class="font-mono font-semibold text-[#FFE169] text-base mt-0.5">
+                            —</p>
                     </div>
                     <div>
                         <p class="text-[10px] text-white/70 uppercase font-bold">ชื่อสินค้า</p>
@@ -4862,7 +4895,8 @@
             </div>
 
             <!-- การกระทำ / สรุปผล — เขียนจาก JS -->
-            <div id="audit-review-modal-actions-area" class="flex flex-col sm:flex-row gap-2 pt-6 mt-6 border-t border-[#333333]"></div>
+            <div id="audit-review-modal-actions-area"
+                class="flex flex-col sm:flex-row gap-2 pt-6 mt-6 border-t border-[#333333]"></div>
         </div>
     </div>
     <!-- Mobile POS Cart Overlay -->
@@ -4944,7 +4978,7 @@
     <!-- defer: ปล่อยให้ parse HTML จบก่อนค่อย execute
          ปลอดภัยเพราะทั้งไฟล์ห่ออยู่ใน DOMContentLoaded listener อยู่แล้ว
          และสคริปต์ defer จะ execute ก่อน event DOMContentLoaded ยิงเสมอ -->
-    <script defer src="script.js?v=db_menu_v4"></script>
+    <script defer src="script.js?v=db_docs_v3"></script>
     <script>
         // ลงทะเบียน Service Worker เพื่อแคช asset คงที่ (css/js/font/icon/รูป) ไว้ฝั่งเครื่อง
         // เข้าเว็บครั้งถัดไปเร็วขึ้นมาก โดยเฉพาะตอนเน็ตช้าหรือหลุดชั่วคราว — ดูรายละเอียดที่ sw.js

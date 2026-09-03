@@ -164,4 +164,23 @@ const entries = [
         process.exit(1);
     }
     console.log(`✅ view ทั้ง ${activated.size} หน้าถูกซ่อนตอนสลับหน้าครบ`);
+
+    // ตรวจว่าทุก view ที่ switchView เปิดได้ อยู่ใน VALID_VIEW_NAMES ด้วย
+    // getViewFromHash() คืน null ให้ชื่อที่ไม่อยู่ในเซ็ตนี้ ผลคือกด refresh ค้างหน้านั้นแล้ว
+    // ระบบเด้งกลับหน้าเริ่มต้นเงียบๆ — เห็นเป็น "หน้าหาย" ไม่ใช่ error (เกิดมาแล้วกับ #database)
+    const validMatch = scriptSrc.match(/const VALID_VIEW_NAMES = new Set\(\[([\s\S]*?)\]\)/);
+    const permMapMatches = [...scriptSrc.matchAll(/const viewPermissionMap = \{([\s\S]*?)\n        \};/g)];
+    if (!validMatch || !permMapMatches.length) {
+        console.error('\n❌ หา VALID_VIEW_NAMES หรือ viewPermissionMap ใน script.js ไม่เจอ');
+        process.exit(1);
+    }
+    const validNames = new Set([...validMatch[1].matchAll(/'([a-z-]+)'/g)].map(m => m[1]));
+    const routedNames = new Set(permMapMatches.flatMap(m =>
+        [...m[1].matchAll(/'([a-z-]+)':/g)].map(x => x[1])));
+    const notRestorable = [...routedNames].filter(v => !validNames.has(v));
+    if (notRestorable.length) {
+        console.error('\n❌ view เหล่านี้ไม่อยู่ใน VALID_VIEW_NAMES กด refresh ค้างหน้านั้นแล้วจะเด้งกลับหน้าเริ่มต้น:', notRestorable.join(', '));
+        process.exit(1);
+    }
+    console.log(`✅ view ทั้ง ${validNames.size} หน้าคืนสถานะจาก URL hash ได้ครบ`);
 })().catch(err => { console.error(err); process.exit(1); });

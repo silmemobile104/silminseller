@@ -3553,7 +3553,9 @@ router.get('/import-notifications', async (req, res) => {
 // POST /api/import-notifications/:id/approve - อนุมัตินำเข้าสต็อก
 router.post('/import-notifications/:id/approve', async (req, res) => {
     try {
-        const { cost_price, selling_price, type_id, color_id, capacity_id, condition_id, supplier_id, unit_id, product_code } = req.body;
+        // Express 5: ถ้าไม่ได้ส่ง body มาเลย req.body จะเป็น undefined (ไม่ใช่ {} เหมือน Express 4)
+        // destructure ตรง ๆ จะโยน TypeError กลายเป็น 500 แทนที่จะเป็น 400 ที่บอกสาเหตุได้
+        const { cost_price, selling_price, type_id, color_id, capacity_id, condition_id, supplier_id, unit_id, product_code } = req.body || {};
 
         if (!cost_price || !selling_price) {
             return res.status(400).json({ success: false, message: 'กรุณากรอกราคาทุนและราคาขาย' });
@@ -3564,7 +3566,9 @@ router.post('/import-notifications/:id/approve', async (req, res) => {
 
         const notification = await ImportNotification.findById(req.params.id);
         if (!notification) return res.status(404).json({ success: false, message: 'ไม่พบรายการที่ระบุ' });
-        if (notification.status === 'นำเข้าสำเร็จ') {
+        // สถานะของ ImportNotification คือ 'รอดำเนินการ' | 'อนุมัติแล้ว' | 'ปฏิเสธ'
+        // ('นำเข้าสำเร็จ' เป็นสถานะของใบสั่งซื้อ (PO) คนละ enum กัน — ใส่ผิดแล้ว save() ไม่ผ่าน validation)
+        if (notification.status === 'อนุมัติแล้ว') {
             return res.status(400).json({ success: false, message: 'รายการนี้ถูกอนุมัติไปแล้ว' });
         }
 
@@ -3678,19 +3682,31 @@ router.post('/import-notifications/:id/approve', async (req, res) => {
         }
 
         // Mark notification approved
-        notification.status = 'นำเข้าสำเร็จ';
+        notification.status = 'อนุมัติแล้ว';
         notification.approved_by = req.user.employee_id;
         notification.approved_at = new Date();
-        if (savedProducts.length > 0) {
-            notification.product_id = savedProducts[0]._id; // Store first product ref
-        }
         await notification.save();
+
+        await logActivity(req, 'APPROVE', 'STOCK',
+            `อนุมัตินำเข้าสต็อกสินค้านอกระบบ PO: ${notification.product_name} (${incomingImeis.length} IMEI, ${savedProducts.length} รายการ)`,
+            `IMP-${notification._id.toString().slice(-6).toUpperCase()}`,
+            notification._id,
+            {
+                product_ids: savedProducts.map(p => p._id),
+                imeis: incomingImeis,
+                branch_id: branchId,
+                cost_price: Number(cost_price),
+                selling_price: Number(selling_price)
+            });
 
         console.log(`[นำเข้า] อนุมัตินำเข้าสต็อกสำเร็จ: ${notification.product_name} → สาขา ${branchId} (${savedProducts.length} รายการ)`);
         res.status(200).json({ success: true, message: 'นำเข้าสต็อกสำเร็จ', data: { notification, products: savedProducts } });
     } catch (error) {
         console.error('API Error POST /api/import-notifications/:id/approve:', error);
-        res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการอนุมัตินำเข้า' });
+        res.status(error.status || 500).json({
+            success: false,
+            message: error.message || 'เกิดข้อผิดพลาดในการอนุมัตินำเข้า'
+        });
     }
 });
 

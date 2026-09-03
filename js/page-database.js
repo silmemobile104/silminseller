@@ -24,8 +24,40 @@
     let _dbLegend = {};
     let _dbBound = false;
 
+    // สถานะหน้าต่าง "ดูเอกสาร" — คุมแยกจากตารางแคตตาล็อกด้านหลัง
+    let _docs = { key: '', title: '', page: 1, limit: 25, q: '', totalPages: 1, columns: [], docs: [] };
+    let _docsSeq = 0;        // กันผลลัพธ์ของคำค้นเก่ามาทับของใหม่ (ผู้ใช้พิมพ์เร็วกว่าเน็ต)
+    let _docsTimer = null;   // debounce ช่องค้นหา
+
     const el = (id) => document.getElementById(id);
     const setText = (id, t) => { const n = el(id); if (n) n.textContent = t; };
+
+    // ชั้นซ้อนเต็มจอที่มี backdrop-blur ต้องเป็น display:none ตอนปิด
+    // แค่ opacity-0 ยังอยู่ในขั้นตอน composite เบราว์เซอร์ต้องเบลอฉากหลังใหม่ทุกเฟรมที่มีอะไรขยับ
+    // ตัวจับเวลาซ่อนที่ยังค้างอยู่ ต้องยกเลิกถ้าผู้ใช้เปิดซ้ำภายใน 300ms
+    // ไม่งั้น timeout ของรอบก่อนจะมาใส่ hidden ทับชั้นที่เพิ่งเปิด (แล้วล้างตารางทิ้งด้วย)
+    const _layerTimers = new Map();
+
+    const dbShowLayer = (node) => {
+        if (!node) return;
+        const pending = _layerTimers.get(node);
+        if (pending) { clearTimeout(pending); _layerTimers.delete(node); }
+        node.classList.remove('hidden');
+        void node.offsetWidth; // reflow ให้ transition เริ่มจาก opacity 0 จริง ๆ
+        node.classList.remove('opacity-0', 'pointer-events-none');
+    };
+
+    const dbHideLayer = (node, onHidden) => {
+        if (!node || node.classList.contains('hidden')) return;
+        node.classList.add('opacity-0', 'pointer-events-none');
+        const pending = _layerTimers.get(node);
+        if (pending) clearTimeout(pending);
+        _layerTimers.set(node, setTimeout(() => {
+            _layerTimers.delete(node);
+            node.classList.add('hidden');
+            if (onHidden) onHidden();
+        }, 300)); // ตรงกับ duration-300 ของ transition
+    };
 
     const dbStateRow = (msg, cls = 'text-white/50 italic') =>
         `<tr><td colspan="${DB_COLS}" class="px-6 py-8 text-center ${cls}">${dbEsc(msg)}</td></tr>`;
@@ -52,8 +84,8 @@
         if (f.importance !== 'ALL' && c.importance !== f.importance) return false;
         if (!f.q) return true;
         const hay = [c.key, c.model, c.title, c.group, c.purpose, c.notes,
-            ...(c.pages || []), ...(c.relations || []),
-            ...(c.keyFields || []).flatMap(k => [k.name, k.note])].join(' ').toLowerCase();
+        ...(c.pages || []), ...(c.relations || []),
+        ...(c.keyFields || []).flatMap(k => [k.name, k.note])].join(' ').toLowerCase();
         return hay.includes(f.q);
     };
 
@@ -145,16 +177,24 @@
                     </span>
                 </td>
                 <td class="px-6 py-4 text-right">
-                    <button type="button" class="btn-db-detail px-3 py-1.5 rounded-[0.375rem] bg-[#4D4D4D]/60 border border-[#3F3F46] text-white hover:border-[#FFE169] text-xs font-medium transition-colors inline-flex items-center gap-1.5 cursor-pointer"
-                        data-key="${dbEsc(c.key)}" aria-label="ดูรายละเอียด ${dbEsc(c.key)}">
-                        <i class="fa-solid fa-eye"></i> รายละเอียด
-                    </button>
+                    <div class="inline-flex items-center gap-2">
+                        <button type="button" class="btn-db-docs px-3 py-1.5 rounded-[0.375rem] bg-[#4D4D4D]/60 border border-[#3F3F46] text-white hover:border-[#FFE169] text-xs font-medium transition-colors inline-flex items-center gap-1.5 cursor-pointer"
+                            data-key="${dbEsc(c.key)}" aria-label="ดูเอกสารใน ${dbEsc(c.key)}">
+                            <i class="fa-solid fa-table-list"></i> ดูเอกสาร
+                        </button>
+                        <button type="button" class="btn-db-detail px-3 py-1.5 rounded-[0.375rem] bg-[#4D4D4D]/60 border border-[#3F3F46] text-white hover:border-[#FFE169] text-xs font-medium transition-colors inline-flex items-center gap-1.5 cursor-pointer"
+                            data-key="${dbEsc(c.key)}" aria-label="ดูรายละเอียด ${dbEsc(c.key)}">
+                            <i class="fa-solid fa-eye"></i> รายละเอียด
+                        </button>
+                    </div>
                 </td>
             </tr>`;
         }).join('');
 
         body.querySelectorAll('.btn-db-detail').forEach(b =>
             b.addEventListener('click', () => dbOpenDetail(b.dataset.key)));
+        body.querySelectorAll('.btn-db-docs').forEach(b =>
+            b.addEventListener('click', () => dbOpenDocs(b.dataset.key)));
     };
 
     // ---------- ลิ้นชักรายละเอียด ----------
@@ -210,16 +250,266 @@
             ${section('fa-file-lines', 'หน้าที่ใช้ข้อมูลนี้', pages)}
             ${section('fa-sitemap', 'เชื่อมกับ collection อื่น', rel)}
             ${c.notes ? section('fa-triangle-exclamation', 'ข้อควรระวัง',
-                `<p class="text-xs text-white/80 leading-relaxed px-4 py-3 rounded-xl bg-orange-500/[0.12] border border-orange-500/30">${dbEsc(c.notes)}</p>`) : ''}`;
+                `<p class="text-xs text-white/80 leading-relaxed px-4 py-3 rounded-xl bg-orange-500/[0.12] border border-orange-500/30">${dbEsc(c.notes)}</p>`) : ''}
+            <button type="button" id="btn-db-drawer-docs"
+                class="w-full px-4 py-3 rounded-xl bg-[#4D4D4D]/60 border border-[#3F3F46] text-white hover:border-[#FFE169] text-sm font-medium transition-colors inline-flex items-center justify-center gap-2 cursor-pointer">
+                <i class="fa-solid fa-table-list text-[#FFE169]"></i> เปิดดูเอกสารจริงใน ${dbEsc(c.key)}
+            </button>`;
 
-        drawer.classList.remove('opacity-0', 'pointer-events-none');
+        const toDocsBtn = el('btn-db-drawer-docs');
+        if (toDocsBtn) toDocsBtn.addEventListener('click', () => { dbCloseDetail(); dbOpenDocs(c.key); });
+
+        dbShowLayer(drawer);
         const card = drawer.querySelector('.modal-content');
         if (card) card.focus();
     };
 
-    const dbCloseDetail = () => {
-        const drawer = el('db-detail-drawer');
-        if (drawer) drawer.classList.add('opacity-0', 'pointer-events-none');
+    const dbCloseDetail = () => dbHideLayer(el('db-detail-drawer'));
+
+    // ---------- หน้าต่างดูเอกสารจริงใน collection ----------
+    // อ่านอย่างเดียว: เซิร์ฟเวอร์ตัดสตริงยาว/อาร์เรย์ใหญ่ และซ่อน employee.password ให้แล้ว
+    const DOCS_CELL_MAX = 48;
+
+    // ค่าที่ส่งมาเป็น JSON แล้ว — Date กลายเป็นสตริง ISO, ObjectId กลายเป็นสตริง hex
+    const dbIsIso = (s) => /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(s);
+    const dbIsOid = (s) => /^[0-9a-f]{24}$/i.test(s);
+
+    const dbFmtCell = (v) => {
+        if (v === null || v === undefined || v === '') return '<span class="text-white/30">—</span>';
+        if (typeof v === 'boolean') {
+            return v ? '<span class="text-[#20D500]">ใช่</span>' : '<span class="text-white/60">ไม่</span>';
+        }
+        if (typeof v === 'number') return `<span class="font-mono text-white">${dbNum(v)}</span>`;
+        if (Array.isArray(v)) {
+            return v.length
+                ? `<span class="px-2 py-0.5 rounded-[0.375rem] bg-[#4D4D4D]/60 text-[11px] text-white">${v.length} รายการ</span>`
+                : '<span class="text-white/30">— ว่าง</span>';
+        }
+        if (typeof v === 'object') {
+            return `<span class="px-2 py-0.5 rounded-[0.375rem] bg-[#4D4D4D]/60 text-[11px] text-white font-mono">{ ${Object.keys(v).length} ฟิลด์ }</span>`;
+        }
+
+        const s = String(v);
+        if (dbIsIso(s)) {
+            const d = new Date(s);
+            if (!isNaN(d)) {
+                return `<span class="text-white">${d.toLocaleString('th-TH', {
+                    day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
+                })}</span>`;
+            }
+        }
+        if (dbIsOid(s)) {
+            // id เต็มดูได้ที่ JSON ดิบ ในตารางโชว์ท้าย 6 ตัวพอให้ไล่ตามได้
+            return `<span class="font-mono text-[11px] text-white/70" title="${dbEsc(s)}">…${dbEsc(s.slice(-6))}</span>`;
+        }
+        const short = s.length > DOCS_CELL_MAX ? `${s.slice(0, DOCS_CELL_MAX)}…` : s;
+        return `<span class="text-white" title="${dbEsc(s)}">${dbEsc(short)}</span>`;
+    };
+
+    const dbDocsSkeleton = () => {
+        const body = el('db-docs-body');
+        if (!body) return;
+        const cols = Math.max(4, (_docs.columns || []).length + 1);
+        const bar = `<div class="h-3.5 w-full rounded-full bg-[#5c5c5c] animate-pulse"></div>`;
+        body.innerHTML = Array.from({ length: 8 }).map(() =>
+            `<tr>${Array.from({ length: cols }).map(() => `<td class="px-6 py-4">${bar}</td>`).join('')}</tr>`).join('');
+    };
+
+    const dbDocsStateRow = (msg, cls = 'text-white/50 italic') => {
+        const cols = Math.max(4, (_docs.columns || []).length + 1);
+        return `<tr><td colspan="${cols}" class="px-6 py-10 text-center ${cls}">${dbEsc(msg)}</td></tr>`;
+    };
+
+    const dbRenderDocs = () => {
+        const head = el('db-docs-head');
+        const body = el('db-docs-body');
+        if (!head || !body) return;
+
+        head.innerHTML = _docs.columns.map(c =>
+            `<th class="px-6 py-3 font-semibold text-[13px]">
+                <span class="font-mono">${dbEsc(c.name)}</span>
+                <span class="ml-1.5 text-[10px] font-normal text-white/50">${dbEsc(c.type || '')}</span>
+            </th>`).join('')
+            + '<th class="px-6 py-3 font-semibold text-[13px] text-right">ข้อมูลดิบ</th>';
+
+        if (!_docs.docs.length) {
+            body.innerHTML = dbDocsStateRow(_docs.q
+                ? 'ไม่พบเอกสารที่ตรงกับคำค้น'
+                : 'collection นี้ยังไม่มีเอกสาร');
+            return;
+        }
+
+        // JSON ดิบสร้างตอนกดเท่านั้น (ดู dbToggleJson) ไม่ฝังไว้ล่วงหน้าทุกแถว
+        body.innerHTML = _docs.docs.map((doc, i) => {
+            const cells = _docs.columns.map(c =>
+                `<td class="px-6 py-3 max-w-[22rem] truncate">${dbFmtCell(doc[c.name])}</td>`).join('');
+            return `
+            <tr class="hover:bg-[#464646] transition-colors" data-row="${i}">
+                ${cells}
+                <td class="px-6 py-3 text-right">
+                    <button type="button" class="btn-db-json px-2.5 py-1 rounded-[0.375rem] bg-[#4D4D4D]/60 border border-[#3F3F46] text-white hover:border-[#FFE169] text-[11px] font-medium transition-colors inline-flex items-center gap-1.5 cursor-pointer"
+                        aria-expanded="false">
+                        <i class="fa-solid fa-code"></i> JSON
+                    </button>
+                </td>
+            </tr>`;
+        }).join('');
+    };
+
+    // แถว JSON แทรกตอนกด และถอดออกตอนกดซ้ำ — ไม่ทิ้ง DOM ที่ซ่อนไว้ค้างในตาราง
+    const dbToggleJson = (btn) => {
+        const tr = btn.closest('tr');
+        if (!tr) return;
+        const next = tr.nextElementSibling;
+        if (next && next.classList.contains('db-docs-json')) {
+            next.remove();
+            btn.setAttribute('aria-expanded', 'false');
+            return;
+        }
+        const doc = _docs.docs[Number(tr.dataset.row)];
+        if (!doc) return;
+        tr.insertAdjacentHTML('afterend', `
+            <tr class="db-docs-json">
+                <td colspan="${_docs.columns.length + 1}" class="px-6 pb-4 pt-0">
+                    <pre tabindex="0" class="max-h-72 overflow-auto whitespace-pre rounded-xl bg-[#27272A] border border-[#3F3F46] p-4 text-xs text-white/85 font-mono leading-5">${dbEsc(JSON.stringify(doc, null, 2))}</pre>
+                </td>
+            </tr>`);
+        btn.setAttribute('aria-expanded', 'true');
+    };
+
+    const dbLoadDocs = async () => {
+        const body = el('db-docs-body');
+        if (!body || !_docs.key) return;
+
+        const seq = ++_docsSeq;
+        dbDocsSkeleton();
+
+        try {
+            const params = new URLSearchParams({
+                page: String(_docs.page),
+                limit: String(_docs.limit)
+            });
+            if (_docs.q) params.set('q', _docs.q);
+
+            const res = await window.authFetch(`/api/database/${encodeURIComponent(_docs.key)}/documents?${params}`);
+            const result = await res.json();
+            if (seq !== _docsSeq) return; // มีคำค้นใหม่แซงไปแล้ว ทิ้งผลนี้
+
+            if (!result.success) {
+                body.innerHTML = dbDocsStateRow(result.message || 'โหลดเอกสารไม่สำเร็จ', 'text-[#FF6B6B]');
+                return;
+            }
+
+            const d = result.data || {};
+            _docs.columns = d.columns || [];
+            _docs.docs = d.docs || [];
+            _docs.page = d.page || 1;
+            _docs.totalPages = d.totalPages || 1;
+
+            setText('db-docs-count', `${dbNum(d.total || 0)} เอกสาร`);
+            setText('db-docs-hint',
+                `เรียงจากใหม่ไปเก่าตาม ${d.sortedBy || '_id'} · อ่านอย่างเดียว แก้ไขจากหน้านี้ไม่ได้`);
+            setText('db-docs-page-info', `หน้า ${dbNum(_docs.page)} จาก ${dbNum(_docs.totalPages)}`);
+
+            const prev = el('btn-db-docs-prev');
+            const next = el('btn-db-docs-next');
+            if (prev) prev.disabled = _docs.page <= 1;
+            if (next) next.disabled = _docs.page >= _docs.totalPages;
+
+            dbRenderDocs();
+        } catch (err) {
+            if (seq !== _docsSeq) return;
+            console.error('[DATABASE] โหลดเอกสารไม่สำเร็จ:', err);
+            body.innerHTML = dbDocsStateRow('เชื่อมต่อเซิร์ฟเวอร์ไม่สำเร็จ', 'text-[#FF6B6B]');
+        }
+    };
+
+    const dbOpenDocs = (key) => {
+        const c = _dbCache.find(x => x.key === key);
+        const modal = el('db-docs-modal');
+        if (!c || !modal) return;
+
+        _docs = {
+            key: c.key, title: c.title, page: 1,
+            limit: Number(el('db-docs-limit')?.value) || 25,
+            q: '', totalPages: 1, columns: [], docs: []
+        };
+
+        setText('db-docs-title', c.title);
+        setText('db-docs-key', `${c.key}  ·  ${c.model}`);
+        setText('db-docs-count', '');
+        setText('db-docs-hint', '');
+        setText('db-docs-page-info', '-');
+        if (el('db-docs-search')) el('db-docs-search').value = '';
+
+        dbShowLayer(modal);
+        const card = modal.querySelector('.modal-content');
+        if (card) card.focus();
+
+        dbLoadDocs();
+    };
+
+    // ปิดแล้วต้องคืน DOM ด้วย — ตาราง 100 แถวที่ค้างไว้ยังโดนคิด layout ทุกครั้งที่หน้าเปลี่ยน
+    const dbCloseDocs = () => dbHideLayer(el('db-docs-modal'), () => {
+        const body = el('db-docs-body');
+        const head = el('db-docs-head');
+        if (body) body.innerHTML = '';
+        if (head) head.innerHTML = '';
+        _docs.docs = [];
+        _docs.columns = [];
+    });
+
+    const dbIsDocsOpen = () => {
+        const modal = el('db-docs-modal');
+        return !!modal && !modal.classList.contains('hidden');
+    };
+
+    const dbBindDocs = () => {
+        const closeBtn = el('btn-close-db-docs');
+        if (closeBtn) closeBtn.addEventListener('click', dbCloseDocs);
+
+        // ผูกครั้งเดียวที่ tbody แทนที่จะผูกทีละปุ่มทุกครั้งที่วาดตาราง (100 แถว = 100 listener)
+        const body = el('db-docs-body');
+        if (body) body.addEventListener('click', (e) => {
+            const btn = e.target.closest('.btn-db-json');
+            if (btn) dbToggleJson(btn);
+        });
+
+        const search = el('db-docs-search');
+        if (search) {
+            search.addEventListener('input', () => {
+                clearTimeout(_docsTimer);
+                _docsTimer = setTimeout(() => {
+                    _docs.q = search.value.trim();
+                    _docs.page = 1;
+                    dbLoadDocs();
+                }, 300);
+            });
+        }
+
+        const limit = el('db-docs-limit');
+        if (limit) {
+            limit.addEventListener('change', () => {
+                _docs.limit = Number(limit.value) || 25;
+                _docs.page = 1;
+                dbLoadDocs();
+            });
+        }
+
+        const refresh = el('btn-db-docs-refresh');
+        if (refresh) refresh.addEventListener('click', () => dbLoadDocs());
+
+        const prev = el('btn-db-docs-prev');
+        if (prev) prev.addEventListener('click', () => {
+            if (_docs.page > 1) { _docs.page -= 1; dbLoadDocs(); }
+        });
+        const next = el('btn-db-docs-next');
+        if (next) next.addEventListener('click', () => {
+            if (_docs.page < _docs.totalPages) { _docs.page += 1; dbLoadDocs(); }
+        });
+
+        const modal = el('db-docs-modal');
+        if (modal) modal.addEventListener('click', (e) => { if (e.target === modal) dbCloseDocs(); });
     };
 
     // ---------- โหลดข้อมูล ----------
@@ -238,8 +528,12 @@
             if (clearBtn) clearBtn.addEventListener('click', dbClearFilters);
             const closeBtn = el('btn-close-db-drawer');
             if (closeBtn) closeBtn.addEventListener('click', dbCloseDetail);
+            dbBindDocs();
             document.addEventListener('keydown', (e) => {
-                if (e.key === 'Escape') dbCloseDetail();
+                if (e.key !== 'Escape') return;
+                // หน้าต่างเอกสารซ้อนอยู่บนลิ้นชัก — Escape ต้องปิดชั้นบนสุดก่อน
+                if (dbIsDocsOpen()) dbCloseDocs();
+                else dbCloseDetail();
             });
         }
 

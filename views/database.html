@@ -55,7 +55,8 @@
             <div class="flex flex-wrap items-center gap-2.5 w-full lg:w-auto">
                 <div class="relative group w-full sm:w-64">
                     <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <i class="fa-solid fa-search text-white group-focus-within:text-[#FFE169] transition-colors"></i>
+                        <i
+                            class="fa-solid fa-search text-white group-focus-within:text-[#FFE169] transition-colors"></i>
                     </div>
                     <label for="db-filter-search" class="sr-only">ค้นหาชื่อ collection คำอธิบาย หรือชื่อหน้า</label>
                     <input type="text" id="db-filter-search" autocomplete="off"
@@ -107,7 +108,7 @@
 
     <!-- [4] ลิ้นชักรายละเอียด (ข้อ 11.10) -->
     <div id="db-detail-drawer"
-        class="fixed inset-0 z-[70] flex items-center justify-center backdrop-blur-sm opacity-0 pointer-events-none transition-opacity duration-300 p-4">
+        class="hidden fixed inset-0 z-[70] flex items-center justify-center backdrop-blur-sm opacity-0 pointer-events-none transition-opacity duration-300 p-4">
         <div tabindex="0"
             class="modal-content relative w-[95%] xl:w-[820px] max-h-[92vh] overflow-y-auto bg-[#18181B] rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.5)] border border-[#4D4D4D]">
             <button aria-label="ปิด" id="btn-close-db-drawer" type="button"
@@ -121,6 +122,86 @@
                 </div>
                 <p id="db-drawer-key" class="font-mono text-sm text-[#FFE169] mb-6">-</p>
                 <div id="db-drawer-body" class="space-y-6 text-sm"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- [5] หน้าต่างดูเอกสารจริงใน collection (อ่านอย่างเดียว) -->
+    <div id="db-docs-modal"
+        class="hidden fixed inset-0 z-[75] flex items-center justify-center backdrop-blur-sm opacity-0 pointer-events-none transition-opacity duration-300 p-4">
+        <div tabindex="0"
+            class="modal-content relative w-[99%] xl:w-[1180px] max-h-[92vh] flex flex-col bg-[#18181B] rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.5)] border border-[#4D4D4D]">
+
+            <!-- 5a หัวหน้าต่าง -->
+            <div class="flex items-start justify-between gap-4 p-6 pb-0">
+                <div class="min-w-0">
+                    <div class="flex items-center gap-3">
+                        <i class="fa-solid fa-table-list text-[#FFE169]"></i>
+                        <h3 id="db-docs-title" class="text-lg font-medium text-white truncate">เอกสารใน Collection</h3>
+                    </div>
+                    <p id="db-docs-key" class="font-mono text-sm text-[#FFE169] mt-1">-</p>
+                </div>
+                <button aria-label="ปิด" id="btn-close-db-docs" type="button"
+                    class="shrink-0 text-red-500 hover:text-red-400 transition-colors cursor-pointer">
+                    <i class="fa-solid fa-xmark text-xl"></i>
+                </button>
+            </div>
+
+            <!-- 5b แถบควบคุม (ข้อ 11.4) -->
+            <div class="px-6 pt-4 flex flex-col sm:flex-row sm:items-center gap-2.5">
+                <div class="relative group w-full sm:flex-1">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <i
+                            class="fa-solid fa-search text-white group-focus-within:text-[#FFE169] transition-colors"></i>
+                    </div>
+                    <label for="db-docs-search" class="sr-only">ค้นหาเอกสารในคอลเลกชันนี้</label>
+                    <input type="text" id="db-docs-search" autocomplete="off"
+                        placeholder="ค้นหาข้อความในทุกฟิลด์ หรือวาง _id..."
+                        class="bg-[#4D4D4D]/40 border border-[#3F3F46] rounded-[0.5rem] text-sm pl-10 pr-4 py-2 w-full text-white focus:outline-none focus:border-[#FFE169] focus:ring-1 focus:ring-[#FFE169] transition-all placeholder-white">
+                </div>
+                <label for="db-docs-limit" class="sr-only">จำนวนเอกสารต่อหน้า</label>
+                <select id="db-docs-limit"
+                    class="bg-[#4D4D4D]/40 cursor-pointer text-sm rounded-[0.5rem] px-3 py-2 text-white focus:outline-none focus:ring-1 focus:ring-[#FFE169] [&>option]:bg-[#4D4D4D] [&>option:checked]:bg-[#FFE169] [&>option:checked]:text-[#333333]">
+                    <option value="25">25 ต่อหน้า</option>
+                    <option value="50">50 ต่อหน้า</option>
+                    <option value="100">100 ต่อหน้า</option>
+                </select>
+                <button id="btn-db-docs-refresh" type="button"
+                    class="px-3 py-2 bg-[#4D4D4D]/40 cursor-pointer text-white flex items-center justify-center gap-1.5 rounded-[0.5rem] text-sm hover:bg-[#5C5C5C] transition-colors">
+                    <i class="fa-solid fa-rotate"></i> โหลดใหม่
+                </button>
+            </div>
+
+            <!-- 5c ตัวนับผลลัพธ์ (ข้อ 11.5) -->
+            <div class="px-6 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                <p id="db-docs-hint" class="text-xs text-white/60"></p>
+                <p id="db-docs-count" class="text-xs text-white font-medium"></p>
+            </div>
+
+            <!-- 5d ตาราง (ข้อ 11.6) -->
+            <div class="flex-1 min-h-0 overflow-auto border-t border-[#464646]" tabindex="0">
+                <table class="w-full text-left text-sm whitespace-nowrap border-collapse">
+                    <thead class="bg-[#27272A] text-white sticky top-0 z-10">
+                        <tr id="db-docs-head"></tr>
+                    </thead>
+                    <tbody id="db-docs-body" class="divide-y divide-[#464646]"></tbody>
+                </table>
+            </div>
+
+            <!-- 5e แบ่งหน้า -->
+            <div
+                class="p-6 py-4 border-t border-[#464646] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <p id="db-docs-page-info" class="text-xs text-white/70">-</p>
+                <div class="flex items-center gap-2">
+                    <button id="btn-db-docs-prev" type="button"
+                        class="px-3 py-1.5 rounded-[0.375rem] bg-[#4D4D4D]/60 border border-[#3F3F46] text-white hover:border-[#FFE169] text-xs font-medium transition-colors inline-flex items-center gap-1.5 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:border-[#3F3F46]">
+                        <i class="fa-solid fa-chevron-left"></i> ก่อนหน้า
+                    </button>
+                    <button id="btn-db-docs-next" type="button"
+                        class="px-3 py-1.5 rounded-[0.375rem] bg-[#4D4D4D]/60 border border-[#3F3F46] text-white hover:border-[#FFE169] text-xs font-medium transition-colors inline-flex items-center gap-1.5 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:border-[#3F3F46]">
+                        ถัดไป <i class="fa-solid fa-chevron-right"></i>
+                    </button>
+                </div>
             </div>
         </div>
     </div>
