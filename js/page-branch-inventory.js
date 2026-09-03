@@ -42,14 +42,14 @@
 
     // แถวโครงร่างระหว่างรอข้อมูล — ต้องเรียกก่อน await เสมอ ไม่ปล่อยตารางว่าง (ข้อ 11.7)
     const renderSkeleton = (tbody, rowCount = 6) => {
-        const bar = (widthClass) => `<div class="h-3.5 ${widthClass} rounded-full bg-[#5c5c5c] animate-pulse"></div>`;
+        const bar = (widthClass) => `<div class="h-3.5 ${widthClass} rounded-full bg-skeleton animate-pulse"></div>`;
         let html = '';
         for (let i = 0; i < rowCount; i++) {
             html += `
                 <tr>
                     <td class="px-6 py-4">
                         <div class="flex items-center gap-3">
-                            <div class="w-4 h-4 rounded-full bg-[#5c5c5c] animate-pulse shrink-0"></div>
+                            <div class="w-4 h-4 rounded-full bg-skeleton animate-pulse shrink-0"></div>
                             ${bar('w-48')}
                         </div>
                     </td>
@@ -62,7 +62,7 @@
     };
 
     // แถวสถานะ (ว่าง / ผิดพลาด) — ตารางมี 3 คอลัมน์ colspan ต้องเป็น 3
-    const stateRow = (message, extraClass = 'text-white/50 italic') =>
+    const stateRow = (message, extraClass = 'text-ink/50 italic') =>
         `<tr><td colspan="3" class="px-6 py-8 text-center ${extraClass}">${message}</td></tr>`;
 
     const selectedText = (selectEl) => {
@@ -100,7 +100,7 @@
         const addChip = (label, onRemove) => {
             const chip = document.createElement('button');
             chip.type = 'button';
-            chip.className = 'px-4 py-2.5 rounded-xl bg-[#4D4D4D]/40 border border-[#3F3F46] text-white text-sm font-medium transition-colors flex items-center gap-2';
+            chip.className = 'elev-card px-4 py-2.5 rounded-xl bg-panel/40 text-ink text-sm font-medium transition-colors flex items-center gap-2';
             chip.innerHTML = `<span>${label}</span><i class="fa-solid fa-xmark text-[10px] opacity-80"></i>`;
             chip.addEventListener('click', (e) => {
                 // ลบได้เฉพาะตอนคลิกที่กากบาท ตัวชิปเองไม่ตอบสนอง (ข้อ 11.5)
@@ -139,7 +139,7 @@
         if (activeCount > 1) {
             const clearBtn = document.createElement('button');
             clearBtn.type = 'button';
-            clearBtn.className = 'px-2.5 py-1 bg-red-500/10 hover:bg-red-500/15 text-red-300 rounded-full text-xs font-medium border border-red-500/30 transition-colors';
+            clearBtn.className = 'px-2.5 py-1 bg-red-500/10 hover:bg-red-500/15 text-red-300 rounded-full text-xs font-medium ring-1 ring-red-500/30 transition-colors';
             clearBtn.textContent = 'ล้างทั้งหมด';
             clearBtn.addEventListener('click', () => {
                 if (searchEl) searchEl.value = '';
@@ -230,14 +230,14 @@
     // ไม่ใช่ด้วยสีพื้นคนละเฉด — เซลล์ทุกใบจึงยังเป็น px-6 py-4 ค่าเดียวตามข้อ 11.6
     // ==========================================
 
-    const ROW_BASE = 'hover:bg-[#464646] transition-colors';
+    const ROW_BASE = 'hover:bg-divider transition-colors';
 
     // ปุ่มกาง/ยุบ — ต้องเป็น <button> จริง ไม่ใช่ onclick บน <tr>
     // เพราะ <tr> โฟกัสด้วยคีย์บอร์ดไม่ได้ และการใส่ role="button" ให้ <tr> จะพัง semantics ของตาราง
     const disclosureButton = (rowId, indentClass, iconExtraClass, labelHtml) => `
         <button type="button" id="btn-${rowId}" aria-expanded="false"
             class="flex items-center gap-2 w-full text-left cursor-pointer rounded-[0.375rem] ${indentClass}">
-            <i id="icon-${rowId}" class="fa-solid fa-chevron-right text-white/70 w-4 text-center shrink-0 ${iconExtraClass}"></i>
+            <i id="icon-${rowId}" class="fa-solid fa-chevron-right text-ink/70 w-4 text-center shrink-0 ${iconExtraClass}"></i>
             ${labelHtml}
         </button>
     `;
@@ -249,7 +249,7 @@
 
     // ป้ายจำนวนรวมของกลุ่ม — ใช้ไวยากรณ์ชิปเดียวกับข้อ 11.5
     const groupQtyBadge = (qty, unit) => `
-        <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-[0.375rem] bg-[#4D4D4D]/40 border border-[#3F3F46] text-white text-xs font-medium">
+        <span class="elev-card inline-flex items-center gap-1 px-2.5 py-1 rounded-[0.375rem] bg-panel/40 text-ink text-xs font-medium">
             ${qty} <span class="font-normal">${unit || 'ชิ้น'}</span>
         </span>
     `;
@@ -268,9 +268,9 @@
     const imeiList = (imeis) => {
         if (!imeis || !imeis.length) return '';
         const tags = imeis.map(i =>
-            `<span class="font-mono text-[10px] text-white/70 bg-[#27272A] border border-[#3F3F46] px-1.5 py-0.5 rounded-[0.375rem]">${i}</span>`
+            `<span class="elev-field font-mono text-[10px] text-ink/70 bg-field px-1.5 py-0.5 rounded-[0.375rem]">${i}</span>`
         ).join('');
-        return `<div class="flex flex-wrap items-center gap-1 mt-1.5"><span class="text-[10px] text-white/70">IMEI:</span>${tags}</div>`;
+        return `<div class="flex flex-wrap items-center gap-1 mt-1.5"><span class="text-[10px] text-ink/70">IMEI:</span>${tags}</div>`;
     };
 
     // ผูกพฤติกรรมกาง/ยุบให้แถวระดับ 1 (กางลูกระดับ 2 และยุบทั้งสาขาเมื่อปิด)
@@ -332,8 +332,8 @@
             const contentGlobalStock = document.getElementById('content-branch-globalstock');
 
             // แท็บที่เลือกอยู่ = ปุ่มทึบเหลืองปุ่มเดียวของหน้า ที่เหลือเป็นพิลล์ขอบเทาตามข้อ 11.9
-            const TAB_ACTIVE = ['bg-[#FFE169]', 'text-[#333333]', 'border-[#FFE169]'];
-            const TAB_IDLE = ['bg-[#27272A]', 'text-slate-300', 'border-[#3F3F46]', 'hover:border-[#FFE169]', 'hover:text-white'];
+            const TAB_ACTIVE = ['bg-primary', 'text-on-primary', 'ring-2', 'ring-accent-ink'];
+            const TAB_IDLE = ['bg-field', 'text-body-muted', 'border-line', 'hover:border-accent-ink', 'hover:text-ink'];
 
             const activateTab = (activeTab, inactiveTab, activeContent, inactiveContent) => {
                 activeTab.classList.remove(...TAB_IDLE);
@@ -462,7 +462,7 @@
                 trName.className = `name-row ${nameRowId} ${ROW_BASE}`;
                 trName.innerHTML = `
                     <td class="px-6 py-4">
-                        ${disclosureButton(nameRowId, '', '', `<span class="font-semibold text-white text-[15px]">${name}</span>`)}
+                        ${disclosureButton(nameRowId, '', '', `<span class="font-semibold text-ink text-[15px]">${name}</span>`)}
                     </td>
                     <td class="px-6 py-4 text-center">${groupQtyBadge(nameGroup.total, nameGroup.unit)}</td>
                     <td class="px-6 py-4"></td>
@@ -484,10 +484,10 @@
                                 colorRowId,
                                 'ml-6',
                                 `text-xs level2-icon-of-${nameRowId}`,
-                                `${colorDot(color, colorGroup.colorDoc)}<span class="text-sm text-white/70">สี: <span class="font-medium text-white">${color}</span></span>`
+                                `${colorDot(color, colorGroup.colorDoc)}<span class="text-sm text-ink/70">สี: <span class="font-medium text-ink">${color}</span></span>`
                             )}
                         </td>
-                        <td class="px-6 py-4 text-center text-white/70 font-medium">
+                        <td class="px-6 py-4 text-center text-ink/70 font-medium">
                             ${colorGroup.total} <span class="text-xs font-normal">${colorGroup.unit || 'ชิ้น'}</span>
                         </td>
                         <td class="px-6 py-4"></td>
@@ -505,17 +505,17 @@
                         trItem.innerHTML = `
                             <td class="px-6 py-4">
                                 <div class="flex flex-col gap-1 ml-12">
-                                    <span class="text-sm text-white/70">
-                                        ความจุ: <span class="font-medium text-white">${capacity}</span>${condition ? ` / <span class="font-medium text-white">${condition}</span>` : ''}
+                                    <span class="text-sm text-ink/70">
+                                        ความจุ: <span class="font-medium text-ink">${capacity}</span>${condition ? ` / <span class="font-medium text-ink">${condition}</span>` : ''}
                                     </span>
-                                    <span class="font-mono text-xs font-semibold text-[#FFE169]">${p.product_code || '-'}</span>
+                                    <span class="font-mono text-xs font-semibold text-accent-ink">${p.product_code || '-'}</span>
                                 </div>
                             </td>
-                            <td class="px-6 py-4 text-center text-white font-medium">
+                            <td class="px-6 py-4 text-center text-ink font-medium">
                                 ${p.qtyToDisplay} <span class="text-xs font-normal">${p.unit || 'ชิ้น'}</span>
                                 ${p.is_transferring ? transferBadge() : ''}
                             </td>
-                            <td class="px-6 py-4 text-right text-white font-mono">฿${(p.selling_price || 0).toLocaleString()}</td>
+                            <td class="px-6 py-4 text-right text-ink font-mono">฿${(p.selling_price || 0).toLocaleString()}</td>
                         `;
                         tbody.appendChild(trItem);
                     });
@@ -615,7 +615,7 @@
                 trName.className = `name-row ${nameRowId} ${ROW_BASE}`;
                 trName.innerHTML = `
                     <td class="px-6 py-4">
-                        ${disclosureButton(nameRowId, '', '', `<span class="font-semibold text-white text-[15px]">${name}</span>`)}
+                        ${disclosureButton(nameRowId, '', '', `<span class="font-semibold text-ink text-[15px]">${name}</span>`)}
                     </td>
                     <td class="px-6 py-4 text-center">${groupQtyBadge(nameGroup.total, nameGroup.unit)}</td>
                     <td class="px-6 py-4"></td>
@@ -637,13 +637,13 @@
                                 branchRowId,
                                 'ml-6',
                                 `text-xs level2-icon-of-${nameRowId}`,
-                                `<span class="text-sm text-white/70 flex items-center gap-1.5">
-                                    <i class="fa-solid fa-store text-white/70"></i>
-                                    สาขา: <span class="font-medium text-white">${branchName}</span>
+                                `<span class="text-sm text-ink/70 flex items-center gap-1.5">
+                                    <i class="fa-solid fa-store text-ink/70"></i>
+                                    สาขา: <span class="font-medium text-ink">${branchName}</span>
                                  </span>`
                             )}
                         </td>
-                        <td class="px-6 py-4 text-center text-white/70 font-medium">
+                        <td class="px-6 py-4 text-center text-ink/70 font-medium">
                             ${branchGroup.total} <span class="text-xs font-normal">${branchGroup.unit || 'ชิ้น'}</span>
                         </td>
                         <td class="px-6 py-4"></td>
@@ -662,19 +662,19 @@
                         trItem.innerHTML = `
                             <td class="px-6 py-4">
                                 <div class="flex flex-col gap-1 ml-12">
-                                    <span class="text-sm text-white/70 flex items-center gap-2">
+                                    <span class="text-sm text-ink/70 flex items-center gap-2">
                                         ${colorDot(color, p.color_id)}
-                                        <span>สี: <span class="font-medium text-white">${color}</span>
-                                        / ความจุ: <span class="font-medium text-white">${capacity}</span>${condition ? ` / <span class="font-medium text-white">${condition}</span>` : ''}</span>
+                                        <span>สี: <span class="font-medium text-ink">${color}</span>
+                                        / ความจุ: <span class="font-medium text-ink">${capacity}</span>${condition ? ` / <span class="font-medium text-ink">${condition}</span>` : ''}</span>
                                     </span>
-                                    <span class="font-mono text-xs font-semibold text-[#FFE169]">${p.product_code || '-'}</span>
+                                    <span class="font-mono text-xs font-semibold text-accent-ink">${p.product_code || '-'}</span>
                                     ${imeiList(p.branchImeis)}
                                 </div>
                             </td>
-                            <td class="px-6 py-4 text-center text-white font-medium">
+                            <td class="px-6 py-4 text-center text-ink font-medium">
                                 ${p.qtyToDisplay} <span class="text-xs font-normal">${p.unit || 'ชิ้น'}</span>
                             </td>
-                            <td class="px-6 py-4 text-right text-white font-mono">฿${(p.selling_price || 0).toLocaleString()}</td>
+                            <td class="px-6 py-4 text-right text-ink font-mono">฿${(p.selling_price || 0).toLocaleString()}</td>
                         `;
                         tbody.appendChild(trItem);
                     });

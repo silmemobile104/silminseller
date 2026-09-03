@@ -31,16 +31,16 @@
         .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 
-    const brStateBox = (msg, cls = 'text-white/50 italic') =>
+    const brStateBox = (msg, cls = 'text-ink/50 italic') =>
         `<div class="col-span-full px-6 py-10 text-center ${cls}">${brEsc(msg)}</div>`;
 
     const brSkeleton = (n = 6) => {
         if (!branchGrid) return;
-        const bar = (w) => `<div class="h-3.5 ${w} rounded-full bg-[#5c5c5c] animate-pulse"></div>`;
+        const bar = (w) => `<div class="h-3.5 ${w} rounded-full bg-skeleton animate-pulse"></div>`;
         branchGrid.innerHTML = Array.from({ length: n }).map(() => `
-            <div class="bg-[#27272A] border border-[#3F3F46] rounded-xl p-5">
+            <div class="elev-field bg-field rounded-xl p-5">
                 <div class="flex items-start gap-3">
-                    <div class="w-11 h-11 rounded-full bg-[#5c5c5c] animate-pulse shrink-0"></div>
+                    <div class="w-11 h-11 rounded-full bg-skeleton animate-pulse shrink-0"></div>
                     <div class="flex-1 space-y-2 pt-1">
                         ${bar('w-32')}
                         ${bar('w-24')}
@@ -64,8 +64,8 @@
 
         const chip = document.createElement('button');
         chip.type = 'button';
-        chip.className = 'px-4 py-2.5 rounded-xl bg-[#4D4D4D]/40 border border-[#3F3F46] ' +
-            'text-white text-sm font-medium transition-colors flex items-center gap-2 cursor-pointer';
+        chip.className = 'elev-card px-4 py-2.5 rounded-xl bg-panel/40' +
+            'text-ink text-sm font-medium transition-colors flex items-center gap-2 cursor-pointer';
         chip.innerHTML = `<span>ค้นหา: ${brEsc(_brSearch.trim())}</span><i class="fa-solid fa-xmark text-[10px] opacity-80"></i>`;
         chip.setAttribute('aria-label', `ลบตัวกรอง ค้นหา ${_brSearch.trim()}`);
         chip.addEventListener('click', (e) => {
@@ -97,37 +97,37 @@
         }
 
         branchGrid.innerHTML = rows.map(branch => `
-            <div class="bg-[#27272A] border border-[#3F3F46] rounded-xl p-5 hover:border-[#FFE169] transition-colors flex flex-col">
+            <div class="elev-field bg-field rounded-xl p-5 hover:ring-1 hover:ring-accent-ink transition-colors flex flex-col">
                 <div class="flex items-start gap-3">
                     <div class="w-11 h-11 rounded-full flex items-center justify-center shrink-0"
-                         style="color:#FFE169;background-color:#27272A;border:1px solid #FFE16959;">
+                         style="color:#FFE169;background-color:#FFE1691F;">
                         <i class="fa-solid fa-store text-lg"></i>
                     </div>
                     <div class="min-w-0 flex-1">
-                        <h4 class="text-base font-semibold text-white truncate" title="${brEsc(branch.name)}">${brEsc(branch.name)}</h4>
+                        <h4 class="text-base font-semibold text-ink truncate" title="${brEsc(branch.name)}">${brEsc(branch.name)}</h4>
                         ${branch.phone
-                ? `<p class="text-xs text-white/70 font-mono mt-0.5 flex items-center gap-1.5">
+                ? `<p class="text-xs text-ink/70 font-mono mt-0.5 flex items-center gap-1.5">
                                    <i class="fa-solid fa-phone text-[10px]"></i> ${brEsc(branch.phone)}</p>`
-                : '<p class="text-xs text-white/50 italic mt-0.5">ไม่ได้ระบุเบอร์โทรศัพท์</p>'}
+                : '<p class="text-xs text-ink/50 italic mt-0.5">ไม่ได้ระบุเบอร์โทรศัพท์</p>'}
                     </div>
                     <!-- ปุ่มต้องเห็นตลอด ของเดิมซ่อนไว้แล้วให้โผล่ตอนเอาเมาส์ชี้การ์ด
                          ซึ่งคนใช้คีย์บอร์ดโฟกัสแล้วมองไม่เห็น และบนมือถือไม่มี hover เลย -->
                     <div class="flex items-center gap-1 shrink-0">
-                        <button type="button" class="btn-view-branch text-white hover:text-indigo-400 transition-colors p-2 cursor-pointer"
+                        <button type="button" class="btn-view-branch text-ink hover:text-indigo-400 transition-colors p-2 cursor-pointer"
                             data-id="${brEsc(branch._id)}" title="ดูรายละเอียด"
                             aria-label="ดูรายละเอียดสาขา ${brEsc(branch.name)}">
                             <i class="fa-solid fa-eye"></i>
                         </button>
-                        <button type="button" class="btn-delete-branch text-white hover:text-red-400 transition-colors p-2 cursor-pointer"
+                        <button type="button" class="btn-delete-branch text-ink hover:text-red-400 transition-colors p-2 cursor-pointer"
                             data-id="${brEsc(branch._id)}" title="ลบสาขา"
                             aria-label="ลบสาขา ${brEsc(branch.name)}">
                             <i class="fa-solid fa-trash-can"></i>
                         </button>
                     </div>
                 </div>
-                <p class="text-sm text-white/70 mt-4 flex items-start gap-2 flex-1">
+                <p class="text-sm text-ink/70 mt-4 flex items-start gap-2 flex-1">
                     <i class="fa-solid fa-location-dot text-[11px] mt-1 shrink-0"></i>
-                    <span class="line-clamp-2">${branch.address ? brEsc(branch.address) : '<span class="text-white/50 italic">ไม่มีรายละเอียดที่อยู่</span>'}</span>
+                    <span class="line-clamp-2">${branch.address ? brEsc(branch.address) : '<span class="text-ink/50 italic">ไม่มีรายละเอียดที่อยู่</span>'}</span>
                 </p>
             </div>`).join('');
 
@@ -141,7 +141,7 @@
     // การลบย้อนไม่ได้ ต้องผ่าน showConfirm() และบอกชื่อสาขาที่จะลบให้ชัด (ข้อ 11.12 ข้อ 11)
     const deleteBranch = (id, name) => {
         showConfirm('ยืนยันการลบสาขา',
-            `ต้องการลบสาขา <strong class="text-white">${brEsc(name || '')}</strong> ใช่หรือไม่<br><span class="text-xs text-white/70">ข้อมูลนี้ไม่สามารถกู้คืนได้</span>`,
+            `ต้องการลบสาขา <strong class="text-ink">${brEsc(name || '')}</strong> ใช่หรือไม่<br><span class="text-xs text-ink/70">ข้อมูลนี้ไม่สามารถกู้คืนได้</span>`,
             async () => {
                 try {
                     const response = await authFetch(`${API_BASE_URL}/branches/${id}`, { method: 'DELETE' });
@@ -243,9 +243,9 @@
         if (branchPhoneInput) branchPhoneInput.value = phone;
 
         if (id) {
-            branchModalTitle.innerHTML = `<i class="fa-solid fa-pen-to-square text-[#FFE169]"></i> แก้ไขสาขา`;
+            branchModalTitle.innerHTML = `<i class="fa-solid fa-pen-to-square text-accent-ink"></i> แก้ไขสาขา`;
         } else {
-            branchModalTitle.innerHTML = `<i class="fa-solid fa-store text-[#FFE169]"></i> เพิ่มสาขาใหม่`;
+            branchModalTitle.innerHTML = `<i class="fa-solid fa-store text-accent-ink"></i> เพิ่มสาขาใหม่`;
         }
 
         branchModal.classList.remove('opacity-0', 'pointer-events-none');

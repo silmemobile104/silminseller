@@ -31,19 +31,19 @@
         .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 
-    const adStateRow = (msg, cls = 'text-white/50 italic') =>
+    const adStateRow = (msg, cls = 'text-ink/50 italic') =>
         `<tr><td colspan="${AUDIT_COLS}" class="px-6 py-8 text-center ${cls}">${adEsc(msg)}</td></tr>`;
 
     const adSkeleton = (rows = 6) => {
         const tbody = document.getElementById('audit-logs-table-body');
         if (!tbody) return;
-        const bar = (w) => `<div class="h-3.5 ${w} rounded-full bg-[#5c5c5c] animate-pulse"></div>`;
+        const bar = (w) => `<div class="h-3.5 ${w} rounded-full bg-skeleton animate-pulse"></div>`;
         tbody.innerHTML = Array.from({ length: rows }).map(() => `
             <tr>
                 <td class="px-6 py-4">${bar('w-32')}</td>
                 <td class="px-6 py-4">
                     <div class="flex items-center gap-2">
-                        <div class="w-7 h-7 rounded-full bg-[#5c5c5c] animate-pulse shrink-0"></div>${bar('w-24')}
+                        <div class="w-7 h-7 rounded-full bg-skeleton animate-pulse shrink-0"></div>${bar('w-24')}
                     </div>
                 </td>
                 <td class="px-6 py-4">${bar('w-20')}</td>
@@ -64,10 +64,10 @@
         LOGIN: { label: 'เข้าสู่ระบบ', icon: 'fa-right-to-bracket', tone: 'muted' }
     };
     const AUDIT_TONES = {
-        ok: { dot: 'bg-[#20D500]', bg: 'bg-[#42A231]/[0.12]', text: 'text-[#20D500]' },
+        ok: { dot: 'bg-state-ok', bg: 'bg-state-ok-tint/[0.12]', text: 'text-state-ok' },
         warn: { dot: 'bg-orange-500', bg: 'bg-orange-500/[0.12]', text: 'text-orange-400' },
-        bad: { dot: 'bg-[#FE0000]', bg: 'bg-[#FE0000]/[0.12]', text: 'text-[#FE0000]' },
-        muted: { dot: 'bg-white/40', bg: 'bg-[#4D4D4D]/60', text: 'text-white' }
+        bad: { dot: 'bg-state-danger', bg: 'bg-state-danger/[0.12]', text: 'text-state-danger' },
+        muted: { dot: 'bg-ink/40', bg: 'bg-chip/60', text: 'text-ink' }
     };
 
     // โมดูลทั้งหมดที่ระบบบันทึกจริง — ตัวเลือกในดรอปดาวน์และป้ายในตารางอ่านจากตารางนี้ชุดเดียว
@@ -100,7 +100,7 @@
 
     const getModuleBadgeHtml = (module) => {
         const conf = AUDIT_MODULES[module] || { label: module || '-', icon: 'fa-circle-info' };
-        return `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[0.375rem] text-xs font-medium bg-[#4D4D4D]/60 text-white">
+        return `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[0.375rem] text-xs font-medium bg-chip/60 text-ink">
                     <i class="fa-solid ${adEsc(conf.icon)} text-[10px]"></i>${adEsc(conf.label)}
                 </span>`;
     };
@@ -153,8 +153,8 @@
         chips.forEach(c => {
             const chip = document.createElement('button');
             chip.type = 'button';
-            chip.className = 'px-4 py-2.5 rounded-xl bg-[#4D4D4D]/40 border border-[#3F3F46] ' +
-                'text-white text-sm font-medium transition-colors flex items-center gap-2 cursor-pointer';
+            chip.className = 'elev-card px-4 py-2.5 rounded-xl bg-panel/40' +
+                'text-ink text-sm font-medium transition-colors flex items-center gap-2 cursor-pointer';
             chip.innerHTML = `<span>${adEsc(c.label)}</span><i class="fa-solid fa-xmark text-[10px] opacity-80"></i>`;
             chip.setAttribute('aria-label', `ลบตัวกรอง ${c.label}`);
             chip.addEventListener('click', (e) => {
@@ -169,7 +169,7 @@
             const clearAll = document.createElement('button');
             clearAll.type = 'button';
             clearAll.className = 'px-2.5 py-1 bg-red-500/10 hover:bg-red-500/15 text-red-300 ' +
-                'rounded-full text-xs font-medium border border-red-500/30 transition-colors cursor-pointer';
+                'rounded-full text-xs font-medium ring-1 ring-red-500/30 transition-colors cursor-pointer';
             clearAll.textContent = 'ล้างทั้งหมด';
             clearAll.addEventListener('click', () => {
                 if (search) search.value = '';
@@ -226,29 +226,29 @@
 
             tableBody.innerHTML = logs.map(log => {
                 const refBadge = log.reference_no
-                    ? `<span class="font-mono font-semibold text-[#FFE169]">${adEsc(log.reference_no)}</span>`
-                    : '<span class="text-white/50">-</span>';
+                    ? `<span class="font-mono font-semibold text-accent-ink">${adEsc(log.reference_no)}</span>`
+                    : '<span class="text-ink/50">-</span>';
                 const initial = adEsc((log.user_name || 'ร').trim().charAt(0).toUpperCase());
                 return `
-                <tr class="hover:bg-[#464646] transition-colors">
-                    <td class="px-6 py-4 text-white/70 font-mono text-xs">${adEsc(formatThaiDateTime(log.createdAt))}</td>
+                <tr class="hover:bg-divider transition-colors">
+                    <td class="px-6 py-4 text-ink/70 font-mono text-xs">${adEsc(formatThaiDateTime(log.createdAt))}</td>
                     <td class="px-6 py-4">
                         <div class="flex items-center gap-2">
                             <div class="w-7 h-7 rounded-full flex items-center justify-center shrink-0 text-xs font-semibold"
-                                 style="color:#FFE169;background-color:#27272A;border:1px solid #FFE16959;"
+                                 style="color:#FFE169;background-color:#FFE1691F;"
                                  aria-hidden="true">${initial}</div>
-                            <span class="text-white font-medium">${adEsc(log.user_name || 'ระบบ')}</span>
+                            <span class="text-ink font-medium">${adEsc(log.user_name || 'ระบบ')}</span>
                         </div>
                     </td>
                     <td class="px-6 py-4">${getActionBadgeHtml(log.action)}</td>
                     <td class="px-6 py-4">${getModuleBadgeHtml(log.module)}</td>
                     <td class="px-6 py-4">
-                        <span class="text-white block max-w-[420px] truncate" title="${adEsc(log.description || '')}">${adEsc(log.description || '-')}</span>
+                        <span class="text-ink block max-w-[420px] truncate" title="${adEsc(log.description || '')}">${adEsc(log.description || '-')}</span>
                     </td>
                     <td class="px-6 py-4">${refBadge}</td>
                     <td class="px-6 py-4 text-right">
                         <div class="flex items-center justify-end gap-1">
-                            <button type="button" class="btn-audit-detail text-white hover:text-indigo-400 transition-colors p-2 cursor-pointer"
+                            <button type="button" class="btn-audit-detail text-ink hover:text-indigo-400 transition-colors p-2 cursor-pointer"
                                 data-id="${adEsc(log._id)}" title="ดูรายละเอียดเชิงลึก"
                                 aria-label="ดูรายละเอียดเชิงลึกของกิจกรรม ${adEsc(log.description || '')}">
                                 <i class="fa-solid fa-circle-info"></i>
@@ -298,15 +298,15 @@
             if (log.details) {
                 try {
                     payloadContainer.textContent = JSON.stringify(log.details, null, 2);
-                    payloadContainer.classList.remove('text-white/50', 'italic');
-                    payloadContainer.classList.add('text-white');
+                    payloadContainer.classList.remove('text-ink/50', 'italic');
+                    payloadContainer.classList.add('text-ink');
                 } catch (e) {
                     payloadContainer.textContent = String(log.details);
                 }
             } else {
                 payloadContainer.textContent = 'ไม่มีข้อมูลเพิ่มเติม (No details payload provided)';
-                payloadContainer.classList.add('text-white/50', 'italic');
-                payloadContainer.classList.remove('text-white');
+                payloadContainer.classList.add('text-ink/50', 'italic');
+                payloadContainer.classList.remove('text-ink');
             }
         }
 

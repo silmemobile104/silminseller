@@ -80,7 +80,7 @@
 
     if (btnAddRole) btnAddRole.addEventListener('click', () => {
         if (editRoleId) editRoleId.value = '';
-        if (roleModalTitle) roleModalTitle.innerHTML = '<i class="fa-solid fa-shield-halved text-[#FFE169]"></i> เพิ่มบทบาทใหม่';
+        if (roleModalTitle) roleModalTitle.innerHTML = '<i class="fa-solid fa-shield-halved text-accent-ink"></i> เพิ่มบทบาทใหม่';
         if (roleForm) roleForm.reset();
         openRoleModal();
     });
@@ -99,16 +99,16 @@
         .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 
-    const roleStateBox = (msg, cls = 'text-white/50 italic') =>
+    const roleStateBox = (msg, cls = 'text-ink/50 italic') =>
         `<div class="col-span-full px-6 py-10 text-center ${cls}">${roleEsc(msg)}</div>`;
 
     const roleSkeleton = (n = 6) => {
         if (!rolesGrid) return;
-        const bar = (w) => `<div class="h-3.5 ${w} rounded-full bg-[#5c5c5c] animate-pulse"></div>`;
+        const bar = (w) => `<div class="h-3.5 ${w} rounded-full bg-skeleton animate-pulse"></div>`;
         rolesGrid.innerHTML = Array.from({ length: n }).map(() => `
-            <div class="bg-[#27272A] border border-[#3F3F46] rounded-xl p-5">
+            <div class="elev-field bg-field rounded-xl p-5">
                 <div class="flex items-start gap-3">
-                    <div class="w-11 h-11 rounded-full bg-[#5c5c5c] animate-pulse shrink-0"></div>
+                    <div class="w-11 h-11 rounded-full bg-skeleton animate-pulse shrink-0"></div>
                     <div class="flex-1 space-y-2 pt-1">${bar('w-28')}${bar('w-20')}</div>
                 </div>
                 <div class="mt-4 space-y-2">${bar('w-full')}${bar('w-2/3')}</div>
@@ -129,8 +129,8 @@
 
         const chip = document.createElement('button');
         chip.type = 'button';
-        chip.className = 'px-4 py-2.5 rounded-xl bg-[#4D4D4D]/40 border border-[#3F3F46] ' +
-            'text-white text-sm font-medium transition-colors flex items-center gap-2 cursor-pointer';
+        chip.className = 'elev-card px-4 py-2.5 rounded-xl bg-panel/40' +
+            'text-ink text-sm font-medium transition-colors flex items-center gap-2 cursor-pointer';
         chip.innerHTML = `<span>ค้นหา: ${roleEsc(_roleSearch.trim())}</span><i class="fa-solid fa-xmark text-[10px] opacity-80"></i>`;
         chip.setAttribute('aria-label', `ลบตัวกรอง ค้นหา ${_roleSearch.trim()}`);
         chip.addEventListener('click', (e) => {
@@ -175,33 +175,33 @@
             const shown = onKeys.slice(0, ROLE_CHIP_LIMIT);
             const rest = onKeys.length - shown.length;
             const chips = shown.map(k => `
-                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[0.375rem] text-xs font-medium bg-[#42A231]/[0.12] text-[#20D500]">
+                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[0.375rem] text-xs font-medium bg-state-ok-tint/[0.12] text-state-ok">
                     <i class="fa-solid ${roleEsc(permIcons[k])} text-[10px]"></i>${roleEsc(permLabels[k])}
                 </span>`).join('') +
                 (rest > 0
-                    ? `<span class="inline-flex items-center px-2.5 py-1 rounded-[0.375rem] text-xs font-medium bg-[#4D4D4D]/60 text-white">+${rest} อื่นๆ</span>`
+                    ? `<span class="inline-flex items-center px-2.5 py-1 rounded-[0.375rem] text-xs font-medium bg-chip/60 text-ink">+${rest} อื่นๆ</span>`
                     : '');
 
             return `
-            <div class="bg-[#27272A] border border-[#3F3F46] rounded-xl p-5 hover:border-[#FFE169] transition-colors flex flex-col">
+            <div class="elev-field bg-field rounded-xl p-5 hover:ring-1 hover:ring-accent-ink transition-colors flex flex-col">
                 <div class="flex items-start gap-3">
                     <div class="w-11 h-11 rounded-full flex items-center justify-center shrink-0"
-                         style="color:#FFE169;background-color:#27272A;border:1px solid #FFE16959;">
+                         style="color:#FFE169;background-color:#FFE1691F;">
                         <i class="fa-solid fa-shield-halved text-lg"></i>
                     </div>
                     <div class="min-w-0 flex-1">
-                        <h4 class="text-base font-semibold text-white truncate" title="${roleEsc(role.name)}">${roleEsc(role.name)}</h4>
-                        <p class="text-xs text-white/70 mt-0.5">
-                            <span class="font-mono text-[#FFE169]">${onKeys.length}</span> จาก ${permKeys.length} สิทธิ์
+                        <h4 class="text-base font-semibold text-ink truncate" title="${roleEsc(role.name)}">${roleEsc(role.name)}</h4>
+                        <p class="text-xs text-ink/70 mt-0.5">
+                            <span class="font-mono text-accent-ink">${onKeys.length}</span> จาก ${permKeys.length} สิทธิ์
                         </p>
                     </div>
                     <div class="flex items-center gap-1 shrink-0">
-                        <button type="button" class="view-role-btn text-white hover:text-indigo-400 transition-colors p-2 cursor-pointer"
+                        <button type="button" class="view-role-btn text-ink hover:text-indigo-400 transition-colors p-2 cursor-pointer"
                             data-id="${roleEsc(role._id)}" title="ดูรายละเอียดสิทธิ์"
                             aria-label="ดูรายละเอียดสิทธิ์ของบทบาท ${roleEsc(role.name)}">
                             <i class="fa-solid fa-eye"></i>
                         </button>
-                        <button type="button" class="delete-role-btn text-white hover:text-red-400 transition-colors p-2 cursor-pointer"
+                        <button type="button" class="delete-role-btn text-ink hover:text-red-400 transition-colors p-2 cursor-pointer"
                             data-id="${roleEsc(role._id)}" title="ลบบทบาท"
                             aria-label="ลบบทบาท ${roleEsc(role.name)}">
                             <i class="fa-solid fa-trash"></i>
@@ -209,12 +209,12 @@
                     </div>
                 </div>
 
-                <div class="mt-3 h-1.5 rounded-full bg-white/10 overflow-hidden">
-                    <div class="h-full rounded-full bg-[#FFE169]" style="width:${pct}%"></div>
+                <div class="mt-3 h-1.5 rounded-full bg-ink/10 overflow-hidden">
+                    <div class="h-full rounded-full bg-primary" style="width:${pct}%"></div>
                 </div>
 
                 <div class="mt-4 flex flex-wrap gap-1.5 flex-1 content-start">
-                    ${onKeys.length ? chips : '<span class="text-xs text-white/50 italic">ยังไม่ได้เปิดสิทธิ์ใดเลย</span>'}
+                    ${onKeys.length ? chips : '<span class="text-xs text-ink/50 italic">ยังไม่ได้เปิดสิทธิ์ใดเลย</span>'}
                 </div>
             </div>`;
         }).join('');
@@ -230,7 +230,7 @@
     const deleteRole = (role) => {
         const name = role.name || '';
         showConfirm('ยืนยันการลบบทบาท',
-            `ต้องการลบบทบาท <strong class="text-white">${roleEsc(name)}</strong> ใช่หรือไม่<br><span class="text-xs text-white/70">พนักงานที่ใช้บทบาทนี้อาจได้รับผลกระทบ และการลบย้อนกลับไม่ได้</span>`,
+            `ต้องการลบบทบาท <strong class="text-ink">${roleEsc(name)}</strong> ใช่หรือไม่<br><span class="text-xs text-ink/70">พนักงานที่ใช้บทบาทนี้อาจได้รับผลกระทบ และการลบย้อนกลับไม่ได้</span>`,
             async () => {
                 try {
                     const response = await authFetch(`${API_BASE_URL}/roles/${role._id}`, { method: 'DELETE' });
@@ -304,8 +304,8 @@
             listContainer.innerHTML = permKeys.map(key => {
                 const on = p[key];
                 const tone = on
-                    ? 'bg-[#42A231]/[0.12] text-[#20D500]'
-                    : 'bg-[#4D4D4D]/60 text-white/70';
+                    ? 'bg-state-ok-tint/[0.12] text-state-ok'
+                    : 'bg-chip/60 text-ink/70';
                 return `<span class="inline-flex items-center gap-2 px-2.5 py-1 rounded-[0.375rem] text-xs font-medium ${tone}">
                     <i class="fa-solid ${on ? permIcons[key] : 'fa-xmark'} text-[10px]"></i>
                     <span>${permLabels[key]}</span>
@@ -331,7 +331,7 @@
             editBtn.onclick = () => {
                 closeDetailModal('modal-role-view');
                 editRoleId.value = role._id;
-                roleModalTitle.innerHTML = '<i class="fa-solid fa-pen-to-square text-[#FFE169]"></i> แก้ไขบทบาท';
+                roleModalTitle.innerHTML = '<i class="fa-solid fa-pen-to-square text-accent-ink"></i> แก้ไขบทบาท';
                 roleNameInput.value = role.name;
                 permKeys.forEach(key => {
                     const el = document.getElementById(`perm-${key}`);

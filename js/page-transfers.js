@@ -66,7 +66,7 @@
             errorEl.classList.remove('hidden');
         }
         if (inputEl) {
-            inputEl.classList.remove('border-[#3F3F46]');
+            inputEl.classList.remove('border-line');
             inputEl.classList.add('border-red-500');
         }
     }
@@ -77,7 +77,7 @@
         }
         if (inputEl) {
             inputEl.classList.remove('border-red-500');
-            inputEl.classList.add('border-[#3F3F46]');
+            inputEl.classList.add('border-line');
         }
     }
     function clearAllTransferFieldErrors() {
@@ -94,8 +94,8 @@
             return;
         }
         const style = type === 'error'
-            ? 'bg-[#FE0000]/[0.12] text-[#FE0000] border border-[#FE0000]/30'
-            : 'bg-[#42A231]/[0.12] text-[#20D500] border border-[#42A231]/30';
+            ? 'bg-state-danger/[0.12] text-state-danger ring-1 ring-state-danger/30'
+            : 'bg-state-ok-tint/[0.12] text-state-ok ring-1 ring-state-ok-tint/30';
         transferScanStatus.className = `px-3 py-2.5 rounded-xl text-xs font-medium ${style}`;
         transferScanStatus.textContent = message;
     }
@@ -122,13 +122,13 @@
         .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 
-    const tfStateRow = (msg, cls = 'text-white/50 italic') =>
+    const tfStateRow = (msg, cls = 'text-ink/50 italic') =>
         `<tr><td colspan="${TRANSFER_COLS}" class="px-6 py-8 text-center ${cls}">${tfEsc(msg)}</td></tr>`;
 
     // แถวโครงร่างกระพริบ เรียกก่อน await ทุกครั้ง ไม่ปล่อยตารางว่างระหว่างรอ (ข้อ 11.7)
     const tfSkeleton = (rows = 4) => {
         if (!transferTableBody) return;
-        const bar = (w) => `<div class="h-3.5 ${w} rounded-full bg-[#5c5c5c] animate-pulse"></div>`;
+        const bar = (w) => `<div class="h-3.5 ${w} rounded-full bg-skeleton animate-pulse"></div>`;
         transferTableBody.innerHTML = Array.from({ length: rows }).map(() => `
             <tr>
                 <td class="px-6 py-4">${bar('w-32')}</td>
@@ -208,8 +208,8 @@
 
     // โทนสีป้ายสถานะใบโอนย้าย (ข้อ 11.6 — จุดสี + พื้น tint 12%)
     function transferStatusTone(status) {
-        if (status === 'รับเข้าแล้ว') return { dot: 'bg-[#20D500]', bg: 'bg-[#42A231]/[0.12]', text: 'text-[#20D500]' };
-        if (status === 'ยกเลิกแล้ว') return { dot: 'bg-[#FE0000]', bg: 'bg-[#FE0000]/[0.12]', text: 'text-[#FE0000]' };
+        if (status === 'รับเข้าแล้ว') return { dot: 'bg-state-ok', bg: 'bg-state-ok-tint/[0.12]', text: 'text-state-ok' };
+        if (status === 'ยกเลิกแล้ว') return { dot: 'bg-state-danger', bg: 'bg-state-danger/[0.12]', text: 'text-state-danger' };
         return { dot: 'bg-orange-500', bg: 'bg-orange-500/[0.12]', text: 'text-orange-400' };
     }
 
@@ -224,18 +224,18 @@
     // ป้ายทิศทาง — ขาเข้า/ขาออก เทียบกับสาขาของผู้ใช้
     function transferDirectionBadge(dir) {
         if (dir === 'in') {
-            return `<div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[0.375rem] bg-[#4D4D4D]/60">
-                        <i class="fa-solid fa-arrow-down text-[#20D500] text-[10px]"></i>
-                        <span class="text-white font-medium text-xs">ขาเข้า</span>
+            return `<div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[0.375rem] bg-chip/60">
+                        <i class="fa-solid fa-arrow-down text-state-ok text-[10px]"></i>
+                        <span class="text-ink font-medium text-xs">ขาเข้า</span>
                     </div>`;
         }
         if (dir === 'out') {
-            return `<div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[0.375rem] bg-[#4D4D4D]/60">
-                        <i class="fa-solid fa-arrow-up text-[#FFE169] text-[10px]"></i>
-                        <span class="text-white font-medium text-xs">ขาออก</span>
+            return `<div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[0.375rem] bg-chip/60">
+                        <i class="fa-solid fa-arrow-up text-accent-ink text-[10px]"></i>
+                        <span class="text-ink font-medium text-xs">ขาออก</span>
                     </div>`;
         }
-        return '<span class="text-white/50">-</span>';
+        return '<span class="text-ink/50">-</span>';
     }
 
     // สรุปรายการสินค้าในใบโอนให้อยู่ในบรรทัดเดียว
@@ -302,8 +302,8 @@
         chips.forEach(c => {
             const chip = document.createElement('button');
             chip.type = 'button';
-            chip.className = 'px-4 py-2.5 rounded-xl bg-[#4D4D4D]/40 border border-[#3F3F46] ' +
-                'text-white text-sm font-medium transition-colors flex items-center gap-2 cursor-pointer';
+            chip.className = 'elev-card px-4 py-2.5 rounded-xl bg-panel/40' +
+                'text-ink text-sm font-medium transition-colors flex items-center gap-2 cursor-pointer';
             chip.innerHTML = `<span>${tfEsc(c.label)}</span><i class="fa-solid fa-xmark text-[10px] opacity-80"></i>`;
             chip.setAttribute('aria-label', `ลบตัวกรอง ${c.label}`);
             // ตัวชิปเองไม่ตอบสนอง ต้องคลิกที่กากบาทเท่านั้น
@@ -319,7 +319,7 @@
             const clearAll = document.createElement('button');
             clearAll.type = 'button';
             clearAll.className = 'px-2.5 py-1 bg-red-500/10 hover:bg-red-500/15 text-red-300 ' +
-                'rounded-full text-xs font-medium border border-red-500/30 transition-colors cursor-pointer';
+                'rounded-full text-xs font-medium ring-1 ring-red-500/30 transition-colors cursor-pointer';
             clearAll.textContent = 'ล้างทั้งหมด';
             clearAll.addEventListener('click', () => {
                 transferSearchTerm = '';
@@ -368,14 +368,14 @@
 
             // ปุ่มที่ย้อนไม่ได้ต้องตรวจสิทธิ์ก่อนเรนเดอร์ และยังผ่าน showConfirm() ตอนกดอีกชั้น
             const receiveBtn = perms.canReceive
-                ? `<button type="button" class="btn-transfer-receive text-white hover:text-[#20D500] transition-colors p-2 cursor-pointer"
+                ? `<button type="button" class="btn-transfer-receive text-ink hover:text-state-ok transition-colors p-2 cursor-pointer"
                         data-id="${tfEsc(transfer._id)}" title="ยืนยันรับเข้าสต็อก"
                         aria-label="ยืนยันรับเข้าสต็อก ใบโอน ${tfEsc(transfer.transfer_number)}">
                         <i class="fa-solid fa-circle-check"></i>
                    </button>`
                 : '';
             const cancelBtn = perms.canCancel
-                ? `<button type="button" class="btn-transfer-cancel text-white hover:text-red-400 transition-colors p-2 cursor-pointer"
+                ? `<button type="button" class="btn-transfer-cancel text-ink hover:text-red-400 transition-colors p-2 cursor-pointer"
                         data-id="${tfEsc(transfer._id)}" title="ยกเลิกการโอนย้าย"
                         aria-label="ยกเลิกการโอนย้าย ใบโอน ${tfEsc(transfer.transfer_number)}">
                         <i class="fa-solid fa-ban"></i>
@@ -383,27 +383,27 @@
                 : '';
 
             return `
-            <tr class="hover:bg-[#464646] transition-colors">
+            <tr class="hover:bg-divider transition-colors">
                 <td class="px-6 py-4">
-                    <p class="font-mono font-semibold text-[#FFE169]">${tfEsc(transfer.transfer_number)}</p>
-                    <p class="text-xs text-white/70 mt-0.5">${tfEsc(tfDateTime(transfer.created_at))}</p>
+                    <p class="font-mono font-semibold text-accent-ink">${tfEsc(transfer.transfer_number)}</p>
+                    <p class="text-xs text-ink/70 mt-0.5">${tfEsc(tfDateTime(transfer.created_at))}</p>
                 </td>
                 <td class="px-6 py-4">${transferDirectionBadge(dir)}</td>
                 <td class="px-6 py-4">
-                    <span class="text-white inline-flex items-center gap-2">
+                    <span class="text-ink inline-flex items-center gap-2">
                         <span>${tfEsc(fromBranch)}</span>
-                        <i class="fa-solid fa-arrow-right text-white/50 text-[10px]"></i>
+                        <i class="fa-solid fa-arrow-right text-ink/50 text-[10px]"></i>
                         <span>${tfEsc(toBranch)}</span>
                     </span>
                 </td>
                 <td class="px-6 py-4">
-                    <span class="text-white block max-w-[360px] truncate" title="${tfEsc(desc)}">${tfEsc(desc)}</span>
+                    <span class="text-ink block max-w-[360px] truncate" title="${tfEsc(desc)}">${tfEsc(desc)}</span>
                 </td>
                 <td class="px-6 py-4">${transferStatusBadge(transfer.status)}</td>
                 <td class="px-6 py-4">
                     <div class="flex items-center justify-end gap-1">
                         ${receiveBtn}${cancelBtn}
-                        <button type="button" class="btn-transfer-detail text-white hover:text-indigo-400 transition-colors p-2 cursor-pointer"
+                        <button type="button" class="btn-transfer-detail text-ink hover:text-indigo-400 transition-colors p-2 cursor-pointer"
                             data-id="${tfEsc(transfer._id)}" title="ดูรายละเอียด"
                             aria-label="ดูรายละเอียดใบโอน ${tfEsc(transfer.transfer_number)}">
                             <i class="fa-solid fa-eye"></i>
@@ -463,18 +463,18 @@
 
                 const imeiHtml = item.imeis && item.imeis.length > 0
                     ? `<div class="flex flex-wrap gap-1 mt-1.5">
-                        ${item.imeis.map(imei => `<span class="bg-[#18181B] text-white px-1.5 py-0.5 rounded-[0.375rem] text-[10px] font-mono border border-[#3F3F46]">${imei}</span>`).join('')}
+                        ${item.imeis.map(imei => `<span class="elev-modal bg-elevated text-ink px-1.5 py-0.5 rounded-[0.375rem] text-[10px] font-mono">${imei}</span>`).join('')}
                        </div>`
                     : '';
 
                 tr.innerHTML = `
                     <td class="px-4 py-3">
-                        <div class="font-medium text-white">${item.product_name}</div>
-                        <div class="text-xs font-mono text-[#FFE169] mt-0.5">${item.product_code}</div>
+                        <div class="font-medium text-ink">${item.product_name}</div>
+                        <div class="text-xs font-mono text-accent-ink mt-0.5">${item.product_code}</div>
                         ${imeiHtml}
                     </td>
-                    <td class="px-4 py-3 text-white/70 text-xs">${details}</td>
-                    <td class="px-4 py-3 text-right text-white font-semibold font-mono">${item.quantity} <span class="text-xs font-normal">${item.unit || 'ชิ้น'}</span></td>
+                    <td class="px-4 py-3 text-ink/70 text-xs">${details}</td>
+                    <td class="px-4 py-3 text-right text-ink font-semibold font-mono">${item.quantity} <span class="text-xs font-normal">${item.unit || 'ชิ้น'}</span></td>
                 `;
                 itemsBody.appendChild(tr);
             });
@@ -543,13 +543,13 @@
     if (btnTransferViewCloseModal) btnTransferViewCloseModal.onclick = closeTransferViewModal;
 
     // Switch Transfer Tab
-    const TF_TAB_BASE = 'px-4 py-2.5 rounded-xl text-sm font-bold border transition-colors flex items-center gap-2 cursor-pointer';
-    const TF_TAB_ON = 'bg-[#FFE169] text-[#333333] border-[#FFE169]';
-    const TF_TAB_OFF = 'bg-[#27272A] text-slate-300 border-[#3F3F46] hover:border-[#FFE169] hover:text-white';
+    const TF_TAB_BASE = 'elev-chip px-4 py-2.5 rounded-xl text-sm font-bold transition-colors flex items-center gap-2 cursor-pointer';
+    const TF_TAB_ON = 'bg-primary text-on-primary ring-1 ring-accent-ink';
+    const TF_TAB_OFF = 'elev-field bg-field text-body-muted hover:ring-1 hover:ring-accent-ink hover:text-ink';
     // ป้ายตัวเลขต้องอ่านออกทั้งบนพื้นเหลือง (แท็บที่เลือก) และพื้นเข้ม จึงสลับสีตามสถานะแท็บ
-    const TF_BADGE_ON = 'px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#333333]/20';
+    const TF_BADGE_ON = 'px-2 py-0.5 rounded-full text-[10px] font-bold bg-hairline/20';
     const TF_BADGE_OFF_PENDING = 'px-2 py-0.5 rounded-full text-[10px] font-bold bg-orange-500/[0.12] text-orange-400';
-    const TF_BADGE_OFF_HISTORY = 'px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#4D4D4D]/60 text-white';
+    const TF_BADGE_OFF_HISTORY = 'px-2 py-0.5 rounded-full text-[10px] font-bold bg-chip/60 text-ink';
 
     function switchTransferTab(tab) {
         currentTransferTab = tab;
@@ -566,8 +566,8 @@
 
         if (transferPanelTitle) {
             transferPanelTitle.innerHTML = onPending
-                ? '<i class="fa-solid fa-right-left text-[#FFE169]"></i> ใบโอนที่รอดำเนินการ'
-                : '<i class="fa-solid fa-right-left text-[#FFE169]"></i> ประวัติการโอนย้ายทั้งหมด';
+                ? '<i class="fa-solid fa-right-left text-accent-ink"></i> ใบโอนที่รอดำเนินการ'
+                : '<i class="fa-solid fa-right-left text-accent-ink"></i> ประวัติการโอนย้ายทั้งหมด';
         }
 
         // แท็บ "รอดำเนินการ" ทุกแถวเป็นสถานะเดียวกันอยู่แล้ว ตัวกรองสถานะจึงไม่มีความหมาย — ซ่อนและล้างค่า
@@ -802,24 +802,24 @@
         transferCartItems.innerHTML = '';
         transferCart.forEach((item, index) => {
             const div = document.createElement('div');
-            div.className = 'flex items-start justify-between gap-3 bg-[#18181B] rounded-xl p-3 border border-[#3F3F46]';
+            div.className = 'elev-modal flex items-start justify-between gap-3 bg-elevated rounded-xl p-3';
             div.innerHTML = `
                 <div class="flex-1 min-w-0">
-                    <div class="text-white font-medium">${item.product_name}</div>
-                    <div class="text-white/70 text-xs mt-0.5">
-                        <span class="font-mono text-[#FFE169]">${item.product_code}</span> · จำนวน ${item.quantity}
+                    <div class="text-ink font-medium">${item.product_name}</div>
+                    <div class="text-ink/70 text-xs mt-0.5">
+                        <span class="font-mono text-accent-ink">${item.product_code}</span> · จำนวน ${item.quantity}
                     </div>
                     ${item.imeis && item.imeis.length > 0 ? `
                         <div class="flex flex-wrap gap-1 mt-1.5">
                             ${item.imeis.map(imei => `
-                                <span class="bg-[#27272A] text-white px-2 py-0.5 rounded-[0.375rem] text-[10px] font-mono border border-[#3F3F46]">${imei}</span>
+                                <span class="elev-field bg-field text-ink px-2 py-0.5 rounded-[0.375rem] text-[10px] font-mono">${imei}</span>
                             `).join('')}
                         </div>
                     ` : ''}
                 </div>
                 <button type="button" onclick="removeFromTransferCart(${index})" title="นำออกจากใบโอน"
                     aria-label="นำ ${item.product_name} ออกจากใบโอน"
-                    class="shrink-0 text-white hover:text-red-400 transition-colors p-2 cursor-pointer">
+                    class="shrink-0 text-ink hover:text-red-400 transition-colors p-2 cursor-pointer">
                     <i class="fa-solid fa-trash"></i>
                 </button>
             `;

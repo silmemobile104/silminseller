@@ -38,7 +38,7 @@
         return window.masterDataCache[conf.key] || [];
     };
 
-    const stStateBox = (msg, cls = 'text-white/50 italic') =>
+    const stStateBox = (msg, cls = 'text-ink/50 italic') =>
         `<div class="col-span-full px-6 py-10 text-center ${cls}">${stEsc(msg)}</div>`;
 
     const stSetText = (id, text) => {
@@ -55,8 +55,8 @@
 
         const chip = document.createElement('button');
         chip.type = 'button';
-        chip.className = 'px-4 py-2.5 rounded-xl bg-[#4D4D4D]/40 border border-[#3F3F46] ' +
-            'text-white text-sm font-medium transition-colors flex items-center gap-2 cursor-pointer';
+        chip.className = 'elev-card px-4 py-2.5 rounded-xl bg-panel/40' +
+            'text-ink text-sm font-medium transition-colors flex items-center gap-2 cursor-pointer';
         chip.innerHTML = `<span>ค้นหา: ${stEsc(_stSearch.trim())}</span><i class="fa-solid fa-xmark text-[10px] opacity-80"></i>`;
         chip.setAttribute('aria-label', `ลบตัวกรอง ค้นหา ${_stSearch.trim()}`);
         chip.addEventListener('click', (e) => {
@@ -77,11 +77,11 @@
         });
     };
 
-    const ST_TAB_BASE = 'settings-tab-btn px-4 py-2.5 rounded-xl text-sm font-bold border transition-colors flex items-center gap-2 cursor-pointer';
-    const ST_TAB_ON = 'bg-[#FFE169] text-[#333333] border-[#FFE169]';
-    const ST_TAB_OFF = 'bg-[#27272A] text-slate-300 border-[#3F3F46] hover:border-[#FFE169] hover:text-white';
-    const ST_BADGE_ON = 'settings-tab-badge px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#333333]/20';
-    const ST_BADGE_OFF = 'settings-tab-badge px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#4D4D4D]/60 text-white';
+    const ST_TAB_BASE = 'elev-chip settings-tab-btn px-4 py-2.5 rounded-xl text-sm font-bold transition-colors flex items-center gap-2 cursor-pointer';
+    const ST_TAB_ON = 'bg-primary text-on-primary ring-1 ring-accent-ink';
+    const ST_TAB_OFF = 'elev-field bg-field text-body-muted hover:ring-1 hover:ring-accent-ink hover:text-ink';
+    const ST_BADGE_ON = 'settings-tab-badge px-2 py-0.5 rounded-full text-[10px] font-bold bg-hairline/20';
+    const ST_BADGE_OFF = 'settings-tab-badge px-2 py-0.5 rounded-full text-[10px] font-bold bg-chip/60 text-ink';
 
     const stActivateTab = (tab) => {
         document.querySelectorAll('#settings-tabs .settings-tab-btn').forEach(btn => {
@@ -117,7 +117,7 @@
         const conf = ST_TABS[currentSettingsTab] || ST_TABS.productname;
         stSetText('settings-panel-title', '');
         const title = document.getElementById('settings-panel-title');
-        if (title) title.innerHTML = `<i class="fa-solid fa-list-ul text-[#FFE169]"></i> ${stEsc(conf.label)}`;
+        if (title) title.innerHTML = `<i class="fa-solid fa-list-ul text-accent-ink"></i> ${stEsc(conf.label)}`;
 
         stActivateTab(currentSettingsTab);
         stUpdateTabBadges();
@@ -144,23 +144,23 @@
                 ? window.productColorDot(item.name, item)
                 : '';
             const codeBadge = (currentSettingsTab === 'productname' && item.code)
-                ? `<span class="px-2 py-0.5 rounded-[0.375rem] text-[10px] font-mono font-semibold bg-[#4D4D4D]/60 text-[#FFE169] shrink-0">${stEsc(item.code)}</span>`
+                ? `<span class="px-2 py-0.5 rounded-[0.375rem] text-[10px] font-mono font-semibold bg-chip/60 text-accent-ink shrink-0">${stEsc(item.code)}</span>`
                 : '';
 
             return `
-            <div class="bg-[#27272A] border border-[#3F3F46] rounded-xl px-4 py-3 flex items-center gap-3 hover:border-[#FFE169] transition-colors">
+            <div class="elev-field bg-field rounded-xl px-4 py-3 flex items-center gap-3 hover:ring-1 hover:ring-accent-ink transition-colors">
                 ${swatch}
-                <span class="text-white font-medium truncate flex-1 min-w-0" title="${stEsc(item.name)}">${stEsc(item.name)}</span>
+                <span class="text-ink font-medium truncate flex-1 min-w-0" title="${stEsc(item.name)}">${stEsc(item.name)}</span>
                 ${codeBadge}
                 <!-- ปุ่มต้องเห็นตลอด ของเดิมหรี่ไว้ครึ่งหนึ่งแล้วค่อยชัดตอนเอาเมาส์ชี้
                      ซึ่งคนใช้คีย์บอร์ดและผู้ใช้บนมือถือเสียเปรียบ -->
                 <div class="flex items-center gap-0.5 shrink-0">
-                    <button type="button" class="btn-edit-master text-white hover:text-amber-400 transition-colors p-1.5 cursor-pointer"
+                    <button type="button" class="btn-edit-master text-ink hover:text-amber-400 transition-colors p-1.5 cursor-pointer"
                         data-id="${stEsc(item._id)}" data-name="${stEsc(item.name)}" data-code="${stEsc(item.code || '')}"
                         title="แก้ไข" aria-label="แก้ไข ${stEsc(item.name)}">
                         <i class="fa-solid fa-pen text-xs"></i>
                     </button>
-                    <button type="button" class="btn-delete-master text-white hover:text-red-400 transition-colors p-1.5 cursor-pointer"
+                    <button type="button" class="btn-delete-master text-ink hover:text-red-400 transition-colors p-1.5 cursor-pointer"
                         data-id="${stEsc(item._id)}" data-name="${stEsc(item.name)}"
                         title="ลบ" aria-label="ลบ ${stEsc(item.name)}">
                         <i class="fa-solid fa-trash-can text-xs"></i>
@@ -202,7 +202,7 @@
                 const id = btn.dataset.id;
                 const name = btn.dataset.name || '';
                 showConfirm('ยืนยันการลบข้อมูล',
-                    `ต้องการลบ <strong class="text-white">${stEsc(name)}</strong> ออกจากหมวด "${stEsc(conf.label)}" ใช่หรือไม่<br><span class="text-xs text-white/70">อาจส่งผลกระทบต่อสินค้าที่อ้างอิงข้อมูลนี้อยู่ และย้อนกลับไม่ได้</span>`,
+                    `ต้องการลบ <strong class="text-ink">${stEsc(name)}</strong> ออกจากหมวด "${stEsc(conf.label)}" ใช่หรือไม่<br><span class="text-xs text-ink/70">อาจส่งผลกระทบต่อสินค้าที่อ้างอิงข้อมูลนี้อยู่ และย้อนกลับไม่ได้</span>`,
                     () => deleteMasterData(id), 'ลบข้อมูล', 'danger');
             });
         });

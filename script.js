@@ -110,9 +110,68 @@ document.addEventListener('DOMContentLoaded', () => {
     // เปิดให้สคริปต์หน้าอื่นที่โหลดแยก (js/page-*.js) เรียกใช้ได้ผ่าน window
     window.authFetch = authFetch;
 
+    // ============================================================
+    // ธีมสว่าง/มืด
+    // ค่าสีทั้งหมดอยู่ใน src/tailwind-input.css เป็นโทเคน CSS ตรงนี้แค่สลับ data-theme
+    // การตั้งค่าตอนโหลดหน้าทำที่สคริปต์ inline ใน <head> ของ index.html (กันหน้ากะพริบ)
+    // ============================================================
+    const THEME_KEY = 'silmin_theme';
+
+    const readStoredTheme = () => {
+        try {
+            const t = localStorage.getItem(THEME_KEY);
+            return (t === 'light' || t === 'dark') ? t : null;
+        } catch (e) {
+            return null; // โหมดส่วนตัวอ่าน localStorage ไม่ได้ — ใช้ค่าของเครื่องแทน
+        }
+    };
+
+    // ธีมที่เห็นอยู่จริงบนจอ ไม่ใช่แค่ที่ผู้ใช้เลือกไว้
+    // (ยังไม่เคยเลือก = ตามการตั้งค่าของเครื่อง ซึ่ง CSS จัดการให้ผ่าน prefers-color-scheme)
+    const currentTheme = () => {
+        const chosen = readStoredTheme();
+        if (chosen) return chosen;
+        return window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+    };
+    window.currentTheme = currentTheme;
+
+    const syncThemeButton = (theme) => {
+        const icon = document.getElementById('icon-theme-toggle');
+        const btn = document.getElementById('btn-theme-toggle');
+        // ไอคอนบอก "ผลของการกด" ไม่ใช่สถานะปัจจุบัน — อยู่โหมดมืดจึงโชว์ดวงอาทิตย์
+        if (icon) icon.className = `bi ${theme === 'light' ? 'bi-moon' : 'bi-sun'} text-xl`;
+        if (btn) btn.setAttribute('aria-label', theme === 'light' ? 'สลับเป็นโหมดมืด' : 'สลับเป็นโหมดสว่าง');
+    };
+
+    const applyTheme = (theme) => {
+        document.documentElement.dataset.theme = theme;
+        try {
+            localStorage.setItem(THEME_KEY, theme);
+        } catch (e) { /* เก็บไม่ได้ก็ยังสลับให้ดูในรอบนี้ได้ */ }
+        syncThemeButton(theme);
+        // ส่วนที่วาดสีด้วย JS (กราฟยอดขาย, ไทล์สีสินค้า) อ่านค่าจาก CSS ตอนวาด
+        // จึงต้องบอกให้วาดใหม่ — CSS อย่างเดียวตามไม่ทันของพวกนี้
+        window.dispatchEvent(new CustomEvent('themechange', { detail: { theme } }));
+    };
+    window.applyTheme = applyTheme;
+
+    const initThemeToggle = () => {
+        syncThemeButton(currentTheme());
+        const btn = document.getElementById('btn-theme-toggle');
+        if (btn) btn.addEventListener('click', () => applyTheme(currentTheme() === 'light' ? 'dark' : 'light'));
+
+        // ผู้ใช้ที่ยังไม่เคยกดปุ่มเอง ให้ตามเครื่องแบบเรียลไทม์ (เช่นสลับตอนพระอาทิตย์ตก)
+        window.matchMedia('(prefers-color-scheme: light)').addEventListener('change', () => {
+            if (readStoredTheme()) return; // เลือกเองไว้แล้ว เครื่องไม่มีสิทธิ์แย่งสั่ง
+            syncThemeButton(currentTheme());
+            window.dispatchEvent(new CustomEvent('themechange', { detail: { theme: currentTheme() } }));
+        });
+    };
+    initThemeToggle();
+
     // โหลดสคริปต์เฉพาะหน้า (js/page-<name>.js) แบบ dynamic ครั้งเดียว แล้ว cache ไว้
     // PAGE_SCRIPT_VERSION: บัมพ์เลขนี้ทุกครั้งที่แก้ไฟล์ใน js/ เพื่อไม่ให้เบราว์เซอร์ใช้ของเก่าที่ cache ไว้
-    const PAGE_SCRIPT_VERSION = 'nonpo_price_v1';
+    const PAGE_SCRIPT_VERSION = 'theme_v5';
     const __loadedPageScripts = {};
     function loadPageScript(name) {
         if (__loadedPageScripts[name]) return __loadedPageScripts[name];
@@ -165,7 +224,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // ไม่ได้รอ init function ถ้า HTML ยังไม่ถูกแทรกเข้า DOM ก่อน ตัวแปรที่ query ไว้จะเป็น null ถาวร
     // ชื่อ name ต้องตรงกับชื่อที่ใช้ใน loadPageScript — ไฟล์เดียวอาจมีหลาย <div id="view-XXX"> รวมกัน
     // ถ้าหน้านั้นถูก share โดยสคริปต์เดียวกันหลาย view (ดูตาราง mapping ในแผน)
-    const VIEW_FRAGMENT_VERSION = 'v43'; // บัมพ์เลขนี้ทุกครั้งที่แก้ไฟล์ใน views/
+    const VIEW_FRAGMENT_VERSION = 'v49'; // บัมพ์เลขนี้ทุกครั้งที่แก้ไฟล์ใน views/
     const __loadedPageViews = {};
     function loadPageView(name) {
         if (__loadedPageViews[name]) return __loadedPageViews[name];
@@ -656,7 +715,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const addChip = (key, label) => {
             const chip = document.createElement('button');
             chip.type = 'button';
-            chip.className = 'px-4 py-2.5 rounded-xl bg-[#4D4D4D]/40 border border-[#3F3F46] text-white text-sm font-medium transition-colors flex items-center gap-2';
+            chip.className = 'elev-card px-4 py-2.5 rounded-xl bg-panel/40 text-ink text-sm font-medium transition-colors flex items-center gap-2';
             chip.dataset.key = key;
             chip.innerHTML = `<span>${label}</span><i class="fa-solid fa-xmark text-[10px] opacity-80"></i>`;
             chip.addEventListener('click', (e) => {
@@ -785,7 +844,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (activeCount > 1) {
             const clearBtn = document.createElement('button');
             clearBtn.type = 'button';
-            clearBtn.className = 'px-2.5 py-1 bg-red-500/10 hover:bg-red-500/15 text-red-300 rounded-full text-xs font-medium border border-red-500/30 transition-colors';
+            clearBtn.className = 'px-2.5 py-1 bg-red-500/10 hover:bg-red-500/15 text-red-300 rounded-full text-xs font-medium ring-1 ring-red-500/30 transition-colors';
             clearBtn.textContent = 'ล้างทั้งหมด';
             clearBtn.addEventListener('click', () => {
                 resetStockFiltersToDefault();
@@ -862,7 +921,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Add "All" option
         const allBtn = document.createElement('button');
         allBtn.type = 'button';
-        allBtn.className = 'custom-pill flex-shrink-0 px-4 py-2.5 bg-[#27272A] border border-[#FFE169] rounded-xl text-[#FFE169] text-sm hover:border-[#FFE169] hover:text-white transition-colors filter-pill active';
+        allBtn.className = 'custom-pill flex-shrink-0 px-4 py-2.5 bg-field ring-1 ring-accent-ink rounded-xl text-accent-ink text-sm hover:ring-1 hover:ring-accent-ink hover:text-ink transition-colors filter-pill active';
         allBtn.dataset.target = targetId;
         allBtn.dataset.value = '';
         allBtn.textContent = allLabel;
@@ -871,7 +930,7 @@ document.addEventListener('DOMContentLoaded', () => {
         dataArray.forEach(item => {
             const btn = document.createElement('button');
             btn.type = 'button';
-            btn.className = 'custom-pill flex-shrink-0 px-4 py-2.5 bg-[#27272A] border border-[#3F3F46] rounded-xl text-slate-300 text-sm hover:border-[#FFE169] hover:text-white transition-colors filter-pill';
+            btn.className = 'elev-field custom-pill flex-shrink-0 px-4 py-2.5 bg-field rounded-xl text-body-muted text-sm hover:ring-1 hover:ring-accent-ink hover:text-ink transition-colors filter-pill';
             btn.dataset.target = targetId;
             btn.dataset.value = item._id ? item._id : item.name;
             btn.textContent = item.name;
@@ -888,16 +947,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 // Remove active from all siblings
                 this.parentElement.querySelectorAll('.filter-pill').forEach(s => {
-                    s.classList.remove('active', 'border-[#FFE169]', 'text-[#FFE169]');
-                    s.classList.add('border-[#3F3F46]', 'text-slate-300');
+                    s.classList.remove('active', 'ring-2', 'ring-accent-ink', 'text-accent-ink');
+                    s.classList.add('border-line', 'text-body-muted');
                 });
 
                 if (isActive && value !== '') {
                     // Toggle off to "all"
                     const allOpt = this.parentElement.querySelector('.filter-pill[data-value=""]');
                     if (allOpt) {
-                        allOpt.classList.remove('border-[#3F3F46]', 'text-slate-300');
-                        allOpt.classList.add('active', 'border-[#FFE169]', 'text-[#FFE169]');
+                        allOpt.classList.remove('border-line', 'text-body-muted');
+                        allOpt.classList.add('active', 'ring-2', 'ring-accent-ink', 'text-accent-ink');
                     }
                     if (targetSelect) {
                         targetSelect.value = '';
@@ -905,8 +964,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 } else {
                     // Toggle on
-                    this.classList.remove('border-[#3F3F46]', 'text-slate-300');
-                    this.classList.add('active', 'border-[#FFE169]', 'text-[#FFE169]');
+                    this.classList.remove('border-line', 'text-body-muted');
+                    this.classList.add('active', 'ring-2', 'ring-accent-ink', 'text-accent-ink');
                     if (targetSelect) {
                         targetSelect.value = value;
                         targetSelect.dispatchEvent(new Event('change'));
@@ -973,7 +1032,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const categoryName = (product && product.type_id && product.type_id.name) ? product.type_id.name : '';
         const isDevice = checkIsDevice(categoryName, product);
         return `<div class="w-10 h-10 flex items-center py-1 px-0.5 rounded-full justify-center shrink-0"` +
-            ` style="color: ${hex}; background-color: ${hex}33; border: 1px solid ${hex};">` +
+            ` style="color: ${hex}; background-color: ${hex}33; border: 1px solid transparent; box-shadow: inset 0 0 0 1px ${hex};">` +
             `<i class="fa-solid ${isDevice ? 'fa-mobile-screen' : 'fa-box'} text-xl"></i></div>`;
     };
     window.productIconHtml = productIconHtml;
@@ -1062,12 +1121,30 @@ document.addEventListener('DOMContentLoaded', () => {
         return `rgba(${r}, ${g}, ${b}, ${alpha})`;
     };
 
+    const mixHexWithBlack = (hex, amount) => {
+        const { r, g, b } = hexToRgb(hex);
+        const m = (c) => Math.round(c * (1 - amount));
+        return `#${[m(r), m(g), m(b)].map(c => c.toString(16).padStart(2, '0')).join('')}`;
+    };
+
     // คืนชุดสีสำหรับไทล์ไอคอนสินค้า: ไอคอนใช้สีเต็ม พื้นหลังใช้สีเดียวกันแบบจางลง
-    // สีเข้มมาก (ดำ, กรม, deep purple) ต้องดึงให้สว่างขึ้นก่อน ไม่งั้นไอคอนจะจมหายไปกับพื้นดำ
+    //
+    // สีที่กลืนกับพื้นต้องถูกดึงหนีก่อน และ "ทิศที่ต้องดึง" กลับด้านตามธีม:
+    //   โหมดมืด  — สีเข้มมาก (ดำ, กรม, deep purple) จมหายไปกับพื้นดำ  -> ผสมขาวให้สว่างขึ้น
+    //   โหมดสว่าง — สีอ่อนมาก (ขาว, ครีม, เงิน) จมหายไปกับพื้นขาวแทน -> ผสมดำให้เข้มลง
+    // นี่เป็นเหตุผลว่าทำไมแค่สลับค่าสีใน CSS ไม่พอสำหรับจุดนี้
     const getProductColorTheme = (colorName, colorDoc) => {
         const base = resolveProductColorHex(colorName, colorDoc);
         const lum = colorLuminance(base);
-        const icon = lum < 0.35 ? mixHexWithWhite(base, 0.55) : base;
+        const isLight = typeof window.currentTheme === 'function' && window.currentTheme() === 'light';
+
+        let icon = base;
+        if (isLight) {
+            if (lum > 0.72) icon = mixHexWithBlack(base, 0.45);
+        } else if (lum < 0.35) {
+            icon = mixHexWithWhite(base, 0.55);
+        }
+
         return {
             icon,
             bg: hexToRgba(icon, 0.16),
@@ -1100,12 +1177,12 @@ document.addEventListener('DOMContentLoaded', () => {
             wrapper.dataset.value = item._id;
 
             const swatch = document.createElement('div');
-            swatch.className = 'w-7 h-7 rounded-full border-2 border-transparent transition-all custom-swatch swatch-indicator';
+            swatch.className = 'elev-chip w-7 h-7 rounded-full transition-all custom-swatch swatch-indicator';
 
             swatch.style.backgroundColor = resolveProductColorHex(item.name, item);
 
             const label = document.createElement('span');
-            label.className = 'text-[10px] text-slate-400 whitespace-nowrap swatch-text transition-colors';
+            label.className = 'text-[10px] text-body-muted whitespace-nowrap swatch-text transition-colors';
             label.textContent = item.name;
 
             wrapper.appendChild(swatch);
@@ -1126,13 +1203,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     s.classList.remove('active');
                     const indicator = s.querySelector('.swatch-indicator');
                     if (indicator) {
-                        indicator.classList.remove('border-[#FFE169]', 'scale-110');
+                        indicator.classList.remove('ring-2', 'ring-accent-ink', 'scale-110');
                         indicator.classList.add('border-transparent');
                     }
                     const label = s.querySelector('.swatch-text');
                     if (label) {
-                        label.classList.remove('text-[#FFE169]', 'text-[13px]');
-                        label.classList.add('text-slate-400', 'text-[10px]');
+                        label.classList.remove('text-accent-ink', 'text-[13px]');
+                        label.classList.add('text-body-muted', 'text-[10px]');
                     }
                 });
 
@@ -1148,12 +1225,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     const indicator = this.querySelector('.swatch-indicator');
                     if (indicator) {
                         indicator.classList.remove('border-transparent');
-                        indicator.classList.add('border-[#FFE169]', 'scale-110');
+                        indicator.classList.add('ring-2', 'ring-accent-ink', 'scale-110');
                     }
                     const label = this.querySelector('.swatch-text');
                     if (label) {
-                        label.classList.remove('text-slate-400', 'text-[10px]');
-                        label.classList.add('text-[#FFE169]', 'text-[13px]');
+                        label.classList.remove('text-body-muted', 'text-[10px]');
+                        label.classList.add('text-accent-ink', 'text-[13px]');
                     }
                     if (targetSelect) {
                         targetSelect.value = value;
@@ -1363,7 +1440,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // Reset Title
             const modalTitle = document.getElementById('modal-title');
-            if (modalTitle) modalTitle.innerHTML = `<i class="fa-solid fa-plus text-[#FFE169]"></i> เพิ่มสินค้าใหม่`;
+            if (modalTitle) modalTitle.innerHTML = `<i class="fa-solid fa-plus text-accent-ink"></i> เพิ่มสินค้าใหม่`;
 
             // Show Excel Button in modal header
             const btnExcelOpen = document.getElementById('btn-add-product-excel');
@@ -1468,19 +1545,19 @@ document.addEventListener('DOMContentLoaded', () => {
         dataArray.forEach(item => {
             const btn = document.createElement('button');
             btn.type = 'button';
-            btn.className = 'custom-pill flex-shrink-0 px-4 py-2.5 bg-[#27272A] border border-[#3F3F46] rounded-xl text-slate-300 text-sm hover:border-[#FFE169] hover:text-white transition-colors';
+            btn.className = 'elev-field custom-pill flex-shrink-0 px-4 py-2.5 bg-field rounded-xl text-body-muted text-sm hover:ring-1 hover:ring-accent-ink hover:text-ink transition-colors';
             btn.dataset.value = item._id;
             btn.textContent = item.code ? `${item.name} (${item.code})` : item.name;
 
             btn.addEventListener('click', () => {
                 // Remove active from all
                 Array.from(container.children).forEach(child => {
-                    child.classList.remove('border-[#FFE169]', 'text-[#FFE169]');
-                    child.classList.add('border-slate-600', 'text-slate-300');
+                    child.classList.remove('ring-2', 'ring-accent-ink', 'text-accent-ink');
+                    child.classList.add('border-line', 'text-body-muted');
                 });
                 // Set active to clicked
-                btn.classList.remove('border-slate-600', 'text-slate-300');
-                btn.classList.add('border-[#FFE169]', 'text-[#FFE169]');
+                btn.classList.remove('border-line', 'text-body-muted');
+                btn.classList.add('ring-2', 'ring-accent-ink', 'text-accent-ink');
                 // Update hidden input
                 hiddenInput.value = item._id;
             });
@@ -1503,12 +1580,12 @@ document.addEventListener('DOMContentLoaded', () => {
             wrapper.dataset.value = item._id;
 
             const swatch = document.createElement('div');
-            swatch.className = 'w-7 h-7 rounded-full border-2 border-transparent transition-all custom-swatch';
+            swatch.className = 'elev-chip w-7 h-7 rounded-full transition-all custom-swatch';
 
             swatch.style.backgroundColor = resolveProductColorHex(item.name, item);
 
             const label = document.createElement('span');
-            label.className = 'text-[10px] text-slate-400 whitespace-nowrap custom-swatch-label transition-colors';
+            label.className = 'text-[10px] text-body-muted whitespace-nowrap custom-swatch-label transition-colors';
             label.textContent = item.name;
 
             wrapper.appendChild(swatch);
@@ -1517,16 +1594,16 @@ document.addEventListener('DOMContentLoaded', () => {
             wrapper.addEventListener('click', () => {
                 // Remove active from all
                 Array.from(container.children).forEach(child => {
-                    child.querySelector('.custom-swatch').classList.remove('border-[#FFE169]', 'scale-110');
+                    child.querySelector('.custom-swatch').classList.remove('ring-2', 'ring-accent-ink', 'scale-110');
                     child.querySelector('.custom-swatch').classList.add('border-transparent');
-                    child.querySelector('.custom-swatch-label').classList.remove('text-[#FFE169]', 'text-[13px]');
-                    child.querySelector('.custom-swatch-label').classList.add('text-slate-400', 'text-[10px]');
+                    child.querySelector('.custom-swatch-label').classList.remove('text-accent-ink', 'text-[13px]');
+                    child.querySelector('.custom-swatch-label').classList.add('text-body-muted', 'text-[10px]');
                 });
                 // Set active to clicked
                 swatch.classList.remove('border-transparent');
-                swatch.classList.add('border-[#FFE169]', 'scale-110');
-                label.classList.remove('text-slate-400', 'text-[10px]');
-                label.classList.add('text-[#FFE169]', 'text-[13px]');
+                swatch.classList.add('ring-2', 'ring-accent-ink', 'scale-110');
+                label.classList.remove('text-body-muted', 'text-[10px]');
+                label.classList.add('text-accent-ink', 'text-[13px]');
                 // Update hidden input
                 hiddenInput.value = item._id;
             });
@@ -1575,7 +1652,7 @@ document.addEventListener('DOMContentLoaded', () => {
             topPricesArray.forEach(price => {
                 const btn = document.createElement('button');
                 btn.type = 'button';
-                btn.className = 'btn-quick-price px-2.5 py-1 bg-[#333] text-slate-300 rounded-full text-[11px] hover:text-[#FFE169] border border-transparent hover:border-[#FFE169] transition-all';
+                btn.className = 'elev-chip btn-quick-price px-2.5 py-1 bg-field text-body-muted rounded-full text-[11px] hover:text-accent-ink hover:ring-1 hover:ring-accent-ink transition-all';
                 btn.textContent = Number(price).toLocaleString();
                 btn.addEventListener('click', () => {
                     const input = document.getElementById(targetId);
@@ -1683,7 +1760,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         const toast = document.createElement('div');
-        toast.className = 'bg-canvas-elevated border border-hairline px-4 py-3 rounded-lg flex items-center justify-between gap-3 toast-animate min-w-[300px] pointer-events-auto transfer-toast';
+        toast.className = 'elev-card bg-canvas-elevated px-4 py-3 rounded-lg flex items-center justify-between gap-3 toast-animate min-w-[300px] pointer-events-auto transfer-toast';
         toast.innerHTML = `
             <div class="flex items-center gap-3">
                 <div class="w-8 h-8 rounded-full bg-surface-chip flex items-center justify-center text-amber-400 shrink-0">
@@ -1695,7 +1772,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>
             </div>
             <div class="flex items-center gap-2">
-                <button class="view-transfer-btn text-xs bg-primary/20 text-primary px-2 py-1 rounded hover:bg-primary/30 transition-colors">ดูรายละเอียด</button>
+                <button class="view-transfer-btn text-xs bg-primary/20 text-accent-ink px-2 py-1 rounded hover:bg-primary/30 transition-colors">ดูรายละเอียด</button>
                 <button class="close-transfer-btn text-body-muted hover:text-ink transition-colors p-1"><i class="fa-solid fa-xmark"></i></button>
             </div>
         `;
@@ -1830,7 +1907,7 @@ document.addEventListener('DOMContentLoaded', () => {
             icon = 'fa-circle-info';
         }
 
-        toast.className = `${bgColor} border border-hairline px-4 py-3 rounded-lg flex items-center gap-3 toast-animate min-w-[240px] pointer-events-auto transition-all duration-300`;
+        toast.className = `elev-chip ${bgColor} px-4 py-3 rounded-lg flex items-center gap-3 toast-animate min-w-[240px] pointer-events-auto transition-all duration-300`;
         toast.innerHTML = `
             <div class="flex items-center justify-center w-8 h-8 rounded-sm bg-surface-chip flex-shrink-0">
                 <i class="fa-solid ${icon} ${iconColor} text-base"></i>
@@ -1883,15 +1960,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Apply styles based on detectedType
         // Reset old dynamic classes first
-        card.className = `modal-content bg-canvas-elevated border border-hairline rounded-lg w-full ${widthClass} p-6 text-center modal-animate-in transition-all duration-300`;
-        iconContainer.className = "w-16 h-16 rounded-lg flex items-center justify-center mx-auto mb-4 border transition-all duration-300";
+        card.className = `elev-modal modal-content bg-canvas-elevated rounded-lg w-full ${widthClass} p-6 text-center modal-animate-in transition-all duration-300`;
+        iconContainer.className = "elev-chip w-16 h-16 rounded-lg flex items-center justify-center mx-auto mb-4 transition-all duration-300";
         iconEl.className = "text-2xl transition-transform duration-300 hover:scale-110";
         okBtn.className = "flex-1 py-2.5 rounded-pill text-sm font-bold transition-all active:scale-[0.98]";
 
         if (detectedType === 'danger') {
             iconContainer.classList.add('bg-rose-500/10', 'text-rose-400', 'border-rose-500/20');
             iconEl.classList.add('fa-solid', 'fa-trash-can');
-            okBtn.classList.add('bg-red-500', 'hover:bg-red-600', 'text-white');
+            okBtn.classList.add('bg-red-500', 'hover:bg-red-600', 'text-ink');
         } else if (detectedType === 'success') {
             iconContainer.classList.add('bg-emerald-500/10', 'text-emerald-400', 'border-emerald-500/20');
             iconEl.classList.add('fa-solid', 'fa-circle-check');
@@ -2286,7 +2363,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Skeleton loading แถวตารางสต็อก — แสดงระหว่างรอข้อมูลสินค้าจาก server ครั้งแรก (ก่อน renderProductTable มีข้อมูลจริงมาแทนที่)
     const renderStockTableSkeleton = (rowCount = 8) => {
         if (!productTableBody) return;
-        const bar = (widthClass, extraClass = '') => `<div class="h-3.5 ${widthClass} rounded-full bg-[#5c5c5c] animate-pulse ${extraClass}"></div>`;
+        const bar = (widthClass, extraClass = '') => `<div class="h-3.5 ${widthClass} rounded-full bg-skeleton animate-pulse ${extraClass}"></div>`;
         let rowsHtml = '';
         for (let i = 0; i < rowCount; i++) {
             rowsHtml += `
@@ -2294,7 +2371,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <td class="px-6 py-4">${bar('w-20')}</td>
                     <td class="px-6 py-4">
                         <div class="flex items-center gap-3">
-                            <div class="w-10 h-10 rounded-full bg-[#5c5c5c] animate-pulse flex-shrink-0"></div>
+                            <div class="w-10 h-10 rounded-full bg-skeleton animate-pulse flex-shrink-0"></div>
                             <div class="space-y-2">
                                 ${bar('w-32')}
                                 ${bar('w-20 h-2.5')}
@@ -2309,8 +2386,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     <td class="px-6 py-4">${bar('w-20')}</td>
                     <td class="px-6 py-4">
                         <div class="flex items-center justify-end gap-2">
-                            <div class="w-8 h-8 rounded-lg bg-[#5c5c5c] animate-pulse"></div>
-                            <div class="w-8 h-8 rounded-lg bg-[#5c5c5c] animate-pulse"></div>
+                            <div class="w-8 h-8 rounded-lg bg-skeleton animate-pulse"></div>
+                            <div class="w-8 h-8 rounded-lg bg-skeleton animate-pulse"></div>
                         </div>
                     </td>
                 </tr>
@@ -2350,7 +2427,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!append) {
                 productTableBody.innerHTML = `
                     <tr>
-                        <td colspan="9" class="px-6 py-8 text-center text-slate-400 italic">
+                        <td colspan="9" class="px-6 py-8 text-center text-body-muted italic">
                             ไม่พบสินค้าที่ค้นหา
                         </td>
                     </tr>
@@ -2361,7 +2438,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         products.forEach(product => {
             const row = document.createElement('tr');
-            row.className = 'hover:bg-[#464646] transition-colors';
+            row.className = 'hover:bg-divider transition-colors';
 
             const categoryName = product.type_id ? product.type_id.name : 'ทั่วไป';
             const unitName = product.unit_id ? product.unit_id.name : '';
@@ -2372,13 +2449,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const isDevice = checkIsDevice(categoryName, product);
             const stockDisplay = isDevice
-                ? `${product.quantity || product.imeis.length} <span class="text-xs text-white font-normal">เครื่อง</span>`
-                : `${product.quantity} <span class="text-xs text-white font-normal">${unitName}</span>`;
+                ? `${product.quantity || product.imeis.length} <span class="text-xs text-ink font-normal">เครื่อง</span>`
+                : `${product.quantity} <span class="text-xs text-ink font-normal">${unitName}</span>`;
 
-            let statusColor = (product.quantity) > 0 ? 'bg-[#20D500]' : 'bg-[#FE0000]';
+            let statusColor = (product.quantity) > 0 ? 'bg-state-ok' : 'bg-state-danger';
             let statusText = (product.quantity) > 0 ? 'มีสินค้า' : 'สินค้าหมด';
-            let statusClass = (product.quantity) > 0 ? 'text-[#20D500]' : 'text-[#FE0000]';
-            let statusBadge = (product.quantity) > 0 ? 'bg-[#42A231]/[0.12]' : 'bg-[#FE0000]/[0.12]';
+            let statusClass = (product.quantity) > 0 ? 'text-state-ok' : 'text-state-danger';
+            let statusBadge = (product.quantity) > 0 ? 'bg-state-ok-tint/[0.12]' : 'bg-state-danger/[0.12]';
 
             if (product.is_transferring) {
                 statusColor = 'bg-orange-500';
@@ -2389,23 +2466,23 @@ document.addEventListener('DOMContentLoaded', () => {
 
             row.innerHTML = `
                 <td class="px-6 py-4">
-                    <span class=" font-mono text-md text-center font-semibold text-[#FFE169]  ">${product.product_code || '-'}</span>
+                    <span class=" font-mono text-md text-center font-semibold text-accent-ink  ">${product.product_code || '-'}</span>
                 </td>
                 <td class="px-6 py-4">
                     <div class="flex items-center gap-3">
                         <div>
-                            <p class="font-medium text-white flex items-center gap-2">
+                            <p class="font-medium text-ink flex items-center gap-2">
                                 ${productColorDot(colorName, product.color_id)}<span>${product.name}</span>
                             </p>
-                            <p class="text-xs pl-6 text-white/70">${capacityName} ${colorName} ${conditionName}</p>
+                            <p class="text-xs pl-6 text-ink/70">${capacityName} ${colorName} ${conditionName}</p>
                         </div>
                     </div>
                 </td>
-                <td class="px-6 py-4 text-white text-sm">${product.branch_id ? product.branch_id.name : '-'}</td>
-                <td class="px-6 py-4 text-white text-sm">${product.supplier_id ? product.supplier_id.name : '-'}</td>
-                <td class="px-6 py-4"><span class="px-2.5 py-1 bg-slate-700 text-slate-300 rounded-[0.375rem] text-xs font-medium">${categoryName}</span></td>
-                <td class="px-6 py-4 text-right text-white font-mono">฿${product.selling_price.toLocaleString()}</td>
-                <td class="px-6 py-4 text-center text-white font-medium">${stockDisplay}</td>
+                <td class="px-6 py-4 text-ink text-sm">${product.branch_id ? product.branch_id.name : '-'}</td>
+                <td class="px-6 py-4 text-ink text-sm">${product.supplier_id ? product.supplier_id.name : '-'}</td>
+                <td class="px-6 py-4"><span class="px-2.5 py-1 bg-field text-body-muted rounded-[0.375rem] text-xs font-medium">${categoryName}</span></td>
+                <td class="px-6 py-4 text-right text-ink font-mono">฿${product.selling_price.toLocaleString()}</td>
+                <td class="px-6 py-4 text-center text-ink font-medium">${stockDisplay}</td>
                 <td class="px-6 py-4">
                     <div class="inline-flex items-center gap-2 px-2.5 py-1 rounded-[0.375rem] ${statusBadge}">
                         <div class="w-2 h-2 rounded-full ${statusColor}"></div>
@@ -2414,9 +2491,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 </td>
                 <td class="px-6 py-4 text-right">
                     <div class="flex items-center justify-end gap-1">
-                        <button class="print-barcode-btn text-white hover:text-amber-400 transition-colors p-2" data-id="${product._id}" title="พิมพ์บาร์โค้ด"><i class="fa-solid fa-print"></i></button>
-                        <button class="view-product-btn text-white hover:text-indigo-400 transition-colors p-2" data-id="${product._id}" title="ดูรายละเอียด"><i class="fa-solid fa-eye"></i></button>
-                        ${window.__userPermissions && window.__userPermissions.delete_stock ? `<button class="delete-product-btn text-white hover:text-red-400 transition-colors p-2" data-id="${product._id}"><i class="fa-solid fa-trash"></i></button>` : ''}
+                        <button class="print-barcode-btn text-ink hover:text-amber-400 transition-colors p-2" data-id="${product._id}" title="พิมพ์บาร์โค้ด"><i class="fa-solid fa-print"></i></button>
+                        <button class="view-product-btn text-ink hover:text-indigo-400 transition-colors p-2" data-id="${product._id}" title="ดูรายละเอียด"><i class="fa-solid fa-eye"></i></button>
+                        ${window.__userPermissions && window.__userPermissions.delete_stock ? `<button class="delete-product-btn text-ink hover:text-red-400 transition-colors p-2" data-id="${product._id}"><i class="fa-solid fa-trash"></i></button>` : ''}
                     </div>
                 </td>
             `;
@@ -2497,7 +2574,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (isDevice && product.imeis && product.imeis.length > 0) {
                 imeisSection.classList.remove('hidden');
                 imeisList.innerHTML = product.imeis.map(imei => `
-                    <span class="px-2.5 py-1 bg-slate-900 border border-slate-800 text-cyan-400 font-mono text-[11px] rounded-[0.5rem] flex items-center gap-1.5 shadow-sm">
+                    <span class="elev-modal px-2.5 py-1 bg-elevated text-cyan-400 font-mono text-[11px] rounded-[0.5rem] flex items-center gap-1.5">
                         <i class="fa-solid fa-barcode text-cyan-500/70"></i> ${imei}
                     </span>
                 `).join('');
@@ -2637,13 +2714,13 @@ document.addEventListener('DOMContentLoaded', () => {
             // Device: Checkboxes for IMEIs
             const imeis = product.imeis || [];
             if (imeis.length === 0) {
-                if (barcodeModalDynamicContent) barcodeModalDynamicContent.innerHTML = '<p class="text-slate-400 text-sm italic">ไม่มีหมายเลข IMEI ให้เลือกพิมพ์</p>';
+                if (barcodeModalDynamicContent) barcodeModalDynamicContent.innerHTML = '<p class="text-body-muted text-sm italic">ไม่มีหมายเลข IMEI ให้เลือกพิมพ์</p>';
             } else {
                 let html = `
                     <div class="flex items-center justify-between mb-2">
-                        <span class="text-slate-300 text-sm font-medium">เลือก IMEI ที่ต้องการพิมพ์</span>
+                        <span class="text-body-muted text-sm font-medium">เลือก IMEI ที่ต้องการพิมพ์</span>
                         <label class="flex items-center text-cyan-400 text-sm cursor-pointer hover:text-cyan-300 transition-colors">
-                            <input type="checkbox" id="barcode-select-all" class="rounded border-slate-600 bg-slate-900 text-cyan-500 focus:ring-cyan-500 mr-2" checked>
+                            <input type="checkbox" id="barcode-select-all" class="elev-modal rounded bg-elevated text-cyan-500 focus:ring-cyan-500 mr-2" checked>
                             เลือกทั้งหมด
                         </label>
                     </div>
@@ -2651,9 +2728,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 `;
                 imeis.forEach((imei, index) => {
                     html += `
-                        <label class="flex items-center p-3 bg-slate-900/60 border border-slate-700 rounded-xl cursor-pointer hover:border-cyan-500/50 transition-colors">
-                            <input type="checkbox" class="barcode-imei-checkbox rounded border-slate-600 bg-slate-900 text-cyan-500 focus:ring-cyan-500 mr-3" value="${imei}" checked>
-                            <span class="text-slate-300 font-mono text-sm">${imei}</span>
+                        <label class="elev-modal flex items-center p-3 bg-elevated/60 rounded-xl cursor-pointer hover:ring-1 hover:ring-cyan-500/50 transition-colors">
+                            <input type="checkbox" class="elev-modal barcode-imei-checkbox rounded bg-elevated text-cyan-500 focus:ring-cyan-500 mr-3" value="${imei}" checked>
+                            <span class="text-body-muted font-mono text-sm">${imei}</span>
                         </label>
                     `;
                 });
@@ -2680,13 +2757,13 @@ document.addEventListener('DOMContentLoaded', () => {
             if (barcodeModalDynamicContent) {
                 barcodeModalDynamicContent.innerHTML = `
                     <div class="space-y-2">
-                        <label class="block text-slate-300 text-sm font-medium">จำนวนที่ต้องการพิมพ์</label>
+                        <label class="block text-body-muted text-sm font-medium">จำนวนที่ต้องการพิมพ์</label>
                         <div class="flex items-center gap-3">
-                            <button type="button" id="barcode-qty-minus" class="w-10 h-10 rounded-xl bg-slate-700 text-white flex items-center justify-center hover:bg-slate-600 transition-colors"><i class="fa-solid fa-minus"></i></button>
-                            <input type="number" id="barcode-qty-input" value="1" min="1" max="${maxQty > 0 ? maxQty : 1}" class="flex-1 h-10 bg-slate-900 border border-slate-700 rounded-xl text-center text-white focus:outline-none focus:border-cyan-500 font-mono text-lg">
-                            <button type="button" id="barcode-qty-plus" class="w-10 h-10 rounded-xl bg-slate-700 text-white flex items-center justify-center hover:bg-slate-600 transition-colors"><i class="fa-solid fa-plus"></i></button>
+                            <button type="button" id="barcode-qty-minus" class="w-10 h-10 rounded-xl bg-field text-ink flex items-center justify-center hover:bg-chip transition-colors"><i class="fa-solid fa-minus"></i></button>
+                            <input type="number" id="barcode-qty-input" value="1" min="1" max="${maxQty > 0 ? maxQty : 1}" class="elev-modal flex-1 h-10 bg-elevated rounded-xl text-center text-ink focus:outline-none focus:ring-2 focus:ring-cyan-500 font-mono text-lg">
+                            <button type="button" id="barcode-qty-plus" class="w-10 h-10 rounded-xl bg-field text-ink flex items-center justify-center hover:bg-chip transition-colors"><i class="fa-solid fa-plus"></i></button>
                         </div>
-                        <p class="text-xs text-slate-400 text-right mt-1">สูงสุด: ${maxQty} ดวง</p>
+                        <p class="text-xs text-body-muted text-right mt-1">สูงสุด: ${maxQty} ดวง</p>
                     </div>
                 `;
 
@@ -2903,7 +2980,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!backdrop) {
             backdrop = document.createElement('div');
             backdrop.id = 'sidebar-backdrop';
-            backdrop.className = 'fixed inset-0 z-[43] bg-slate-950/60 backdrop-blur-sm opacity-0 transition-opacity duration-300 md:hidden';
+            backdrop.className = 'fixed inset-0 z-[43] bg-canvas/60 backdrop-blur-sm opacity-0 transition-opacity duration-300 md:hidden';
             document.body.appendChild(backdrop);
 
             // Trigger animation
@@ -3329,7 +3406,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const mobileNavItems = [mobileNavTransactions, mobileNavStock, mobileNavAccountingPO, mobileNavMembers];
         mobileNavItems.forEach(item => {
             if (item) {
-                item.classList.remove('text-primary', 'scale-105', 'font-semibold');
+                item.classList.remove('text-accent-ink', 'scale-105', 'font-semibold');
                 item.classList.add('text-body-muted');
             }
         });
@@ -3381,7 +3458,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const activateMobileNav = (mobileNav) => {
             if (mobileNav) {
                 mobileNav.classList.remove('text-body-muted');
-                mobileNav.classList.add('text-primary', 'scale-105', 'font-semibold');
+                mobileNav.classList.add('text-accent-ink', 'scale-105', 'font-semibold');
             }
         };
 
@@ -3721,16 +3798,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // Remove active from all siblings
             this.parentElement.querySelectorAll('.filter-pill').forEach(s => {
-                s.classList.remove('active', 'border-[#FFE169]', 'text-[#FFE169]');
-                s.classList.add('border-[#3F3F46]', 'text-slate-300');
+                s.classList.remove('active', 'ring-2', 'ring-accent-ink', 'text-accent-ink');
+                s.classList.add('border-line', 'text-body-muted');
             });
 
             if (isActive && value !== '') {
                 // If it was active and not the "all" option, toggle off to "all"
                 const allOption = this.parentElement.querySelector('.filter-pill[data-value=""]');
                 if (allOption) {
-                    allOption.classList.remove('border-[#3F3F46]', 'text-slate-300');
-                    allOption.classList.add('active', 'border-[#FFE169]', 'text-[#FFE169]');
+                    allOption.classList.remove('border-line', 'text-body-muted');
+                    allOption.classList.add('active', 'ring-2', 'ring-accent-ink', 'text-accent-ink');
                 }
                 if (targetSelect) {
                     targetSelect.value = '';
@@ -3738,8 +3815,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             } else {
                 // Toggle on
-                this.classList.remove('border-[#3F3F46]', 'text-slate-300');
-                this.classList.add('active', 'border-[#FFE169]', 'text-[#FFE169]');
+                this.classList.remove('border-line', 'text-body-muted');
+                this.classList.add('active', 'ring-2', 'ring-accent-ink', 'text-accent-ink');
                 if (targetSelect) {
                     targetSelect.value = value;
                     targetSelect.dispatchEvent(new Event('change'));
@@ -3762,13 +3839,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 s.classList.remove('active');
                 const indicator = s.querySelector('.swatch-indicator');
                 if (indicator) {
-                    indicator.classList.remove('border-[#FFE169]', 'scale-110');
+                    indicator.classList.remove('ring-2', 'ring-accent-ink', 'scale-110');
                     indicator.classList.add('border-transparent');
                 }
                 const label = s.querySelector('.swatch-text');
                 if (label) {
-                    label.classList.remove('text-[#FFE169]', 'text-[13px]');
-                    label.classList.add('text-slate-400', 'text-[10px]');
+                    label.classList.remove('text-accent-ink', 'text-[13px]');
+                    label.classList.add('text-body-muted', 'text-[10px]');
                 }
             });
 
@@ -3784,12 +3861,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 const indicator = this.querySelector('.swatch-indicator');
                 if (indicator) {
                     indicator.classList.remove('border-transparent');
-                    indicator.classList.add('border-[#FFE169]', 'scale-110');
+                    indicator.classList.add('ring-2', 'ring-accent-ink', 'scale-110');
                 }
                 const label = this.querySelector('.swatch-text');
                 if (label) {
-                    label.classList.remove('text-slate-400', 'text-[10px]');
-                    label.classList.add('text-[#FFE169]', 'text-[13px]');
+                    label.classList.remove('text-body-muted', 'text-[10px]');
+                    label.classList.add('text-accent-ink', 'text-[13px]');
                 }
                 if (targetSelect) {
                     targetSelect.value = value;
@@ -3804,11 +3881,11 @@ document.addEventListener('DOMContentLoaded', () => {
         document.querySelectorAll('.filter-pill[data-value=""]').forEach(allPill => {
             const siblings = allPill.parentElement.querySelectorAll('.filter-pill');
             siblings.forEach(s => {
-                s.classList.remove('active', 'border-[#FFE169]', 'text-[#FFE169]');
-                s.classList.add('border-[#3F3F46]', 'text-slate-300');
+                s.classList.remove('active', 'ring-2', 'ring-accent-ink', 'text-accent-ink');
+                s.classList.add('border-line', 'text-body-muted');
             });
-            allPill.classList.remove('border-[#3F3F46]', 'text-slate-300');
-            allPill.classList.add('active', 'border-[#FFE169]', 'text-[#FFE169]');
+            allPill.classList.remove('border-line', 'text-body-muted');
+            allPill.classList.add('active', 'ring-2', 'ring-accent-ink', 'text-accent-ink');
         });
 
         // Reset swatches
@@ -3816,13 +3893,13 @@ document.addEventListener('DOMContentLoaded', () => {
             s.classList.remove('active');
             const indicator = s.querySelector('.swatch-indicator');
             if (indicator) {
-                indicator.classList.remove('border-[#FFE169]', 'scale-110');
+                indicator.classList.remove('ring-2', 'ring-accent-ink', 'scale-110');
                 indicator.classList.add('border-transparent');
             }
             const label = s.querySelector('.swatch-text');
             if (label) {
-                label.classList.remove('text-[#FFE169]', 'text-[13px]');
-                label.classList.add('text-slate-400', 'text-[10px]');
+                label.classList.remove('text-accent-ink', 'text-[13px]');
+                label.classList.add('text-body-muted', 'text-[10px]');
             }
         });
     };
@@ -3957,7 +4034,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 [modalCashAmount, modalTransferAmount].forEach(el => {
                     if (!el) return;
                     el.classList.toggle('border-red-500', hasError);
-                    el.classList.toggle('border-[#444]', !hasError);
+                    el.classList.toggle('border-line', !hasError);
                 });
             }
         },
@@ -3966,7 +4043,7 @@ document.addEventListener('DOMContentLoaded', () => {
             setBorder: (hasError) => {
                 if (!modalFinanceCompany) return;
                 modalFinanceCompany.classList.toggle('border-red-500', hasError);
-                modalFinanceCompany.classList.toggle('border-[#444]', !hasError);
+                modalFinanceCompany.classList.toggle('border-line', !hasError);
             }
         },
         {
@@ -3975,7 +4052,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 [modalFinanceDownCash, modalFinanceDownTransfer].forEach(el => {
                     if (!el) return;
                     el.classList.toggle('border-red-500', hasError);
-                    el.classList.toggle('border-[#555]', !hasError);
+                    el.classList.toggle('border-line-strong', !hasError);
                 });
             }
         }
@@ -4195,14 +4272,14 @@ document.addEventListener('DOMContentLoaded', () => {
     // ==========================================
     // Skeleton loading ของหน้าจัดรายการขาย
     // ==========================================
-    // ใช้โทนเดียวกับ skeleton หน้าสต็อก (bg-[#5c5c5c] + animate-pulse) เพื่อให้จังหวะกระพริบ
+    // ใช้โทนเดียวกับ skeleton หน้าสต็อก (bg-skeleton + animate-pulse) เพื่อให้จังหวะกระพริบ
     // ของทั้งระบบเป็นแบบเดียวกัน โครงร่างจำลองการ์ด/แถวจริงไว้ เลย์เอาต์จะได้ไม่กระโดดตอนข้อมูลมาแทน
-    const posSkeletonBar = (cls) => `<div class="rounded-full bg-[#5c5c5c] animate-pulse ${cls}"></div>`;
+    const posSkeletonBar = (cls) => `<div class="rounded-full bg-skeleton animate-pulse ${cls}"></div>`;
 
     const posSkeletonCard = () => `
-        <div class="bg-surface-tile-3 border border-hairline rounded-md p-3.5">
+        <div class="elev-card bg-surface-tile-3 rounded-md p-3.5">
             <div class="flex items-start gap-3">
-                <div class="w-10 h-10 rounded-md bg-[#5c5c5c] animate-pulse shrink-0"></div>
+                <div class="w-10 h-10 rounded-md bg-skeleton animate-pulse shrink-0"></div>
                 <div class="min-w-0 flex-1">
                     <div class="flex items-start gap-2">
                         ${posSkeletonBar('h-3.5 flex-1')}
@@ -4226,7 +4303,7 @@ document.addEventListener('DOMContentLoaded', () => {
         <tr class="bg-canvas-elevated">
             <td class="px-4 py-3.5">
                 <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 rounded-md bg-[#5c5c5c] animate-pulse shrink-0"></div>
+                    <div class="w-10 h-10 rounded-md bg-skeleton animate-pulse shrink-0"></div>
                     <div class="min-w-0 flex-1 max-w-[220px]">
                         ${posSkeletonBar('h-3.5 w-4/5')}
                         ${posSkeletonBar('h-2.5 w-3/5 mt-2')}
@@ -4250,7 +4327,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const tabsEl = document.getElementById('pos-category-tabs');
         if (tabsEl) {
             tabsEl.innerHTML = Array.from({ length: 6 }, (_, i) =>
-                `<div class="shrink-0 h-[42px] ${i === 0 ? 'w-[104px]' : 'w-[96px]'} rounded-md bg-[#5c5c5c] animate-pulse"></div>`
+                `<div class="shrink-0 h-[42px] ${i === 0 ? 'w-[104px]' : 'w-[96px]'} rounded-md bg-skeleton animate-pulse"></div>`
             ).join('');
         }
 
@@ -4272,7 +4349,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (posViewMode === 'list') {
             posSearchResults.className = 'block';
             posSearchResults.innerHTML = `
-                <div class="overflow-x-auto rounded-md border border-hairline">
+                <div class="elev-chip overflow-x-auto rounded-md">
                     <table class="w-full min-w-[1120px] border-collapse text-left overflow-x-auto">
                         <tbody class="divide-y divide-hairline">
                             ${Array.from({ length: count }, posSkeletonTableRow).join('')}
@@ -4336,9 +4413,9 @@ document.addEventListener('DOMContentLoaded', () => {
         tabsEl.innerHTML = tabs.map(t => {
             const isActive = t.value === posActiveCategory;
             const cls = isActive
-                ? 'bg-primary text-on-primary border-primary'
-                : 'bg-canvas-elevated text-body-muted border-hairline hover:text-ink hover:border-primary/40';
-            return `<button type="button" class="pos-cat-tab shrink-0 px-5 py-2.5 rounded-md border text-[13px] font-semibold transition-colors flex items-center gap-2 ${cls}" data-category="${escapeAttr(t.value)}" aria-pressed="${isActive}"><i class="fa-solid ${t.icon}"></i> ${t.label}</button>`;
+                ? 'bg-primary text-on-primary ring-1 ring-accent-ink'
+                : 'elev-card bg-canvas-elevated text-body-muted hover:text-ink hover:ring-1 hover:ring-accent-ink/40';
+            return `<button type="button" class="elev-chip pos-cat-tab shrink-0 px-5 py-2.5 rounded-md text-[13px] font-semibold transition-colors flex items-center gap-2 ${cls}" data-category="${escapeAttr(t.value)}" aria-pressed="${isActive}"><i class="fa-solid ${t.icon}"></i> ${t.label}</button>`;
         }).join('');
 
         // ผูก listener ครั้งเดียวที่ตัวคอนเทนเนอร์ แท็บถูก re-render บ่อย การผูกรายปุ่มทำให้หลุดง่าย
@@ -4438,11 +4515,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const posQtyControlsMarkup = (product, d) => `
         <div class="pos-qty-controls flex items-center gap-2.5 ${d.qtyInCart > 0 ? '' : 'hidden'}">
-            <button type="button" class="pos-card-qty-minus w-7 h-7 rounded-full border border-hairline flex items-center justify-center text-body-muted hover:text-ink hover:bg-surface-chip transition-colors" data-product-id="${product._id}" aria-label="ลดจำนวน">
+            <button type="button" class="border-2 border-transparent pos-card-qty-minus w-7 h-7 rounded-full flex items-center justify-center text-body-muted hover:text-ink hover:bg-surface-chip transition-colors" data-product-id="${product._id}" aria-label="ลดจำนวน">
                 <i class="fa-solid fa-minus text-[10px]"></i>
             </button>
             <span class="pos-card-qty-display font-bold font-mono text-base text-ink w-4 text-center tabular-nums">${d.qtyInCart}</span>
-            <button type="button" class="pos-card-qty-plus w-7 h-7 rounded-full border border-hairline flex items-center justify-center text-body-muted hover:text-ink hover:bg-surface-chip transition-colors" data-product-id="${product._id}" aria-label="เพิ่มจำนวน">
+            <button type="button" class="border-2 border-transparent pos-card-qty-plus w-7 h-7 rounded-full flex items-center justify-center text-body-muted hover:text-ink hover:bg-surface-chip transition-colors" data-product-id="${product._id}" aria-label="เพิ่มจำนวน">
                 <i class="fa-solid fa-plus text-[10px]"></i>
             </button>
         </div>`;
@@ -4455,7 +4532,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const renderPosProductCard = (product) => {
         const d = buildPosCardData(product);
         const card = document.createElement('div');
-        card.className = `pos-card relative bg-surface-tile-3 border rounded-md p-3.5 transition-all hover:-translate-y-1 hover:shadow-2xl border-none`;
+        card.className = `elev-card pos-card relative bg-surface-tile-3 rounded-md p-3.5 transition-all hover:-translate-y-1 hover:shadow-2xl border-none`;
         card.setAttribute('data-product-id', product._id);
         card.innerHTML = `
             <div class="flex items-start gap-3">
@@ -4472,14 +4549,14 @@ document.addEventListener('DOMContentLoaded', () => {
                     <p class="text-[11px] text-body-muted mt-0.5">คงเหลือ: ${d.stockQty}</p>
                     <div class="inline-flex items-center gap-2 mt-2">
                         <span class="inline-flex items-center gap-2 px-2.5 py-1.5 rounded-sm bg-primary/10  max-w-full">
-                            <i class="fa-solid fa-barcode text-primary text-[10px] shrink-0"></i>
-                            <span class="font-mono font-extrabold text-[12px] text-primary tracking-widest truncate">${product.product_code || '-'}</span>
+                            <i class="fa-solid fa-barcode text-accent-ink text-[10px] shrink-0"></i>
+                            <span class="font-mono font-extrabold text-[12px] text-accent-ink tracking-widest truncate">${product.product_code || '-'}</span>
                         </span>
                     </div>
                 </div>
             </div>
             <div class="flex items-center gap-2 mt-3.5">
-                <span class="text-[17px] font-extrabold font-mono text-primary tabular-nums">฿${d.price.toLocaleString()}</span>
+                <span class="text-[17px] font-extrabold font-mono text-accent-ink tabular-nums">฿${d.price.toLocaleString()}</span>
                 <div class="ml-auto flex items-center gap-1.5">
                     ${posQtyControlsMarkup(product, d)}
                     ${posAddButtonMarkup(product, d)}
@@ -4502,9 +4579,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>
                 </td>
                 <td class="px-4 py-3.5 align-middle whitespace-nowrap">
-                    <span class="inline-flex items-center gap-2 px-3 py-1.5 rounded-sm bg-primary/10 border border-primary/40">
-                        <i class="fa-solid fa-barcode text-primary text-[11px]"></i>
-                        <span class="font-mono font-extrabold text-[13px] text-primary tracking-widest">${product.product_code || '-'}</span>
+                    <span class="border border-transparent inline-flex items-center gap-2 px-3 py-1.5 rounded-sm bg-primary/10 ring-1 ring-accent-ink/40">
+                        <i class="fa-solid fa-barcode text-accent-ink text-[11px]"></i>
+                        <span class="font-mono font-extrabold text-[13px] text-accent-ink tracking-widest">${product.product_code || '-'}</span>
                     </span>
                 </td>
                 <td class="px-4 py-3.5 align-middle">
@@ -4524,7 +4601,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     </p>
                 </td>
                 <td class="px-4 py-3.5 align-middle whitespace-nowrap">
-                    <span class="text-[17px] font-extrabold font-mono text-primary tabular-nums">฿${d.price.toLocaleString()}</span>
+                    <span class="text-[17px] font-extrabold font-mono text-accent-ink tabular-nums">฿${d.price.toLocaleString()}</span>
                 </td>
                 <td class="px-4 py-3.5 align-middle">
                     <div class="flex items-center gap-1.5">
@@ -4539,7 +4616,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const posTableShellMarkup = () => {
         const th = 'px-4 py-3 text-[11px] font-bold text-body-muted tracking-wide whitespace-nowrap';
         return `
-            <div class="overflow-x-auto rounded-md border border-hairline">
+            <div class="elev-chip overflow-x-auto rounded-md">
                 <table class="w-full min-w-[1120px] border-collapse text-left">
                     <thead>
                         <tr class="bg-surface-tile-2 border-b border-hairline">
@@ -4948,7 +5025,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             filtered.forEach(imei => {
                 const item = document.createElement('button');
-                item.className = 'w-full text-left px-4 py-3 rounded-md bg-canvas border border-hairline hover:border-primary/40 hover:bg-surface-chip transition-all flex items-center gap-3 group';
+                item.className = 'elev-chip w-full text-left px-4 py-3 rounded-md bg-canvas hover:ring-1 hover:ring-accent-ink/40 hover:bg-surface-chip transition-all flex items-center gap-3 group';
                 item.innerHTML = `
                     <div class="w-8 h-8 rounded-sm bg-surface-chip flex items-center justify-center text-ink flex-shrink-0">
                         <i class="fa-solid fa-sim-card text-sm"></i>
@@ -4957,7 +5034,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         <p class="font-mono text-ink text-sm font-medium">${imei}</p>
                         <p class="text-xs text-body-muted">${product.name}</p>
                     </div>
-                    <i class="fa-solid fa-plus text-primary opacity-0 group-hover:opacity-100 transition-opacity"></i>
+                    <i class="fa-solid fa-plus text-accent-ink opacity-0 group-hover:opacity-100 transition-opacity"></i>
                 `;
                 item.addEventListener('click', () => {
                     // Add specific IMEI to cart
@@ -5047,10 +5124,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
         cart.forEach((item, index) => {
             const cartEl = document.createElement('div');
-            cartEl.className = 'cart-item bg-canvas border border-hairline rounded-md p-3 flex items-center gap-3 transition-colors animate-fade-in';
+            cartEl.className = 'elev-chip cart-item bg-canvas rounded-md p-3 flex items-center gap-3 transition-colors animate-fade-in';
             const itemColorTheme = getProductColorTheme(item.color_name, null);
             cartEl.innerHTML = `
-                <div class="w-10 h-10 rounded-sm border flex items-center justify-center flex-shrink-0" style="color:${itemColorTheme.icon};background-color:${itemColorTheme.bg};border-color:${itemColorTheme.border};">
+                <div class="elev-chip w-10 h-10 rounded-sm flex items-center justify-center flex-shrink-0" style="color:${itemColorTheme.icon};background-color:${itemColorTheme.bg};border-color:${itemColorTheme.border};">
                     <i class="fa-solid ${item._isDevice ? 'fa-mobile-screen' : 'fa-box'} text-lg"></i>
                 </div>
                 <div class="flex-1 min-w-0">
@@ -5247,11 +5324,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
         cart.forEach((item, index) => {
             const el = document.createElement('div');
-            el.className = 'mobile-cart-item flex items-center gap-3 bg-canvas border border-hairline rounded-md p-3';
+            el.className = 'elev-chip mobile-cart-item flex items-center gap-3 bg-canvas rounded-md p-3';
 
             const itemColorTheme = getProductColorTheme(item.color_name, null);
             const iconDiv = document.createElement('div');
-            iconDiv.className = 'item-icon w-10 h-10 rounded-sm border flex items-center justify-center flex-shrink-0';
+            iconDiv.className = 'elev-chip item-icon w-10 h-10 rounded-sm flex items-center justify-center flex-shrink-0';
             iconDiv.style.color = itemColorTheme.icon;
             iconDiv.style.backgroundColor = itemColorTheme.bg;
             iconDiv.style.borderColor = itemColorTheme.border;
@@ -5429,14 +5506,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (currentPrice < costPrice) {
                 badgeContainer.innerHTML = `
-                    <div class="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-red-500/20 text-red-400 border border-red-500/30 flex items-center gap-1 mt-2.5 animate-pulse">
+                    <div class="elev-chip px-2.5 py-1 rounded-lg text-[10px] font-bold bg-red-500/20 text-red-400 ring-1 ring-red-500/30 flex items-center gap-1 mt-2.5 animate-pulse">
                         <i class="fa-solid fa-circle-exclamation"></i>
                         <span>ผิดพลาด: ราคาขายจัดไฟแนนซ์ต่ำกว่าราคาทุนของสินค้า</span>
                     </div>
                 `;
             } else if (currentPrice < defaultSellingPrice) {
                 badgeContainer.innerHTML = `
-                    <div class="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center gap-1 mt-2.5">
+                    <div class="elev-chip px-2.5 py-1 rounded-lg text-[10px] font-bold bg-amber-500/20 text-amber-400 border-amber-500/30 flex items-center gap-1 mt-2.5">
                         <i class="fa-solid fa-triangle-exclamation"></i>
                         <span>ราคาต่ำกว่าราคาขายสดหน้าร้าน</span>
                     </div>
@@ -5573,7 +5650,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 // รับเงินขาด!
                 const missing = grandTotal - receivedSum;
                 if (paymentStatusBadge) {
-                    paymentStatusBadge.className = 'px-2.5 py-1 rounded-lg text-xs font-black uppercase tracking-wider flex items-center gap-1.5 bg-red-500/20 text-red-400 border border-red-500/30';
+                    paymentStatusBadge.className = 'px-2.5 py-1 rounded-lg text-xs font-black uppercase tracking-wider flex items-center gap-1.5 bg-red-500/20 text-red-400 ring-1 ring-red-500/30';
                     paymentStatusBadge.innerHTML = `<span class="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span> ขาดเงินอีก`;
                 }
                 if (verifyResultLabel) verifyResultLabel.textContent = 'ยอดขาดคงเหลือ';
@@ -5587,10 +5664,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 const change = receivedSum - grandTotal;
                 if (paymentStatusBadge) {
                     if (change === 0) {
-                        paymentStatusBadge.className = 'px-2.5 py-1 rounded-lg text-xs font-black uppercase tracking-wider flex items-center gap-1.5 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30';
+                        paymentStatusBadge.className = 'elev-chip px-2.5 py-1 rounded-lg text-xs font-black uppercase tracking-wider flex items-center gap-1.5 bg-emerald-500/20 text-emerald-400 border-emerald-500/30';
                         paymentStatusBadge.innerHTML = `<i class="fa-solid fa-circle-check"></i> จ่ายยอดครบถ้วน`;
                     } else {
-                        paymentStatusBadge.className = 'px-2.5 py-1 rounded-lg text-xs font-black uppercase tracking-wider flex items-center gap-1.5 bg-cyan-500/20 text-cyan-400 border border-cyan-500/30';
+                        paymentStatusBadge.className = 'elev-chip px-2.5 py-1 rounded-lg text-xs font-black uppercase tracking-wider flex items-center gap-1.5 bg-cyan-500/20 text-cyan-400 border-cyan-500/30';
                         paymentStatusBadge.innerHTML = `<i class="fa-solid fa-coins"></i> เงินทอนลูกค้า`;
                     }
                 }
@@ -6065,7 +6142,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const currentVal = paymentMethod ? paymentMethod.value : '';
         posPaymentToggleBtns.forEach(btn => {
             const isActive = btn.dataset.value === currentVal;
-            btn.className = `pos-payment-toggle-btn flex-1 py-2.5 rounded-sm text-sm font-bold transition-all flex items-center justify-center bg-[#222] border border-[#444] gap-2 ${isActive ? 'bg-primary text-on-primary' : 'text-body-muted hover:text-ink'}`;
+            btn.className = `elev-chip pos-payment-toggle-btn flex-1 py-2.5 rounded-sm text-sm font-bold transition-all flex items-center justify-center bg-surface-tile-2 gap-2 ${isActive ? 'bg-primary text-on-primary' : 'text-body-muted hover:text-ink'}`;
         });
     };
     if (paymentMethod && posPaymentToggleBtns.length) {
@@ -6208,24 +6285,24 @@ document.addEventListener('DOMContentLoaded', () => {
             cart.forEach((item, index) => {
                 const posBranchNameForRow = item.branch_name || posUserBranchName || '-';
                 const card = document.createElement('div');
-                card.className = 'bg-[#1c1c1c] border border-[#333] rounded-sm p-3 flex flex-col gap-4 relative';
+                card.className = 'elev-card bg-surface-tile-3 rounded-sm p-3 flex flex-col gap-4 relative';
                 const detailLines = [];
                 if (item.color_name) detailLines.push(`สี: ${item.color_name}`);
                 if (item.type_name) detailLines.push(`ประเภท: ${item.type_name}`);
                 const itemColorTheme = getProductColorTheme(item.color_name, null);
                 card.innerHTML = `
                     <div class="flex items-start gap-4">
-                        <div class="w-12 h-12 rounded-full border flex items-center justify-center shrink-0" style="color:${itemColorTheme.icon};background-color:${itemColorTheme.bg};border-color:${itemColorTheme.border};">
+                        <div class="elev-chip w-12 h-12 rounded-full flex items-center justify-center shrink-0" style="color:${itemColorTheme.icon};background-color:${itemColorTheme.bg};border-color:${itemColorTheme.border};">
                             <i class="fa-solid ${item._isDevice ? 'fa-mobile-screen' : 'fa-box'} text-xl"></i>
                         </div>
                         <div class="flex-1 min-w-0">
                             <div class="flex justify-between items-start">
                                 <div>
-                                    <p class="font-bold text-white text-base leading-tight">${item.product_name}</p>
-                                    ${item.product_code ? `<p class="text-sm text-gray-400 font-mono mt-1">รหัสสินค้า: ${item.product_code}</p>` : ''}
-                                    <p class="text-sm text-gray-400 mt-0.5">คงเหลือ: ${(item.stock_available !== null && item.stock_available !== undefined) ? item.stock_available.toLocaleString() : '-'}</p>
+                                    <p class="font-bold text-ink text-base leading-tight">${item.product_name}</p>
+                                    ${item.product_code ? `<p class="text-sm text-body-muted font-mono mt-1">รหัสสินค้า: ${item.product_code}</p>` : ''}
+                                    <p class="text-sm text-body-muted mt-0.5">คงเหลือ: ${(item.stock_available !== null && item.stock_available !== undefined) ? item.stock_available.toLocaleString() : '-'}</p>
                                 </div>
-                                <div class="bg-[#2a2a2a] text-gray-400 text-xs px-2.5 py-1 rounded-full flex items-center gap-1.5 shrink-0">
+                                <div class="bg-surface-chip text-body-muted text-xs px-2.5 py-1 rounded-full flex items-center gap-1.5 shrink-0">
                                     <i class="fa-solid fa-store"></i> ${posBranchNameForRow}
                                 </div>
                             </div>
@@ -6233,22 +6310,22 @@ document.addEventListener('DOMContentLoaded', () => {
                             <div class="mt-3 flex flex-wrap gap-2 items-center">
                                 ${item.imei_sold ?
                         // สินค้าผูก IMEI = หนึ่งการ์ดต่อหนึ่งเครื่องเสมอ ปรับจำนวนไม่ได้ จึงไม่มีปุ่ม + -
-                        `<span class="inline-flex items-center gap-1.5 bg-[#2a2a2a] text-[#FFE169] border border-[#b48025] px-2.5 py-1 rounded-lg text-xs font-mono font-bold"><i class="fa-solid fa-sim-card"></i> ${item.imei_sold}</span>`
-                        : `<span class="inline-flex items-center bg-[#2a2a2a] border border-[#444] rounded-lg text-xs overflow-hidden">
+                        `<span class="border border-transparent inline-flex items-center gap-1.5 bg-surface-chip text-accent-ink ring-1 ring-accent-ink px-2.5 py-1 rounded-lg text-xs font-mono font-bold"><i class="fa-solid fa-sim-card"></i> ${item.imei_sold}</span>`
+                        : `<span class="elev-chip inline-flex items-center bg-surface-chip rounded-lg text-xs overflow-hidden">
                                         <button type="button" aria-label="ลดจำนวน" data-index="${index}" ${item.quantity <= 1 ? 'disabled' : ''}
-                                            class="modal-item-qty-minus w-7 h-7 flex items-center justify-center text-gray-400 hover:text-[#FFE169] hover:bg-[#333] transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:text-gray-400 disabled:hover:bg-transparent">
+                                            class="modal-item-qty-minus w-7 h-7 flex items-center justify-center text-body-muted hover:text-accent-ink hover:bg-field transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:text-body-muted disabled:hover:bg-transparent">
                                             <i class="fa-solid fa-minus text-[10px]"></i>
                                         </button>
-                                        <span class="modal-item-qty text-white font-mono font-bold min-w-[1.75rem] text-center" data-index="${index}">${item.quantity}</span>
+                                        <span class="modal-item-qty text-ink font-mono font-bold min-w-[1.75rem] text-center" data-index="${index}">${item.quantity}</span>
                                         <button type="button" aria-label="เพิ่มจำนวน" data-index="${index}"
-                                            class="modal-item-qty-plus w-7 h-7 flex items-center justify-center text-gray-400 hover:text-[#FFE169] hover:bg-[#333] transition-colors cursor-pointer">
+                                            class="modal-item-qty-plus w-7 h-7 flex items-center justify-center text-body-muted hover:text-accent-ink hover:bg-field transition-colors cursor-pointer">
                                             <i class="fa-solid fa-plus text-[10px]"></i>
                                         </button>
-                                        <span class="text-gray-400 pl-1 pr-2.5">${item.unit_name || 'ชิ้น'}</span>
+                                        <span class="text-body-muted pl-1 pr-2.5">${item.unit_name || 'ชิ้น'}</span>
                                     </span>`
                     }
                                 
-                                ${detailLines.length ? detailLines.map(l => `<span class="text-xs text-gray-400 bg-[#222] px-2 py-1 rounded-lg border border-[#444]">${l}</span>`).join('') : ''}
+                                ${detailLines.length ? detailLines.map(l => `<span class="elev-chip text-xs text-body-muted bg-surface-tile-2 px-2 py-1 rounded-lg">${l}</span>`).join('') : ''}
                             </div>
                         </div>
                     </div>
@@ -6256,9 +6333,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     <div class="flex items-end justify-between mt-1">
                         <div class="flex flex-col gap-1 w-[150px]">
                             <div class="relative w-full">
-                                <span class="absolute left-0 top-1/2 -translate-y-1/2 text-[#FFE169] text-xl font-bold">฿</span>
+                                <span class="absolute left-0 top-1/2 -translate-y-1/2 text-accent-ink text-xl font-bold">฿</span>
                                 <input type="number" value="${item.price}" min="0" step="1" data-index="${index}"
-                                    class="modal-item-price-input w-full pl-5 pr-2 py-1 rounded bg-transparent border-none text-[#FFE169] text-2xl font-bold focus:bg-[#2a2a2a] focus:outline-none transition-all"
+                                    class="modal-item-price-input w-full pl-5 pr-2 py-1 rounded bg-transparent border-none text-accent-ink text-2xl font-bold focus:bg-surface-chip focus:outline-none transition-all"
                                     ${(paymentMethod && paymentMethod.value === 'จัดไฟแนนซ์' && !item.is_gift && item.unit_name === 'เครื่อง') ? '' : 'disabled'}>
                             </div>
                             <div class="modal-item-price-badge w-full text-xs" data-index="${index}"></div>
@@ -6266,20 +6343,20 @@ document.addEventListener('DOMContentLoaded', () => {
                         
                         <div class="flex items-center gap-2">
                             ${(item._isDevice || item.imei_sold) ? `
-                                <select class="modal-warranty-select bg-[#2a2a2a] border border-[#444] text-gray-300 text-sm rounded-[5px] px-4 py-2 focus:outline-none focus:border-[#FFE169] transition-all cursor-pointer hover:bg-[#333] hover:text-white" data-index="${index}">
+                                <select class="elev-chip modal-warranty-select bg-surface-chip text-body-muted text-sm rounded-[5px] px-4 py-2 focus:outline-none focus:ring-2 focus:ring-accent-ink transition-all cursor-pointer hover:bg-field hover:text-ink" data-index="${index}">
                                     <option value="1 เดือน" ${(!item.warranty_period || item.warranty_period === '1 เดือน') ? 'selected' : ''}>ประกัน 1 เดือน</option>
                                     <option value="2 เดือน" ${(item.warranty_period === '2 เดือน') ? 'selected' : ''}>ประกัน 2 เดือน</option>
                                     <option value="3 เดือน" ${(item.warranty_period === '3 เดือน') ? 'selected' : ''}>ประกัน 3 เดือน</option>
                                     <option value="1 ปี" ${(item.warranty_period === '1 ปี') ? 'selected' : ''}>ประกัน 1 ปี</option>
                                 </select>
                             ` : (item.unit_name === 'ชิ้น') ? `
-                                <div class="inline-flex rounded-full overflow-hidden border border-[#444]" role="group">
+                                <div class="elev-chip inline-flex rounded-full overflow-hidden" role="group">
                                     <button type="button" data-index="${index}" data-type="normal"
-                                        class="gift-toggle-btn px-4 py-2 text-sm font-semibold transition-all ${!item.is_gift ? 'bg-[#FFE169] text-black' : 'bg-[#2a2a2a] text-gray-400 hover:text-white'}">
+                                        class="gift-toggle-btn px-4 py-2 text-sm font-semibold transition-all ${!item.is_gift ? 'bg-primary text-on-primary' : 'bg-surface-chip text-body-muted hover:text-ink'}">
                                         ขายปกติ
                                     </button>
                                     <button type="button" data-index="${index}" data-type="gift"
-                                        class="gift-toggle-btn px-4 py-2 text-sm font-semibold transition-all ${item.is_gift ? 'bg-[#FFE169] text-black' : 'bg-[#2a2a2a] text-gray-400 hover:text-white'}">
+                                        class="gift-toggle-btn px-4 py-2 text-sm font-semibold transition-all ${item.is_gift ? 'bg-primary text-on-primary' : 'bg-surface-chip text-body-muted hover:text-ink'}">
                                         ของแถม
                                     </button>
                                 </div>
@@ -6398,7 +6475,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     buttons.forEach(b => {
                         const bType = b.dataset.type;
                         if (bType === 'normal') {
-                            b.className = `gift-toggle-btn px-2.5 py-0.5 text-[10px] font-semibold transition-all ${!isGift ? 'bg-primary/20 text-primary border-r border-hairline' : 'bg-surface-chip/40 text-body-muted hover:text-ink border-r border-hairline'}`;
+                            b.className = `gift-toggle-btn px-2.5 py-0.5 text-[10px] font-semibold transition-all ${!isGift ? 'bg-primary/20 text-accent-ink border-r border-hairline' : 'bg-surface-chip/40 text-body-muted hover:text-ink border-r border-hairline'}`;
                         } else if (bType === 'gift') {
                             b.className = `gift-toggle-btn px-2.5 py-0.5 text-[10px] font-semibold transition-all ${isGift ? 'bg-amber-500/20 text-amber-400' : 'bg-surface-chip/40 text-body-muted hover:text-ink'}`;
                         }
@@ -7242,9 +7319,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if (badgeElement && orderedQty) {
             badgeElement.textContent = `สแกนแล้ว ${count} / ${orderedQty} เครื่อง`;
             if (count === orderedQty) {
-                badgeElement.className = 'text-xs font-semibold px-2 py-0.5 rounded-full bg-green-500/10 text-green-400 border border-green-500/20';
+                badgeElement.className = 'elev-chip text-xs font-semibold px-2 py-0.5 rounded-full bg-green-500/10 text-green-400 border-green-500/20';
             } else {
-                badgeElement.className = 'text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20';
+                badgeElement.className = 'elev-chip text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border-amber-500/20';
             }
         } else if (arrivalImeiCount) {
             arrivalImeiCount.textContent = `จำนวน: ${count} IMEI`;
@@ -7416,11 +7493,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const esc = (s) => String(s == null ? '' : s)
             .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-        const stateRow = (msg, cls = 'text-white/50 italic') =>
+        const stateRow = (msg, cls = 'text-ink/50 italic') =>
             `<tr><td colspan="${NONPO_COLS}" class="px-6 py-8 text-center ${cls}">${esc(msg)}</td></tr>`;
 
         // แถวโครงร่างก่อนยิง API เสมอ ไม่ปล่อยตารางว่างระหว่างรอ (ข้อ 11.7)
-        const bar = (w) => `<div class="h-3.5 ${w} rounded-full bg-[#5c5c5c] animate-pulse"></div>`;
+        const bar = (w) => `<div class="h-3.5 ${w} rounded-full bg-skeleton animate-pulse"></div>`;
         tbody.innerHTML = Array.from({ length: 4 }).map(() =>
             `<tr>${Array.from({ length: NONPO_COLS }).map(() =>
                 `<td class="px-6 py-4">${bar('w-full')}</td>`).join('')}</tr>`).join('');
@@ -7458,19 +7535,19 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             tbody.innerHTML = rows.map(item => `
-                <tr class="hover:bg-[#464646] transition-colors">
-                    <td class="px-6 py-4 text-white font-medium">${esc(item.product_name)}</td>
+                <tr class="hover:bg-divider transition-colors">
+                    <td class="px-6 py-4 text-ink font-medium">${esc(item.product_name)}</td>
                     <td class="px-6 py-4">
-                        <p class="font-medium text-white">${esc(item.branch_id ? item.branch_id.name : '-')}</p>
-                        <p class="text-xs text-white/70 mt-0.5">${esc(item.reported_by ? item.reported_by.name : '-')}</p>
+                        <p class="font-medium text-ink">${esc(item.branch_id ? item.branch_id.name : '-')}</p>
+                        <p class="text-xs text-ink/70 mt-0.5">${esc(item.reported_by ? item.reported_by.name : '-')}</p>
                     </td>
-                    <td class="px-6 py-4 text-white">${new Date(item.created_at).toLocaleString('th-TH',
+                    <td class="px-6 py-4 text-ink">${new Date(item.created_at).toLocaleString('th-TH',
             { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</td>
-                    <td class="px-6 py-4 text-center text-white font-mono">${item.imeis ? item.imeis.length : 0}</td>
-                    <td class="px-6 py-4 text-white/70">${item.notes ? esc(item.notes) : '<span class="text-white/50">-</span>'}</td>
+                    <td class="px-6 py-4 text-center text-ink font-mono">${item.imeis ? item.imeis.length : 0}</td>
+                    <td class="px-6 py-4 text-ink/70">${item.notes ? esc(item.notes) : '<span class="text-ink/50">-</span>'}</td>
                     <td class="px-6 py-4 text-right">
                         <button type="button" onclick="approveImport('${esc(item._id)}')"
-                            class="px-3 py-1.5 bg-[#FFE169] hover:bg-[#E2B93C] text-[#333333] font-semibold rounded-[0.375rem] text-xs transition-colors inline-flex items-center gap-1.5 cursor-pointer">
+                            class="px-3 py-1.5 bg-primary hover:bg-[#E2B93C] text-on-primary font-semibold rounded-[0.375rem] text-xs transition-colors inline-flex items-center gap-1.5 cursor-pointer">
                             <i class="fa-solid fa-check"></i> อนุมัติ
                         </button>
                     </td>
@@ -7719,7 +7796,7 @@ document.addEventListener('DOMContentLoaded', () => {
         input.readOnly = true;
 
         const arrow = document.createElement('i');
-        arrow.className = 'fa-solid fa-chevron-down text-slate-400 text-xs ml-2 transition-transform duration-200 searchable-select-arrow';
+        arrow.className = 'fa-solid fa-chevron-down text-body-muted text-xs ml-2 transition-transform duration-200 searchable-select-arrow';
 
         trigger.appendChild(input);
         trigger.appendChild(arrow);
@@ -8043,40 +8120,40 @@ document.addEventListener('DOMContentLoaded', () => {
             step3Panel.classList.add('hidden');
 
             // Reset Indicators & Connectors
-            step1Indicator.className = "w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm z-10 transition-colors bg-slate-700 text-slate-400";
-            step2Indicator.className = "w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm z-10 transition-colors bg-slate-700 text-slate-400";
-            step3Indicator.className = "w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm z-10 transition-colors bg-slate-700 text-slate-400";
-            connector1.className = "h-full bg-slate-700 w-0 transition-all duration-300";
-            connector2.className = "h-full bg-slate-700 w-0 transition-all duration-300";
+            step1Indicator.className = "w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm z-10 transition-colors bg-field text-body-muted";
+            step2Indicator.className = "w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm z-10 transition-colors bg-field text-body-muted";
+            step3Indicator.className = "w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm z-10 transition-colors bg-field text-body-muted";
+            connector1.className = "h-full bg-field w-0 transition-all duration-300";
+            connector2.className = "h-full bg-field w-0 transition-all duration-300";
 
             // Active Step Styling
             if (step === 1) {
                 step1Panel.classList.remove('hidden');
-                step1Indicator.className = "w-8 h-8 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold text-sm z-10 transition-colors shadow-lg shadow-emerald-600/30";
+                step1Indicator.className = "w-8 h-8 rounded-full bg-emerald-600 text-ink flex items-center justify-center font-bold text-sm z-10 transition-colors shadow-lg shadow-emerald-600/30";
 
-                document.querySelector('[id="excel-step1-indicator"] + span').className = "text-xs text-slate-300 mt-2 font-medium";
-                document.querySelector('[id="excel-step2-indicator"] + span').className = "text-xs text-slate-400 mt-2 font-medium";
-                document.querySelector('[id="excel-step3-indicator"] + span').className = "text-xs text-slate-400 mt-2 font-medium";
+                document.querySelector('[id="excel-step1-indicator"] + span').className = "text-xs text-body-muted mt-2 font-medium";
+                document.querySelector('[id="excel-step2-indicator"] + span').className = "text-xs text-body-muted mt-2 font-medium";
+                document.querySelector('[id="excel-step3-indicator"] + span').className = "text-xs text-body-muted mt-2 font-medium";
             } else if (step === 2) {
                 step2Panel.classList.remove('hidden');
-                step1Indicator.className = "w-8 h-8 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold text-sm z-10 transition-colors";
-                step2Indicator.className = "w-8 h-8 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold text-sm z-10 transition-colors shadow-lg shadow-emerald-600/30";
+                step1Indicator.className = "w-8 h-8 rounded-full bg-emerald-600 text-ink flex items-center justify-center font-bold text-sm z-10 transition-colors";
+                step2Indicator.className = "w-8 h-8 rounded-full bg-emerald-600 text-ink flex items-center justify-center font-bold text-sm z-10 transition-colors shadow-lg shadow-emerald-600/30";
                 connector1.className = "h-full bg-emerald-600 w-full transition-all duration-300";
 
-                document.querySelector('[id="excel-step1-indicator"] + span').className = "text-xs text-slate-300 mt-2 font-medium";
-                document.querySelector('[id="excel-step2-indicator"] + span').className = "text-xs text-slate-300 mt-2 font-medium";
-                document.querySelector('[id="excel-step3-indicator"] + span').className = "text-xs text-slate-400 mt-2 font-medium";
+                document.querySelector('[id="excel-step1-indicator"] + span').className = "text-xs text-body-muted mt-2 font-medium";
+                document.querySelector('[id="excel-step2-indicator"] + span').className = "text-xs text-body-muted mt-2 font-medium";
+                document.querySelector('[id="excel-step3-indicator"] + span').className = "text-xs text-body-muted mt-2 font-medium";
             } else if (step === 3) {
                 step3Panel.classList.remove('hidden');
-                step1Indicator.className = "w-8 h-8 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold text-sm z-10 transition-colors";
-                step2Indicator.className = "w-8 h-8 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold text-sm z-10 transition-colors";
-                step3Indicator.className = "w-8 h-8 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold text-sm z-10 transition-colors shadow-lg shadow-emerald-600/30";
+                step1Indicator.className = "w-8 h-8 rounded-full bg-emerald-600 text-ink flex items-center justify-center font-bold text-sm z-10 transition-colors";
+                step2Indicator.className = "w-8 h-8 rounded-full bg-emerald-600 text-ink flex items-center justify-center font-bold text-sm z-10 transition-colors";
+                step3Indicator.className = "w-8 h-8 rounded-full bg-emerald-600 text-ink flex items-center justify-center font-bold text-sm z-10 transition-colors shadow-lg shadow-emerald-600/30";
                 connector1.className = "h-full bg-emerald-600 w-full transition-all duration-300";
                 connector2.className = "h-full bg-emerald-600 w-full transition-all duration-300";
 
-                document.querySelector('[id="excel-step1-indicator"] + span').className = "text-xs text-slate-300 mt-2 font-medium";
-                document.querySelector('[id="excel-step2-indicator"] + span').className = "text-xs text-slate-300 mt-2 font-medium";
-                document.querySelector('[id="excel-step3-indicator"] + span').className = "text-xs text-slate-300 mt-2 font-medium";
+                document.querySelector('[id="excel-step1-indicator"] + span').className = "text-xs text-body-muted mt-2 font-medium";
+                document.querySelector('[id="excel-step2-indicator"] + span').className = "text-xs text-body-muted mt-2 font-medium";
+                document.querySelector('[id="excel-step3-indicator"] + span').className = "text-xs text-body-muted mt-2 font-medium";
             }
         }
 
@@ -8419,19 +8496,19 @@ document.addEventListener('DOMContentLoaded', () => {
             summaryInvalid.textContent = invalidCount;
 
             if (invalidCount > 0) {
-                summaryInvalidCard.className = "bg-red-500/20 p-4 rounded-xl border border-red-500 text-center";
-                validationStatusBadge.className = "px-2.5 py-1 text-xs rounded-full font-medium bg-red-500/10 text-red-400 border border-red-500/20";
+                summaryInvalidCard.className = "bg-red-500/20 p-4 rounded-xl ring-1 ring-red-500 text-center";
+                validationStatusBadge.className = "px-2.5 py-1 text-xs rounded-full font-medium bg-red-500/10 text-red-400 ring-1 ring-red-500/20";
                 validationStatusBadge.textContent = "พบข้อผิดพลาด";
                 errorWarning.classList.remove('hidden');
                 btnImportConfirm.disabled = true;
-                btnImportConfirm.className = "px-6 py-2.5 bg-slate-700 text-slate-500 font-bold rounded-xl flex items-center gap-2 cursor-not-allowed";
+                btnImportConfirm.className = "px-6 py-2.5 bg-field text-ink-muted-48 font-bold rounded-xl flex items-center gap-2 cursor-not-allowed";
             } else {
-                summaryInvalidCard.className = "bg-red-500/5 p-4 rounded-xl border border-slate-700 text-center text-slate-400";
-                validationStatusBadge.className = "px-2.5 py-1 text-xs rounded-full font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20";
+                summaryInvalidCard.className = "elev-chip bg-red-500/5 p-4 rounded-xl text-center text-body-muted";
+                validationStatusBadge.className = "elev-chip px-2.5 py-1 text-xs rounded-full font-medium bg-emerald-500/10 text-emerald-400 border-emerald-500/20";
                 validationStatusBadge.textContent = "ข้อมูลถูกต้องทั้งหมด";
                 errorWarning.classList.add('hidden');
                 btnImportConfirm.disabled = false;
-                btnImportConfirm.className = "px-6 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl glow-button-emerald flex items-center gap-2";
+                btnImportConfirm.className = "px-6 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-ink font-bold rounded-xl glow-button-emerald flex items-center gap-2";
             }
 
             previewTbody.innerHTML = '';
@@ -8440,25 +8517,25 @@ document.addEventListener('DOMContentLoaded', () => {
             const previewItems = parsedRows.slice(0, 5);
             previewItems.forEach(item => {
                 const tr = document.createElement('tr');
-                tr.className = "hover:bg-slate-700/30 transition-colors";
+                tr.className = "hover:bg-field/30 transition-colors";
 
                 const statusBadge = item.isValid
-                    ? `<span class="px-2 py-0.5 text-[10px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-full font-medium">ผ่าน</span>`
-                    : `<span class="px-2 py-0.5 text-[10px] bg-red-500/10 text-red-400 border border-red-500/20 rounded-full font-medium">ผิดพลาด</span>`;
+                    ? `<span class="elev-chip px-2 py-0.5 text-[10px] bg-emerald-500/10 text-emerald-400 border-emerald-500/20 rounded-full font-medium">ผ่าน</span>`
+                    : `<span class="elev-chip px-2 py-0.5 text-[10px] bg-red-500/10 text-red-400 ring-1 ring-red-500/20 rounded-full font-medium">ผิดพลาด</span>`;
 
                 const errorList = item.isValid
-                    ? `<span class="text-slate-400">-</span>`
+                    ? `<span class="text-body-muted">-</span>`
                     : `<ul class="list-disc pl-4 text-red-400 text-[11px] space-y-0.5">${item.errors.map(err => `<li>${err}</li>`).join('')}</ul>`;
 
                 tr.innerHTML = `
-                    <td class="p-3 text-center text-slate-400">${item.index}</td>
+                    <td class="p-3 text-center text-body-muted">${item.index}</td>
                     <td class="p-3">${statusBadge}</td>
-                    <td class="p-3 font-medium text-white">${item.code || '-'}</td>
-                    <td class="p-3 text-slate-300 font-medium">${item.name || '-'}</td>
-                    <td class="p-3 text-slate-400">${item.branch}</td>
-                    <td class="p-3 text-slate-300">฿${Number(item.cost).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}</td>
-                    <td class="p-3 text-slate-300">฿${Number(item.price).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}</td>
-                    <td class="p-3 text-center font-bold text-white">${item.qty}</td>
+                    <td class="p-3 font-medium text-ink">${item.code || '-'}</td>
+                    <td class="p-3 text-body-muted font-medium">${item.name || '-'}</td>
+                    <td class="p-3 text-body-muted">${item.branch}</td>
+                    <td class="p-3 text-body-muted">฿${Number(item.cost).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}</td>
+                    <td class="p-3 text-body-muted">฿${Number(item.price).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}</td>
+                    <td class="p-3 text-center font-bold text-ink">${item.qty}</td>
                     <td class="p-3">${errorList}</td>
                 `;
                 previewTbody.appendChild(tr);
@@ -8473,7 +8550,7 @@ document.addEventListener('DOMContentLoaded', () => {
             btnImportConfirm.innerHTML = `<i class="fa-solid fa-circle-notch fa-spin mr-2"></i> กำลังนำเข้า...`;
             btnExcelClose.style.display = 'none'; // Hide close button during import
             btnStep3Back.disabled = true;
-            btnStep3Back.className = "px-5 py-2.5 rounded-xl font-medium text-slate-600 cursor-not-allowed";
+            btnStep3Back.className = "px-5 py-2.5 rounded-xl font-medium text-body-muted cursor-not-allowed";
 
             progressBox.classList.remove('hidden');
 

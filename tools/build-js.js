@@ -183,4 +183,45 @@ const entries = [
         process.exit(1);
     }
     console.log(`✅ view ทั้ง ${validNames.size} หน้าคืนสถานะจาก URL hash ได้ครบ`);
+
+    // ตรวจว่าไม่มีใครเขียนสีฝังตรงๆ กลับเข้ามาอีก
+    // Tailwind v4 คอมไพล์ bg-[#27272A] เป็น #27272a ตายตัว (ไม่ใช่ var()) สีพวกนี้จึงเปลี่ยนตามธีมไม่ได้
+    // เขียนเข้ามาหน้าเดียวก็พอให้โหมดสว่างพังเป็นหย่อมๆ โดยไม่มี error ให้เห็น
+    const THEME_BANNED = {
+        "#4D4D4D": "bg-panel / bg-chip / border-line-strong",
+        "#3F3F46": "border-line / bg-line",
+        "#27272A": "bg-field",
+        "#18181B": "bg-elevated  (ยกเว้น text-[#18181B] ของปุ่มรองพื้นสว่าง)",
+        "#5C5C5C": "bg-skeleton",
+        "#464646": "bg-divider / divide-divider",
+        "#FFE169": "bg-primary (พื้น) หรือ text-/border-/ring-accent-ink (หมึกและเส้น)",
+        "#333333": "text-on-primary / border-hairline",
+        "#20D500": "text-state-ok / bg-state-ok",
+        "#FE0000": "text-state-danger / bg-state-danger",
+        "#FF9F0A": "text-state-pending"
+    };
+    // hex 3 หลักก็เปลี่ยนตามธีมไม่ได้เหมือนกัน (bg-[#333] คอมไพล์เป็น #333 ตายตัว)
+    const THEME_BANNED_SHORT = /[a-z-]+-\[#[0-9a-fA-F]{3}\]/g;
+    const THEME_FILES = ["index.html", "script.js", "style.css",
+        ...fs.readdirSync(path.join(root, "views")).filter(f => f.endsWith(".html")).map(f => "views/" + f),
+        ...fs.readdirSync(path.join(root, "js")).filter(f => f.endsWith(".js")).map(f => "js/" + f)];
+
+    const themeOffenders = [];
+    THEME_FILES.forEach((rel) => {
+        const src = fs.readFileSync(path.join(root, rel), "utf8");
+        const shortHits = src.match(THEME_BANNED_SHORT) || [];
+        if (shortHits.length) themeOffenders.push(`${rel}: ${shortHits.length} จุด ${shortHits[0]} -> ใช้โทเคน`);
+        Object.entries(THEME_BANNED).forEach(([hex, replacement]) => {
+            // text-[#18181B] เป็นตัวอักษรเข้มบนปุ่มรองพื้นสว่าง (ข้อ 11.11) ซึ่งสว่างทั้งสองธีม
+            const re = new RegExp("[a-z-]+-\\[" + hex + "\\]", "gi");
+            const hits = (src.match(re) || []).filter((h) => !/^text-\[#18181B\]$/i.test(h));
+            if (hits.length) themeOffenders.push(`${rel}: ${hits.length} จุด ${hits[0]} -> ใช้ ${replacement}`);
+        });
+    });
+    if (themeOffenders.length) {
+        console.error("\n❌ มีสีฝังตรงๆ ที่เปลี่ยนตามธีมไม่ได้ กลับเข้ามาในโค้ด:");
+        themeOffenders.slice(0, 15).forEach((o) => console.error("   " + o));
+        process.exit(1);
+    }
+    console.log(`✅ ไม่มีสีฝังตรงๆ ที่เปลี่ยนตามธีมไม่ได้ (ตรวจ ${THEME_FILES.length} ไฟล์)`);
 })().catch(err => { console.error(err); process.exit(1); });

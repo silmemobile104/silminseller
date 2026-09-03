@@ -14,9 +14,9 @@
 
     // 3 โทนสถานะตาม DESIGN.md ข้อ 11.6
     const DB_IMPORTANCE = {
-        critical: { label: 'สำคัญสูงสุด', dot: 'bg-[#FE0000]', bg: 'bg-[#FE0000]/[0.12]', text: 'text-[#FF6B6B]' },
+        critical: { label: 'สำคัญสูงสุด', dot: 'bg-state-danger', bg: 'bg-state-danger/[0.12]', text: 'text-state-danger-soft' },
         high: { label: 'สำคัญมาก', dot: 'bg-orange-500', bg: 'bg-orange-500/[0.12]', text: 'text-orange-400' },
-        normal: { label: 'ทั่วไป', dot: 'bg-[#20D500]', bg: 'bg-[#42A231]/[0.12]', text: 'text-[#20D500]' }
+        normal: { label: 'ทั่วไป', dot: 'bg-state-ok', bg: 'bg-state-ok-tint/[0.12]', text: 'text-state-ok' }
     };
 
     let _dbCache = [];
@@ -59,14 +59,14 @@
         }, 300)); // ตรงกับ duration-300 ของ transition
     };
 
-    const dbStateRow = (msg, cls = 'text-white/50 italic') =>
+    const dbStateRow = (msg, cls = 'text-ink/50 italic') =>
         `<tr><td colspan="${DB_COLS}" class="px-6 py-8 text-center ${cls}">${dbEsc(msg)}</td></tr>`;
 
     // แถวโครงร่างระหว่างรอข้อมูล (ข้อ 11.7) — ต้องวาดก่อน await เสมอ
     const dbSkeleton = (rows = 6) => {
         const body = el('db-table-body');
         if (!body) return;
-        const bar = (w) => `<div class="h-3.5 ${w} rounded-full bg-[#5c5c5c] animate-pulse"></div>`;
+        const bar = (w) => `<div class="h-3.5 ${w} rounded-full bg-skeleton animate-pulse"></div>`;
         body.innerHTML = Array.from({ length: rows }).map(() =>
             `<tr>${Array.from({ length: DB_COLS }).map(() =>
                 `<td class="px-6 py-4">${bar('w-full')}</td>`).join('')}</tr>`).join('');
@@ -105,14 +105,14 @@
         }
 
         box.innerHTML = chips.map((c, i) =>
-            `<span class="filter-pill inline-flex items-center gap-2 px-3 py-1.5 rounded-[0.5rem] bg-[#4D4D4D]/60 border border-[#3F3F46] text-xs text-white">
+            `<span class="elev-chip filter-pill inline-flex items-center gap-2 px-3 py-1.5 rounded-[0.5rem] bg-chip/60 text-xs text-ink">
                 ${dbEsc(c.label)}
                 <button type="button" data-chip="${i}" aria-label="ลบตัวกรอง ${dbEsc(c.label)}"
-                    class="text-white/70 hover:text-white cursor-pointer transition-colors"><i class="fa-solid fa-xmark"></i></button>
+                    class="text-ink/70 hover:text-ink cursor-pointer transition-colors"><i class="fa-solid fa-xmark"></i></button>
             </span>`).join('')
             + (chips.length > 1
                 ? `<button type="button" id="db-clear-all-chips"
-                       class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[0.5rem] text-xs text-white/70 hover:text-white cursor-pointer transition-colors">
+                       class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[0.5rem] text-xs text-ink/70 hover:text-ink cursor-pointer transition-colors">
                        <i class="fa-solid fa-xmark"></i> ล้างทั้งหมด</button>`
                 : '');
 
@@ -150,26 +150,26 @@
         body.innerHTML = rows.map(c => {
             const tone = DB_IMPORTANCE[c.importance] || DB_IMPORTANCE.normal;
             const pages = (c.pages || []).slice(0, 3).map(p =>
-                `<span class="px-2 py-0.5 rounded-[0.375rem] bg-[#4D4D4D]/60 text-[11px] text-white font-mono">#${dbEsc(p)}</span>`).join(' ');
+                `<span class="px-2 py-0.5 rounded-[0.375rem] bg-chip/60 text-[11px] text-ink font-mono">#${dbEsc(p)}</span>`).join(' ');
             const more = (c.pages || []).length - 3;
             const count = c.countError
-                ? `<span class="text-[#FF6B6B]" title="${dbEsc(c.countError)}">-</span>`
-                : `<span class="font-mono text-white">${dbNum(c.count)}</span>`;
+                ? `<span class="text-state-danger-soft" title="${dbEsc(c.countError)}">-</span>`
+                : `<span class="font-mono text-ink">${dbNum(c.count)}</span>`;
 
             return `
-            <tr class="hover:bg-[#464646] transition-colors">
+            <tr class="hover:bg-divider transition-colors">
                 <td class="px-6 py-4">
-                    <span class="font-mono font-semibold text-[#FFE169]">${dbEsc(c.key)}</span>
-                    <p class="text-xs text-white/70 mt-0.5">${dbEsc(c.title)}</p>
+                    <span class="font-mono font-semibold text-accent-ink">${dbEsc(c.key)}</span>
+                    <p class="text-xs text-ink/70 mt-0.5">${dbEsc(c.title)}</p>
                 </td>
-                <td class="px-6 py-4 text-white">${dbEsc(c.group)}</td>
+                <td class="px-6 py-4 text-ink">${dbEsc(c.group)}</td>
                 <td class="px-6 py-4 text-right">${count}</td>
                 <td class="px-6 py-4 whitespace-normal min-w-[22rem]">
-                    <p class="text-white/80 text-xs leading-relaxed">${dbEsc(c.purpose)}</p>
+                    <p class="text-ink/80 text-xs leading-relaxed">${dbEsc(c.purpose)}</p>
                 </td>
                 <td class="px-6 py-4">
                     <div class="flex flex-wrap items-center gap-1">${pages}${more > 0
-                    ? `<span class="text-[11px] text-white/60">+${more}</span>` : ''}</div>
+                    ? `<span class="text-[11px] text-ink/60">+${more}</span>` : ''}</div>
                 </td>
                 <td class="px-6 py-4">
                     <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-[0.375rem] text-[11px] font-medium ${tone.bg} ${tone.text}">
@@ -178,11 +178,11 @@
                 </td>
                 <td class="px-6 py-4 text-right">
                     <div class="inline-flex items-center gap-2">
-                        <button type="button" class="btn-db-docs px-3 py-1.5 rounded-[0.375rem] bg-[#4D4D4D]/60 border border-[#3F3F46] text-white hover:border-[#FFE169] text-xs font-medium transition-colors inline-flex items-center gap-1.5 cursor-pointer"
+                        <button type="button" class="elev-chip btn-db-docs px-3 py-1.5 rounded-[0.375rem] bg-chip/60 text-ink hover:ring-1 hover:ring-accent-ink text-xs font-medium transition-colors inline-flex items-center gap-1.5 cursor-pointer"
                             data-key="${dbEsc(c.key)}" aria-label="ดูเอกสารใน ${dbEsc(c.key)}">
                             <i class="fa-solid fa-table-list"></i> ดูเอกสาร
                         </button>
-                        <button type="button" class="btn-db-detail px-3 py-1.5 rounded-[0.375rem] bg-[#4D4D4D]/60 border border-[#3F3F46] text-white hover:border-[#FFE169] text-xs font-medium transition-colors inline-flex items-center gap-1.5 cursor-pointer"
+                        <button type="button" class="elev-chip btn-db-detail px-3 py-1.5 rounded-[0.375rem] bg-chip/60 text-ink hover:ring-1 hover:ring-accent-ink text-xs font-medium transition-colors inline-flex items-center gap-1.5 cursor-pointer"
                             data-key="${dbEsc(c.key)}" aria-label="ดูรายละเอียด ${dbEsc(c.key)}">
                             <i class="fa-solid fa-eye"></i> รายละเอียด
                         </button>
@@ -209,51 +209,51 @@
         const tone = DB_IMPORTANCE[c.importance] || DB_IMPORTANCE.normal;
         const section = (icon, title, inner) => `
             <div>
-                <h4 class="text-sm font-semibold text-white flex items-center gap-2 mb-2">
-                    <i class="fa-solid ${icon} text-[#FFE169] text-xs"></i> ${dbEsc(title)}
+                <h4 class="text-sm font-semibold text-ink flex items-center gap-2 mb-2">
+                    <i class="fa-solid ${icon} text-accent-ink text-xs"></i> ${dbEsc(title)}
                 </h4>
                 ${inner}
             </div>`;
 
         const fields = (c.keyFields || []).length
             ? `<div class="space-y-2">${c.keyFields.map(k => `
-                <div class="px-4 py-3 rounded-xl bg-[#27272A] border border-[#3F3F46]">
-                    <p class="font-mono text-xs text-[#FFE169]">${dbEsc(k.name)}</p>
-                    <p class="text-xs text-white/80 mt-1 leading-relaxed">${dbEsc(k.note)}</p>
+                <div class="elev-field px-4 py-3 rounded-xl bg-field">
+                    <p class="font-mono text-xs text-accent-ink">${dbEsc(k.name)}</p>
+                    <p class="text-xs text-ink/80 mt-1 leading-relaxed">${dbEsc(k.note)}</p>
                 </div>`).join('')}</div>`
-            : '<p class="text-xs text-white/50 italic">ไม่มีฟิลด์ที่ต้องอธิบายเป็นพิเศษ</p>';
+            : '<p class="text-xs text-ink/50 italic">ไม่มีฟิลด์ที่ต้องอธิบายเป็นพิเศษ</p>';
 
         const pages = (c.pages || []).length
             ? `<div class="flex flex-wrap gap-2">${c.pages.map(p =>
-                `<span class="px-2.5 py-1 rounded-[0.375rem] bg-[#4D4D4D]/60 text-xs text-white font-mono">#${dbEsc(p)}</span>`).join('')}</div>`
-            : '<p class="text-xs text-white/50 italic">ไม่ได้ผูกกับหน้าใดโดยตรง</p>';
+                `<span class="px-2.5 py-1 rounded-[0.375rem] bg-chip/60 text-xs text-ink font-mono">#${dbEsc(p)}</span>`).join('')}</div>`
+            : '<p class="text-xs text-ink/50 italic">ไม่ได้ผูกกับหน้าใดโดยตรง</p>';
 
         const rel = (c.relations || []).length
             ? `<div class="flex flex-wrap gap-2">${c.relations.map(r =>
-                `<span class="px-2.5 py-1 rounded-[0.375rem] bg-[#27272A] border border-[#3F3F46] text-xs text-[#FFE169] font-mono">${dbEsc(r)}</span>`).join('')}</div>`
-            : '<p class="text-xs text-white/50 italic">ไม่อ้างถึง collection อื่น</p>';
+                `<span class="elev-field px-2.5 py-1 rounded-[0.375rem] bg-field text-xs text-accent-ink font-mono">${dbEsc(r)}</span>`).join('')}</div>`
+            : '<p class="text-xs text-ink/50 italic">ไม่อ้างถึง collection อื่น</p>';
 
         el('db-drawer-body').innerHTML = `
             <div class="flex flex-wrap items-center gap-2">
                 <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[0.375rem] text-xs font-medium ${tone.bg} ${tone.text}">
                     <span class="w-1.5 h-1.5 rounded-full ${tone.dot}"></span>${dbEsc(tone.label)}
                 </span>
-                <span class="px-2.5 py-1 rounded-[0.375rem] bg-[#4D4D4D]/60 text-xs text-white">${dbEsc(c.group)}</span>
-                <span class="px-2.5 py-1 rounded-[0.375rem] bg-[#4D4D4D]/60 text-xs text-white">
+                <span class="px-2.5 py-1 rounded-[0.375rem] bg-chip/60 text-xs text-ink">${dbEsc(c.group)}</span>
+                <span class="px-2.5 py-1 rounded-[0.375rem] bg-chip/60 text-xs text-ink">
                     ${c.countError ? 'นับไม่สำเร็จ' : `${dbNum(c.count)} เอกสาร`}
                 </span>
             </div>
-            <p class="text-sm text-white/80 leading-relaxed">${dbEsc(c.purpose)}</p>
+            <p class="text-sm text-ink/80 leading-relaxed">${dbEsc(c.purpose)}</p>
             ${section('fa-circle-info', 'ความหมายของระดับความสำคัญ',
-            `<p class="text-xs text-white/70 leading-relaxed">${dbEsc(_dbLegend[c.importance] || '')}</p>`)}
+            `<p class="text-xs text-ink/70 leading-relaxed">${dbEsc(_dbLegend[c.importance] || '')}</p>`)}
             ${section('fa-key', 'ฟิลด์สำคัญ', fields)}
             ${section('fa-file-lines', 'หน้าที่ใช้ข้อมูลนี้', pages)}
             ${section('fa-sitemap', 'เชื่อมกับ collection อื่น', rel)}
             ${c.notes ? section('fa-triangle-exclamation', 'ข้อควรระวัง',
-                `<p class="text-xs text-white/80 leading-relaxed px-4 py-3 rounded-xl bg-orange-500/[0.12] border border-orange-500/30">${dbEsc(c.notes)}</p>`) : ''}
+                `<p class="elev-chip text-xs text-ink/80 leading-relaxed px-4 py-3 rounded-xl bg-orange-500/[0.12] border-orange-500/30">${dbEsc(c.notes)}</p>`) : ''}
             <button type="button" id="btn-db-drawer-docs"
-                class="w-full px-4 py-3 rounded-xl bg-[#4D4D4D]/60 border border-[#3F3F46] text-white hover:border-[#FFE169] text-sm font-medium transition-colors inline-flex items-center justify-center gap-2 cursor-pointer">
-                <i class="fa-solid fa-table-list text-[#FFE169]"></i> เปิดดูเอกสารจริงใน ${dbEsc(c.key)}
+                class="elev-chip w-full px-4 py-3 rounded-xl bg-chip/60 text-ink hover:ring-1 hover:ring-accent-ink text-sm font-medium transition-colors inline-flex items-center justify-center gap-2 cursor-pointer">
+                <i class="fa-solid fa-table-list text-accent-ink"></i> เปิดดูเอกสารจริงใน ${dbEsc(c.key)}
             </button>`;
 
         const toDocsBtn = el('btn-db-drawer-docs');
@@ -275,47 +275,47 @@
     const dbIsOid = (s) => /^[0-9a-f]{24}$/i.test(s);
 
     const dbFmtCell = (v) => {
-        if (v === null || v === undefined || v === '') return '<span class="text-white/30">—</span>';
+        if (v === null || v === undefined || v === '') return '<span class="text-ink/30">—</span>';
         if (typeof v === 'boolean') {
-            return v ? '<span class="text-[#20D500]">ใช่</span>' : '<span class="text-white/60">ไม่</span>';
+            return v ? '<span class="text-state-ok">ใช่</span>' : '<span class="text-ink/60">ไม่</span>';
         }
-        if (typeof v === 'number') return `<span class="font-mono text-white">${dbNum(v)}</span>`;
+        if (typeof v === 'number') return `<span class="font-mono text-ink">${dbNum(v)}</span>`;
         if (Array.isArray(v)) {
             return v.length
-                ? `<span class="px-2 py-0.5 rounded-[0.375rem] bg-[#4D4D4D]/60 text-[11px] text-white">${v.length} รายการ</span>`
-                : '<span class="text-white/30">— ว่าง</span>';
+                ? `<span class="px-2 py-0.5 rounded-[0.375rem] bg-chip/60 text-[11px] text-ink">${v.length} รายการ</span>`
+                : '<span class="text-ink/30">— ว่าง</span>';
         }
         if (typeof v === 'object') {
-            return `<span class="px-2 py-0.5 rounded-[0.375rem] bg-[#4D4D4D]/60 text-[11px] text-white font-mono">{ ${Object.keys(v).length} ฟิลด์ }</span>`;
+            return `<span class="px-2 py-0.5 rounded-[0.375rem] bg-chip/60 text-[11px] text-ink font-mono">{ ${Object.keys(v).length} ฟิลด์ }</span>`;
         }
 
         const s = String(v);
         if (dbIsIso(s)) {
             const d = new Date(s);
             if (!isNaN(d)) {
-                return `<span class="text-white">${d.toLocaleString('th-TH', {
+                return `<span class="text-ink">${d.toLocaleString('th-TH', {
                     day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
                 })}</span>`;
             }
         }
         if (dbIsOid(s)) {
             // id เต็มดูได้ที่ JSON ดิบ ในตารางโชว์ท้าย 6 ตัวพอให้ไล่ตามได้
-            return `<span class="font-mono text-[11px] text-white/70" title="${dbEsc(s)}">…${dbEsc(s.slice(-6))}</span>`;
+            return `<span class="font-mono text-[11px] text-ink/70" title="${dbEsc(s)}">…${dbEsc(s.slice(-6))}</span>`;
         }
         const short = s.length > DOCS_CELL_MAX ? `${s.slice(0, DOCS_CELL_MAX)}…` : s;
-        return `<span class="text-white" title="${dbEsc(s)}">${dbEsc(short)}</span>`;
+        return `<span class="text-ink" title="${dbEsc(s)}">${dbEsc(short)}</span>`;
     };
 
     const dbDocsSkeleton = () => {
         const body = el('db-docs-body');
         if (!body) return;
         const cols = Math.max(4, (_docs.columns || []).length + 1);
-        const bar = `<div class="h-3.5 w-full rounded-full bg-[#5c5c5c] animate-pulse"></div>`;
+        const bar = `<div class="h-3.5 w-full rounded-full bg-skeleton animate-pulse"></div>`;
         body.innerHTML = Array.from({ length: 8 }).map(() =>
             `<tr>${Array.from({ length: cols }).map(() => `<td class="px-6 py-4">${bar}</td>`).join('')}</tr>`).join('');
     };
 
-    const dbDocsStateRow = (msg, cls = 'text-white/50 italic') => {
+    const dbDocsStateRow = (msg, cls = 'text-ink/50 italic') => {
         const cols = Math.max(4, (_docs.columns || []).length + 1);
         return `<tr><td colspan="${cols}" class="px-6 py-10 text-center ${cls}">${dbEsc(msg)}</td></tr>`;
     };
@@ -328,7 +328,7 @@
         head.innerHTML = _docs.columns.map(c =>
             `<th class="px-6 py-3 font-semibold text-[13px]">
                 <span class="font-mono">${dbEsc(c.name)}</span>
-                <span class="ml-1.5 text-[10px] font-normal text-white/50">${dbEsc(c.type || '')}</span>
+                <span class="ml-1.5 text-[10px] font-normal text-ink/50">${dbEsc(c.type || '')}</span>
             </th>`).join('')
             + '<th class="px-6 py-3 font-semibold text-[13px] text-right">ข้อมูลดิบ</th>';
 
@@ -344,10 +344,10 @@
             const cells = _docs.columns.map(c =>
                 `<td class="px-6 py-3 max-w-[22rem] truncate">${dbFmtCell(doc[c.name])}</td>`).join('');
             return `
-            <tr class="hover:bg-[#464646] transition-colors" data-row="${i}">
+            <tr class="hover:bg-divider transition-colors" data-row="${i}">
                 ${cells}
                 <td class="px-6 py-3 text-right">
-                    <button type="button" class="btn-db-json px-2.5 py-1 rounded-[0.375rem] bg-[#4D4D4D]/60 border border-[#3F3F46] text-white hover:border-[#FFE169] text-[11px] font-medium transition-colors inline-flex items-center gap-1.5 cursor-pointer"
+                    <button type="button" class="elev-chip btn-db-json px-2.5 py-1 rounded-[0.375rem] bg-chip/60 text-ink hover:ring-1 hover:ring-accent-ink text-[11px] font-medium transition-colors inline-flex items-center gap-1.5 cursor-pointer"
                         aria-expanded="false">
                         <i class="fa-solid fa-code"></i> JSON
                     </button>
@@ -371,7 +371,7 @@
         tr.insertAdjacentHTML('afterend', `
             <tr class="db-docs-json">
                 <td colspan="${_docs.columns.length + 1}" class="px-6 pb-4 pt-0">
-                    <pre tabindex="0" class="max-h-72 overflow-auto whitespace-pre rounded-xl bg-[#27272A] border border-[#3F3F46] p-4 text-xs text-white/85 font-mono leading-5">${dbEsc(JSON.stringify(doc, null, 2))}</pre>
+                    <pre tabindex="0" class="elev-field max-h-72 overflow-auto whitespace-pre rounded-xl bg-field p-4 text-xs text-ink/85 font-mono leading-5">${dbEsc(JSON.stringify(doc, null, 2))}</pre>
                 </td>
             </tr>`);
         btn.setAttribute('aria-expanded', 'true');
@@ -396,7 +396,7 @@
             if (seq !== _docsSeq) return; // มีคำค้นใหม่แซงไปแล้ว ทิ้งผลนี้
 
             if (!result.success) {
-                body.innerHTML = dbDocsStateRow(result.message || 'โหลดเอกสารไม่สำเร็จ', 'text-[#FF6B6B]');
+                body.innerHTML = dbDocsStateRow(result.message || 'โหลดเอกสารไม่สำเร็จ', 'text-state-danger-soft');
                 return;
             }
 
@@ -420,7 +420,7 @@
         } catch (err) {
             if (seq !== _docsSeq) return;
             console.error('[DATABASE] โหลดเอกสารไม่สำเร็จ:', err);
-            body.innerHTML = dbDocsStateRow('เชื่อมต่อเซิร์ฟเวอร์ไม่สำเร็จ', 'text-[#FF6B6B]');
+            body.innerHTML = dbDocsStateRow('เชื่อมต่อเซิร์ฟเวอร์ไม่สำเร็จ', 'text-state-danger-soft');
         }
     };
 
@@ -545,7 +545,7 @@
 
             if (!result.success) {
                 // 403 = ไม่มีสิทธิ์ จัดการต่อจาก message ที่เซิร์ฟเวอร์ส่งมา
-                body.innerHTML = dbStateRow(result.message || 'โหลดข้อมูลไม่สำเร็จ', 'text-[#FF6B6B]');
+                body.innerHTML = dbStateRow(result.message || 'โหลดข้อมูลไม่สำเร็จ', 'text-state-danger-soft');
                 return;
             }
 
@@ -573,7 +573,7 @@
             dbRender();
         } catch (err) {
             console.error('[DATABASE] โหลดข้อมูลไม่สำเร็จ:', err);
-            body.innerHTML = dbStateRow('เชื่อมต่อเซิร์ฟเวอร์ไม่สำเร็จ', 'text-[#FF6B6B]');
+            body.innerHTML = dbStateRow('เชื่อมต่อเซิร์ฟเวอร์ไม่สำเร็จ', 'text-state-danger-soft');
         }
     };
 

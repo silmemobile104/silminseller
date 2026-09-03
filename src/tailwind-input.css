@@ -1,7 +1,21 @@
 @import "tailwindcss";
 
+/* ============================================================================
+   ชั้นสี — โทเคนเดียวใช้ได้ทั้งสองธีม
+   ค่าที่ประกาศใน @theme คือ "โหมดมืด" ซึ่งเป็นค่าตั้งต้นของระบบ
+   โหมดสว่างทับค่าเดิมที่ท้ายไฟล์ ไม่ต้องแตะมาร์กอัปเลยสักจุด
+
+   ทำไมได้: Tailwind v4 คอมไพล์ utility ของโทเคนเป็น var()
+       .bg-canvas-elevated{background-color:var(--color-canvas-elevated)}
+   และแม้แต่แบบที่มี alpha ก็ยังเป็น var() ผ่าน color-mix
+       @supports (color:color-mix(in lab, red, red)){
+         .border-hairline\/50{border-color:color-mix(in oklab, var(--color-hairline) 50%, transparent)}}
+   ตรงข้ามกับค่าเฉพาะกิจ bg-[#18181B] ที่คอมไพล์เป็น #18181b ตายตัว เปลี่ยนธีมไม่ได้
+   ============================================================================ */
+
 @theme {
-  /* Accent — Signal Yellow, the only interactive color in the system */
+  /* ---------- Accent — เหลือง Signal สีโต้ตอบเดียวของระบบ ---------- */
+  /* พื้นเหลืองคงเป็นเหลืองทั้งสองโหมด (ตัวอักษรเข้มบนเหลือง = 12.8:1 ผ่าน AAA อยู่แล้ว) */
   --color-primary: #FFE169;
   --color-primary-pressed: #F5D24E;
   --color-primary-focus: #FFD43B;
@@ -9,7 +23,11 @@
   --color-primary-on-light: #8A6D00;
   --color-on-primary: #1d1d1f;
 
-  /* Surface */
+  /* accent ที่ใช้เป็น "หมึก/เส้น" (ตัวอักษร ขอบ focus ring) ต้องแยกจากพื้น
+     เพราะ #FFE169 บนพื้นขาวได้ 1.4:1 — DESIGN.md ข้อ 9 ระบุว่าห้ามใช้เด็ดขาด */
+  --color-accent-ink: #FFE169;
+
+  /* ---------- Surface ---------- */
   --color-canvas: #000000;
   --color-canvas-elevated: #1d1d1f;
   --color-surface-tile-2: #232325;
@@ -17,16 +35,36 @@
   --color-surface-chip: #2a2a2c;
   --color-surface-chip-translucent: rgba(60, 60, 64, 0.72);
 
-  /* Text */
+  /* พื้นผิวของหน้าในระบบ (ข้อ 11) ที่เดิมเขียน hex ตรง ๆ */
+  --color-panel: #4D4D4D;         /* การ์ดพาเนล ใช้คู่กับ /40 */
+  --color-chip: #4D4D4D;          /* ชิป/พิล ใช้คู่กับ /60 */
+  --color-field: #27272A;         /* ช่องกรอก ไทล์ในฟอร์ม */
+  --color-elevated: #18181B;      /* โมดัล ลิ้นชัก */
+  --color-line: #3F3F46;          /* เส้นขอบมาตรฐานของหน้าในระบบ (ข้อ 11) */
+  --color-skeleton: #5C5C5C;      /* แถบโครงร่างระหว่างโหลด */
+
+  /* ---------- Text ---------- */
   --color-ink: #f5f5f7;
   --color-body-muted: #a1a1a6;
   --color-ink-muted-48: #6e6e73;
 
-  /* Hairlines */
+  /* ---------- Hairlines ---------- */
   --color-hairline: #38383a;
+  --color-line-strong: #4D4D4D;   /* ขอบลิ้นชัก/โมดัล สว่างกว่า line */
+  --color-divider: #464646;       /* เส้นคั่นแถวตาราง + สีแถวตอนชี้ */
   --color-divider-soft: rgba(255, 255, 255, 0.08);
 
-  /* Shape scale */
+  /* ---------- สีบอกสถานะ ----------
+     ได้เป็นโทเคนตามข้อเสนอ DESIGN.md ข้อ 12.1 — ใช้ได้เฉพาะป้ายสถานะที่กดไม่ได้
+     ห้ามใช้สื่อความว่ากดได้ เพราะสิ่งที่กดได้ถูกจองไว้ให้เหลือง accent เท่านั้น */
+  --color-state-ok: #20D500;
+  --color-on-state-ok: #1d1d1f;  /* ตัวอักษรบนปุ่มเขียว — กลับด้านตามธีมเหมือน on-primary */
+  --color-state-ok-tint: #42A231;   /* ฐานของพื้นจาง bg-state-ok-tint/[0.12] */
+  --color-state-danger: #FE0000;
+  --color-state-danger-soft: #FF6B6B;
+  --color-state-pending: #FF9F0A;
+
+  /* ---------- Shape scale ---------- */
   --radius-xs: 5px;
   --radius-sm: 8px;
   --radius-md: 11px;
@@ -34,8 +72,298 @@
   --radius-pill: 9999px;
 }
 
+/* ============================================================================
+   โหมดสว่าง
+   :root[data-theme] มี specificity สูงกว่า :root,:host ที่ @theme สร้าง จึงทับได้แน่นอน
+   ============================================================================ */
+
+/* ประกาศชุดค่าไว้ที่เดียว แล้วเรียกใช้ทั้งจาก [data-theme="light"] และจากค่าของเครื่อง */
 @layer base {
+  :root {
+    color-scheme: dark;
+  }
+
+  :root[data-theme="light"] {
+    color-scheme: light;
+
+    /* accent: พื้นคงเหลือง แต่หมึก/เส้นต้องเข้มลง ไม่งั้นอ่านไม่ออกบนพื้นขาว */
+    --color-accent-ink: #806400;
+    --color-primary-pressed: #E2B93C;
+    --color-primary-focus: #806400;
+    --color-primary-muted: rgba(138, 109, 0, 0.32);
+
+    /* Surface — พื้นหลังเทาอ่อน การ์ดขาว (ยิ่งลอยยิ่งขาว ตรงข้ามกับโหมดมืด) */
+    --color-canvas: #F2F2F7;
+    --color-canvas-elevated: #FFFFFF;
+    --color-surface-tile-2: #FFFFFF;
+    --color-surface-tile-3: #F2F2F7;
+    --color-surface-chip: #E8E8ED;
+    --color-surface-chip-translucent: rgba(255, 255, 255, 0.72);
+
+    --color-panel: #FFFFFF;
+    --color-chip: #E8E8ED;
+    --color-field: #F2F2F7;
+    --color-line: #D1D1D6;
+    --color-elevated: #FFFFFF;
+    --color-skeleton: #D6D6DB;
+
+    /* Text */
+    --color-ink: #1D1D1F;
+    --color-body-muted: #67676C;
+    --color-ink-muted-48: #727277;
+
+    /* Hairlines */
+    --color-hairline: #D1D1D6;
+    --color-line-strong: #C7C7CC;
+    --color-divider: #E5E5EA;
+    --color-divider-soft: rgba(0, 0, 0, 0.08);
+
+    /* สถานะ — ชุดของโหมดมืดสว่างเกินไปบนพื้นขาว ต้องเข้มลงให้ผ่าน 4.5:1 */
+    --color-state-ok: #146E00;
+    --color-on-state-ok: #FFFFFF;
+    --color-state-ok-tint: #146E00;
+    --color-state-danger: #C00013;
+    --color-state-danger-soft: #C00013;
+    --color-state-pending: #9C4600;
+  }
+
+  /* ยังไม่เคยเลือกเอง = ตามการตั้งค่าของเครื่อง
+     กันชนด้วย :not([data-theme="dark"]) เพื่อให้คนที่เลือก "มืด" ไว้ ไม่โดนเครื่องแย่งสั่ง */
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]) {
+      color-scheme: light;
+
+      --color-accent-ink: #806400;
+      --color-primary-pressed: #E2B93C;
+      --color-primary-focus: #806400;
+      --color-primary-muted: rgba(138, 109, 0, 0.32);
+
+      --color-canvas: #F2F2F7;
+      --color-canvas-elevated: #FFFFFF;
+      --color-surface-tile-2: #FFFFFF;
+      --color-surface-tile-3: #F2F2F7;
+      --color-surface-chip: #E8E8ED;
+      --color-surface-chip-translucent: rgba(255, 255, 255, 0.72);
+
+      --color-panel: #FFFFFF;
+      --color-chip: #E8E8ED;
+      --color-field: #F2F2F7;
+      --color-line: #D1D1D6;
+      --color-elevated: #FFFFFF;
+      --color-skeleton: #D6D6DB;
+
+      --color-ink: #1D1D1F;
+      --color-body-muted: #67676C;
+      --color-ink-muted-48: #727277;
+
+      --color-hairline: #D1D1D6;
+      --color-line-strong: #C7C7CC;
+      --color-divider: #E5E5EA;
+      --color-divider-soft: rgba(0, 0, 0, 0.08);
+
+      --color-state-ok: #146E00;
+      --color-on-state-ok: #FFFFFF;
+      --color-state-ok-tint: #146E00;
+      --color-state-danger: #C00013;
+      --color-state-danger-soft: #C00013;
+      --color-state-pending: #9C4600;
+    }
+  }
+
   html {
     -webkit-font-smoothing: antialiased;
+  }
+
+  /* โหมดสว่างพื้นเป็นสีอ่อน ตัวอักษรเข้ม — antialiased จะทำให้ตัวอักษรดูบางเกินไป
+     (เหตุผลกลับด้านกับที่ DESIGN.md ข้อ 3 อธิบายไว้สำหรับพื้นมืด) */
+  :root[data-theme="light"] html,
+  :root[data-theme="light"] body {
+    -webkit-font-smoothing: auto;
+  }
+}
+
+/* ----------------------------------------------------------------------------
+   ความโปร่งของการ์ดมีไว้ให้ frost บนพื้นดำ พอมาเป็นพื้นสว่างมันกลายเป็นการ์ดจาง
+   จนแทบแยกไม่ออกจากพื้น (ขาว 40% บนเทาอ่อน ต่างกันไม่ถึง 3%)
+   โหมดสว่างจึงคืนความทึบให้สองคลาสนี้ — โหมดมืดไม่ถูกแตะ
+   -------------------------------------------------------------------------- */
+:root[data-theme="light"] .bg-panel\/40 {
+  background-color: var(--color-panel);
+}
+
+:root[data-theme="light"] .bg-chip\/60 {
+  background-color: var(--color-chip);
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) .bg-panel\/40 {
+    background-color: var(--color-panel);
+  }
+
+  :root:not([data-theme="dark"]) .bg-chip\/60 {
+    background-color: var(--color-chip);
+  }
+}
+
+/* ----------------------------------------------------------------------------
+   ตัวกรองในแถบหัวหน้าของทุกหน้า (select/date ที่ไม่ได้อยู่ในโมดัลหรือป็อปอัป)
+   โหมดสว่างให้พื้นขาวชัดเจน + เงาทิ้งตัว แยกออกจากพื้นเทาอ่อนของหน้า
+   (ตัวกรองแบบเดียวกันที่อยู่ในโมดัล/ลิ้นชักใช้แค่ elev-card/elev-chip เฉยๆ พออยู่แล้ว
+   เพราะพื้นโมดัลเป็นสีขาวเดียวกันอยู่แล้ว ไม่ต้องแยกพื้น)
+
+   :not(:focus) กันไม่ให้ไปทับ box-shadow ของ focus:ring — ต้องเห็นวงแหวนโฟกัสชัดเสมอ (WCAG 2.4.7)
+   ใส่ background-color แยกไว้นอก :not(:focus) เพราะ focus:ring ไม่แตะ background จึงไม่ชนกัน
+
+   โหมดมืดไม่แตะเลย ยังใช้เงา/วงแหวนจาก elev-card, elev-chip ตามปกติ
+   -------------------------------------------------------------------------- */
+:root[data-theme="light"] .page-filter-control {
+  background-color: var(--color-panel);
+}
+
+:root[data-theme="light"] .page-filter-control:not(:focus) {
+  box-shadow: 0 1px 2px rgb(16 24 40 / 0.08), 0 2px 8px rgb(16 24 40 / 0.10);
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) .page-filter-control {
+    background-color: var(--color-panel);
+  }
+
+  :root:not([data-theme="dark"]) .page-filter-control:not(:focus) {
+    box-shadow: 0 1px 2px rgb(16 24 40 / 0.08), 0 2px 8px rgb(16 24 40 / 0.10);
+  }
+}
+
+/* ----------------------------------------------------------------------------
+   ตัวอักษรที่จางด้วย alpha — ใช้ได้เฉพาะบนพื้นมืด
+   text-ink/50 บนพื้นดำคือขาว 50% (อ่านออกสบาย) แต่บนพื้นขาวคือเทาอ่อน 3.2:1 (อ่านไม่ออก)
+   โหมดสว่างจึงส่งไปใช้โทเคนตัวอักษรรองแทน — โหมดมืดไม่ถูกแตะ
+   (/70 ขึ้นไปไม่ต้องแก้ ยังได้ 6:1 บนพื้นขาว)
+   -------------------------------------------------------------------------- */
+:root[data-theme="light"] .text-ink\/60,
+:root[data-theme="light"] .text-ink\/50 {
+  color: var(--color-body-muted);
+}
+
+:root[data-theme="light"] .text-ink\/40,
+:root[data-theme="light"] .text-ink\/30 {
+  color: var(--color-ink-muted-48);
+}
+
+/* line เป็นสีของ "เส้น" พอเอามาใช้เป็นพื้นชิปในโหมดสว่างมันเข้มไปจนตัวอักษรรองจม
+   ให้ใช้สีชิปแทน (โหมดมืดยังเป็น #3F3F46 เหมือนเดิม) */
+:root[data-theme="light"] .bg-line {
+  background-color: var(--color-chip);
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) .text-ink\/60,
+  :root:not([data-theme="dark"]) .text-ink\/50 {
+    color: var(--color-body-muted);
+  }
+
+  :root:not([data-theme="dark"]) .text-ink\/40,
+  :root:not([data-theme="dark"]) .text-ink\/30 {
+    color: var(--color-ink-muted-48);
+  }
+
+  :root:not([data-theme="dark"]) .bg-line {
+    background-color: var(--color-chip);
+  }
+}
+
+/* พื้นจางของป้ายสถานะที่เข้มกว่ามาตรฐาน (/20 และ /30 แทน /[0.12])
+   บนพื้นมืดยังอ่านออก แต่บนพื้นสว่างมันกินคอนทราสต์ของตัวอักษรจนเหลือ 3.3-4.3:1
+   โหมดสว่างจึงลดความเข้มของพื้นลงให้เท่าป้ายอื่น */
+:root[data-theme="light"] .bg-state-danger\/30,
+:root[data-theme="light"] .bg-state-danger\/20,
+:root[data-theme="light"] .bg-state-pending\/20,
+:root[data-theme="light"] .bg-primary\/30,
+:root[data-theme="light"] .bg-primary\/20 {
+  background-color: color-mix(in oklab, currentColor 12%, var(--color-panel));
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) .bg-state-danger\/30,
+  :root:not([data-theme="dark"]) .bg-state-danger\/20,
+  :root:not([data-theme="dark"]) .bg-state-pending\/20,
+  :root:not([data-theme="dark"]) .bg-primary\/30,
+  :root:not([data-theme="dark"]) .bg-primary\/20 {
+    background-color: color-mix(in oklab, currentColor 12%, var(--color-panel));
+  }
+}
+
+/* ============================================================================
+   ระดับความลอย (elevation) — ใช้แทน border ของกล่อง
+   เดิมกล่องทุกใบถูกนิยามด้วยเส้นขอบ 1px ซึ่งบนพื้นสว่างให้ความรู้สึกเป็นตาราง
+   ไม่ใช่ของที่ลอยอยู่ ตอนนี้เปลี่ยนมานิยามด้วยเงาแทน
+
+   ข้อจำกัดที่ต้องแก้: เงาทิ้งตัวมองไม่เห็นบนพื้นดำ โหมดมืดจึงใช้ "วงแหวนสว่าง 1px"
+   ซึ่งก็เป็น box-shadow เหมือนกัน ไม่ใช่ border — ได้ความชัดของขอบกลับมาโดยไม่ต้องมีเส้น
+   (แทนที่กฎเดิมใน DESIGN.md ข้อ 4 ที่ห้ามใส่เงาให้การ์ด — ดูข้อ 13)
+   ============================================================================ */
+@layer components {
+  /* คืนพื้นที่ 1px ที่เส้นขอบเดิมเคยกิน — box-sizing: border-box คุมเฉพาะกล่องที่กำหนดขนาดตายตัว
+     กล่องที่สูงตามเนื้อหา (px-4 py-2.5) เคยได้ความสูงจากเส้นขอบบน+ล่างจริง ๆ 2px
+     ใส่ขอบโปร่งใสไว้แทน เรขาคณิตจึงเท่าเดิมเป๊ะ แต่เส้นที่มองเห็นมาจากเงาอย่างเดียว */
+  .elev-card, .elev-modal, .elev-field, .elev-chip {
+    border: 1px solid transparent;
+  }
+
+  .elev-card {
+    box-shadow: inset 0 0 0 1px var(--color-divider-soft),
+                0 1px 2px rgb(0 0 0 / 0.28),
+                0 4px 12px rgb(0 0 0 / 0.22);
+  }
+
+  .elev-modal {
+    box-shadow: inset 0 0 0 1px var(--color-divider-soft),
+                0 8px 24px rgb(0 0 0 / 0.38),
+                0 24px 64px rgb(0 0 0 / 0.30);
+  }
+
+  .elev-field {
+    box-shadow: inset 0 0 0 1px var(--color-divider-soft);
+  }
+
+  .elev-chip {
+    box-shadow: inset 0 0 0 1px var(--color-divider-soft);
+  }
+
+  /* โหมดสว่าง: เงาทิ้งตัวจริง ๆ ทำงานได้ดี ลดวงแหวนลงเหลือบางมากพอกันขอบจมพื้น */
+  :root[data-theme="light"] .elev-card {
+    box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.04),
+                0 1px 2px rgb(16 24 40 / 0.06),
+                0 4px 12px rgb(16 24 40 / 0.08);
+  }
+
+  :root[data-theme="light"] .elev-modal {
+    box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.05),
+                0 8px 24px rgb(16 24 40 / 0.12),
+                0 24px 64px rgb(16 24 40 / 0.14);
+  }
+
+  :root[data-theme="light"] .elev-field,
+  :root[data-theme="light"] .elev-chip {
+    box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.10);
+  }
+
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]) .elev-card {
+      box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.04),
+                  0 1px 2px rgb(16 24 40 / 0.06),
+                  0 4px 12px rgb(16 24 40 / 0.08);
+    }
+
+    :root:not([data-theme="dark"]) .elev-modal {
+      box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.05),
+                  0 8px 24px rgb(16 24 40 / 0.12),
+                  0 24px 64px rgb(16 24 40 / 0.14);
+    }
+
+    :root:not([data-theme="dark"]) .elev-field,
+    :root:not([data-theme="dark"]) .elev-chip {
+      box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.10);
+    }
   }
 }

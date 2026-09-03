@@ -175,13 +175,13 @@
             wrapper.dataset.value = item.name;
 
             const swatch = document.createElement('div');
-            swatch.className = 'w-7 h-7 rounded-full border-2 border-transparent transition-all custom-swatch';
+            swatch.className = 'elev-chip w-7 h-7 rounded-full transition-all custom-swatch';
             swatch.style.backgroundColor = window.resolveProductColorHex
                 ? window.resolveProductColorHex(item.name, item)
                 : '#8E8E93';
 
             const label = document.createElement('span');
-            label.className = 'text-[10px] text-slate-400 whitespace-nowrap custom-swatch-label transition-colors';
+            label.className = 'text-[10px] text-body-muted whitespace-nowrap custom-swatch-label transition-colors';
             label.textContent = item.name;
 
             wrapper.appendChild(swatch);
@@ -191,13 +191,13 @@
                 Array.from(container.children).forEach(child => {
                     const sw = child.querySelector('.custom-swatch');
                     const lb = child.querySelector('.custom-swatch-label');
-                    if (sw) { sw.classList.remove('border-[#FFE169]', 'scale-110'); sw.classList.add('border-transparent'); }
-                    if (lb) { lb.classList.remove('text-[#FFE169]', 'text-[13px]'); lb.classList.add('text-slate-400', 'text-[10px]'); }
+                    if (sw) { sw.classList.remove('ring-2', 'ring-accent-ink', 'scale-110'); sw.classList.add('border-transparent'); }
+                    if (lb) { lb.classList.remove('text-accent-ink', 'text-[13px]'); lb.classList.add('text-body-muted', 'text-[10px]'); }
                 });
                 swatch.classList.remove('border-transparent');
-                swatch.classList.add('border-[#FFE169]', 'scale-110');
-                label.classList.remove('text-slate-400', 'text-[10px]');
-                label.classList.add('text-[#FFE169]', 'text-[13px]');
+                swatch.classList.add('ring-2', 'ring-accent-ink', 'scale-110');
+                label.classList.remove('text-body-muted', 'text-[10px]');
+                label.classList.add('text-accent-ink', 'text-[13px]');
                 setDepositPickerValue(hiddenInput, item.name);
             });
 
@@ -218,17 +218,17 @@
         caps.forEach(item => {
             const btn = document.createElement('button');
             btn.type = 'button';
-            btn.className = 'custom-pill flex-shrink-0 px-4 py-2.5 bg-[#27272A] border border-[#3F3F46] rounded-xl text-slate-300 text-sm hover:border-[#FFE169] hover:text-white transition-colors';
+            btn.className = 'elev-field custom-pill flex-shrink-0 px-4 py-2.5 bg-field rounded-xl text-body-muted text-sm hover:ring-1 hover:ring-accent-ink hover:text-ink transition-colors';
             btn.dataset.value = item.name;
             btn.textContent = item.name;
 
             btn.addEventListener('click', () => {
                 Array.from(container.children).forEach(child => {
-                    child.classList.remove('border-[#FFE169]', 'text-[#FFE169]');
-                    child.classList.add('border-[#3F3F46]', 'text-slate-300');
+                    child.classList.remove('ring-2', 'ring-accent-ink', 'text-accent-ink');
+                    child.classList.add('border-line', 'text-body-muted');
                 });
-                btn.classList.remove('border-[#3F3F46]', 'text-slate-300');
-                btn.classList.add('border-[#FFE169]', 'text-[#FFE169]');
+                btn.classList.remove('border-line', 'text-body-muted');
+                btn.classList.add('ring-2', 'ring-accent-ink', 'text-accent-ink');
                 setDepositPickerValue(hiddenInput, item.name);
             });
 
@@ -298,7 +298,7 @@
 
     // แถวโครงร่างระหว่างรอข้อมูล — ต้องเรียกก่อน await เสมอ ไม่ปล่อยตารางว่าง (ข้อ 11.7)
     const renderDepositSkeleton = (rowCount = 6) => {
-        const bar = (widthClass) => `<div class="h-3.5 ${widthClass} rounded-full bg-[#5c5c5c] animate-pulse"></div>`;
+        const bar = (widthClass) => `<div class="h-3.5 ${widthClass} rounded-full bg-skeleton animate-pulse"></div>`;
         const twoLine = (w1, w2) => `<div class="space-y-2">${bar(w1)}${bar(w2)}</div>`;
         let html = '';
         for (let i = 0; i < rowCount; i++) {
@@ -315,8 +315,8 @@
                     <td class="px-6 py-4">${twoLine('w-24', 'w-20')}</td>
                     <td class="px-6 py-4">
                         <div class="flex items-center justify-end gap-2">
-                            <div class="w-8 h-8 rounded-[0.375rem] bg-[#5c5c5c] animate-pulse"></div>
-                            <div class="w-8 h-8 rounded-[0.375rem] bg-[#5c5c5c] animate-pulse"></div>
+                            <div class="w-8 h-8 rounded-[0.375rem] bg-skeleton animate-pulse"></div>
+                            <div class="w-8 h-8 rounded-[0.375rem] bg-skeleton animate-pulse"></div>
                         </div>
                     </td>
                 </tr>
@@ -325,16 +325,16 @@
         depositTableBody.innerHTML = html;
     };
 
-    const depositStateRow = (message, extraClass = 'text-white/50 italic') =>
+    const depositStateRow = (message, extraClass = 'text-ink/50 italic') =>
         `<tr><td colspan="${DEPOSIT_TABLE_COLS}" class="px-6 py-8 text-center ${extraClass}">${message}</td></tr>`;
 
     // ป้ายสถานะ: จุดสี + พื้น tint 12% ตามตารางสถานะใน DESIGN.md ข้อ 11.6
     const depositStatusBadge = (status) => {
         let dot = 'bg-orange-500', bg = 'bg-orange-500/[0.12]', text = 'text-orange-400';
         if (status === 'สำเร็จ') {
-            dot = 'bg-[#20D500]'; bg = 'bg-[#42A231]/[0.12]'; text = 'text-[#20D500]';
+            dot = 'bg-state-ok'; bg = 'bg-state-ok-tint/[0.12]'; text = 'text-state-ok';
         } else if (status === 'ยกเลิก') {
-            dot = 'bg-[#FE0000]'; bg = 'bg-[#FE0000]/[0.12]'; text = 'text-[#FE0000]';
+            dot = 'bg-state-danger'; bg = 'bg-state-danger/[0.12]'; text = 'text-state-danger';
         }
         return `
             <div class="inline-flex items-center gap-2 px-2.5 py-1 rounded-[0.375rem] ${bg}">
@@ -374,8 +374,8 @@
     // ใช้ยุบคอลัมน์ที่เคยแยกกัน (ลูกค้า+เบอร์โทร, สินค้า+IMEI, ผู้ทำรายการ+สาขา) โดยไม่ทำข้อมูลหาย
     const twoLineCell = (main, sub) => `
         <div>
-            <p class="font-medium text-white">${main}</p>
-            <p class="text-xs text-white/70 mt-0.5">${sub}</p>
+            <p class="font-medium text-ink">${main}</p>
+            <p class="text-xs text-ink/70 mt-0.5">${sub}</p>
         </div>
     `;
 
@@ -407,7 +407,7 @@
         const addChip = (label, onRemove) => {
             const chip = document.createElement('button');
             chip.type = 'button';
-            chip.className = 'px-4 py-2.5 rounded-xl bg-[#4D4D4D]/40 border border-[#3F3F46] text-white text-sm font-medium transition-colors flex items-center gap-2';
+            chip.className = 'elev-card px-4 py-2.5 rounded-xl bg-panel/40 text-ink text-sm font-medium transition-colors flex items-center gap-2';
             chip.innerHTML = `<span>${label}</span><i class="fa-solid fa-xmark text-[10px] opacity-80"></i>`;
             chip.addEventListener('click', (e) => {
                 // ลบได้เฉพาะตอนคลิกที่กากบาท ตัวชิปเองไม่ตอบสนอง (ข้อ 11.5)
@@ -464,7 +464,7 @@
         if (activeCount > 1) {
             const clearBtn = document.createElement('button');
             clearBtn.type = 'button';
-            clearBtn.className = 'px-2.5 py-1 bg-red-500/10 hover:bg-red-500/15 text-red-300 rounded-full text-xs font-medium border border-red-500/30 transition-colors';
+            clearBtn.className = 'px-2.5 py-1 bg-red-500/10 hover:bg-red-500/15 text-red-300 rounded-full text-xs font-medium ring-1 ring-red-500/30 transition-colors';
             clearBtn.textContent = 'ล้างทั้งหมด';
             clearBtn.addEventListener('click', resetAllDepositFilters);
             depositActiveFilters.appendChild(clearBtn);
@@ -554,7 +554,7 @@
             if (result.success && result.data && result.data.length > 0) {
                 result.data.forEach(item => {
                     const row = document.createElement('tr');
-                    row.className = 'hover:bg-[#464646] transition-colors cursor-pointer';
+                    row.className = 'hover:bg-divider transition-colors cursor-pointer';
 
                     const dateStr = new Date(item.createdAt).toLocaleDateString('th-TH', { hour: '2-digit', minute: '2-digit' }) + ' น.';
                     const apptStr = item.appointment_date ? new Date(item.appointment_date).toLocaleDateString('th-TH') : 'ไม่ระบุ';
@@ -568,25 +568,25 @@
                     row.innerHTML = `
                         <td class="px-6 py-4">
                             <div>
-                                <p class="font-mono font-semibold text-[#FFE169]">${item.deposit_number || '-'}</p>
-                                <p class="text-xs text-white/70 mt-0.5">${dateStr}</p>
+                                <p class="font-mono font-semibold text-accent-ink">${item.deposit_number || '-'}</p>
+                                <p class="text-xs text-ink/70 mt-0.5">${dateStr}</p>
                             </div>
                         </td>
                         <td class="px-6 py-4">
                             ${twoLineCell(item.customer_name, `<span class="font-mono">${item.customer_phone}</span>`)}
                         </td>
                         <td class="px-6 py-4">
-                            <p class="font-medium text-white flex items-center gap-2">${depositProductIcon(item)}<span>${item.product_name}</span></p>
-                            <p class="text-xs text-white/70 pl-6 mt-0.5">${imeiStr}</p>
+                            <p class="font-medium text-ink flex items-center gap-2">${depositProductIcon(item)}<span>${item.product_name}</span></p>
+                            <p class="text-xs text-ink/70 pl-6 mt-0.5">${imeiStr}</p>
                         </td>
-                        <td class="px-6 py-4 text-right text-white font-mono">฿${item.product_price.toLocaleString()}</td>
-                        <td class="px-6 py-4 text-right text-white font-mono">฿${item.deposit_amount.toLocaleString()}</td>
-                        <td class="px-6 py-4 text-right font-mono ${remaining > 0 ? 'text-[#FE0000]' : 'text-white'}">฿${remaining.toLocaleString()}</td>
-                        <td class="px-6 py-4 text-white text-sm">${apptStr}</td>
+                        <td class="px-6 py-4 text-right text-ink font-mono">฿${item.product_price.toLocaleString()}</td>
+                        <td class="px-6 py-4 text-right text-ink font-mono">฿${item.deposit_amount.toLocaleString()}</td>
+                        <td class="px-6 py-4 text-right font-mono ${remaining > 0 ? 'text-state-danger' : 'text-ink'}">฿${remaining.toLocaleString()}</td>
+                        <td class="px-6 py-4 text-ink text-sm">${apptStr}</td>
                         <td class="px-6 py-4">
                             <div>
                                 ${depositStatusBadge(item.status)}
-                                <p class="text-xs text-white/70 mt-1">${stageStr}</p>
+                                <p class="text-xs text-ink/70 mt-1">${stageStr}</p>
                             </div>
                         </td>
                         <td class="px-6 py-4">
@@ -594,10 +594,10 @@
                         </td>
                         <td class="px-6 py-4 text-right">
                             <div class="flex items-center justify-end gap-1">
-                                <button type="button" class="btn-view-deposit text-white hover:text-indigo-400 transition-colors p-2" title="ดูรายละเอียด">
+                                <button type="button" class="btn-view-deposit text-ink hover:text-indigo-400 transition-colors p-2" title="ดูรายละเอียด">
                                     <i class="fa-solid fa-eye"></i>
                                 </button>
-                                <button type="button" class="btn-print-deposit text-white hover:text-amber-400 transition-colors p-2" data-id="${item._id}" title="พิมพ์ใบมัดจำ">
+                                <button type="button" class="btn-print-deposit text-ink hover:text-amber-400 transition-colors p-2" data-id="${item._id}" title="พิมพ์ใบมัดจำ">
                                     <i class="fa-solid fa-print"></i>
                                 </button>
                             </div>
@@ -682,7 +682,7 @@
 
         const createdDate = new Date(deposit.createdAt).toLocaleDateString('th-TH', { hour: '2-digit', minute: '2-digit' }) + ' น.';
         const apptDate = deposit.appointment_date ? new Date(deposit.appointment_date).toLocaleDateString('th-TH') : 'ไม่ระบุ';
-        detailDepositDates.innerHTML = `วันที่ทำจอง: <span class="text-white font-medium">${createdDate}</span><br/>นัดรับเครื่อง: <span class="text-white font-medium">${apptDate}</span>`;
+        detailDepositDates.innerHTML = `วันที่ทำจอง: <span class="text-ink font-medium">${createdDate}</span><br/>นัดรับเครื่อง: <span class="text-ink font-medium">${apptDate}</span>`;
 
         detailDepositSender.textContent = `${deposit.created_by?.name || '-'} / สาขา: ${deposit.branch_id?.name || '-'}`;
 

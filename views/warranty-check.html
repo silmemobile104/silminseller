@@ -1,37 +1,37 @@
 <div id="view-warranty-check">
     <!-- [1] หัวหน้า — DESIGN.md ข้อ 11.2 (หน้านี้ไม่มีปุ่มการกระทำหลัก เป็นหน้าค้นหาอย่างเดียว) -->
     <div class="flex items-center gap-4">
-        <i class="bi bi-shield-check text-white w-5 text-2xl text-center"></i>
-        <h3 class="text-2xl text-white">เช็คประกันสินค้า</h3>
+        <i class="bi bi-shield-check text-ink w-5 text-2xl text-center"></i>
+        <h3 class="text-2xl text-ink">เช็คประกันสินค้า</h3>
     </div>
 
     <!-- [2] การ์ดพาเนล — แถบค้นหา + ชิปตัวกรอง + ตาราง อยู่ในใบเดียว (ข้อ 11.1) -->
-    <div class="bg-[#4D4D4D]/40 rounded-2xl shadow-lg overflow-hidden backdrop-blur-sm">
+    <div class="bg-panel/40 rounded-2xl shadow-lg overflow-hidden backdrop-blur-sm">
         <!-- 2a แถบควบคุม (ข้อ 11.4) -->
         <div class="p-6 pb-0 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-            <h3 class="text-lg text-white flex items-center gap-2">
-                <i class="fa-solid fa-shield-halved text-[#FFE169]"></i> ค้นหาข้อมูลการรับประกัน
+            <h3 class="text-lg text-ink flex items-center gap-2">
+                <i class="fa-solid fa-shield-halved text-accent-ink"></i> ค้นหาข้อมูลการรับประกัน
             </h3>
             <form id="warranty-search-form"
                 class="flex flex-wrap items-center gap-2.5 relative w-full lg:w-auto">
                 <div class="relative group w-full sm:w-72 rounded-[0.5rem] overflow-hidden">
                     <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                         <i
-                            class="fa-solid fa-search text-white group-focus-within:text-[#FFE169] transition-colors"></i>
+                            class="fa-solid fa-search text-ink group-focus-within:text-accent-ink transition-colors"></i>
                     </div>
                     <input id="warranty-search-input" type="text" placeholder="IMEI / ชื่อลูกค้า / เบอร์โทร..."
                         aria-label="ค้นหาข้อมูลการรับประกัน ด้วยหมายเลข IMEI ชื่อลูกค้า หรือเบอร์โทรศัพท์"
-                        class="bg-transparent border border-white/30 rounded-[10px] text-sm pl-10 pr-4 py-2 w-full text-white focus:outline-none focus:ring-1 focus:ring-[#FFE169] transition-all placeholder-white">
+                        class="page-filter-control elev-chip bg-transparent rounded-[10px] text-sm pl-10 pr-4 py-2 w-full text-ink focus:outline-none focus:ring-1 focus:ring-accent-ink transition-all placeholder-body-muted">
                 </div>
                 <select id="warranty-filter-status" aria-label="กรองตามสถานะประกัน"
-                    class="bg-transparent border border-white/30 rounded-[10px] cursor-pointer text-sm px-3 py-2 text-white focus:outline-none focus:ring-1 focus:ring-[#FFE169] w-full sm:w-auto [&>option]:bg-[#4D4D4D] [&>option:checked]:bg-[#FFE169] [&>option:checked]:text-[#333333]">
+                    class="page-filter-control elev-card bg-transparent rounded-[10px] cursor-pointer text-sm px-3 py-2 text-ink focus:outline-none focus:ring-1 focus:ring-accent-ink w-full sm:w-auto [&>option]:bg-panel [&>option:checked]:bg-primary [&>option:checked]:text-on-primary">
                     <option value="">สถานะทั้งหมด</option>
                     <option value="active">อยู่ในประกัน</option>
                     <option value="soon">ใกล้หมดประกัน</option>
                     <option value="expired">หมดประกันแล้ว</option>
                 </select>
                 <button type="submit"
-                    class="px-4 py-2 bg-[#FFE169] cursor-pointer text-[#333333] flex items-center justify-center gap-2 font-semibold rounded-[0.5rem] text-sm hover:bg-[#E2B93C] transition-colors w-full sm:w-auto">
+                    class="px-4 py-2 bg-primary cursor-pointer text-on-primary flex items-center justify-center gap-2 font-semibold rounded-[0.5rem] text-sm hover:bg-[#E2B93C] transition-colors w-full sm:w-auto">
                     <i class="fa-solid fa-search"></i> ค้นหา
                 </button>
             </form>
@@ -41,14 +41,14 @@
         <div class="px-6 py-4">
             <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                 <div id="warranty-active-filters" class="flex flex-wrap gap-2"></div>
-                <div id="warranty-result-count" class="text-xs text-white font-medium"></div>
+                <div id="warranty-result-count" class="text-xs text-ink font-medium"></div>
             </div>
         </div>
 
         <!-- 2c ตาราง (ข้อ 11.6) -->
         <div class="overflow-x-auto" tabindex="0">
             <table class="w-full text-left text-sm whitespace-nowrap border-collapse">
-                <thead class="bg-[#4D4D4D]/40 text-white">
+                <thead class="bg-panel/40 text-ink">
                     <tr>
                         <th class="px-6 py-4 font-semibold text-[15px] w-full">สินค้า / IMEI</th>
                         <th class="px-6 py-4 font-semibold text-[15px]">ลูกค้า</th>
@@ -60,7 +60,7 @@
                         <th class="px-6 py-4 font-semibold text-[15px] text-right">จัดการ</th>
                     </tr>
                 </thead>
-                <tbody id="warranty-results-container" class="divide-y divide-[#464646]">
+                <tbody id="warranty-results-container" class="divide-y divide-divider">
                     <!-- แถวถูกสร้างจาก js/page-warranty-check.js -->
                 </tbody>
             </table>

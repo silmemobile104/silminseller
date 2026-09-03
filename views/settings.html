@@ -2,94 +2,94 @@
     <!-- [1] หัวหน้า — DESIGN.md ข้อ 11.2 -->
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div class="flex items-center gap-4">
-            <i class="bi bi-gear text-white w-5 text-2xl text-center"></i>
-            <h3 class="text-2xl text-white">ตั้งค่าข้อมูลพื้นฐาน</h3>
+            <i class="bi bi-gear text-ink w-5 text-2xl text-center"></i>
+            <h3 class="text-2xl text-ink">ตั้งค่าข้อมูลพื้นฐาน</h3>
         </div>
     </div>
 
     <!-- [2] แท็บหมวดข้อมูล — ป้ายตัวเลขเติมจากข้อมูลจริงใน js/page-settings.js -->
     <div id="settings-tabs" class="flex flex-wrap items-center gap-2">
         <button type="button" data-tab="productname" aria-pressed="true"
-            class="settings-tab-btn px-4 py-2.5 rounded-xl text-sm font-bold border transition-colors flex items-center gap-2 cursor-pointer bg-[#FFE169] text-[#333333] border-[#FFE169]">
+            class="border border-transparent settings-tab-btn px-4 py-2.5 rounded-xl text-sm font-bold transition-colors flex items-center gap-2 cursor-pointer bg-primary text-on-primary ring-1 ring-accent-ink">
             <i class="fa-solid fa-mobile-screen"></i> ชื่อสินค้า
-            <span class="settings-tab-badge px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#333333]/20">0</span>
+            <span class="settings-tab-badge px-2 py-0.5 rounded-full text-[10px] font-bold bg-hairline/20">0</span>
         </button>
         <button type="button" data-tab="producttype" aria-pressed="false"
-            class="settings-tab-btn px-4 py-2.5 rounded-xl text-sm font-bold border transition-colors flex items-center gap-2 cursor-pointer bg-[#27272A] text-slate-300 border-[#3F3F46] hover:border-[#FFE169] hover:text-white">
+            class="elev-field settings-tab-btn px-4 py-2.5 rounded-xl text-sm font-bold transition-colors flex items-center gap-2 cursor-pointer bg-field text-body-muted hover:ring-1 hover:ring-accent-ink hover:text-ink">
             <i class="fa-solid fa-tag"></i> ประเภทสินค้า
-            <span class="settings-tab-badge px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#4D4D4D]/60 text-white">0</span>
+            <span class="settings-tab-badge px-2 py-0.5 rounded-full text-[10px] font-bold bg-chip/60 text-ink">0</span>
         </button>
         <button type="button" data-tab="productunit" aria-pressed="false"
-            class="settings-tab-btn px-4 py-2.5 rounded-xl text-sm font-bold border transition-colors flex items-center gap-2 cursor-pointer bg-[#27272A] text-slate-300 border-[#3F3F46] hover:border-[#FFE169] hover:text-white">
+            class="elev-field settings-tab-btn px-4 py-2.5 rounded-xl text-sm font-bold transition-colors flex items-center gap-2 cursor-pointer bg-field text-body-muted hover:ring-1 hover:ring-accent-ink hover:text-ink">
             <i class="fa-solid fa-ruler"></i> หน่วยนับ
-            <span class="settings-tab-badge px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#4D4D4D]/60 text-white">0</span>
+            <span class="settings-tab-badge px-2 py-0.5 rounded-full text-[10px] font-bold bg-chip/60 text-ink">0</span>
         </button>
         <button type="button" data-tab="productcolor" aria-pressed="false"
-            class="settings-tab-btn px-4 py-2.5 rounded-xl text-sm font-bold border transition-colors flex items-center gap-2 cursor-pointer bg-[#27272A] text-slate-300 border-[#3F3F46] hover:border-[#FFE169] hover:text-white">
+            class="elev-field settings-tab-btn px-4 py-2.5 rounded-xl text-sm font-bold transition-colors flex items-center gap-2 cursor-pointer bg-field text-body-muted hover:ring-1 hover:ring-accent-ink hover:text-ink">
             <i class="fa-solid fa-palette"></i> สี
-            <span class="settings-tab-badge px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#4D4D4D]/60 text-white">0</span>
+            <span class="settings-tab-badge px-2 py-0.5 rounded-full text-[10px] font-bold bg-chip/60 text-ink">0</span>
         </button>
         <button type="button" data-tab="productcapacity" aria-pressed="false"
-            class="settings-tab-btn px-4 py-2.5 rounded-xl text-sm font-bold border transition-colors flex items-center gap-2 cursor-pointer bg-[#27272A] text-slate-300 border-[#3F3F46] hover:border-[#FFE169] hover:text-white">
+            class="elev-field settings-tab-btn px-4 py-2.5 rounded-xl text-sm font-bold transition-colors flex items-center gap-2 cursor-pointer bg-field text-body-muted hover:ring-1 hover:ring-accent-ink hover:text-ink">
             <i class="fa-solid fa-database"></i> ความจุ
-            <span class="settings-tab-badge px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#4D4D4D]/60 text-white">0</span>
+            <span class="settings-tab-badge px-2 py-0.5 rounded-full text-[10px] font-bold bg-chip/60 text-ink">0</span>
         </button>
         <button type="button" data-tab="productcondition" aria-pressed="false"
-            class="settings-tab-btn px-4 py-2.5 rounded-xl text-sm font-bold border transition-colors flex items-center gap-2 cursor-pointer bg-[#27272A] text-slate-300 border-[#3F3F46] hover:border-[#FFE169] hover:text-white">
+            class="elev-field settings-tab-btn px-4 py-2.5 rounded-xl text-sm font-bold transition-colors flex items-center gap-2 cursor-pointer bg-field text-body-muted hover:ring-1 hover:ring-accent-ink hover:text-ink">
             <i class="fa-solid fa-star"></i> สภาพเครื่อง
-            <span class="settings-tab-badge px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#4D4D4D]/60 text-white">0</span>
+            <span class="settings-tab-badge px-2 py-0.5 rounded-full text-[10px] font-bold bg-chip/60 text-ink">0</span>
         </button>
         <button type="button" data-tab="supplier" aria-pressed="false"
-            class="settings-tab-btn px-4 py-2.5 rounded-xl text-sm font-bold border transition-colors flex items-center gap-2 cursor-pointer bg-[#27272A] text-slate-300 border-[#3F3F46] hover:border-[#FFE169] hover:text-white">
+            class="elev-field settings-tab-btn px-4 py-2.5 rounded-xl text-sm font-bold transition-colors flex items-center gap-2 cursor-pointer bg-field text-body-muted hover:ring-1 hover:ring-accent-ink hover:text-ink">
             <i class="fa-solid fa-truck-front"></i> ผู้จัดจำหน่าย
-            <span class="settings-tab-badge px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#4D4D4D]/60 text-white">0</span>
+            <span class="settings-tab-badge px-2 py-0.5 rounded-full text-[10px] font-bold bg-chip/60 text-ink">0</span>
         </button>
         <button type="button" data-tab="financecompany" aria-pressed="false"
-            class="settings-tab-btn px-4 py-2.5 rounded-xl text-sm font-bold border transition-colors flex items-center gap-2 cursor-pointer bg-[#27272A] text-slate-300 border-[#3F3F46] hover:border-[#FFE169] hover:text-white">
+            class="elev-field settings-tab-btn px-4 py-2.5 rounded-xl text-sm font-bold transition-colors flex items-center gap-2 cursor-pointer bg-field text-body-muted hover:ring-1 hover:ring-accent-ink hover:text-ink">
             <i class="fa-solid fa-hand-holding-dollar"></i> บริษัทจัดไฟแนนซ์
-            <span class="settings-tab-badge px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#4D4D4D]/60 text-white">0</span>
+            <span class="settings-tab-badge px-2 py-0.5 rounded-full text-[10px] font-bold bg-chip/60 text-ink">0</span>
         </button>
     </div>
 
     <!-- [3] การ์ดพาเนล — ฟอร์มเพิ่ม + ค้นหา + ชิป + รายการ อยู่ในการ์ดใบเดียว (ข้อ 11.1, 11.3) -->
-    <div class="bg-[#4D4D4D]/40 rounded-2xl shadow-lg overflow-hidden backdrop-blur-sm">
+    <div class="bg-panel/40 rounded-2xl shadow-lg overflow-hidden backdrop-blur-sm">
         <div class="p-6 pb-0 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-            <h3 id="settings-panel-title" class="text-lg text-white flex items-center gap-2">
-                <i class="fa-solid fa-list-ul text-[#FFE169]"></i> ชื่อสินค้า
+            <h3 id="settings-panel-title" class="text-lg text-ink flex items-center gap-2">
+                <i class="fa-solid fa-list-ul text-accent-ink"></i> ชื่อสินค้า
             </h3>
             <div class="flex flex-wrap items-center gap-2.5 w-full lg:w-auto">
                 <div class="relative group w-full sm:w-64">
                     <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <i class="fa-solid fa-search text-white group-focus-within:text-[#FFE169] transition-colors"></i>
+                        <i class="fa-solid fa-search text-ink group-focus-within:text-accent-ink transition-colors"></i>
                     </div>
                     <label for="settings-search" class="sr-only">ค้นหาในหมวดนี้</label>
                     <input id="settings-search" type="text" autocomplete="off" placeholder="ค้นหาในหมวดนี้..."
-                        class="bg-[#4D4D4D]/40 border border-[#3F3F46] rounded-[0.5rem] text-sm pl-10 pr-4 py-2 w-full text-white focus:outline-none focus:border-[#FFE169] focus:ring-1 focus:ring-[#FFE169] transition-all placeholder-white">
+                        class="elev-card bg-panel/40 rounded-[0.5rem] text-sm pl-10 pr-4 py-2 w-full text-ink focus:outline-none focus:ring-2 focus:ring-accent-ink focus:ring-1 focus:ring-accent-ink transition-all placeholder-body-muted">
                 </div>
             </div>
         </div>
 
         <!-- ฟอร์มเพิ่มข้อมูล (ข้อ 11.9) -->
         <div class="px-6 pt-5">
-            <div class="bg-[#27272A] border border-[#3F3F46] rounded-xl p-4">
+            <div class="elev-field bg-field rounded-xl p-4">
                 <div class="flex flex-col sm:flex-row gap-3">
                     <div class="flex-1 space-y-2">
-                        <label for="master-data-input" class="text-slate-200 font-medium flex items-center gap-2 text-xs">
-                            <i class="fa-solid fa-plus text-white"></i> เพิ่มข้อมูลใหม่ <span class="text-red-500">*</span>
+                        <label for="master-data-input" class="text-ink font-medium flex items-center gap-2 text-xs">
+                            <i class="fa-solid fa-plus text-ink"></i> เพิ่มข้อมูลใหม่ <span class="text-red-500">*</span>
                         </label>
                         <input type="text" id="master-data-input" autocomplete="off" placeholder="พิมพ์ข้อมูลใหม่..."
-                            class="w-full px-4 py-2.5 rounded-xl bg-[#18181B] border border-[#3F3F46] text-white focus:border-[#FFE169] focus:outline-none transition-all placeholder-slate-500 text-sm">
+                            class="elev-modal w-full px-4 py-2.5 rounded-xl bg-elevated text-ink focus:ring-2 focus:ring-accent-ink focus:outline-none transition-all placeholder-ink-muted-48 text-sm">
                     </div>
                     <div id="master-data-code-wrap" class="space-y-2 sm:w-64">
-                        <label for="master-data-code-input" class="text-slate-200 font-medium flex items-center gap-2 text-xs">
-                            <i class="fa-solid fa-barcode text-white"></i> รหัสชื่อสินค้า (ไม่บังคับ)
+                        <label for="master-data-code-input" class="text-ink font-medium flex items-center gap-2 text-xs">
+                            <i class="fa-solid fa-barcode text-ink"></i> รหัสชื่อสินค้า (ไม่บังคับ)
                         </label>
                         <input type="text" id="master-data-code-input" autocomplete="off" placeholder="เช่น IP15PM"
-                            class="w-full px-4 py-2.5 rounded-xl bg-[#18181B] border border-[#3F3F46] text-white focus:border-[#FFE169] focus:outline-none transition-all placeholder-slate-500 text-sm font-mono">
+                            class="elev-modal w-full px-4 py-2.5 rounded-xl bg-elevated text-ink focus:ring-2 focus:ring-accent-ink focus:outline-none transition-all placeholder-ink-muted-48 text-sm font-mono">
                     </div>
                     <div class="flex items-end">
                         <button id="btn-add-master-data" type="button"
-                            class="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-[#FFE169] hover:bg-[#E2B93C] text-[#333333] font-semibold text-sm transition-colors flex items-center justify-center gap-2 cursor-pointer whitespace-nowrap">
+                            class="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-primary hover:bg-[#E2B93C] text-on-primary font-semibold text-sm transition-colors flex items-center justify-center gap-2 cursor-pointer whitespace-nowrap">
                             <i class="fa-solid fa-plus"></i> เพิ่ม
                         </button>
                     </div>
@@ -101,7 +101,7 @@
         <div class="px-6 py-4">
             <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                 <div id="settings-active-filters" class="flex flex-wrap gap-2"></div>
-                <div id="settings-result-count" class="text-xs text-white font-medium"></div>
+                <div id="settings-result-count" class="text-xs text-ink font-medium"></div>
             </div>
         </div>
 

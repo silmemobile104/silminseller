@@ -2,75 +2,75 @@
     <!-- [1] หัวหน้า — DESIGN.md ข้อ 11.2 -->
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div class="flex items-center gap-4">
-            <i class="bi bi-diagram-3 text-white w-5 text-2xl text-center"></i>
-            <h3 class="text-2xl text-white">จัดการฐานข้อมูล</h3>
+            <i class="bi bi-diagram-3 text-ink w-5 text-2xl text-center"></i>
+            <h3 class="text-2xl text-ink">จัดการฐานข้อมูล</h3>
         </div>
         <button id="btn-clear-db-filters" type="button"
-            class="px-3 py-2 bg-[#4D4D4D]/40 cursor-pointer text-white flex items-center justify-center gap-1.5 rounded-[0.5rem] text-sm hover:bg-[#5C5C5C] transition-colors w-fit">
+            class="px-3 py-2 bg-panel/40 cursor-pointer text-ink flex items-center justify-center gap-1.5 rounded-[0.5rem] text-sm hover:bg-skeleton transition-colors w-fit">
             <i class="fa-solid fa-filter-circle-xmark"></i> ล้างตัวกรอง
         </button>
     </div>
 
     <!-- [2] สรุปภาพรวม -->
     <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div class="bg-[#4D4D4D]/40 rounded-2xl shadow-lg backdrop-blur-sm p-6 flex items-center gap-4">
+        <div class="bg-panel/40 rounded-2xl shadow-lg backdrop-blur-sm p-6 flex items-center gap-4">
             <div class="w-12 h-12 rounded-full flex items-center justify-center shrink-0"
-                style="color:#FFE169;background-color:#27272A;border:1px solid #FFE16959;">
+                style="color:#FFE169;background-color:#FFE1691F;">
                 <i class="fa-solid fa-database text-lg"></i>
             </div>
             <div class="min-w-0">
-                <p class="text-xs text-white/70">Collection ทั้งหมด</p>
-                <p id="db-stat-collections" class="text-2xl font-semibold text-white font-mono">-</p>
+                <p class="text-xs text-ink/70">Collection ทั้งหมด</p>
+                <p id="db-stat-collections" class="text-2xl font-semibold text-ink font-mono">-</p>
             </div>
         </div>
-        <div class="bg-[#4D4D4D]/40 rounded-2xl shadow-lg backdrop-blur-sm p-6 flex items-center gap-4">
+        <div class="bg-panel/40 rounded-2xl shadow-lg backdrop-blur-sm p-6 flex items-center gap-4">
             <div class="w-12 h-12 rounded-full flex items-center justify-center shrink-0"
-                style="color:#20D500;background-color:#27272A;border:1px solid #20D50059;">
+                style="color:#20D500;background-color:#20D5001F;">
                 <i class="fa-solid fa-layer-group text-lg"></i>
             </div>
             <div class="min-w-0">
-                <p class="text-xs text-white/70">จำนวนเอกสารรวม</p>
-                <p id="db-stat-documents" class="text-2xl font-semibold text-white font-mono">-</p>
+                <p class="text-xs text-ink/70">จำนวนเอกสารรวม</p>
+                <p id="db-stat-documents" class="text-2xl font-semibold text-ink font-mono">-</p>
             </div>
         </div>
-        <div class="bg-[#4D4D4D]/40 rounded-2xl shadow-lg backdrop-blur-sm p-6 flex items-center gap-4">
+        <div class="bg-panel/40 rounded-2xl shadow-lg backdrop-blur-sm p-6 flex items-center gap-4">
             <div class="w-12 h-12 rounded-full flex items-center justify-center shrink-0"
-                style="color:#5AB0FF;background-color:#27272A;border:1px solid #5AB0FF59;">
+                style="color:#5AB0FF;background-color:#5AB0FF1F;">
                 <i class="fa-solid fa-hard-drive text-lg"></i>
             </div>
             <div class="min-w-0">
-                <p class="text-xs text-white/70">ชื่อฐานข้อมูล</p>
-                <p id="db-stat-name" class="text-lg font-semibold text-white font-mono truncate">-</p>
+                <p class="text-xs text-ink/70">ชื่อฐานข้อมูล</p>
+                <p id="db-stat-name" class="text-lg font-semibold text-ink font-mono truncate">-</p>
             </div>
         </div>
     </div>
 
     <!-- [3] การ์ดพาเนล — แถบควบคุม + ชิป + ตาราง อยู่ในการ์ดใบเดียว (ข้อ 11.1, 11.3) -->
-    <div class="bg-[#4D4D4D]/40 rounded-2xl shadow-lg overflow-hidden backdrop-blur-sm">
+    <div class="bg-panel/40 rounded-2xl shadow-lg overflow-hidden backdrop-blur-sm">
         <!-- 3a แถบควบคุม (ข้อ 11.4) -->
         <div class="p-6 pb-0 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-            <h3 class="text-lg text-white flex items-center gap-2">
-                <i class="fa-solid fa-list text-[#FFE169]"></i> รายการ Collection
+            <h3 class="text-lg text-ink flex items-center gap-2">
+                <i class="fa-solid fa-list text-accent-ink"></i> รายการ Collection
             </h3>
             <div class="flex flex-wrap items-center gap-2.5 w-full lg:w-auto">
                 <div class="relative group w-full sm:w-64">
                     <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                         <i
-                            class="fa-solid fa-search text-white group-focus-within:text-[#FFE169] transition-colors"></i>
+                            class="fa-solid fa-search text-ink group-focus-within:text-accent-ink transition-colors"></i>
                     </div>
                     <label for="db-filter-search" class="sr-only">ค้นหาชื่อ collection คำอธิบาย หรือชื่อหน้า</label>
                     <input type="text" id="db-filter-search" autocomplete="off"
                         placeholder="ค้นหาชื่อ / คำอธิบาย / หน้าที่ใช้..."
-                        class="bg-[#4D4D4D]/40 border border-[#3F3F46] rounded-[0.5rem] text-sm pl-10 pr-4 py-2 w-full text-white focus:outline-none focus:border-[#FFE169] focus:ring-1 focus:ring-[#FFE169] transition-all placeholder-white">
+                        class="elev-card bg-panel/40 rounded-[0.5rem] text-sm pl-10 pr-4 py-2 w-full text-ink focus:outline-none focus:ring-2 focus:ring-accent-ink focus:ring-1 focus:ring-accent-ink transition-all placeholder-body-muted">
                 </div>
                 <label for="db-filter-group" class="sr-only">กรองตามกลุ่มข้อมูล</label>
                 <select id="db-filter-group"
-                    class="bg-[#4D4D4D]/40 cursor-pointer text-sm rounded-[0.5rem] px-3 py-2 text-white focus:outline-none focus:ring-1 focus:ring-[#FFE169] w-full sm:w-auto [&>option]:bg-[#4D4D4D] [&>option:checked]:bg-[#FFE169] [&>option:checked]:text-[#333333]">
+                    class="bg-panel/40 cursor-pointer text-sm rounded-[0.5rem] px-3 py-2 text-ink focus:outline-none focus:ring-1 focus:ring-accent-ink w-full sm:w-auto [&>option]:bg-panel [&>option:checked]:bg-primary [&>option:checked]:text-on-primary">
                     <option value="ALL">ทุกกลุ่ม</option>
                 </select>
                 <label for="db-filter-importance" class="sr-only">กรองตามระดับความสำคัญ</label>
                 <select id="db-filter-importance"
-                    class="hidden md:block bg-[#4D4D4D]/40 cursor-pointer text-sm rounded-[0.5rem] px-3 py-2 text-white focus:outline-none focus:ring-1 focus:ring-[#FFE169] [&>option]:bg-[#4D4D4D] [&>option:checked]:bg-[#FFE169] [&>option:checked]:text-[#333333]">
+                    class="hidden md:block bg-panel/40 cursor-pointer text-sm rounded-[0.5rem] px-3 py-2 text-ink focus:outline-none focus:ring-1 focus:ring-accent-ink [&>option]:bg-panel [&>option:checked]:bg-primary [&>option:checked]:text-on-primary">
                     <option value="ALL">ทุกระดับความสำคัญ</option>
                     <option value="critical">สำคัญสูงสุด</option>
                     <option value="high">สำคัญมาก</option>
@@ -83,14 +83,14 @@
         <div class="px-6 py-4">
             <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                 <div id="db-active-filters" class="flex flex-wrap gap-2"></div>
-                <div id="db-result-count" class="text-xs text-white font-medium"></div>
+                <div id="db-result-count" class="text-xs text-ink font-medium"></div>
             </div>
         </div>
 
         <!-- 3c ตาราง (ข้อ 11.6) -->
         <div class="overflow-x-auto" tabindex="0">
             <table class="w-full text-left text-sm whitespace-nowrap border-collapse">
-                <thead class="bg-[#4D4D4D]/40 text-white">
+                <thead class="bg-panel/40 text-ink">
                     <tr>
                         <th class="px-6 py-4 font-semibold text-[15px]">Collection</th>
                         <th class="px-6 py-4 font-semibold text-[15px]">กลุ่ม</th>
@@ -101,7 +101,7 @@
                         <th class="px-6 py-4 font-semibold text-[15px] text-right">จัดการ</th>
                     </tr>
                 </thead>
-                <tbody id="db-table-body" class="divide-y divide-[#464646]"></tbody>
+                <tbody id="db-table-body" class="divide-y divide-divider"></tbody>
             </table>
         </div>
     </div>
@@ -110,17 +110,17 @@
     <div id="db-detail-drawer"
         class="hidden fixed inset-0 z-[70] flex items-center justify-center backdrop-blur-sm opacity-0 pointer-events-none transition-opacity duration-300 p-4">
         <div tabindex="0"
-            class="modal-content relative w-[95%] xl:w-[820px] max-h-[92vh] overflow-y-auto bg-[#18181B] rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.5)] border border-[#4D4D4D]">
+            class="elev-modal modal-content relative w-[95%] xl:w-[820px] max-h-[92vh] overflow-y-auto bg-elevated rounded-2xl">
             <button aria-label="ปิด" id="btn-close-db-drawer" type="button"
                 class="absolute right-5 top-5 z-10 text-red-500 hover:text-red-400 transition-colors cursor-pointer">
                 <i class="fa-solid fa-xmark text-xl"></i>
             </button>
             <div class="p-8">
                 <div class="flex items-center gap-3 mb-1 pr-8">
-                    <i class="fa-solid fa-database text-[#FFE169]"></i>
-                    <h3 id="db-drawer-title" class="text-lg font-medium text-white">รายละเอียด Collection</h3>
+                    <i class="fa-solid fa-database text-accent-ink"></i>
+                    <h3 id="db-drawer-title" class="text-lg font-medium text-ink">รายละเอียด Collection</h3>
                 </div>
-                <p id="db-drawer-key" class="font-mono text-sm text-[#FFE169] mb-6">-</p>
+                <p id="db-drawer-key" class="font-mono text-sm text-accent-ink mb-6">-</p>
                 <div id="db-drawer-body" class="space-y-6 text-sm"></div>
             </div>
         </div>
@@ -130,16 +130,16 @@
     <div id="db-docs-modal"
         class="hidden fixed inset-0 z-[75] flex items-center justify-center backdrop-blur-sm opacity-0 pointer-events-none transition-opacity duration-300 p-4">
         <div tabindex="0"
-            class="modal-content relative w-[99%] xl:w-[1180px] max-h-[92vh] flex flex-col bg-[#18181B] rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.5)] border border-[#4D4D4D]">
+            class="elev-modal modal-content relative w-[99%] xl:w-[1180px] max-h-[92vh] flex flex-col bg-elevated rounded-2xl">
 
             <!-- 5a หัวหน้าต่าง -->
             <div class="flex items-start justify-between gap-4 p-6 pb-0">
                 <div class="min-w-0">
                     <div class="flex items-center gap-3">
-                        <i class="fa-solid fa-table-list text-[#FFE169]"></i>
-                        <h3 id="db-docs-title" class="text-lg font-medium text-white truncate">เอกสารใน Collection</h3>
+                        <i class="fa-solid fa-table-list text-accent-ink"></i>
+                        <h3 id="db-docs-title" class="text-lg font-medium text-ink truncate">เอกสารใน Collection</h3>
                     </div>
-                    <p id="db-docs-key" class="font-mono text-sm text-[#FFE169] mt-1">-</p>
+                    <p id="db-docs-key" class="font-mono text-sm text-accent-ink mt-1">-</p>
                 </div>
                 <button aria-label="ปิด" id="btn-close-db-docs" type="button"
                     class="shrink-0 text-red-500 hover:text-red-400 transition-colors cursor-pointer">
@@ -152,53 +152,53 @@
                 <div class="relative group w-full sm:flex-1">
                     <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                         <i
-                            class="fa-solid fa-search text-white group-focus-within:text-[#FFE169] transition-colors"></i>
+                            class="fa-solid fa-search text-ink group-focus-within:text-accent-ink transition-colors"></i>
                     </div>
                     <label for="db-docs-search" class="sr-only">ค้นหาเอกสารในคอลเลกชันนี้</label>
                     <input type="text" id="db-docs-search" autocomplete="off"
                         placeholder="ค้นหาข้อความในทุกฟิลด์ หรือวาง _id..."
-                        class="bg-[#4D4D4D]/40 border border-[#3F3F46] rounded-[0.5rem] text-sm pl-10 pr-4 py-2 w-full text-white focus:outline-none focus:border-[#FFE169] focus:ring-1 focus:ring-[#FFE169] transition-all placeholder-white">
+                        class="elev-card bg-panel/40 rounded-[0.5rem] text-sm pl-10 pr-4 py-2 w-full text-ink focus:outline-none focus:ring-2 focus:ring-accent-ink focus:ring-1 focus:ring-accent-ink transition-all placeholder-body-muted">
                 </div>
                 <label for="db-docs-limit" class="sr-only">จำนวนเอกสารต่อหน้า</label>
                 <select id="db-docs-limit"
-                    class="bg-[#4D4D4D]/40 cursor-pointer text-sm rounded-[0.5rem] px-3 py-2 text-white focus:outline-none focus:ring-1 focus:ring-[#FFE169] [&>option]:bg-[#4D4D4D] [&>option:checked]:bg-[#FFE169] [&>option:checked]:text-[#333333]">
+                    class="bg-panel/40 cursor-pointer text-sm rounded-[0.5rem] px-3 py-2 text-ink focus:outline-none focus:ring-1 focus:ring-accent-ink [&>option]:bg-panel [&>option:checked]:bg-primary [&>option:checked]:text-on-primary">
                     <option value="25">25 ต่อหน้า</option>
                     <option value="50">50 ต่อหน้า</option>
                     <option value="100">100 ต่อหน้า</option>
                 </select>
                 <button id="btn-db-docs-refresh" type="button"
-                    class="px-3 py-2 bg-[#4D4D4D]/40 cursor-pointer text-white flex items-center justify-center gap-1.5 rounded-[0.5rem] text-sm hover:bg-[#5C5C5C] transition-colors">
+                    class="px-3 py-2 bg-panel/40 cursor-pointer text-ink flex items-center justify-center gap-1.5 rounded-[0.5rem] text-sm hover:bg-skeleton transition-colors">
                     <i class="fa-solid fa-rotate"></i> โหลดใหม่
                 </button>
             </div>
 
             <!-- 5c ตัวนับผลลัพธ์ (ข้อ 11.5) -->
             <div class="px-6 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                <p id="db-docs-hint" class="text-xs text-white/60"></p>
-                <p id="db-docs-count" class="text-xs text-white font-medium"></p>
+                <p id="db-docs-hint" class="text-xs text-ink/60"></p>
+                <p id="db-docs-count" class="text-xs text-ink font-medium"></p>
             </div>
 
             <!-- 5d ตาราง (ข้อ 11.6) -->
-            <div class="flex-1 min-h-0 overflow-auto border-t border-[#464646]" tabindex="0">
+            <div class="flex-1 min-h-0 overflow-auto border-t border-divider" tabindex="0">
                 <table class="w-full text-left text-sm whitespace-nowrap border-collapse">
-                    <thead class="bg-[#27272A] text-white sticky top-0 z-10">
+                    <thead class="bg-field text-ink sticky top-0 z-10">
                         <tr id="db-docs-head"></tr>
                     </thead>
-                    <tbody id="db-docs-body" class="divide-y divide-[#464646]"></tbody>
+                    <tbody id="db-docs-body" class="divide-y divide-divider"></tbody>
                 </table>
             </div>
 
             <!-- 5e แบ่งหน้า -->
             <div
-                class="p-6 py-4 border-t border-[#464646] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                <p id="db-docs-page-info" class="text-xs text-white/70">-</p>
+                class="p-6 py-4 border-t border-divider flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <p id="db-docs-page-info" class="text-xs text-ink/70">-</p>
                 <div class="flex items-center gap-2">
                     <button id="btn-db-docs-prev" type="button"
-                        class="px-3 py-1.5 rounded-[0.375rem] bg-[#4D4D4D]/60 border border-[#3F3F46] text-white hover:border-[#FFE169] text-xs font-medium transition-colors inline-flex items-center gap-1.5 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:border-[#3F3F46]">
+                        class="elev-chip px-3 py-1.5 rounded-[0.375rem] bg-chip/60 text-ink hover:ring-1 hover:ring-accent-ink text-xs font-medium transition-colors inline-flex items-center gap-1.5 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:ring-1 hover:ring-line">
                         <i class="fa-solid fa-chevron-left"></i> ก่อนหน้า
                     </button>
                     <button id="btn-db-docs-next" type="button"
-                        class="px-3 py-1.5 rounded-[0.375rem] bg-[#4D4D4D]/60 border border-[#3F3F46] text-white hover:border-[#FFE169] text-xs font-medium transition-colors inline-flex items-center gap-1.5 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:border-[#3F3F46]">
+                        class="elev-chip px-3 py-1.5 rounded-[0.375rem] bg-chip/60 text-ink hover:ring-1 hover:ring-accent-ink text-xs font-medium transition-colors inline-flex items-center gap-1.5 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:ring-1 hover:ring-line">
                         ถัดไป <i class="fa-solid fa-chevron-right"></i>
                     </button>
                 </div>

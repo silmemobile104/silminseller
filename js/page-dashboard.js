@@ -34,10 +34,24 @@
     const dateTH = (d) => new Date(d).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' });
 
     // สีของสองชุดข้อมูลที่ใช้ร่วมกันทั้งกราฟเส้นและโดนัท (โทนเดียวกับ DESIGN.md ข้อ 11.6)
-    const C_DEVICE = '#20D500';   // ยอดขายเฉพาะเครื่อง
-    const C_ACCESSORY = '#FFE169'; // ยอดขายอุปกรณ์เสริม
-    const C_UNKNOWN = '#8E8E93';   // สินค้าที่ถูกลบไปแล้ว จัดหมวดไม่ได้
-    const C_LOSS = '#FE0000';
+    // เขียว 1.99:1 และเหลือง 1.29:1 บนการ์ดขาว = มองไม่เห็น ต้องอ่านโทเคนตอนวาด
+    let C_DEVICE = '#20D500';   // ยอดขายเฉพาะเครื่อง
+    let C_ACCESSORY = '#FFE169'; // ยอดขายอุปกรณ์เสริม
+    let C_UNKNOWN = '#8E8E93';   // สินค้าที่ถูกลบไปแล้ว จัดหมวดไม่ได้
+    let C_LOSS = '#FE0000';
+    const refreshChartColors = () => {
+        C_DEVICE = themeColor('state-ok', '#20D500');
+        C_ACCESSORY = themeColor('accent-ink', '#FFE169');
+        C_UNKNOWN = themeColor('ink-muted-48', '#8E8E93');
+        C_LOSS = themeColor('state-danger', '#FE0000');
+    };
+
+    // SVG ใส่ค่าสีลงไปตอนสร้างสตริง ไม่ใช่ผ่านคลาส CSS จึงตามธีมเองไม่ได้
+    // ต้องอ่านโทเคนจาก :root ตอนวาดทุกครั้ง (ดู listener 'themechange' ท้ายไฟล์)
+    const themeColor = (name, fallback) => {
+        const v = getComputedStyle(document.documentElement).getPropertyValue('--color-' + name).trim();
+        return v || fallback;
+    };
 
     let _data = null;          // ข้อมูลชุดล่าสุดจาก API — ใช้วาดกราฟใหม่ตอนเปลี่ยนขนาดจอ
     let _resizeBound = false;
@@ -49,26 +63,26 @@
     // กรณีนั้นไม่แสดงบรรทัดเปรียบเทียบเลย ดีกว่าโชว์ 0% หรือ ∞ ที่ไม่เป็นความจริง
     const deltaLine = (changePct, label) => {
         if (changePct === null || changePct === undefined || !isFinite(changePct)) {
-            return `<p class="text-xs text-white/50 mt-1">ไม่มีข้อมูลช่วงก่อนหน้าให้เทียบ</p>`;
+            return `<p class="text-xs text-ink/50 mt-1">ไม่มีข้อมูลช่วงก่อนหน้าให้เทียบ</p>`;
         }
         const up = changePct >= 0;
-        const color = up ? 'text-[#20D500]' : 'text-[#FE0000]';
+        const color = up ? 'text-state-ok' : 'text-state-danger';
         const icon = up ? 'fa-arrow-up' : 'fa-arrow-down';
         return `<p class="text-xs ${color} mt-1 flex items-center gap-1">
             <i class="fa-solid ${icon} text-[10px]"></i>${Math.abs(changePct).toFixed(1)}%
-            <span class="text-white/50">${esc(label)}</span>
+            <span class="text-ink/50">${esc(label)}</span>
         </p>`;
     };
 
     const kpiCard = (icon, color, label, value, extraHtml) => `
-        <div class="bg-[#4D4D4D]/40 rounded-2xl shadow-lg backdrop-blur-sm p-5 flex items-start gap-4">
+        <div class="bg-panel/40 rounded-2xl shadow-lg backdrop-blur-sm p-5 flex items-start gap-4">
             <div class="w-11 h-11 rounded-full flex items-center justify-center shrink-0"
-                 style="color:${color};background-color:${color}1F;border:1px solid ${color}59;">
+                 style="color:${color};background-color:${color}1F;">
                 <i class="fa-solid ${icon} text-lg"></i>
             </div>
             <div class="min-w-0 flex-1">
-                <p class="text-xs text-white/70 truncate">${esc(label)}</p>
-                <p class="text-2xl font-semibold text-white font-mono mt-0.5 truncate">${value}</p>
+                <p class="text-xs text-ink/70 truncate">${esc(label)}</p>
+                <p class="text-2xl font-semibold text-ink font-mono mt-0.5 truncate">${value}</p>
                 ${extraHtml}
             </div>
         </div>`;
@@ -87,9 +101,9 @@
             kpiCard('fa-bag-shopping', '#0A84FF', 'ออเดอร์', num(k.orders.value), deltaLine(k.orders.changePct, cmp)),
             kpiCard('fa-user-plus', '#A855F7', 'ลูกค้าใหม่', num(k.newMembers.value), deltaLine(k.newMembers.changePct, cmp)),
             kpiCard('fa-boxes-stacked', '#FF9F0A', 'สินค้าคงคลังรวม', num(k.stockQty),
-                `<p class="text-xs text-white/50 mt-1">ชิ้น รวมทุกสาขาที่ดูได้</p>`),
+                `<p class="text-xs text-ink/50 mt-1">ชิ้น รวมทุกสาขาที่ดูได้</p>`),
             kpiCard('fa-database', '#22D3EE', 'มูลค่าสต็อก (ราคาทุน)', baht(k.stockValue),
-                `<p class="text-xs text-white/50 mt-1">อัพเดตล่าสุด ${asOf} น.</p>`)
+                `<p class="text-xs text-ink/50 mt-1">อัพเดตล่าสุด ${asOf} น.</p>`)
         ].join('');
     }
 
@@ -156,10 +170,15 @@
         const maxVal = Math.max(...months.map(m => Math.max(m.device, m.accessory)), 0);
 
         if (maxVal <= 0) {
-            host.innerHTML = `<div class="py-16 text-center text-white/50 italic">
+            host.innerHTML = `<div class="py-16 text-center text-ink/50 italic">
                 ยังไม่มียอดขายในปีนี้</div>`;
             return;
         }
+
+        // อ่านสีจากธีมปัจจุบันทุกครั้งที่วาด — สลับธีมแล้วกราฟต้องเปลี่ยนตาม
+        refreshChartColors();
+        const INK = themeColor('ink', '#FFFFFF');
+        const CANVAS = themeColor('canvas-elevated', '#1F1F1F');
 
         const W = Math.max(host.clientWidth || 560, 320);
         const H = 280;
@@ -182,18 +201,18 @@
             const val = (top * i) / GRID;
             const gy = y(val);
             grid += `<line x1="${PAD.left}" y1="${gy}" x2="${W - PAD.right}" y2="${gy}"
-                        stroke="#FFFFFF" stroke-opacity="0.08" stroke-width="1" />`;
+                        stroke="${INK}" stroke-opacity="0.08" stroke-width="1" />`;
             yLabels += `<text x="${PAD.left - 10}" y="${gy + 4}" text-anchor="end"
-                        fill="#FFFFFF" fill-opacity="0.5" font-size="11">${compact(val)}</text>`;
+                        fill="${INK}" fill-opacity="0.5" font-size="11">${compact(val)}</text>`;
         }
 
         const xLabels = months.map((m, i) =>
             `<text x="${x(i)}" y="${H - 8}" text-anchor="middle"
-                   fill="#FFFFFF" fill-opacity="0.5" font-size="11">${THAI_MONTHS[i]}</text>`).join('');
+                   fill="${INK}" fill-opacity="0.5" font-size="11">${THAI_MONTHS[i]}</text>`).join('');
 
         const dots = (pts, color) => pts.map((p, i) =>
             months[i].device || months[i].accessory
-                ? `<circle cx="${p.x}" cy="${p.y}" r="3.5" fill="${color}" stroke="#1F1F1F" stroke-width="1.5" />`
+                ? `<circle cx="${p.x}" cy="${p.y}" r="3.5" fill="${color}" stroke="${CANVAS}" stroke-width="1.5" />`
                 : '').join('');
 
         // แถบโปร่งใสรายเดือนไว้รับเมาส์ สำหรับ tooltip
@@ -224,11 +243,11 @@
                       stroke-linecap="round" stroke-linejoin="round" />
                 ${dots(accPts, C_ACCESSORY)}${dots(devicePts, C_DEVICE)}
                 <line id="dash-hoverline" x1="0" y1="${PAD.top}" x2="0" y2="${PAD.top + plotH}"
-                      stroke="#FFFFFF" stroke-opacity="0.25" stroke-width="1" style="display:none" />
+                      stroke="${INK}" stroke-opacity="0.25" stroke-width="1" style="display:none" />
                 ${bands}
             </svg>
             <div id="dash-tooltip"
-                 class="pointer-events-none absolute hidden z-10 rounded-xl bg-[#18181B] border border-[#4D4D4D] shadow-lg px-3 py-2.5 text-xs whitespace-nowrap"></div>`;
+                 class="elev-modal pointer-events-none absolute hidden z-10 rounded-xl bg-elevated px-3 py-2.5 text-xs whitespace-nowrap"></div>`;
 
         // ---- tooltip ----
         const svg = host.querySelector('svg');
@@ -242,18 +261,18 @@
                 const m = months[i];
                 const total = m.device + m.accessory + m.unknown;
                 tip.innerHTML = `
-                    <p class="text-white font-medium mb-1.5">${THAI_MONTHS[i]} ${year}</p>
-                    <p class="flex items-center gap-2 text-white/80">
+                    <p class="text-ink font-medium mb-1.5">${THAI_MONTHS[i]} ${year}</p>
+                    <p class="flex items-center gap-2 text-ink/80">
                         <span class="w-2 h-2 rounded-full shrink-0" style="background:${C_DEVICE}"></span>
-                        เฉพาะเครื่อง <span class="ml-auto font-mono text-white">${baht(m.device)}</span></p>
-                    <p class="flex items-center gap-2 text-white/80 mt-1">
+                        เฉพาะเครื่อง <span class="ml-auto font-mono text-ink">${baht(m.device)}</span></p>
+                    <p class="flex items-center gap-2 text-ink/80 mt-1">
                         <span class="w-2 h-2 rounded-full shrink-0" style="background:${C_ACCESSORY}"></span>
-                        อุปกรณ์เสริม <span class="ml-auto font-mono text-white">${baht(m.accessory)}</span></p>
-                    ${m.unknown ? `<p class="flex items-center gap-2 text-white/80 mt-1">
+                        อุปกรณ์เสริม <span class="ml-auto font-mono text-ink">${baht(m.accessory)}</span></p>
+                    ${m.unknown ? `<p class="flex items-center gap-2 text-ink/80 mt-1">
                         <span class="w-2 h-2 rounded-full shrink-0" style="background:${C_UNKNOWN}"></span>
-                        ไม่ระบุหมวด <span class="ml-auto font-mono text-white">${baht(m.unknown)}</span></p>` : ''}
-                    <p class="mt-1.5 pt-1.5 border-t border-[#333333] text-white/70">
-                        รวม <span class="font-mono text-white ml-1">${baht(total)}</span></p>`;
+                        ไม่ระบุหมวด <span class="ml-auto font-mono text-ink">${baht(m.unknown)}</span></p>` : ''}
+                    <p class="mt-1.5 pt-1.5 border-t border-hairline text-ink/70">
+                        รวม <span class="font-mono text-ink ml-1">${baht(total)}</span></p>`;
                 tip.classList.remove('hidden');
 
                 const px = x(i);
@@ -277,12 +296,13 @@
     // [4a] โดนัทสัดส่วนหมวดหมู่
     // ==========================================
     function renderCategory(d) {
+        refreshChartColors();
         const host = document.getElementById('dash-category-body');
         if (!host) return;
         const mix = d.categoryMix;
 
         if (!mix.total) {
-            host.innerHTML = `<p class="py-12 text-center text-white/50 italic">ยังไม่มียอดขายในช่วงนี้</p>`;
+            host.innerHTML = `<p class="py-12 text-center text-ink/50 italic">ยังไม่มียอดขายในช่วงนี้</p>`;
             return;
         }
 
@@ -308,13 +328,13 @@
                 <div class="relative shrink-0">
                     <svg width="160" height="160" viewBox="0 0 160 160" role="img"
                          aria-label="สัดส่วนยอดขายแยกตามหมวดหมู่สินค้า">
-                        <circle cx="80" cy="80" r="${R}" fill="none" stroke="#FFFFFF"
+                        <circle cx="80" cy="80" r="${R}" fill="none" stroke="${themeColor('ink', '#FFFFFF')}"
                                 stroke-opacity="0.08" stroke-width="${SW}" />
                         ${arcs}
                     </svg>
                     <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                        <span class="text-[11px] text-white/70">ยอดขายรวม</span>
-                        <span class="text-base font-semibold text-white font-mono">${num(mix.total)}</span>
+                        <span class="text-[11px] text-ink/70">ยอดขายรวม</span>
+                        <span class="text-base font-semibold text-ink font-mono">${num(mix.total)}</span>
                     </div>
                 </div>
                 <div class="w-full space-y-3">
@@ -322,8 +342,8 @@
                         <div class="flex items-start gap-2.5">
                             <span class="w-3 h-3 rounded-full shrink-0 mt-1" style="background:${s.color}"></span>
                             <div class="min-w-0 flex-1">
-                                <p class="text-sm text-white">${esc(s.label)}</p>
-                                <p class="text-xs text-white/70 font-mono">
+                                <p class="text-sm text-ink">${esc(s.label)}</p>
+                                <p class="text-xs text-ink/70 font-mono">
                                     ${((s.value / mix.total) * 100).toFixed(1)}% · ${baht(s.value)}</p>
                             </div>
                         </div>`).join('')}
@@ -335,13 +355,14 @@
     // [4b] รายรับ - รายจ่าย
     // ==========================================
     function renderCashflow(d) {
+        refreshChartColors();
         const host = document.getElementById('dash-cashflow-body');
         if (!host) return;
         const cf = d.cashflow;
         const hasData = cf.income.total > 0 || cf.expense.total > 0;
 
         if (!hasData) {
-            host.innerHTML = `<p class="py-12 text-center text-white/50 italic">
+            host.innerHTML = `<p class="py-12 text-center text-ink/50 italic">
                 ยังไม่มีการบันทึกรายรับรายจ่ายในช่วงนี้</p>`;
             return;
         }
@@ -349,24 +370,24 @@
         // แถบสัดส่วนเทียบกับด้านที่มากกว่า เพื่อให้เห็นว่ารายรับ/รายจ่ายฝั่งไหนหนักกว่า
         const scale = Math.max(cf.income.total, cf.expense.total) || 1;
         const panel = (title, total, breakdown, color, barPct) => `
-            <div class="bg-[#27272A] border border-[#3F3F46] rounded-xl p-4 flex flex-col">
+            <div class="elev-field bg-field rounded-xl p-4 flex flex-col">
                 <p class="text-xs font-medium" style="color:${color}">${esc(title)}</p>
                 <p class="text-2xl font-semibold font-mono mt-1" style="color:${color}">${baht(total)}</p>
                 <div class="mt-3 space-y-1 flex-1">
                     ${breakdown.length
-                ? breakdown.map(b => `<p class="flex items-center gap-2 text-[11px] text-white/70">
+                ? breakdown.map(b => `<p class="flex items-center gap-2 text-[11px] text-ink/70">
                             <span class="truncate">${esc(b.label)}</span>
-                            <span class="ml-auto font-mono text-white shrink-0">${baht(b.amount)}</span></p>`).join('')
-                : `<p class="text-[11px] text-white/50 italic">ไม่มีรายการย่อย</p>`}
+                            <span class="ml-auto font-mono text-ink shrink-0">${baht(b.amount)}</span></p>`).join('')
+                : `<p class="text-[11px] text-ink/50 italic">ไม่มีรายการย่อย</p>`}
                 </div>
-                <div class="mt-3 h-1.5 rounded-full bg-white/10 overflow-hidden">
+                <div class="mt-3 h-1.5 rounded-full bg-ink/10 overflow-hidden">
                     <div class="h-full rounded-full" style="width:${barPct}%;background:${color}"></div>
                 </div>
             </div>`;
 
         const net = cf.netProfit;
         const marginPct = cf.income.total ? (net / cf.income.total) * 100 : null;
-        const netColor = net >= 0 ? '#20D500' : C_LOSS;
+        const netColor = net >= 0 ? themeColor('state-ok', '#20D500') : C_LOSS;
 
         host.innerHTML = `
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -374,11 +395,11 @@
             (cf.income.total / scale) * 100)}
                 ${panel('รายจ่าย', cf.expense.total, cf.expense.breakdown, C_LOSS,
                 (cf.expense.total / scale) * 100)}
-                <div class="bg-[#27272A] border border-[#3F3F46] rounded-xl p-4 flex flex-col justify-center items-center text-center">
-                    <p class="text-xs text-white/70">กำไรสุทธิ</p>
+                <div class="elev-field bg-field rounded-xl p-4 flex flex-col justify-center items-center text-center">
+                    <p class="text-xs text-ink/70">กำไรสุทธิ</p>
                     <p class="text-2xl font-semibold font-mono mt-1" style="color:${netColor}">${baht(net)}</p>
                     ${marginPct === null ? '' : `
-                        <p class="text-xs text-white/70 mt-3">อัตรากำไร</p>
+                        <p class="text-xs text-ink/70 mt-3">อัตรากำไร</p>
                         <p class="text-sm font-semibold font-mono flex items-center gap-1"
                            style="color:${netColor}">
                             <i class="fa-solid ${net >= 0 ? 'fa-arrow-up' : 'fa-arrow-down'} text-[10px]"></i>
@@ -386,7 +407,7 @@
                         </p>`}
                 </div>
             </div>
-            <p class="text-[11px] text-white/50 mt-3">
+            <p class="text-[11px] text-ink/50 mt-3">
                 คิดจากรายการเงินสดที่บันทึกไว้ในระบบบัญชี (CashMovement) ตามช่วงเวลาที่เลือก
             </p>`;
     }
@@ -395,7 +416,7 @@
     // [3b] ตารางรายสาขา · [4c] สินค้าขายดี · [5] ใบสั่งซื้อ
     // ==========================================
     const stateRow = (cols, msg) =>
-        `<tr><td colspan="${cols}" class="px-6 py-8 text-center text-white/50 italic">${esc(msg)}</td></tr>`;
+        `<tr><td colspan="${cols}" class="px-6 py-8 text-center text-ink/50 italic">${esc(msg)}</td></tr>`;
 
     function renderBranchTable(d) {
         const tbody = document.getElementById('dash-branch-tbody');
@@ -404,11 +425,11 @@
         if (!rows.length) { tbody.innerHTML = stateRow(4, 'ยังไม่มียอดขายในช่วงเวลาที่เลือก'); return; }
 
         tbody.innerHTML = rows.map(r => `
-            <tr class="hover:bg-[#464646] transition-colors">
-                <td class="px-6 py-3.5 text-white font-medium">${esc(r.branch)}</td>
-                <td class="px-6 py-3.5 text-right text-white font-mono">${baht(r.sales)}</td>
-                <td class="px-6 py-3.5 text-right font-mono ${r.profit >= 0 ? 'text-[#20D500]' : 'text-[#FE0000]'}">${baht(r.profit)}</td>
-                <td class="px-6 py-3.5 text-center text-white font-medium">${num(r.orders)}</td>
+            <tr class="hover:bg-divider transition-colors">
+                <td class="px-6 py-3.5 text-ink font-medium">${esc(r.branch)}</td>
+                <td class="px-6 py-3.5 text-right text-ink font-mono">${baht(r.sales)}</td>
+                <td class="px-6 py-3.5 text-right font-mono ${r.profit >= 0 ? 'text-state-ok' : 'text-state-danger'}">${baht(r.profit)}</td>
+                <td class="px-6 py-3.5 text-center text-ink font-medium">${num(r.orders)}</td>
             </tr>`).join('');
     }
 
@@ -419,11 +440,11 @@
         if (!rows.length) { tbody.innerHTML = stateRow(4, 'ยังไม่มีสินค้าที่ขายได้ในช่วงนี้'); return; }
 
         tbody.innerHTML = rows.map((r, i) => `
-            <tr class="hover:bg-[#464646] transition-colors">
-                <td class="px-6 py-3.5 text-white/70">${i + 1}</td>
-                <td class="px-6 py-3.5 text-white font-medium">${esc(r.name)}</td>
-                <td class="px-6 py-3.5 text-center text-white font-medium">${num(r.qty)}</td>
-                <td class="px-6 py-3.5 text-right text-white font-mono">${baht(r.amount)}</td>
+            <tr class="hover:bg-divider transition-colors">
+                <td class="px-6 py-3.5 text-ink/70">${i + 1}</td>
+                <td class="px-6 py-3.5 text-ink font-medium">${esc(r.name)}</td>
+                <td class="px-6 py-3.5 text-center text-ink font-medium">${num(r.qty)}</td>
+                <td class="px-6 py-3.5 text-right text-ink font-mono">${baht(r.amount)}</td>
             </tr>`).join('');
     }
 
@@ -432,8 +453,8 @@
         'รอจัดส่ง': { bg: 'bg-orange-500/[0.12]', dot: 'bg-orange-500', text: 'text-orange-400' },
         'ของถึงสาขาแล้ว': { bg: 'bg-orange-500/[0.12]', dot: 'bg-orange-500', text: 'text-orange-400' },
         'กำลังตรวจรับ': { bg: 'bg-orange-500/[0.12]', dot: 'bg-orange-500', text: 'text-orange-400' },
-        'นำเข้าสำเร็จ': { bg: 'bg-[#42A231]/[0.12]', dot: 'bg-[#20D500]', text: 'text-[#20D500]' },
-        'ยกเลิก': { bg: 'bg-[#FE0000]/[0.12]', dot: 'bg-[#FE0000]', text: 'text-[#FE0000]' }
+        'นำเข้าสำเร็จ': { bg: 'bg-state-ok-tint/[0.12]', dot: 'bg-state-ok', text: 'text-state-ok' },
+        'ยกเลิก': { bg: 'bg-state-danger/[0.12]', dot: 'bg-state-danger', text: 'text-state-danger' }
     };
 
     function renderPurchaseOrders(d) {
@@ -443,19 +464,19 @@
         if (!rows.length) { tbody.innerHTML = stateRow(5, 'ยังไม่มีใบสั่งซื้อในระบบ'); return; }
 
         tbody.innerHTML = rows.map(r => {
-            const t = PO_TONE[r.status] || { bg: 'bg-[#4D4D4D]/40', dot: 'bg-white/40', text: 'text-white/70' };
+            const t = PO_TONE[r.status] || { bg: 'bg-panel/40', dot: 'bg-ink/40', text: 'text-ink/70' };
             return `
-            <tr class="hover:bg-[#464646] transition-colors">
-                <td class="px-6 py-4"><span class="font-mono font-semibold text-[#FFE169]">${esc(r.po_number)}</span></td>
-                <td class="px-6 py-4 text-white font-medium">${esc(r.supplier_name)}</td>
-                <td class="px-6 py-4 text-right text-white font-mono">${baht(r.amount)}</td>
+            <tr class="hover:bg-divider transition-colors">
+                <td class="px-6 py-4"><span class="font-mono font-semibold text-accent-ink">${esc(r.po_number)}</span></td>
+                <td class="px-6 py-4 text-ink font-medium">${esc(r.supplier_name)}</td>
+                <td class="px-6 py-4 text-right text-ink font-mono">${baht(r.amount)}</td>
                 <td class="px-6 py-4">
                     <div class="inline-flex items-center gap-2 px-2.5 py-1 rounded-[0.375rem] ${t.bg}">
                         <div class="w-2 h-2 rounded-full ${t.dot}"></div>
                         <span class="${t.text} font-medium text-xs">${esc(r.status)}</span>
                     </div>
                 </td>
-                <td class="px-6 py-4 text-white text-sm">${dateTH(r.created_at)}</td>
+                <td class="px-6 py-4 text-ink text-sm">${dateTH(r.created_at)}</td>
             </tr>`;
         }).join('');
     }
@@ -463,14 +484,14 @@
     // ==========================================
     // แถวโครงร่างระหว่างรอข้อมูล (DESIGN.md ข้อ 11.7)
     // ==========================================
-    const skelBar = (w) => `<div class="h-3.5 ${w} rounded-full bg-[#5c5c5c] animate-pulse"></div>`;
+    const skelBar = (w) => `<div class="h-3.5 ${w} rounded-full bg-skeleton animate-pulse"></div>`;
 
     function renderSkeletons() {
         const grid = document.getElementById('dash-kpi-grid');
         if (grid && !grid.children.length) {
             grid.innerHTML = Array.from({ length: 6 }).map(() => `
-                <div class="bg-[#4D4D4D]/40 rounded-2xl shadow-lg backdrop-blur-sm p-5 flex items-start gap-4">
-                    <div class="w-11 h-11 rounded-full bg-[#5c5c5c] animate-pulse shrink-0"></div>
+                <div class="bg-panel/40 rounded-2xl shadow-lg backdrop-blur-sm p-5 flex items-start gap-4">
+                    <div class="w-11 h-11 rounded-full bg-skeleton animate-pulse shrink-0"></div>
                     <div class="flex-1 space-y-2">
                         ${skelBar('w-20')}${skelBar('w-28 h-5')}${skelBar('w-24 h-3')}
                     </div>
@@ -497,21 +518,21 @@
         const grid = document.getElementById('dash-kpi-grid');
         if (grid) {
             grid.innerHTML = `
-                <div class="col-span-full bg-[#FE0000]/[0.12] rounded-2xl px-5 py-4 flex items-center gap-3">
-                    <i class="fa-solid fa-triangle-exclamation text-[#FE0000]"></i>
-                    <p class="text-sm text-[#FE0000] font-medium">${msg}</p>
+                <div class="col-span-full bg-state-danger/[0.12] rounded-2xl px-5 py-4 flex items-center gap-3">
+                    <i class="fa-solid fa-triangle-exclamation text-state-danger"></i>
+                    <p class="text-sm text-state-danger font-medium">${msg}</p>
                 </div>`;
         }
         [['dash-branch-tbody', 4], ['dash-top-tbody', 4], ['dash-po-tbody', 5]]
             .forEach(([id, cols]) => {
                 const tb = document.getElementById(id);
                 if (tb) tb.innerHTML = `<tr><td colspan="${cols}"
-                    class="px-6 py-8 text-center text-white/50 italic">${msg}</td></tr>`;
+                    class="px-6 py-8 text-center text-ink/50 italic">${msg}</td></tr>`;
             });
         [['dash-sales-chart', 'py-16'], ['dash-category-body', 'py-12'], ['dash-cashflow-body', 'py-12']]
             .forEach(([id, pad]) => {
                 const el = document.getElementById(id);
-                if (el) el.innerHTML = `<p class="${pad} text-center text-white/50 italic">${msg}</p>`;
+                if (el) el.innerHTML = `<p class="${pad} text-center text-ink/50 italic">${msg}</p>`;
             });
     }
 
@@ -632,8 +653,13 @@
         });
 
         // กราฟวาดตามความกว้างจริงของการ์ด จึงต้องวาดใหม่เมื่อขนาดจอเปลี่ยน
+        // และเมื่อสลับธีม เพราะสีถูกฝังลงในสตริง SVG ไปแล้ว CSS ตามแก้ไม่ได้
         if (!_resizeBound) {
             _resizeBound = true;
+            window.addEventListener("themechange", () => {
+                const view = document.getElementById("view-dashboard");
+                if (_data && view && !view.classList.contains("hidden")) renderSalesChart(_data);
+            });
             let rid = null;
             window.addEventListener('resize', () => {
                 clearTimeout(rid);

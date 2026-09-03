@@ -4,6 +4,11 @@
 // พึ่งพา window.authFetch, window.showToast, window.showPrompt, window.openCheckoutSuccessModal,
 // window.ensureMasterDataLoaded, window.fetchProducts, API_BASE_URL (global จาก script.js)
 (function () {
+    // สีถูกใส่ลงในสตริง SVG ตอนสร้าง จึงตามธีมเองไม่ได้ ต้องอ่านโทเคนตอนวาด
+    const shThemeColor = (name, fallback) => {
+        const v = getComputedStyle(document.documentElement).getPropertyValue("--color-" + name).trim();
+        return v || fallback;
+    };
     // DOM elements ที่หน้านี้ใช้ (ดึงเองแยกจาก core เพราะ const เดิมอยู่คนละไฟล์กันแล้ว)
     const salesHistorySearch = document.getElementById('sales-history-search');
     const salesHistoryDate = document.getElementById('sales-history-date');
@@ -188,26 +193,26 @@
     const DS_FALLBACK_COLORS = ['#0A84FF', '#A855F7', '#FF9F0A', '#8E8E93'];
 
     const dsKpiCard = (icon, color, label, value, extraHtml) => `
-        <div class="bg-[#4D4D4D]/40 rounded-2xl shadow-lg backdrop-blur-sm p-5 flex items-start gap-4">
+        <div class="bg-panel/40 rounded-2xl shadow-lg backdrop-blur-sm p-5 flex items-start gap-4">
             <div class="w-11 h-11 rounded-full flex items-center justify-center shrink-0"
-                 style="color:${color};background-color:${color}1F;border:1px solid ${color}59;">
+                 style="color:${color};background-color:${color}1F;">
                 <i class="fa-solid ${icon} text-lg"></i>
             </div>
             <div class="min-w-0 flex-1">
-                <p class="text-xs text-white/70 truncate">${dsEsc(label)}</p>
-                <p class="text-2xl font-semibold text-white font-mono mt-0.5 truncate">${value}</p>
+                <p class="text-xs text-ink/70 truncate">${dsEsc(label)}</p>
+                <p class="text-2xl font-semibold text-ink font-mono mt-0.5 truncate">${value}</p>
                 ${extraHtml || ''}
             </div>
         </div>`;
 
-    const dsSkelBar = (w) => `<div class="h-3.5 ${w} rounded-full bg-[#5c5c5c] animate-pulse"></div>`;
+    const dsSkelBar = (w) => `<div class="h-3.5 ${w} rounded-full bg-skeleton animate-pulse"></div>`;
 
     const dsRenderSkeletons = () => {
         const grid = document.getElementById('daily-kpi-grid');
         if (grid && !grid.children.length) {
             grid.innerHTML = Array.from({ length: 5 }).map(() => `
-                <div class="bg-[#4D4D4D]/40 rounded-2xl shadow-lg backdrop-blur-sm p-5 flex items-start gap-4">
-                    <div class="w-11 h-11 rounded-full bg-[#5c5c5c] animate-pulse shrink-0"></div>
+                <div class="bg-panel/40 rounded-2xl shadow-lg backdrop-blur-sm p-5 flex items-start gap-4">
+                    <div class="w-11 h-11 rounded-full bg-skeleton animate-pulse shrink-0"></div>
                     <div class="flex-1 space-y-2">${dsSkelBar('w-20')}${dsSkelBar('w-28 h-5')}</div>
                 </div>`).join('');
         }
@@ -221,7 +226,7 @@
         });
     };
 
-    const dsStateRow = (cols, msg, cls = 'text-white/50 italic') =>
+    const dsStateRow = (cols, msg, cls = 'text-ink/50 italic') =>
         `<tr><td colspan="${cols}" class="px-6 py-8 text-center ${cls}">${dsEsc(msg)}</td></tr>`;
 
     // โหลดไม่สำเร็จ — ล้างแถวโครงร่างแล้วบอกสาเหตุ ไม่ปล่อยให้กระพริบค้าง
@@ -229,17 +234,17 @@
         const msg = dsEsc(message);
         const grid = document.getElementById('daily-kpi-grid');
         if (grid) grid.innerHTML = `
-            <div class="col-span-full bg-[#FE0000]/[0.12] rounded-2xl px-5 py-4 flex items-center gap-3">
-                <i class="fa-solid fa-triangle-exclamation text-[#FE0000]"></i>
-                <p class="text-sm text-[#FE0000] font-medium">${msg}</p>
+            <div class="col-span-full bg-state-danger/[0.12] rounded-2xl px-5 py-4 flex items-center gap-3">
+                <i class="fa-solid fa-triangle-exclamation text-state-danger"></i>
+                <p class="text-sm text-state-danger font-medium">${msg}</p>
             </div>`;
         [['daily-employee-tbody', 4], ['daily-summary-table-body', 6]].forEach(([id, cols]) => {
             const tb = document.getElementById(id);
             if (tb) tb.innerHTML = `<tr><td colspan="${cols}"
-                class="px-6 py-8 text-center text-white/50 italic">${msg}</td></tr>`;
+                class="px-6 py-8 text-center text-ink/50 italic">${msg}</td></tr>`;
         });
         const pay = document.getElementById('daily-payment-body');
-        if (pay) pay.innerHTML = `<p class="py-12 text-center text-white/50 italic">${msg}</p>`;
+        if (pay) pay.innerHTML = `<p class="py-12 text-center text-ink/50 italic">${msg}</p>`;
         const cnt = document.getElementById('daily-bill-count');
         if (cnt) cnt.textContent = '';
     };
@@ -250,7 +255,7 @@
         if (!host) return;
 
         if (!bills.length) {
-            host.innerHTML = `<p class="py-12 text-center text-white/50 italic">ยังไม่มีบิลขายวันนี้</p>`;
+            host.innerHTML = `<p class="py-12 text-center text-ink/50 italic">ยังไม่มีบิลขายวันนี้</p>`;
             return;
         }
 
@@ -285,13 +290,13 @@
                 <div class="relative shrink-0">
                     <svg width="160" height="160" viewBox="0 0 160 160" role="img"
                          aria-label="สัดส่วนยอดขายวันนี้แยกตามช่องทางชำระเงิน">
-                        <circle cx="80" cy="80" r="${R}" fill="none" stroke="#FFFFFF"
+                        <circle cx="80" cy="80" r="${R}" fill="none" stroke="${shThemeColor('ink', '#FFFFFF')}"
                                 stroke-opacity="0.08" stroke-width="${SW}" />
                         ${arcs}
                     </svg>
                     <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                        <span class="text-[11px] text-white/70">ยอดขายรวม</span>
-                        <span class="text-base font-semibold text-white font-mono">${dsNum(total)}</span>
+                        <span class="text-[11px] text-ink/70">ยอดขายรวม</span>
+                        <span class="text-base font-semibold text-ink font-mono">${dsNum(total)}</span>
                     </div>
                 </div>
                 <div class="w-full space-y-3">
@@ -299,8 +304,8 @@
                         <div class="flex items-start gap-2.5">
                             <span class="w-3 h-3 rounded-full shrink-0 mt-1" style="background:${s.color}"></span>
                             <div class="min-w-0 flex-1">
-                                <p class="text-sm text-white">${dsEsc(s.label)}</p>
-                                <p class="text-xs text-white/70 font-mono">
+                                <p class="text-sm text-ink">${dsEsc(s.label)}</p>
+                                <p class="text-xs text-ink/70 font-mono">
                                     ${total ? ((s.value / total) * 100).toFixed(1) : '0.0'}% ·
                                     ${dsBaht(s.value)} · ${dsNum(s.count)} บิล</p>
                             </div>
@@ -328,11 +333,11 @@
         tbody.innerHTML = [...byEmp.values()]
             .sort((a, b) => b.sales - a.sales)
             .map(r => `
-                <tr class="hover:bg-[#464646] transition-colors">
-                    <td class="px-6 py-3.5 text-white font-medium">${dsEsc(r.name)}</td>
-                    <td class="px-6 py-3.5 text-center text-white">${dsNum(r.bills)}</td>
-                    <td class="px-6 py-3.5 text-center text-white">${dsNum(r.devices)}</td>
-                    <td class="px-6 py-3.5 text-right text-white font-mono">${dsBaht(r.sales)}</td>
+                <tr class="hover:bg-divider transition-colors">
+                    <td class="px-6 py-3.5 text-ink font-medium">${dsEsc(r.name)}</td>
+                    <td class="px-6 py-3.5 text-center text-ink">${dsNum(r.bills)}</td>
+                    <td class="px-6 py-3.5 text-center text-ink">${dsNum(r.devices)}</td>
+                    <td class="px-6 py-3.5 text-right text-ink font-mono">${dsBaht(r.sales)}</td>
                 </tr>`).join('');
     };
 
@@ -355,12 +360,12 @@
             const payColor = DS_PAY_COLOR[payType] || '#8E8E93';
 
             return `
-            <tr class="hover:bg-[#464646] transition-colors">
-                <td class="px-6 py-4 text-white/70 font-mono">${timeStr}</td>
-                <td class="px-6 py-4"><span class="font-mono font-semibold text-[#FFE169]">${dsEsc(txn.receipt_number)}</span></td>
+            <tr class="hover:bg-divider transition-colors">
+                <td class="px-6 py-4 text-ink/70 font-mono">${timeStr}</td>
+                <td class="px-6 py-4"><span class="font-mono font-semibold text-accent-ink">${dsEsc(txn.receipt_number)}</span></td>
                 <td class="px-6 py-4">
-                    <p class="font-medium text-white">${dsEsc(empName)}</p>
-                    <p class="text-xs text-white/70 mt-0.5">${dsEsc(memberName)}</p>
+                    <p class="font-medium text-ink">${dsEsc(empName)}</p>
+                    <p class="text-xs text-ink/70 mt-0.5">${dsEsc(memberName)}</p>
                 </td>
                 <td class="px-6 py-4">
                     <div class="inline-flex items-center gap-2 px-2.5 py-1 rounded-[0.375rem]"
@@ -369,9 +374,9 @@
                         <span class="font-medium text-xs" style="color:${payColor}">${dsEsc(payType)}</span>
                     </div>
                 </td>
-                <td class="px-6 py-4 text-right text-white font-mono">${dsBaht(txn.total_amount)}</td>
+                <td class="px-6 py-4 text-right text-ink font-mono">${dsBaht(txn.total_amount)}</td>
                 <td class="px-6 py-4 text-right">
-                    <button type="button" class="view-daily-txn-btn text-white hover:text-[#FFE169] transition-colors p-2"
+                    <button type="button" class="view-daily-txn-btn text-ink hover:text-accent-ink transition-colors p-2"
                         title="ดูรายละเอียดบิล" aria-label="ดูรายละเอียดบิล ${dsEsc(txn.receipt_number)}"
                         data-id="${dsEsc(txn._id)}">
                         <i class="fa-solid fa-eye"></i>
@@ -411,20 +416,20 @@
             if (grid) {
                 grid.innerHTML = [
                     dsKpiCard('fa-baht-sign', '#FFE169', 'ยอดขายรวม', dsBaht(data.total_sales),
-                        `<p class="text-xs text-white/50 mt-1">รวมทุกช่องทางชำระ</p>`),
+                        `<p class="text-xs text-ink/50 mt-1">รวมทุกช่องทางชำระ</p>`),
                     dsKpiCard('fa-wallet', '#20D500', 'เงินสดคงเหลือหน้าร้าน (สุทธิ)', dsBaht(netCash), `
-                        <p class="text-xs mt-1 flex items-center gap-1 text-white/70">
-                            <span class="text-[#20D500]">รับ ${dsBaht(salesCash)}</span> ·
-                            <span class="text-[#FE0000]">จ่าย ${dsBaht(outCash)}</span>
+                        <p class="text-xs mt-1 flex items-center gap-1 text-ink/70">
+                            <span class="text-state-ok">รับ ${dsBaht(salesCash)}</span> ·
+                            <span class="text-state-danger">จ่าย ${dsBaht(outCash)}</span>
                         </p>`),
                     dsKpiCard('fa-hand-holding-dollar', '#0A84FF', 'เงินดาวน์ไฟแนนซ์',
                         dsBaht(data.finance_downpayment),
-                        `<p class="text-xs text-white/50 mt-1">ยอดรวมเงินดาวน์วันนี้</p>`),
+                        `<p class="text-xs text-ink/50 mt-1">ยอดรวมเงินดาวน์วันนี้</p>`),
                     dsKpiCard('fa-mobile-screen', '#A855F7', 'เครื่องที่ขายได้',
                         `${dsNum(data.devices_sold)}`,
-                        `<p class="text-xs text-white/50 mt-1">นับเฉพาะสินค้าหน่วย "เครื่อง"</p>`),
+                        `<p class="text-xs text-ink/50 mt-1">นับเฉพาะสินค้าหน่วย "เครื่อง"</p>`),
                     dsKpiCard('fa-receipt', '#FF9F0A', 'จำนวนบิลขาย', dsNum(bills.length),
-                        `<p class="text-xs text-white/50 mt-1">ไม่รวมบิลที่ยกเลิกแล้ว</p>`)
+                        `<p class="text-xs text-ink/50 mt-1">ไม่รวมบิลที่ยกเลิกแล้ว</p>`)
                 ].join('');
             }
 
@@ -456,7 +461,7 @@
     // แถวโครงร่างระหว่างรอข้อมูล — ต้องเรียกก่อน await เสมอ ไม่ปล่อยตารางว่าง (ข้อ 11.7)
     const renderSalesHistorySkeleton = (rowCount = 6) => {
         if (!salesHistoryTableBody) return;
-        const bar = (w) => `<div class="h-3.5 ${w} rounded-full bg-[#5c5c5c] animate-pulse"></div>`;
+        const bar = (w) => `<div class="h-3.5 ${w} rounded-full bg-skeleton animate-pulse"></div>`;
         const twoLine = (a, b) => `<div class="space-y-2">${bar(a)}${bar(b)}</div>`;
         let html = '';
         for (let i = 0; i < rowCount; i++) {
@@ -468,22 +473,22 @@
                     <td class="px-6 py-4">${bar('w-20 ml-auto')}</td>
                     <td class="px-6 py-4">${bar('w-16')}</td>
                     <td class="px-6 py-4">${bar('w-20')}</td>
-                    <td class="px-6 py-4"><div class="w-8 h-8 rounded-[0.375rem] bg-[#5c5c5c] animate-pulse ml-auto"></div></td>
+                    <td class="px-6 py-4"><div class="w-8 h-8 rounded-[0.375rem] bg-skeleton animate-pulse ml-auto"></div></td>
                 </tr>
             `;
         }
         salesHistoryTableBody.innerHTML = html;
     };
 
-    const salesHistoryStateRow = (message, extraClass = 'text-white/50 italic') =>
+    const salesHistoryStateRow = (message, extraClass = 'text-ink/50 italic') =>
         `<tr><td colspan="${SALES_HISTORY_COLS}" class="px-6 py-8 text-center ${extraClass}">${message}</td></tr>`;
 
     // ป้ายสถานะ: จุดสี + พื้น tint 12% ตามตารางสถานะใน DESIGN.md ข้อ 11.6
     const salesHistoryStatusBadge = (status) => {
         const cancelled = status === 'ยกเลิกแล้ว';
-        const dot = cancelled ? 'bg-[#FE0000]' : 'bg-[#20D500]';
-        const bg = cancelled ? 'bg-[#FE0000]/[0.12]' : 'bg-[#42A231]/[0.12]';
-        const text = cancelled ? 'text-[#FE0000]' : 'text-[#20D500]';
+        const dot = cancelled ? 'bg-state-danger' : 'bg-state-ok';
+        const bg = cancelled ? 'bg-state-danger/[0.12]' : 'bg-state-ok-tint/[0.12]';
+        const text = cancelled ? 'text-state-danger' : 'text-state-ok';
         return `
             <div class="inline-flex items-center gap-2 px-2.5 py-1 rounded-[0.375rem] ${bg}">
                 <div class="w-2 h-2 rounded-full ${dot}"></div>
@@ -495,8 +500,8 @@
     // เซลล์สองบรรทัด: บรรทัดหลัก + คำบรรยายรอง (สูตร "ชื่อ + คำบรรยาย" ข้อ 11.6)
     const twoLineCell = (main, sub) => `
         <div>
-            <p class="font-medium text-white">${main}</p>
-            <p class="text-xs text-white/70 mt-0.5">${sub}</p>
+            <p class="font-medium text-ink">${main}</p>
+            <p class="text-xs text-ink/70 mt-0.5">${sub}</p>
         </div>
     `;
 
@@ -525,7 +530,7 @@
         const addChip = (label, onRemove) => {
             const chip = document.createElement('button');
             chip.type = 'button';
-            chip.className = 'px-4 py-2.5 rounded-xl bg-[#4D4D4D]/40 border border-[#3F3F46] text-white text-sm font-medium transition-colors flex items-center gap-2';
+            chip.className = 'elev-card px-4 py-2.5 rounded-xl bg-panel/40 text-ink text-sm font-medium transition-colors flex items-center gap-2';
             chip.innerHTML = `<span>${label}</span><i class="fa-solid fa-xmark text-[10px] opacity-80"></i>`;
             chip.addEventListener('click', (e) => {
                 // ลบได้เฉพาะตอนคลิกที่กากบาท ตัวชิปเองไม่ตอบสนอง (ข้อ 11.5)
@@ -577,7 +582,7 @@
         if (active > 1) {
             const clearBtn = document.createElement('button');
             clearBtn.type = 'button';
-            clearBtn.className = 'px-2.5 py-1 bg-red-500/10 hover:bg-red-500/15 text-red-300 rounded-full text-xs font-medium border border-red-500/30 transition-colors';
+            clearBtn.className = 'px-2.5 py-1 bg-red-500/10 hover:bg-red-500/15 text-red-300 rounded-full text-xs font-medium ring-1 ring-red-500/30 transition-colors';
             clearBtn.textContent = 'ล้างทั้งหมด';
             clearBtn.addEventListener('click', resetAllSalesHistoryFilters);
             salesHistoryActiveFilters.appendChild(clearBtn);
@@ -626,7 +631,7 @@
 
             // แถวที่ยกเลิกไม่ย้อมพื้นทั้งแถวแล้ว (พื้นแถวมีสีเดียวตามข้อ 11.6)
             // ความหมาย "ยกเลิก" สื่อด้วยป้ายสถานะในคอลัมน์ของมัน + ขีดฆ่าเลขบิลกับยอดเงิน
-            row.className = 'hover:bg-[#464646] transition-colors';
+            row.className = 'hover:bg-divider transition-colors';
 
             const dateStr = new Date(txn.created_at).toLocaleString('th-TH', {
                 day: '2-digit',
@@ -642,27 +647,27 @@
                     `${txn.member_id.first_name} ${txn.member_id.last_name}`,
                     `<span class="font-mono">${txn.member_id.phone || '-'}</span>`
                 )
-                : '<span class="text-white/50">-</span>';
+                : '<span class="text-ink/50">-</span>';
 
             row.innerHTML = `
                 <td class="px-6 py-4">
                     <div>
-                        <p class="font-mono font-semibold text-[#FFE169] ${isCancelled ? 'line-through' : ''}">${txn.receipt_number}</p>
-                        <p class="text-xs text-white/70 mt-0.5">${dateStr}</p>
+                        <p class="font-mono font-semibold text-accent-ink ${isCancelled ? 'line-through' : ''}">${txn.receipt_number}</p>
+                        <p class="text-xs text-ink/70 mt-0.5">${dateStr}</p>
                     </div>
                 </td>
                 <td class="px-6 py-4">
                     ${twoLineCell(txn.branch_id ? txn.branch_id.name : '-', txn.employee_id ? txn.employee_id.name : '-')}
                 </td>
                 <td class="px-6 py-4">${memberCell}</td>
-                <td class="px-6 py-4 text-right text-white font-mono ${isCancelled ? 'line-through text-white/50' : ''}">฿${txn.total_amount.toLocaleString()}</td>
+                <td class="px-6 py-4 text-right text-ink font-mono ${isCancelled ? 'line-through text-ink/50' : ''}">฿${txn.total_amount.toLocaleString()}</td>
                 <td class="px-6 py-4">
-                    <span class="px-2.5 py-1 bg-[#3F3F46] text-white/70 rounded-[0.375rem] text-xs font-medium">${paymentType}</span>
+                    <span class="px-2.5 py-1 bg-line text-ink/70 rounded-[0.375rem] text-xs font-medium">${paymentType}</span>
                 </td>
                 <td class="px-6 py-4">${salesHistoryStatusBadge(txn.status)}</td>
                 <td class="px-6 py-4 text-right">
                     <div class="flex items-center justify-end gap-1">
-                        <button type="button" class="view-transaction-btn text-white hover:text-indigo-400 transition-colors p-2"
+                        <button type="button" class="view-transaction-btn text-ink hover:text-indigo-400 transition-colors p-2"
                                 data-id="${txn._id}" title="ดูรายละเอียด">
                             <i class="fa-solid fa-eye"></i>
                         </button>
@@ -814,7 +819,7 @@
                         ${item.product_name}
                         ${isGift ? '<span class="ml-2 px-1.5 py-0.5 text-[10px] font-bold bg-amber-500/20 text-amber-400 rounded">ของแถม</span>' : ''}
                     </td>
-                    <td class="px-4 py-3 text-center">${productCode ? `<span class="font-mono font-bold text-primary tracking-wide">${productCode}</span>` : '<span class="text-body-muted">-</span>'}</td>
+                    <td class="px-4 py-3 text-center">${productCode ? `<span class="font-mono font-bold text-accent-ink tracking-wide">${productCode}</span>` : '<span class="text-body-muted">-</span>'}</td>
                     <td class="px-4 py-3 text-center text-body-muted">${item.quantity}</td>
                     <td class="px-4 py-3 text-right text-ink font-mono">${isGift ? '<span class="text-amber-400 font-bold">ของแถม</span>' : `฿${item.price.toLocaleString()}`}</td>
                 `;

@@ -2,42 +2,42 @@
     <!-- [1] หัวหน้า — DESIGN.md ข้อ 11.2 -->
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div class="flex items-center gap-4">
-            <i class="bi bi-people text-white w-5 text-2xl text-center"></i>
-            <h3 class="text-2xl text-white">จัดการพนักงาน</h3>
+            <i class="bi bi-people text-ink w-5 text-2xl text-center"></i>
+            <h3 class="text-2xl text-ink">จัดการพนักงาน</h3>
         </div>
         <button id="btn-add-employee" type="button"
-            class="px-4 py-2 bg-[#FFE169] hover:bg-[#E2B93C] text-[#333333] font-medium rounded-xl transition-all flex items-center gap-2 w-fit cursor-pointer">
+            class="px-4 py-2 bg-primary hover:bg-[#E2B93C] text-on-primary font-medium rounded-xl transition-all flex items-center gap-2 w-fit cursor-pointer">
             <i class="fa-solid fa-user-plus"></i>
             <p>เพิ่มพนักงาน</p>
         </button>
     </div>
 
     <!-- [2] การ์ดพาเนล — แถบควบคุม + ชิป + ตาราง อยู่ในการ์ดใบเดียว (ข้อ 11.1, 11.3) -->
-    <div class="bg-[#4D4D4D]/40 rounded-2xl shadow-lg overflow-hidden backdrop-blur-sm">
+    <div class="bg-panel/40 rounded-2xl shadow-lg overflow-hidden backdrop-blur-sm">
         <!-- 2a แถบควบคุม (ข้อ 11.4) -->
         <div class="p-6 pb-0 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-            <h3 class="text-lg text-white flex items-center gap-2">
-                <i class="fa-solid fa-users text-[#FFE169]"></i> รายชื่อพนักงานทั้งหมด
+            <h3 class="text-lg text-ink flex items-center gap-2">
+                <i class="fa-solid fa-users text-accent-ink"></i> รายชื่อพนักงานทั้งหมด
                 <span id="employee-count-badge"
-                    class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#4D4D4D]/60 text-white">0 คน</span>
+                    class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-chip/60 text-ink">0 คน</span>
             </h3>
             <div class="flex flex-wrap items-center gap-2.5 w-full lg:w-auto">
                 <div class="relative group w-full sm:w-56">
                     <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <i class="fa-solid fa-search text-white group-focus-within:text-[#FFE169] transition-colors"></i>
+                        <i class="fa-solid fa-search text-ink group-focus-within:text-accent-ink transition-colors"></i>
                     </div>
                     <label for="employee-search" class="sr-only">ค้นหาพนักงาน</label>
                     <input id="employee-search" type="text" autocomplete="off" placeholder="ค้นหาชื่อ / รหัสพนักงาน..."
-                        class="bg-[#4D4D4D]/40 border border-[#3F3F46] rounded-[0.5rem] text-sm pl-10 pr-4 py-2 w-full text-white focus:outline-none focus:border-[#FFE169] focus:ring-1 focus:ring-[#FFE169] transition-all placeholder-white">
+                        class="elev-card bg-panel/40 rounded-[0.5rem] text-sm pl-10 pr-4 py-2 w-full text-ink focus:outline-none focus:ring-2 focus:ring-accent-ink focus:ring-1 focus:ring-accent-ink transition-all placeholder-body-muted">
                 </div>
                 <label for="employee-filter-role" class="sr-only">กรองตามตำแหน่ง</label>
                 <select id="employee-filter-role"
-                    class="bg-[#4D4D4D]/40 cursor-pointer text-sm rounded-[0.5rem] px-3 py-2 text-white focus:outline-none focus:ring-1 focus:ring-[#FFE169] w-full sm:w-auto [&>option]:bg-[#4D4D4D] [&>option:checked]:bg-[#FFE169] [&>option:checked]:text-[#333333]">
+                    class="bg-panel/40 cursor-pointer text-sm rounded-[0.5rem] px-3 py-2 text-ink focus:outline-none focus:ring-1 focus:ring-accent-ink w-full sm:w-auto [&>option]:bg-panel [&>option:checked]:bg-primary [&>option:checked]:text-on-primary">
                     <option value="">ทุกตำแหน่ง</option>
                 </select>
                 <label for="employee-filter-branch" class="sr-only">กรองตามสาขา</label>
                 <select id="employee-filter-branch"
-                    class="hidden md:block bg-[#4D4D4D]/40 cursor-pointer text-sm rounded-[0.5rem] px-3 py-2 text-white focus:outline-none focus:ring-1 focus:ring-[#FFE169] [&>option]:bg-[#4D4D4D] [&>option:checked]:bg-[#FFE169] [&>option:checked]:text-[#333333]">
+                    class="hidden md:block bg-panel/40 cursor-pointer text-sm rounded-[0.5rem] px-3 py-2 text-ink focus:outline-none focus:ring-1 focus:ring-accent-ink [&>option]:bg-panel [&>option:checked]:bg-primary [&>option:checked]:text-on-primary">
                     <option value="">ทุกสาขา</option>
                 </select>
             </div>
@@ -47,14 +47,14 @@
         <div class="px-6 py-4">
             <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                 <div id="employee-active-filters" class="flex flex-wrap gap-2"></div>
-                <div id="employee-result-count" class="text-xs text-white font-medium"></div>
+                <div id="employee-result-count" class="text-xs text-ink font-medium"></div>
             </div>
         </div>
 
         <!-- 2c ตาราง (ข้อ 11.6) -->
         <div class="overflow-x-auto" tabindex="0">
             <table class="w-full text-left text-sm whitespace-nowrap border-collapse">
-                <thead class="bg-[#4D4D4D]/40 text-white">
+                <thead class="bg-panel/40 text-ink">
                     <tr>
                         <th class="px-6 py-4 font-semibold text-[15px] w-full">ชื่อ-นามสกุล</th>
                         <th class="px-6 py-4 font-semibold text-[15px]">รหัสพนักงาน</th>
@@ -64,7 +64,7 @@
                         <th class="px-6 py-4 font-semibold text-[15px] text-right">จัดการ</th>
                     </tr>
                 </thead>
-                <tbody id="employee-table-body" class="divide-y divide-[#464646]"></tbody>
+                <tbody id="employee-table-body" class="divide-y divide-divider"></tbody>
             </table>
         </div>
     </div>

@@ -34,7 +34,7 @@
     const renderMemberSkeleton = (rowCount = 6) => {
         const tbody = document.getElementById('member-table-body');
         if (!tbody) return;
-        const bar = (w) => `<div class="h-3.5 ${w} rounded-full bg-[#5c5c5c] animate-pulse"></div>`;
+        const bar = (w) => `<div class="h-3.5 ${w} rounded-full bg-skeleton animate-pulse"></div>`;
         let html = '';
         for (let i = 0; i < rowCount; i++) {
             html += `
@@ -42,7 +42,7 @@
                     <td class="px-6 py-4"><div class="space-y-2">${bar('w-24')}${bar('w-20')}</div></td>
                     <td class="px-6 py-4">
                         <div class="flex items-center gap-3">
-                            <div class="w-10 h-10 rounded-full bg-[#5c5c5c] animate-pulse shrink-0"></div>
+                            <div class="w-10 h-10 rounded-full bg-skeleton animate-pulse shrink-0"></div>
                             <div class="space-y-2">${bar('w-36')}${bar('w-24')}</div>
                         </div>
                     </td>
@@ -51,8 +51,8 @@
                     <td class="px-6 py-4">${bar('w-20')}</td>
                     <td class="px-6 py-4">
                         <div class="flex items-center justify-end gap-2">
-                            <div class="w-8 h-8 rounded-[0.375rem] bg-[#5c5c5c] animate-pulse"></div>
-                            <div class="w-8 h-8 rounded-[0.375rem] bg-[#5c5c5c] animate-pulse"></div>
+                            <div class="w-8 h-8 rounded-[0.375rem] bg-skeleton animate-pulse"></div>
+                            <div class="w-8 h-8 rounded-[0.375rem] bg-skeleton animate-pulse"></div>
                         </div>
                     </td>
                 </tr>
@@ -61,7 +61,7 @@
         tbody.innerHTML = html;
     };
 
-    const memberStateRow = (message, extraClass = 'text-white/50 italic') =>
+    const memberStateRow = (message, extraClass = 'text-ink/50 italic') =>
         `<tr><td colspan="${MEMBER_TABLE_COLS}" class="px-6 py-8 text-center ${extraClass}">${message}</td></tr>`;
 
     // ตัวนับผลลัพธ์ — หน้านี้กรองในเครื่องจาก membersData ทั้งก้อน จึงบอก "จาก M" ได้จริง
@@ -81,7 +81,7 @@
 
         const chip = document.createElement('button');
         chip.type = 'button';
-        chip.className = 'px-4 py-2.5 rounded-xl bg-[#4D4D4D]/40 border border-[#3F3F46] text-white text-sm font-medium transition-colors flex items-center gap-2';
+        chip.className = 'elev-card px-4 py-2.5 rounded-xl bg-panel/40 text-ink text-sm font-medium transition-colors flex items-center gap-2';
         chip.innerHTML = `<span>ค้นหา: ${term}</span><i class="fa-solid fa-xmark text-[10px] opacity-80"></i>`;
         chip.addEventListener('click', (e) => {
             // ลบได้เฉพาะตอนคลิกที่กากบาท ตัวชิปเองไม่ตอบสนอง (ข้อ 11.5)
@@ -132,7 +132,7 @@
 
         members.forEach(m => {
             const row = document.createElement('tr');
-            row.className = 'hover:bg-[#464646] transition-colors';
+            row.className = 'hover:bg-divider transition-colors';
 
             const fullName = `${m.prefix || ''} ${m.first_name || ''} ${m.last_name || ''}`.trim();
             const citizenDisplay = m.citizen_id ? m.citizen_id.replace(/(\d{1})(\d{4})(\d{5})(\d{2})(\d{1})/, '$1-$2-$3-$4-$5') : '-';
@@ -142,36 +142,36 @@
             // รูปสมาชิกทำหน้าที่เดียวกับไอคอนวงกลมประจำแถวในหน้า #stock (ข้อ 11.6)
             // จึงย้ายเข้ามาอยู่ในเซลล์ชื่อ แทนที่จะกินคอลัมน์ของตัวเอง
             const photoHtml = m.photo
-                ? `<img src="${memberPhotoSrc(m.photo)}" alt="" class="w-10 h-10 rounded-full object-cover shrink-0 ring-1 ring-white/20">`
-                : `<div class="w-10 h-10 rounded-full bg-[#3F3F46] flex items-center justify-center text-white/70 shrink-0"><i class="fa-solid fa-user"></i></div>`;
+                ? `<img src="${memberPhotoSrc(m.photo)}" alt="" class="border border-transparent w-10 h-10 rounded-full object-cover shrink-0 ring-1 ring-ink/20">`
+                : `<div class="w-10 h-10 rounded-full bg-line flex items-center justify-center text-ink/70 shrink-0"><i class="fa-solid fa-user"></i></div>`;
 
             const referralBadge = m.referral_source
-                ? `<span class="px-2.5 py-1 bg-[#3F3F46] text-white/70 rounded-[0.375rem] text-xs font-medium">${m.referral_source}</span>`
-                : '<span class="text-white/50">-</span>';
+                ? `<span class="px-2.5 py-1 bg-line text-ink/70 rounded-[0.375rem] text-xs font-medium">${m.referral_source}</span>`
+                : '<span class="text-ink/50">-</span>';
 
             row.innerHTML = `
                 <td class="px-6 py-4">
                     <div>
-                        <p class="font-mono font-semibold text-[#FFE169]">${m.member_number || '-'}</p>
-                        <p class="text-xs text-white/70 mt-0.5">${dateStr}</p>
+                        <p class="font-mono font-semibold text-accent-ink">${m.member_number || '-'}</p>
+                        <p class="text-xs text-ink/70 mt-0.5">${dateStr}</p>
                     </div>
                 </td>
                 <td class="px-6 py-4">
                     <div class="flex items-center gap-3">
                         ${photoHtml}
                         <div>
-                            <p class="font-medium text-white">${fullName || '-'}</p>
-                            <p class="text-xs text-white/70 mt-0.5">${nameEn || '-'}</p>
+                            <p class="font-medium text-ink">${fullName || '-'}</p>
+                            <p class="text-xs text-ink/70 mt-0.5">${nameEn || '-'}</p>
                         </div>
                     </div>
                 </td>
-                <td class="px-6 py-4 text-white font-mono">${citizenDisplay}</td>
-                <td class="px-6 py-4 text-white font-mono">${m.phone || '-'}</td>
+                <td class="px-6 py-4 text-ink font-mono">${citizenDisplay}</td>
+                <td class="px-6 py-4 text-ink font-mono">${m.phone || '-'}</td>
                 <td class="px-6 py-4">${referralBadge}</td>
                 <td class="px-6 py-4 text-right">
                     <div class="flex items-center justify-end gap-1">
-                        <button type="button" class="view-member-btn text-white hover:text-indigo-400 transition-colors p-2" data-id="${m._id}" title="ดูรายละเอียด"><i class="fa-solid fa-eye"></i></button>
-                        <button type="button" class="delete-member-btn text-white hover:text-red-400 transition-colors p-2" data-id="${m._id}" title="ลบสมาชิก"><i class="fa-solid fa-trash"></i></button>
+                        <button type="button" class="view-member-btn text-ink hover:text-indigo-400 transition-colors p-2" data-id="${m._id}" title="ดูรายละเอียด"><i class="fa-solid fa-eye"></i></button>
+                        <button type="button" class="delete-member-btn text-ink hover:text-red-400 transition-colors p-2" data-id="${m._id}" title="ลบสมาชิก"><i class="fa-solid fa-trash"></i></button>
                     </div>
                 </td>
             `;
@@ -294,7 +294,7 @@
         currentCardFrontPhotoUrl = '';
         const cardFrontContainer = document.getElementById('member-card-front-container');
         if (cardFrontContainer) {
-            cardFrontContainer.innerHTML = `<div id="member-card-front-placeholder" class="text-center text-body-muted p-3 group-hover:text-primary transition-colors duration-300"><i class="fa-solid fa-cloud-arrow-up text-3xl mb-2 block opacity-60 group-hover:opacity-100 transform group-hover:-translate-y-1 transition-all duration-300"></i><p class="text-xs font-medium leading-tight">คลิกเลือกรูปหน้าบัตร</p></div>`;
+            cardFrontContainer.innerHTML = `<div id="member-card-front-placeholder" class="text-center text-body-muted p-3 group-hover:text-accent-ink transition-colors duration-300"><i class="fa-solid fa-cloud-arrow-up text-3xl mb-2 block opacity-60 group-hover:opacity-100 transform group-hover:-translate-y-1 transition-all duration-300"></i><p class="text-xs font-medium leading-tight">คลิกเลือกรูปหน้าบัตร</p></div>`;
         }
         const cardFrontInput = document.getElementById('member-card-front-input');
         if (cardFrontInput) cardFrontInput.value = '';
@@ -377,7 +377,7 @@
         resetMemberForm();
         const title = document.getElementById('member-modal-title');
         if (title) {
-            const memberTag = member.member_number ? `<span class="text-xs bg-surface-chip border border-hairline text-ink px-2.5 py-1 rounded-md font-mono font-bold ml-2 tracking-wider">${member.member_number}</span>` : '';
+            const memberTag = member.member_number ? `<span class="elev-chip text-xs bg-surface-chip text-ink px-2.5 py-1 rounded-md font-mono font-bold ml-2 tracking-wider">${member.member_number}</span>` : '';
             title.innerHTML = `<div class="w-10 h-10 rounded-sm bg-surface-chip flex items-center justify-center"><i class="fa-solid fa-pen text-ink"></i></div> แก้ไขข้อมูลสมาชิก ${memberTag}`;
         }
 

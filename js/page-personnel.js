@@ -37,17 +37,17 @@
         .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 
-    const empStateRow = (msg, cls = 'text-white/50 italic') =>
+    const empStateRow = (msg, cls = 'text-ink/50 italic') =>
         `<tr><td colspan="${EMP_COLS}" class="px-6 py-8 text-center ${cls}">${empEsc(msg)}</td></tr>`;
 
     const empSkeleton = (rows = 5) => {
         if (!employeeTableBody) return;
-        const bar = (w) => `<div class="h-3.5 ${w} rounded-full bg-[#5c5c5c] animate-pulse"></div>`;
+        const bar = (w) => `<div class="h-3.5 ${w} rounded-full bg-skeleton animate-pulse"></div>`;
         employeeTableBody.innerHTML = Array.from({ length: rows }).map(() => `
             <tr>
                 <td class="px-6 py-4">
                     <div class="flex items-center gap-3">
-                        <div class="w-9 h-9 rounded-full bg-[#5c5c5c] animate-pulse flex-shrink-0"></div>
+                        <div class="w-9 h-9 rounded-full bg-skeleton animate-pulse flex-shrink-0"></div>
                         ${bar('w-40')}
                     </div>
                 </td>
@@ -73,20 +73,20 @@
         const initial = (String(name || '?').trim()[0] || '?').toUpperCase();
         const c = empAvatarColor(seed || name);
         return `<div class="w-9 h-9 rounded-full flex items-center justify-center shrink-0 font-semibold text-sm"
-                     style="color:${c};background-color:#27272A;border:1px solid ${c}59;"
+                     style="color:${c};background-color:${c}1F;"
                      aria-hidden="true">${empEsc(initial)}</div>`;
     };
 
     // ป้ายตำแหน่งใช้พื้นเทาเหมือนป้ายหมวดหมู่อื่นในระบบ (ข้อ 11.6)
     // ของเดิมไล่สีแดง/ม่วง/เขียวตามตำแหน่ง ซึ่งครอบคลุมแค่ 3 จาก 6 ตำแหน่งที่มีจริง
     const empRoleBadge = (role) =>
-        `<span class="px-2.5 py-1 rounded-[0.375rem] text-xs font-medium bg-[#4D4D4D]/60 text-white">${empEsc(role || '-')}</span>`;
+        `<span class="px-2.5 py-1 rounded-[0.375rem] text-xs font-medium bg-chip/60 text-ink">${empEsc(role || '-')}</span>`;
 
     const empStatusBadge = (status) => {
         const suspended = status === 'ระงับ';
         const t = suspended
-            ? { dot: 'bg-[#FE0000]', bg: 'bg-[#FE0000]/[0.12]', text: 'text-[#FE0000]', label: 'ระงับ' }
-            : { dot: 'bg-[#20D500]', bg: 'bg-[#42A231]/[0.12]', text: 'text-[#20D500]', label: 'ปกติ' };
+            ? { dot: 'bg-state-danger', bg: 'bg-state-danger/[0.12]', text: 'text-state-danger', label: 'ระงับ' }
+            : { dot: 'bg-state-ok', bg: 'bg-state-ok-tint/[0.12]', text: 'text-state-ok', label: 'ปกติ' };
         return `<div class="inline-flex items-center gap-2 px-2.5 py-1 rounded-[0.375rem] ${t.bg}">
                     <div class="w-2 h-2 rounded-full ${t.dot}"></div>
                     <span class="${t.text} font-medium text-xs">${t.label}</span>
@@ -151,8 +151,8 @@
         chips.forEach(c => {
             const chip = document.createElement('button');
             chip.type = 'button';
-            chip.className = 'px-4 py-2.5 rounded-xl bg-[#4D4D4D]/40 border border-[#3F3F46] ' +
-                'text-white text-sm font-medium transition-colors flex items-center gap-2 cursor-pointer';
+            chip.className = 'elev-card px-4 py-2.5 rounded-xl bg-panel/40' +
+                'text-ink text-sm font-medium transition-colors flex items-center gap-2 cursor-pointer';
             chip.innerHTML = `<span>${empEsc(c.label)}</span><i class="fa-solid fa-xmark text-[10px] opacity-80"></i>`;
             chip.setAttribute('aria-label', `ลบตัวกรอง ${c.label}`);
             chip.addEventListener('click', (e) => {
@@ -167,7 +167,7 @@
             const clearAll = document.createElement('button');
             clearAll.type = 'button';
             clearAll.className = 'px-2.5 py-1 bg-red-500/10 hover:bg-red-500/15 text-red-300 ' +
-                'rounded-full text-xs font-medium border border-red-500/30 transition-colors cursor-pointer';
+                'rounded-full text-xs font-medium ring-1 ring-red-500/30 transition-colors cursor-pointer';
             clearAll.textContent = 'ล้างทั้งหมด';
             clearAll.addEventListener('click', () => {
                 _empSearch = ''; _empRole = ''; _empBranch = '';
@@ -209,25 +209,25 @@
         }
 
         employeeTableBody.innerHTML = rows.map(emp => `
-            <tr class="hover:bg-[#464646] transition-colors">
+            <tr class="hover:bg-divider transition-colors">
                 <td class="px-6 py-4">
                     <div class="flex items-center gap-3">
                         ${empAvatar(emp.name, emp.emp_id || emp._id)}
-                        <p class="font-medium text-white">${empEsc(emp.name || '-')}</p>
+                        <p class="font-medium text-ink">${empEsc(emp.name || '-')}</p>
                     </div>
                 </td>
-                <td class="px-6 py-4"><span class="font-mono font-semibold text-[#FFE169]">${empEsc(emp.emp_id || '-')}</span></td>
+                <td class="px-6 py-4"><span class="font-mono font-semibold text-accent-ink">${empEsc(emp.emp_id || '-')}</span></td>
                 <td class="px-6 py-4">${empRoleBadge(emp.role)}</td>
-                <td class="px-6 py-4 text-white">${empEsc(emp.branch_id && emp.branch_id.name ? emp.branch_id.name : '-')}</td>
+                <td class="px-6 py-4 text-ink">${empEsc(emp.branch_id && emp.branch_id.name ? emp.branch_id.name : '-')}</td>
                 <td class="px-6 py-4">${empStatusBadge(emp.status)}</td>
                 <td class="px-6 py-4 text-right">
                     <div class="flex items-center justify-end gap-1">
-                        <button type="button" class="view-emp-btn text-white hover:text-indigo-400 transition-colors p-2 cursor-pointer"
+                        <button type="button" class="view-emp-btn text-ink hover:text-indigo-400 transition-colors p-2 cursor-pointer"
                             data-id="${empEsc(emp._id)}" title="ดูรายละเอียด"
                             aria-label="ดูรายละเอียดพนักงาน ${empEsc(emp.name || '')}">
                             <i class="fa-solid fa-eye"></i>
                         </button>
-                        <button type="button" class="delete-emp-btn text-white hover:text-red-400 transition-colors p-2 cursor-pointer"
+                        <button type="button" class="delete-emp-btn text-ink hover:text-red-400 transition-colors p-2 cursor-pointer"
                             data-id="${empEsc(emp._id)}" title="ลบพนักงาน"
                             aria-label="ลบพนักงาน ${empEsc(emp.name || '')}">
                             <i class="fa-solid fa-trash"></i>
@@ -379,7 +379,7 @@
                 const statusContainer = document.getElementById('emp-status-container');
                 if (emp) {
                     // Edit mode
-                    employeeModalTitle.innerHTML = `<i class="fa-solid fa-pen-to-square text-primary"></i> แก้ไขข้อมูลพนักงาน`;
+                    employeeModalTitle.innerHTML = `<i class="fa-solid fa-pen-to-square text-accent-ink"></i> แก้ไขข้อมูลพนักงาน`;
                     employeeEditId.value = emp._id;
                     empNameInput.value = emp.name;
                     empIdInput.value = emp.emp_id;
@@ -396,7 +396,7 @@
                     if (statusContainer) statusContainer.classList.remove('hidden'); // Show status toggle on edit
                 } else {
                     // Add mode
-                    employeeModalTitle.innerHTML = `<i class="fa-solid fa-user-plus text-primary"></i> เพิ่มพนักงานใหม่`;
+                    employeeModalTitle.innerHTML = `<i class="fa-solid fa-user-plus text-accent-ink"></i> เพิ่มพนักงานใหม่`;
                     employeeEditId.value = '';
                     employeeForm.reset();
                     empPasswordInput.setAttribute('required', '');

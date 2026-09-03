@@ -32,10 +32,10 @@
     // muted เป็นตัวที่ 4 ที่หน้านี้ต้องมีเพิ่ม เพราะ "ขายแล้ว" ไม่ใช่ทั้งสำเร็จและล้มเหลว
     // แต่เป็นเครื่องที่หลุดจากงานตรวจนับไปแล้ว (ดูข้อ 12 ของ DESIGN.md)
     const STATUS_TONE = {
-        ok: { dot: 'bg-[#20D500]', bg: 'bg-[#42A231]/[0.12]', text: 'text-[#20D500]' },
-        fail: { dot: 'bg-[#FE0000]', bg: 'bg-[#FE0000]/[0.12]', text: 'text-[#FE0000]' },
+        ok: { dot: 'bg-state-ok', bg: 'bg-state-ok-tint/[0.12]', text: 'text-state-ok' },
+        fail: { dot: 'bg-state-danger', bg: 'bg-state-danger/[0.12]', text: 'text-state-danger' },
         working: { dot: 'bg-orange-500', bg: 'bg-orange-500/[0.12]', text: 'text-orange-400' },
-        muted: { dot: 'bg-white/40', bg: 'bg-[#4D4D4D]/40', text: 'text-white/70' },
+        muted: { dot: 'bg-ink/40', bg: 'bg-panel/40', text: 'text-ink/70' },
     };
 
     const statusBadge = (tone, label) => {
@@ -47,13 +47,13 @@
 
     // ป้ายหมวดหมู่ในเซลล์ (สี / ความจุ) — ไม่มีค่าให้ใช้ "-" ไม่ปล่อยว่าง (ข้อ 11.6)
     const tagCell = (value) => value
-        ? `<span class="px-2.5 py-1 rounded-[0.375rem] text-xs font-medium bg-[#4D4D4D]/40 text-white">${value}</span>`
-        : '<span class="text-white/50">-</span>';
+        ? `<span class="px-2.5 py-1 rounded-[0.375rem] text-xs font-medium bg-panel/40 text-ink">${value}</span>`
+        : '<span class="text-ink/50">-</span>';
 
-    const stateRow = (cols, message, extraClass = 'text-white/50 italic') =>
+    const stateRow = (cols, message, extraClass = 'text-ink/50 italic') =>
         `<tr><td colspan="${cols}" class="px-6 py-8 text-center ${extraClass}">${message}</td></tr>`;
 
-    const skelBar = (w) => `<div class="h-3.5 ${w} rounded-full bg-[#5c5c5c] animate-pulse"></div>`;
+    const skelBar = (w) => `<div class="h-3.5 ${w} rounded-full bg-skeleton animate-pulse"></div>`;
 
     // แถวโครงร่างระหว่างรอข้อมูลรอบแรก (ข้อ 11.7)
     // เรียกเฉพาะตอนตารางยังว่างจริงๆ — loadTodayAuditSession() ถูกเรียกซ้ำหลังสแกนทุกครั้ง
@@ -66,7 +66,7 @@
                 html += `<tr>
                     <td class="px-6 py-4">${skelBar('w-5')}</td>
                     <td class="px-6 py-4"><div class="flex items-center gap-2">
-                        <div class="w-4 h-4 rounded-full bg-[#5c5c5c] animate-pulse shrink-0"></div>
+                        <div class="w-4 h-4 rounded-full bg-skeleton animate-pulse shrink-0"></div>
                         ${skelBar('w-44')}</div></td>
                     <td class="px-6 py-4">${skelBar('w-16')}</td>
                     <td class="px-6 py-4">${skelBar('w-20')}</td>
@@ -83,7 +83,7 @@
             for (let i = 0; i < 3; i++) {
                 html += `<tr>
                     <td class="px-6 py-4">${skelBar('w-5')}</td>
-                    <td class="px-6 py-4"><div class="w-10 h-10 rounded-[0.375rem] bg-[#5c5c5c] animate-pulse"></div></td>
+                    <td class="px-6 py-4"><div class="w-10 h-10 rounded-[0.375rem] bg-skeleton animate-pulse"></div></td>
                     <td class="px-6 py-4">${skelBar('w-36')}</td>
                     <td class="px-6 py-4">${skelBar('w-48')}</td>
                     <td class="px-6 py-4">${skelBar('w-24')}</td>
@@ -112,7 +112,7 @@
         const addChip = (label, onRemove) => {
             const chip = document.createElement('button');
             chip.type = 'button';
-            chip.className = 'px-4 py-2.5 rounded-xl bg-[#4D4D4D]/40 border border-[#3F3F46] text-white text-sm font-medium transition-colors flex items-center gap-2';
+            chip.className = 'elev-card px-4 py-2.5 rounded-xl bg-panel/40 text-ink text-sm font-medium transition-colors flex items-center gap-2';
             chip.innerHTML = `<span>${label}</span><i class="fa-solid fa-xmark text-[10px] opacity-80"></i>`;
             chip.addEventListener('click', (e) => {
                 // ลบได้เฉพาะตอนคลิกที่กากบาท ตัวชิปเองไม่ตอบสนอง (ข้อ 11.5)
@@ -141,7 +141,7 @@
         if (activeCount > 1) {
             const clearBtn = document.createElement('button');
             clearBtn.type = 'button';
-            clearBtn.className = 'px-2.5 py-1 bg-red-500/10 hover:bg-red-500/15 text-red-300 rounded-full text-xs font-medium border border-red-500/30 transition-colors';
+            clearBtn.className = 'px-2.5 py-1 bg-red-500/10 hover:bg-red-500/15 text-red-300 rounded-full text-xs font-medium ring-1 ring-red-500/30 transition-colors';
             clearBtn.textContent = 'ล้างทั้งหมด';
             clearBtn.addEventListener('click', () => {
                 if (searchEl) searchEl.value = '';
@@ -252,14 +252,14 @@
             if (modalProductName) {
                 modalProductName.className = 'flex flex-wrap items-center gap-2 pt-1';
                 modalProductName.innerHTML = statusBadge('ok', 'พบในระบบ')
-                    + `<span class="text-white text-sm font-medium">${foundExpected.product_name}</span>`;
+                    + `<span class="text-ink text-sm font-medium">${foundExpected.product_name}</span>`;
             }
         } else {
             if (modalTitle) modalTitle.textContent = 'ไม่พบสินค้าในระบบคลัง';
             if (modalProductName) {
                 modalProductName.className = 'flex flex-wrap items-center gap-2 pt-1';
                 modalProductName.innerHTML = statusBadge('fail', 'ไม่พบในระบบ')
-                    + '<span class="text-white text-sm font-medium">สินค้านอกแผน / ไม่พบในคลังสาขานี้</span>';
+                    + '<span class="text-ink text-sm font-medium">สินค้านอกแผน / ไม่พบในคลังสาขานี้</span>';
             }
         }
 
@@ -517,10 +517,10 @@
 
         if (pill) {
             if (pending === 0 && total > 0) {
-                pill.className = 'px-2.5 py-1 rounded-[0.375rem] text-xs font-medium bg-[#42A231]/[0.12] text-[#20D500]';
+                pill.className = 'px-2.5 py-1 rounded-[0.375rem] text-xs font-medium bg-state-ok-tint/[0.12] text-state-ok';
                 pill.textContent = `ครบ ${total} เครื่อง`;
             } else {
-                pill.className = 'px-2.5 py-1 rounded-[0.375rem] text-xs font-medium bg-[#4D4D4D]/40 text-white';
+                pill.className = 'px-2.5 py-1 rounded-[0.375rem] text-xs font-medium bg-panel/40 text-ink';
                 pill.textContent = `${total} เครื่อง`;
             }
         }
@@ -558,21 +558,21 @@
 
         // แถวที่จบงานแล้วถูกทอนด้วย "สีที่จางลง" ไม่ใช่ opacity ของทั้งแถว
         // opacity-* ไปทับซ้อนกับสีที่จางอยู่แล้ว จนอัตราส่วนความต่างของ IMEI เหลือราว 2.4:1 (ต่ำกว่า WCAG AA)
-        const rowClass = 'hover:bg-[#464646]';
+        const rowClass = 'hover:bg-divider';
 
         let badgeHtml, imeiHtml;
         if (isScanned) {
             badgeHtml = statusBadge('ok', 'สแกนแล้ว');
-            imeiHtml = `<span class="font-mono font-semibold text-[#FFE169]/70 line-through">${e.imei}</span>`;
+            imeiHtml = `<span class="font-mono font-semibold text-accent-ink line-through">${e.imei}</span>`;
         } else if (isSold) {
             badgeHtml = statusBadge('muted', 'ขายแล้ว');
-            imeiHtml = `<span class="font-mono font-semibold text-[#FFE169]/70 line-through">${e.imei}</span>`;
+            imeiHtml = `<span class="font-mono font-semibold text-accent-ink line-through">${e.imei}</span>`;
         } else {
             badgeHtml = statusBadge('working', 'รอสแกน');
-            imeiHtml = `<span class="font-mono font-semibold text-[#FFE169]">${e.imei}</span>`
+            imeiHtml = `<span class="font-mono font-semibold text-accent-ink">${e.imei}</span>`
                 + `<button type="button" onclick="fillImeiInput('${e.imei}')" title="กรอก IMEI นี้ลงช่องสแกน"`
                 + ` aria-label="กรอก IMEI ${e.imei} ลงช่องสแกน"`
-                + ` class="text-white hover:text-[#FFE169] transition-colors p-2"><i class="fa-solid fa-arrow-up-from-bracket text-xs"></i></button>`;
+                + ` class="text-ink hover:text-accent-ink transition-colors p-2"><i class="fa-solid fa-arrow-up-from-bracket text-xs"></i></button>`;
         }
 
         // จุดสีหน้าชื่อสินค้า — สร้างจากตัวสร้างกลางเท่านั้น (ข้อ 11.14)
@@ -583,9 +583,9 @@
 
         return `
         <tr class="${rowClass} transition-colors" data-imei="${e.imei}" data-name="${e.product_name}" data-status="${isScanned ? 'scanned' : (isSold ? 'sold' : 'pending')}">
-            <td class="px-6 py-4 text-white/70">${idx + 1}</td>
+            <td class="px-6 py-4 text-ink/70">${idx + 1}</td>
             <td class="px-6 py-4">
-                <p class="font-medium ${isSold ? 'text-white/70' : 'text-white'} flex items-center gap-2">${dot}<span>${e.product_name}</span></p>
+                <p class="font-medium ${isSold ? 'text-ink/70' : 'text-ink'} flex items-center gap-2">${dot}<span>${e.product_name}</span></p>
             </td>
             <td class="px-6 py-4">${tagCell(e.color)}</td>
             <td class="px-6 py-4">${tagCell(e.capacity)}</td>
@@ -724,10 +724,10 @@
 
             const photoHtml = item.box_photo_url
                 ? `<a href="${item.box_photo_url}" target="_blank" rel="noreferrer" title="เปิดรูปกล่องขนาดเต็ม"
-                     class="block w-10 h-10 rounded-[0.375rem] overflow-hidden border border-[#3F3F46] hover:border-[#FFE169] transition-colors">
+                     class="elev-chip block w-10 h-10 rounded-[0.375rem] overflow-hidden hover:ring-1 hover:ring-accent-ink transition-colors">
                      <img src="${item.box_photo_url}" referrerpolicy="no-referrer" class="w-full h-full object-cover" loading="lazy" width="40" height="40" alt="รูปกล่องสินค้าของ IMEI ${item.imei}" />
                    </a>`
-                : `<div class="w-10 h-10 rounded-[0.375rem] bg-[#4D4D4D]/40 border border-[#3F3F46] flex items-center justify-center text-white/50">
+                : `<div class="elev-card w-10 h-10 rounded-[0.375rem] bg-panel/40 flex items-center justify-center text-ink/50">
                      <i class="fa-solid fa-image text-sm"></i>
                    </div>`;
 
@@ -736,17 +736,17 @@
             const deleteBtn = canDelete
                 ? `<button type="button" onclick="deleteAuditItem('${item.imei}')" title="ลบรายการนี้ออกจากรอบตรวจนับ"
                      aria-label="ลบ IMEI ${item.imei} ออกจากรอบตรวจนับ"
-                     class="text-white hover:text-red-400 transition-colors p-2"><i class="fa-solid fa-trash"></i></button>`
-                : '<span class="text-white/50">-</span>';
+                     class="text-ink hover:text-red-400 transition-colors p-2"><i class="fa-solid fa-trash"></i></button>`
+                : '<span class="text-ink/50">-</span>';
 
             return `
-            <tr class="hover:bg-[#464646] transition-colors">
-                <td class="px-6 py-4 text-white/70">${idx + 1}</td>
+            <tr class="hover:bg-divider transition-colors">
+                <td class="px-6 py-4 text-ink/70">${idx + 1}</td>
                 <td class="px-6 py-4">${photoHtml}</td>
-                <td class="px-6 py-4"><span class="font-mono font-semibold text-[#FFE169]">${item.imei}</span></td>
+                <td class="px-6 py-4"><span class="font-mono font-semibold text-accent-ink">${item.imei}</span></td>
                 <td class="px-6 py-4">
-                    <p class="font-medium text-white">${item.product_name}</p>
-                    ${item.scan_notes ? `<p class="text-xs text-white/70">${item.scan_notes}</p>` : ''}
+                    <p class="font-medium text-ink">${item.product_name}</p>
+                    ${item.scan_notes ? `<p class="text-xs text-ink/70">${item.scan_notes}</p>` : ''}
                 </td>
                 <td class="px-6 py-4">${badgeHtml}</td>
                 <td class="px-6 py-4 text-right"><div class="flex items-center justify-end gap-1">${deleteBtn}</div></td>
@@ -826,7 +826,7 @@
         const addChip = (label, onRemove) => {
             const chip = document.createElement('button');
             chip.type = 'button';
-            chip.className = 'px-4 py-2.5 rounded-xl bg-[#4D4D4D]/40 border border-[#3F3F46] text-white text-sm font-medium transition-colors flex items-center gap-2';
+            chip.className = 'elev-card px-4 py-2.5 rounded-xl bg-panel/40 text-ink text-sm font-medium transition-colors flex items-center gap-2';
             chip.innerHTML = `<span>${label}</span><i class="fa-solid fa-xmark text-[10px] opacity-80"></i>`;
             chip.addEventListener('click', (e) => {
                 if (!e.target.closest('i.fa-xmark')) return; // ลบได้เฉพาะตอนคลิกกากบาท (ข้อ 11.5)
@@ -849,7 +849,7 @@
         if (activeCount > 1) {
             const clearBtn = document.createElement('button');
             clearBtn.type = 'button';
-            clearBtn.className = 'px-2.5 py-1 bg-red-500/10 hover:bg-red-500/15 text-red-300 rounded-full text-xs font-medium border border-red-500/30 transition-colors';
+            clearBtn.className = 'px-2.5 py-1 bg-red-500/10 hover:bg-red-500/15 text-red-300 rounded-full text-xs font-medium ring-1 ring-red-500/30 transition-colors';
             clearBtn.textContent = 'ล้างทั้งหมด';
             clearBtn.addEventListener('click', () => {
                 if (statusEl) statusEl.value = '';
@@ -904,17 +904,17 @@
                 if (tbody) tbody.innerHTML = d.data.map(session => {
                     const tone = SESSION_STATUS_TONE[session.status] || 'muted';
                     return `
-                    <tr class="hover:bg-[#464646] transition-colors">
+                    <tr class="hover:bg-divider transition-colors">
                         <td class="px-6 py-4">
-                            <p class="font-medium text-white">${new Date(session.session_date).toLocaleDateString('th-TH', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
-                            <p class="text-xs text-white/70">${session.branch_id?.name || '—'}</p>
+                            <p class="font-medium text-ink">${new Date(session.session_date).toLocaleDateString('th-TH', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
+                            <p class="text-xs text-ink/70">${session.branch_id?.name || '—'}</p>
                         </td>
-                        <td class="px-6 py-4 text-white">${session.created_by?.name || 'ระบบอัตโนมัติ'}</td>
-                        <td class="px-6 py-4 text-center text-white font-medium">${session.total_items_scanned}<span class="text-xs text-white/70 font-normal"> / ${session.total_items_expected}</span></td>
+                        <td class="px-6 py-4 text-ink">${session.created_by?.name || 'ระบบอัตโนมัติ'}</td>
+                        <td class="px-6 py-4 text-center text-ink font-medium">${session.total_items_scanned}<span class="text-xs text-ink/70 font-normal"> / ${session.total_items_expected}</span></td>
                         <td class="px-6 py-4">${statusBadge(tone, session.status)}</td>
                         <td class="px-6 py-4 text-right">
                             <button type="button" onclick="openAuditReviewDetail('${session._id}')" title="ดูรายละเอียด"
-                                class="text-white hover:text-[#FFE169] transition-colors p-2">
+                                class="text-ink hover:text-accent-ink transition-colors p-2">
                                 <i class="fa-solid fa-circle-info"></i>
                             </button>
                         </td>
@@ -1027,12 +1027,12 @@
         bar.innerHTML = tiles.map(t => {
             const active = _reviewActiveFilter === t.key;
             const cls = active
-                ? 'bg-[#FFE169] border-[#FFE169] text-[#333333]'
-                : 'bg-[#27272A] border-[#3F3F46] text-slate-300 hover:border-[#FFE169] hover:text-white';
+                ? 'bg-primary ring-1 ring-accent-ink text-on-primary'
+                : 'elev-field bg-field text-body-muted hover:ring-1 hover:ring-accent-ink hover:text-ink';
             const dotHtml = t.dot ? `<span class="w-2 h-2 rounded-full ${t.dot} shrink-0"></span>` : '';
-            const countCls = active ? '' : 'text-white/50';
+            const countCls = active ? '' : 'text-ink/50';
             return `<button type="button" onclick="filterReviewItemsByStatus('${t.key}')"
-                class="px-4 py-2.5 rounded-xl border text-sm font-bold transition-colors flex items-center gap-2 cursor-pointer ${cls}">
+                class="elev-chip px-4 py-2.5 rounded-xl text-sm font-bold transition-colors flex items-center gap-2 cursor-pointer ${cls}">
                 ${dotHtml}<span>${t.label}</span><span class="font-mono ${countCls}">${t.count}</span>
             </button>`;
         }).join('');
@@ -1057,10 +1057,10 @@
             const tone = ITEM_STATUS_TONE[item.scan_status] || 'muted';
             const photoHtml = item.box_photo_url
                 ? `<a href="${item.box_photo_url}" target="_blank" rel="noreferrer" title="เปิดรูปกล่องขนาดเต็ม"
-                     class="block w-10 h-10 rounded-[0.375rem] overflow-hidden border border-[#3F3F46] hover:border-[#FFE169] transition-colors">
+                     class="elev-chip block w-10 h-10 rounded-[0.375rem] overflow-hidden hover:ring-1 hover:ring-accent-ink transition-colors">
                      <img src="${item.box_photo_url}" referrerpolicy="no-referrer" class="w-full h-full object-cover" loading="lazy" width="40" height="40" alt="รูปกล่องสินค้าของ IMEI ${item.imei}" />
                    </a>`
-                : `<div class="w-10 h-10 rounded-[0.375rem] bg-[#4D4D4D]/40 border border-[#3F3F46] flex items-center justify-center text-white/50">
+                : `<div class="elev-card w-10 h-10 rounded-[0.375rem] bg-panel/40 flex items-center justify-center text-ink/50">
                      <i class="fa-solid fa-image text-sm"></i>
                    </div>`;
 
@@ -1068,18 +1068,18 @@
             const btnIcon = item.scan_status === 'รอตรวจสอบ' ? 'fa-magnifying-glass' : 'fa-circle-info';
 
             return `
-            <tr class="hover:bg-[#464646] transition-colors">
+            <tr class="hover:bg-divider transition-colors">
                 <td class="px-6 py-4">${photoHtml}</td>
-                <td class="px-6 py-4"><span class="font-mono font-semibold text-[#FFE169]">${item.imei}</span></td>
+                <td class="px-6 py-4"><span class="font-mono font-semibold text-accent-ink">${item.imei}</span></td>
                 <td class="px-6 py-4">
-                    <p class="font-medium text-white truncate">${item.product_name}</p>
-                    <p class="text-xs text-white/70">สแกนโดย ${item.scanned_by?.name || '—'}${item.scan_notes ? ` · "${item.scan_notes}"` : ''}</p>
+                    <p class="font-medium text-ink truncate">${item.product_name}</p>
+                    <p class="text-xs text-ink/70">สแกนโดย ${item.scanned_by?.name || '—'}${item.scan_notes ? ` · "${item.scan_notes}"` : ''}</p>
                 </td>
                 <td class="px-6 py-4">${statusBadge(tone, item.scan_status)}</td>
                 <td class="px-6 py-4 text-right">
                     <button type="button" onclick="openAuditReviewItemModal('${item._id}')" title="${btnLabel}"
                         aria-label="${btnLabel} IMEI ${item.imei}"
-                        class="text-white hover:text-[#FFE169] transition-colors p-2">
+                        class="text-ink hover:text-accent-ink transition-colors p-2">
                         <i class="fa-solid ${btnIcon}"></i>
                     </button>
                 </td>
@@ -1124,12 +1124,12 @@
         const elPhotoContainer = document.getElementById('audit-review-modal-photo-container');
         if (elPhotoContainer) {
             elPhotoContainer.innerHTML = item.box_photo_url
-                ? `<a href="${item.box_photo_url}" target="_blank" rel="noreferrer" class="block w-full h-56 rounded-xl overflow-hidden border border-[#3F3F46] hover:border-[#FFE169] transition-colors">
+                ? `<a href="${item.box_photo_url}" target="_blank" rel="noreferrer" class="elev-chip block w-full h-56 rounded-xl overflow-hidden hover:ring-1 hover:ring-accent-ink transition-colors">
                    <img src="${item.box_photo_url}" referrerpolicy="no-referrer" class="w-full h-full object-cover" alt="รูปกล่องสินค้าของ IMEI ${item.imei}" />
                </a>`
-                : `<div class="w-full h-48 rounded-xl bg-[#27272A] border border-[#3F3F46] flex flex-col items-center justify-center gap-2">
-                   <i class="fa-solid fa-image text-white/50 text-3xl"></i>
-                   <p class="text-white/50 text-xs">ไม่มีรูปกล่อง</p>
+                : `<div class="elev-field w-full h-48 rounded-xl bg-field flex flex-col items-center justify-center gap-2">
+                   <i class="fa-solid fa-image text-ink/50 text-3xl"></i>
+                   <p class="text-ink/50 text-xs">ไม่มีรูปกล่อง</p>
                </div>`;
         }
 
@@ -1138,11 +1138,11 @@
         const elNotesArea = document.getElementById('audit-review-modal-notes-area');
         if (elNotesArea) {
             elNotesArea.innerHTML = isReviewable
-                ? `<label for="modal-review-notes-${item._id}" class="text-slate-200 font-medium flex items-center gap-2 text-xs mb-2">
-                   <i class="fa-solid fa-pen text-white"></i> หมายเหตุ (ต้องระบุหาก ไม่ผ่าน/ตรวจใหม่)
+                ? `<label for="modal-review-notes-${item._id}" class="text-ink font-medium flex items-center gap-2 text-xs mb-2">
+                   <i class="fa-solid fa-pen text-ink"></i> หมายเหตุ (ต้องระบุหาก ไม่ผ่าน/ตรวจใหม่)
                </label>
                <input id="modal-review-notes-${item._id}" type="text" placeholder="ระบุหมายเหตุ..."
-                   class="w-full px-4 py-2.5 rounded-xl bg-[#27272A] border border-[#3F3F46] text-white focus:border-[#FFE169] focus:outline-none transition-all placeholder-slate-500 text-sm" />`
+                   class="elev-field w-full px-4 py-2.5 rounded-xl bg-field text-ink focus:ring-2 focus:ring-accent-ink focus:outline-none transition-all placeholder-ink-muted-48 text-sm" />`
                 : ``;
         }
 
@@ -1152,24 +1152,24 @@
             if (isReviewable) {
                 elActionsArea.innerHTML = `
                 <button type="button" onclick="submitModalItemReview(this, '${item._id}', 'ผ่าน')"
-                    class="flex-1 py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 cursor-pointer">
+                    class="flex-1 py-3 bg-emerald-600 hover:bg-emerald-500 text-ink rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 cursor-pointer">
                     <i class="fa-solid fa-check"></i> ผ่าน
                 </button>
                 <button type="button" onclick="submitModalItemReview(this, '${item._id}', 'ตรวจใหม่')"
-                    class="flex-1 py-3 bg-violet-600 hover:bg-violet-500 text-white rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 cursor-pointer">
+                    class="flex-1 py-3 bg-violet-600 hover:bg-violet-500 text-ink rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 cursor-pointer">
                     <i class="fa-solid fa-rotate"></i> ตรวจใหม่
                 </button>
                 <button type="button" onclick="submitModalItemReview(this, '${item._id}', 'ไม่ผ่าน')"
-                    class="flex-1 py-3 bg-red-600 hover:bg-red-500 text-white rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 cursor-pointer">
+                    class="flex-1 py-3 bg-red-600 hover:bg-red-500 text-ink rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 cursor-pointer">
                     <i class="fa-solid fa-xmark"></i> ไม่ผ่าน
                 </button>`;
             } else {
                 // Already reviewed, show status details
                 elActionsArea.innerHTML = `
-                <div class="w-full p-4 bg-[#27272A] rounded-xl border border-[#3F3F46] text-center flex flex-col items-center gap-2">
+                <div class="elev-field w-full p-4 bg-field rounded-xl text-center flex flex-col items-center gap-2">
                     ${statusBadge(ITEM_STATUS_TONE[item.scan_status] || 'muted', item.scan_status)}
-                    ${item.reviewed_by ? `<p class="text-xs text-white/70">โดย ${item.reviewed_by.name}</p>` : ''}
-                    ${item.review_notes ? `<p class="text-xs text-white/70 mt-2 italic">"${item.review_notes}"</p>` : ''}
+                    ${item.reviewed_by ? `<p class="text-xs text-ink/70">โดย ${item.reviewed_by.name}</p>` : ''}
+                    ${item.review_notes ? `<p class="text-xs text-ink/70 mt-2 italic">"${item.review_notes}"</p>` : ''}
                 </div>`;
             }
         }

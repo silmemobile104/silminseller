@@ -2,48 +2,48 @@
     <!-- [1] หัวหน้า — DESIGN.md ข้อ 11.2 -->
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div class="flex items-center gap-4">
-            <i class="bi bi-clock text-white w-5 text-2xl text-center"></i>
-            <h3 class="text-2xl text-white">ประวัติการทำงานระบบ</h3>
+            <i class="bi bi-clock text-ink w-5 text-2xl text-center"></i>
+            <h3 class="text-2xl text-ink">ประวัติการทำงานระบบ</h3>
         </div>
         <button id="btn-clear-audit-filters" type="button"
-            class="px-3 py-2 bg-[#4D4D4D]/40 cursor-pointer text-white flex items-center justify-center gap-1.5 rounded-[0.5rem] text-sm hover:bg-[#5C5C5C] transition-colors w-fit">
+            class="px-3 py-2 bg-panel/40 cursor-pointer text-ink flex items-center justify-center gap-1.5 rounded-[0.5rem] text-sm hover:bg-skeleton transition-colors w-fit">
             <i class="fa-solid fa-filter-circle-xmark"></i> ล้างตัวกรอง
         </button>
     </div>
 
     <!-- [2] การ์ดพาเนล — แถบควบคุม + ชิป + ตาราง อยู่ในการ์ดใบเดียว (ข้อ 11.1, 11.3) -->
-    <div class="bg-[#4D4D4D]/40 rounded-2xl shadow-lg overflow-hidden backdrop-blur-sm">
+    <div class="bg-panel/40 rounded-2xl shadow-lg overflow-hidden backdrop-blur-sm">
         <!-- 2a แถบควบคุม (ข้อ 11.4) -->
         <div class="p-6 pb-0 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-            <h3 class="text-lg text-white flex items-center gap-2">
-                <i class="fa-solid fa-clock-rotate-left text-[#FFE169]"></i> บันทึกกิจกรรมทั้งหมด
+            <h3 class="text-lg text-ink flex items-center gap-2">
+                <i class="fa-solid fa-clock-rotate-left text-accent-ink"></i> บันทึกกิจกรรมทั้งหมด
             </h3>
             <div class="flex flex-wrap items-center gap-2.5 w-full lg:w-auto">
                 <div class="relative group w-full sm:w-56">
                     <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <i class="fa-solid fa-search text-white group-focus-within:text-[#FFE169] transition-colors"></i>
+                        <i class="fa-solid fa-search text-ink group-focus-within:text-accent-ink transition-colors"></i>
                     </div>
                     <label for="audit-filter-search" class="sr-only">ค้นหากิจกรรมหรือเลขเอกสาร</label>
                     <input type="text" id="audit-filter-search" autocomplete="off"
                         placeholder="ค้นหากิจกรรม / เลขเอกสาร..."
-                        class="bg-[#4D4D4D]/40 border border-[#3F3F46] rounded-[0.5rem] text-sm pl-10 pr-4 py-2 w-full text-white focus:outline-none focus:border-[#FFE169] focus:ring-1 focus:ring-[#FFE169] transition-all placeholder-white">
+                        class="elev-card bg-panel/40 rounded-[0.5rem] text-sm pl-10 pr-4 py-2 w-full text-ink focus:outline-none focus:ring-2 focus:ring-accent-ink focus:ring-1 focus:ring-accent-ink transition-all placeholder-body-muted">
                 </div>
                 <div class="relative group w-full sm:w-44">
                     <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <i class="fa-solid fa-user text-white group-focus-within:text-[#FFE169] transition-colors"></i>
+                        <i class="fa-solid fa-user text-ink group-focus-within:text-accent-ink transition-colors"></i>
                     </div>
                     <label for="audit-filter-user" class="sr-only">กรองตามผู้ทำรายการ</label>
                     <input type="text" id="audit-filter-user" autocomplete="off" placeholder="ผู้ทำรายการ..."
-                        class="bg-[#4D4D4D]/40 border border-[#3F3F46] rounded-[0.5rem] text-sm pl-10 pr-4 py-2 w-full text-white focus:outline-none focus:border-[#FFE169] focus:ring-1 focus:ring-[#FFE169] transition-all placeholder-white">
+                        class="elev-card bg-panel/40 rounded-[0.5rem] text-sm pl-10 pr-4 py-2 w-full text-ink focus:outline-none focus:ring-2 focus:ring-accent-ink focus:ring-1 focus:ring-accent-ink transition-all placeholder-body-muted">
                 </div>
                 <label for="audit-filter-module" class="sr-only">กรองตามโมดูลระบบ</label>
                 <select id="audit-filter-module"
-                    class="bg-[#4D4D4D]/40 cursor-pointer text-sm rounded-[0.5rem] px-3 py-2 text-white focus:outline-none focus:ring-1 focus:ring-[#FFE169] w-full sm:w-auto [&>option]:bg-[#4D4D4D] [&>option:checked]:bg-[#FFE169] [&>option:checked]:text-[#333333]">
+                    class="bg-panel/40 cursor-pointer text-sm rounded-[0.5rem] px-3 py-2 text-ink focus:outline-none focus:ring-1 focus:ring-accent-ink w-full sm:w-auto [&>option]:bg-panel [&>option:checked]:bg-primary [&>option:checked]:text-on-primary">
                     <option value="ALL">ทุกโมดูล</option>
                 </select>
                 <label for="audit-filter-action" class="sr-only">กรองตามประเภทกิจกรรม</label>
                 <select id="audit-filter-action"
-                    class="hidden md:block bg-[#4D4D4D]/40 cursor-pointer text-sm rounded-[0.5rem] px-3 py-2 text-white focus:outline-none focus:ring-1 focus:ring-[#FFE169] [&>option]:bg-[#4D4D4D] [&>option:checked]:bg-[#FFE169] [&>option:checked]:text-[#333333]">
+                    class="hidden md:block bg-panel/40 cursor-pointer text-sm rounded-[0.5rem] px-3 py-2 text-ink focus:outline-none focus:ring-1 focus:ring-accent-ink [&>option]:bg-panel [&>option:checked]:bg-primary [&>option:checked]:text-on-primary">
                     <option value="ALL">ทุกประเภท</option>
                 </select>
             </div>
@@ -53,14 +53,14 @@
         <div class="px-6 py-4">
             <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                 <div id="audit-active-filters" class="flex flex-wrap gap-2"></div>
-                <div id="audit-pagination-info" class="text-xs text-white font-medium"></div>
+                <div id="audit-pagination-info" class="text-xs text-ink font-medium"></div>
             </div>
         </div>
 
         <!-- 2c ตาราง (ข้อ 11.6) -->
         <div class="overflow-x-auto" tabindex="0">
             <table class="w-full text-left text-sm whitespace-nowrap border-collapse">
-                <thead class="bg-[#4D4D4D]/40 text-white">
+                <thead class="bg-panel/40 text-ink">
                     <tr>
                         <th class="px-6 py-4 font-semibold text-[15px]">วัน-เวลา</th>
                         <th class="px-6 py-4 font-semibold text-[15px]">ผู้ทำรายการ</th>
@@ -71,24 +71,24 @@
                         <th class="px-6 py-4 font-semibold text-[15px] text-right">จัดการ</th>
                     </tr>
                 </thead>
-                <tbody id="audit-logs-table-body" class="divide-y divide-[#464646]"></tbody>
+                <tbody id="audit-logs-table-body" class="divide-y divide-divider"></tbody>
             </table>
         </div>
 
         <!-- แถบแบ่งหน้า -->
-        <div class="px-6 py-4 border-t border-[#464646] flex flex-col sm:flex-row items-center justify-between gap-3">
-            <p class="text-xs text-white/70">หน้าละ 50 รายการ</p>
+        <div class="px-6 py-4 border-t border-divider flex flex-col sm:flex-row items-center justify-between gap-3">
+            <p class="text-xs text-ink/70">หน้าละ 50 รายการ</p>
             <div class="flex items-center gap-2">
                 <button id="btn-audit-prev" type="button"
-                    class="px-3 py-2 bg-[#4D4D4D]/40 cursor-pointer text-white flex items-center gap-1.5 rounded-[0.5rem] text-sm hover:bg-[#5C5C5C] transition-colors disabled:opacity-30 disabled:pointer-events-none">
+                    class="px-3 py-2 bg-panel/40 cursor-pointer text-ink flex items-center gap-1.5 rounded-[0.5rem] text-sm hover:bg-skeleton transition-colors disabled:opacity-30 disabled:pointer-events-none">
                     <i class="fa-solid fa-chevron-left text-xs"></i> ก่อนหน้า
                 </button>
                 <div id="audit-current-page"
-                    class="px-4 py-2 bg-[#27272A] border border-[#3F3F46] text-white rounded-[0.5rem] text-sm font-semibold font-mono min-w-[3rem] text-center">
+                    class="elev-field px-4 py-2 bg-field text-ink rounded-[0.5rem] text-sm font-semibold font-mono min-w-[3rem] text-center">
                     1
                 </div>
                 <button id="btn-audit-next" type="button"
-                    class="px-3 py-2 bg-[#4D4D4D]/40 cursor-pointer text-white flex items-center gap-1.5 rounded-[0.5rem] text-sm hover:bg-[#5C5C5C] transition-colors disabled:opacity-30 disabled:pointer-events-none">
+                    class="px-3 py-2 bg-panel/40 cursor-pointer text-ink flex items-center gap-1.5 rounded-[0.5rem] text-sm hover:bg-skeleton transition-colors disabled:opacity-30 disabled:pointer-events-none">
                     ถัดไป <i class="fa-solid fa-chevron-right text-xs"></i>
                 </button>
             </div>

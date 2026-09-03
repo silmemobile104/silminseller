@@ -40,7 +40,7 @@
         const container = document.getElementById('po-items-container');
 
         const row = document.createElement('div');
-        row.className = 'p-4 border border-[#3F3F46] rounded-xl relative po-item-row hover:border-[#FFE169]/50 transition-colors ';
+        row.className = 'elev-chip p-4 rounded-xl relative po-item-row hover:ring-1 hover:ring-accent-ink/50 transition-colors';
 
         const typeChips = (window.masterDataCache?.productTypes || []).map(t => t.name);
         const colorData = window.masterDataCache?.productColors || [];
@@ -49,7 +49,7 @@
         const unitChips = (window.masterDataCache?.productUnits || []).map(u => u.name);
 
         row.innerHTML = `
-            <button type="button" class="btn-delete-row absolute top-2 right-2 w-6 h-6 rounded-md bg-[#222] text-red-500 hover:bg-red-500/20 flex items-center justify-center transition-all z-10"><i class="fa-solid fa-xmark text-[10px]"></i></button>
+            <button type="button" class="btn-delete-row absolute top-2 right-2 w-6 h-6 rounded-md bg-surface-tile-2 text-red-500 hover:bg-red-500/20 flex items-center justify-center transition-all z-10"><i class="fa-solid fa-xmark text-[10px]"></i></button>
             
             <div class="flex flex-col gap-4">
                 <!-- Hidden inputs to keep original JS functional -->
@@ -62,13 +62,13 @@
 
                 <!-- ชื่อสินค้า -->
                 <div class="space-y-2">
-                    <label class="text-slate-200 font-medium flex items-center gap-2 text-xs"><i class="fa-solid fa-mobile-screen text-white"></i> ชื่อสินค้า <span class="text-red-500">*</span></label>
+                    <label class="text-ink font-medium flex items-center gap-2 text-xs"><i class="fa-solid fa-mobile-screen text-ink"></i> ชื่อสินค้า <span class="text-red-500">*</span></label>
                     <div class="relative">
-                        <select name="po_item_name" class="w-full px-4 py-2.5 rounded-xl bg-[#27272A] border border-[#3F3F46] text-white focus:border-[#FFE169] focus:outline-none transition-all text-sm appearance-none pr-10">
+                        <select name="po_item_name" class="elev-field w-full px-4 py-2.5 rounded-xl bg-field text-ink focus:ring-2 focus:ring-accent-ink focus:outline-none transition-all text-sm appearance-none pr-10">
                             <option value="" selected>-- เลือกชื่อสินค้า --</option>
                             ${(window.masterDataCache?.productNames || []).map(x => `<option value="${x.name || x}">${x.name || x}</option>`).join('')}
                         </select>
-                        <div class="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none text-slate-400">
+                        <div class="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none text-body-muted">
                             <i class="fa-solid fa-chevron-down text-xs"></i>
                         </div>
                     </div>
@@ -76,15 +76,15 @@
 
                 <!-- หมวดหมู่สินค้า -->
                 <div class="space-y-2">
-                    <label class="text-slate-200 font-medium flex items-center gap-2 text-xs"><i class="fa-solid fa-layer-group text-white"></i> หมวดหมู่สินค้า</label>
+                    <label class="text-ink font-medium flex items-center gap-2 text-xs"><i class="fa-solid fa-layer-group text-ink"></i> หมวดหมู่สินค้า</label>
                     <div class="flex flex-wrap gap-2 po-chip-group" data-target="po_item_category">
-                        ${typeChips.map(t => `<button type="button" class="px-4 py-2.5 rounded-xl border border-[#3F3F46] bg-[#27272A] text-slate-300 text-sm hover:border-[#FFE169] hover:text-white transition-colors po-chip" data-value="${t}">${t}</button>`).join('')}
+                        ${typeChips.map(t => `<button type="button" class="elev-field px-4 py-2.5 rounded-xl bg-field text-body-muted text-sm hover:ring-1 hover:ring-accent-ink hover:text-ink transition-colors po-chip" data-value="${t}">${t}</button>`).join('')}
                     </div>
                 </div>
 
                 <!-- สี -->
                 <div class="relative  w-full space-y-2">
-                    <label class="text-slate-200 font-medium flex items-center gap-2 text-xs"><i class="fa-solid fa-palette text-white"></i> สี <span class="text-red-500">*</span></label>
+                    <label class="text-ink font-medium flex items-center gap-2 text-xs"><i class="fa-solid fa-palette text-ink"></i> สี <span class="text-red-500">*</span></label>
                     <div class="flex items-center gap-3 overflow-x-auto hide-scrollbar py-2 px-8 w-full po-chip-group scroll-smooth" data-target="po_item_color">
                         <style>#po-items-container .po-chip-group::-webkit-scrollbar { display: none; } #po-items-container .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }</style>
                         ${colorData.map(c => {
@@ -92,19 +92,19 @@
             const hex = window.resolveProductColorHex ? window.resolveProductColorHex(name, c) : '#6b7280';
             return `
                             <div class="flex flex-col items-center gap-1 cursor-pointer po-chip-color group shrink-0" data-value="${name}">
-                                <div class="w-7 h-7 rounded-full border-2 border-transparent group-hover:scale-110 transition-all flex items-center justify-center color-ring relative shadow-sm" style="background-color: ${hex}">
+                                <div class="border-2 border-transparent w-7 h-7 rounded-full group-hover:scale-110 transition-all flex items-center justify-center color-ring relative" style="background-color: ${hex}">
                                 </div>
-                                <span class="text-[10px] text-slate-400 color-label transition-colors">${name}</span>
+                                <span class="text-[10px] text-body-muted color-label transition-colors">${name}</span>
                             </div>`;
         }).join('')}
                     </div>
-                    <button type="button" aria-label="ก่อนหน้า" onclick="this.parentElement.querySelector('.po-chip-group').scrollBy({left:-150, behavior:'smooth'})" class="absolute left-0 top-6 bottom-0 w-10 flex items-center justify-start bg-gradient-to-r from-[#18181B] via-[#18181B]/90 to-transparent pointer-events-none">
-                        <div class="w-5 h-5 bg-[#3F3F46] hover:bg-[#FFE169] rounded-full flex items-center justify-center pointer-events-auto cursor-pointer shadow-md text-white hover:text-[#333333] transition-colors hover:scale-110 shrink-0">
+                    <button type="button" aria-label="ก่อนหน้า" onclick="this.parentElement.querySelector('.po-chip-group').scrollBy({left:-150, behavior:'smooth'})" class="absolute left-0 top-6 bottom-0 w-10 flex items-center justify-start bg-gradient-to-r from-elevated via-elevated/90 to-transparent pointer-events-none">
+                        <div class="w-5 h-5 bg-line hover:bg-primary rounded-full flex items-center justify-center pointer-events-auto cursor-pointer shadow-md text-ink hover:text-on-primary transition-colors hover:scale-110 shrink-0">
                             <i class="fa-solid fa-chevron-left text-[10px]"></i>
                         </div>
                     </button>
-                    <button type="button" aria-label="ถัดไป" onclick="this.parentElement.querySelector('.po-chip-group').scrollBy({left:150, behavior:'smooth'})" class="absolute right-0 top-6 bottom-0 w-10 flex items-center justify-end bg-gradient-to-l from-[#18181B] via-[#18181B]/90 to-transparent pointer-events-none">
-                        <div class="w-5 h-5 bg-[#FFE169] rounded-full flex items-center justify-center pointer-events-auto cursor-pointer shadow-md text-[#333333] transition-transform hover:scale-110 shrink-0">
+                    <button type="button" aria-label="ถัดไป" onclick="this.parentElement.querySelector('.po-chip-group').scrollBy({left:150, behavior:'smooth'})" class="absolute right-0 top-6 bottom-0 w-10 flex items-center justify-end bg-gradient-to-l from-elevated via-elevated/90 to-transparent pointer-events-none">
+                        <div class="w-5 h-5 bg-primary rounded-full flex items-center justify-center pointer-events-auto cursor-pointer shadow-md text-on-primary transition-transform hover:scale-110 shrink-0">
                             <i class="fa-solid fa-chevron-right text-[10px]"></i>
                         </div>
                     </button>
@@ -112,65 +112,65 @@
 
                 <!-- ความจุ -->
                 <div class="space-y-2">
-                    <label class="text-slate-200 font-medium flex items-center gap-2 text-xs"><i class="fa-solid fa-hard-drive text-white"></i> ความจุ</label>
+                    <label class="text-ink font-medium flex items-center gap-2 text-xs"><i class="fa-solid fa-hard-drive text-ink"></i> ความจุ</label>
                     <div class="flex flex-wrap gap-2 po-chip-group" data-target="po_item_capacity">
-                        ${capacityChips.map(c => `<button type="button" class="px-4 py-2.5 rounded-xl border border-[#3F3F46] bg-[#27272A] text-slate-300 text-sm hover:border-[#FFE169] hover:text-white transition-colors po-chip min-w-[60px]" data-value="${c}">${c}</button>`).join('')}
+                        ${capacityChips.map(c => `<button type="button" class="elev-field px-4 py-2.5 rounded-xl bg-field text-body-muted text-sm hover:ring-1 hover:ring-accent-ink hover:text-ink transition-colors po-chip min-w-[60px]" data-value="${c}">${c}</button>`).join('')}
                     </div>
                 </div>
 
                 <!-- ราคาทุน & ราคาขาย -->
                 <div class="grid grid-cols-2 gap-5 pt-2">
                     <div class="space-y-2">
-                        <label class="text-slate-200 font-medium flex items-center gap-2 text-xs"><i class="fa-solid fa-tag text-white"></i> ราคาทุน <span class="text-red-500">*</span></label>
-                        <input type="number" name="po_item_cost" required min="0" placeholder="0" class="w-full px-4 py-2.5 rounded-xl bg-[#27272A] border border-[#3F3F46] text-white focus:border-[#FFE169] focus:outline-none transition-all placeholder-slate-500 text-sm">
+                        <label class="text-ink font-medium flex items-center gap-2 text-xs"><i class="fa-solid fa-tag text-ink"></i> ราคาทุน <span class="text-red-500">*</span></label>
+                        <input type="number" name="po_item_cost" required min="0" placeholder="0" class="elev-field w-full px-4 py-2.5 rounded-xl bg-field text-ink focus:ring-2 focus:ring-accent-ink focus:outline-none transition-all placeholder-ink-muted-48 text-sm">
                         <div class="flex gap-1.5 flex-wrap pt-1">
-                            ${[15000, 20000, 27000, 35000].map(p => `<button type="button" class="px-2.5 py-1 bg-[#333] text-slate-300 rounded-full text-[11px] hover:text-[#FFE169] border border-transparent hover:border-[#FFE169] transition-all" onclick="const i = this.parentElement.previousElementSibling; i.value='${p}'; i.dispatchEvent(new Event('input'))">${p.toLocaleString()}</button>`).join('')}
+                            ${[15000, 20000, 27000, 35000].map(p => `<button type="button" class="elev-chip px-2.5 py-1 bg-field text-body-muted rounded-full text-[11px] hover:text-accent-ink hover:ring-1 hover:ring-accent-ink transition-all" onclick="const i = this.parentElement.previousElementSibling; i.value='${p}'; i.dispatchEvent(new Event('input'))">${p.toLocaleString()}</button>`).join('')}
                         </div>
                     </div>
                     <div class="space-y-2">
-                        <label class="text-slate-200 font-medium flex items-center gap-2 text-xs"><i class="fa-solid fa-tags text-white"></i> ราคาขาย <span class="text-red-500">*</span></label>
-                        <input type="number" name="po_item_sell" required min="0" placeholder="0" class="w-full px-4 py-2.5 rounded-xl bg-[#27272A] border border-[#3F3F46] text-white focus:border-[#FFE169] focus:outline-none transition-all placeholder-slate-500 text-sm">
+                        <label class="text-ink font-medium flex items-center gap-2 text-xs"><i class="fa-solid fa-tags text-ink"></i> ราคาขาย <span class="text-red-500">*</span></label>
+                        <input type="number" name="po_item_sell" required min="0" placeholder="0" class="elev-field w-full px-4 py-2.5 rounded-xl bg-field text-ink focus:ring-2 focus:ring-accent-ink focus:outline-none transition-all placeholder-ink-muted-48 text-sm">
                         <div class="flex gap-1.5 flex-wrap pt-1">
-                            ${[15000, 20000, 27000, 35000].map(p => `<button type="button" class="px-2.5 py-1 bg-[#333] text-slate-300 rounded-full text-[11px] hover:text-[#FFE169] border border-transparent hover:border-[#FFE169] transition-all" onclick="this.parentElement.previousElementSibling.value='${p}'">${p.toLocaleString()}</button>`).join('')}
+                            ${[15000, 20000, 27000, 35000].map(p => `<button type="button" class="elev-chip px-2.5 py-1 bg-field text-body-muted rounded-full text-[11px] hover:text-accent-ink hover:ring-1 hover:ring-accent-ink transition-all" onclick="this.parentElement.previousElementSibling.value='${p}'">${p.toLocaleString()}</button>`).join('')}
                         </div>
                     </div>
                 </div>
 
                 <!-- จำนวน & หน่วยนับ -->
-                <div class="grid grid-cols-2 gap-5 items-start border-t border-[#3F3F46] pt-4 mt-2">
+                <div class="grid grid-cols-2 gap-5 items-start border-t border-line pt-4 mt-2">
                     <div class="space-y-2">
-                        <label class="text-slate-200 font-medium flex items-center gap-2 text-xs"><i class="fa-solid fa-cubes text-white"></i> จำนวน <span class="text-red-500">*</span></label>
-                        <input type="number" name="po_item_qty" required min="1" value="1" class="w-full px-4 py-2.5 rounded-xl bg-[#27272A] border border-[#3F3F46] text-white focus:border-[#FFE169] focus:outline-none transition-all text-sm">
+                        <label class="text-ink font-medium flex items-center gap-2 text-xs"><i class="fa-solid fa-cubes text-ink"></i> จำนวน <span class="text-red-500">*</span></label>
+                        <input type="number" name="po_item_qty" required min="1" value="1" class="elev-field w-full px-4 py-2.5 rounded-xl bg-field text-ink focus:ring-2 focus:ring-accent-ink focus:outline-none transition-all text-sm">
                     </div>
                     <div class="space-y-2">
-                        <label class="text-slate-200 font-medium flex items-center gap-2 text-xs"><i class="fa-solid fa-box text-white"></i> หน่วยนับ <span class="text-red-500">*</span></label>
+                        <label class="text-ink font-medium flex items-center gap-2 text-xs"><i class="fa-solid fa-box text-ink"></i> หน่วยนับ <span class="text-red-500">*</span></label>
                         <div class="flex gap-2 po-chip-group" data-target="po_item_unit">
-                            ${unitChips.map(u => `<button type="button" class="px-4 py-2.5 rounded-xl border border-[#3F3F46] bg-[#27272A] text-slate-300 text-sm hover:border-[#FFE169] hover:text-white transition-colors po-chip flex-1" data-value="${u}">${u}</button>`).join('')}
+                            ${unitChips.map(u => `<button type="button" class="elev-field px-4 py-2.5 rounded-xl bg-field text-body-muted text-sm hover:ring-1 hover:ring-accent-ink hover:text-ink transition-colors po-chip flex-1" data-value="${u}">${u}</button>`).join('')}
                         </div>
                     </div>
                 </div>
 
                 <!-- IMEI Tracking -->
                 <div class="space-y-2">
-                    <label class="text-slate-200 font-medium flex items-center gap-2 text-xs"><i class="fa-solid fa-barcode text-white"></i> สินค้านี้ต้องบันทึก IMEI (เช่น โทรศัพท์/แท็บเล็ต) <span class="text-red-500">*</span></label>
+                    <label class="text-ink font-medium flex items-center gap-2 text-xs"><i class="fa-solid fa-barcode text-ink"></i> สินค้านี้ต้องบันทึก IMEI (เช่น โทรศัพท์/แท็บเล็ต) <span class="text-red-500">*</span></label>
                     <div class="flex items-center gap-5 mt-2 po-radio-group" data-target="po_item_track_imei">
                         <label class="flex items-center gap-2 cursor-pointer group">
-                            <div class="w-4 h-4 rounded-full border border-white/30 flex items-center justify-center group-hover:border-[#FFE169] transition-colors po-radio" data-value="true">
-                                <div class="w-2 h-2 rounded-full bg-[#FFE169] opacity-0 indicator transition-opacity"></div>
+                            <div class="elev-chip w-4 h-4 rounded-full flex items-center justify-center group-hover:ring-1 group-hover:ring-accent-ink transition-colors po-radio" data-value="true">
+                                <div class="w-2 h-2 rounded-full bg-primary opacity-0 indicator transition-opacity"></div>
                             </div>
-                            <span class="text-[10px] text-white/60 group-hover:text-white/90">บันทึกเลข IMEI</span>
+                            <span class="text-[10px] text-ink/60 group-hover:text-ink/90">บันทึกเลข IMEI</span>
                         </label>
                         <label class="flex items-center gap-2 cursor-pointer group">
-                            <div class="w-4 h-4 rounded-full border border-white/30 flex items-center justify-center group-hover:border-[#FFE169] transition-colors po-radio" data-value="false">
-                                <div class="w-2 h-2 rounded-full bg-[#FFE169] opacity-0 indicator transition-opacity"></div>
+                            <div class="elev-chip w-4 h-4 rounded-full flex items-center justify-center group-hover:ring-1 group-hover:ring-accent-ink transition-colors po-radio" data-value="false">
+                                <div class="w-2 h-2 rounded-full bg-primary opacity-0 indicator transition-opacity"></div>
                             </div>
-                            <span class="text-[10px] text-white/60 group-hover:text-white/90">ไม่บันทึกเลข IMEI</span>
+                            <span class="text-[10px] text-ink/60 group-hover:text-ink/90">ไม่บันทึกเลข IMEI</span>
                         </label>
                     </div>
                 </div>
 
-                <div class="text-center text-xs text-slate-300 mt-2 p-2.5 bg-[#1f1f1f] rounded-xl border border-[#3F3F46]">
-                     รวม: <span class="po-row-total text-white font-bold font-mono">฿0</span>
+                <div class="elev-card text-center text-xs text-body-muted mt-2 p-2.5 bg-surface-tile-3 rounded-xl">
+                     รวม: <span class="po-row-total text-ink font-bold font-mono">฿0</span>
                 </div>
             </div>
         `;
@@ -187,11 +187,11 @@
             chips.forEach(chip => {
                 chip.addEventListener('click', () => {
                     chips.forEach(c => {
-                        c.classList.remove('border-[#FFE169]', 'text-[#FFE169]');
-                        c.classList.add('border-[#3F3F46]', 'text-slate-300');
+                        c.classList.remove('ring-2', 'ring-accent-ink', 'text-accent-ink');
+                        c.classList.add('border-line', 'text-body-muted');
                     });
-                    chip.classList.remove('border-[#3F3F46]', 'text-slate-300');
-                    chip.classList.add('border-[#FFE169]', 'text-[#FFE169]');
+                    chip.classList.remove('border-line', 'text-body-muted');
+                    chip.classList.add('ring-2', 'ring-accent-ink', 'text-accent-ink');
 
                     if (hiddenSelect) {
                         hiddenSelect.value = chip.getAttribute('data-value');
@@ -209,15 +209,15 @@
             colorChips.forEach(chip => {
                 chip.addEventListener('click', () => {
                     colorChips.forEach(c => {
-                        c.querySelector('.color-ring').classList.remove('border-[#FFE169]', 'scale-110');
+                        c.querySelector('.color-ring').classList.remove('ring-2', 'ring-accent-ink', 'scale-110');
                         c.querySelector('.color-ring').classList.add('border-transparent');
-                        c.querySelector('.color-label').classList.remove('text-[#FFE169]', 'text-[13px]');
-                        c.querySelector('.color-label').classList.add('text-slate-400', 'text-[10px]');
+                        c.querySelector('.color-label').classList.remove('text-accent-ink', 'text-[13px]');
+                        c.querySelector('.color-label').classList.add('text-body-muted', 'text-[10px]');
                     });
                     chip.querySelector('.color-ring').classList.remove('border-transparent');
-                    chip.querySelector('.color-ring').classList.add('border-[#FFE169]', 'scale-110');
-                    chip.querySelector('.color-label').classList.remove('text-slate-400', 'text-[10px]');
-                    chip.querySelector('.color-label').classList.add('text-[#FFE169]', 'text-[13px]');
+                    chip.querySelector('.color-ring').classList.add('ring-2', 'ring-accent-ink', 'scale-110');
+                    chip.querySelector('.color-label').classList.remove('text-body-muted', 'text-[10px]');
+                    chip.querySelector('.color-label').classList.add('text-accent-ink', 'text-[13px]');
 
                     if (hiddenColorSelect) {
                         hiddenColorSelect.value = chip.getAttribute('data-value');
@@ -235,19 +235,19 @@
             radios.forEach(radio => {
                 radio.parentElement.addEventListener('click', () => {
                     radios.forEach(r => {
-                        r.classList.remove('border-[#FFE169]', 'active');
-                        r.classList.add('border-white/30');
+                        r.classList.remove('ring-2', 'ring-accent-ink', 'active');
+                        r.classList.add('border-ink/30');
                         r.querySelector('.indicator').classList.remove('opacity-100');
                         r.querySelector('.indicator').classList.add('opacity-0');
-                        r.nextElementSibling.classList.remove('text-white/90');
-                        r.nextElementSibling.classList.add('text-white/60');
+                        r.nextElementSibling.classList.remove('text-ink/90');
+                        r.nextElementSibling.classList.add('text-ink/60');
                     });
-                    radio.classList.remove('border-white/30');
-                    radio.classList.add('border-[#FFE169]', 'active');
+                    radio.classList.remove('border-ink/30');
+                    radio.classList.add('ring-2', 'ring-accent-ink', 'active');
                     radio.querySelector('.indicator').classList.remove('opacity-0');
                     radio.querySelector('.indicator').classList.add('opacity-100');
-                    radio.nextElementSibling.classList.remove('text-white/60');
-                    radio.nextElementSibling.classList.add('text-white/90');
+                    radio.nextElementSibling.classList.remove('text-ink/60');
+                    radio.nextElementSibling.classList.add('text-ink/90');
 
                     if (hiddenImeiCheck) {
                         hiddenImeiCheck.checked = (radio.getAttribute('data-value') === 'true');
@@ -556,13 +556,13 @@
                         const targetValue = String(!!item.track_imei);
                         imeiGroup.querySelectorAll('.po-radio').forEach(r => {
                             const isMatch = r.getAttribute('data-value') === targetValue;
-                            r.classList.toggle('border-[#FFE169]', isMatch);
+                            r.classList.toggle('ring-2', 'ring-accent-ink', isMatch);
                             r.classList.toggle('active', isMatch);
-                            r.classList.toggle('border-white/30', !isMatch);
+                            r.classList.toggle('border-ink/30', !isMatch);
                             r.querySelector('.indicator').classList.toggle('opacity-100', isMatch);
                             r.querySelector('.indicator').classList.toggle('opacity-0', !isMatch);
-                            r.nextElementSibling.classList.toggle('text-white/90', isMatch);
-                            r.nextElementSibling.classList.toggle('text-white/60', !isMatch);
+                            r.nextElementSibling.classList.toggle('text-ink/90', isMatch);
+                            r.nextElementSibling.classList.toggle('text-ink/60', !isMatch);
                         });
                     }
                 }
@@ -653,11 +653,11 @@
     }
 
     // Skeleton loading แถวตารางประวัติการสั่งซื้อ — ใช้โทนเดียวกับ skeleton หน้าจัดการสต็อก
-    // (bg-[#5c5c5c] + animate-pulse) ให้จังหวะกระพริบของทั้งระบบเป็นแบบเดียวกัน
+    // (bg-skeleton + animate-pulse) ให้จังหวะกระพริบของทั้งระบบเป็นแบบเดียวกัน
     const renderPOHistorySkeleton = (rowCount = 6) => {
         const tbody = document.getElementById('table-body-po-history');
         if (!tbody) return;
-        const bar = (widthClass, extraClass = '') => `<div class="h-3.5 ${widthClass} rounded-full bg-[#5c5c5c] animate-pulse ${extraClass}"></div>`;
+        const bar = (widthClass, extraClass = '') => `<div class="h-3.5 ${widthClass} rounded-full bg-skeleton animate-pulse ${extraClass}"></div>`;
         let rowsHtml = '';
         for (let i = 0; i < rowCount; i++) {
             rowsHtml += `
@@ -668,12 +668,12 @@
                     <td class="px-6 py-4">${bar('w-24')}</td>
                     <td class="px-6 py-4 text-right">${bar('w-16 ml-auto')}</td>
                     <td class="px-6 py-4 text-center">
-                        <div class="h-5 w-20 mx-auto rounded-[0.375rem] bg-[#5c5c5c] animate-pulse"></div>
+                        <div class="h-5 w-20 mx-auto rounded-[0.375rem] bg-skeleton animate-pulse"></div>
                     </td>
                     <td class="px-6 py-4 text-right">
                         <div class="flex items-center justify-end gap-1">
-                            <div class="w-8 h-8 rounded-lg bg-[#5c5c5c] animate-pulse"></div>
-                            <div class="w-8 h-8 rounded-lg bg-[#5c5c5c] animate-pulse"></div>
+                            <div class="w-8 h-8 rounded-lg bg-skeleton animate-pulse"></div>
+                            <div class="w-8 h-8 rounded-lg bg-skeleton animate-pulse"></div>
                         </div>
                     </td>
                 </tr>
@@ -774,13 +774,13 @@
         if (countLabel) countLabel.textContent = filtered.length;
 
         if (filtered.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="7" class="px-6 py-8 text-center text-slate-400 italic">ไม่มีรายการใบสั่งซื้อ</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="7" class="px-6 py-8 text-center text-body-muted italic">ไม่มีรายการใบสั่งซื้อ</td></tr>';
             return;
         }
 
         filtered.forEach(po => {
             const tr = document.createElement('tr');
-            tr.className = 'hover:bg-[#464646] transition-colors';
+            tr.className = 'hover:bg-divider transition-colors';
 
             // Format date
             let dateStr = '-';
@@ -809,21 +809,21 @@
                 'รอจัดส่ง': { dot: 'bg-sky-500', badge: 'bg-sky-500/10', text: 'text-sky-400' },
                 'ของถึงสาขาแล้ว': { dot: 'bg-blue-500', badge: 'bg-blue-500/10', text: 'text-blue-400' },
                 'กำลังตรวจรับ': { dot: 'bg-amber-500', badge: 'bg-amber-500/10', text: 'text-amber-400' },
-                'นำเข้าสำเร็จ': { dot: 'bg-[#20D500]', badge: 'bg-[#42A231]/[0.12]', text: 'text-[#20D500]' },
-                'ยกเลิก': { dot: 'bg-[#FE0000]', badge: 'bg-[#FE0000]/[0.12]', text: 'text-[#FE0000]' }
+                'นำเข้าสำเร็จ': { dot: 'bg-state-ok', badge: 'bg-state-ok-tint/[0.12]', text: 'text-state-ok' },
+                'ยกเลิก': { dot: 'bg-state-danger', badge: 'bg-state-danger/[0.12]', text: 'text-state-danger' }
             };
-            const st = statusStyles[po.status] || { dot: 'bg-slate-400', badge: 'bg-white/5', text: 'text-slate-300' };
+            const st = statusStyles[po.status] || { dot: 'bg-body-muted', badge: 'bg-ink/5', text: 'text-body-muted' };
 
             tr.innerHTML = `
-                <td class="px-6 py-4 text-white text-sm whitespace-nowrap">
-                    <i class="fa-regular fa-clock text-white/70 mr-1.5"></i>${dateStr}
+                <td class="px-6 py-4 text-ink text-sm whitespace-nowrap">
+                    <i class="fa-regular fa-clock text-ink/70 mr-1.5"></i>${dateStr}
                 </td>
-                <td class="px-6 py-4 font-mono font-semibold text-[#FFE169] whitespace-nowrap">${po.po_number || '-'}</td>
-                <td class="px-6 py-4 text-white font-medium whitespace-nowrap">${po.supplier_name || '-'}</td>
-                <td class="px-6 py-4 text-white text-sm whitespace-nowrap">
-                    <i class="fa-solid fa-location-dot text-white/70 mr-1.5"></i>${branchName}
+                <td class="px-6 py-4 font-mono font-semibold text-accent-ink whitespace-nowrap">${po.po_number || '-'}</td>
+                <td class="px-6 py-4 text-ink font-medium whitespace-nowrap">${po.supplier_name || '-'}</td>
+                <td class="px-6 py-4 text-ink text-sm whitespace-nowrap">
+                    <i class="fa-solid fa-location-dot text-ink/70 mr-1.5"></i>${branchName}
                 </td>
-                <td class="px-6 py-4 text-right font-mono text-white whitespace-nowrap">฿${totalAmount.toLocaleString()}</td>
+                <td class="px-6 py-4 text-right font-mono text-ink whitespace-nowrap">฿${totalAmount.toLocaleString()}</td>
                 <td class="px-6 py-4 text-center whitespace-nowrap">
                     <div class="inline-flex items-center gap-2 px-2.5 py-1 rounded-[0.375rem] ${st.badge}">
                         <div class="w-2 h-2 rounded-full ${st.dot}"></div>
@@ -832,15 +832,15 @@
                 </td>
                 <td class="px-6 py-4 text-right whitespace-nowrap">
                     <div class="flex items-center justify-end gap-1">
-                        <button class="btn-view-po text-white hover:text-indigo-400 transition-colors p-2" title="รายละเอียดใบ PO">
+                        <button class="btn-view-po text-ink hover:text-indigo-400 transition-colors p-2" title="รายละเอียดใบ PO">
                             <i class="fa-solid fa-eye"></i>
                         </button>
                         ${po.status === 'รอจัดส่ง' || po.status === 'สั่งซื้อแล้ว' ? `
-                            <button class="btn-cancel-po text-white hover:text-red-400 transition-colors p-2" title="ยกเลิกใบ PO">
+                            <button class="btn-cancel-po text-ink hover:text-red-400 transition-colors p-2" title="ยกเลิกใบ PO">
                                 <i class="fa-solid fa-trash-can"></i>
                             </button>
                         ` : ''}
-                        <button class="btn-print-po text-white hover:text-amber-400 transition-colors p-2" title="พิมพ์ใบ PO">
+                        <button class="btn-print-po text-ink hover:text-amber-400 transition-colors p-2" title="พิมพ์ใบ PO">
                             <i class="fa-solid fa-print"></i>
                         </button>
                     </div>
@@ -963,17 +963,17 @@
     const RECEIVE_COLS = 6;
 
     // แท็บสถานะ (ข้อ 11.5 - ป้ายนับต้องอ่านออกทั้งบนพื้นเหลืองและพื้นเข้ม จึงสลับสีตามสถานะแท็บ)
-    const RC_TAB_BASE = 'receive-tab px-4 py-2.5 rounded-xl text-sm font-bold border transition-colors flex items-center gap-2 cursor-pointer';
-    const RC_TAB_ON = 'bg-[#FFE169] text-[#333333] border-[#FFE169]';
-    const RC_TAB_OFF = 'bg-[#27272A] text-slate-300 border-[#3F3F46] hover:border-[#FFE169] hover:text-white';
-    const RC_BADGE_ON = 'px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#333333]/20';
+    const RC_TAB_BASE = 'elev-chip receive-tab px-4 py-2.5 rounded-xl text-sm font-bold transition-colors flex items-center gap-2 cursor-pointer';
+    const RC_TAB_ON = 'bg-primary text-on-primary ring-1 ring-accent-ink';
+    const RC_TAB_OFF = 'elev-field bg-field text-body-muted hover:ring-1 hover:ring-accent-ink hover:text-ink';
+    const RC_BADGE_ON = 'px-2 py-0.5 rounded-full text-[10px] font-bold bg-hairline/20';
     const RC_BADGE_OFF = {
-        all: 'px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#4D4D4D]/60 text-white',
+        all: 'px-2 py-0.5 rounded-full text-[10px] font-bold bg-chip/60 text-ink',
         'รอจัดส่ง': 'px-2 py-0.5 rounded-full text-[10px] font-bold bg-orange-500/[0.12] text-orange-400',
         'ของถึงสาขาแล้ว': 'px-2 py-0.5 rounded-full text-[10px] font-bold bg-orange-500/[0.12] text-orange-400',
         'กำลังตรวจรับ': 'px-2 py-0.5 rounded-full text-[10px] font-bold bg-orange-500/[0.12] text-orange-400',
-        'นำเข้าสำเร็จ': 'px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#42A231]/[0.12] text-[#20D500]',
-        'ยกเลิก': 'px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#FE0000]/[0.12] text-[#FE0000]'
+        'นำเข้าสำเร็จ': 'px-2 py-0.5 rounded-full text-[10px] font-bold bg-state-ok-tint/[0.12] text-state-ok',
+        'ยกเลิก': 'px-2 py-0.5 rounded-full text-[10px] font-bold bg-state-danger/[0.12] text-state-danger'
     };
     const RC_PANEL_TITLE = {
         all: 'ใบสั่งซื้อทั้งหมด',
@@ -995,7 +995,7 @@
         });
         const title = document.getElementById('receive-panel-title');
         if (title) {
-            title.innerHTML = `<i class="fa-solid fa-boxes-packing text-[#FFE169]"></i> ${RC_PANEL_TITLE[status] || RC_PANEL_TITLE.all}`;
+            title.innerHTML = `<i class="fa-solid fa-boxes-packing text-accent-ink"></i> ${RC_PANEL_TITLE[status] || RC_PANEL_TITLE.all}`;
         }
         renderFilteredPOs();
     };
@@ -1062,13 +1062,13 @@
         return dt.toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' });
     };
 
-    const accStateRow = (cols, msg, cls = 'text-white/50 italic') =>
+    const accStateRow = (cols, msg, cls = 'text-ink/50 italic') =>
         `<tr><td colspan="${cols}" class="px-6 py-8 text-center ${cls}">${accEsc(msg)}</td></tr>`;
 
     const accSkeleton = (tbodyId, cols, rows = 4) => {
         const tbody = document.getElementById(tbodyId);
         if (!tbody) return;
-        const bar = '<div class="h-3.5 w-full rounded-full bg-[#5c5c5c] animate-pulse"></div>';
+        const bar = '<div class="h-3.5 w-full rounded-full bg-skeleton animate-pulse"></div>';
         tbody.innerHTML = Array.from({ length: rows }).map(() =>
             `<tr>${Array.from({ length: cols }).map(() =>
                 `<td class="px-6 py-4">${bar}</td>`).join('')}</tr>`).join('');
@@ -1080,13 +1080,13 @@
     };
 
     // ---------- แท็บ ----------
-    const ACC_TAB_BASE = 'px-4 py-2.5 rounded-xl text-sm font-bold border transition-colors flex items-center gap-2 cursor-pointer';
-    const ACC_TAB_ON = 'bg-[#FFE169] text-[#333333] border-[#FFE169]';
-    const ACC_TAB_OFF = 'bg-[#27272A] text-slate-300 border-[#3F3F46] hover:border-[#FFE169] hover:text-white';
-    const ACC_BADGE_ON = 'px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#333333]/20';
+    const ACC_TAB_BASE = 'elev-chip px-4 py-2.5 rounded-xl text-sm font-bold transition-colors flex items-center gap-2 cursor-pointer';
+    const ACC_TAB_ON = 'bg-primary text-on-primary ring-1 ring-accent-ink';
+    const ACC_TAB_OFF = 'elev-field bg-field text-body-muted hover:ring-1 hover:ring-accent-ink hover:text-ink';
+    const ACC_BADGE_ON = 'px-2 py-0.5 rounded-full text-[10px] font-bold bg-hairline/20';
     const ACC_BADGE_OFF = {
         'badge-acc-ap': 'px-2 py-0.5 rounded-full text-[10px] font-bold bg-orange-500/[0.12] text-orange-400',
-        'badge-acc-pl': 'px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#4D4D4D]/60 text-white',
+        'badge-acc-pl': 'px-2 py-0.5 rounded-full text-[10px] font-bold bg-chip/60 text-ink',
         'badge-acc-ar': 'px-2 py-0.5 rounded-full text-[10px] font-bold bg-orange-500/[0.12] text-orange-400'
     };
 
@@ -1151,8 +1151,14 @@
     window.initAccounting = initAccounting;
 
     // ---------- กราฟรายรับ-รายจ่าย (ลอกวิธีวาดจาก renderSalesChart ในหน้า #dashboard) ----------
-    const ACC_IN = '#20D500';   // รายรับ
-    const ACC_OUT = '#FE0000';  // รายจ่าย
+    // สีเส้นถูกใส่ลงในสตริง SVG ตอนสร้าง ไม่ได้ผ่านคลาส CSS จึงตามธีมเองไม่ได้
+    // เขียว #20D500 บนการ์ดขาวได้แค่ 1.99:1 — มองแทบไม่เห็น ต้องอ่านโทเคนตอนวาดทุกครั้ง
+    const accThemeColor = (name, fallback) => {
+        const v = getComputedStyle(document.documentElement).getPropertyValue('--color-' + name).trim();
+        return v || fallback;
+    };
+    let ACC_IN = '#20D500';   // รายรับ
+    let ACC_OUT = '#FE0000';  // รายจ่าย
 
     const accCompact = (n) => {
         const v = Math.abs(n);
@@ -1292,11 +1298,17 @@
         if (!host) return;
         _accChartState = { d, pos, start, end };
 
+        // อ่านสีจากธีมปัจจุบันก่อนวาดเสมอ
+        ACC_IN = accThemeColor('state-ok', '#20D500');
+        ACC_OUT = accThemeColor('state-danger', '#FE0000');
+        const ACC_INK = accThemeColor('ink', '#FFFFFF');
+        const ACC_SURFACE = accThemeColor('canvas-elevated', '#1F1F1F');
+
         const series = accSeries(d, pos, start, end);
         const totalIn = d.totalRevenue || 0, totalOut = d.totalExpense || 0;
 
         if (!series || (totalIn <= 0 && totalOut <= 0)) {
-            host.innerHTML = '<p class="py-16 text-center text-white/50 italic">ยังไม่มีรายรับหรือรายจ่ายในช่วงเวลานี้</p>';
+            host.innerHTML = '<p class="py-16 text-center text-ink/50 italic">ยังไม่มีรายรับหรือรายจ่ายในช่วงเวลานี้</p>';
             return;
         }
 
@@ -1324,9 +1336,9 @@
             const val = (top * i) / GRID;
             const gy = y(val);
             grid += `<line x1="${PAD.left}" y1="${gy}" x2="${W - PAD.right}" y2="${gy}"
-                        stroke="#FFFFFF" stroke-opacity="0.08" stroke-width="1" />`;
+                        stroke="${ACC_INK}" stroke-opacity="0.08" stroke-width="1" />`;
             yLabels += `<text x="${PAD.left - 10}" y="${gy + 4}" text-anchor="end"
-                        fill="#FFFFFF" fill-opacity="0.5" font-size="11">${accCompact(val)}</text>`;
+                        fill="${ACC_INK}" fill-opacity="0.5" font-size="11">${accCompact(val)}</text>`;
         }
 
         // ป้ายแกน X ไม่เกิน 8 ตัว ไม่งั้นตัวหนังสือทับกันตอนเลือกช่วงยาว
@@ -1334,12 +1346,12 @@
         const xLabels = buckets.arr.map((bk, i) =>
             (i % stepLbl === 0 || i === n - 1)
                 ? `<text x="${x(i)}" y="${H - 8}" text-anchor="middle"
-                       fill="#FFFFFF" fill-opacity="0.5" font-size="11">${accEsc(bk.label)}</text>`
+                       fill="${ACC_INK}" fill-opacity="0.5" font-size="11">${accEsc(bk.label)}</text>`
                 : '').join('');
 
         const dots = (pts, vals, color) => pts.map((p, i) =>
             vals[i] > 0
-                ? `<circle cx="${p.x}" cy="${p.y}" r="3.5" fill="${color}" stroke="#1F1F1F" stroke-width="1.5" />`
+                ? `<circle cx="${p.x}" cy="${p.y}" r="3.5" fill="${color}" stroke="${ACC_SURFACE}" stroke-width="1.5" />`
                 : '').join('');
 
         const bandW = n > 1 ? plotW / (n - 1) : plotW;
@@ -1373,27 +1385,27 @@
                           stroke-linecap="round" stroke-linejoin="round" />
                     ${dots(outPts, expense, ACC_OUT)}${dots(inPts, income, ACC_IN)}
                     <line id="acc-hoverline" x1="0" y1="${PAD.top}" x2="0" y2="${PAD.top + plotH}"
-                          stroke="#FFFFFF" stroke-opacity="0.25" stroke-width="1" style="display:none" />
+                          stroke="${ACC_INK}" stroke-opacity="0.25" stroke-width="1" style="display:none" />
                     ${bands}
                 </svg>
                 <div id="acc-tooltip"
-                     class="pointer-events-none absolute hidden z-10 rounded-xl bg-[#18181B] border border-[#4D4D4D] shadow-lg px-3 py-2.5 text-xs whitespace-nowrap"></div>
+                     class="elev-modal pointer-events-none absolute hidden z-10 rounded-xl bg-elevated px-3 py-2.5 text-xs whitespace-nowrap"></div>
             </div>
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-4">
-                <div class="bg-[#27272A] border border-[#3F3F46] rounded-xl p-3">
+                <div class="elev-field bg-field rounded-xl p-3">
                     <p class="text-xs" style="color:${ACC_IN}">รายรับรวม</p>
                     <p class="text-lg font-semibold font-mono" style="color:${ACC_IN}">${accBaht(totalIn)}</p>
-                    <p class="text-[11px] text-white/70 mt-1">ขายสินค้า ${accBaht(d.salesRevenue)} · อื่นๆ ${accBaht(d.otherRevenue)}</p>
+                    <p class="text-[11px] text-ink/70 mt-1">ขายสินค้า ${accBaht(d.salesRevenue)} · อื่นๆ ${accBaht(d.otherRevenue)}</p>
                 </div>
-                <div class="bg-[#27272A] border border-[#3F3F46] rounded-xl p-3">
+                <div class="elev-field bg-field rounded-xl p-3">
                     <p class="text-xs" style="color:${ACC_OUT}">รายจ่ายรวม</p>
                     <p class="text-lg font-semibold font-mono" style="color:${ACC_OUT}">${accBaht(totalOut)}</p>
-                    <p class="text-[11px] text-white/70 mt-1">ค่าสินค้า (PO) ${accBaht(d.poCost)} · อื่นๆ ${accBaht(d.otherExpenses)}</p>
+                    <p class="text-[11px] text-ink/70 mt-1">ค่าสินค้า (PO) ${accBaht(d.poCost)} · อื่นๆ ${accBaht(d.otherExpenses)}</p>
                 </div>
-                <div class="bg-[#27272A] border border-[#3F3F46] rounded-xl p-3">
-                    <p class="text-xs text-white/70">กำไรสุทธิ</p>
+                <div class="elev-field bg-field rounded-xl p-3">
+                    <p class="text-xs text-ink/70">กำไรสุทธิ</p>
                     <p class="text-lg font-semibold font-mono" style="color:${netColor}">${accBaht(net)}</p>
-                    <p class="text-[11px] text-white/70 mt-1">${totalIn ? 'อัตรากำไร ' + ((net / totalIn) * 100).toFixed(1) + '%' : 'ยังไม่มีรายรับให้คิดอัตรากำไร'}</p>
+                    <p class="text-[11px] text-ink/70 mt-1">${totalIn ? 'อัตรากำไร ' + ((net / totalIn) * 100).toFixed(1) + '%' : 'ยังไม่มีรายรับให้คิดอัตรากำไร'}</p>
                 </div>
             </div>`;
 
@@ -1407,14 +1419,14 @@
                 const i = Number(band.dataset.i);
                 const diff = income[i] - expense[i];
                 tip.innerHTML = `
-                    <p class="text-white font-medium mb-1.5">${accEsc(buckets.arr[i].full)}</p>
-                    <p class="flex items-center gap-2 text-white/80">
+                    <p class="text-ink font-medium mb-1.5">${accEsc(buckets.arr[i].full)}</p>
+                    <p class="flex items-center gap-2 text-ink/80">
                         <span class="w-2 h-2 rounded-full shrink-0" style="background:${ACC_IN}"></span>
-                        รายรับ <span class="ml-auto font-mono text-white">${accBaht(income[i])}</span></p>
-                    <p class="flex items-center gap-2 text-white/80 mt-1">
+                        รายรับ <span class="ml-auto font-mono text-ink">${accBaht(income[i])}</span></p>
+                    <p class="flex items-center gap-2 text-ink/80 mt-1">
                         <span class="w-2 h-2 rounded-full shrink-0" style="background:${ACC_OUT}"></span>
-                        รายจ่าย <span class="ml-auto font-mono text-white">${accBaht(expense[i])}</span></p>
-                    <p class="mt-1.5 pt-1.5 border-t border-[#333333] text-white/70">
+                        รายจ่าย <span class="ml-auto font-mono text-ink">${accBaht(expense[i])}</span></p>
+                    <p class="mt-1.5 pt-1.5 border-t border-hairline text-ink/70">
                         คงเหลือ <span class="font-mono ml-1" style="color:${diff >= 0 ? ACC_IN : ACC_OUT}">${accBaht(diff)}</span></p>`;
                 tip.classList.remove('hidden');
 
@@ -1436,6 +1448,13 @@
         // วาดใหม่เมื่อความกว้างเปลี่ยน (SVG กำหนดความกว้างเป็นพิกเซลตายตัว)
         if (!_accResizeBound) {
             _accResizeBound = true;
+            // สีฝังอยู่ในสตริง SVG แล้ว CSS ตามแก้ไม่ได้ ต้องวาดใหม่เมื่อสลับธีม
+            window.addEventListener('themechange', () => {
+                if (_accChartState && document.getElementById('acc-breakdown-body')) {
+                    const st = _accChartState;
+                    renderAccBreakdown(st.d, st.pos, st.start, st.end);
+                }
+            });
             let t = null;
             window.addEventListener('resize', () => {
                 clearTimeout(t);
@@ -1454,17 +1473,17 @@
         const host = document.getElementById('acc-vat-body');
         if (!host) return;
         const row = (label, value, color) => `
-            <div class="flex items-center justify-between py-2.5 border-b border-[#3F3F46] last:border-0">
-                <span class="text-xs text-white/70">${accEsc(label)}</span>
+            <div class="flex items-center justify-between py-2.5 border-b border-line last:border-0">
+                <span class="text-xs text-ink/70">${accEsc(label)}</span>
                 <span class="text-sm font-mono font-semibold" style="color:${color}">${accBaht(value)}</span>
             </div>`;
         host.innerHTML = `
-            <div class="bg-[#27272A] border border-[#3F3F46] rounded-xl px-4 py-2">
+            <div class="elev-field bg-field rounded-xl px-4 py-2">
                 ${row('ภาษีขาย (Output VAT)', d.outputVat, '#20D500')}
                 ${row('ภาษีซื้อ (Input VAT)', d.inputVat, '#FE0000')}
                 ${row('ภาษีค้างจ่ายสุทธิ', d.taxPayable, '#FFE169')}
             </div>
-            <p class="text-[11px] text-white/50 mt-3">
+            <p class="text-[11px] text-ink/50 mt-3">
                 ภาษีค้างจ่ายเป็น 0 เมื่อภาษีซื้อมากกว่าภาษีขาย (ยกไปเครดิตงวดถัดไป)</p>`;
     };
 
@@ -1503,7 +1522,7 @@
                 if (profitEl) {
                     profitEl.textContent = accBaht(data.netProfit);
                     profitEl.className = 'text-2xl font-semibold font-mono mt-0.5 truncate ' +
-                        (data.netProfit >= 0 ? 'text-[#20D500]' : 'text-[#FE0000]');
+                        (data.netProfit >= 0 ? 'text-state-ok' : 'text-state-danger');
                 }
                 accSetText('kpi-profit-sub', data.netProfit >= 0 ? 'กำไรจากการดำเนินงาน' : 'ขาดทุนจากการดำเนินงาน');
 
@@ -1526,25 +1545,25 @@
                         plTbody.innerHTML = ledger.map(item => {
                             const isIncome = item.type === 'รายรับ';
                             const badge = isIncome
-                                ? `<div class="inline-flex items-center gap-2 px-2.5 py-1 rounded-[0.375rem] bg-[#42A231]/[0.12]">
-                                       <div class="w-2 h-2 rounded-full bg-[#20D500]"></div>
-                                       <span class="text-[#20D500] font-medium text-xs">รายรับ</span></div>`
-                                : `<div class="inline-flex items-center gap-2 px-2.5 py-1 rounded-[0.375rem] bg-[#FE0000]/[0.12]">
-                                       <div class="w-2 h-2 rounded-full bg-[#FE0000]"></div>
-                                       <span class="text-[#FE0000] font-medium text-xs">รายจ่าย</span></div>`;
+                                ? `<div class="inline-flex items-center gap-2 px-2.5 py-1 rounded-[0.375rem] bg-state-ok-tint/[0.12]">
+                                       <div class="w-2 h-2 rounded-full bg-state-ok"></div>
+                                       <span class="text-state-ok font-medium text-xs">รายรับ</span></div>`
+                                : `<div class="inline-flex items-center gap-2 px-2.5 py-1 rounded-[0.375rem] bg-state-danger/[0.12]">
+                                       <div class="w-2 h-2 rounded-full bg-state-danger"></div>
+                                       <span class="text-state-danger font-medium text-xs">รายจ่าย</span></div>`;
                             const amount = isIncome
-                                ? `<span class="text-[#20D500] font-mono font-semibold">+${accBaht(item.amount)}</span>`
-                                : `<span class="text-[#FE0000] font-mono font-semibold">-${accBaht(item.amount)}</span>`;
+                                ? `<span class="text-state-ok font-mono font-semibold">+${accBaht(item.amount)}</span>`
+                                : `<span class="text-state-danger font-mono font-semibold">-${accBaht(item.amount)}</span>`;
                             return `
-                            <tr class="hover:bg-[#464646] transition-colors">
+                            <tr class="hover:bg-divider transition-colors">
                                 <td class="px-6 py-4">
-                                    <p class="font-mono font-semibold text-[#FFE169]">${accEsc(item.transaction_id)}</p>
-                                    <p class="text-xs text-white/70 mt-0.5">${accEsc(accDate(item.created_at))}</p>
+                                    <p class="font-mono font-semibold text-accent-ink">${accEsc(item.transaction_id)}</p>
+                                    <p class="text-xs text-ink/70 mt-0.5">${accEsc(accDate(item.created_at))}</p>
                                 </td>
                                 <td class="px-6 py-4">${badge}</td>
-                                <td class="px-6 py-4 text-white">${accEsc(item.category || '-')}</td>
+                                <td class="px-6 py-4 text-ink">${accEsc(item.category || '-')}</td>
                                 <td class="px-6 py-4 text-right">${amount}</td>
-                                <td class="px-6 py-4 text-white">${accEsc(item.recorded_by || '-')}</td>
+                                <td class="px-6 py-4 text-ink">${accEsc(item.recorded_by || '-')}</td>
                             </tr>`;
                         }).join('');
                     }
@@ -1586,8 +1605,8 @@
                     if (!filterVal) return;
                     const chip = document.createElement('button');
                     chip.type = 'button';
-                    chip.className = 'px-4 py-2.5 rounded-xl bg-[#4D4D4D]/40 border border-[#3F3F46] ' +
-                        'text-white text-sm font-medium transition-colors flex items-center gap-2 cursor-pointer';
+                    chip.className = 'elev-card px-4 py-2.5 rounded-xl bg-panel/40' +
+                        'text-ink text-sm font-medium transition-colors flex items-center gap-2 cursor-pointer';
                     chip.innerHTML = `<span>ซัพพลายเออร์: ${accEsc(filterVal)}</span><i class="fa-solid fa-xmark text-[10px] opacity-80"></i>`;
                     chip.setAttribute('aria-label', `ลบตัวกรองซัพพลายเออร์ ${filterVal}`);
                     chip.addEventListener('click', (e) => {
@@ -1622,43 +1641,43 @@
 
                         let statusBadge;
                         if (isPaid) {
-                            statusBadge = `<div class="inline-flex items-center gap-2 px-2.5 py-1 rounded-[0.375rem] bg-[#42A231]/[0.12]">
-                                    <div class="w-2 h-2 rounded-full bg-[#20D500]"></div>
-                                    <span class="text-[#20D500] font-medium text-xs">ชำระเงินแล้ว</span></div>`;
+                            statusBadge = `<div class="inline-flex items-center gap-2 px-2.5 py-1 rounded-[0.375rem] bg-state-ok-tint/[0.12]">
+                                    <div class="w-2 h-2 rounded-full bg-state-ok"></div>
+                                    <span class="text-state-ok font-medium text-xs">ชำระเงินแล้ว</span></div>`;
                         } else if (po.payment_status === 'ชำระเงินบางส่วน') {
                             statusBadge = `<div class="inline-flex items-center gap-2 px-2.5 py-1 rounded-[0.375rem] bg-orange-500/[0.12]">
                                     <div class="w-2 h-2 rounded-full bg-orange-500"></div>
                                     <span class="text-orange-400 font-medium text-xs">ชำระบางส่วน</span></div>`;
                         } else {
-                            statusBadge = `<div class="inline-flex items-center gap-2 px-2.5 py-1 rounded-[0.375rem] bg-[#FE0000]/[0.12]">
-                                    <div class="w-2 h-2 rounded-full bg-[#FE0000]"></div>
-                                    <span class="text-[#FE0000] font-medium text-xs">ยังไม่ได้ชำระ</span></div>`;
+                            statusBadge = `<div class="inline-flex items-center gap-2 px-2.5 py-1 rounded-[0.375rem] bg-state-danger/[0.12]">
+                                    <div class="w-2 h-2 rounded-full bg-state-danger"></div>
+                                    <span class="text-state-danger font-medium text-xs">ยังไม่ได้ชำระ</span></div>`;
                         }
 
                         const payAction = !isPaid
-                            ? `<button type="button" class="btn-pay-po px-3 py-1.5 bg-[#FFE169] hover:bg-[#E2B93C] text-[#333333] font-semibold rounded-[0.375rem] text-xs transition-colors inline-flex items-center gap-1.5 cursor-pointer"
+                            ? `<button type="button" class="btn-pay-po px-3 py-1.5 bg-primary hover:bg-[#E2B93C] text-on-primary font-semibold rounded-[0.375rem] text-xs transition-colors inline-flex items-center gap-1.5 cursor-pointer"
                                     data-id="${accEsc(po._id)}" data-no="${accEsc(po.po_number)}" data-amount="${totalCost}"
                                     data-paid="${paidAmount}" data-discount="${discount}" data-outstanding="${outstanding}">
                                     <i class="fa-solid fa-money-bill-wave"></i> จ่ายเงิน
                                </button>`
-                            : `<span class="text-xs text-white/70">จ่ายแล้ว ${accEsc(accDate(po.paid_at || po.updatedAt))}</span>`;
+                            : `<span class="text-xs text-ink/70">จ่ายแล้ว ${accEsc(accDate(po.paid_at || po.updatedAt))}</span>`;
 
                         return `
-                        <tr class="hover:bg-[#464646] transition-colors">
+                        <tr class="hover:bg-divider transition-colors">
                             <td class="px-6 py-4">
-                                <p class="font-mono font-semibold text-[#FFE169]">${accEsc(po.po_number)}</p>
-                                <p class="text-xs text-white/70 mt-0.5">${accEsc(accDate(po.createdAt))}</p>
+                                <p class="font-mono font-semibold text-accent-ink">${accEsc(po.po_number)}</p>
+                                <p class="text-xs text-ink/70 mt-0.5">${accEsc(accDate(po.createdAt))}</p>
                             </td>
-                            <td class="px-6 py-4 text-white">${accEsc(po.supplier_name || '-')}</td>
-                            <td class="px-6 py-4 text-right text-white font-mono">${accBaht(totalCost)}</td>
-                            <td class="px-6 py-4 text-right text-[#20D500] font-mono">${accBaht(paidAmount)}</td>
-                            <td class="px-6 py-4 text-right text-white/70 font-mono" title="${accEsc(po.discount_remark || 'ไม่มีส่วนลด')}">${accBaht(discount)}</td>
-                            <td class="px-6 py-4 text-right font-mono font-semibold ${outstanding > 0 ? 'text-orange-400' : 'text-white'}">${accBaht(outstanding)}</td>
+                            <td class="px-6 py-4 text-ink">${accEsc(po.supplier_name || '-')}</td>
+                            <td class="px-6 py-4 text-right text-ink font-mono">${accBaht(totalCost)}</td>
+                            <td class="px-6 py-4 text-right text-state-ok font-mono">${accBaht(paidAmount)}</td>
+                            <td class="px-6 py-4 text-right text-ink/70 font-mono" title="${accEsc(po.discount_remark || 'ไม่มีส่วนลด')}">${accBaht(discount)}</td>
+                            <td class="px-6 py-4 text-right font-mono font-semibold ${outstanding > 0 ? 'text-orange-400' : 'text-ink'}">${accBaht(outstanding)}</td>
                             <td class="px-6 py-4">${statusBadge}</td>
                             <td class="px-6 py-4 text-right">
                                 <div class="flex items-center justify-end gap-1">
                                     ${payAction}
-                                    <button type="button" class="btn-view-po-detail text-white hover:text-indigo-400 transition-colors p-2 cursor-pointer"
+                                    <button type="button" class="btn-view-po-detail text-ink hover:text-indigo-400 transition-colors p-2 cursor-pointer"
                                         data-id="${accEsc(po._id)}" title="ดูรายละเอียดใบสั่งซื้อ"
                                         aria-label="ดูรายละเอียดใบสั่งซื้อ ${accEsc(po.po_number)}">
                                         <i class="fa-solid fa-eye"></i>
@@ -1683,49 +1702,49 @@
                             const poOutstanding = Number(payBtn.dataset.outstanding);
                             const todayStr = new Date().toLocaleDateString('en-CA');
 
-                            const fieldCls = 'w-full px-4 py-2.5 rounded-xl bg-[#27272A] border border-[#3F3F46] text-white focus:border-[#FFE169] focus:outline-none transition-all text-sm';
-                            const labelCls = 'text-slate-200 font-medium flex items-center gap-2 text-xs mb-1.5';
+                            const fieldCls = 'elev-field w-full px-4 py-2.5 rounded-xl bg-field text-ink focus:ring-2 focus:ring-accent-ink focus:outline-none transition-all text-sm';
+                            const labelCls = 'text-ink font-medium flex items-center gap-2 text-xs mb-1.5';
 
                             showConfirm(
                                 `บันทึกจ่ายเงินใบสั่งซื้อ (${poNo})`,
                                 `<div class="text-left space-y-4">
-                                    <div class="grid grid-cols-2 gap-2 bg-[#27272A] border border-[#3F3F46] p-4 rounded-xl text-xs text-white/70">
+                                    <div class="elev-field grid grid-cols-2 gap-2 bg-field p-4 rounded-xl text-xs text-ink/70">
                                         <div>ยอดรวม PO:</div>
-                                        <div class="text-right font-mono text-white">${accBaht(poAmount)}</div>
+                                        <div class="text-right font-mono text-ink">${accBaht(poAmount)}</div>
                                         <div>ชำระก่อนหน้า:</div>
-                                        <div class="text-right font-mono text-[#20D500]">${accBaht(poPaid)}</div>
+                                        <div class="text-right font-mono text-state-ok">${accBaht(poPaid)}</div>
                                         <div>ส่วนลดสะสม:</div>
-                                        <div class="text-right font-mono text-[#FE0000]">${accBaht(poDiscount)}</div>
-                                        <div class="font-semibold text-white border-t border-[#3F3F46] pt-2 mt-1">ยอดค้างชำระ:</div>
-                                        <div class="text-right font-mono text-orange-400 font-semibold border-t border-[#3F3F46] pt-2 mt-1">${accBaht(poOutstanding)}</div>
+                                        <div class="text-right font-mono text-state-danger">${accBaht(poDiscount)}</div>
+                                        <div class="font-semibold text-ink border-t border-line pt-2 mt-1">ยอดค้างชำระ:</div>
+                                        <div class="text-right font-mono text-orange-400 font-semibold border-t border-line pt-2 mt-1">${accBaht(poOutstanding)}</div>
                                     </div>
-                                    <div class="space-y-4 bg-[#27272A] border border-[#3F3F46] p-4 rounded-xl">
+                                    <div class="elev-field space-y-4 bg-field p-4 rounded-xl">
                                         <div>
                                             <label for="ap-pay-date-input" class="${labelCls}">
-                                                <i class="fa-solid fa-calendar text-white"></i> วันที่ชำระเงิน</label>
+                                                <i class="fa-solid fa-calendar text-ink"></i> วันที่ชำระเงิน</label>
                                             <input type="date" id="ap-pay-date-input" class="${fieldCls} [color-scheme:dark]" value="${todayStr}">
                                         </div>
                                         <div class="grid grid-cols-2 gap-4">
                                             <div>
                                                 <label for="ap-pay-amount-input" class="${labelCls}">
-                                                    <i class="fa-solid fa-money-bill-wave text-white"></i> จ่ายรอบนี้</label>
+                                                    <i class="fa-solid fa-money-bill-wave text-ink"></i> จ่ายรอบนี้</label>
                                                 <input type="number" inputmode="numeric" id="ap-pay-amount-input" step="any" min="0" max="${poOutstanding}"
                                                     class="${fieldCls} font-mono text-right" value="${poOutstanding.toFixed(2)}">
                                             </div>
                                             <div>
                                                 <label for="ap-pay-discount-input" class="${labelCls}">
-                                                    <i class="fa-solid fa-tag text-white"></i> ส่วนลดรอบนี้</label>
+                                                    <i class="fa-solid fa-tag text-ink"></i> ส่วนลดรอบนี้</label>
                                                 <input type="number" inputmode="numeric" id="ap-pay-discount-input" step="any" min="0" max="${poOutstanding}"
                                                     class="${fieldCls} font-mono text-right" value="0.00">
                                             </div>
                                         </div>
                                         <div>
                                             <label for="ap-pay-discount-remark-input" class="${labelCls}">
-                                                <i class="fa-solid fa-pen text-white"></i> หมายเหตุส่วนลด (ระบุหากได้ส่วนลด)</label>
+                                                <i class="fa-solid fa-pen text-ink"></i> หมายเหตุส่วนลด (ระบุหากได้ส่วนลด)</label>
                                             <input type="text" id="ap-pay-discount-remark-input"
-                                                placeholder="เช่น ชำระก่อนครบกำหนดรับส่วนลด 2%" class="${fieldCls} placeholder-slate-500">
+                                                placeholder="เช่น ชำระก่อนครบกำหนดรับส่วนลด 2%" class="${fieldCls} placeholder-ink-muted-48">
                                         </div>
-                                        <div id="ap-pay-calc-result" class="text-[11px] font-semibold text-white/70 text-right">
+                                        <div id="ap-pay-calc-result" class="text-[11px] font-semibold text-ink/70 text-right">
                                             คงเหลือหลังชำระ: ฿0.00
                                         </div>
                                     </div>
@@ -1787,10 +1806,10 @@
                                     const amt = Number(amtInp.value || 0);
                                     const disc = Number(discInp.value || 0);
                                     if (amt + disc > poOutstanding + 0.01) {
-                                        calcRes.className = 'text-[11px] font-semibold text-[#FE0000] text-right';
+                                        calcRes.className = 'text-[11px] font-semibold text-state-danger text-right';
                                         calcRes.textContent = `เกินยอดค้างชำระ: ${accBaht(Math.abs(poOutstanding - amt - disc))}`;
                                     } else {
-                                        calcRes.className = 'text-[11px] font-semibold text-[#20D500] text-right';
+                                        calcRes.className = 'text-[11px] font-semibold text-state-ok text-right';
                                         calcRes.textContent = `คงเหลือหลังชำระ: ${accBaht(Math.max(0, poOutstanding - amt - disc))}`;
                                     }
                                 };
@@ -1823,7 +1842,7 @@
                     renderAccBreakdown(plData, poListForChart, start, end);
                 } else {
                     const host = document.getElementById('acc-breakdown-body');
-                    if (host) host.innerHTML = '<p class="py-16 text-center text-white/50 italic">ดึงข้อมูลใบสั่งซื้อไม่สำเร็จ จึงยังวาดกราฟรายจ่ายไม่ได้</p>';
+                    if (host) host.innerHTML = '<p class="py-16 text-center text-ink/50 italic">ดึงข้อมูลใบสั่งซื้อไม่สำเร็จ จึงยังวาดกราฟรายจ่ายไม่ได้</p>';
                 }
             }
 
@@ -1837,15 +1856,15 @@
                     if (box) {
                         box.innerHTML = list.length
                             ? list.map(sum => `
-                                <div class="bg-[#4D4D4D]/40 rounded-2xl shadow-lg backdrop-blur-sm p-5">
+                                <div class="bg-panel/40 rounded-2xl shadow-lg backdrop-blur-sm p-5">
                                     <div class="flex items-center justify-between gap-3">
-                                        <span class="text-sm font-semibold text-white truncate">${accEsc(sum.supplier_name)}</span>
+                                        <span class="text-sm font-semibold text-ink truncate">${accEsc(sum.supplier_name)}</span>
                                         <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-orange-500/[0.12] text-orange-400 shrink-0">${sum.pending_bill_count} ใบ</span>
                                     </div>
-                                    <p class="text-xs text-white/70 mt-3">ยอดค้างจ่ายรวม</p>
+                                    <p class="text-xs text-ink/70 mt-3">ยอดค้างจ่ายรวม</p>
                                     <p class="text-xl font-semibold font-mono text-orange-400 mt-0.5">${accBaht(sum.total_outstanding)}</p>
                                 </div>`).join('')
-                            : `<div class="col-span-full bg-[#4D4D4D]/40 rounded-2xl shadow-lg backdrop-blur-sm px-6 py-8 text-center text-white/50 italic">
+                            : `<div class="col-span-full bg-panel/40 rounded-2xl shadow-lg backdrop-blur-sm px-6 py-8 text-center text-ink/50 italic">
                                    ไม่มีหนี้สินค้างจ่ายกับซัพพลายเออร์</div>`;
                     }
                 }
@@ -1877,33 +1896,33 @@
                                 : rec.createdAt;
 
                             const settledCell = isSettled
-                                ? `<div class="inline-flex items-center gap-2 px-2.5 py-1 rounded-[0.375rem] bg-[#42A231]/[0.12]">
-                                       <div class="w-2 h-2 rounded-full bg-[#20D500]"></div>
-                                       <span class="text-[#20D500] font-medium text-xs">${accEsc(accDate(rec.settled_at))}</span></div>`
+                                ? `<div class="inline-flex items-center gap-2 px-2.5 py-1 rounded-[0.375rem] bg-state-ok-tint/[0.12]">
+                                       <div class="w-2 h-2 rounded-full bg-state-ok"></div>
+                                       <span class="text-state-ok font-medium text-xs">${accEsc(accDate(rec.settled_at))}</span></div>`
                                 : isCancelled
-                                    ? `<div class="inline-flex items-center gap-2 px-2.5 py-1 rounded-[0.375rem] bg-[#FE0000]/[0.12]">
-                                           <div class="w-2 h-2 rounded-full bg-[#FE0000]"></div>
-                                           <span class="text-[#FE0000] font-medium text-xs">ยกเลิกแล้ว</span></div>`
+                                    ? `<div class="inline-flex items-center gap-2 px-2.5 py-1 rounded-[0.375rem] bg-state-danger/[0.12]">
+                                           <div class="w-2 h-2 rounded-full bg-state-danger"></div>
+                                           <span class="text-state-danger font-medium text-xs">ยกเลิกแล้ว</span></div>`
                                     : `<div class="inline-flex items-center gap-2 px-2.5 py-1 rounded-[0.375rem] bg-orange-500/[0.12]">
                                            <div class="w-2 h-2 rounded-full bg-orange-500"></div>
                                            <span class="text-orange-400 font-medium text-xs">รอรับเงิน</span></div>`;
 
                             const action = (!isSettled && !isCancelled)
-                                ? `<button type="button" class="btn-settle-ar px-3 py-1.5 bg-[#FFE169] hover:bg-[#E2B93C] text-[#333333] font-semibold rounded-[0.375rem] text-xs transition-colors inline-flex items-center gap-1.5 cursor-pointer"
+                                ? `<button type="button" class="btn-settle-ar px-3 py-1.5 bg-primary hover:bg-[#E2B93C] text-on-primary font-semibold rounded-[0.375rem] text-xs transition-colors inline-flex items-center gap-1.5 cursor-pointer"
                                         data-id="${accEsc(rec._id)}" data-no="${accEsc(receiptNum)}" data-amount="${rec.financed_amount}">
                                         <i class="fa-solid fa-circle-check"></i> บันทึกรับเงิน
                                    </button>`
-                                : `<span class="text-xs text-white/70">${isSettled ? 'รับเงินครบแล้ว' : 'ยกเลิกแล้ว'}</span>`;
+                                : `<span class="text-xs text-ink/70">${isSettled ? 'รับเงินครบแล้ว' : 'ยกเลิกแล้ว'}</span>`;
 
                             return `
-                            <tr class="hover:bg-[#464646] transition-colors">
+                            <tr class="hover:bg-divider transition-colors">
                                 <td class="px-6 py-4">
-                                    <p class="font-mono font-semibold text-[#FFE169]">${accEsc(receiptNum)}</p>
-                                    <p class="text-xs text-white/70 mt-0.5">${accEsc(accDate(soldDate))}</p>
+                                    <p class="font-mono font-semibold text-accent-ink">${accEsc(receiptNum)}</p>
+                                    <p class="text-xs text-ink/70 mt-0.5">${accEsc(accDate(soldDate))}</p>
                                 </td>
-                                <td class="px-6 py-4 text-white">${accEsc(rec.finance_company || '-')}</td>
+                                <td class="px-6 py-4 text-ink">${accEsc(rec.finance_company || '-')}</td>
                                 <td class="px-6 py-4">${settledCell}</td>
-                                <td class="px-6 py-4 text-right text-white font-mono font-semibold">${accBaht(rec.financed_amount)}</td>
+                                <td class="px-6 py-4 text-right text-ink font-mono font-semibold">${accBaht(rec.financed_amount)}</td>
                                 <td class="px-6 py-4 text-right">
                                     <div class="flex items-center justify-end gap-1">${action}</div>
                                 </td>
@@ -1920,14 +1939,14 @@
                                 showConfirm(
                                     'ยืนยันการรับเงินโอน',
                                     `<div class="text-left space-y-4">
-                                        <p class="text-sm text-white/70">ยืนยันว่าได้รับยอดโอนจากบริษัทไฟแนนซ์ สำหรับใบเสร็จเลขที่
-                                            <strong class="font-mono text-[#FFE169]">${accEsc(recNo)}</strong>
-                                            จำนวน <strong class="font-mono text-[#20D500]">${accBaht(amount)}</strong> หรือไม่</p>
-                                        <div class="bg-[#27272A] border border-[#3F3F46] p-4 rounded-xl">
-                                            <label for="ar-pay-date-input" class="text-slate-200 font-medium flex items-center gap-2 text-xs mb-1.5">
-                                                <i class="fa-solid fa-calendar text-white"></i> วันที่ได้รับเงินจากไฟแนนซ์</label>
+                                        <p class="text-sm text-ink/70">ยืนยันว่าได้รับยอดโอนจากบริษัทไฟแนนซ์ สำหรับใบเสร็จเลขที่
+                                            <strong class="font-mono text-accent-ink">${accEsc(recNo)}</strong>
+                                            จำนวน <strong class="font-mono text-state-ok">${accBaht(amount)}</strong> หรือไม่</p>
+                                        <div class="elev-field bg-field p-4 rounded-xl">
+                                            <label for="ar-pay-date-input" class="text-ink font-medium flex items-center gap-2 text-xs mb-1.5">
+                                                <i class="fa-solid fa-calendar text-ink"></i> วันที่ได้รับเงินจากไฟแนนซ์</label>
                                             <input type="date" id="ar-pay-date-input" value="${todayStr}"
-                                                class="w-full px-4 py-2.5 rounded-xl bg-[#27272A] border border-[#3F3F46] text-white focus:border-[#FFE169] focus:outline-none transition-all text-sm [color-scheme:dark]">
+                                                class="elev-field w-full px-4 py-2.5 rounded-xl bg-field text-ink focus:ring-2 focus:ring-accent-ink focus:outline-none transition-all text-sm [color-scheme:dark]">
                                         </div>
                                      </div>`,
                                     async () => {
@@ -1972,23 +1991,23 @@
                     if (box) {
                         box.innerHTML = list.length
                             ? list.map(sum => `
-                                <div class="bg-[#4D4D4D]/40 rounded-2xl shadow-lg backdrop-blur-sm p-5">
+                                <div class="bg-panel/40 rounded-2xl shadow-lg backdrop-blur-sm p-5">
                                     <div class="flex items-center justify-between gap-3">
-                                        <span class="text-sm font-semibold text-white truncate">${accEsc(sum.finance_partner_name)}</span>
-                                        <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#4D4D4D]/60 text-white shrink-0">จัดไฟแนนซ์</span>
+                                        <span class="text-sm font-semibold text-ink truncate">${accEsc(sum.finance_partner_name)}</span>
+                                        <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-chip/60 text-ink shrink-0">จัดไฟแนนซ์</span>
                                     </div>
                                     <div class="mt-3 space-y-2">
                                         <p class="flex items-center justify-between text-xs">
-                                            <span class="text-white/70">ยอดรวมค้างโอน</span>
+                                            <span class="text-ink/70">ยอดรวมค้างโอน</span>
                                             <span class="font-mono font-semibold text-orange-400">${accBaht(sum.total_pending)}</span>
                                         </p>
                                         <p class="flex items-center justify-between text-xs">
-                                            <span class="text-white/70">ยอดโอนสำเร็จแล้ว</span>
-                                            <span class="font-mono font-semibold text-[#20D500]">${accBaht(sum.payout_received || sum.total_settled)}</span>
+                                            <span class="text-ink/70">ยอดโอนสำเร็จแล้ว</span>
+                                            <span class="font-mono font-semibold text-state-ok">${accBaht(sum.payout_received || sum.total_settled)}</span>
                                         </p>
                                     </div>
                                 </div>`).join('')
-                            : `<div class="col-span-full bg-[#4D4D4D]/40 rounded-2xl shadow-lg backdrop-blur-sm px-6 py-8 text-center text-white/50 italic">
+                            : `<div class="col-span-full bg-panel/40 rounded-2xl shadow-lg backdrop-blur-sm px-6 py-8 text-center text-ink/50 italic">
                                    ไม่มีข้อมูลสรุปสำหรับบริษัทไฟแนนซ์</div>`;
                     }
                 }
@@ -2088,23 +2107,23 @@
         if (!modal) return;
 
         document.getElementById('view-po-number').textContent = po.po_number;
-        document.getElementById('view-po-supplier').innerHTML = `<i class="fa-solid fa-building text-white/70 text-xs"></i> ${po.supplier_name}`;
+        document.getElementById('view-po-supplier').innerHTML = `<i class="fa-solid fa-building text-ink/70 text-xs"></i> ${po.supplier_name}`;
 
         const branchName = po.branch_id ? po.branch_id.name : '-';
-        document.getElementById('view-po-branch').innerHTML = `<i class="fa-solid fa-location-dot text-white/70 text-xs"></i> ${branchName}`;
+        document.getElementById('view-po-branch').innerHTML = `<i class="fa-solid fa-location-dot text-ink/70 text-xs"></i> ${branchName}`;
 
         // สีสถานะต้องตรงกับ enum จริงใน models/index.js (ชุดเดียวกับตารางประวัติการสั่งซื้อ)
         const statusColors = {
             'รอจัดส่ง': 'bg-sky-500/10 text-sky-400 border-sky-500/20',
             'ของถึงสาขาแล้ว': 'bg-blue-500/10 text-blue-400 border-blue-500/20',
             'กำลังตรวจรับ': 'bg-amber-500/10 text-amber-400 border-amber-500/20',
-            'นำเข้าสำเร็จ': 'bg-[#42A231]/[0.12] text-[#20D500] border-[#20D500]/20',
-            'ยกเลิก': 'bg-[#FE0000]/[0.12] text-[#FE0000] border-[#FE0000]/20'
+            'นำเข้าสำเร็จ': 'bg-state-ok-tint/[0.12] text-state-ok ring-1 ring-state-ok/20',
+            'ยกเลิก': 'bg-state-danger/[0.12] text-state-danger ring-1 ring-state-danger/20'
         };
-        const statusClass = statusColors[po.status] || 'bg-white/5 text-slate-300 border-white/10';
+        const statusClass = statusColors[po.status] || 'elev-chip bg-ink/5 text-body-muted';
 
         const statusBadge = document.getElementById('view-po-status');
-        statusBadge.className = `inline-flex px-3 py-1 rounded-full text-xs font-bold border ${statusClass}`;
+        statusBadge.className = `elev-chip inline-flex px-3 py-1 rounded-full text-xs font-bold ${statusClass}`;
         statusBadge.textContent = po.status;
 
         // คำนวณรายละเอียดการชำระเงิน
@@ -2121,7 +2140,7 @@
 
         const payStatusEl = document.getElementById('view-po-pay-status');
         if (payStatusEl) {
-            payStatusEl.className = `${payStatusColors[po.payment_status || 'ยังไม่ได้ชำระ'] || 'text-slate-300'} font-semibold text-sm`;
+            payStatusEl.className = `${payStatusColors[po.payment_status || 'ยังไม่ได้ชำระ'] || 'text-body-muted'} font-semibold text-sm`;
             payStatusEl.textContent = po.payment_status || 'ยังไม่ได้ชำระ';
         }
 
@@ -2148,11 +2167,11 @@
         itemsContainer.innerHTML = '';
 
         if (!po.items || po.items.length === 0) {
-            itemsContainer.innerHTML = '<div class="text-center py-6 text-slate-400 text-xs">ไม่มีรายการสินค้าในใบสั่งซื้อนี้</div>';
+            itemsContainer.innerHTML = '<div class="text-center py-6 text-body-muted text-xs">ไม่มีรายการสินค้าในใบสั่งซื้อนี้</div>';
         } else {
             po.items.forEach(item => {
                 const el = document.createElement('div');
-                el.className = 'p-5 bg-[#27272A] border border-[#3F3F46] rounded-xl space-y-4';
+                el.className = 'elev-field p-5 bg-field rounded-xl space-y-4';
 
                 const received = item.received_qty || 0;
                 const ordered = item.ordered_qty || 0;
@@ -2164,14 +2183,14 @@
                 let imeisHtml = '';
                 if (item.track_imei && item.imeis_scanned && item.imeis_scanned.length > 0) {
                     const chips = item.imeis_scanned.map(imei => `
-                        <span class="px-2.5 py-1 bg-[#1a1a1a] border border-[#3F3F46] text-white font-mono text-[10px] rounded-lg flex items-center gap-1">
-                            <i class="fa-solid fa-barcode text-[8px] text-white/50"></i> ${imei}
+                        <span class="elev-card px-2.5 py-1 bg-surface-tile-3 text-ink font-mono text-[10px] rounded-lg flex items-center gap-1">
+                            <i class="fa-solid fa-barcode text-[8px] text-ink/50"></i> ${imei}
                         </span>
                     `).join('');
                     imeisHtml = `
-                        <div class="pt-3 border-t border-[#3F3F46] space-y-2">
-                            <span class="text-xs text-slate-300 font-bold flex items-center gap-1"><i class="fa-solid fa-qrcode text-[10px]"></i> หมายเลข IMEI ที่สแกนนำเข้าคลังแล้ว (${item.imeis_scanned.length}):</span>
-                            <div class="flex flex-wrap gap-1.5 max-h-[120px] overflow-y-auto p-1 bg-[#1a1a1a] border border-[#3F3F46] rounded-lg modal-scrollable-content">${chips}</div>
+                        <div class="pt-3 border-t border-line space-y-2">
+                            <span class="text-xs text-body-muted font-bold flex items-center gap-1"><i class="fa-solid fa-qrcode text-[10px]"></i> หมายเลข IMEI ที่สแกนนำเข้าคลังแล้ว (${item.imeis_scanned.length}):</span>
+                            <div class="elev-card flex flex-wrap gap-1.5 max-h-[120px] overflow-y-auto p-1 bg-surface-tile-3 rounded-lg modal-scrollable-content">${chips}</div>
                         </div>
                     `;
                 }
@@ -2179,27 +2198,27 @@
                 el.innerHTML = `
                     <div class="flex justify-between items-start gap-4">
                         <div>
-                            <span class="text-white font-bold text-sm md:text-base flex items-center gap-2">
+                            <span class="text-ink font-bold text-sm md:text-base flex items-center gap-2">
                                 ${item.product_name}
-                                <span class="text-xs text-slate-400 font-mono font-normal">(${item.product_code})</span>
+                                <span class="text-xs text-body-muted font-mono font-normal">(${item.product_code})</span>
                             </span>
-                            <p class="text-xs text-slate-300 mt-1">
-                                ยอดสั่งซื้อ: <span class="text-white font-bold">${ordered}</span> |
+                            <p class="text-xs text-body-muted mt-1">
+                                ยอดสั่งซื้อ: <span class="text-ink font-bold">${ordered}</span> |
                                 ยอดรับจริง: <span class="text-emerald-400 font-bold">${received}</span> ชิ้น
                             </p>
                         </div>
                         <div class="text-right shrink-0">
-                            <span class="text-[10px] font-semibold px-2 py-0.5 rounded-lg bg-[#1a1a1a] text-white border border-[#3F3F46]">
+                            <span class="elev-card text-[10px] font-semibold px-2 py-0.5 rounded-lg bg-surface-tile-3 text-ink">
                                 ${item.track_imei ? 'เก็บซีเรียล IMEI' : 'นับจำนวนชิ้น'}
                             </span>
                         </div>
                     </div>
 
                     <div class="space-y-1">
-                        <div class="w-full bg-[#1a1a1a] rounded-full h-2 overflow-hidden border border-[#3F3F46]">
+                        <div class="elev-card w-full bg-surface-tile-3 rounded-full h-2 overflow-hidden">
                             <div class="bg-emerald-500 h-full rounded-full transition-all duration-500" style="width: ${itemPercent}%"></div>
                         </div>
-                        <div class="flex justify-between text-[10px] font-bold text-slate-300">
+                        <div class="flex justify-between text-[10px] font-bold text-body-muted">
                             <span>สถานะตรวจรับเข้า</span>
                             <span class="font-mono text-emerald-400">${itemPercent}%</span>
                         </div>
@@ -2216,7 +2235,7 @@
         const historyTbody = document.getElementById('view-po-payments-history-rows');
 
         if (historyContainer && historyTbody) {
-            historyTbody.innerHTML = '<tr><td colspan="5" class="text-center p-3 text-slate-300 font-bold">กำลังโหลดประวัติการจ่ายเงิน...</td></tr>';
+            historyTbody.innerHTML = '<tr><td colspan="5" class="text-center p-3 text-body-muted font-bold">กำลังโหลดประวัติการจ่ายเงิน...</td></tr>';
             historyContainer.classList.remove('hidden');
 
             try {
@@ -2232,12 +2251,12 @@
                         const txnId = item.transaction_id || '-';
 
                         return `
-                            <tr class="border-b border-[#3F3F46] hover:bg-white/5 transition-colors">
-                                <td class="p-3 font-bold text-slate-300">${round}</td>
-                                <td class="p-3 text-slate-300">${dateStr}</td>
-                                <td class="p-3 font-mono font-semibold text-slate-300">${txnId}</td>
+                            <tr class="border-b border-line hover:bg-ink/5 transition-colors">
+                                <td class="p-3 font-bold text-body-muted">${round}</td>
+                                <td class="p-3 text-body-muted">${dateStr}</td>
+                                <td class="p-3 font-mono font-semibold text-body-muted">${txnId}</td>
                                 <td class="p-3 font-mono font-bold text-emerald-400 text-right">${amount}</td>
-                                <td class="p-3 text-right text-slate-300">${recordedBy}</td>
+                                <td class="p-3 text-right text-body-muted">${recordedBy}</td>
                             </tr>
                         `;
                     }).join('');
@@ -2290,7 +2309,7 @@
         .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 
-    const rcStateRow = (msg, cls = 'text-white/50 italic') =>
+    const rcStateRow = (msg, cls = 'text-ink/50 italic') =>
         `<tr><td colspan="${RECEIVE_COLS}" class="px-6 py-8 text-center ${cls}">${rcEsc(msg)}</td></tr>`;
 
     const rcDate = (d) => {
@@ -2303,9 +2322,9 @@
     // สถานะของ PO ยุบเหลือ 3 โทนตามตารางข้อ 11.6 (ข้อความในป้ายยังแยกสถานะได้อยู่)
     const rcStatusTone = (status) => {
         if (status === 'นำเข้าสำเร็จ' || status === 'รับของครบแล้ว')
-            return { dot: 'bg-[#20D500]', bg: 'bg-[#42A231]/[0.12]', text: 'text-[#20D500]' };
+            return { dot: 'bg-state-ok', bg: 'bg-state-ok-tint/[0.12]', text: 'text-state-ok' };
         if (status === 'ยกเลิก')
-            return { dot: 'bg-[#FE0000]', bg: 'bg-[#FE0000]/[0.12]', text: 'text-[#FE0000]' };
+            return { dot: 'bg-state-danger', bg: 'bg-state-danger/[0.12]', text: 'text-state-danger' };
         return { dot: 'bg-orange-500', bg: 'bg-orange-500/[0.12]', text: 'text-orange-400' };
     };
 
@@ -2321,7 +2340,7 @@
     const rcSkeleton = (rows = 4) => {
         const tbody = document.getElementById('table-body-receive-po');
         if (!tbody) return;
-        const bar = (w) => `<div class="h-3.5 ${w} rounded-full bg-[#5c5c5c] animate-pulse"></div>`;
+        const bar = (w) => `<div class="h-3.5 ${w} rounded-full bg-skeleton animate-pulse"></div>`;
         tbody.innerHTML = Array.from({ length: rows }).map(() => `
             <tr>
                 <td class="px-6 py-4">${bar('w-36')}</td>
@@ -2363,8 +2382,8 @@
         chips.forEach(c => {
             const chip = document.createElement('button');
             chip.type = 'button';
-            chip.className = 'px-4 py-2.5 rounded-xl bg-[#4D4D4D]/40 border border-[#3F3F46] ' +
-                'text-white text-sm font-medium transition-colors flex items-center gap-2 cursor-pointer';
+            chip.className = 'elev-card px-4 py-2.5 rounded-xl bg-panel/40' +
+                'text-ink text-sm font-medium transition-colors flex items-center gap-2 cursor-pointer';
             chip.innerHTML = `<span>${rcEsc(c.label)}</span><i class="fa-solid fa-xmark text-[10px] opacity-80"></i>`;
             chip.setAttribute('aria-label', `ลบตัวกรอง ${c.label}`);
             chip.addEventListener('click', (e) => {
@@ -2379,7 +2398,7 @@
             const clearAll = document.createElement('button');
             clearAll.type = 'button';
             clearAll.className = 'px-2.5 py-1 bg-red-500/10 hover:bg-red-500/15 text-red-300 ' +
-                'rounded-full text-xs font-medium border border-red-500/30 transition-colors cursor-pointer';
+                'rounded-full text-xs font-medium ring-1 ring-red-500/30 transition-colors cursor-pointer';
             clearAll.textContent = 'ล้างทั้งหมด';
             clearAll.addEventListener('click', () => {
                 receiveSearchQuery = '';
@@ -2442,22 +2461,22 @@
             let totalReceived = items.reduce((sum, i) => sum + (i.received_qty || 0), 0);
             if (po.status === 'นำเข้าสำเร็จ' || po.status === 'รับของครบแล้ว') totalReceived = totalOrdered;
             const pct = totalOrdered ? Math.round((totalReceived / totalOrdered) * 100) : 0;
-            const barColor = pct >= 100 ? 'bg-[#20D500]' : pct > 0 ? 'bg-[#FFE169]' : 'bg-[#5c5c5c]';
+            const barColor = pct >= 100 ? 'bg-state-ok' : pct > 0 ? 'bg-primary' : 'bg-skeleton';
 
             // ปุ่มการกระทำขึ้นกับสถานะ: แจ้งของถึง -> ตรวจรับ -> ดูอย่างเดียว
             let action;
             if (po.status === 'รอจัดส่ง') {
-                action = `<button type="button" class="btn-action-arrival px-3 py-1.5 bg-[#FFE169] hover:bg-[#E2B93C] text-[#333333] font-semibold rounded-[0.375rem] text-xs transition-colors inline-flex items-center gap-1.5 cursor-pointer"
+                action = `<button type="button" class="btn-action-arrival px-3 py-1.5 bg-primary hover:bg-[#E2B93C] text-on-primary font-semibold rounded-[0.375rem] text-xs transition-colors inline-flex items-center gap-1.5 cursor-pointer"
                         data-id="${rcEsc(po._id)}">
                         <i class="fa-solid fa-truck-ramp-box"></i> แจ้งของถึงสาขา
                     </button>`;
             } else if (po.status === 'ของถึงสาขาแล้ว' || po.status === 'กำลังตรวจรับ') {
-                action = `<button type="button" class="btn-open-receive px-3 py-1.5 bg-[#FFE169] hover:bg-[#E2B93C] text-[#333333] font-semibold rounded-[0.375rem] text-xs transition-colors inline-flex items-center gap-1.5 cursor-pointer"
+                action = `<button type="button" class="btn-open-receive px-3 py-1.5 bg-primary hover:bg-[#E2B93C] text-on-primary font-semibold rounded-[0.375rem] text-xs transition-colors inline-flex items-center gap-1.5 cursor-pointer"
                         data-id="${rcEsc(po._id)}">
                         <i class="fa-solid fa-boxes-packing"></i> ตรวจรับของ
                     </button>`;
             } else {
-                action = `<button type="button" class="btn-view-po text-white hover:text-indigo-400 transition-colors p-2 cursor-pointer"
+                action = `<button type="button" class="btn-view-po text-ink hover:text-indigo-400 transition-colors p-2 cursor-pointer"
                         data-id="${rcEsc(po._id)}" title="ดูข้อมูลใบสั่งซื้อ"
                         aria-label="ดูข้อมูลใบสั่งซื้อ ${rcEsc(po.po_number)}">
                         <i class="fa-solid fa-eye"></i>
@@ -2465,17 +2484,17 @@
             }
 
             return `
-            <tr class="hover:bg-[#464646] transition-colors">
+            <tr class="hover:bg-divider transition-colors">
                 <td class="px-6 py-4">
-                    <p class="font-mono font-semibold text-[#FFE169]">${rcEsc(po.po_number)}</p>
-                    <p class="text-xs text-white/70 mt-0.5">${rcEsc(rcDate(po.createdAt))}</p>
+                    <p class="font-mono font-semibold text-accent-ink">${rcEsc(po.po_number)}</p>
+                    <p class="text-xs text-ink/70 mt-0.5">${rcEsc(rcDate(po.createdAt))}</p>
                 </td>
-                <td class="px-6 py-4 text-white">${rcEsc(po.supplier_name || '-')}</td>
-                <td class="px-6 py-4 text-white">${rcEsc(branchName)}</td>
+                <td class="px-6 py-4 text-ink">${rcEsc(po.supplier_name || '-')}</td>
+                <td class="px-6 py-4 text-ink">${rcEsc(branchName)}</td>
                 <td class="px-6 py-4 text-center">
-                    <p class="text-white font-medium">${totalReceived}/${totalOrdered}
-                        <span class="text-xs text-white font-normal">ชิ้น</span></p>
-                    <div class="mt-1.5 h-1 w-24 mx-auto rounded-full bg-[#5c5c5c]/50 overflow-hidden">
+                    <p class="text-ink font-medium">${totalReceived}/${totalOrdered}
+                        <span class="text-xs text-ink font-normal">ชิ้น</span></p>
+                    <div class="mt-1.5 h-1 w-24 mx-auto rounded-full bg-skeleton/50 overflow-hidden">
                         <div class="h-full ${barColor} rounded-full" style="width:${pct}%"></div>
                     </div>
                 </td>
@@ -2551,7 +2570,7 @@
         if (isEditMode) {
             if (titlePrefix) titlePrefix.textContent = 'แก้ไขข้อมูลสินค้าถึงสาขาและ IMEI:';
             if (modalIconContainer) {
-                modalIconContainer.className = "w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center border border-amber-500/20";
+                modalIconContainer.className = "elev-chip w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center border-amber-500/20";
             }
             if (modalIcon) {
                 modalIcon.className = "fa-solid fa-pen-to-square text-amber-400";
@@ -2565,7 +2584,7 @@
         } else {
             if (titlePrefix) titlePrefix.textContent = 'ยืนยันสินค้าถึงสาขาและบันทึก IMEI:';
             if (modalIconContainer) {
-                modalIconContainer.className = "w-10 h-10 rounded-xl bg-green-500/10 flex items-center justify-center border border-green-500/20";
+                modalIconContainer.className = "elev-chip w-10 h-10 rounded-xl bg-green-500/10 flex items-center justify-center border-green-500/20";
             }
             if (modalIcon) {
                 modalIcon.className = "fa-solid fa-truck-ramp-box text-green-400";
@@ -2584,7 +2603,7 @@
 
         po.items.forEach(item => {
             const card = document.createElement('div');
-            card.className = 'bg-surface-tile-2 border border-hairline rounded-2xl p-4 space-y-3 po-arrival-row';
+            card.className = 'elev-card bg-surface-tile-2 rounded-2xl p-4 space-y-3 po-arrival-row';
             card.dataset.itemId = item._id;
             card.dataset.trackImei = item.track_imei ? 'true' : 'false';
             card.dataset.productName = item.product_name;
@@ -2599,7 +2618,7 @@
                         <span class="font-bold text-ink text-base flex items-center gap-2">
                             <i class="fa-solid fa-mobile-screen text-ink"></i> ${item.product_name}
                         </span>
-                        <span id="badge-count-${item._id}" class="text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                        <span id="badge-count-${item._id}" class="elev-chip text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border-amber-500/20">
                             สแกนแล้ว 0 / ${item.ordered_qty} เครื่อง
                         </span>
                     </div>
@@ -2608,21 +2627,21 @@
                             <label class="font-medium text-body-muted flex items-center gap-1">
                                 <i class="fa-solid fa-barcode text-green-400"></i> ระบุหมายเลข IMEI สำหรับแต่ละเครื่อง (แสดงลำดับเลขด้านหน้า)
                             </label>
-                            ${importedList.length > 0 ? `<span class="text-slate-505 font-bold text-emerald-400">(นำเข้าสต็อกแล้ว ${importedList.length} เครื่อง)</span>` : ''}
+                            ${importedList.length > 0 ? `<span class="text-body-muted font-bold text-emerald-400">(นำเข้าสต็อกแล้ว ${importedList.length} เครื่อง)</span>` : ''}
                         </div>
                         <div class="grid grid-cols-1 gap-2 max-h-[220px] overflow-y-auto pr-1">
                             ${Array.from({ length: item.ordered_qty }).map((_, idx) => {
                     const savedImei = scannedList[idx] || '';
                     const isImported = importedList.includes(savedImei) && savedImei !== '';
                     return `
-                                    <div class="flex items-center gap-3 bg-surface-tile-3 px-3 py-2.5 rounded-xl border border-hairline focus-within:border-primary/50 transition-all ${isImported ? 'opacity-60 bg-surface-tile-3 border-hairline' : ''}">
+                                    <div class="elev-card flex items-center gap-3 bg-surface-tile-3 px-3 py-2.5 rounded-xl focus-within:ring-2 focus-within:ring-primary/50 transition-all ${isImported ? 'opacity-60 bg-surface-tile-3' : ''}">
                                         <span class="text-xs font-bold text-body-muted font-mono w-5 text-right">${idx + 1}.</span>
                                         <input type="text" 
                                                data-index="${idx}"
                                                value="${savedImei}"
                                                ${isImported ? 'readonly disabled' : ''}
                                                placeholder="${isImported ? 'นำเข้าสต็อกแล้ว' : `สแกนหรือพิมพ์หมายเลข IMEI เครื่องที่ ${idx + 1}`}"
-                                               class="imei-indiv-input w-full bg-transparent ${isImported ? 'text-body-muted cursor-not-allowed font-mono text-sm uppercase focus:outline-none' : 'text-ink focus:outline-none placeholder-slate-700 font-mono text-sm uppercase'}">
+                                               class="imei-indiv-input w-full bg-transparent ${isImported ? 'text-body-muted cursor-not-allowed font-mono text-sm uppercase focus:outline-none' : 'text-ink focus:outline-none placeholder-ink-muted-48 font-mono text-sm uppercase'}">
                                     </div>
                                 `;
                 }).join('')}
@@ -2644,9 +2663,9 @@
                     if (badge) {
                         badge.textContent = `สแกนแล้ว ${count} / ${item.ordered_qty} เครื่อง`;
                         if (count === item.ordered_qty) {
-                            badge.className = 'text-xs font-semibold px-2 py-0.5 rounded-full bg-green-500/10 text-green-400 border border-green-500/20';
+                            badge.className = 'elev-chip text-xs font-semibold px-2 py-0.5 rounded-full bg-green-500/10 text-green-400 border-green-500/20';
                         } else {
-                            badge.className = 'text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20';
+                            badge.className = 'elev-chip text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border-amber-500/20';
                         }
                     }
                 };
@@ -2809,7 +2828,7 @@
                             <span class="font-semibold px-2 py-0.5 rounded-full bg-surface-chip text-body-muted">
                                 สั่งซื้อ: ${item.ordered_qty} ชิ้น
                             </span>
-                            <span class="font-semibold px-2 py-0.5 rounded-full bg-green-500/10 text-green-400 border border-green-500/20">
+                            <span class="elev-chip font-semibold px-2 py-0.5 rounded-full bg-green-500/10 text-green-400 border-green-500/20">
                                 นำเข้าแล้ว: ${importedQty} / ${item.ordered_qty} ชิ้น
                             </span>
                         </div>
@@ -2825,7 +2844,7 @@
                                        min="0" 
                                        max="${remainingQty}" 
                                        value="${remainingQty}" 
-                                       class="po-arrival-accessory-qty w-24 bg-surface-chip text-ink border border-divider-soft focus:border-primary-focus font-mono text-sm font-bold text-center py-2 rounded-xl focus:outline-none focus:ring-1 focus:ring-primary-focus/30 transition-colors">
+                                       class="elev-chip po-arrival-accessory-qty w-24 bg-surface-chip text-ink focus:ring-2 focus:ring-primary-focus font-mono text-sm font-bold text-center py-2 rounded-xl focus:outline-none focus:ring-1 focus:ring-primary-focus/30 transition-colors">
                             </div>
                         ` : `
                             <span class="text-xs text-emerald-400 font-bold flex items-center gap-1">
@@ -2920,7 +2939,7 @@
 
             // สร้าง HTML สำหรับแสดงข้อมูลให้พนักงานตรวจสอบก่อนยืนยันจริง (เวอร์ชันขนาดใหญ่/อ่านง่ายชัดเจน)
             let confirmHtml = `
-                <div class="text-left bg-surface-tile-3 rounded-2xl p-5 border border-hairline space-y-5 max-h-[350px] overflow-y-auto mb-2 text-base mt-3 scrollbar-thin">
+                <div class="elev-card text-left bg-surface-tile-3 rounded-2xl p-5 space-y-5 max-h-[350px] overflow-y-auto mb-2 text-base mt-3 scrollbar-thin">
                     <!-- PO Details Summary -->
                     <div class="space-y-2.5 border-b border-hairline pb-4 text-sm">
                         <div class="flex justify-between items-center">
@@ -2956,14 +2975,14 @@
                                     <span class="font-bold text-ink text-sm flex items-center gap-2">
                                         <i class="fa-solid fa-mobile-screen text-ink text-xs"></i> ${item.product_name}
                                     </span>
-                                    <span class="text-xs bg-surface-chip text-ink border border-hairline px-2.5 py-0.5 rounded-full font-bold font-mono">
+                                    <span class="elev-chip text-xs bg-surface-chip text-ink px-2.5 py-0.5 rounded-full font-bold font-mono">
                                         ส่งมาเพิ่ม ${newImeisThisRound.length} เครื่อง (รวมรับแล้ว ${receivedInfo.imeis.length}/${item.ordered_qty})
                                     </span>
                                 </div>
                                 <!-- IMEI Pills -->
                                 <div class="flex flex-wrap gap-1.5 mt-2">
                                     ${newImeisThisRound.map(imei => `
-                                        <span class="px-2.5 py-1 bg-surface-chip text-body-muted rounded-lg border border-hairline font-mono text-xs tracking-wider font-semibold">${imei}</span>
+                                        <span class="elev-chip px-2.5 py-1 bg-surface-chip text-body-muted rounded-lg font-mono text-xs tracking-wider font-semibold">${imei}</span>
                                     `).join('')}
                                 </div>
                             </div>
@@ -2977,7 +2996,7 @@
                                 <span class="font-bold text-ink text-sm flex items-center gap-2">
                                     <i class="fa-solid fa-plug text-ink text-xs"></i> ${item.product_name}
                                 </span>
-                                <span class="text-xs bg-surface-chip text-ink border border-hairline px-2.5 py-0.5 rounded-full font-bold font-mono">
+                                <span class="elev-chip text-xs bg-surface-chip text-ink px-2.5 py-0.5 rounded-full font-bold font-mono">
                                     ส่งมาเพิ่ม ${newQtyThisRound} ชิ้น (รวมรับแล้ว ${receivedInfo.qty}/${item.ordered_qty})
                                 </span>
                             </div>
@@ -3044,7 +3063,7 @@
             if (pendingQty <= 0) return; // Full received already
 
             const el = document.createElement('div');
-            el.className = 'p-5  border border-hairline rounded-xl po-receive-row';
+            el.className = 'elev-chip p-5 rounded-xl po-receive-row';
             el.dataset.itemId = item._id;
             el.dataset.trackImei = item.track_imei;
             el.dataset.importedImeis = JSON.stringify(item.imported_imeis || []);
@@ -3064,11 +3083,11 @@
                             </span>
                         </div>
                         <input type="text" 
-                            class="scan-imei-input w-full bg-surface-chip border border-divider-soft focus:border-primary-focus text-lg rounded-xl px-4 py-3.5 text-ink focus:outline-none focus:ring-2 focus:ring-primary-focus/20 transition-all font-mono placeholder-ink-muted-48"
+                            class="elev-chip scan-imei-input w-full bg-surface-chip focus:ring-2 focus:ring-primary-focus text-lg rounded-xl px-4 py-3.5 text-ink focus:outline-none focus:ring-2 focus:ring-primary-focus/20 transition-all font-mono placeholder-ink-muted-48"
                             placeholder="ยิงบาร์โค้ด หรือพิมพ์ IMEI ที่นี่..." 
                             autocomplete="off">
                         
-                        <div class="scanned-imeis-container flex flex-wrap gap-2 min-h-[50px] p-3  border border-hairline rounded-xl">
+                        <div class="elev-chip scanned-imeis-container flex flex-wrap gap-2 min-h-[50px] p-3 rounded-xl">
                             <div class="no-imeis-placeholder text-xs text-body-muted flex items-center justify-center w-full py-2">
                                 <i class="fa-solid fa-info-circle mr-1"></i> ยังไม่มีการสแกน IMEI
                             </div>
@@ -3080,7 +3099,7 @@
                 inputHtml = `
                     <div class="mt-4 max-w-[200px]">
                         <label class="text-xs font-bold text-body-muted mb-1.5 block">จำนวนที่รับเข้า (รอรับ ${pendingQty} ชิ้น)</label>
-                        <input type="number" class="receive-qty w-full px-3 py-2.5 text-sm bg-surface-chip border border-divider-soft text-ink rounded-lg focus:border-primary-focus focus:ring-1 focus:ring-primary-focus focus:outline-none font-bold text-center" min="0" max="${pendingQty}" value="${defaultQty}">
+                        <input type="number" class="elev-chip receive-qty w-full px-3 py-2.5 text-sm bg-surface-chip text-ink rounded-lg focus:ring-2 focus:ring-primary-focus focus:ring-1 focus:ring-primary-focus focus:outline-none font-bold text-center" min="0" max="${pendingQty}" value="${defaultQty}">
                     </div>
                 `;
             }
@@ -3095,8 +3114,8 @@
                         <p class="text-xs text-body-muted mt-1">สั่ง: <span class="text-ink font-bold">${item.ordered_qty}</span> | นำเข้าคลังแล้ว: <span class="text-emerald-400 font-bold">${importedQty}</span> | <span class="text-amber-400 font-bold">ค้างรับ: ${pendingQty}</span></p>
                     </div>
                     ${item.track_imei ?
-                    `<span class="text-xs font-semibold px-2.5 py-1 bg-surface-chip text-ink border border-hairline rounded-lg flex items-center gap-1"><i class="fa-solid fa-barcode text-xs"></i> เก็บ IMEI</span>` :
-                    `<span class="text-xs font-semibold px-2.5 py-1 bg-surface-chip text-ink border border-hairline rounded-lg flex items-center gap-1"><i class="fa-solid fa-calculator text-xs"></i> นับจำนวน</span>`
+                    `<span class="elev-chip text-xs font-semibold px-2.5 py-1 bg-surface-chip text-ink rounded-lg flex items-center gap-1"><i class="fa-solid fa-barcode text-xs"></i> เก็บ IMEI</span>` :
+                    `<span class="elev-chip text-xs font-semibold px-2.5 py-1 bg-surface-chip text-ink rounded-lg flex items-center gap-1"><i class="fa-solid fa-calculator text-xs"></i> นับจำนวน</span>`
                 }
                 </div>
                 ${inputHtml}
@@ -3158,10 +3177,10 @@
                 if (newImeis.length > 0) {
                     newImeis.forEach(val => {
                         const tag = document.createElement('div');
-                        tag.className = 'imei-tag inline-flex items-center gap-1.5 bg-surface-chip border border-hairline text-ink px-3 py-1.5 rounded-lg text-sm transition-all hover:bg-surface-tile-2 animate-fade-in font-mono';
+                        tag.className = 'elev-chip imei-tag inline-flex items-center gap-1.5 bg-surface-chip text-ink px-3 py-1.5 rounded-lg text-sm transition-all hover:bg-surface-tile-2 animate-fade-in font-mono';
                         tag.innerHTML = `
                             <span class="imei-tag-text font-bold tracking-wide">${val}</span>
-                            <button type="button" class="btn-remove-imei text-primary hover:text-red-400 font-bold ml-0.5 focus:outline-none transition-colors text-base leading-none">&times;</button>
+                            <button type="button" class="btn-remove-imei text-accent-ink hover:text-red-400 font-bold ml-0.5 focus:outline-none transition-colors text-base leading-none">&times;</button>
                         `;
 
                         tag.querySelector('.btn-remove-imei').addEventListener('click', () => {
@@ -3215,10 +3234,10 @@
 
                         // Add tag
                         const tag = document.createElement('div');
-                        tag.className = 'imei-tag inline-flex items-center gap-1.5 bg-surface-chip border border-hairline text-ink px-3 py-1.5 rounded-lg text-sm transition-all hover:bg-surface-tile-2 animate-fade-in font-mono';
+                        tag.className = 'elev-chip imei-tag inline-flex items-center gap-1.5 bg-surface-chip text-ink px-3 py-1.5 rounded-lg text-sm transition-all hover:bg-surface-tile-2 animate-fade-in font-mono';
                         tag.innerHTML = `
                             <span class="imei-tag-text font-bold tracking-wide">${val}</span>
-                            <button type="button" class="btn-remove-imei text-primary hover:text-red-400 font-bold ml-0.5 focus:outline-none transition-colors text-base leading-none">&times;</button>
+                            <button type="button" class="btn-remove-imei text-accent-ink hover:text-red-400 font-bold ml-0.5 focus:outline-none transition-colors text-base leading-none">&times;</button>
                         `;
 
                         tag.querySelector('.btn-remove-imei').addEventListener('click', () => {
@@ -3341,13 +3360,13 @@
         .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 
-    const arStateRow = (msg, cls = 'text-white/50 italic') =>
+    const arStateRow = (msg, cls = 'text-ink/50 italic') =>
         `<tr><td colspan="${ARRIVAL_COLS}" class="px-6 py-8 text-center ${cls}">${arEsc(msg)}</td></tr>`;
 
     const arSkeleton = (rows = 6) => {
         const tbody = document.getElementById('table-body-arrival-po');
         if (!tbody) return;
-        const bar = (w) => `<div class="h-3.5 ${w} rounded-full bg-[#5c5c5c] animate-pulse"></div>`;
+        const bar = (w) => `<div class="h-3.5 ${w} rounded-full bg-skeleton animate-pulse"></div>`;
         tbody.innerHTML = Array.from({ length: rows }).map(() => `
             <tr>
                 <td class="px-6 py-4">${bar('w-36')}</td>
@@ -3457,8 +3476,8 @@
         chips.forEach(c => {
             const chip = document.createElement('button');
             chip.type = 'button';
-            chip.className = 'px-4 py-2.5 rounded-xl bg-[#4D4D4D]/40 border border-[#3F3F46] ' +
-                'text-white text-sm font-medium transition-colors flex items-center gap-2 cursor-pointer';
+            chip.className = 'elev-card px-4 py-2.5 rounded-xl bg-panel/40' +
+                'text-ink text-sm font-medium transition-colors flex items-center gap-2 cursor-pointer';
             chip.innerHTML = `<span>${arEsc(c.label)}</span><i class="fa-solid fa-xmark text-[10px] opacity-80"></i>`;
             chip.setAttribute('aria-label', `ลบตัวกรอง ${c.label}`);
             chip.addEventListener('click', (e) => {
@@ -3473,7 +3492,7 @@
             const clearAll = document.createElement('button');
             clearAll.type = 'button';
             clearAll.className = 'px-2.5 py-1 bg-red-500/10 hover:bg-red-500/15 text-red-300 ' +
-                'rounded-full text-xs font-medium border border-red-500/30 transition-colors cursor-pointer';
+                'rounded-full text-xs font-medium ring-1 ring-red-500/30 transition-colors cursor-pointer';
             clearAll.textContent = 'ล้างทั้งหมด';
             clearAll.addEventListener('click', () => {
                 ['arrival-search', 'arrival-filter-status', 'arrival-filter-branch',
@@ -3503,7 +3522,7 @@
                 dot.type = 'button';
                 const on = p === _arrivalPage;
                 dot.className = `rounded-full transition-all cursor-pointer ${on
-                    ? 'w-2.5 h-2.5 bg-[#FFE169]' : 'w-2 h-2 bg-white/30 hover:bg-white/60'}`;
+                    ? 'w-2.5 h-2.5 bg-primary' : 'w-2 h-2 bg-ink/30 hover:bg-ink/60'}`;
                 dot.setAttribute('aria-label', `ไปหน้า ${p}`);
                 dot.setAttribute('aria-current', on ? 'page' : 'false');
                 dot.addEventListener('click', () => go(p));
@@ -3516,15 +3535,15 @@
             const b = document.createElement('button');
             b.type = 'button';
             b.disabled = !!disabled;
-            b.className = 'px-3 py-2 bg-[#4D4D4D]/40 cursor-pointer text-white flex items-center gap-1.5 ' +
-                'rounded-[0.5rem] text-sm hover:bg-[#5C5C5C] transition-colors disabled:opacity-30 disabled:pointer-events-none';
+            b.className = 'px-3 py-2 bg-panel/40 cursor-pointer text-ink flex items-center gap-1.5 ' +
+                'rounded-[0.5rem] text-sm hover:bg-skeleton transition-colors disabled:opacity-30 disabled:pointer-events-none';
             b.innerHTML = label;
             b.addEventListener('click', () => go(page));
             return b;
         };
         box.appendChild(mk('<i class="fa-solid fa-chevron-left text-xs"></i> ก่อนหน้า', _arrivalPage - 1, _arrivalPage <= 1));
         const info = document.createElement('span');
-        info.className = 'px-4 py-2 bg-[#27272A] border border-[#3F3F46] text-white rounded-[0.5rem] text-sm font-mono';
+        info.className = 'elev-field px-4 py-2 bg-field text-ink rounded-[0.5rem] text-sm font-mono';
         info.textContent = `${_arrivalPage} / ${totalPages}`;
         box.appendChild(info);
         box.appendChild(mk('ถัดไป <i class="fa-solid fa-chevron-right text-xs"></i>', _arrivalPage + 1, _arrivalPage >= totalPages));
@@ -3571,7 +3590,7 @@
         tbody.innerHTML = pageRows.map(po => {
             const desc = arItemsDesc(po);
             const canConfirm = arCanConfirm(po);
-            const btnClass = 'px-4 py-2 bg-[#4D4D4D]/60 hover:bg-[#5C5C5C] text-white text-xs font-medium ' +
+            const btnClass = 'px-4 py-2 bg-chip/60 hover:bg-skeleton text-ink text-xs font-medium ' +
                 'rounded-[0.5rem] transition-colors cursor-pointer whitespace-nowrap';
             const action = canConfirm
                 ? `<button type="button" class="btn-confirm-arrival ${btnClass}" data-id="${arEsc(po._id)}"
@@ -3580,13 +3599,13 @@
                         aria-label="ดูรายละเอียดใบสั่งซื้อ ${arEsc(po.po_number)}">ดูรายละเอียด</button>`;
 
             return `
-            <tr class="hover:bg-[#464646] transition-colors">
-                <td class="px-6 py-4"><span class="font-mono font-semibold text-[#FFE169]">${arEsc(po.po_number)}</span></td>
-                <td class="px-6 py-4 text-white">${arEsc(po.supplier_name || '-')}</td>
+            <tr class="hover:bg-divider transition-colors">
+                <td class="px-6 py-4"><span class="font-mono font-semibold text-accent-ink">${arEsc(po.po_number)}</span></td>
+                <td class="px-6 py-4 text-ink">${arEsc(po.supplier_name || '-')}</td>
                 <td class="px-6 py-4">
-                    <span class="text-white block max-w-[360px] truncate" title="${arEsc(desc)}">${arEsc(desc)}</span>
+                    <span class="text-ink block max-w-[360px] truncate" title="${arEsc(desc)}">${arEsc(desc)}</span>
                 </td>
-                <td class="px-6 py-4 text-white">${arEsc(arDate(po.createdAt))}</td>
+                <td class="px-6 py-4 text-ink">${arEsc(arDate(po.createdAt))}</td>
                 <td class="px-6 py-4">${arStatusBadge(po.status)}</td>
                 <td class="px-6 py-4 text-right">
                     <div class="flex items-center justify-end gap-1">${action}</div>
@@ -3679,9 +3698,9 @@
     // ---------- กลุ่ม pill / swatch ของฟอร์มแจ้งสินค้านอกระบบ PO (DESIGN.md ข้อ 11.9, 11.14) ----------
     // สัญญาเดียวกับ .filter-pill ในหน้า #stock: ค่าจริงเก็บใน <select class="hidden"> ที่ data-target ชี้ไป
     // แล้ว dispatch change — ตัวส่งฟอร์มเดิมใน script.js จึงอ่านค่าทางเดิมได้โดยไม่ต้องแก้
-    const NP_PILL_BASE = 'flex-shrink-0 px-4 py-2.5 bg-[#27272A] rounded-xl text-sm transition-colors cursor-pointer filter-pill';
-    const NP_PILL_OFF = 'border border-[#3F3F46] text-slate-300 hover:border-[#FFE169] hover:text-white';
-    const NP_PILL_ON = 'border border-[#FFE169] text-[#FFE169]';
+    const NP_PILL_BASE = 'flex-shrink-0 px-4 py-2.5 bg-field rounded-xl text-sm transition-colors cursor-pointer filter-pill';
+    const NP_PILL_OFF = 'border border-line text-body-muted hover:border-accent-ink hover:text-ink';
+    const NP_PILL_ON = 'border border-accent-ink text-accent-ink';
 
     // ตั้งค่าให้ <select> โดยกันกรณีค่าที่บันทึกไว้ถูกลบออกจากข้อมูลพื้นฐานไปแล้ว
     // ถ้าไม่เติม <option> ให้ ช่องจะเด้งกลับเป็นตัวเลือกว่าง แล้วค่าเดิมหายตอนบันทึก
@@ -3789,9 +3808,9 @@
             wrap.setAttribute('aria-pressed', 'false');
             wrap.setAttribute('aria-label', `เลือกสี ${item.name}`);
             wrap.innerHTML = `
-                <span class="np-swatch-dot w-7 h-7 rounded-full border-2 border-transparent transition-all"
+                <span class="border-2 border-transparent np-swatch-dot w-7 h-7 rounded-full transition-all"
                       style="background-color:${hex};"></span>
-                <span class="np-swatch-label text-[10px] text-slate-400 whitespace-nowrap transition-colors">${arEsc(item.name)}</span>`;
+                <span class="np-swatch-label text-[10px] text-body-muted whitespace-nowrap transition-colors">${arEsc(item.name)}</span>`;
 
             wrap.addEventListener('click', () => {
                 const already = wrap.getAttribute('aria-pressed') === 'true';
@@ -3820,9 +3839,9 @@
             ghost.setAttribute('aria-pressed', 'false');
             ghost.setAttribute('aria-label', `เลือกสี ${value}`);
             ghost.innerHTML = `
-                <span class="np-swatch-dot w-7 h-7 rounded-full border-2 border-transparent transition-all"
+                <span class="border-2 border-transparent np-swatch-dot w-7 h-7 rounded-full transition-all"
                       style="background-color:${hex};"></span>
-                <span class="np-swatch-label text-[10px] text-slate-400 whitespace-nowrap transition-colors">${arEsc(value)}</span>`;
+                <span class="np-swatch-label text-[10px] text-body-muted whitespace-nowrap transition-colors">${arEsc(value)}</span>`;
             ghost.addEventListener('click', () => {
                 const already = ghost.getAttribute('aria-pressed') === 'true';
                 npSetSwatchValue(containerId, targetId, already ? '' : value);
@@ -3842,13 +3861,13 @@
             const dot = w.querySelector('.np-swatch-dot');
             const label = w.querySelector('.np-swatch-label');
             if (dot) {
-                dot.classList.toggle('border-[#FFE169]', on);
+                dot.classList.toggle('ring-2', 'ring-accent-ink', on);
                 dot.classList.toggle('scale-110', on);
                 dot.classList.toggle('border-transparent', !on);
             }
             if (label) {
-                label.classList.toggle('text-[#FFE169]', on);
-                label.classList.toggle('text-slate-400', !on);
+                label.classList.toggle('text-accent-ink', on);
+                label.classList.toggle('text-body-muted', !on);
             }
         });
         if (target) {
@@ -3899,17 +3918,17 @@
     // ---------- การ์ด "รายการแจ้งล่าสุดของฉัน" ----------
     const NP_STATUS = {
         'รอดำเนินการ': { bg: 'bg-orange-500/[0.12]', text: 'text-orange-400' },
-        'อนุมัติแล้ว': { bg: 'bg-[#42A231]/[0.12]', text: 'text-[#20D500]' },
-        'ปฏิเสธ': { bg: 'bg-[#FE0000]/[0.12]', text: 'text-[#FE0000]' }
+        'อนุมัติแล้ว': { bg: 'bg-state-ok-tint/[0.12]', text: 'text-state-ok' },
+        'ปฏิเสธ': { bg: 'bg-state-danger/[0.12]', text: 'text-state-danger' }
     };
 
     const npInfoRow = (label, value, extra = '') => value
-        ? `<p class="text-xs text-white/70">${arEsc(label)} : ${extra}<span class="text-white">${arEsc(value)}</span></p>`
+        ? `<p class="text-xs text-ink/70">${arEsc(label)} : ${extra}<span class="text-ink">${arEsc(value)}</span></p>`
         : '';
 
     // แยกจาก npInfoRow เพราะราคา 0 เป็นค่าที่ถูกต้อง แต่ falsy — npInfoRow จะกลืนหายไป
     const npPriceRow = (label, value) => (value === 0 || value)
-        ? `<p class="text-xs text-white/70">${arEsc(label)} : <span class="text-white font-mono">฿${Number(value).toLocaleString('th-TH')}</span></p>`
+        ? `<p class="text-xs text-ink/70">${arEsc(label)} : <span class="text-ink font-mono">฿${Number(value).toLocaleString('th-TH')}</span></p>`
         : '';
 
     window.renderMyArrivalReports = (list) => {
@@ -3917,7 +3936,7 @@
         if (!box) return;
 
         if (!list || !list.length) {
-            box.innerHTML = '<p class="py-10 text-center text-white/50 italic text-sm">ยังไม่มีรายการแจ้งของคุณ</p>';
+            box.innerHTML = '<p class="py-10 text-center text-ink/50 italic text-sm">ยังไม่มีรายการแจ้งของคุณ</p>';
             return;
         }
 
@@ -3934,18 +3953,18 @@
                 : '';
 
             return `
-            <div class="bg-[#27272A] border border-[#3F3F46] rounded-xl p-4">
+            <div class="elev-field bg-field rounded-xl p-4">
                 <div class="flex items-start justify-between gap-2">
-                    <h4 class="text-base font-semibold text-white truncate" title="${arEsc(item.product_name)}">${arEsc(item.product_name)}</h4>
+                    <h4 class="text-base font-semibold text-ink truncate" title="${arEsc(item.product_name)}">${arEsc(item.product_name)}</h4>
                     <span class="px-2 py-0.5 rounded-[0.375rem] text-[10px] font-medium shrink-0 ${tone.bg} ${tone.text}">${arEsc(item.status)}</span>
                 </div>
                 <div class="mt-2 space-y-1">
                     ${npInfoRow('ประเภทสินค้า', item.type_name)}
                     ${npInfoRow('สภาพ', item.condition_name)}
-                    ${item.color_name ? `<p class="text-xs text-white/70 flex items-center gap-1.5">
+                    ${item.color_name ? `<p class="text-xs text-ink/70 flex items-center gap-1.5">
                         <span>สี :</span>
-                        <span class="w-4 h-4 rounded-full shrink-0 ring-1 ring-white/25 flex items-center justify-center">${colorDot}</span>
-                        <span class="text-white">${arEsc(item.color_name)}</span>
+                        <span class="border border-transparent w-4 h-4 rounded-full shrink-0 ring-1 ring-ink/25 flex items-center justify-center">${colorDot}</span>
+                        <span class="text-ink">${arEsc(item.color_name)}</span>
                     </p>` : ''}
                     ${npInfoRow('ความจุ', item.capacity_name)}
                     ${npInfoRow('Supplier / แหล่งที่มา', item.supplier_name)}
@@ -3955,26 +3974,26 @@
                     ${npInfoRow('หมายเหตุ', item.notes)}
                 </div>
                 ${imeis.length ? `
-                <p class="text-xs text-white/70 mt-3">เลข IMEI :</p>
+                <p class="text-xs text-ink/70 mt-3">เลข IMEI :</p>
                 <div class="mt-1.5 grid grid-cols-2 gap-1.5">
-                    ${shown.map(i => `<span class="px-2 py-1 rounded-[0.375rem] bg-[#18181B] border border-[#3F3F46] text-[11px] font-mono text-white text-center truncate">${arEsc(i)}</span>`).join('')}
+                    ${shown.map(i => `<span class="elev-modal px-2 py-1 rounded-[0.375rem] bg-elevated text-[11px] font-mono text-ink text-center truncate">${arEsc(i)}</span>`).join('')}
                 </div>
                 ${rest > 0 ? `
                 <details class="mt-1.5 group">
-                    <summary class="text-[11px] text-white/70 hover:text-white cursor-pointer list-none flex items-center justify-center gap-1">
+                    <summary class="text-[11px] text-ink/70 hover:text-ink cursor-pointer list-none flex items-center justify-center gap-1">
                         เพิ่มเติม ... <i class="fa-solid fa-chevron-down text-[9px] group-open:rotate-180 transition-transform"></i>
                     </summary>
                     <div class="mt-1.5 grid grid-cols-2 gap-1.5">
-                        ${imeis.slice(4).map(i => `<span class="px-2 py-1 rounded-[0.375rem] bg-[#18181B] border border-[#3F3F46] text-[11px] font-mono text-white text-center truncate">${arEsc(i)}</span>`).join('')}
+                        ${imeis.slice(4).map(i => `<span class="elev-modal px-2 py-1 rounded-[0.375rem] bg-elevated text-[11px] font-mono text-ink text-center truncate">${arEsc(i)}</span>`).join('')}
                     </div>
                 </details>` : ''}` : ''}
                 ${editable ? `
-                <div class="flex items-center justify-end gap-2 mt-3 pt-3 border-t border-[#3F3F46]">
-                    <button type="button" class="btn-edit-notif px-3 py-1.5 rounded-[0.375rem] bg-[#FF9F0A]/[0.12] border border-[#FF9F0A]/40 text-[#FF9F0A] hover:bg-[#FF9F0A]/20 text-xs font-medium transition-colors inline-flex items-center gap-1.5 cursor-pointer"
+                <div class="flex items-center justify-end gap-2 mt-3 pt-3 border-t border-line">
+                    <button type="button" class="border border-transparent btn-edit-notif px-3 py-1.5 rounded-[0.375rem] bg-state-pending/[0.12] ring-1 ring-state-pending/40 text-state-pending hover:bg-state-pending/20 text-xs font-medium transition-colors inline-flex items-center gap-1.5 cursor-pointer"
                         data-id="${arEsc(item._id)}" aria-label="แก้ไขรายการแจ้ง ${arEsc(item.product_name)}">
                         <i class="fa-solid fa-pen-to-square"></i> แก้ไข
                     </button>
-                    <button type="button" class="btn-delete-notif px-3 py-1.5 rounded-[0.375rem] bg-[#FE0000]/[0.12] border border-[#FE0000]/40 text-[#FF6B6B] hover:bg-[#FE0000]/20 text-xs font-medium transition-colors inline-flex items-center gap-1.5 cursor-pointer"
+                    <button type="button" class="border border-transparent btn-delete-notif px-3 py-1.5 rounded-[0.375rem] bg-state-danger/[0.12] ring-1 ring-state-danger/40 text-state-danger-soft hover:bg-state-danger/20 text-xs font-medium transition-colors inline-flex items-center gap-1.5 cursor-pointer"
                         data-id="${arEsc(item._id)}" data-name="${arEsc(item.product_name)}"
                         aria-label="ลบรายการแจ้ง ${arEsc(item.product_name)}">
                         <i class="fa-solid fa-trash"></i> ลบ
@@ -4063,7 +4082,7 @@
 
     const npDeleteNotif = (id, name) => {
         showConfirm('ลบรายการแจ้งสินค้า',
-            `ต้องการลบรายการแจ้ง <strong class="text-white">${arEsc(name || '')}</strong> ใช่หรือไม่<br><span class="text-xs text-white/70">ลบได้เฉพาะรายการที่ยังไม่ถูกอนุมัติ และย้อนกลับไม่ได้</span>`,
+            `ต้องการลบรายการแจ้ง <strong class="text-ink">${arEsc(name || '')}</strong> ใช่หรือไม่<br><span class="text-xs text-ink/70">ลบได้เฉพาะรายการที่ยังไม่ถูกอนุมัติ และย้อนกลับไม่ได้</span>`,
             async () => {
                 try {
                     const res = await authFetch(`${API_BASE_URL}/import-notifications/${id}`, { method: 'DELETE' });
@@ -4110,13 +4129,13 @@
     const aiDateTime = (d) => d ? new Date(d).toLocaleString('th-TH',
         { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-';
 
-    const aiStateRow = (cols, msg, cls = 'text-white/50 italic') =>
+    const aiStateRow = (cols, msg, cls = 'text-ink/50 italic') =>
         `<tr><td colspan="${cols}" class="px-6 py-8 text-center ${cls}">${aiEsc(msg)}</td></tr>`;
 
     // แถวโครงร่างระหว่างรอข้อมูล — ต้องเรียกก่อน await เสมอ (ข้อ 11.7)
     const aiSkeleton = (tbody, cols, rows = 4) => {
         if (!tbody) return;
-        const bar = (w) => `<div class="h-3.5 ${w} rounded-full bg-[#5c5c5c] animate-pulse"></div>`;
+        const bar = (w) => `<div class="h-3.5 ${w} rounded-full bg-skeleton animate-pulse"></div>`;
         tbody.innerHTML = Array.from({ length: rows }).map(() =>
             `<tr>${Array.from({ length: cols }).map(() =>
                 `<td class="px-6 py-4">${bar('w-full')}</td>`).join('')}</tr>`).join('');
@@ -4125,8 +4144,8 @@
     // เซลล์สองบรรทัด (สูตร "ชื่อ + คำบรรยาย" ข้อ 11.6) ใช้ยุบคอลัมน์ที่เคยแยกกัน
     const aiTwoLine = (main, sub) => `
         <div>
-            <p class="font-medium text-white">${main}</p>
-            <p class="text-xs text-white/70 mt-0.5">${sub}</p>
+            <p class="font-medium text-ink">${main}</p>
+            <p class="text-xs text-ink/70 mt-0.5">${sub}</p>
         </div>`;
 
     const aiSetCount = (id, shown, total) => {
@@ -4149,9 +4168,9 @@
     // ตัวเลข "สแกนแล้ว x / y" — ครบแล้วเป็นเขียว ยังไม่ครบเป็นส้ม (โทนตามข้อ 11.6)
     const aiScanCell = (scanned, ordered) => {
         const done = ordered > 0 && scanned >= ordered;
-        const color = done ? 'text-[#20D500]' : 'text-orange-400';
+        const color = done ? 'text-state-ok' : 'text-orange-400';
         return `<span class="font-mono font-medium ${color}">${scanned}</span>`
-            + `<span class="text-white/70 font-mono"> / ${ordered}</span>`;
+            + `<span class="text-ink/70 font-mono"> / ${ordered}</span>`;
     };
 
     const loadApprovePOs = async () => {
@@ -4187,16 +4206,16 @@
                 const t = aiPoTotals(po);
                 const branchName = po.branch_id ? po.branch_id.name : '-';
                 return `
-                <tr class="hover:bg-[#464646] transition-colors">
+                <tr class="hover:bg-divider transition-colors">
                     <td class="px-6 py-4">
-                        <p class="font-mono font-semibold text-[#FFE169]">${aiEsc(po.po_number)}</p>
-                        <p class="text-xs text-white/70 mt-0.5">สร้างเมื่อ ${aiDate(po.createdAt)}</p>
+                        <p class="font-mono font-semibold text-accent-ink">${aiEsc(po.po_number)}</p>
+                        <p class="text-xs text-ink/70 mt-0.5">สร้างเมื่อ ${aiDate(po.createdAt)}</p>
                     </td>
                     <td class="px-6 py-4">${aiTwoLine(aiEsc(po.supplier_name), aiEsc(branchName))}</td>
                     <td class="px-6 py-4 text-center">${aiScanCell(t.scanned, t.ordered)}</td>
-                    <td class="px-6 py-4 text-right text-white font-mono">${aiBaht(t.total)}</td>
+                    <td class="px-6 py-4 text-right text-ink font-mono">${aiBaht(t.total)}</td>
                     <td class="px-6 py-4 text-right">
-                        <button type="button" class="btn-finalize-import px-3 py-1.5 bg-[#FFE169] hover:bg-[#E2B93C] text-[#333333] font-semibold rounded-[0.375rem] text-xs transition-colors inline-flex items-center gap-1.5 cursor-pointer"
+                        <button type="button" class="btn-finalize-import px-3 py-1.5 bg-primary hover:bg-[#E2B93C] text-on-primary font-semibold rounded-[0.375rem] text-xs transition-colors inline-flex items-center gap-1.5 cursor-pointer"
                             data-id="${aiEsc(po._id)}">
                             <i class="fa-solid fa-clipboard-check"></i> อนุมัตินำเข้าสต็อก
                         </button>
@@ -4268,15 +4287,15 @@
                 tbodyPo.innerHTML = rows.length ? rows.map(po => {
                     const t = aiPoTotals(po);
                     return `
-                    <tr class="hover:bg-[#464646] transition-colors">
+                    <tr class="hover:bg-divider transition-colors">
                         <td class="px-6 py-4">
-                            <p class="font-mono font-semibold text-[#FFE169]">${aiEsc(po.po_number)}</p>
-                            <p class="text-xs text-white/70 mt-0.5">${aiDateTime(po.updatedAt)}</p>
+                            <p class="font-mono font-semibold text-accent-ink">${aiEsc(po.po_number)}</p>
+                            <p class="text-xs text-ink/70 mt-0.5">${aiDateTime(po.updatedAt)}</p>
                         </td>
                         <td class="px-6 py-4">${aiTwoLine(aiEsc(po.supplier_name), aiEsc(po.branch_id ? po.branch_id.name : '-'))}</td>
                         <td class="px-6 py-4 text-center">${aiScanCell(t.scanned, t.ordered)}</td>
-                        <td class="px-6 py-4 text-right text-white font-mono">${aiBaht(t.total)}</td>
-                        <td class="px-6 py-4 text-white">${aiEsc(po.received_by ? po.received_by.name : '-')}</td>
+                        <td class="px-6 py-4 text-right text-ink font-mono">${aiBaht(t.total)}</td>
+                        <td class="px-6 py-4 text-ink">${aiEsc(po.received_by ? po.received_by.name : '-')}</td>
                     </tr>`;
                 }).join('') : aiStateRow(AI_COLS.histPo,
                     all.length ? 'ไม่มีประวัติของสาขาที่เลือก' : 'ยังไม่มีประวัติการอนุมัติ PO');
@@ -4298,15 +4317,15 @@
                 aiSetCount('history-nonpo-result-count', rows.length, rows.length);
 
                 tbodyNonPo.innerHTML = rows.length ? rows.map(item => `
-                    <tr class="hover:bg-[#464646] transition-colors">
-                        <td class="px-6 py-4 text-white font-medium">${aiEsc(item.product_name)}</td>
+                    <tr class="hover:bg-divider transition-colors">
+                        <td class="px-6 py-4 text-ink font-medium">${aiEsc(item.product_name)}</td>
                         <td class="px-6 py-4">${aiTwoLine(
                     aiEsc(item.branch_id ? item.branch_id.name : '-'),
                     aiEsc(item.reported_by ? item.reported_by.name : '-'))}</td>
-                        <td class="px-6 py-4 text-white">${aiDateTime(item.approved_at)}</td>
-                        <td class="px-6 py-4 text-center text-white font-mono">${item.imeis ? item.imeis.length : 0}</td>
-                        <td class="px-6 py-4 text-white">${aiEsc(item.approved_by ? item.approved_by.name : '-')}</td>
-                        <td class="px-6 py-4 text-white/70">${item.notes ? aiEsc(item.notes) : '<span class="text-white/50">-</span>'}</td>
+                        <td class="px-6 py-4 text-ink">${aiDateTime(item.approved_at)}</td>
+                        <td class="px-6 py-4 text-center text-ink font-mono">${item.imeis ? item.imeis.length : 0}</td>
+                        <td class="px-6 py-4 text-ink">${aiEsc(item.approved_by ? item.approved_by.name : '-')}</td>
+                        <td class="px-6 py-4 text-ink/70">${item.notes ? aiEsc(item.notes) : '<span class="text-ink/50">-</span>'}</td>
                     </tr>`).join('') : aiStateRow(AI_COLS.histNonPo, 'ยังไม่มีประวัติการอนุมัติสินค้านอกระบบ PO');
             }
         } catch (err) {
@@ -4331,29 +4350,29 @@
                     const isExcel = d.import_source === 'EXCEL';
                     // ป้ายประเภทใช้จุดสี + tint 12% เหมือนป้ายสถานะอื่นทั้งระบบ (ข้อ 11.6)
                     const typeBadge = isExcel
-                        ? `<div class="inline-flex items-center gap-2 px-2.5 py-1 rounded-[0.375rem] bg-[#42A231]/[0.12]">
-                               <div class="w-2 h-2 rounded-full bg-[#20D500]"></div>
-                               <span class="text-[#20D500] font-medium text-xs">Excel</span></div>`
-                        : `<div class="inline-flex items-center gap-2 px-2.5 py-1 rounded-[0.375rem] bg-[#4D4D4D]/40">
-                               <div class="w-2 h-2 rounded-full bg-white/40"></div>
-                               <span class="text-white/70 font-medium text-xs">คลังปกติ</span></div>`;
+                        ? `<div class="inline-flex items-center gap-2 px-2.5 py-1 rounded-[0.375rem] bg-state-ok-tint/[0.12]">
+                               <div class="w-2 h-2 rounded-full bg-state-ok"></div>
+                               <span class="text-state-ok font-medium text-xs">Excel</span></div>`
+                        : `<div class="inline-flex items-center gap-2 px-2.5 py-1 rounded-[0.375rem] bg-panel/40">
+                               <div class="w-2 h-2 rounded-full bg-ink/40"></div>
+                               <span class="text-ink/70 font-medium text-xs">คลังปกติ</span></div>`;
 
                     const imeis = Array.isArray(d.imeis) ? d.imeis : [];
                     const imeiCell = imeis.length
-                        ? `<span class="font-mono text-xs text-white/70 block max-w-[220px] truncate"
+                        ? `<span class="font-mono text-xs text-ink/70 block max-w-[220px] truncate"
                                  title="${aiEsc(imeis.join(', '))}">${aiEsc(imeis.join(', '))}</span>`
-                        : '<span class="text-white/50">-</span>';
+                        : '<span class="text-ink/50">-</span>';
 
                     return `
-                    <tr class="hover:bg-[#464646] transition-colors">
+                    <tr class="hover:bg-divider transition-colors">
                         <td class="px-6 py-4">${aiTwoLine(
                         aiEsc(d.product_name || '-'),
                         `<span class="font-mono">${aiEsc(d.product_code || '-')}</span>`)}</td>
                         <td class="px-6 py-4">${typeBadge}</td>
-                        <td class="px-6 py-4 text-white">${aiEsc(d.branch_name || '-')}</td>
-                        <td class="px-6 py-4 text-white">${aiDateTime(log.createdAt)}</td>
-                        <td class="px-6 py-4 text-center text-white font-mono">${d.quantity || 0}</td>
-                        <td class="px-6 py-4 text-white">${aiEsc(log.user_name || '-')}</td>
+                        <td class="px-6 py-4 text-ink">${aiEsc(d.branch_name || '-')}</td>
+                        <td class="px-6 py-4 text-ink">${aiDateTime(log.createdAt)}</td>
+                        <td class="px-6 py-4 text-center text-ink font-mono">${d.quantity || 0}</td>
+                        <td class="px-6 py-4 text-ink">${aiEsc(log.user_name || '-')}</td>
                         <td class="px-6 py-4">${imeiCell}</td>
                     </tr>`;
                 }).join('') : aiStateRow(AI_COLS.histDirect,
@@ -4379,13 +4398,13 @@
     if (tabBtnApprovePO && tabBtnApproveNonPO && tabBtnApproveHistory
         && tabContentApprovePO && tabContentApproveNonPO && tabContentApproveHistory) {
 
-        const TAB_BASE = 'px-4 py-2.5 rounded-xl text-sm font-bold border transition-colors flex items-center gap-2 cursor-pointer';
-        const TAB_ON = 'bg-[#FFE169] text-[#333333] border-[#FFE169]';
-        const TAB_OFF = 'bg-[#27272A] text-slate-300 border-[#3F3F46] hover:border-[#FFE169] hover:text-white';
+        const TAB_BASE = 'elev-chip px-4 py-2.5 rounded-xl text-sm font-bold transition-colors flex items-center gap-2 cursor-pointer';
+        const TAB_ON = 'bg-primary text-on-primary ring-1 ring-accent-ink';
+        const TAB_OFF = 'elev-field bg-field text-body-muted hover:ring-1 hover:ring-accent-ink hover:text-ink';
 
         // ป้ายตัวเลขบนแท็บต้องอ่านออกทั้งตอนพื้นเหลืองและพื้นเข้ม จึงสลับสีตามสถานะแท็บด้วย
-        const BADGE_ON = 'px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#333333]/20';
-        const BADGE_OFF_PO = 'px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#FFE169]/20 text-[#FFE169]';
+        const BADGE_ON = 'px-2 py-0.5 rounded-full text-[10px] font-bold bg-hairline/20';
+        const BADGE_OFF_PO = 'px-2 py-0.5 rounded-full text-[10px] font-bold bg-primary/20 text-accent-ink';
         const BADGE_OFF_NONPO = 'px-2 py-0.5 rounded-full text-[10px] font-bold bg-orange-500/[0.12] text-orange-400';
 
         const setBadge = (el, cls) => {

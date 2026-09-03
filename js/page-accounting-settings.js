@@ -98,13 +98,13 @@
     // ---------- ตารางผังบัญชี (DESIGN.md ข้อ 11.5 - 11.7) ----------
     const COA_COLS = 7, GRP_COLS = 4, PNL_COLS = 6;
 
-    const coaStateRow = (cols, msg, cls = 'text-white/50 italic') =>
+    const coaStateRow = (cols, msg, cls = 'text-ink/50 italic') =>
         `<tr><td colspan="${cols}" class="px-6 py-8 text-center ${cls}">${escapeHtml(msg)}</td></tr>`;
 
     const coaSkeleton = (tbodyId, cols, rows = 4) => {
         const tbody = document.getElementById(tbodyId);
         if (!tbody) return;
-        const bar = '<div class="h-3.5 w-full rounded-full bg-[#5c5c5c] animate-pulse"></div>';
+        const bar = '<div class="h-3.5 w-full rounded-full bg-skeleton animate-pulse"></div>';
         tbody.innerHTML = Array.from({ length: rows }).map(() =>
             `<tr>${Array.from({ length: cols }).map(() =>
                 `<td class="px-6 py-4">${bar}</td>`).join('')}</tr>`).join('');
@@ -117,7 +117,7 @@
 
     // ป้ายเทาสำหรับหมวดหมู่/กลุ่ม (ข้อ 11.6 — ป้ายหมวดหมู่)
     const coaChipLabel = (text) =>
-        `<span class="px-2.5 py-1 rounded-[0.375rem] text-xs font-medium bg-[#4D4D4D]/60 text-white">${escapeHtml(text)}</span>`;
+        `<span class="px-2.5 py-1 rounded-[0.375rem] text-xs font-medium bg-chip/60 text-ink">${escapeHtml(text)}</span>`;
 
     async function initAccountingSettings() {
         coaSkeleton('coa-table-body', COA_COLS);
@@ -185,8 +185,8 @@
         chips.forEach(c => {
             const chip = document.createElement('button');
             chip.type = 'button';
-            chip.className = 'px-4 py-2.5 rounded-xl bg-[#4D4D4D]/40 border border-[#3F3F46] ' +
-                'text-white text-sm font-medium transition-colors flex items-center gap-2 cursor-pointer';
+            chip.className = 'elev-card px-4 py-2.5 rounded-xl bg-panel/40' +
+                'text-ink text-sm font-medium transition-colors flex items-center gap-2 cursor-pointer';
             chip.innerHTML = `<span>${escapeHtml(c.label)}</span><i class="fa-solid fa-xmark text-[10px] opacity-80"></i>`;
             chip.setAttribute('aria-label', `ลบตัวกรอง ${c.label}`);
             chip.addEventListener('click', (e) => {
@@ -201,7 +201,7 @@
             const clearAll = document.createElement('button');
             clearAll.type = 'button';
             clearAll.className = 'px-2.5 py-1 bg-red-500/10 hover:bg-red-500/15 text-red-300 ' +
-                'rounded-full text-xs font-medium border border-red-500/30 transition-colors cursor-pointer';
+                'rounded-full text-xs font-medium ring-1 ring-red-500/30 transition-colors cursor-pointer';
             clearAll.textContent = 'ล้างทั้งหมด';
             clearAll.addEventListener('click', () => {
                 ['coa-search', 'coa-filter-category'].forEach(id => {
@@ -234,13 +234,13 @@
 
             // บัญชีของระบบแก้/ลบไม่ได้ จึงไม่เรนเดอร์ปุ่มตั้งแต่แรก (ข้อ 11.12 ข้อ 11)
             const actions = acc.is_system
-                ? '<span class="text-white/50">-</span>'
-                : `<button type="button" class="btn-coa-edit text-white hover:text-amber-400 transition-colors p-2 cursor-pointer"
+                ? '<span class="text-ink/50">-</span>'
+                : `<button type="button" class="btn-coa-edit text-ink hover:text-amber-400 transition-colors p-2 cursor-pointer"
                         data-id="${escapeHtml(acc._id)}" title="แก้ไขบัญชี"
                         aria-label="แก้ไขบัญชี ${escapeHtml(acc.account_code)}">
                         <i class="fa-solid fa-pen-to-square"></i>
                    </button>
-                   <button type="button" class="btn-coa-delete text-white hover:text-red-400 transition-colors p-2 cursor-pointer"
+                   <button type="button" class="btn-coa-delete text-ink hover:text-red-400 transition-colors p-2 cursor-pointer"
                         data-id="${escapeHtml(acc._id)}" data-code="${escapeHtml(acc.account_code)}"
                         data-name="${escapeHtml(acc.account_name)}" title="ลบบัญชี"
                         aria-label="ลบบัญชี ${escapeHtml(acc.account_code)}">
@@ -248,16 +248,16 @@
                    </button>`;
 
             const typeBadge = acc.is_system
-                ? '<span class="px-2.5 py-1 rounded-[0.375rem] text-xs font-medium bg-[#4D4D4D]/60 text-white">ระบบ</span>'
-                : '<span class="px-2.5 py-1 rounded-[0.375rem] text-xs font-medium bg-[#42A231]/[0.12] text-[#20D500]">กำหนดเอง</span>';
+                ? '<span class="px-2.5 py-1 rounded-[0.375rem] text-xs font-medium bg-chip/60 text-ink">ระบบ</span>'
+                : '<span class="px-2.5 py-1 rounded-[0.375rem] text-xs font-medium bg-state-ok-tint/[0.12] text-state-ok">กำหนดเอง</span>';
 
             return `
-            <tr class="hover:bg-[#464646] transition-colors">
-                <td class="px-6 py-4"><span class="font-mono font-semibold text-[#FFE169]">${escapeHtml(acc.account_code)}</span></td>
-                <td class="px-6 py-4 text-white">${escapeHtml(acc.account_name)}</td>
-                <td class="px-6 py-4">${cat.category_name ? coaChipLabel(cat.category_name) : '<span class="text-white/50">-</span>'}</td>
-                <td class="px-6 py-4">${grp.group_name ? coaChipLabel(grp.group_name) : '<span class="text-white/50">-</span>'}</td>
-                <td class="px-6 py-4 text-center text-white font-medium">${acc.level || '-'}</td>
+            <tr class="hover:bg-divider transition-colors">
+                <td class="px-6 py-4"><span class="font-mono font-semibold text-accent-ink">${escapeHtml(acc.account_code)}</span></td>
+                <td class="px-6 py-4 text-ink">${escapeHtml(acc.account_name)}</td>
+                <td class="px-6 py-4">${cat.category_name ? coaChipLabel(cat.category_name) : '<span class="text-ink/50">-</span>'}</td>
+                <td class="px-6 py-4">${grp.group_name ? coaChipLabel(grp.group_name) : '<span class="text-ink/50">-</span>'}</td>
+                <td class="px-6 py-4 text-center text-ink font-medium">${acc.level || '-'}</td>
                 <td class="px-6 py-4">${typeBadge}</td>
                 <td class="px-6 py-4 text-right">
                     <div class="flex items-center justify-end gap-1">${actions}</div>
@@ -301,22 +301,22 @@
             const cat = _coaCache.categories.find(c => c._id === idOf(grp.category_id)) || {};
             const accCount = _coaCache.accounts.filter(a => idOf(a.group_id) === grp._id).length;
             return `
-            <tr class="hover:bg-[#464646] transition-colors">
-                <td class="px-6 py-4"><span class="font-mono font-semibold text-[#FFE169]">${escapeHtml(grp.group_code)}</span></td>
-                <td class="px-6 py-4 text-white">${escapeHtml(grp.group_name)}</td>
-                <td class="px-6 py-4">${cat.category_name ? coaChipLabel(cat.category_name) : '<span class="text-white/50">-</span>'}</td>
-                <td class="px-6 py-4 text-center text-white font-medium">${accCount}
-                    <span class="text-xs text-white font-normal">บัญชี</span></td>
+            <tr class="hover:bg-divider transition-colors">
+                <td class="px-6 py-4"><span class="font-mono font-semibold text-accent-ink">${escapeHtml(grp.group_code)}</span></td>
+                <td class="px-6 py-4 text-ink">${escapeHtml(grp.group_name)}</td>
+                <td class="px-6 py-4">${cat.category_name ? coaChipLabel(cat.category_name) : '<span class="text-ink/50">-</span>'}</td>
+                <td class="px-6 py-4 text-center text-ink font-medium">${accCount}
+                    <span class="text-xs text-ink font-normal">บัญชี</span></td>
             </tr>`;
         }).join('');
     }
 
     // ---------- แท็บ ----------
-    const COA_TAB_BASE = 'px-4 py-2.5 rounded-xl text-sm font-bold border transition-colors flex items-center gap-2 cursor-pointer';
-    const COA_TAB_ON = 'bg-[#FFE169] text-[#333333] border-[#FFE169]';
-    const COA_TAB_OFF = 'bg-[#27272A] text-slate-300 border-[#3F3F46] hover:border-[#FFE169] hover:text-white';
-    const COA_BADGE_ON = 'px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#333333]/20';
-    const COA_BADGE_OFF = 'px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#4D4D4D]/60 text-white';
+    const COA_TAB_BASE = 'elev-chip px-4 py-2.5 rounded-xl text-sm font-bold transition-colors flex items-center gap-2 cursor-pointer';
+    const COA_TAB_ON = 'bg-primary text-on-primary ring-1 ring-accent-ink';
+    const COA_TAB_OFF = 'elev-field bg-field text-body-muted hover:ring-1 hover:ring-accent-ink hover:text-ink';
+    const COA_BADGE_ON = 'px-2 py-0.5 rounded-full text-[10px] font-bold bg-hairline/20';
+    const COA_BADGE_OFF = 'px-2 py-0.5 rounded-full text-[10px] font-bold bg-chip/60 text-ink';
 
     function switchCOATab(tabName) {
         ['accounts', 'groups', 'pnl'].forEach(t => {
@@ -443,9 +443,9 @@
     async function deleteAccountChart(id, code, name) {
         // การลบย้อนไม่ได้ ต้องผ่าน showConfirm() ของระบบ (ข้อ 11.12 ข้อ 11)
         const label = code || name
-            ? `<strong class="font-mono text-[#FFE169]">${escapeHtml(code || '')}</strong> ${escapeHtml(name || '')}`
+            ? `<strong class="font-mono text-accent-ink">${escapeHtml(code || '')}</strong> ${escapeHtml(name || '')}`
             : 'บัญชีนี้';
-        showConfirm('ลบรหัสบัญชี', `ต้องการลบ ${label} ออกจากผังบัญชีหรือไม่<br><span class="text-xs text-white/70">การลบนี้ย้อนกลับไม่ได้</span>`,
+        showConfirm('ลบรหัสบัญชี', `ต้องการลบ ${label} ออกจากผังบัญชีหรือไม่<br><span class="text-xs text-ink/70">การลบนี้ย้อนกลับไม่ได้</span>`,
             () => doDeleteAccountChart(id), 'ลบบัญชี', 'danger');
     }
 
@@ -588,7 +588,7 @@
 
     function createPnLRow(conf = {}, idx = 0) {
         const tr = document.createElement('tr');
-        tr.className = 'hover:bg-[#464646] transition-colors pnl-row';
+        tr.className = 'hover:bg-divider transition-colors pnl-row';
 
         let accOptions = '<option value="">เลือกบัญชี (ออโต้รวม)</option>';
         _coaCache.accounts.forEach(a => {
@@ -601,7 +601,7 @@
             `<option value="${s.value}" ${s.value === conf.section ? 'selected' : ''}>${s.label}</option>`).join('');
 
         // ช่องกรอกในตารางใช้โทเคนชุดเดียวกับฟอร์ม (ข้อ 11.9) แต่ย่อ padding ให้พอดีความสูงแถว
-        const field = 'w-full px-3 py-2 rounded-xl bg-[#27272A] border border-[#3F3F46] text-white focus:border-[#FFE169] focus:outline-none transition-all text-sm';
+        const field = 'elev-field w-full px-3 py-2 rounded-xl bg-field text-ink focus:ring-2 focus:ring-accent-ink focus:outline-none transition-all text-sm';
 
         tr.innerHTML = `
             <td class="px-6 py-4">
@@ -610,14 +610,14 @@
             </td>
             <td class="px-6 py-4">
                 <input type="text" aria-label="ชื่อรายการ" placeholder="ชื่อรายการ"
-                    class="pnl-name ${field} placeholder-slate-500 min-w-[160px]" value="${escapeHtml(conf.display_name || '')}">
+                    class="pnl-name ${field} placeholder-ink-muted-48 min-w-[160px]" value="${escapeHtml(conf.display_name || '')}">
             </td>
             <td class="px-6 py-4">
                 <div class="relative min-w-[130px]">
                     <select class="pnl-section ${field} appearance-none pr-9 cursor-pointer" aria-label="ส่วนของงบ">
                         ${secOptions}
                     </select>
-                    <div class="absolute right-3 top-[11px] pointer-events-none text-slate-400">
+                    <div class="absolute right-3 top-[11px] pointer-events-none text-body-muted">
                         <i class="fa-solid fa-chevron-down text-xs"></i>
                     </div>
                 </div>
@@ -627,19 +627,19 @@
                     <select class="pnl-account ${field} appearance-none pr-9 cursor-pointer" aria-label="บัญชีที่เชื่อมโยง">
                         ${accOptions}
                     </select>
-                    <div class="absolute right-3 top-[11px] pointer-events-none text-slate-400">
+                    <div class="absolute right-3 top-[11px] pointer-events-none text-body-muted">
                         <i class="fa-solid fa-chevron-down text-xs"></i>
                     </div>
                 </div>
             </td>
             <td class="px-6 py-4 text-center">
                 <input type="checkbox" aria-label="แสดงเป็นตัวหนา"
-                    class="pnl-bold w-4 h-4 rounded border-[#3F3F46] bg-[#27272A] accent-[#FFE169] cursor-pointer"
+                    class="elev-field pnl-bold w-4 h-4 rounded bg-field accent-accent-ink cursor-pointer"
                     ${conf.is_bold ? 'checked' : ''}>
             </td>
             <td class="px-6 py-4 text-right">
                 <div class="flex items-center justify-end gap-1">
-                    <button type="button" class="btn-pnl-remove text-white hover:text-red-400 transition-colors p-2 cursor-pointer"
+                    <button type="button" class="btn-pnl-remove text-ink hover:text-red-400 transition-colors p-2 cursor-pointer"
                         title="ลบรายการนี้" aria-label="ลบรายการงบกำไรขาดทุน">
                         <i class="fa-solid fa-trash"></i>
                     </button>
@@ -670,7 +670,7 @@
         showConfirm(
             'ลบรายการงบกำไรขาดทุน',
             name
-                ? `ต้องการลบรายการ <strong class="text-white">${escapeHtml(name)}</strong> ออกจากงบกำไรขาดทุนหรือไม่<br><span class="text-xs text-white/70">การเปลี่ยนแปลงจะมีผลเมื่อกดบันทึก</span>`
+                ? `ต้องการลบรายการ <strong class="text-ink">${escapeHtml(name)}</strong> ออกจากงบกำไรขาดทุนหรือไม่<br><span class="text-xs text-ink/70">การเปลี่ยนแปลงจะมีผลเมื่อกดบันทึก</span>`
                 : 'ต้องการลบรายการนี้ออกจากงบกำไรขาดทุนหรือไม่',
             () => {
                 tr.remove();
@@ -889,22 +889,22 @@
         return dt.toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' });
     };
 
-    const dvStateRow = (msg, cls = 'text-white/50 italic') =>
+    const dvStateRow = (msg, cls = 'text-ink/50 italic') =>
         `<tr><td colspan="${DV_COLS}" class="px-6 py-8 text-center ${cls}">${escapeHtml(msg)}</td></tr>`;
 
     const dvSkeleton = (rows = 4) => {
         const tbody = document.getElementById('dv-history-table-body');
         if (!tbody) return;
-        const bar = '<div class="h-3.5 w-full rounded-full bg-[#5c5c5c] animate-pulse"></div>';
+        const bar = '<div class="h-3.5 w-full rounded-full bg-skeleton animate-pulse"></div>';
         tbody.innerHTML = Array.from({ length: rows }).map(() =>
             `<tr>${Array.from({ length: DV_COLS }).map(() =>
                 `<td class="px-6 py-4">${bar}</td>`).join('')}</tr>`).join('');
     };
 
     const dvAccountCell = (acc) => {
-        if (!acc) return '<span class="text-white/50">-</span>';
-        return `<p class="font-mono text-[#FFE169] text-xs">${escapeHtml(acc.account_code || '-')}</p>
-                <p class="text-white text-xs mt-0.5">${escapeHtml(acc.account_name || '-')}</p>`;
+        if (!acc) return '<span class="text-ink/50">-</span>';
+        return `<p class="font-mono text-accent-ink text-xs">${escapeHtml(acc.account_code || '-')}</p>
+                <p class="text-ink text-xs mt-0.5">${escapeHtml(acc.account_name || '-')}</p>`;
     };
 
     // ชิปตัวกรองที่ใช้อยู่ (ข้อ 11.5 — ลบได้เฉพาะตอนคลิกกากบาท)
@@ -936,8 +936,8 @@
         chips.forEach(c => {
             const chip = document.createElement('button');
             chip.type = 'button';
-            chip.className = 'px-4 py-2.5 rounded-xl bg-[#4D4D4D]/40 border border-[#3F3F46] ' +
-                'text-white text-sm font-medium transition-colors flex items-center gap-2 cursor-pointer';
+            chip.className = 'elev-card px-4 py-2.5 rounded-xl bg-panel/40' +
+                'text-ink text-sm font-medium transition-colors flex items-center gap-2 cursor-pointer';
             chip.innerHTML = `<span>${escapeHtml(c.label)}</span><i class="fa-solid fa-xmark text-[10px] opacity-80"></i>`;
             chip.setAttribute('aria-label', `ลบตัวกรอง ${c.label}`);
             chip.addEventListener('click', (e) => {
@@ -952,7 +952,7 @@
             const clearAll = document.createElement('button');
             clearAll.type = 'button';
             clearAll.className = 'px-2.5 py-1 bg-red-500/10 hover:bg-red-500/15 text-red-300 ' +
-                'rounded-full text-xs font-medium border border-red-500/30 transition-colors cursor-pointer';
+                'rounded-full text-xs font-medium ring-1 ring-red-500/30 transition-colors cursor-pointer';
             clearAll.textContent = 'ล้างทั้งหมด';
             clearAll.addEventListener('click', () => {
                 _dvSearch = '';
@@ -998,21 +998,21 @@
             const total = v.total_amount != null ? v.total_amount : (v.amount || 0);
             const hasVat = v.vat_type && v.vat_type !== 'NO_VAT' && (v.vat_amount || 0) > 0;
             return `
-            <tr class="hover:bg-[#464646] transition-colors">
+            <tr class="hover:bg-divider transition-colors">
                 <td class="px-6 py-4">
-                    <p class="font-mono font-semibold text-[#FFE169]">${escapeHtml(v.voucher_no || '-')}</p>
-                    <p class="text-xs text-white/70 mt-0.5">${escapeHtml(dvDate(v.payment_date))}</p>
+                    <p class="font-mono font-semibold text-accent-ink">${escapeHtml(v.voucher_no || '-')}</p>
+                    <p class="text-xs text-ink/70 mt-0.5">${escapeHtml(dvDate(v.payment_date))}</p>
                 </td>
-                <td class="px-6 py-4 text-white">${escapeHtml(v.payee_name || '-')}</td>
+                <td class="px-6 py-4 text-ink">${escapeHtml(v.payee_name || '-')}</td>
                 <td class="px-6 py-4">${dvAccountCell(v.debit_account_id)}</td>
                 <td class="px-6 py-4">${dvAccountCell(v.credit_account_id)}</td>
                 <td class="px-6 py-4 text-right">
-                    <p class="text-white font-mono font-semibold">${dvBaht(total)}</p>
-                    ${hasVat ? `<p class="text-xs text-white/70 mt-0.5 font-mono">รวม VAT ${dvBaht(v.vat_amount)}</p>` : ''}
+                    <p class="text-ink font-mono font-semibold">${dvBaht(total)}</p>
+                    ${hasVat ? `<p class="text-xs text-ink/70 mt-0.5 font-mono">รวม VAT ${dvBaht(v.vat_amount)}</p>` : ''}
                 </td>
                 <td class="px-6 py-4 text-right">
                     <div class="flex items-center justify-end gap-1">
-                        <button type="button" class="btn-print-dv text-white hover:text-[#FFE169] transition-colors p-2 cursor-pointer"
+                        <button type="button" class="btn-print-dv text-ink hover:text-accent-ink transition-colors p-2 cursor-pointer"
                             data-id="${escapeHtml(v._id)}" title="พิมพ์ใบสำคัญจ่าย"
                             aria-label="พิมพ์ใบสำคัญจ่าย ${escapeHtml(v.voucher_no || '')}">
                             <i class="fa-solid fa-print"></i>

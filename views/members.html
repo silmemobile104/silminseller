@@ -2,33 +2,33 @@
     <!-- [1] หัวหน้า — DESIGN.md ข้อ 11.2 -->
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div class="flex items-center gap-4">
-            <i class="bi bi-people text-white w-5 text-2xl text-center"></i>
-            <h3 class="text-2xl text-white">สมาชิก</h3>
+            <i class="bi bi-people text-ink w-5 text-2xl text-center"></i>
+            <h3 class="text-2xl text-ink">สมาชิก</h3>
         </div>
         <button id="btn-add-member" type="button"
-            class="px-4 py-2 bg-[#FFE169] hover:bg-[#E2B93C] text-[#333333] font-medium rounded-xl transition-all flex items-center gap-2 w-fit cursor-pointer">
+            class="px-4 py-2 bg-primary hover:bg-[#E2B93C] text-on-primary font-medium rounded-xl transition-all flex items-center gap-2 w-fit cursor-pointer">
             <i class="fa-solid fa-user-plus"></i>
             เพิ่มสมาชิก
         </button>
     </div>
 
     <!-- [2] การ์ดพาเนล — แถบควบคุม + ชิปตัวกรอง + ตาราง อยู่ในใบเดียว (ข้อ 11.1) -->
-    <div class="bg-[#4D4D4D]/40 rounded-2xl shadow-lg overflow-hidden backdrop-blur-sm">
+    <div class="bg-panel/40 rounded-2xl shadow-lg overflow-hidden backdrop-blur-sm">
         <!-- 2a แถบควบคุม (ข้อ 11.4)
              หน้านี้มีตัวกรองตัวเดียวคือช่องค้นหา จึงไม่มีปุ่ม "เพิ่มเติม" และไม่มีพาเนลกรองละเอียด -->
         <div class="p-6 pb-0 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-            <h3 class="text-lg text-white flex items-center gap-2">
-                <i class="fa-solid fa-address-card text-[#FFE169]"></i> รายชื่อสมาชิก
+            <h3 class="text-lg text-ink flex items-center gap-2">
+                <i class="fa-solid fa-address-card text-accent-ink"></i> รายชื่อสมาชิก
             </h3>
             <div class="flex flex-wrap items-center gap-2.5 relative w-full lg:w-auto">
                 <div class="relative group w-full sm:w-72 rounded-[0.5rem] overflow-hidden">
                     <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                         <i
-                            class="fa-solid fa-search text-white group-focus-within:text-[#FFE169] transition-colors"></i>
+                            class="fa-solid fa-search text-ink group-focus-within:text-accent-ink transition-colors"></i>
                     </div>
                     <input id="member-search-input" type="text" placeholder="ค้นหา ชื่อ/เลขบัตร/เบอร์โทร..."
                         aria-label="ค้นหาสมาชิก ด้วยชื่อ เลขบัตรประชาชน เบอร์โทร หรือเลขสมาชิก"
-                        class="bg-transparent border border-white/30 rounded-[10px] text-sm pl-10 pr-4 py-2 w-full text-white focus:outline-none focus:ring-1 focus:ring-[#FFE169] transition-all placeholder-white">
+                        class="page-filter-control elev-chip bg-transparent rounded-[10px] text-sm pl-10 pr-4 py-2 w-full text-ink focus:outline-none focus:ring-1 focus:ring-accent-ink transition-all placeholder-body-muted">
                 </div>
             </div>
         </div>
@@ -37,14 +37,14 @@
         <div class="px-6 py-4">
             <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                 <div id="member-active-filters" class="flex flex-wrap gap-2"></div>
-                <div id="member-result-count" class="text-xs text-white font-medium"></div>
+                <div id="member-result-count" class="text-xs text-ink font-medium"></div>
             </div>
         </div>
 
         <!-- 2c ตาราง (ข้อ 11.6) -->
         <div class="overflow-x-auto" tabindex="0">
             <table class="w-full text-left text-sm whitespace-nowrap border-collapse">
-                <thead class="bg-[#4D4D4D]/40 text-white">
+                <thead class="bg-panel/40 text-ink">
                     <tr>
                         <th class="px-6 py-4 font-semibold text-[15px]">เลขสมาชิก</th>
                         <th class="px-6 py-4 font-semibold text-[15px] w-full">ชื่อ-นามสกุล</th>
@@ -54,7 +54,7 @@
                         <th class="px-6 py-4 font-semibold text-[15px] text-right">จัดการ</th>
                     </tr>
                 </thead>
-                <tbody id="member-table-body" class="divide-y divide-[#464646]">
+                <tbody id="member-table-body" class="divide-y divide-divider">
                     <!-- แถวถูกสร้างจาก js/page-members.js -->
                 </tbody>
             </table>

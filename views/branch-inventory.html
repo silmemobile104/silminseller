@@ -2,17 +2,17 @@
     <!-- [1] หัวหน้า — ตาม DESIGN.md ข้อ 11.2 (ไอคอน + ชื่อหน้า ซ้าย · แท็บสลับมุมมอง ขวา) -->
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div class="flex items-center gap-4">
-            <i class="bi bi-building text-white w-5 text-2xl text-center"></i>
-            <h3 class="text-2xl text-white">สินค้าในสาขา</h3>
+            <i class="bi bi-building text-ink w-5 text-2xl text-center"></i>
+            <h3 class="text-2xl text-ink">สินค้าในสาขา</h3>
         </div>
         <!-- แท็บ: ปุ่มทึบเหลืองของหน้านี้มีได้ปุ่มเดียว = แท็บที่เลือกอยู่ (DESIGN.md ข้อ 6) -->
         <div class="flex flex-wrap items-center gap-2">
             <button id="tab-branch-mystock" type="button" aria-pressed="true"
-                class="px-4 py-2.5 rounded-xl text-sm font-bold border transition-colors flex items-center gap-2 cursor-pointer bg-[#FFE169] text-[#333333] border-[#FFE169]">
+                class="border border-transparent px-4 py-2.5 rounded-xl text-sm font-bold transition-colors flex items-center gap-2 cursor-pointer bg-primary text-on-primary ring-1 ring-accent-ink">
                 <i class="fa-solid fa-box-open"></i> สินค้าในสาขาของฉัน
             </button>
             <button id="tab-branch-globalstock" type="button" aria-pressed="false"
-                class="px-4 py-2.5 rounded-xl text-sm font-bold border transition-colors flex items-center gap-2 cursor-pointer bg-[#27272A] text-slate-300 border-[#3F3F46] hover:border-[#FFE169] hover:text-white">
+                class="elev-field px-4 py-2.5 rounded-xl text-sm font-bold transition-colors flex items-center gap-2 cursor-pointer bg-field text-body-muted hover:ring-1 hover:ring-accent-ink hover:text-ink">
                 <i class="fa-solid fa-globe"></i> สินค้าและราคาสาขาอื่น
             </button>
         </div>
@@ -22,31 +22,31 @@
     <!-- [2] แท็บ 1: สต็อกในสาขาของฉัน                                -->
     <!-- แถบควบคุม + ชิปตัวกรอง + ตาราง อยู่ในการ์ดใบเดียว (ข้อ 11.1) -->
     <!-- ============================================================ -->
-    <div id="content-branch-mystock" class="bg-[#4D4D4D]/40 rounded-2xl shadow-lg overflow-hidden backdrop-blur-sm">
+    <div id="content-branch-mystock" class="bg-panel/40 rounded-2xl shadow-lg overflow-hidden backdrop-blur-sm">
         <!-- 2a แถบควบคุม -->
         <div class="p-6 pb-0 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-            <h3 class="text-lg text-white flex items-center gap-2">
-                <i class="fa-solid fa-box-open text-[#FFE169]"></i> สต็อกในสาขาของฉัน
+            <h3 class="text-lg text-ink flex items-center gap-2">
+                <i class="fa-solid fa-box-open text-accent-ink"></i> สต็อกในสาขาของฉัน
             </h3>
             <div class="flex flex-wrap items-center gap-2.5 relative w-full lg:w-auto">
                 <div class="relative group w-full sm:w-64 rounded-[0.5rem] overflow-hidden">
                     <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                         <i
-                            class="fa-solid fa-search text-white group-focus-within:text-[#FFE169] transition-colors"></i>
+                            class="fa-solid fa-search text-ink group-focus-within:text-accent-ink transition-colors"></i>
                     </div>
                     <input type="text" id="search-branch-mystock" placeholder="ค้นหา ชื่อ/รหัส/IMEI..."
                         aria-label="ค้นหาสินค้าในสาขาของฉัน ด้วยชื่อ รหัสสินค้า หรือ IMEI"
-                        class="bg-transparent border border-white/30 rounded-[10px] text-sm pl-10 pr-4 py-2 w-full text-white focus:outline-none focus:ring-1 focus:ring-[#FFE169] transition-all placeholder-white">
+                        class="page-filter-control elev-chip bg-transparent rounded-[10px] text-sm pl-10 pr-4 py-2 w-full text-ink focus:outline-none focus:ring-1 focus:ring-accent-ink transition-all placeholder-body-muted">
                 </div>
 
                 <select id="filter-branch-mystock-condition" aria-label="กรองตามสภาพเครื่อง"
-                    class="bg-transparent border border-white/30 rounded-[10px] cursor-pointer text-sm px-3 py-2 text-white focus:outline-none focus:ring-1 focus:ring-[#FFE169] w-full sm:w-auto [&>option]:bg-[#4D4D4D] [&>option:checked]:bg-[#FFE169] [&>option:checked]:text-[#333333]">
+                    class="page-filter-control elev-card bg-transparent rounded-[10px] cursor-pointer text-sm px-3 py-2 text-ink focus:outline-none focus:ring-1 focus:ring-accent-ink w-full sm:w-auto [&>option]:bg-panel [&>option:checked]:bg-primary [&>option:checked]:text-on-primary">
                     <option value="ALL">สภาพทั้งหมด</option>
                     <option value="มือ1">มือ 1</option>
                     <option value="มือ2">มือ 2</option>
                 </select>
                 <button id="btn-refresh-mystock" type="button"
-                    class="px-3 py-2 bg-[#4D4D4D]/40 cursor-pointer text-white flex items-center justify-center gap-1.5 rounded-[0.5rem] text-sm hover:bg-[#5C5C5C] transition-colors w-full sm:w-auto">
+                    class="px-3 py-2 bg-panel/40 cursor-pointer text-ink flex items-center justify-center gap-1.5 rounded-[0.5rem] text-sm hover:bg-skeleton transition-colors w-full sm:w-auto">
                     <i class="fa-solid fa-rotate"></i> รีเฟรช
                 </button>
             </div>
@@ -56,14 +56,14 @@
         <div class="px-6 py-4">
             <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                 <div id="chips-branch-mystock" class="flex flex-wrap gap-2"></div>
-                <div id="count-branch-mystock" class="text-xs text-white font-medium"></div>
+                <div id="count-branch-mystock" class="text-xs text-ink font-medium"></div>
             </div>
         </div>
 
         <!-- 2c ตาราง (ข้อ 11.6) -->
         <div class="overflow-x-auto" tabindex="0">
             <table class="w-full text-left text-sm whitespace-nowrap border-collapse">
-                <thead class="bg-[#4D4D4D]/40 text-white">
+                <thead class="bg-panel/40 text-ink">
                     <tr>
                         <!-- w-full ให้คอลัมน์แรกดูดพื้นที่ว่างทั้งหมดไว้ คอลัมน์ตัวเลขจะได้เกาะกลุ่มกันชิดขวา
                              ไม่ลอยอยู่กลางตารางเวลาจอกว้าง (ตารางนี้มีแค่ 3 คอลัมน์ ต่างจากหน้า #stock ที่มี 9) -->
@@ -72,7 +72,7 @@
                         <th class="px-6 py-4 font-semibold text-[15px] text-right">ราคาขาย</th>
                     </tr>
                 </thead>
-                <tbody id="table-body-branch-mystock" class="divide-y divide-[#464646]">
+                <tbody id="table-body-branch-mystock" class="divide-y divide-divider">
                     <!-- แถวถูกสร้างจาก js/page-branch-inventory.js -->
                 </tbody>
             </table>
@@ -83,34 +83,34 @@
     <!-- [2] แท็บ 2: สต็อกและราคาอ้างอิงทุกสาขา                       -->
     <!-- ============================================================ -->
     <div id="content-branch-globalstock"
-        class="hidden bg-[#4D4D4D]/40 rounded-2xl shadow-lg overflow-hidden backdrop-blur-sm">
+        class="hidden bg-panel/40 rounded-2xl shadow-lg overflow-hidden backdrop-blur-sm">
         <!-- 2a แถบควบคุม -->
         <div class="p-6 pb-0 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-            <h3 class="text-lg text-white flex items-center gap-2">
-                <i class="fa-solid fa-globe text-[#FFE169]"></i> สต็อกและราคาอ้างอิงทุกสาขา
+            <h3 class="text-lg text-ink flex items-center gap-2">
+                <i class="fa-solid fa-globe text-accent-ink"></i> สต็อกและราคาอ้างอิงทุกสาขา
             </h3>
             <div class="flex flex-wrap items-center gap-2.5 relative w-full lg:w-auto">
                 <div class="relative group w-full sm:w-64 rounded-[0.5rem] overflow-hidden">
                     <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                         <i
-                            class="fa-solid fa-search text-white group-focus-within:text-[#FFE169] transition-colors"></i>
+                            class="fa-solid fa-search text-ink group-focus-within:text-accent-ink transition-colors"></i>
                     </div>
                     <input type="text" id="search-branch-globalstock" placeholder="ค้นหา ชื่อ/สาขา/รหัส..."
                         aria-label="ค้นหาสินค้าและราคาของสาขาอื่น ด้วยชื่อสินค้า ชื่อสาขา หรือรหัสสินค้า"
-                        class="bg-transparent border border-[#4D4D4D]/50 text-sm pl-10 pr-4 py-2 w-full text-white focus:outline-none focus:ring-1 focus:ring-[#FFE169] transition-all placeholder-white">
+                        class="page-filter-control elev-chip bg-transparent text-sm pl-10 pr-4 py-2 w-full text-ink focus:outline-none focus:ring-1 focus:ring-accent-ink transition-all placeholder-body-muted">
                 </div>
                 <select id="filter-branch-globalstock-type" aria-label="กรองตามประเภทสินค้า"
-                    class="bg-[#4D4D4D]/40 cursor-pointer text-sm rounded-[0.5rem] px-3 py-2 text-white focus:outline-none focus:ring-1 focus:ring-[#FFE169] w-full sm:w-auto [&>option]:bg-[#4D4D4D] [&>option:checked]:bg-[#FFE169] [&>option:checked]:text-[#333333]">
+                    class="bg-panel/40 cursor-pointer text-sm rounded-[0.5rem] px-3 py-2 text-ink focus:outline-none focus:ring-1 focus:ring-accent-ink w-full sm:w-auto [&>option]:bg-panel [&>option:checked]:bg-primary [&>option:checked]:text-on-primary">
                     <option value="ALL">ประเภททั้งหมด</option>
                 </select>
                 <select id="filter-branch-globalstock-condition" aria-label="กรองตามสภาพเครื่อง"
-                    class="bg-[#4D4D4D]/40 cursor-pointer text-sm rounded-[0.5rem] px-3 py-2 text-white focus:outline-none focus:ring-1 focus:ring-[#FFE169] w-full sm:w-auto [&>option]:bg-[#4D4D4D] [&>option:checked]:bg-[#FFE169] [&>option:checked]:text-[#333333]">
+                    class="bg-panel/40 cursor-pointer text-sm rounded-[0.5rem] px-3 py-2 text-ink focus:outline-none focus:ring-1 focus:ring-accent-ink w-full sm:w-auto [&>option]:bg-panel [&>option:checked]:bg-primary [&>option:checked]:text-on-primary">
                     <option value="ALL">สภาพทั้งหมด</option>
                     <option value="มือ1">มือ 1</option>
                     <option value="มือ2">มือ 2</option>
                 </select>
                 <button id="btn-refresh-globalstock" type="button"
-                    class="px-3 py-2 bg-[#4D4D4D]/40 cursor-pointer text-white flex items-center justify-center gap-1.5 rounded-[0.5rem] text-sm hover:bg-[#5C5C5C] transition-colors w-full sm:w-auto">
+                    class="px-3 py-2 bg-panel/40 cursor-pointer text-ink flex items-center justify-center gap-1.5 rounded-[0.5rem] text-sm hover:bg-skeleton transition-colors w-full sm:w-auto">
                     <i class="fa-solid fa-rotate"></i> รีเฟรช
                 </button>
             </div>
@@ -120,21 +120,21 @@
         <div class="px-6 py-4">
             <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                 <div id="chips-branch-globalstock" class="flex flex-wrap gap-2"></div>
-                <div id="count-branch-globalstock" class="text-xs text-white font-medium"></div>
+                <div id="count-branch-globalstock" class="text-xs text-ink font-medium"></div>
             </div>
         </div>
 
         <!-- 2c ตาราง -->
         <div class="overflow-x-auto" tabindex="0">
             <table class="w-full text-left text-sm whitespace-nowrap border-collapse">
-                <thead class="bg-[#4D4D4D]/40 text-white">
+                <thead class="bg-panel/40 text-ink">
                     <tr>
                         <th class="px-6 py-4 font-semibold text-[15px] w-full">สินค้า / สาขา / รายละเอียด</th>
                         <th class="px-6 py-4 font-semibold text-[15px] text-center">คงเหลือ</th>
                         <th class="px-6 py-4 font-semibold text-[15px] text-right">ราคาขายอ้างอิง</th>
                     </tr>
                 </thead>
-                <tbody id="table-body-branch-globalstock" class="divide-y divide-[#464646]">
+                <tbody id="table-body-branch-globalstock" class="divide-y divide-divider">
                     <!-- แถวถูกสร้างจาก js/page-branch-inventory.js -->
                 </tbody>
             </table>

@@ -35,8 +35,10 @@ const TARGETS = [
     ['icon_silminmobile.png', 'icon_silminmobile.png', 400, 'หน้า login กว้าง 200'],
     ['logo_silminmobile.png', 'logo_silminmobile.png', 240, 'sidebar กว้าง 120'],
     ['logo.png', 'logo.png', 64, 'favicon'],
-    ['menu.png', 'icon/menu.png', 52, 'ปุ่มเมนู กว้าง 26'],
-    ['bell.png', 'icon/bell.png', 40, 'กระดิ่งแจ้งเตือน กว้าง 20'],
+    // menu.png ถูกแทนด้วย SVG inline ใน index.html แล้ว (ดู #icon-hamburger)
+    // PNG สีขาวมองไม่เห็นบนพื้นสว่าง ส่วน SVG ใช้ currentColor จึงตามธีมได้เอง
+    // bell.png ถูกแทนด้วย SVG inline ใน index.html แล้ว (ดู #icon-bell)
+    // PNG สีเดียวตายตัวย้อมตามธีมไม่ได้ ส่วน SVG ใช้ currentColor จึงตามธีมได้เอง
     ['logout-4.png', 'icons_img/logout-4.png', 40, 'ปุ่มออกจากระบบ กว้าง 19'],
 ];
 

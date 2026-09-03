@@ -30,9 +30,9 @@
 
     // ป้ายสถานะจุดสี — ชุดโทนเดียวกับ DESIGN.md ข้อ 11.6
     const TONE = {
-        ok: { dot: 'bg-[#20D500]', bg: 'bg-[#42A231]/[0.12]', text: 'text-[#20D500]' },
+        ok: { dot: 'bg-state-ok', bg: 'bg-state-ok-tint/[0.12]', text: 'text-state-ok' },
         soon: { dot: 'bg-orange-500', bg: 'bg-orange-500/[0.12]', text: 'text-orange-400' },
-        expired: { dot: 'bg-[#FE0000]', bg: 'bg-[#FE0000]/[0.12]', text: 'text-[#FE0000]' }
+        expired: { dot: 'bg-state-danger', bg: 'bg-state-danger/[0.12]', text: 'text-state-danger' }
     };
     const badge = (tone, label) => {
         const t = TONE[tone] || TONE.expired;
@@ -56,13 +56,13 @@
         return { key: 'active', tone: 'ok', label: 'อยู่ในประกัน', days: d };
     };
 
-    const stateRow = (msg, extraClass = 'text-white/50 italic') =>
+    const stateRow = (msg, extraClass = 'text-ink/50 italic') =>
         `<tr><td colspan="${COLS}" class="px-6 py-8 text-center ${extraClass}">${esc(msg)}</td></tr>`;
 
     // แถวโครงร่างระหว่างรอผลค้นหา — ต้องวางก่อน await เสมอ (ข้อ 11.7)
     const renderSkeleton = (rows = 4) => {
         if (!tbody) return;
-        const bar = (w) => `<div class="h-3.5 ${w} rounded-full bg-[#5c5c5c] animate-pulse"></div>`;
+        const bar = (w) => `<div class="h-3.5 ${w} rounded-full bg-skeleton animate-pulse"></div>`;
         tbody.innerHTML = Array.from({ length: rows }).map(() => `
             <tr>
                 <td class="px-6 py-4"><div class="space-y-1.5">${bar('w-44')}${bar('w-32 h-3')}</div></td>
@@ -90,7 +90,7 @@
         const addChip = (label, onRemove) => {
             const chip = document.createElement('button');
             chip.type = 'button';
-            chip.className = 'px-4 py-2.5 rounded-xl bg-[#4D4D4D]/40 border border-[#3F3F46] text-white text-sm font-medium transition-colors flex items-center gap-2';
+            chip.className = 'elev-card px-4 py-2.5 rounded-xl bg-panel/40 text-ink text-sm font-medium transition-colors flex items-center gap-2';
             chip.innerHTML = `<span>${esc(label)}</span><i class="fa-solid fa-xmark text-[10px] opacity-80"></i>`;
             chip.addEventListener('click', (e) => {
                 // ลบได้เฉพาะตอนคลิกที่กากบาท ตัวชิปเองไม่ตอบสนอง (ข้อ 11.5)
@@ -124,7 +124,7 @@
         if (active > 1) {
             const clearBtn = document.createElement('button');
             clearBtn.type = 'button';
-            clearBtn.className = 'px-2.5 py-1 bg-red-500/10 hover:bg-red-500/15 text-red-300 rounded-full text-xs font-medium border border-red-500/30 transition-colors';
+            clearBtn.className = 'px-2.5 py-1 bg-red-500/10 hover:bg-red-500/15 text-red-300 rounded-full text-xs font-medium ring-1 ring-red-500/30 transition-colors';
             clearBtn.textContent = 'ล้างทั้งหมด';
             clearBtn.addEventListener('click', () => {
                 if (searchInput) searchInput.value = '';
@@ -148,31 +148,31 @@
 
         // นับวันเหลือ/เกิน เป็นข้อความประกอบใต้วันหมดอายุ
         const dayNote = st.days < 0
-            ? `<span class="text-[#FE0000]">เกินมา ${Math.abs(st.days)} วัน</span>`
+            ? `<span class="text-state-danger">เกินมา ${Math.abs(st.days)} วัน</span>`
             : st.days === 0
                 ? `<span class="text-orange-400">หมดวันนี้</span>`
-                : `<span class="${st.key === 'soon' ? 'text-orange-400' : 'text-white/70'}">เหลืออีก ${st.days} วัน</span>`;
+                : `<span class="${st.key === 'soon' ? 'text-orange-400' : 'text-ink/70'}">เหลืออีก ${st.days} วัน</span>`;
 
         return `
-        <tr class="hover:bg-[#464646] transition-colors">
+        <tr class="hover:bg-divider transition-colors">
             <td class="px-6 py-4">
-                <p class="font-medium text-white">${esc(item.product_name)}</p>
-                <p class="text-xs mt-0.5"><span class="font-mono font-semibold text-[#FFE169]">${esc(item.imei_sold)}</span></p>
+                <p class="font-medium text-ink">${esc(item.product_name)}</p>
+                <p class="text-xs mt-0.5"><span class="font-mono font-semibold text-accent-ink">${esc(item.imei_sold)}</span></p>
             </td>
             <td class="px-6 py-4">
-                <p class="text-white">${esc(memberName)}</p>
-                ${phone ? `<p class="text-xs text-white/70 font-mono mt-0.5">${esc(phone)}</p>` : ''}
+                <p class="text-ink">${esc(memberName)}</p>
+                ${phone ? `<p class="text-xs text-ink/70 font-mono mt-0.5">${esc(phone)}</p>` : ''}
             </td>
-            <td class="px-6 py-4 text-white">${esc(branchName)}</td>
-            <td class="px-6 py-4 text-white">${dateTH(item.created_at)}</td>
-            <td class="px-6 py-4 text-white">${item.warranty_period ? esc(item.warranty_period) : '<span class="text-white/50">-</span>'}</td>
+            <td class="px-6 py-4 text-ink">${esc(branchName)}</td>
+            <td class="px-6 py-4 text-ink">${dateTH(item.created_at)}</td>
+            <td class="px-6 py-4 text-ink">${item.warranty_period ? esc(item.warranty_period) : '<span class="text-ink/50">-</span>'}</td>
             <td class="px-6 py-4">
-                <p class="text-white">${dateTH(item.warranty_expiry)}</p>
+                <p class="text-ink">${dateTH(item.warranty_expiry)}</p>
                 <p class="text-xs mt-0.5">${dayNote}</p>
             </td>
             <td class="px-6 py-4">${badge(st.tone, st.label)}</td>
             <td class="px-6 py-4 text-right">
-                <button type="button" class="warranty-receipt-link text-white hover:text-[#FFE169] transition-colors p-2"
+                <button type="button" class="warranty-receipt-link text-ink hover:text-accent-ink transition-colors p-2"
                     data-id="${esc(item.txn_id)}" title="ดูใบเสร็จ ${esc(item.receipt_number)}"
                     aria-label="ดูใบเสร็จ ${esc(item.receipt_number)}">
                     <i class="fa-solid fa-file-invoice"></i>

@@ -16,10 +16,10 @@
 
     // โทนสีของเหตุการณ์ — อยู่ในพาเลตต์ระบบ (ข้อ 11.6) ไม่ใช่ emerald/cyan/indigo/rose แบบเดิม
     const MV_TONES = {
-        in: { hex: '#20D500', bg: 'bg-[#42A231]/[0.12]', text: 'text-[#20D500]' },   // ของเข้า
+        in: { hex: '#20D500', bg: 'bg-state-ok-tint/[0.12]', text: 'text-state-ok' },   // ของเข้า
         move: { hex: '#FF9F0A', bg: 'bg-orange-500/[0.12]', text: 'text-orange-400' }, // กำลังย้าย
-        sale: { hex: '#FFE169', bg: 'bg-[#FFE169]/[0.12]', text: 'text-[#FFE169]' },  // ขายออก
-        cancel: { hex: '#FE0000', bg: 'bg-[#FE0000]/[0.12]', text: 'text-[#FE0000]' } // ยกเลิก
+        sale: { hex: '#FFE169', bg: 'bg-primary/[0.12]', text: 'text-accent-ink' },  // ขายออก
+        cancel: { hex: '#FE0000', bg: 'bg-state-danger/[0.12]', text: 'text-state-danger' } // ยกเลิก
     };
 
     // ⚠️ ค่า action ทั้ง 8 แบบที่ฝั่งเซิร์ฟเวอร์เขียนลงคอลเลกชัน movement จริง
@@ -51,11 +51,11 @@
         if (!movementTimeline) return;
         if (movementEmptyState) movementEmptyState.classList.add('hidden');
         if (movementResultArea) movementResultArea.classList.remove('hidden');
-        const bar = (w) => `<div class="h-3.5 ${w} rounded-full bg-[#5c5c5c] animate-pulse"></div>`;
+        const bar = (w) => `<div class="h-3.5 ${w} rounded-full bg-skeleton animate-pulse"></div>`;
         movementTimeline.innerHTML = Array.from({ length: n }).map(() => `
             <div class="flex gap-4">
-                <div class="w-10 h-10 rounded-full bg-[#5c5c5c] animate-pulse shrink-0"></div>
-                <div class="flex-1 bg-[#27272A] border border-[#3F3F46] rounded-xl p-4 space-y-2">
+                <div class="w-10 h-10 rounded-full bg-skeleton animate-pulse shrink-0"></div>
+                <div class="elev-field flex-1 bg-field rounded-xl p-4 space-y-2">
                     ${bar('w-40')}${bar('w-full')}${bar('w-2/3')}
                 </div>
             </div>`).join('');
@@ -103,10 +103,10 @@
 
     // แถวรายละเอียดหนึ่งบรรทัด สร้างเฉพาะเมื่อมีค่าจริง — ทุก action จึงแสดงเท่าที่ตัวเองมี
     // ไม่ต้องเขียนกล่องรายละเอียดแยกรายชนิดเหมือนของเดิม (ที่เขียนไว้แค่ 4 ชนิด)
-    const mvRow = (icon, label, value, valueClass = 'text-white') => value
+    const mvRow = (icon, label, value, valueClass = 'text-ink') => value
         ? `<p class="flex items-center gap-2 text-xs">
-               <i class="fa-solid ${icon} text-white/70 w-4 text-center"></i>
-               <span class="text-white/70">${mvEsc(label)}</span>
+               <i class="fa-solid ${icon} text-ink/70 w-4 text-center"></i>
+               <span class="text-ink/70">${mvEsc(label)}</span>
                <span class="${valueClass} font-medium">${mvEsc(value)}</span>
            </p>`
         : '';
@@ -136,7 +136,7 @@
 
         if (!movements.length) {
             movementTimeline.innerHTML =
-                '<p class="py-8 text-center text-white/50 italic">ยังไม่มีประวัติการเคลื่อนไหวของสินค้าชิ้นนี้</p>';
+                '<p class="py-8 text-center text-ink/50 italic">ยังไม่มีประวัติการเคลื่อนไหวของสินค้าชิ้นนี้</p>';
             return;
         }
 
@@ -151,10 +151,10 @@
             const rows = [
                 mvRow('fa-store', 'จากสาขา', mov.from_branch && mov.from_branch.name),
                 mvRow('fa-location-dot', 'ไปยังสาขา', mov.to_branch && mov.to_branch.name, tone.text),
-                mvRow('fa-file-invoice', 'เลขที่เอกสาร', mov.reference_no, 'text-[#FFE169] font-mono'),
+                mvRow('fa-file-invoice', 'เลขที่เอกสาร', mov.reference_no, 'text-accent-ink font-mono'),
                 mvRow('fa-stopwatch', 'ใช้เวลาขนส่ง',
                     mov.transit_hours ? `${Number(mov.transit_hours).toFixed(1)} ชั่วโมง` : ''),
-                mvRow('fa-tag', 'IMEI', !data.is_imei_search ? mov.imei : '', 'text-white font-mono'),
+                mvRow('fa-tag', 'IMEI', !data.is_imei_search ? mov.imei : '', 'text-ink font-mono'),
                 mvRow('fa-cubes', 'จำนวน',
                     (!data.is_imei_search && !mov.imei && mov.quantity) ? `${mov.quantity} ชิ้น` : ''),
                 mvRow('fa-user', 'ผู้ทำรายการ', mov.created_by && mov.created_by.name)
@@ -164,21 +164,21 @@
             <div class="flex gap-4">
                 <div class="flex flex-col items-center shrink-0">
                     <div class="w-10 h-10 rounded-full flex items-center justify-center shrink-0"
-                         style="color:${tone.hex};background-color:#27272A;border:1px solid ${tone.hex}59;">
+                         style="color:${tone.hex};background-color:${tone.hex}1F;">
                         <i class="fa-solid ${mvEsc(conf.icon)}"></i>
                     </div>
-                    ${index < movements.length - 1 ? '<div class="w-px flex-1 bg-[#3F3F46] mt-2"></div>' : ''}
+                    ${index < movements.length - 1 ? '<div class="w-px flex-1 bg-line mt-2"></div>' : ''}
                 </div>
-                <div class="flex-1 min-w-0 bg-[#27272A] border ${isLatest ? 'border-[#FFE169]' : 'border-[#3F3F46]'} rounded-xl p-4 mb-2">
+                <div class="elev-field flex-1 min-w-0 bg-field ${isLatest ? 'ring-2 ring-accent-ink' : ''} rounded-xl p-4 mb-2">
                     <div class="flex flex-wrap items-center justify-between gap-2">
                         <div class="flex items-center gap-2">
                             <span class="inline-flex items-center gap-2 px-2.5 py-1 rounded-[0.375rem] ${tone.bg}">
                                 <span class="w-2 h-2 rounded-full" style="background-color:${tone.hex}"></span>
                                 <span class="${tone.text} font-medium text-xs">${mvEsc(mov.action || '-')}</span>
                             </span>
-                            ${isLatest ? '<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#FFE169] text-[#333333]">ล่าสุด</span>' : ''}
+                            ${isLatest ? '<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-primary text-on-primary">ล่าสุด</span>' : ''}
                         </div>
-                        <span class="text-xs text-white/70 font-mono">${mvEsc(dateStr)} ${mvEsc(timeStr)}</span>
+                        <span class="text-xs text-ink/70 font-mono">${mvEsc(dateStr)} ${mvEsc(timeStr)}</span>
                     </div>
                     ${rows ? `<div class="mt-3 space-y-1.5">${rows}</div>` : ''}
                 </div>
