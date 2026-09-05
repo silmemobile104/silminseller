@@ -50,7 +50,7 @@
          ที่เหลือปล่อยให้โหลดตามที่ CSS สั่ง เพื่อไม่ให้แย่ง bandwidth ตอนเปิดหน้าแรก -->
     <link rel="preload" as="font" type="font/woff2" crossorigin href="vendor/fonts/prompt-thai-400.woff2">
     <link rel="preload" as="font" type="font/woff2" crossorigin href="vendor/fonts/prompt-thai-700.woff2">
-    <link rel="stylesheet" href="style.css?v=10">
+    <link rel="stylesheet" href="style.css?v=11">
 
 </head>
 
@@ -351,6 +351,11 @@
                             <rect class="hb-bar hb-bar-3" x="16" y="91" width="96" height="10" rx="5" />
                         </svg>
                     </button>
+                    <!-- ชื่อหน้าปัจจุบัน เฉพาะจอมือถือ (md:hidden) — ดึงข้อความจาก data-tooltip ของเมนูข้างที่ active
+                         อยู่แล้ว ไม่ผูกสตริงไทยซ้ำอีกชุด ต่างจาก navbar-global-info ด้านล่างซึ่งห้ามใส่ชื่อหน้า
+                         (กฎนั้นใช้กับข้อมูลระบบที่เหมือนกันทุกหน้าบนจอใหญ่ ไม่ได้ครอบคลุมป้ายชื่อหน้านี้) -->
+                    <span id="navbar-mobile-page-title"
+                        class="flex md:hidden items-center min-w-0 text-[16px] font-semibold text-ink truncate"></span>
                     <!-- Global System Information: เหมือนกันทุกหน้า ห้ามใส่ชื่อหน้า (ชื่อหน้าอยู่ที่ Page Header เท่านั้น) -->
                     <div id="navbar-global-info"
                         class="hidden md:flex items-center gap-2.5 lg:gap-3 min-w-0 text-[14px] text-body-muted select-none">
@@ -502,8 +507,8 @@
                     <!-- Stock Header Section -->
                     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                         <div class="flex items-center gap-4">
-                            <i class="bi bi-box-seam text-ink w-5 text-2xl text-center"></i>
-                            <h3 class="text-2xl  text-ink">จัดการสต็อก</h3>
+                            <i class="hidden md:block bi bi-box-seam text-ink w-5 text-2xl text-center"></i>
+                            <h3 class="hidden md:block text-2xl  text-ink">จัดการสต็อก</h3>
                         </div>
                         <div class="flex items-center gap-3">
                             <button id="btn-add-product"
@@ -4992,7 +4997,7 @@
     <!-- defer: ปล่อยให้ parse HTML จบก่อนค่อย execute
          ปลอดภัยเพราะทั้งไฟล์ห่ออยู่ใน DOMContentLoaded listener อยู่แล้ว
          และสคริปต์ defer จะ execute ก่อน event DOMContentLoaded ยิงเสมอ -->
-    <script defer src="script.js?v=apple_active_v33"></script>
+    <script defer src="script.js?v=apple_active_v36"></script>
     <script>
         // ลงทะเบียน Service Worker เพื่อแคช asset คงที่ (css/js/font/icon/รูป) ไว้ฝั่งเครื่อง
         // เข้าเว็บครั้งถัดไปเร็วขึ้นมาก โดยเฉพาะตอนเน็ตช้าหรือหลุดชั่วคราว — ดูรายละเอียดที่ sw.js

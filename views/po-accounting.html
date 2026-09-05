@@ -2,8 +2,8 @@
     <!-- [1] หัวหน้า — ปุ่มขวาเปิดฟอร์มแจ้งสินค้านอกระบบ PO (เดิมเป็น accordion ท้ายหน้า) -->
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div class="flex items-center gap-4">
-            <i class="bi bi-truck-front text-ink w-5 text-2xl text-center"></i>
-            <h3 class="text-2xl text-ink">แจ้งของถึงสาขา</h3>
+            <i class="hidden md:block bi bi-truck-front text-ink w-5 text-2xl text-center"></i>
+            <h3 class="hidden md:block text-2xl text-ink">แจ้งของถึงสาขา</h3>
         </div>
         <button id="btn-open-nonpo-modal" type="button"
             class="px-4 py-2.5 bg-chip/60 hover:bg-skeleton cursor-pointer text-ink flex items-center gap-2 rounded-[0.5rem] text-sm transition-colors w-fit">
@@ -297,8 +297,8 @@
     <!-- [1] หัวหน้า — DESIGN.md ข้อ 11.2 (ตัวกรองสาขา/รีเฟรชใช้ร่วมกันทุกแท็บ จึงอยู่บนหัวหน้า) -->
     <div class="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4">
         <div class="flex items-center gap-4">
-            <i class="bi bi-check-square text-ink w-5 text-2xl text-center"></i>
-            <h3 class="text-2xl text-ink">ตรวจสอบนำเข้าสินค้า</h3>
+            <i class="hidden md:block bi bi-check-square text-ink w-5 text-2xl text-center"></i>
+            <h3 class="hidden md:block text-2xl text-ink">ตรวจสอบนำเข้าสินค้า</h3>
         </div>
         <div class="flex flex-wrap items-center gap-2.5">
             <select id="approve-import-filter-branch" aria-label="กรองตามสาขา"
@@ -540,8 +540,8 @@
     <!-- Custom Header Area matching mockup -->
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
         <div class="flex items-center gap-4">
-            <i class="bi bi-cart-plus text-ink w-5 text-2xl text-center"></i>
-            <h3 class="text-2xl  text-ink">ระบบสั่งซื้อ (PO)</h3>
+            <i class="hidden md:block bi bi-cart-plus text-ink w-5 text-2xl text-center"></i>
+            <h3 class="hidden md:block text-2xl  text-ink">ระบบสั่งซื้อ (PO)</h3>
         </div>
         <div class="flex items-center gap-3">
             <!-- Proxy button to trigger the hidden Create PO tab -->
@@ -773,8 +773,8 @@
     <!-- [1] หัวหน้า + ตัวกรองช่วงเวลา — เดินตามหน้า #dashboard -->
     <div class="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4">
         <div class="flex items-center gap-4">
-            <i class="bi bi-cash-stack text-ink w-5 text-2xl text-center"></i>
-            <h3 class="text-2xl text-ink">ระบบบัญชีและการเงิน</h3>
+            <i class="hidden md:block bi bi-cash-stack text-ink w-5 text-2xl text-center"></i>
+            <h3 class="hidden md:block text-2xl text-ink">ระบบบัญชีและการเงิน</h3>
         </div>
         <div class="flex flex-wrap items-center gap-2.5">
             <label for="accounting-start-date" class="sr-only">วันที่เริ่มต้น</label>
@@ -1036,8 +1036,8 @@
     <!-- [1] หัวหน้า — DESIGN.md ข้อ 11.2 -->
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div class="flex items-center gap-4">
-            <i class="bi bi-inbox text-ink w-5 text-2xl text-center"></i>
-            <h3 class="text-2xl text-ink">ตรวจรับของเข้า (PO)</h3>
+            <i class="hidden md:block bi bi-inbox text-ink w-5 text-2xl text-center"></i>
+            <h3 class="hidden md:block text-2xl text-ink">ตรวจรับของเข้า (PO)</h3>
         </div>
         <button id="btn-refresh-po-receive" type="button"
             class="page-filter-control px-3 py-2 bg-panel/40 cursor-pointer text-ink flex items-center justify-center gap-1.5 rounded-[0.5rem] text-sm hover:bg-skeleton transition-colors w-fit">

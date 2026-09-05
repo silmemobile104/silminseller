@@ -224,7 +224,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // ไม่ได้รอ init function ถ้า HTML ยังไม่ถูกแทรกเข้า DOM ก่อน ตัวแปรที่ query ไว้จะเป็น null ถาวร
     // ชื่อ name ต้องตรงกับชื่อที่ใช้ใน loadPageScript — ไฟล์เดียวอาจมีหลาย <div id="view-XXX"> รวมกัน
     // ถ้าหน้านั้นถูก share โดยสคริปต์เดียวกันหลาย view (ดูตาราง mapping ในแผน)
-    const VIEW_FRAGMENT_VERSION = 'v73'; // บัมพ์เลขนี้ทุกครั้งที่แก้ไฟล์ใน views/
+    const VIEW_FRAGMENT_VERSION = 'v75'; // บัมพ์เลขนี้ทุกครั้งที่แก้ไฟล์ใน views/
     const __loadedPageViews = {};
     function loadPageView(name) {
         if (__loadedPageViews[name]) return __loadedPageViews[name];
@@ -3503,6 +3503,14 @@ document.addEventListener('DOMContentLoaded', () => {
         // จำหน้าปัจจุบันไว้ใน URL hash เพื่อให้กด refresh แล้วยังอยู่หน้าเดิม (ดู getViewFromHash + auto-login)
         if (location.hash !== `#${viewName}`) {
             history.replaceState(null, '', `#${viewName}`);
+        }
+
+        // อัปเดตชื่อหน้าบน navbar มือถือ (ข้าง hamburger) — ดึงจาก data-tooltip ของเมนูข้างที่ id ตรงกับ viewName
+        // เพื่อไม่ต้องมีสตริงชื่อหน้าไทยซ้ำอีกชุดแยกจากเมนูข้าง
+        const mobilePageTitleEl = document.getElementById('navbar-mobile-page-title');
+        if (mobilePageTitleEl) {
+            const navEl = document.getElementById(`nav-${viewName}`);
+            mobilePageTitleEl.textContent = navEl ? navEl.dataset.tooltip || '' : '';
         }
 
         // ล้างข้อมูลตะกร้าสินค้าเมื่อเปลี่ยนไปหน้าอื่นที่ไม่ใช่หน้ารายการขาย (transactions)

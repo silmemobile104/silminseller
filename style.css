@@ -4,6 +4,10 @@
 
 /* ==========================================
    SIDEBAR TOGGLE — EXPANDED / COLLAPSED
+   การย่อเหลือแค่ไอคอน (.collapsed) เป็นฟีเจอร์สำหรับจอ desktop เท่านั้น (ใช้ hover เพื่อดู tooltip
+   ชื่อเมนู ซึ่งจอสัมผัสไม่มี hover) — ครอบด้วย @media (min-width: 768px) ทั้งบล็อกเพื่อการันตีว่า
+   จอมือถือจะเห็นทั้งไอคอนและชื่อเมนูพร้อมกันเสมอ ต่อให้ในอนาคตมีโค้ดเผลอเติมคลาส .collapsed
+   ตอนจอมือถือก็ตาม (ผู้ใช้ยืนยันว่าเจอเคสกดปุ่มเมนูครั้งแรกเห็นแต่ไอคอน ต้องกดซ้ำถึงเห็นชื่อ)
    ========================================== */
 
 /* Expanded (default) */
@@ -13,78 +17,80 @@
     overflow: hidden;
 }
 
-/* Collapsed — เหลือแค่ไอคอน */
-#sidebar.collapsed {
-    width: 90px;
-}
+@media (min-width: 768px) {
+    /* Collapsed — เหลือแค่ไอคอน */
+    #sidebar.collapsed {
+        width: 90px;
+    }
 
-/* ซ่อน text และ badge ตอน collapsed */
-#sidebar.collapsed .sidebar-text {
-    opacity: 0;
-    width: 0;
-    overflow: hidden;
-    white-space: nowrap;
-    margin: 0 !important;
-    transition: opacity 0.2s ease, width 0.3s ease;
-}
+    /* ซ่อน text และ badge ตอน collapsed */
+    #sidebar.collapsed .sidebar-text {
+        opacity: 0;
+        width: 0;
+        overflow: hidden;
+        white-space: nowrap;
+        margin: 0 !important;
+        transition: opacity 0.2s ease, width 0.3s ease;
+    }
 
-/* แสดงตอน expanded */
-#sidebar:not(.collapsed) .sidebar-text {
-    opacity: 1;
-    transition: opacity 0.25s ease 0.1s;
-}
+    /* แสดงตอน expanded */
+    #sidebar:not(.collapsed) .sidebar-text {
+        opacity: 1;
+        transition: opacity 0.25s ease 0.1s;
+    }
 
-/* จัดไอคอนให้กึ่งกลางตอน collapsed */
-#sidebar.collapsed .nav-menu-item {
-    justify-content: center;
-    padding-left: 0;
-    padding-right: 0;
-}
+    /* จัดไอคอนให้กึ่งกลางตอน collapsed */
+    #sidebar.collapsed .nav-menu-item {
+        justify-content: center;
+        padding-left: 0;
+        padding-right: 0;
+    }
 
-#sidebar.collapsed .nav-menu-item img {
-    margin: 0 auto;
-}
+    #sidebar.collapsed .nav-menu-item img {
+        margin: 0 auto;
+    }
 
-/* ซ่อน logo / header text ตอน collapsed */
-#sidebar.collapsed img[alt=""] {
-    max-width: 36px;
-    object-fit: contain;
-}
+    /* ซ่อน logo / header text ตอน collapsed */
+    #sidebar.collapsed img[alt=""] {
+        max-width: 36px;
+        object-fit: contain;
+    }
 
-/* ซ่อน logout span ตอน collapsed */
-#sidebar.collapsed #logout-btn {
-    justify-content: center;
-    padding-left: 0;
-    padding-right: 0;
-}
+    /* ซ่อน logout span ตอน collapsed */
+    #sidebar.collapsed #logout-btn {
+        justify-content: center;
+        padding-left: 0;
+        padding-right: 0;
+    }
 
-/* ซ่อน section header ของกลุ่มเมนูตอน collapsed */
-#sidebar.collapsed .nav-section-header {
-    display: none;
-}
+    /* ซ่อน section header ของกลุ่มเมนูตอน collapsed */
+    #sidebar.collapsed .nav-section-header {
+        display: none;
+    }
 
-/* Tooltip เมื่อ collapsed — แสดงชื่อเมนูเมื่อ hover */
-#sidebar.collapsed .nav-menu-item {
-    position: relative;
-}
+    /* Tooltip เมื่อ collapsed — แสดงชื่อเมนูเมื่อ hover */
+    #sidebar.collapsed .nav-menu-item {
+        position: relative;
+    }
 
-#sidebar.collapsed .nav-menu-item:hover::after {
-    content: attr(data-tooltip);
-    position: absolute;
-    left: calc(100% + 12px);
-    top: 50%;
-    transform: translateY(-50%);
-    background: var(--color-elevated);
-    color: var(--color-ink);
-    font-size: 12px;
-    padding: 4px 10px;
-    border-radius: 8px;
-    white-space: nowrap;
-    pointer-events: none;
-    border: 1px solid transparent;
-    z-index: 999;
-    /* tooltip ของเมนูตอนย่อ — กรอบเปลี่ยนเป็นเงา + วงแหวนบางแบบเดียวกับ elev-* */
-    box-shadow: inset 0 0 0 1px var(--color-divider-soft), 0 4px 12px rgb(0 0 0 / 0.4);
+    #sidebar.collapsed .nav-menu-item:hover::after {
+        content: attr(data-tooltip);
+        position: absolute;
+        left: calc(100% + 12px);
+        top: 50%;
+        transform: translateY(-50%);
+        background: var(--color-elevated);
+        color: var(--color-ink);
+        font-size: 12px;
+        padding: 4px 10px;
+        border-radius: 8px;
+        white-space: nowrap;
+        pointer-events: none;
+        border: 1px solid transparent;
+        z-index: 999;
+        /* tooltip ของเมนูตอนย่อ — กรอบเปลี่ยนเป็นเงา + วงแหวนบางแบบเดียวกับ elev-* */
+        box-shadow: inset 0 0 0 1px var(--color-divider-soft), 0 4px 12px rgb(0 0 0 / 0.4);
+    }
 }
 
 
