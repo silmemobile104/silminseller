@@ -23,11 +23,15 @@
     let _dbGroups = [];
     let _dbLegend = {};
     let _dbBound = false;
+    // มุมมองตาราง/การ์ด — จำค่าไว้ข้ามการเข้าหน้า (เหมือนหน้า #deposits)
+    let dbViewMode = localStorage.getItem('db_view_mode') === 'card' ? 'card' : 'list';
 
     // สถานะหน้าต่าง "ดูเอกสาร" — คุมแยกจากตารางแคตตาล็อกด้านหลัง
     let _docs = { key: '', title: '', page: 1, limit: 25, q: '', totalPages: 1, columns: [], docs: [] };
     let _docsSeq = 0;        // กันผลลัพธ์ของคำค้นเก่ามาทับของใหม่ (ผู้ใช้พิมพ์เร็วกว่าเน็ต)
     let _docsTimer = null;   // debounce ช่องค้นหา
+    // มุมมองตาราง/การ์ดของหน้าต่าง "ดูเอกสาร" — แยกจาก dbViewMode ของตารางแคตตาล็อกด้านหลัง
+    let docsViewMode = localStorage.getItem('db_docs_view_mode') === 'card' ? 'card' : 'list';
 
     const el = (id) => document.getElementById(id);
     const setText = (id, t) => { const n = el(id); if (n) n.textContent = t; };
@@ -62,14 +66,41 @@
     const dbStateRow = (msg, cls = 'text-ink/50 italic') =>
         `<tr><td colspan="${DB_COLS}" class="px-6 py-8 text-center ${cls}">${dbEsc(msg)}</td></tr>`;
 
+    const dbStateCard = (msg, cls = 'text-ink/50 italic') =>
+        `<div class="col-span-full py-12 text-center ${cls}">${dbEsc(msg)}</div>`;
+
     // แถวโครงร่างระหว่างรอข้อมูล (ข้อ 11.7) — ต้องวาดก่อน await เสมอ
-    const dbSkeleton = (rows = 6) => {
+    const dbTableSkeleton = (rows = 6) => {
         const body = el('db-table-body');
         if (!body) return;
         const bar = (w) => `<div class="h-3.5 ${w} rounded-full bg-skeleton animate-pulse"></div>`;
         body.innerHTML = Array.from({ length: rows }).map(() =>
             `<tr>${Array.from({ length: DB_COLS }).map(() =>
                 `<td class="px-6 py-4">${bar('w-full')}</td>`).join('')}</tr>`).join('');
+    };
+
+    // โครงร่างการ์ด — สัดส่วนบล็อกเดินตามโครงจริงของ dbCardMarkup ด้านล่าง
+    const dbCardSkeleton = (count = 6) => {
+        const cardsWrap = el('db-view-cards');
+        if (!cardsWrap) return;
+        const bar = (w) => `<div class="h-3.5 ${w} rounded-full bg-skeleton animate-pulse"></div>`;
+        cardsWrap.innerHTML = Array.from({ length: count }).map(() => `
+            <div class="elev-card bg-surface-tile-3 rounded-md p-4">
+                <div class="flex items-start justify-between gap-2">${bar('w-24')}${bar('w-20 h-6')}</div>
+                ${bar('w-32 mt-2.5')}
+                ${bar('w-full mt-3')}${bar('w-3/4 mt-2')}
+                <div class="flex items-center justify-between mt-3.5 pt-3 border-t border-hairline">
+                    ${bar('w-16')}
+                    <div class="flex items-center gap-1.5">
+                        <div class="w-8 h-8 rounded-lg bg-skeleton animate-pulse"></div>
+                        <div class="w-8 h-8 rounded-lg bg-skeleton animate-pulse"></div>
+                    </div>
+                </div>
+            </div>`).join('');
+    };
+
+    const dbSkeleton = (rows = 6) => {
+        if (dbViewMode === 'card') dbCardSkeleton(rows); else dbTableSkeleton(rows);
     };
 
     // ---------- ตัวกรอง ----------
@@ -130,9 +161,101 @@
     };
 
     // ---------- ตาราง ----------
+    // ข้อมูลที่คำนวณร่วมกันระหว่างแถวตารางกับการ์ด — แยกออกมาครั้งเดียวเพื่อไม่ให้สองมุมมองเพี้ยนจากกัน
+    const dbBuildRowData = (c) => {
+        const tone = DB_IMPORTANCE[c.importance] || DB_IMPORTANCE.normal;
+        const pages = (c.pages || []).slice(0, 3).map(p =>
+            `<span class="px-2 py-0.5 rounded-[0.375rem] bg-chip/60 text-[11px] text-ink font-mono">#${dbEsc(p)}</span>`).join(' ');
+        const more = (c.pages || []).length - 3;
+        const pagesHtml = `${pages}${more > 0 ? `<span class="text-[11px] text-ink/60">+${more}</span>` : ''}`;
+        const count = c.countError
+            ? `<span class="text-state-danger-soft" title="${dbEsc(c.countError)}">-</span>`
+            : `<span class="font-mono text-ink">${dbNum(c.count)}</span>`;
+        const badge = `<span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-[0.375rem] text-[11px] font-medium ${tone.bg} ${tone.text}">
+                <span class="w-1.5 h-1.5 rounded-full ${tone.dot}"></span>${dbEsc(tone.label)}
+            </span>`;
+        const actions = `
+            <button type="button" class="elev-chip btn-db-docs px-3 py-1.5 rounded-[0.375rem] bg-chip/60 text-ink hover:ring-1 hover:ring-accent-ink text-xs font-medium transition-colors inline-flex items-center gap-1.5 cursor-pointer"
+                data-key="${dbEsc(c.key)}" aria-label="ดูเอกสารใน ${dbEsc(c.key)}">
+                <i class="fa-solid fa-table-list"></i> ดูเอกสาร
+            </button>
+            <button type="button" class="elev-chip btn-db-detail px-3 py-1.5 rounded-[0.375rem] bg-chip/60 text-ink hover:ring-1 hover:ring-accent-ink text-xs font-medium transition-colors inline-flex items-center gap-1.5 cursor-pointer"
+                data-key="${dbEsc(c.key)}" aria-label="ดูรายละเอียด ${dbEsc(c.key)}">
+                <i class="fa-solid fa-eye"></i> รายละเอียด
+            </button>`;
+        // การ์ดแคบกว่าคอลัมน์ตาราง ปุ่มมีตัวหนังสือสองปุ่มชนกัน จึงใช้ไอคอนล้วนแทน (มี aria-label ชุดเดียวกัน)
+        const cardActions = `
+            <button type="button" class="btn-db-docs text-ink hover:text-indigo-400 transition-colors p-2 cursor-pointer"
+                data-key="${dbEsc(c.key)}" title="ดูเอกสาร" aria-label="ดูเอกสารใน ${dbEsc(c.key)}">
+                <i class="fa-solid fa-table-list"></i>
+            </button>
+            <button type="button" class="btn-db-detail text-ink hover:text-indigo-400 transition-colors p-2 cursor-pointer"
+                data-key="${dbEsc(c.key)}" title="รายละเอียด" aria-label="ดูรายละเอียด ${dbEsc(c.key)}">
+                <i class="fa-solid fa-eye"></i>
+            </button>`;
+        return { pagesHtml, count, badge, actions, cardActions };
+    };
+
+    const dbRowMarkup = (c) => {
+        const d = dbBuildRowData(c);
+        return `
+        <tr class="hover:bg-divider transition-colors">
+            <td class="px-6 py-4">
+                <span class="font-mono font-semibold text-accent-ink">${dbEsc(c.key)}</span>
+                <p class="text-xs text-ink/70 mt-0.5">${dbEsc(c.title)}</p>
+            </td>
+            <td class="px-6 py-4 text-ink">${dbEsc(c.group)}</td>
+            <td class="px-6 py-4 text-right">${d.count}</td>
+            <td class="px-6 py-4 whitespace-normal min-w-[22rem]">
+                <p class="text-ink/80 text-xs leading-relaxed">${dbEsc(c.purpose)}</p>
+            </td>
+            <td class="px-6 py-4">
+                <div class="flex flex-wrap items-center gap-1">${d.pagesHtml}</div>
+            </td>
+            <td class="px-6 py-4">${d.badge}</td>
+            <td class="px-6 py-4 text-right">
+                <div class="inline-flex items-center gap-2">${d.actions}</div>
+            </td>
+        </tr>`;
+    };
+
+    // การ์ด — โครง: หัว (key / ความสำคัญ) · ชื่อ · เก็บอะไร · footer (กลุ่ม+จำนวนเอกสาร + ปุ่มจัดการ)
+    const dbCardMarkup = (c) => {
+        const d = dbBuildRowData(c);
+        return `
+        <div class="elev-card bg-surface-tile-3 rounded-md p-4">
+            <div class="flex items-start justify-between gap-2">
+                <span class="font-mono font-semibold text-accent-ink truncate">${dbEsc(c.key)}</span>
+                <div class="shrink-0">${d.badge}</div>
+            </div>
+            <p class="text-ink font-medium mt-2.5 truncate">${dbEsc(c.title)}</p>
+            <p class="text-ink/80 text-xs leading-relaxed mt-2 line-clamp-2">${dbEsc(c.purpose)}</p>
+
+            ${d.pagesHtml ? `<div class="flex flex-wrap items-center gap-1 mt-3">${d.pagesHtml}</div>` : ''}
+
+            <div class="flex items-center justify-between mt-3.5 pt-3 border-t border-hairline gap-2">
+                <div class="min-w-0 text-xs text-ink/70 truncate">${dbEsc(c.group)} · ${d.count}</div>
+                <div class="flex items-center gap-1 shrink-0">${d.cardActions}</div>
+            </div>
+        </div>`;
+    };
+
+    const dbBindRowHandlers = (container) => {
+        container.querySelectorAll('.btn-db-detail').forEach(b =>
+            b.addEventListener('click', () => dbOpenDetail(b.dataset.key)));
+        container.querySelectorAll('.btn-db-docs').forEach(b =>
+            b.addEventListener('click', () => dbOpenDocs(b.dataset.key)));
+    };
+
     const dbRender = () => {
         const body = el('db-table-body');
         if (!body) return;
+
+        const listWrap = el('db-view-list-wrap');
+        const cardsWrap = el('db-view-cards');
+        if (listWrap) listWrap.classList.toggle('hidden', dbViewMode !== 'list');
+        if (cardsWrap) cardsWrap.classList.toggle('hidden', dbViewMode !== 'card');
+
         const f = dbFilters();
         const rows = _dbCache.filter(c => dbMatches(c, f));
 
@@ -141,60 +264,19 @@
             ? `แสดง ${rows.length} จาก ${_dbCache.length} รายการ` : '');
 
         if (!rows.length) {
-            body.innerHTML = dbStateRow(_dbCache.length
-                ? 'ไม่พบ collection ที่ตรงกับเงื่อนไข'
-                : 'ยังไม่มีข้อมูลแคตตาล็อก');
+            const emptyMsg = _dbCache.length ? 'ไม่พบ collection ที่ตรงกับเงื่อนไข' : 'ยังไม่มีข้อมูลแคตตาล็อก';
+            body.innerHTML = dbStateRow(emptyMsg);
+            if (cardsWrap) cardsWrap.innerHTML = dbStateCard(emptyMsg);
             return;
         }
 
-        body.innerHTML = rows.map(c => {
-            const tone = DB_IMPORTANCE[c.importance] || DB_IMPORTANCE.normal;
-            const pages = (c.pages || []).slice(0, 3).map(p =>
-                `<span class="px-2 py-0.5 rounded-[0.375rem] bg-chip/60 text-[11px] text-ink font-mono">#${dbEsc(p)}</span>`).join(' ');
-            const more = (c.pages || []).length - 3;
-            const count = c.countError
-                ? `<span class="text-state-danger-soft" title="${dbEsc(c.countError)}">-</span>`
-                : `<span class="font-mono text-ink">${dbNum(c.count)}</span>`;
-
-            return `
-            <tr class="hover:bg-divider transition-colors">
-                <td class="px-6 py-4">
-                    <span class="font-mono font-semibold text-accent-ink">${dbEsc(c.key)}</span>
-                    <p class="text-xs text-ink/70 mt-0.5">${dbEsc(c.title)}</p>
-                </td>
-                <td class="px-6 py-4 text-ink">${dbEsc(c.group)}</td>
-                <td class="px-6 py-4 text-right">${count}</td>
-                <td class="px-6 py-4 whitespace-normal min-w-[22rem]">
-                    <p class="text-ink/80 text-xs leading-relaxed">${dbEsc(c.purpose)}</p>
-                </td>
-                <td class="px-6 py-4">
-                    <div class="flex flex-wrap items-center gap-1">${pages}${more > 0
-                    ? `<span class="text-[11px] text-ink/60">+${more}</span>` : ''}</div>
-                </td>
-                <td class="px-6 py-4">
-                    <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-[0.375rem] text-[11px] font-medium ${tone.bg} ${tone.text}">
-                        <span class="w-1.5 h-1.5 rounded-full ${tone.dot}"></span>${dbEsc(tone.label)}
-                    </span>
-                </td>
-                <td class="px-6 py-4 text-right">
-                    <div class="inline-flex items-center gap-2">
-                        <button type="button" class="elev-chip btn-db-docs px-3 py-1.5 rounded-[0.375rem] bg-chip/60 text-ink hover:ring-1 hover:ring-accent-ink text-xs font-medium transition-colors inline-flex items-center gap-1.5 cursor-pointer"
-                            data-key="${dbEsc(c.key)}" aria-label="ดูเอกสารใน ${dbEsc(c.key)}">
-                            <i class="fa-solid fa-table-list"></i> ดูเอกสาร
-                        </button>
-                        <button type="button" class="elev-chip btn-db-detail px-3 py-1.5 rounded-[0.375rem] bg-chip/60 text-ink hover:ring-1 hover:ring-accent-ink text-xs font-medium transition-colors inline-flex items-center gap-1.5 cursor-pointer"
-                            data-key="${dbEsc(c.key)}" aria-label="ดูรายละเอียด ${dbEsc(c.key)}">
-                            <i class="fa-solid fa-eye"></i> รายละเอียด
-                        </button>
-                    </div>
-                </td>
-            </tr>`;
-        }).join('');
-
-        body.querySelectorAll('.btn-db-detail').forEach(b =>
-            b.addEventListener('click', () => dbOpenDetail(b.dataset.key)));
-        body.querySelectorAll('.btn-db-docs').forEach(b =>
-            b.addEventListener('click', () => dbOpenDocs(b.dataset.key)));
+        if (dbViewMode === 'card') {
+            cardsWrap.innerHTML = rows.map(dbCardMarkup).join('');
+            dbBindRowHandlers(cardsWrap);
+        } else {
+            body.innerHTML = rows.map(dbRowMarkup).join('');
+            dbBindRowHandlers(body);
+        }
     };
 
     // ---------- ลิ้นชักรายละเอียด ----------
@@ -306,7 +388,7 @@
         return `<span class="text-ink" title="${dbEsc(s)}">${dbEsc(short)}</span>`;
     };
 
-    const dbDocsSkeleton = () => {
+    const dbDocsTableSkeleton = () => {
         const body = el('db-docs-body');
         if (!body) return;
         const cols = Math.max(4, (_docs.columns || []).length + 1);
@@ -315,15 +397,64 @@
             `<tr>${Array.from({ length: cols }).map(() => `<td class="px-6 py-4">${bar}</td>`).join('')}</tr>`).join('');
     };
 
+    // โครงร่างการ์ด — สัดส่วนบล็อกเดินตามโครงจริงของ dbDocCardMarkup ด้านล่าง
+    const dbDocsCardSkeleton = () => {
+        const cardsWrap = el('db-docs-view-cards');
+        if (!cardsWrap) return;
+        const bar = (w) => `<div class="h-3.5 ${w} rounded-full bg-skeleton animate-pulse"></div>`;
+        cardsWrap.innerHTML = Array.from({ length: 8 }).map(() => `
+            <div class="elev-card bg-surface-tile-3 rounded-md p-4">
+                <div class="space-y-2.5">
+                    ${Array.from({ length: 4 }).map(() =>
+                        `<div class="flex items-center justify-between gap-3">${bar('w-16')}${bar('w-24')}</div>`).join('')}
+                </div>
+                <div class="flex justify-end mt-3 pt-3 border-t border-hairline">
+                    <div class="w-16 h-7 rounded-[0.375rem] bg-skeleton animate-pulse"></div>
+                </div>
+            </div>`).join('');
+    };
+
+    const dbDocsSkeleton = () => {
+        if (docsViewMode === 'card') dbDocsCardSkeleton(); else dbDocsTableSkeleton();
+    };
+
     const dbDocsStateRow = (msg, cls = 'text-ink/50 italic') => {
         const cols = Math.max(4, (_docs.columns || []).length + 1);
         return `<tr><td colspan="${cols}" class="px-6 py-10 text-center ${cls}">${dbEsc(msg)}</td></tr>`;
     };
 
+    const dbDocsStateCard = (msg, cls = 'text-ink/50 italic') =>
+        `<div class="col-span-full py-12 text-center ${cls}">${dbEsc(msg)}</div>`;
+
+    // การ์ด — โครง: รายการฟิลด์:ค่า ตามคอลัมน์จริงของ collection นั้น (คอลัมน์ไม่คงที่ต่างจากตารางอื่นในระบบ)
+    // · footer (ปุ่ม JSON ดิบ) — ใช้ dbFmtCell ชุดเดียวกับตาราง จะได้หน้าตาเซลล์ตรงกันทั้งสองมุมมอง
+    const dbDocCardMarkup = (doc, i) => {
+        const fields = _docs.columns.map(c => `
+            <div class="flex items-start justify-between gap-3 text-xs">
+                <span class="text-ink/60 font-mono shrink-0">${dbEsc(c.name)}</span>
+                <span class="text-right min-w-0 truncate">${dbFmtCell(doc[c.name])}</span>
+            </div>`).join('');
+        return `
+        <div class="elev-card bg-surface-tile-3 rounded-md p-4" data-row="${i}">
+            <div class="space-y-2.5">${fields}</div>
+            <div class="flex justify-end mt-3 pt-3 border-t border-hairline">
+                <button type="button" class="elev-chip btn-db-json px-2.5 py-1 rounded-[0.375rem] bg-chip/60 text-ink hover:ring-1 hover:ring-accent-ink text-[11px] font-medium transition-colors inline-flex items-center gap-1.5 cursor-pointer"
+                    aria-expanded="false">
+                    <i class="fa-solid fa-code"></i> JSON
+                </button>
+            </div>
+        </div>`;
+    };
+
     const dbRenderDocs = () => {
         const head = el('db-docs-head');
         const body = el('db-docs-body');
+        const listWrap = el('db-docs-view-list-wrap');
+        const cardsWrap = el('db-docs-view-cards');
         if (!head || !body) return;
+
+        if (listWrap) listWrap.classList.toggle('hidden', docsViewMode !== 'list');
+        if (cardsWrap) cardsWrap.classList.toggle('hidden', docsViewMode !== 'card');
 
         head.innerHTML = _docs.columns.map(c =>
             `<th class="px-6 py-3 font-semibold text-[13px]">
@@ -333,48 +464,73 @@
             + '<th class="px-6 py-3 font-semibold text-[13px] text-right">ข้อมูลดิบ</th>';
 
         if (!_docs.docs.length) {
-            body.innerHTML = dbDocsStateRow(_docs.q
-                ? 'ไม่พบเอกสารที่ตรงกับคำค้น'
-                : 'collection นี้ยังไม่มีเอกสาร');
+            const emptyMsg = _docs.q ? 'ไม่พบเอกสารที่ตรงกับคำค้น' : 'collection นี้ยังไม่มีเอกสาร';
+            body.innerHTML = dbDocsStateRow(emptyMsg);
+            if (cardsWrap) cardsWrap.innerHTML = dbDocsStateCard(emptyMsg);
             return;
         }
 
-        // JSON ดิบสร้างตอนกดเท่านั้น (ดู dbToggleJson) ไม่ฝังไว้ล่วงหน้าทุกแถว
-        body.innerHTML = _docs.docs.map((doc, i) => {
-            const cells = _docs.columns.map(c =>
-                `<td class="px-6 py-3 max-w-[22rem] truncate">${dbFmtCell(doc[c.name])}</td>`).join('');
-            return `
-            <tr class="hover:bg-divider transition-colors" data-row="${i}">
-                ${cells}
-                <td class="px-6 py-3 text-right">
-                    <button type="button" class="elev-chip btn-db-json px-2.5 py-1 rounded-[0.375rem] bg-chip/60 text-ink hover:ring-1 hover:ring-accent-ink text-[11px] font-medium transition-colors inline-flex items-center gap-1.5 cursor-pointer"
-                        aria-expanded="false">
-                        <i class="fa-solid fa-code"></i> JSON
-                    </button>
-                </td>
-            </tr>`;
-        }).join('');
+        if (docsViewMode === 'card') {
+            cardsWrap.innerHTML = _docs.docs.map(dbDocCardMarkup).join('');
+        } else {
+            // JSON ดิบสร้างตอนกดเท่านั้น (ดู dbToggleJson) ไม่ฝังไว้ล่วงหน้าทุกแถว
+            body.innerHTML = _docs.docs.map((doc, i) => {
+                const cells = _docs.columns.map(c =>
+                    `<td class="px-6 py-3 max-w-[22rem] truncate">${dbFmtCell(doc[c.name])}</td>`).join('');
+                return `
+                <tr class="hover:bg-divider transition-colors" data-row="${i}">
+                    ${cells}
+                    <td class="px-6 py-3 text-right">
+                        <button type="button" class="elev-chip btn-db-json px-2.5 py-1 rounded-[0.375rem] bg-chip/60 text-ink hover:ring-1 hover:ring-accent-ink text-[11px] font-medium transition-colors inline-flex items-center gap-1.5 cursor-pointer"
+                            aria-expanded="false">
+                            <i class="fa-solid fa-code"></i> JSON
+                        </button>
+                    </td>
+                </tr>`;
+            }).join('');
+        }
     };
 
-    // แถว JSON แทรกตอนกด และถอดออกตอนกดซ้ำ — ไม่ทิ้ง DOM ที่ซ่อนไว้ค้างในตาราง
+    // แถว/บล็อก JSON แทรกตอนกด และถอดออกตอนกดซ้ำ — ไม่ทิ้ง DOM ที่ซ่อนไว้ค้าง
+    // ตาราง: แทรกเป็น <tr> ถัดจากแถว · การ์ด: แทรกเป็น <pre> ต่อท้ายในการ์ดเดียวกัน
     const dbToggleJson = (btn) => {
         const tr = btn.closest('tr');
-        if (!tr) return;
-        const next = tr.nextElementSibling;
-        if (next && next.classList.contains('db-docs-json')) {
-            next.remove();
-            btn.setAttribute('aria-expanded', 'false');
+        const card = btn.closest('[data-row]');
+
+        if (tr) {
+            const next = tr.nextElementSibling;
+            if (next && next.classList.contains('db-docs-json')) {
+                next.remove();
+                btn.setAttribute('aria-expanded', 'false');
+                return;
+            }
+            const doc = _docs.docs[Number(tr.dataset.row)];
+            if (!doc) return;
+            tr.insertAdjacentHTML('afterend', `
+                <tr class="db-docs-json">
+                    <td colspan="${_docs.columns.length + 1}" class="px-6 pb-4 pt-0">
+                        <pre tabindex="0" class="elev-field max-h-72 overflow-auto whitespace-pre rounded-xl bg-field p-4 text-xs text-ink/85 font-mono leading-5">${dbEsc(JSON.stringify(doc, null, 2))}</pre>
+                    </td>
+                </tr>`);
+            btn.setAttribute('aria-expanded', 'true');
             return;
         }
-        const doc = _docs.docs[Number(tr.dataset.row)];
-        if (!doc) return;
-        tr.insertAdjacentHTML('afterend', `
-            <tr class="db-docs-json">
-                <td colspan="${_docs.columns.length + 1}" class="px-6 pb-4 pt-0">
-                    <pre tabindex="0" class="elev-field max-h-72 overflow-auto whitespace-pre rounded-xl bg-field p-4 text-xs text-ink/85 font-mono leading-5">${dbEsc(JSON.stringify(doc, null, 2))}</pre>
-                </td>
-            </tr>`);
-        btn.setAttribute('aria-expanded', 'true');
+
+        if (card) {
+            const existing = card.querySelector('.db-docs-json');
+            if (existing) {
+                existing.remove();
+                btn.setAttribute('aria-expanded', 'false');
+                return;
+            }
+            const doc = _docs.docs[Number(card.dataset.row)];
+            if (!doc) return;
+            // แทรกก่อน footer (พ่อของปุ่ม) ไม่ใช่ก่อนตัวปุ่มเอง ไม่งั้น <pre> จะไปติดอยู่ใน
+            // แถว flex justify-end เดียวกับปุ่ม แทนที่จะเป็นบล็อกเต็มความกว้างเหนือปุ่ม
+            btn.parentElement.insertAdjacentHTML('beforebegin', `
+                <pre tabindex="0" class="db-docs-json elev-field max-h-72 overflow-auto whitespace-pre rounded-xl bg-field p-4 text-xs text-ink/85 font-mono leading-5 mb-3">${dbEsc(JSON.stringify(doc, null, 2))}</pre>`);
+            btn.setAttribute('aria-expanded', 'true');
+        }
     };
 
     const dbLoadDocs = async () => {
@@ -468,12 +624,33 @@
         const closeBtn = el('btn-close-db-docs');
         if (closeBtn) closeBtn.addEventListener('click', dbCloseDocs);
 
-        // ผูกครั้งเดียวที่ tbody แทนที่จะผูกทีละปุ่มทุกครั้งที่วาดตาราง (100 แถว = 100 listener)
+        // ผูกครั้งเดียวที่ tbody/cards แทนที่จะผูกทีละปุ่มทุกครั้งที่วาดตาราง (100 แถว = 100 listener)
         const body = el('db-docs-body');
         if (body) body.addEventListener('click', (e) => {
             const btn = e.target.closest('.btn-db-json');
             if (btn) dbToggleJson(btn);
         });
+        const cardsWrap = el('db-docs-view-cards');
+        if (cardsWrap) cardsWrap.addEventListener('click', (e) => {
+            const btn = e.target.closest('.btn-db-json');
+            if (btn) dbToggleJson(btn);
+        });
+
+        // สลับมุมมอง List/Card ของหน้าต่างดูเอกสาร — re-render จาก _docs.docs ทันที ไม่ยิง API ซ้ำ
+        const docsViewListBtn = el('db-docs-view-list');
+        const docsViewCardBtn = el('db-docs-view-card');
+        if (docsViewListBtn && docsViewCardBtn) {
+            const syncDocsViewButtons = (mode) => window.syncViewToggleButtons(docsViewListBtn, docsViewCardBtn, mode);
+            const applyDocsViewMode = (mode) => {
+                docsViewMode = mode;
+                localStorage.setItem('db_docs_view_mode', mode);
+                syncDocsViewButtons(mode);
+                dbRenderDocs();
+            };
+            docsViewListBtn.addEventListener('click', () => applyDocsViewMode('list'));
+            docsViewCardBtn.addEventListener('click', () => applyDocsViewMode('card'));
+            syncDocsViewButtons(docsViewMode);
+        }
 
         const search = el('db-docs-search');
         if (search) {
@@ -578,4 +755,21 @@
     };
 
     window.loadDatabaseOverview = loadDatabaseOverview;
+
+    // สลับมุมมอง List/Card — ผูกที่ top-level ได้ (ไฟล์นี้เป็น js/page-*.js โหลดหลัง loadPageView
+    // แทรก HTML ของ database.html เข้า DOM แล้วเสมอ)
+    const dbViewListBtn = el('db-view-list');
+    const dbViewCardBtn = el('db-view-card');
+    if (dbViewListBtn && dbViewCardBtn) {
+        const syncDbViewButtons = (mode) => window.syncViewToggleButtons(dbViewListBtn, dbViewCardBtn, mode);
+        const applyDbViewMode = (mode) => {
+            dbViewMode = mode;
+            localStorage.setItem('db_view_mode', mode);
+            syncDbViewButtons(mode);
+            dbRender();
+        };
+        dbViewListBtn.addEventListener('click', () => applyDbViewMode('list'));
+        dbViewCardBtn.addEventListener('click', () => applyDbViewMode('card'));
+        syncDbViewButtons(dbViewMode);
+    }
 })();

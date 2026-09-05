@@ -26,6 +26,12 @@
     const btnDepositFilterApply = document.getElementById('btn-deposit-filter-apply');
     const btnDepositFilterReset = document.getElementById('btn-deposit-filter-reset');
 
+    // สลับมุมมอง List/Card (เดินตามรูปแบบ pos-view-grid/list ของหน้า #transactions ใน script.js)
+    const depositViewListBtn = document.getElementById('deposit-view-list');
+    const depositViewCardBtn = document.getElementById('deposit-view-card');
+    const depositViewListWrap = document.getElementById('deposit-view-list-wrap');
+    const depositViewCardsWrap = document.getElementById('deposit-view-cards');
+
     const DEPOSIT_TABLE_COLS = 10;
 
     // Create Modal Elements
@@ -99,6 +105,12 @@
     const detailHistoryReason = document.getElementById('detail-history-reason');
 
     let activeDeposit = null;
+
+    // มุมมองตาราง/การ์ด — จำค่าไว้ข้ามการเข้าหน้า (ต่างจาก posViewMode ในหน้า #transactions ที่รีเซ็ตทุกครั้ง
+    // เพราะหน้านี้เป็นหน้าจัดการข้อมูลที่ผู้ใช้กลับมาดูซ้ำทุกวัน ไม่ใช่โหมดขายหน้าร้านที่เปิดปิดบ่อย)
+    let depositViewMode = localStorage.getItem('deposit_view_mode') === 'card' ? 'card' : 'list';
+    // แคชผลลัพธ์ล่าสุดจาก API — สลับมุมมองแล้ว render ซ้ำจากแคชได้เลย ไม่ต้องยิง /api/deposits ซ้ำ
+    let depositCache = [];
 
     const getLoggedUserBranchId = () => {
         try {
@@ -175,7 +187,7 @@
             wrapper.dataset.value = item.name;
 
             const swatch = document.createElement('div');
-            swatch.className = 'elev-chip w-7 h-7 rounded-full transition-all custom-swatch';
+            swatch.className = 'elev-chip w-7 h-7 rounded-full border border-gray-400 transition-all custom-swatch';
             swatch.style.backgroundColor = window.resolveProductColorHex
                 ? window.resolveProductColorHex(item.name, item)
                 : '#8E8E93';
@@ -191,11 +203,11 @@
                 Array.from(container.children).forEach(child => {
                     const sw = child.querySelector('.custom-swatch');
                     const lb = child.querySelector('.custom-swatch-label');
-                    if (sw) { sw.classList.remove('ring-2', 'ring-accent-ink', 'scale-110'); sw.classList.add('border-transparent'); }
+                    if (sw) { sw.classList.remove('ring-2', 'ring-accent-ink', 'apple-active-neutral'); sw.classList.add('border-transparent'); }
                     if (lb) { lb.classList.remove('text-accent-ink', 'text-[13px]'); lb.classList.add('text-body-muted', 'text-[10px]'); }
                 });
                 swatch.classList.remove('border-transparent');
-                swatch.classList.add('ring-2', 'ring-accent-ink', 'scale-110');
+                swatch.classList.add('ring-2', 'ring-accent-ink', 'apple-active-neutral');
                 label.classList.remove('text-body-muted', 'text-[10px]');
                 label.classList.add('text-accent-ink', 'text-[13px]');
                 setDepositPickerValue(hiddenInput, item.name);
@@ -224,11 +236,11 @@
 
             btn.addEventListener('click', () => {
                 Array.from(container.children).forEach(child => {
-                    child.classList.remove('ring-2', 'ring-accent-ink', 'text-accent-ink');
+                    child.classList.remove('ring-2', 'ring-accent-ink', 'text-accent-ink', 'apple-active-neutral');
                     child.classList.add('border-line', 'text-body-muted');
                 });
                 btn.classList.remove('border-line', 'text-body-muted');
-                btn.classList.add('ring-2', 'ring-accent-ink', 'text-accent-ink');
+                btn.classList.add('ring-2', 'ring-accent-ink', 'text-accent-ink', 'apple-active-neutral');
                 setDepositPickerValue(hiddenInput, item.name);
             });
 
@@ -297,7 +309,7 @@
     // ==========================================
 
     // แถวโครงร่างระหว่างรอข้อมูล — ต้องเรียกก่อน await เสมอ ไม่ปล่อยตารางว่าง (ข้อ 11.7)
-    const renderDepositSkeleton = (rowCount = 6) => {
+    const renderDepositTableSkeleton = (rowCount = 6) => {
         const bar = (widthClass) => `<div class="h-3.5 ${widthClass} rounded-full bg-skeleton animate-pulse"></div>`;
         const twoLine = (w1, w2) => `<div class="space-y-2">${bar(w1)}${bar(w2)}</div>`;
         let html = '';
@@ -325,8 +337,45 @@
         depositTableBody.innerHTML = html;
     };
 
+    // โครงร่างการ์ด — สัดส่วนบล็อกเดินตามโครงจริงของ renderDepositCard ด้านล่าง (หัว/ลูกค้า/สินค้า/การเงิน/footer)
+    const renderDepositCardSkeleton = (cardCount = 6) => {
+        const bar = (widthClass) => `<div class="h-3.5 ${widthClass} rounded-full bg-skeleton animate-pulse"></div>`;
+        let html = '';
+        for (let i = 0; i < cardCount; i++) {
+            html += `
+                <div class="elev-card bg-surface-tile-3 rounded-md p-4">
+                    <div class="flex items-start justify-between gap-2">
+                        ${bar('w-24 h-4')}
+                        ${bar('w-16 h-5')}
+                    </div>
+                    ${bar('w-32 mt-3')}
+                    ${bar('w-40 mt-4')}
+                    <div class="grid grid-cols-3 gap-2 mt-4">
+                        ${bar('w-full h-8')}${bar('w-full h-8')}${bar('w-full h-8')}
+                    </div>
+                    <div class="flex items-center justify-between mt-4 pt-3 border-t border-hairline">
+                        ${bar('w-20')}
+                        <div class="flex items-center gap-1.5">
+                            <div class="w-8 h-8 rounded-[0.375rem] bg-skeleton animate-pulse"></div>
+                            <div class="w-8 h-8 rounded-[0.375rem] bg-skeleton animate-pulse"></div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        if (depositViewCardsWrap) depositViewCardsWrap.innerHTML = html;
+    };
+
+    const renderDepositSkeleton = (count = 6) => {
+        if (depositViewMode === 'card') renderDepositCardSkeleton(count);
+        else renderDepositTableSkeleton(count);
+    };
+
     const depositStateRow = (message, extraClass = 'text-ink/50 italic') =>
         `<tr><td colspan="${DEPOSIT_TABLE_COLS}" class="px-6 py-8 text-center ${extraClass}">${message}</td></tr>`;
+
+    const depositStateCard = (message, extraClass = 'text-ink/50 italic') =>
+        `<div class="col-span-full py-12 text-center ${extraClass}">${message}</div>`;
 
     // ป้ายสถานะ: จุดสี + พื้น tint 12% ตามตารางสถานะใน DESIGN.md ข้อ 11.6
     const depositStatusBadge = (status) => {
@@ -496,6 +545,196 @@
         if (depositFilterPanelContent) depositFilterPanelContent.classList.add('translate-x-full');
     };
 
+    // ข้อมูลที่คำนวณร่วมกันระหว่างแถวตารางกับการ์ด — แยกออกมาครั้งเดียวเพื่อไม่ให้สองมุมมองเพี้ยนจากกัน
+    // (รูปแบบเดียวกับ buildPosCardData ในหน้า #transactions, script.js)
+    const buildDepositRowData = (item) => {
+        const dateStr = new Date(item.createdAt).toLocaleDateString('th-TH', { hour: '2-digit', minute: '2-digit' }) + ' น.';
+        const apptStr = item.appointment_date ? new Date(item.appointment_date).toLocaleDateString('th-TH') : 'ไม่ระบุ';
+        const imeiStr = item.imei
+            ? `<span class="font-mono">${item.imei}</span>`
+            : '<span class="italic">IMEI: ยังไม่ระบุ</span>';
+        // เลขที่บิล POS มีเฉพาะรายการที่ส่งมอบแล้ว จึงเกาะไปกับบรรทัดขั้นตอนแทนที่จะกินคอลัมน์ของตัวเอง
+        const stageStr = item.bill_number ? `${item.stage} · บิล ${item.bill_number}` : item.stage;
+        const remaining = item.remaining_amount || 0;
+        return { dateStr, apptStr, imeiStr, stageStr, remaining };
+    };
+
+    // ผูกปุ่ม view/print + คลิกทั้งชิ้น (แถวหรือการ์ด) ให้ทำงานเหมือนกันทั้งสองมุมมอง
+    const bindDepositActionHandlers = (el, item) => {
+        el.querySelector('.btn-print-deposit').addEventListener('click', (e) => {
+            e.stopPropagation();
+            printDepositSlip(item._id);
+        });
+
+        // ปุ่มตาเป็นทางเข้าที่คีย์บอร์ดใช้ได้จริง ส่วนคลิกทั้งชิ้นเก็บไว้เป็นทางลัดของเมาส์
+        el.querySelector('.btn-view-deposit').addEventListener('click', (e) => {
+            e.stopPropagation();
+            openDepositDetailsModal(item);
+        });
+
+        el.addEventListener('click', () => {
+            openDepositDetailsModal(item);
+        });
+    };
+
+    const depositTableRowMarkup = (item) => {
+        const d = buildDepositRowData(item);
+        const row = document.createElement('tr');
+        row.className = 'hover:bg-divider transition-colors cursor-pointer';
+        row.innerHTML = `
+            <td class="px-6 py-4">
+                <div>
+                    <p class="font-mono font-semibold text-accent-ink">${item.deposit_number || '-'}</p>
+                    <p class="text-xs text-ink/70 mt-0.5">${d.dateStr}</p>
+                </div>
+            </td>
+            <td class="px-6 py-4">
+                ${twoLineCell(item.customer_name, `<span class="font-mono">${item.customer_phone}</span>`)}
+            </td>
+            <td class="px-6 py-4">
+                <p class="font-medium text-ink flex items-center gap-2">${depositProductIcon(item)}<span>${item.product_name}</span></p>
+                <p class="text-xs text-ink/70 pl-6 mt-0.5">${d.imeiStr}</p>
+            </td>
+            <td class="px-6 py-4 text-right text-ink font-mono">฿${item.product_price.toLocaleString()}</td>
+            <td class="px-6 py-4 text-right text-ink font-mono">฿${item.deposit_amount.toLocaleString()}</td>
+            <td class="px-6 py-4 text-right font-mono ${d.remaining > 0 ? 'text-state-danger' : 'text-ink'}">฿${d.remaining.toLocaleString()}</td>
+            <td class="px-6 py-4 text-ink text-sm">${d.apptStr}</td>
+            <td class="px-6 py-4">
+                <div>
+                    ${depositStatusBadge(item.status)}
+                    <p class="text-xs text-ink/70 mt-1">${d.stageStr}</p>
+                </div>
+            </td>
+            <td class="px-6 py-4">
+                ${twoLineCell(item.created_by?.name || '-', item.branch_id?.name || '-')}
+            </td>
+            <td class="px-6 py-4 text-right">
+                <div class="flex items-center justify-end gap-1">
+                    <button type="button" class="btn-view-deposit text-ink hover:text-indigo-400 transition-colors p-2" title="ดูรายละเอียด">
+                        <i class="fa-solid fa-eye"></i>
+                    </button>
+                    <button type="button" class="btn-print-deposit text-ink hover:text-amber-400 transition-colors p-2" data-id="${item._id}" title="พิมพ์ใบมัดจำ">
+                        <i class="fa-solid fa-print"></i>
+                    </button>
+                </div>
+            </td>
+        `;
+        bindDepositActionHandlers(row, item);
+        return row;
+    };
+
+    // การ์ด — โครง: หัว (เลขที่ใบ+วันที่ / สถานะ) · ลูกค้า · สินค้า · การเงิน 3 ช่อง · นัดรับ+ขั้นตอน · footer (ผู้ทำรายการ/สาขา + ปุ่ม)
+    const renderDepositCard = (item) => {
+        const d = buildDepositRowData(item);
+        const card = document.createElement('div');
+        card.className = 'elev-card pos-card bg-surface-tile-3 rounded-md p-4 transition-all hover:-translate-y-1 border-none cursor-pointer';
+        card.innerHTML = `
+            <div class="flex items-start justify-between gap-2">
+                <div class="min-w-0">
+                    <p class="font-mono font-semibold text-accent-ink truncate">${item.deposit_number || '-'}</p>
+                    <p class="text-xs text-ink/70 mt-0.5">${d.dateStr}</p>
+                </div>
+                <div class="shrink-0">${depositStatusBadge(item.status)}</div>
+            </div>
+
+            <div class="mt-3 pt-3 border-t border-hairline">
+                ${twoLineCell(item.customer_name, `<span class="font-mono">${item.customer_phone}</span>`)}
+            </div>
+
+            <div class="mt-3">
+                <p class="font-medium text-ink flex items-center gap-2 min-w-0">${depositProductIcon(item)}<span class="truncate">${item.product_name}</span></p>
+                <p class="text-xs text-ink/70 pl-6 mt-0.5">${d.imeiStr}</p>
+            </div>
+
+            <div class="grid grid-cols-3 gap-2 mt-3.5 text-center">
+                <div class="bg-surface-chip rounded-sm px-2 py-1.5">
+                    <p class="text-[10px] text-ink/60">ราคาเต็ม</p>
+                    <p class="text-xs font-mono font-semibold text-ink mt-0.5">฿${item.product_price.toLocaleString()}</p>
+                </div>
+                <div class="bg-surface-chip rounded-sm px-2 py-1.5">
+                    <p class="text-[10px] text-ink/60">ยอดมัดจำ</p>
+                    <p class="text-xs font-mono font-semibold text-ink mt-0.5">฿${item.deposit_amount.toLocaleString()}</p>
+                </div>
+                <div class="bg-surface-chip rounded-sm px-2 py-1.5">
+                    <p class="text-[10px] text-ink/60">ค้างชำระ</p>
+                    <p class="text-xs font-mono font-semibold mt-0.5 ${d.remaining > 0 ? 'text-state-danger' : 'text-ink'}">฿${d.remaining.toLocaleString()}</p>
+                </div>
+            </div>
+
+            <p class="text-xs text-ink/70 mt-3">
+                <i class="fa-solid fa-calendar-day text-[10px] mr-1"></i>นัดรับ: ${d.apptStr} · ${d.stageStr}
+            </p>
+
+            <div class="flex items-center justify-between mt-3.5 pt-3 border-t border-hairline">
+                <div class="min-w-0 text-xs text-ink/70 truncate">
+                    ${item.created_by?.name || '-'} · ${item.branch_id?.name || '-'}
+                </div>
+                <div class="flex items-center gap-1 shrink-0">
+                    <button type="button" class="btn-view-deposit text-ink hover:text-indigo-400 transition-colors p-2" title="ดูรายละเอียด">
+                        <i class="fa-solid fa-eye"></i>
+                    </button>
+                    <button type="button" class="btn-print-deposit text-ink hover:text-amber-400 transition-colors p-2" data-id="${item._id}" title="พิมพ์ใบมัดจำ">
+                        <i class="fa-solid fa-print"></i>
+                    </button>
+                </div>
+            </div>
+        `;
+        bindDepositActionHandlers(card, item);
+        return card;
+    };
+
+    // จุดเดียวที่ตัดสินว่าจะ render ตารางหรือการ์ด — ใช้ทั้งตอน fetch เสร็จและตอนแค่สลับมุมมอง (อ่านจาก depositCache)
+    const renderDepositResults = (errorMessage = null) => {
+        if (!depositTableBody) return;
+
+        if (depositViewListWrap) depositViewListWrap.classList.toggle('hidden', depositViewMode !== 'list');
+        if (depositViewCardsWrap) depositViewCardsWrap.classList.toggle('hidden', depositViewMode !== 'card');
+
+        if (errorMessage) {
+            depositTableBody.innerHTML = depositStateRow(errorMessage, 'text-red-400');
+            if (depositViewCardsWrap) depositViewCardsWrap.innerHTML = depositStateCard(errorMessage, 'text-red-400');
+            if (depositResultCount) depositResultCount.textContent = '';
+            return;
+        }
+
+        if (depositCache.length > 0) {
+            if (depositViewMode === 'card') {
+                const frag = document.createDocumentFragment();
+                depositCache.forEach(item => frag.appendChild(renderDepositCard(item)));
+                depositViewCardsWrap.innerHTML = '';
+                depositViewCardsWrap.appendChild(frag);
+            } else {
+                const frag = document.createDocumentFragment();
+                depositCache.forEach(item => frag.appendChild(depositTableRowMarkup(item)));
+                depositTableBody.innerHTML = '';
+                depositTableBody.appendChild(frag);
+            }
+            if (depositResultCount) depositResultCount.textContent = `แสดง ${depositCache.length} รายการ`;
+        } else {
+            depositTableBody.innerHTML = depositStateRow('ไม่พบข้อมูลใบมัดจำสินค้าตามตัวเลือก');
+            if (depositViewCardsWrap) depositViewCardsWrap.innerHTML = depositStateCard('ไม่พบข้อมูลใบมัดจำสินค้าตามตัวเลือก');
+            if (depositResultCount) depositResultCount.textContent = '';
+        }
+    };
+
+    // ซิงก์คลาส active/idle ของปุ่มสลับมุมมองให้ตรงกับ depositViewMode ปัจจุบัน (ไม่ render ข้อมูล)
+    const syncDepositViewButtons = (mode) => window.syncViewToggleButtons(depositViewListBtn, depositViewCardBtn, mode);
+
+    // สลับมุมมอง List/Card — re-render จาก depositCache ทันที ไม่ยิง /api/deposits ซ้ำ
+    const applyDepositViewMode = (mode) => {
+        depositViewMode = mode;
+        localStorage.setItem('deposit_view_mode', mode);
+        syncDepositViewButtons(mode);
+        renderDepositResults();
+    };
+
+    if (depositViewListBtn) depositViewListBtn.addEventListener('click', () => applyDepositViewMode('list'));
+    if (depositViewCardBtn) depositViewCardBtn.addEventListener('click', () => applyDepositViewMode('card'));
+    // ซิงก์ปุ่มให้ตรงกับโหมดที่จำไว้ตั้งแต่โหลดสคริปต์ครั้งแรก — ก่อน loadDeposits() ที่ script.js เรียกตอนเข้าเพจ
+    syncDepositViewButtons(depositViewMode);
+    if (depositViewListWrap) depositViewListWrap.classList.toggle('hidden', depositViewMode !== 'list');
+    if (depositViewCardsWrap) depositViewCardsWrap.classList.toggle('hidden', depositViewMode !== 'card');
+
     async function loadDeposits() {
         if (!depositTableBody) return;
 
@@ -550,89 +789,12 @@
             });
             const result = await response.json();
 
-            depositTableBody.innerHTML = '';
-            if (result.success && result.data && result.data.length > 0) {
-                result.data.forEach(item => {
-                    const row = document.createElement('tr');
-                    row.className = 'hover:bg-divider transition-colors cursor-pointer';
-
-                    const dateStr = new Date(item.createdAt).toLocaleDateString('th-TH', { hour: '2-digit', minute: '2-digit' }) + ' น.';
-                    const apptStr = item.appointment_date ? new Date(item.appointment_date).toLocaleDateString('th-TH') : 'ไม่ระบุ';
-                    const imeiStr = item.imei
-                        ? `<span class="font-mono">${item.imei}</span>`
-                        : '<span class="italic">IMEI: ยังไม่ระบุ</span>';
-                    // เลขที่บิล POS มีเฉพาะรายการที่ส่งมอบแล้ว จึงเกาะไปกับบรรทัดขั้นตอนแทนที่จะกินคอลัมน์ของตัวเอง
-                    const stageStr = item.bill_number ? `${item.stage} · บิล ${item.bill_number}` : item.stage;
-                    const remaining = item.remaining_amount || 0;
-
-                    row.innerHTML = `
-                        <td class="px-6 py-4">
-                            <div>
-                                <p class="font-mono font-semibold text-accent-ink">${item.deposit_number || '-'}</p>
-                                <p class="text-xs text-ink/70 mt-0.5">${dateStr}</p>
-                            </div>
-                        </td>
-                        <td class="px-6 py-4">
-                            ${twoLineCell(item.customer_name, `<span class="font-mono">${item.customer_phone}</span>`)}
-                        </td>
-                        <td class="px-6 py-4">
-                            <p class="font-medium text-ink flex items-center gap-2">${depositProductIcon(item)}<span>${item.product_name}</span></p>
-                            <p class="text-xs text-ink/70 pl-6 mt-0.5">${imeiStr}</p>
-                        </td>
-                        <td class="px-6 py-4 text-right text-ink font-mono">฿${item.product_price.toLocaleString()}</td>
-                        <td class="px-6 py-4 text-right text-ink font-mono">฿${item.deposit_amount.toLocaleString()}</td>
-                        <td class="px-6 py-4 text-right font-mono ${remaining > 0 ? 'text-state-danger' : 'text-ink'}">฿${remaining.toLocaleString()}</td>
-                        <td class="px-6 py-4 text-ink text-sm">${apptStr}</td>
-                        <td class="px-6 py-4">
-                            <div>
-                                ${depositStatusBadge(item.status)}
-                                <p class="text-xs text-ink/70 mt-1">${stageStr}</p>
-                            </div>
-                        </td>
-                        <td class="px-6 py-4">
-                            ${twoLineCell(item.created_by?.name || '-', item.branch_id?.name || '-')}
-                        </td>
-                        <td class="px-6 py-4 text-right">
-                            <div class="flex items-center justify-end gap-1">
-                                <button type="button" class="btn-view-deposit text-ink hover:text-indigo-400 transition-colors p-2" title="ดูรายละเอียด">
-                                    <i class="fa-solid fa-eye"></i>
-                                </button>
-                                <button type="button" class="btn-print-deposit text-ink hover:text-amber-400 transition-colors p-2" data-id="${item._id}" title="พิมพ์ใบมัดจำ">
-                                    <i class="fa-solid fa-print"></i>
-                                </button>
-                            </div>
-                        </td>
-                    `;
-
-                    row.querySelector('.btn-print-deposit').addEventListener('click', (e) => {
-                        e.stopPropagation();
-                        printDepositSlip(item._id);
-                    });
-
-                    // ปุ่มตาเป็นทางเข้าที่คีย์บอร์ดใช้ได้จริง ส่วนคลิกทั้งแถวเก็บไว้เป็นทางลัดของเมาส์
-                    row.querySelector('.btn-view-deposit').addEventListener('click', (e) => {
-                        e.stopPropagation();
-                        openDepositDetailsModal(item);
-                    });
-
-                    row.addEventListener('click', () => {
-                        openDepositDetailsModal(item);
-                    });
-
-                    depositTableBody.appendChild(row);
-                });
-
-                if (depositResultCount) {
-                    depositResultCount.textContent = `แสดง ${result.data.length} รายการ`;
-                }
-            } else {
-                depositTableBody.innerHTML = depositStateRow('ไม่พบข้อมูลใบมัดจำสินค้าตามตัวเลือก');
-                if (depositResultCount) depositResultCount.textContent = '';
-            }
+            depositCache = (result.success && Array.isArray(result.data)) ? result.data : [];
+            renderDepositResults();
         } catch (e) {
             console.error('Error loading deposits list:', e);
-            depositTableBody.innerHTML = depositStateRow('เกิดข้อผิดพลาดในการโหลดรายการมัดจำ', 'text-red-400');
-            if (depositResultCount) depositResultCount.textContent = '';
+            depositCache = [];
+            renderDepositResults('เกิดข้อผิดพลาดในการโหลดรายการมัดจำ');
             showToast('เกิดข้อผิดพลาดในการโหลดรายการมัดจำ', 'error');
         }
     }

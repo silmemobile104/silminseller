@@ -32,6 +32,11 @@
     const badgeTransferPending = document.getElementById('badge-transfer-pending-count');
     const badgeTransferHistory = document.getElementById('badge-transfer-history-count');
     const btnTransferRefresh = document.getElementById('btn-transfer-refresh');
+    // สลับมุมมอง List/Card (เดินตามรูปแบบ pos-view-grid/list ของหน้า #transactions ใน script.js)
+    const transferViewListBtn = document.getElementById('transfer-view-list');
+    const transferViewCardBtn = document.getElementById('transfer-view-card');
+    const transferViewListWrap = document.getElementById('transfer-view-list-wrap');
+    const transferViewCardsWrap = document.getElementById('transfer-view-cards');
 
     // Transfer State (ดึงมาจาก core เดิม — ย้ายมาเป็น local state ของไฟล์นี้)
     let transferCart = [];
@@ -41,6 +46,8 @@
     let transferSearchTerm = '';
     let transferDirectionFilter = ''; // '' | 'in' | 'out'
     let transferStatusFilter = '';    // '' | รอดำเนินการ | รับเข้าแล้ว | ยกเลิกแล้ว
+    // มุมมองตาราง/การ์ด — จำค่าไว้ข้ามการเข้าหน้า (เหมือนหน้า #deposits)
+    let transferViewMode = localStorage.getItem('transfer_view_mode') === 'card' ? 'card' : 'list';
 
     const TRANSFER_COLS = 6;
 
@@ -125,8 +132,11 @@
     const tfStateRow = (msg, cls = 'text-ink/50 italic') =>
         `<tr><td colspan="${TRANSFER_COLS}" class="px-6 py-8 text-center ${cls}">${tfEsc(msg)}</td></tr>`;
 
+    const tfStateCard = (msg, cls = 'text-ink/50 italic') =>
+        `<div class="col-span-full py-12 text-center ${cls}">${tfEsc(msg)}</div>`;
+
     // แถวโครงร่างกระพริบ เรียกก่อน await ทุกครั้ง ไม่ปล่อยตารางว่างระหว่างรอ (ข้อ 11.7)
-    const tfSkeleton = (rows = 4) => {
+    const tfTableSkeleton = (rows = 4) => {
         if (!transferTableBody) return;
         const bar = (w) => `<div class="h-3.5 ${w} rounded-full bg-skeleton animate-pulse"></div>`;
         transferTableBody.innerHTML = Array.from({ length: rows }).map(() => `
@@ -138,6 +148,33 @@
                 <td class="px-6 py-4">${bar('w-20')}</td>
                 <td class="px-6 py-4">${bar('w-12')}</td>
             </tr>`).join('');
+    };
+
+    // โครงร่างการ์ด — สัดส่วนบล็อกเดินตามโครงจริงของ tfCardMarkup ด้านล่าง
+    const tfCardSkeleton = (count = 4) => {
+        if (!transferViewCardsWrap) return;
+        const bar = (w) => `<div class="h-3.5 ${w} rounded-full bg-skeleton animate-pulse"></div>`;
+        transferViewCardsWrap.innerHTML = Array.from({ length: count }).map(() => `
+            <div class="elev-card bg-surface-tile-3 rounded-md p-4">
+                <div class="flex items-start justify-between gap-2">
+                    ${bar('w-24 h-4')}
+                    ${bar('w-16 h-5')}
+                </div>
+                ${bar('w-32 mt-3')}
+                ${bar('w-full mt-4')}
+                <div class="flex items-center justify-between mt-4 pt-3 border-t border-hairline">
+                    ${bar('w-16')}
+                    <div class="flex items-center gap-1.5">
+                        <div class="w-8 h-8 rounded-[0.375rem] bg-skeleton animate-pulse"></div>
+                        <div class="w-8 h-8 rounded-[0.375rem] bg-skeleton animate-pulse"></div>
+                    </div>
+                </div>
+            </div>`).join('');
+    };
+
+    const tfSkeleton = (rows = 4) => {
+        if (transferViewMode === 'card') tfCardSkeleton(rows);
+        else tfTableSkeleton(rows);
     };
 
     const tfDateTime = (d) => {
@@ -334,9 +371,117 @@
         }
     }
 
+    // ปุ่มจัดการที่ย้อนไม่ได้ (รับเข้า/ยกเลิก) — ใช้ร่วมกันทั้งแถวตารางและการ์ด ตรวจสิทธิ์ก่อนเรนเดอร์
+    // และยังผ่าน showConfirm() ตอนกดอีกชั้น
+    function tfActionButtons(transfer, perms) {
+        const receiveBtn = perms.canReceive
+            ? `<button type="button" class="btn-transfer-receive text-ink hover:text-state-ok transition-colors p-2 cursor-pointer"
+                    data-id="${tfEsc(transfer._id)}" title="ยืนยันรับเข้าสต็อก"
+                    aria-label="ยืนยันรับเข้าสต็อก ใบโอน ${tfEsc(transfer.transfer_number)}">
+                    <i class="fa-solid fa-circle-check"></i>
+               </button>`
+            : '';
+        const cancelBtn = perms.canCancel
+            ? `<button type="button" class="btn-transfer-cancel text-ink hover:text-red-400 transition-colors p-2 cursor-pointer"
+                    data-id="${tfEsc(transfer._id)}" title="ยกเลิกการโอนย้าย"
+                    aria-label="ยกเลิกการโอนย้าย ใบโอน ${tfEsc(transfer.transfer_number)}">
+                    <i class="fa-solid fa-ban"></i>
+               </button>`
+            : '';
+        const detailBtn = `<button type="button" class="btn-transfer-detail text-ink hover:text-indigo-400 transition-colors p-2 cursor-pointer"
+                    data-id="${tfEsc(transfer._id)}" title="ดูรายละเอียด"
+                    aria-label="ดูรายละเอียดใบโอน ${tfEsc(transfer.transfer_number)}">
+                    <i class="fa-solid fa-eye"></i>
+               </button>`;
+        return { receiveBtn, cancelBtn, detailBtn };
+    }
+
+    function tfRowMarkup(transfer) {
+        const dir = transferDirection(transfer);
+        const perms = transferPermissions(transfer);
+        const fromBranch = (transfer.from_branch && transfer.from_branch.name) || '-';
+        const toBranch = (transfer.to_branch && transfer.to_branch.name) || '-';
+        const desc = transferItemsDesc(transfer);
+        const { receiveBtn, cancelBtn, detailBtn } = tfActionButtons(transfer, perms);
+
+        return `
+        <tr class="hover:bg-divider transition-colors">
+            <td class="px-6 py-4">
+                <p class="font-mono font-semibold text-accent-ink">${tfEsc(transfer.transfer_number)}</p>
+                <p class="text-xs text-ink/70 mt-0.5">${tfEsc(tfDateTime(transfer.created_at))}</p>
+            </td>
+            <td class="px-6 py-4">${transferDirectionBadge(dir)}</td>
+            <td class="px-6 py-4">
+                <span class="text-ink inline-flex items-center gap-2">
+                    <span>${tfEsc(fromBranch)}</span>
+                    <i class="fa-solid fa-arrow-right text-ink/50 text-[10px]"></i>
+                    <span>${tfEsc(toBranch)}</span>
+                </span>
+            </td>
+            <td class="px-6 py-4">
+                <span class="text-ink block max-w-[360px] truncate" title="${tfEsc(desc)}">${tfEsc(desc)}</span>
+            </td>
+            <td class="px-6 py-4">${transferStatusBadge(transfer.status)}</td>
+            <td class="px-6 py-4">
+                <div class="flex items-center justify-end gap-1">
+                    ${receiveBtn}${cancelBtn}${detailBtn}
+                </div>
+            </td>
+        </tr>`;
+    }
+
+    // การ์ด — โครง: หัว (เลขที่โอน+วันที่ / สถานะ) · ทิศทาง+เส้นทาง · รายการสินค้า · footer (ปุ่มจัดการ)
+    function tfCardMarkup(transfer) {
+        const dir = transferDirection(transfer);
+        const perms = transferPermissions(transfer);
+        const fromBranch = (transfer.from_branch && transfer.from_branch.name) || '-';
+        const toBranch = (transfer.to_branch && transfer.to_branch.name) || '-';
+        const desc = transferItemsDesc(transfer);
+        const { receiveBtn, cancelBtn, detailBtn } = tfActionButtons(transfer, perms);
+
+        return `
+        <div class="elev-card pos-card bg-surface-tile-3 rounded-md p-4 transition-all hover:-translate-y-1 border-none">
+            <div class="flex items-start justify-between gap-2">
+                <div class="min-w-0">
+                    <p class="font-mono font-semibold text-accent-ink truncate">${tfEsc(transfer.transfer_number)}</p>
+                    <p class="text-xs text-ink/70 mt-0.5">${tfEsc(tfDateTime(transfer.created_at))}</p>
+                </div>
+                <div class="shrink-0">${transferStatusBadge(transfer.status)}</div>
+            </div>
+
+            <div class="mt-3 pt-3 border-t border-hairline">
+                <div>${transferDirectionBadge(dir)}</div>
+                <span class="text-ink text-sm inline-flex items-center gap-2 min-w-0 mt-2">
+                    <span class="truncate">${tfEsc(fromBranch)}</span>
+                    <i class="fa-solid fa-arrow-right text-ink/50 text-[10px] shrink-0"></i>
+                    <span class="truncate">${tfEsc(toBranch)}</span>
+                </span>
+            </div>
+
+            <p class="text-ink text-sm mt-3 truncate" title="${tfEsc(desc)}">${tfEsc(desc)}</p>
+
+            <div class="flex items-center justify-end gap-1 mt-3.5 pt-3 border-t border-hairline">
+                ${receiveBtn}${cancelBtn}${detailBtn}
+            </div>
+        </div>`;
+    }
+
+    function tfBindResultHandlers(container) {
+        if (!container) return;
+        container.querySelectorAll('.btn-transfer-detail').forEach(btn =>
+            btn.addEventListener('click', () => openTransferDetailModal(btn.dataset.id)));
+        container.querySelectorAll('.btn-transfer-receive').forEach(btn =>
+            btn.addEventListener('click', () => receiveTransfer(btn.dataset.id)));
+        container.querySelectorAll('.btn-transfer-cancel').forEach(btn =>
+            btn.addEventListener('click', () => cancelTransfer(btn.dataset.id)));
+    }
+
     // Render Transfers Table
     function renderTransfersTable() {
         if (!transferTableBody) return;
+
+        if (transferViewListWrap) transferViewListWrap.classList.toggle('hidden', transferViewMode !== 'list');
+        if (transferViewCardsWrap) transferViewCardsWrap.classList.toggle('hidden', transferViewMode !== 'card');
 
         // ป้ายตัวเลขบนแท็บนับจากข้อมูลดิบเสมอ ไม่ขึ้นกับตัวกรองที่เลือกอยู่
         const pendingCount = transfersData.filter(t => t.status === 'รอดำเนินการ').length;
@@ -351,75 +496,44 @@
         }
 
         if (!rows.length) {
-            transferTableBody.innerHTML = tfStateRow(total
+            const emptyMsg = total
                 ? 'ไม่พบรายการที่ตรงกับตัวกรอง'
                 : (currentTransferTab === 'incoming'
                     ? 'ไม่มีใบโอนย้ายที่รอดำเนินการ'
-                    : 'ยังไม่มีประวัติการโอนย้ายของสาขานี้'));
+                    : 'ยังไม่มีประวัติการโอนย้ายของสาขานี้');
+            transferTableBody.innerHTML = tfStateRow(emptyMsg);
+            if (transferViewCardsWrap) transferViewCardsWrap.innerHTML = tfStateCard(emptyMsg);
             return;
         }
 
-        transferTableBody.innerHTML = rows.map(transfer => {
-            const dir = transferDirection(transfer);
-            const perms = transferPermissions(transfer);
-            const fromBranch = (transfer.from_branch && transfer.from_branch.name) || '-';
-            const toBranch = (transfer.to_branch && transfer.to_branch.name) || '-';
-            const desc = transferItemsDesc(transfer);
-
-            // ปุ่มที่ย้อนไม่ได้ต้องตรวจสิทธิ์ก่อนเรนเดอร์ และยังผ่าน showConfirm() ตอนกดอีกชั้น
-            const receiveBtn = perms.canReceive
-                ? `<button type="button" class="btn-transfer-receive text-ink hover:text-state-ok transition-colors p-2 cursor-pointer"
-                        data-id="${tfEsc(transfer._id)}" title="ยืนยันรับเข้าสต็อก"
-                        aria-label="ยืนยันรับเข้าสต็อก ใบโอน ${tfEsc(transfer.transfer_number)}">
-                        <i class="fa-solid fa-circle-check"></i>
-                   </button>`
-                : '';
-            const cancelBtn = perms.canCancel
-                ? `<button type="button" class="btn-transfer-cancel text-ink hover:text-red-400 transition-colors p-2 cursor-pointer"
-                        data-id="${tfEsc(transfer._id)}" title="ยกเลิกการโอนย้าย"
-                        aria-label="ยกเลิกการโอนย้าย ใบโอน ${tfEsc(transfer.transfer_number)}">
-                        <i class="fa-solid fa-ban"></i>
-                   </button>`
-                : '';
-
-            return `
-            <tr class="hover:bg-divider transition-colors">
-                <td class="px-6 py-4">
-                    <p class="font-mono font-semibold text-accent-ink">${tfEsc(transfer.transfer_number)}</p>
-                    <p class="text-xs text-ink/70 mt-0.5">${tfEsc(tfDateTime(transfer.created_at))}</p>
-                </td>
-                <td class="px-6 py-4">${transferDirectionBadge(dir)}</td>
-                <td class="px-6 py-4">
-                    <span class="text-ink inline-flex items-center gap-2">
-                        <span>${tfEsc(fromBranch)}</span>
-                        <i class="fa-solid fa-arrow-right text-ink/50 text-[10px]"></i>
-                        <span>${tfEsc(toBranch)}</span>
-                    </span>
-                </td>
-                <td class="px-6 py-4">
-                    <span class="text-ink block max-w-[360px] truncate" title="${tfEsc(desc)}">${tfEsc(desc)}</span>
-                </td>
-                <td class="px-6 py-4">${transferStatusBadge(transfer.status)}</td>
-                <td class="px-6 py-4">
-                    <div class="flex items-center justify-end gap-1">
-                        ${receiveBtn}${cancelBtn}
-                        <button type="button" class="btn-transfer-detail text-ink hover:text-indigo-400 transition-colors p-2 cursor-pointer"
-                            data-id="${tfEsc(transfer._id)}" title="ดูรายละเอียด"
-                            aria-label="ดูรายละเอียดใบโอน ${tfEsc(transfer.transfer_number)}">
-                            <i class="fa-solid fa-eye"></i>
-                        </button>
-                    </div>
-                </td>
-            </tr>`;
-        }).join('');
-
-        transferTableBody.querySelectorAll('.btn-transfer-detail').forEach(btn =>
-            btn.addEventListener('click', () => openTransferDetailModal(btn.dataset.id)));
-        transferTableBody.querySelectorAll('.btn-transfer-receive').forEach(btn =>
-            btn.addEventListener('click', () => receiveTransfer(btn.dataset.id)));
-        transferTableBody.querySelectorAll('.btn-transfer-cancel').forEach(btn =>
-            btn.addEventListener('click', () => cancelTransfer(btn.dataset.id)));
+        if (transferViewMode === 'card') {
+            transferViewCardsWrap.innerHTML = rows.map(tfCardMarkup).join('');
+            tfBindResultHandlers(transferViewCardsWrap);
+        } else {
+            transferTableBody.innerHTML = rows.map(tfRowMarkup).join('');
+            tfBindResultHandlers(transferTableBody);
+        }
     }
+
+    // ซิงก์คลาส active/idle ของปุ่มสลับมุมมองให้ตรงกับ transferViewMode ปัจจุบัน (ไม่ render ข้อมูล)
+    function syncTransferViewButtons(mode) {
+        window.syncViewToggleButtons(transferViewListBtn, transferViewCardBtn, mode);
+    }
+
+    // สลับมุมมอง List/Card — re-render จาก transfersData ทันที ไม่ยิง /api/transfers ซ้ำ
+    function applyTransferViewMode(mode) {
+        transferViewMode = mode;
+        localStorage.setItem('transfer_view_mode', mode);
+        syncTransferViewButtons(mode);
+        renderTransfersTable();
+    }
+
+    if (transferViewListBtn) transferViewListBtn.addEventListener('click', () => applyTransferViewMode('list'));
+    if (transferViewCardBtn) transferViewCardBtn.addEventListener('click', () => applyTransferViewMode('card'));
+    // ซิงก์ปุ่มให้ตรงกับโหมดที่จำไว้ตั้งแต่โหลดสคริปต์ครั้งแรก — ก่อน loadTransfers() ที่ script.js เรียกตอนเข้าเพจ
+    syncTransferViewButtons(transferViewMode);
+    if (transferViewListWrap) transferViewListWrap.classList.toggle('hidden', transferViewMode !== 'list');
+    if (transferViewCardsWrap) transferViewCardsWrap.classList.toggle('hidden', transferViewMode !== 'card');
 
     // Open View Transfer Modal
     window.openTransferDetailModal = function (transferId) {
@@ -543,8 +657,8 @@
     if (btnTransferViewCloseModal) btnTransferViewCloseModal.onclick = closeTransferViewModal;
 
     // Switch Transfer Tab
-    const TF_TAB_BASE = 'elev-chip px-4 py-2.5 rounded-xl text-sm font-bold transition-colors flex items-center gap-2 cursor-pointer';
-    const TF_TAB_ON = 'bg-primary text-on-primary ring-1 ring-accent-ink';
+    const TF_TAB_BASE = 'elev-chip tab-toggle-btn px-4 py-2.5 rounded-xl text-sm font-bold transition-colors flex items-center gap-2 cursor-pointer';
+    const TF_TAB_ON = 'bg-primary text-on-primary ring-1 ring-accent-ink apple-active-accent';
     const TF_TAB_OFF = 'elev-field bg-field text-body-muted hover:ring-1 hover:ring-accent-ink hover:text-ink';
     // ป้ายตัวเลขต้องอ่านออกทั้งบนพื้นเหลือง (แท็บที่เลือก) และพื้นเข้ม จึงสลับสีตามสถานะแท็บ
     const TF_BADGE_ON = 'px-2 py-0.5 rounded-full text-[10px] font-bold bg-hairline/20';
@@ -990,6 +1104,10 @@
     };
 
     // Transfer Event Listeners
+    // มาร์กอัปตั้งต้นของแท็บ "รอดำเนินการ" ยังไม่มีคลาส tab-toggle-btn/apple-active-accent
+    // (ใส่เฉพาะตอน switchTransferTab สลับแท็บ) เรียกครั้งแรกให้ตรงกันตั้งแต่เปิดหน้า ไม่งั้นแท็บที่
+    // active อยู่ตั้งแต่ต้นจะยังมีเส้นขอบเดิมค้างอยู่ในโหมดสว่าง
+    switchTransferTab('incoming');
     if (transferTabIncoming) transferTabIncoming.addEventListener('click', () => switchTransferTab('incoming'));
     if (transferTabHistory) transferTabHistory.addEventListener('click', () => switchTransferTab('history'));
     if (btnOpenCreateTransfer) btnOpenCreateTransfer.addEventListener('click', openTransferModal);

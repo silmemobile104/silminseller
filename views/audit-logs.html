@@ -6,7 +6,7 @@
             <h3 class="text-2xl text-ink">ประวัติการทำงานระบบ</h3>
         </div>
         <button id="btn-clear-audit-filters" type="button"
-            class="px-3 py-2 bg-panel/40 cursor-pointer text-ink flex items-center justify-center gap-1.5 rounded-[0.5rem] text-sm hover:bg-skeleton transition-colors w-fit">
+            class="page-filter-control px-3 py-2 bg-panel/40 cursor-pointer text-ink flex items-center justify-center gap-1.5 rounded-[0.5rem] text-sm hover:bg-skeleton transition-colors w-fit">
             <i class="fa-solid fa-filter-circle-xmark"></i> ล้างตัวกรอง
         </button>
     </div>
@@ -38,27 +38,39 @@
                 </div>
                 <label for="audit-filter-module" class="sr-only">กรองตามโมดูลระบบ</label>
                 <select id="audit-filter-module"
-                    class="bg-panel/40 cursor-pointer text-sm rounded-[0.5rem] px-3 py-2 text-ink focus:outline-none focus:ring-1 focus:ring-accent-ink w-full sm:w-auto [&>option]:bg-panel [&>option:checked]:bg-primary [&>option:checked]:text-on-primary">
+                    class="page-filter-control bg-panel/40 cursor-pointer text-sm rounded-[0.5rem] px-3 py-2 text-ink focus:outline-none focus:ring-1 focus:ring-accent-ink w-full sm:w-auto [&>option]:bg-panel [&>option:checked]:bg-primary [&>option:checked]:text-on-primary">
                     <option value="ALL">ทุกโมดูล</option>
                 </select>
                 <label for="audit-filter-action" class="sr-only">กรองตามประเภทกิจกรรม</label>
                 <select id="audit-filter-action"
-                    class="hidden md:block bg-panel/40 cursor-pointer text-sm rounded-[0.5rem] px-3 py-2 text-ink focus:outline-none focus:ring-1 focus:ring-accent-ink [&>option]:bg-panel [&>option:checked]:bg-primary [&>option:checked]:text-on-primary">
+                    class="page-filter-control hidden md:block bg-panel/40 cursor-pointer text-sm rounded-[0.5rem] px-3 py-2 text-ink focus:outline-none focus:ring-1 focus:ring-accent-ink [&>option]:bg-panel [&>option:checked]:bg-primary [&>option:checked]:text-on-primary">
                     <option value="ALL">ทุกประเภท</option>
                 </select>
             </div>
         </div>
 
-        <!-- 2b ชิปตัวกรอง + ตัวนับผลลัพธ์ (ข้อ 11.5) -->
+        <!-- 2b ชิปตัวกรอง + ตัวนับผลลัพธ์ + สลับมุมมอง (ข้อ 11.5) -->
         <div class="px-6 py-4">
             <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                 <div id="audit-active-filters" class="flex flex-wrap gap-2"></div>
-                <div id="audit-pagination-info" class="text-xs text-ink font-medium"></div>
+                <div class="flex items-center gap-3">
+                    <div id="audit-pagination-info" class="text-xs text-ink font-medium"></div>
+                    <div class="flex items-center gap-1 shrink-0">
+                        <button type="button" id="audit-view-list" aria-label="มุมมองรายการ" aria-pressed="true"
+                            class="w-9 h-9 rounded-md flex items-center justify-center transition-colors bg-primary text-on-primary">
+                            <i class="fa-solid fa-list text-sm"></i>
+                        </button>
+                        <button type="button" id="audit-view-card" aria-label="มุมมองการ์ด" aria-pressed="false"
+                            class="w-9 h-9 rounded-md flex items-center justify-center transition-colors bg-surface-chip text-body-muted hover:text-ink">
+                            <i class="fa-solid fa-table-cells-large text-sm"></i>
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
 
         <!-- 2c ตาราง (ข้อ 11.6) -->
-        <div class="overflow-x-auto" tabindex="0">
+        <div id="audit-view-list-wrap" class="overflow-x-auto" tabindex="0">
             <table class="w-full text-left text-sm whitespace-nowrap border-collapse">
                 <thead class="bg-panel/40 text-ink">
                     <tr>
@@ -74,13 +86,15 @@
                 <tbody id="audit-logs-table-body" class="divide-y divide-divider"></tbody>
             </table>
         </div>
+        <!-- 2c' การ์ด (มุมมองทางเลือก — ซ่อนไว้ก่อน สลับผ่านปุ่มด้านบน) -->
+        <div id="audit-view-cards" class="hidden grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 p-6"></div>
 
         <!-- แถบแบ่งหน้า -->
         <div class="px-6 py-4 border-t border-divider flex flex-col sm:flex-row items-center justify-between gap-3">
             <p class="text-xs text-ink/70">หน้าละ 50 รายการ</p>
             <div class="flex items-center gap-2">
                 <button id="btn-audit-prev" type="button"
-                    class="px-3 py-2 bg-panel/40 cursor-pointer text-ink flex items-center gap-1.5 rounded-[0.5rem] text-sm hover:bg-skeleton transition-colors disabled:opacity-30 disabled:pointer-events-none">
+                    class="page-filter-control px-3 py-2 bg-panel/40 cursor-pointer text-ink flex items-center gap-1.5 rounded-[0.5rem] text-sm hover:bg-skeleton transition-colors disabled:opacity-30 disabled:pointer-events-none">
                     <i class="fa-solid fa-chevron-left text-xs"></i> ก่อนหน้า
                 </button>
                 <div id="audit-current-page"
@@ -88,7 +102,7 @@
                     1
                 </div>
                 <button id="btn-audit-next" type="button"
-                    class="px-3 py-2 bg-panel/40 cursor-pointer text-ink flex items-center gap-1.5 rounded-[0.5rem] text-sm hover:bg-skeleton transition-colors disabled:opacity-30 disabled:pointer-events-none">
+                    class="page-filter-control px-3 py-2 bg-panel/40 cursor-pointer text-ink flex items-center gap-1.5 rounded-[0.5rem] text-sm hover:bg-skeleton transition-colors disabled:opacity-30 disabled:pointer-events-none">
                     ถัดไป <i class="fa-solid fa-chevron-right text-xs"></i>
                 </button>
             </div>

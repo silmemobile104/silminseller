@@ -46,13 +46,12 @@
             <div class="px-6 py-5 flex flex-col lg:flex-row lg:items-end gap-6 lg:gap-10">
                 <!-- ช่องสแกน IMEI — ซ่อนทั้งบล็อกเมื่อรอบถูกอนุมัติแล้ว (JS สลับคลาส hidden ที่ id นี้) -->
                 <div id="audit-scan-area" class="flex-1 min-w-0">
-                    <label for="audit-imei-input"
-                        class="text-ink font-medium flex items-center gap-2 text-xs mb-2">
+                    <label for="audit-imei-input" class="text-ink font-medium flex items-center gap-2 text-xs mb-2">
                         <i class="fa-solid fa-qrcode text-ink"></i> สแกนหรือพิมพ์หมายเลข IMEI
                         <span class="text-red-500">*</span>
                     </label>
                     <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
-                        <div class="relative group flex-1 min-w-0 rounded-[0.5rem] overflow-hidden">
+                        <div class="relative group flex-1 min-w-0 rounded-[0.5rem]">
                             <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                                 <i
                                     class="fa-solid fa-barcode text-ink group-focus-within:text-accent-ink transition-colors"></i>
@@ -106,7 +105,7 @@
                         เครื่อง</span>
                 </h3>
                 <div class="flex flex-wrap items-center gap-2.5 relative w-full lg:w-auto">
-                    <div class="relative group w-full sm:w-64 rounded-[0.5rem] overflow-hidden">
+                    <div class="relative group w-full sm:w-64 rounded-[0.5rem]">
                         <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                             <i
                                 class="fa-solid fa-search text-ink group-focus-within:text-accent-ink transition-colors"></i>
@@ -125,27 +124,39 @@
                     </select>
                     <button id="btn-toggle-expected-list" type="button" aria-expanded="true"
                         aria-controls="expected-list-body" onclick="toggleExpectedList()"
-                        class="px-3 py-2 bg-panel/40 cursor-pointer text-ink flex items-center justify-center gap-1.5 rounded-[0.5rem] text-sm hover:bg-skeleton transition-colors w-full sm:w-auto">
+                        class="page-filter-control px-3 py-2 bg-panel/40 cursor-pointer text-ink flex items-center justify-center gap-1.5 rounded-[0.5rem] text-sm hover:bg-skeleton transition-colors w-full sm:w-auto">
                         <i id="expected-list-chevron" class="fa-solid fa-chevron-up text-xs transition-transform"></i>
                         <span>ย่อ / ขยาย</span>
                     </button>
                 </div>
             </div>
 
-            <!-- 2b ชิปตัวกรองที่ใช้อยู่ + ตัวนับผลลัพธ์ (ข้อ 11.5) -->
+            <!-- 2b ชิปตัวกรองที่ใช้อยู่ + ตัวนับผลลัพธ์ + สลับมุมมอง (ข้อ 11.5) -->
             <div class="px-6 py-4">
                 <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                     <div id="expected-active-filters" class="flex flex-wrap gap-2"></div>
-                    <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-ink font-medium">
-                        <span id="expected-list-summary"></span>
-                        <span id="expected-result-count"></span>
+                    <div class="flex items-center gap-3">
+                        <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-ink font-medium">
+                            <span id="expected-list-summary"></span>
+                            <span id="expected-result-count"></span>
+                        </div>
+                        <div class="flex items-center gap-1 shrink-0">
+                            <button type="button" id="expected-view-list" aria-label="มุมมองรายการ" aria-pressed="true"
+                                class="w-9 h-9 rounded-md flex items-center justify-center transition-colors bg-primary text-on-primary">
+                                <i class="fa-solid fa-list text-sm"></i>
+                            </button>
+                            <button type="button" id="expected-view-card" aria-label="มุมมองการ์ด" aria-pressed="false"
+                                class="w-9 h-9 rounded-md flex items-center justify-center transition-colors bg-surface-chip text-body-muted hover:text-ink">
+                                <i class="fa-solid fa-table-cells-large text-sm"></i>
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
 
             <!-- 2c ตาราง (ข้อ 11.6) -->
             <div id="expected-list-body">
-                <div class="overflow-x-auto" tabindex="0">
+                <div id="expected-view-list-wrap" class="overflow-x-auto" tabindex="0">
                     <table id="expected-items-table" class="w-full text-left text-sm whitespace-nowrap border-collapse">
                         <thead class="bg-panel/40 text-ink">
                             <tr>
@@ -162,6 +173,10 @@
                         </tbody>
                     </table>
                 </div>
+                <!-- มุมมองการ์ด (ทางเลือก — ซ่อนไว้ก่อน สลับผ่านปุ่มด้านบน) -->
+                <div id="expected-view-cards" class="hidden grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 p-6">
+                    <!-- การ์ดถูกสร้างจาก js/page-stock-audit.js -->
+                </div>
             </div>
         </div>
 
@@ -176,15 +191,25 @@
                 </h3>
             </div>
 
-            <!-- 2b ตัวนับผลลัพธ์ (ตารางนี้ไม่มีตัวกรองของตัวเอง จึงไม่มีชิป) -->
+            <!-- 2b ตัวนับผลลัพธ์ (ตารางนี้ไม่มีตัวกรองของตัวเอง จึงไม่มีชิป) + สลับมุมมอง -->
             <div class="px-6 py-4">
-                <div class="flex justify-end">
+                <div class="flex items-center justify-end gap-3">
                     <div id="audit-scan-list-count" class="text-xs text-ink font-medium"></div>
+                    <div class="flex items-center gap-1 shrink-0">
+                        <button type="button" id="scan-list-view-list" aria-label="มุมมองรายการ" aria-pressed="true"
+                            class="w-9 h-9 rounded-md flex items-center justify-center transition-colors bg-primary text-on-primary">
+                            <i class="fa-solid fa-list text-sm"></i>
+                        </button>
+                        <button type="button" id="scan-list-view-card" aria-label="มุมมองการ์ด" aria-pressed="false"
+                            class="w-9 h-9 rounded-md flex items-center justify-center transition-colors bg-surface-chip text-body-muted hover:text-ink">
+                            <i class="fa-solid fa-table-cells-large text-sm"></i>
+                        </button>
+                    </div>
                 </div>
             </div>
 
             <!-- 2c ตาราง -->
-            <div class="overflow-x-auto" tabindex="0">
+            <div id="scan-list-view-list-wrap" class="overflow-x-auto" tabindex="0">
                 <table class="w-full text-left text-sm whitespace-nowrap border-collapse">
                     <thead class="bg-panel/40 text-ink">
                         <tr>
@@ -200,6 +225,10 @@
                         <!-- แถวถูกสร้างจาก js/page-stock-audit.js -->
                     </tbody>
                 </table>
+            </div>
+            <!-- มุมมองการ์ด (ทางเลือก — ซ่อนไว้ก่อน สลับผ่านปุ่มด้านบน) -->
+            <div id="scan-list-view-cards" class="hidden grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 p-6">
+                <!-- การ์ดถูกสร้างจาก js/page-stock-audit.js -->
             </div>
         </div>
 
@@ -277,22 +306,36 @@
                         <option value="อนุมัติแล้ว">อนุมัติแล้ว</option>
                     </select>
                     <button id="btn-refresh-audit-review" type="button"
-                        class="px-3 py-2 bg-panel/40 cursor-pointer text-ink flex items-center justify-center gap-1.5 rounded-[0.5rem] text-sm hover:bg-skeleton transition-colors w-full sm:w-auto">
+                        class="page-filter-control px-3 py-2 bg-panel/40 cursor-pointer text-ink flex items-center justify-center gap-1.5 rounded-[0.5rem] text-sm hover:bg-skeleton transition-colors w-full sm:w-auto">
                         <i class="fa-solid fa-rotate"></i> รีเฟรช
                     </button>
                 </div>
             </div>
 
-            <!-- 2b ชิปตัวกรองที่ใช้อยู่ + ตัวนับผลลัพธ์ (ข้อ 11.5) -->
+            <!-- 2b ชิปตัวกรองที่ใช้อยู่ + ตัวนับผลลัพธ์ + สลับมุมมอง (ข้อ 11.5) -->
             <div class="px-6 py-4">
                 <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                     <div id="audit-review-active-filters" class="flex flex-wrap gap-2"></div>
-                    <div id="audit-review-result-count" class="text-xs text-ink font-medium"></div>
+                    <div class="flex items-center gap-3">
+                        <div id="audit-review-result-count" class="text-xs text-ink font-medium"></div>
+                        <div class="flex items-center gap-1 shrink-0">
+                            <button type="button" id="audit-review-sessions-view-list" aria-label="มุมมองรายการ"
+                                aria-pressed="true"
+                                class="w-9 h-9 rounded-md flex items-center justify-center transition-colors bg-primary text-on-primary">
+                                <i class="fa-solid fa-list text-sm"></i>
+                            </button>
+                            <button type="button" id="audit-review-sessions-view-card" aria-label="มุมมองการ์ด"
+                                aria-pressed="false"
+                                class="w-9 h-9 rounded-md flex items-center justify-center transition-colors bg-surface-chip text-body-muted hover:text-ink">
+                                <i class="fa-solid fa-table-cells-large text-sm"></i>
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
 
             <!-- 2c ตาราง (ข้อ 11.6) -->
-            <div class="overflow-x-auto" tabindex="0">
+            <div id="audit-review-sessions-view-list-wrap" class="overflow-x-auto" tabindex="0">
                 <table class="w-full text-left text-sm whitespace-nowrap border-collapse">
                     <thead class="bg-panel/40 text-ink">
                         <tr>
@@ -308,6 +351,11 @@
                     </tbody>
                 </table>
             </div>
+            <!-- มุมมองการ์ด (ทางเลือก — ซ่อนไว้ก่อน สลับผ่านปุ่มด้านบน) -->
+            <div id="audit-review-sessions-view-cards"
+                class="hidden grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 p-6">
+                <!-- การ์ดถูกสร้างจาก js/page-stock-audit.js -->
+            </div>
         </div>
     </div>
 
@@ -317,21 +365,34 @@
     <div id="audit-review-detail-panel" class="hidden space-y-8">
         <div class="flex items-center gap-3">
             <button type="button" aria-label="ย้อนกลับไปหน้ารายการรอบตรวจนับ" id="btn-audit-review-back"
-                class="p-2.5 rounded-[0.5rem] bg-panel/40 hover:bg-skeleton text-ink transition-colors cursor-pointer">
+                class="page-filter-control p-2.5 rounded-[0.5rem] bg-panel/40 hover:bg-skeleton text-ink transition-colors cursor-pointer">
                 <i class="fa-solid fa-arrow-left"></i>
             </button>
             <!-- ข้อความจริงต้องมีมาตั้งแต่แรก ห้ามปล่อยหัวข้อว่างให้ JS เติม (ข้อ 11.10) -->
             <h3 id="audit-review-detail-title" class="text-lg text-ink">รายละเอียดการตรวจนับ</h3>
         </div>
 
-        <!-- ชิปตัวกรองแบบกดสลับ (แทนที่การ์ด KPI สีสันเดิม) — ใช้สูตรแท็บของหน้าสินค้าในสาขา (ข้อ 6: ทึบเหลืองได้ทีละปุ่ม) -->
-        <div id="audit-review-summary-bar" class="flex flex-wrap items-center gap-2">
-            <!-- ถูก render โดย JS -->
+        <!-- ชิปตัวกรองแบบกดสลับ (แทนที่การ์ด KPI สีสันเดิม) — ใช้สูตรแท็บของหน้าสินค้าในสาขา (ข้อ 6: ทึบเหลืองได้ทีละปุ่ม)
+             + ปุ่มสลับมุมมอง อยู่แถวเดียวกัน ชิดขวา -->
+        <div class="flex flex-wrap items-center justify-between gap-2">
+            <div id="audit-review-summary-bar" class="flex flex-wrap items-center gap-2">
+                <!-- ถูก render โดย JS -->
+            </div>
+            <div class="flex items-center gap-1 shrink-0">
+                <button type="button" id="audit-review-items-view-list" aria-label="มุมมองรายการ" aria-pressed="true"
+                    class="w-9 h-9 rounded-md flex items-center justify-center transition-colors bg-primary text-on-primary">
+                    <i class="fa-solid fa-list text-sm"></i>
+                </button>
+                <button type="button" id="audit-review-items-view-card" aria-label="มุมมองการ์ด" aria-pressed="false"
+                    class="w-9 h-9 rounded-md flex items-center justify-center transition-colors bg-surface-chip text-body-muted hover:text-ink">
+                    <i class="fa-solid fa-table-cells-large text-sm"></i>
+                </button>
+            </div>
         </div>
 
         <!-- ตารายการที่สแกน (ข้อ 11.6) -->
         <div class="bg-panel/40 rounded-2xl shadow-lg overflow-hidden backdrop-blur-sm">
-            <div class="overflow-x-auto" tabindex="0">
+            <div id="audit-review-items-view-list-wrap" class="overflow-x-auto" tabindex="0">
                 <table class="w-full text-left text-sm whitespace-nowrap border-collapse">
                     <thead class="bg-panel/40 text-ink">
                         <tr>
@@ -346,6 +407,11 @@
                         <!-- แถวถูกสร้างจาก js/page-stock-audit.js -->
                     </tbody>
                 </table>
+            </div>
+            <!-- มุมมองการ์ด (ทางเลือก — ซ่อนไว้ก่อน สลับผ่านปุ่มด้านบน) -->
+            <div id="audit-review-items-view-cards"
+                class="hidden grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 p-6">
+                <!-- การ์ดถูกสร้างจาก js/page-stock-audit.js -->
             </div>
         </div>
 

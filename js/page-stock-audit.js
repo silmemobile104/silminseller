@@ -18,8 +18,28 @@
     // เพจจิเนชันของตาราง "สินค้าที่ต้องตรวจนับวันนี้" — เหมือนหน้าจัดการสต็อก (script.js: stockLoadedCount/stockItemsPerPage)
     // เก็บชุดแถวที่ผ่านการกรอง/เรียงล่าสุดไว้ต่างหาก ให้ loadMoreExpectedItems() สไลซ์ทีละหน้าได้โดยไม่ต้องกรองซ้ำ
     let _expectedRenderRows = [];
+
+    // สลับ list-wrap/cards ให้ตรงมุมมองที่จำไว้ - ต้องเรียกตอนวาดโครงร่างด้วย ไม่ใช่แค่ตอน render ข้อมูลจริง
+    // ไม่งั้นถ้าจำโหมดการ์ดไว้ โครงร่างจะไปวาดใน wrap ที่ยังซ่อนอยู่ (ผู้ใช้เห็นพื้นที่ว่างจนกว่า fetch จะเสร็จ)
+    const syncViewWrapVisibility = (prefix, mode) => {
+        const listWrap = document.getElementById(`${prefix}-view-list-wrap`);
+        const cardsWrap = document.getElementById(`${prefix}-view-cards`);
+        if (listWrap) listWrap.classList.toggle('hidden', mode !== 'list');
+        if (cardsWrap) cardsWrap.classList.toggle('hidden', mode !== 'card');
+    };
     let _expectedLoadedCount = 0;
     const EXPECTED_ITEMS_PER_PAGE = 10;
+
+    // สลับมุมมอง List/Card ของทั้งสองตารางในหน้านี้ — จำโหมดไว้ข้ามการเข้าหน้า
+    // (เดินตามรูปแบบเดียวกับหน้าการมัดจำ/ประวัติการขาย/สมาชิก/เช็คประกัน/จัดการสต็อก)
+    let _expectedViewMode = localStorage.getItem('audit_expected_view_mode') === 'card' ? 'card' : 'list';
+    let _scanListViewMode = localStorage.getItem('audit_scan_view_mode') === 'card' ? 'card' : 'list';
+    // ตัวแปรเดียวกันของหน้า "ตรวจสอบผลการตรวจนับสต็อก" (#stock-audit-review) — ประกาศไว้ต้นไฟล์เพราะ
+    // ปุ่มสลับมุมมองถูกผูก (และเรียก _syncViewToggleButtons ทันที) ที่ top-level ของไฟล์นี้ตอนโหลดสคริปต์
+    // ก่อนจุดที่ตัวแปรเหล่านี้เคยประกาศไว้เดิม (ใกล้โค้ดส่วนตรวจสอบผล) — ต้องอยู่เหนือจุดใช้งานเสมอ (TDZ ของ let)
+    let _reviewSessionsViewMode = localStorage.getItem('audit_review_sessions_view_mode') === 'card' ? 'card' : 'list';
+    let _reviewItemsViewMode = localStorage.getItem('audit_review_items_view_mode') === 'card' ? 'card' : 'list';
+    let _reviewSessionsCache = []; // ผลลัพธ์ล่าสุดของตาราง "รอบการตรวจนับ" — สลับมุมมองแล้ว re-render ได้โดยไม่ยิง API ซ้ำ
 
     // ==========================================
     // ชิ้นส่วน UI ที่ใช้ซ้ำ (ตาม DESIGN.md ข้อ 11.5 - 11.7)
@@ -55,12 +75,50 @@
 
     const skelBar = (w) => `<div class="h-3.5 ${w} rounded-full bg-skeleton animate-pulse"></div>`;
 
+    // การ์ดโครงร่างของตาราง "สินค้าที่ต้องตรวจนับวันนี้" — สัดส่วนเดินตาม expectedCardHtml ด้านล่าง
+    const expectedCardSkeleton = () => `
+        <div class="elev-card bg-surface-tile-3 rounded-md p-3.5">
+            <div class="flex items-start justify-between gap-2">
+                <div class="flex items-center gap-2 flex-1 min-w-0">
+                    <div class="w-4 h-4 rounded-full bg-skeleton animate-pulse shrink-0"></div>
+                    ${skelBar('flex-1 h-3.5')}
+                </div>
+                ${skelBar('w-16 h-5')}
+            </div>
+            <div class="flex items-center gap-2 mt-2.5">${skelBar('w-14 h-5')}${skelBar('w-16 h-5')}</div>
+            <div class="flex items-center justify-between mt-3.5 pt-3 border-t border-hairline">
+                ${skelBar('w-32')}
+            </div>
+        </div>`;
+
+    // การ์ดโครงร่างของตาราง "รายการที่สแกนแล้ว" — สัดส่วนเดินตาม scanItemCardHtml ด้านล่าง
+    const scanItemCardSkeleton = () => `
+        <div class="elev-card bg-surface-tile-3 rounded-md p-3.5">
+            <div class="flex items-start gap-3">
+                <div class="w-14 h-14 rounded-[0.375rem] bg-skeleton animate-pulse shrink-0"></div>
+                <div class="min-w-0 flex-1">
+                    ${skelBar('w-32')}
+                    ${skelBar('w-40 mt-2')}
+                </div>
+            </div>
+            <div class="flex items-center justify-between mt-3.5 pt-3 border-t border-hairline">
+                ${skelBar('w-20 h-5')}
+                <div class="w-8 h-8 rounded-lg bg-skeleton animate-pulse"></div>
+            </div>
+        </div>`;
+
     // แถวโครงร่างระหว่างรอข้อมูลรอบแรก (ข้อ 11.7)
     // เรียกเฉพาะตอนตารางยังว่างจริงๆ — loadTodayAuditSession() ถูกเรียกซ้ำหลังสแกนทุกครั้ง
     // ถ้าใส่โครงร่างทับของเดิมทุกรอบ ตารางจะกะพริบทั้งใบทุกครั้งที่ยิงบาร์โค้ด
     const renderAuditSkeletons = (rowCount = 6) => {
+        syncViewWrapVisibility('expected', _expectedViewMode);
+        syncViewWrapVisibility('scan-list', _scanListViewMode);
         const expected = document.getElementById('expected-items-tbody');
-        if (expected && !expected.children.length) {
+        const expectedCards = document.getElementById('expected-view-cards');
+        const expectedEmpty = expected && !expected.children.length && (!expectedCards || !expectedCards.children.length);
+        if (expectedEmpty && _expectedViewMode === 'card' && expectedCards) {
+            expectedCards.innerHTML = Array.from({ length: rowCount }, expectedCardSkeleton).join('');
+        } else if (expectedEmpty && expected) {
             let html = '';
             for (let i = 0; i < rowCount; i++) {
                 html += `<tr>
@@ -78,7 +136,11 @@
         }
 
         const scanned = document.getElementById('audit-scan-list');
-        if (scanned && !scanned.children.length) {
+        const scannedCards = document.getElementById('scan-list-view-cards');
+        const scannedEmpty = scanned && !scanned.children.length && (!scannedCards || !scannedCards.children.length);
+        if (scannedEmpty && _scanListViewMode === 'card' && scannedCards) {
+            scannedCards.innerHTML = Array.from({ length: 3 }, scanItemCardSkeleton).join('');
+        } else if (scannedEmpty && scanned) {
             let html = '';
             for (let i = 0; i < 3; i++) {
                 html += `<tr>
@@ -581,7 +643,8 @@
             ? window.productColorDot(e.color, null)
             : '';
 
-        return `
+        return {
+            row: `
         <tr class="${rowClass} transition-colors" data-imei="${e.imei}" data-name="${e.product_name}" data-status="${isScanned ? 'scanned' : (isSold ? 'sold' : 'pending')}">
             <td class="px-6 py-4 text-ink/70">${idx + 1}</td>
             <td class="px-6 py-4">
@@ -591,19 +654,37 @@
             <td class="px-6 py-4">${tagCell(e.capacity)}</td>
             <td class="px-6 py-4">${imeiHtml}</td>
             <td class="px-6 py-4">${badgeHtml}</td>
-        </tr>`;
+        </tr>`,
+            card: `
+        <div class="elev-card bg-surface-tile-3 rounded-md p-3.5" data-imei="${e.imei}" data-name="${e.product_name}" data-status="${isScanned ? 'scanned' : (isSold ? 'sold' : 'pending')}">
+            <div class="flex items-start justify-between gap-2">
+                <p class="font-medium ${isSold ? 'text-ink/70' : 'text-ink'} flex items-center gap-2 min-w-0 flex-1">${dot}<span class="truncate">${e.product_name}</span></p>
+                <div class="shrink-0">${badgeHtml}</div>
+            </div>
+            <div class="flex items-center gap-2 mt-2.5">${tagCell(e.color)}${tagCell(e.capacity)}</div>
+            <div class="flex items-center justify-between mt-3.5 pt-3 border-t border-hairline">${imeiHtml}</div>
+        </div>`
+        };
+    };
+
+    // เดินตามโหมด list/card ปัจจุบันแล้วคืน markup ที่ต้องใส่ + container เป้าหมาย
+    const expectedItemMarkup = (e, idx) => {
+        const { row, card } = expectedRowHtml(e, idx);
+        return _expectedViewMode === 'card' ? card : row;
     };
 
     // โหลดแถวชุดถัดไป (EXPECTED_ITEMS_PER_PAGE แถว) มาต่อท้ายตารางที่มีอยู่ — เหมือน loadMoreStockProducts ใน script.js
     function loadMoreExpectedItems() {
-        const tbody = document.getElementById('expected-items-tbody');
-        if (!tbody) return;
+        const target = _expectedViewMode === 'card'
+            ? document.getElementById('expected-view-cards')
+            : document.getElementById('expected-items-tbody');
+        if (!target) return;
         const total = _expectedRenderRows.length;
         if (_expectedLoadedCount >= total) return;
 
         const startIdx = _expectedLoadedCount;
         const nextBatch = _expectedRenderRows.slice(startIdx, startIdx + EXPECTED_ITEMS_PER_PAGE);
-        tbody.insertAdjacentHTML('beforeend', nextBatch.map((e, i) => expectedRowHtml(e, startIdx + i)).join(''));
+        target.insertAdjacentHTML('beforeend', nextBatch.map((e, i) => expectedItemMarkup(e, startIdx + i)).join(''));
         _expectedLoadedCount += nextBatch.length;
 
         // ถ้าโหลดแล้วเนื้อหายังไม่ล้นพื้นที่ที่มองเห็น (#main-content ไม่มี scrollbar)
@@ -616,7 +697,12 @@
 
     function _renderExpectedTable(rows) {
         const tbody = document.getElementById('expected-items-tbody');
+        const cardsWrap = document.getElementById('expected-view-cards');
         if (!tbody) return;
+
+        const listWrap = document.getElementById('expected-view-list-wrap');
+        if (listWrap) listWrap.classList.toggle('hidden', _expectedViewMode !== 'list');
+        if (cardsWrap) cardsWrap.classList.toggle('hidden', _expectedViewMode !== 'card');
 
         // ตัวนับผลลัพธ์ — ตัวหารคือจำนวนเครื่องทั้งหมดของรอบ ไม่ใช่จำนวนแถวที่โหลดมาแสดง (ข้อ 11.5)
         const countEl = document.getElementById('expected-result-count');
@@ -629,10 +715,12 @@
         _expectedRenderRows = rows;
         _expectedLoadedCount = 0;
         tbody.innerHTML = '';
+        if (cardsWrap) cardsWrap.innerHTML = '';
 
         if (!rows.length) {
-            tbody.innerHTML = stateRow(EXPECTED_TABLE_COLS,
-                _expectedImeiData.length ? 'ไม่พบสินค้าที่ตรงกับตัวกรอง' : 'ไม่พบสินค้าที่ต้องตรวจนับในสาขานี้');
+            const msg = _expectedImeiData.length ? 'ไม่พบสินค้าที่ตรงกับตัวกรอง' : 'ไม่พบสินค้าที่ต้องตรวจนับในสาขานี้';
+            tbody.innerHTML = stateRow(EXPECTED_TABLE_COLS, msg);
+            if (cardsWrap) cardsWrap.innerHTML = `<div class="col-span-full py-12 text-center text-ink/50 italic">${msg}</div>`;
             return;
         }
 
@@ -652,6 +740,70 @@
                 loadMoreExpectedItems();
             }
         });
+    }
+
+    // สลับมุมมอง List/Card ของทั้งสองตาราง — ผูกครั้งเดียวตอนไฟล์นี้ถูกโหลด (เหตุผลเดียวกับ infinite scroll ด้านบน)
+    const _syncViewToggleButtons = (listBtn, cardBtn, mode) => window.syncViewToggleButtons(listBtn, cardBtn, mode);
+
+    const expectedViewListBtn = document.getElementById('expected-view-list');
+    const expectedViewCardBtn = document.getElementById('expected-view-card');
+    if (expectedViewListBtn && expectedViewCardBtn) {
+        const apply = (mode) => {
+            _expectedViewMode = mode;
+            localStorage.setItem('audit_expected_view_mode', mode);
+            _syncViewToggleButtons(expectedViewListBtn, expectedViewCardBtn, mode);
+            // re-render จากชุดที่กรอง/เรียงไว้ล่าสุด ไม่ต้องกรองซ้ำ
+            _renderExpectedTable(_expectedRenderRows);
+        };
+        expectedViewListBtn.addEventListener('click', () => apply('list'));
+        expectedViewCardBtn.addEventListener('click', () => apply('card'));
+        _syncViewToggleButtons(expectedViewListBtn, expectedViewCardBtn, _expectedViewMode);
+    }
+
+    const scanListViewListBtn = document.getElementById('scan-list-view-list');
+    const scanListViewCardBtn = document.getElementById('scan-list-view-card');
+    if (scanListViewListBtn && scanListViewCardBtn) {
+        const apply = (mode) => {
+            _scanListViewMode = mode;
+            localStorage.setItem('audit_scan_view_mode', mode);
+            _syncViewToggleButtons(scanListViewListBtn, scanListViewCardBtn, mode);
+            // renderAuditScanList ไม่มีตัวกรองของตัวเอง — โหลดเซสชันวันนี้ใหม่เพื่อ re-render ทั้งสองตาราง
+            // (ราคาถูก: ข้อมูลเดิมอยู่ใน _auditSessionData/_expectedImeiData แล้ว ไม่ต้องยิง API ซ้ำ)
+            if (_auditSessionData) renderAuditScanList(_auditSessionData.items || []);
+        };
+        scanListViewListBtn.addEventListener('click', () => apply('list'));
+        scanListViewCardBtn.addEventListener('click', () => apply('card'));
+        _syncViewToggleButtons(scanListViewListBtn, scanListViewCardBtn, _scanListViewMode);
+    }
+
+    // สลับมุมมองของหน้า "ตรวจสอบผลการตรวจนับสต็อก" (#stock-audit-review) — ตาราง "รอบการตรวจนับ"
+    const reviewSessionsViewListBtn = document.getElementById('audit-review-sessions-view-list');
+    const reviewSessionsViewCardBtn = document.getElementById('audit-review-sessions-view-card');
+    if (reviewSessionsViewListBtn && reviewSessionsViewCardBtn) {
+        const apply = (mode) => {
+            _reviewSessionsViewMode = mode;
+            localStorage.setItem('audit_review_sessions_view_mode', mode);
+            _syncViewToggleButtons(reviewSessionsViewListBtn, reviewSessionsViewCardBtn, mode);
+            renderReviewSessionsResults();
+        };
+        reviewSessionsViewListBtn.addEventListener('click', () => apply('list'));
+        reviewSessionsViewCardBtn.addEventListener('click', () => apply('card'));
+        _syncViewToggleButtons(reviewSessionsViewListBtn, reviewSessionsViewCardBtn, _reviewSessionsViewMode);
+    }
+
+    // สลับมุมมองของตาราง "รายการที่สแกนในรอบที่เลือก" (หน้าจอ B ของ #stock-audit-review)
+    const reviewItemsViewListBtn = document.getElementById('audit-review-items-view-list');
+    const reviewItemsViewCardBtn = document.getElementById('audit-review-items-view-card');
+    if (reviewItemsViewListBtn && reviewItemsViewCardBtn) {
+        const apply = (mode) => {
+            _reviewItemsViewMode = mode;
+            localStorage.setItem('audit_review_items_view_mode', mode);
+            _syncViewToggleButtons(reviewItemsViewListBtn, reviewItemsViewCardBtn, mode);
+            renderReviewItemsGrid();
+        };
+        reviewItemsViewListBtn.addEventListener('click', () => apply('list'));
+        reviewItemsViewCardBtn.addEventListener('click', () => apply('card'));
+        _syncViewToggleButtons(reviewItemsViewListBtn, reviewItemsViewCardBtn, _reviewItemsViewMode);
     }
 
     function toggleExpectedList() {
@@ -707,28 +859,49 @@
 
     function renderAuditScanList(items) {
         const list = document.getElementById('audit-scan-list');
+        const cardsWrap = document.getElementById('scan-list-view-cards');
         const countEl = document.getElementById('audit-scan-list-count');
         if (!list) return;
+
+        const listWrap = document.getElementById('scan-list-view-list-wrap');
+        if (listWrap) listWrap.classList.toggle('hidden', _scanListViewMode !== 'list');
+        if (cardsWrap) cardsWrap.classList.toggle('hidden', _scanListViewMode !== 'card');
+
         // ตารางนี้ไม่มีตัวกรอง จึงไม่มี "จาก M" ให้เทียบ (ต่างจากตัวนับตามข้อ 11.5)
         if (countEl) countEl.textContent = items.length ? `ทั้งหมด ${items.length} รายการ` : '';
 
         if (items.length === 0) {
-            list.innerHTML = stateRow(SCAN_TABLE_COLS, 'ยังไม่มีรายการ เริ่มสแกน IMEI เลย');
+            const msg = 'ยังไม่มีรายการ เริ่มสแกน IMEI เลย';
+            list.innerHTML = stateRow(SCAN_TABLE_COLS, msg);
+            if (cardsWrap) cardsWrap.innerHTML = `<div class="col-span-full py-12 text-center text-ink/50 italic">${msg}</div>`;
             return;
         }
 
-        list.innerHTML = items.map((item, idx) => {
+        const rowsHtml = [];
+        const cardsHtml = [];
+
+        items.forEach((item, idx) => {
             const badgeHtml = item.is_expected
                 ? statusBadge('ok', 'พบในระบบ')
                 : statusBadge('fail', 'ไม่พบในระบบ');
 
-            const photoHtml = item.box_photo_url
+            const photoHtmlSmall = item.box_photo_url
                 ? `<a href="${item.box_photo_url}" target="_blank" rel="noreferrer" title="เปิดรูปกล่องขนาดเต็ม"
                      class="elev-chip block w-10 h-10 rounded-[0.375rem] overflow-hidden hover:ring-1 hover:ring-accent-ink transition-colors">
                      <img src="${item.box_photo_url}" referrerpolicy="no-referrer" class="w-full h-full object-cover" loading="lazy" width="40" height="40" alt="รูปกล่องสินค้าของ IMEI ${item.imei}" />
                    </a>`
                 : `<div class="elev-card w-10 h-10 rounded-[0.375rem] bg-panel/40 flex items-center justify-center text-ink/50">
                      <i class="fa-solid fa-image text-sm"></i>
+                   </div>`;
+
+            // การ์ดมีที่ทางมากกว่าแถวตาราง — รูปกล่องขยายเป็น 56px แทน 40px ให้เห็นรายละเอียดชัดขึ้น
+            const photoHtmlLarge = item.box_photo_url
+                ? `<a href="${item.box_photo_url}" target="_blank" rel="noreferrer" title="เปิดรูปกล่องขนาดเต็ม"
+                     class="elev-chip block w-14 h-14 rounded-[0.375rem] overflow-hidden hover:ring-1 hover:ring-accent-ink transition-colors shrink-0">
+                     <img src="${item.box_photo_url}" referrerpolicy="no-referrer" class="w-full h-full object-cover" loading="lazy" width="56" height="56" alt="รูปกล่องสินค้าของ IMEI ${item.imei}" />
+                   </a>`
+                : `<div class="elev-card w-14 h-14 rounded-[0.375rem] bg-panel/40 flex items-center justify-center text-ink/50 shrink-0">
+                     <i class="fa-solid fa-image text-lg"></i>
                    </div>`;
 
             // ลบได้เฉพาะรอบที่ยังตรวจนับอยู่ — ตรวจสิทธิ์ก่อนเรนเดอร์ปุ่ม และยังผ่าน showConfirm() อีกชั้น (ข้อ 11.6)
@@ -739,10 +912,10 @@
                      class="text-ink hover:text-red-400 transition-colors p-2"><i class="fa-solid fa-trash"></i></button>`
                 : '<span class="text-ink/50">-</span>';
 
-            return `
+            rowsHtml.push(`
             <tr class="hover:bg-divider transition-colors">
                 <td class="px-6 py-4 text-ink/70">${idx + 1}</td>
-                <td class="px-6 py-4">${photoHtml}</td>
+                <td class="px-6 py-4">${photoHtmlSmall}</td>
                 <td class="px-6 py-4"><span class="font-mono font-semibold text-accent-ink">${item.imei}</span></td>
                 <td class="px-6 py-4">
                     <p class="font-medium text-ink">${item.product_name}</p>
@@ -750,8 +923,27 @@
                 </td>
                 <td class="px-6 py-4">${badgeHtml}</td>
                 <td class="px-6 py-4 text-right"><div class="flex items-center justify-end gap-1">${deleteBtn}</div></td>
-            </tr>`;
-        }).join('');
+            </tr>`);
+
+            cardsHtml.push(`
+            <div class="elev-card bg-surface-tile-3 rounded-md p-3.5">
+                <div class="flex items-start gap-3">
+                    ${photoHtmlLarge}
+                    <div class="min-w-0 flex-1">
+                        <span class="font-mono font-semibold text-accent-ink text-xs">${item.imei}</span>
+                        <p class="font-medium text-ink mt-0.5 truncate">${item.product_name}</p>
+                        ${item.scan_notes ? `<p class="text-xs text-ink/70 mt-0.5 truncate">${item.scan_notes}</p>` : ''}
+                    </div>
+                </div>
+                <div class="flex items-center justify-between mt-3.5 pt-3 border-t border-hairline">
+                    ${badgeHtml}
+                    <div class="flex items-center gap-1">${deleteBtn}</div>
+                </div>
+            </div>`);
+        });
+
+        list.innerHTML = rowsHtml.join('');
+        if (cardsWrap) cardsWrap.innerHTML = cardsHtml.join('');
     }
 
     async function deleteAuditItem(imei) {
@@ -777,7 +969,7 @@
     let _reviewCurrentSessionStatus = '';
     let _reviewCurrentSessionItems = [];
     let _reviewActiveFilter = 'รอตรวจสอบ';
-
+    // _reviewSessionsViewMode / _reviewItemsViewMode / _reviewSessionsCache ประกาศไว้ต้นไฟล์แล้ว (ดูคอมเมนต์ตรงนั้น)
 
     const REVIEW_SESSIONS_COLS = 5; // ตาราง "รอบการตรวจนับ" — วันที่/สาขา, ผู้เปิดรอบ, ความคืบหน้า, สถานะ, จัดการ
     const REVIEW_ITEMS_COLS = 5;    // ตารายการที่สแกนในรอบที่เลือก — รูปกล่อง, IMEI, สินค้า/ผู้สแกน, สถานะ, จัดการ
@@ -799,8 +991,27 @@
 
     // แถวโครงร่างของตาราง "รอบการตรวจนับ" — เรียกก่อน await เสมอ ไม่ปล่อยตารางว่าง (ข้อ 11.7)
     const renderReviewSessionsSkeleton = (rowCount = 6) => {
+        syncViewWrapVisibility('audit-review-sessions', _reviewSessionsViewMode);
         const tbody = document.getElementById('audit-review-sessions-tbody');
+        const cardsWrap = document.getElementById('audit-review-sessions-view-cards');
         if (!tbody) return;
+
+        if (_reviewSessionsViewMode === 'card' && cardsWrap) {
+            cardsWrap.innerHTML = Array.from({ length: rowCount }, () => `
+                <div class="elev-card bg-surface-tile-3 rounded-md p-3.5">
+                    <div class="flex items-start justify-between gap-2">
+                        <div class="space-y-1.5 flex-1">${skelBar('w-32')}${skelBar('w-20 h-3')}</div>
+                        ${skelBar('w-20 h-5')}
+                    </div>
+                    <div class="flex items-center justify-between mt-3.5 pt-3 border-t border-hairline">
+                        ${skelBar('w-24')}
+                        ${skelBar('w-16')}
+                    </div>
+                </div>
+            `).join('');
+            return;
+        }
+
         let html = '';
         for (let i = 0; i < rowCount; i++) {
             html += `<tr>
@@ -861,6 +1072,83 @@
         }
     }
 
+    // ข้อมูลที่คำนวณร่วมกันระหว่างแถวตารางกับการ์ดของตาราง "รอบการตรวจนับ"
+    const buildReviewSessionData = (session) => ({
+        tone: SESSION_STATUS_TONE[session.status] || 'muted',
+        dateStr: new Date(session.session_date).toLocaleDateString('th-TH', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }),
+        branchName: session.branch_id?.name || '—',
+        createdByName: session.created_by?.name || 'ระบบอัตโนมัติ'
+    });
+
+    const reviewSessionRowHtml = (session) => {
+        const d = buildReviewSessionData(session);
+        return `
+        <tr class="hover:bg-divider transition-colors">
+            <td class="px-6 py-4">
+                <p class="font-medium text-ink">${d.dateStr}</p>
+                <p class="text-xs text-ink/70">${d.branchName}</p>
+            </td>
+            <td class="px-6 py-4 text-ink">${d.createdByName}</td>
+            <td class="px-6 py-4 text-center text-ink font-medium">${session.total_items_scanned}<span class="text-xs text-ink/70 font-normal"> / ${session.total_items_expected}</span></td>
+            <td class="px-6 py-4">${statusBadge(d.tone, session.status)}</td>
+            <td class="px-6 py-4 text-right">
+                <button type="button" onclick="openAuditReviewDetail('${session._id}')" title="ดูรายละเอียด"
+                    class="text-ink hover:text-accent-ink transition-colors p-2">
+                    <i class="fa-solid fa-circle-info"></i>
+                </button>
+            </td>
+        </tr>`;
+    };
+
+    // การ์ด — โครง: หัว (วันที่+สาขา / สถานะ) · footer (ผู้เปิดรอบ+ความคืบหน้า) — คลิกทั้งใบเปิดรายละเอียดได้เหมือนปุ่ม
+    const reviewSessionCardHtml = (session) => {
+        const d = buildReviewSessionData(session);
+        return `
+        <div class="elev-card bg-surface-tile-3 rounded-md p-3.5 transition-all hover:-translate-y-1 border-none cursor-pointer"
+             onclick="openAuditReviewDetail('${session._id}')">
+            <div class="flex items-start justify-between gap-2">
+                <div class="min-w-0">
+                    <p class="font-medium text-ink truncate">${d.dateStr}</p>
+                    <p class="text-xs text-ink/70 mt-0.5">${d.branchName}</p>
+                </div>
+                <div class="shrink-0">${statusBadge(d.tone, session.status)}</div>
+            </div>
+            <div class="flex items-center justify-between mt-3.5 pt-3 border-t border-hairline">
+                <span class="text-xs text-ink/70 truncate">${d.createdByName}</span>
+                <span class="text-ink font-medium text-sm shrink-0">${session.total_items_scanned}<span class="text-xs text-ink/70 font-normal"> / ${session.total_items_expected}</span></span>
+            </div>
+        </div>`;
+    };
+
+    // จุดเดียวที่ตัดสินว่าจะ render ตารางหรือการ์ด — ใช้ทั้งตอน fetch เสร็จและตอนแค่สลับมุมมอง (อ่านจาก _reviewSessionsCache)
+    function renderReviewSessionsResults() {
+        const tbody = document.getElementById('audit-review-sessions-tbody');
+        const cardsWrap = document.getElementById('audit-review-sessions-view-cards');
+        const countEl = document.getElementById('audit-review-result-count');
+        if (!tbody) return;
+
+        const listWrap = document.getElementById('audit-review-sessions-view-list-wrap');
+        if (listWrap) listWrap.classList.toggle('hidden', _reviewSessionsViewMode !== 'list');
+        if (cardsWrap) cardsWrap.classList.toggle('hidden', _reviewSessionsViewMode !== 'card');
+
+        if (!_reviewSessionsCache.length) {
+            const msg = 'ไม่พบรอบการตรวจนับสต็อก';
+            tbody.innerHTML = stateRow(REVIEW_SESSIONS_COLS, msg);
+            if (cardsWrap) cardsWrap.innerHTML = `<div class="col-span-full py-12 text-center text-ink/50 italic">${msg}</div>`;
+            if (countEl) countEl.textContent = '';
+            return;
+        }
+
+        if (_reviewSessionsViewMode === 'card') {
+            if (cardsWrap) cardsWrap.innerHTML = _reviewSessionsCache.map(reviewSessionCardHtml).join('');
+            tbody.innerHTML = '';
+        } else {
+            tbody.innerHTML = _reviewSessionsCache.map(reviewSessionRowHtml).join('');
+            if (cardsWrap) cardsWrap.innerHTML = '';
+        }
+        if (countEl) countEl.textContent = `ทั้งหมด ${_reviewSessionsCache.length} รายการ`;
+    }
+
     async function loadAuditReviewSessions() {
         const listScreen = document.getElementById('audit-review-list-screen');
         const detailPanel = document.getElementById('audit-review-detail-panel');
@@ -897,31 +1185,8 @@
 
             const r = await fetch(`/api/stock-audit/sessions?${params}`, { headers: { 'Authorization': `Bearer ${token}` } });
             const d = await r.json();
-            if (!d.success || !d.data?.length) {
-                if (tbody) tbody.innerHTML = stateRow(REVIEW_SESSIONS_COLS, 'ไม่พบรอบการตรวจนับสต็อก');
-                if (countEl) countEl.textContent = '';
-            } else {
-                if (tbody) tbody.innerHTML = d.data.map(session => {
-                    const tone = SESSION_STATUS_TONE[session.status] || 'muted';
-                    return `
-                    <tr class="hover:bg-divider transition-colors">
-                        <td class="px-6 py-4">
-                            <p class="font-medium text-ink">${new Date(session.session_date).toLocaleDateString('th-TH', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
-                            <p class="text-xs text-ink/70">${session.branch_id?.name || '—'}</p>
-                        </td>
-                        <td class="px-6 py-4 text-ink">${session.created_by?.name || 'ระบบอัตโนมัติ'}</td>
-                        <td class="px-6 py-4 text-center text-ink font-medium">${session.total_items_scanned}<span class="text-xs text-ink/70 font-normal"> / ${session.total_items_expected}</span></td>
-                        <td class="px-6 py-4">${statusBadge(tone, session.status)}</td>
-                        <td class="px-6 py-4 text-right">
-                            <button type="button" onclick="openAuditReviewDetail('${session._id}')" title="ดูรายละเอียด"
-                                class="text-ink hover:text-accent-ink transition-colors p-2">
-                                <i class="fa-solid fa-circle-info"></i>
-                            </button>
-                        </td>
-                    </tr>`;
-                }).join('');
-                if (countEl) countEl.textContent = `ทั้งหมด ${d.data.length} รายการ`;
-            }
+            _reviewSessionsCache = (d.success && Array.isArray(d.data)) ? d.data : [];
+            renderReviewSessionsResults();
 
             // Wire up filter & refresh
             const filterSel = document.getElementById('audit-review-filter-status');
@@ -1027,20 +1292,96 @@
         bar.innerHTML = tiles.map(t => {
             const active = _reviewActiveFilter === t.key;
             const cls = active
-                ? 'bg-primary ring-1 ring-accent-ink text-on-primary'
+                ? 'bg-primary ring-1 ring-accent-ink text-on-primary apple-active-accent'
                 : 'elev-field bg-field text-body-muted hover:ring-1 hover:ring-accent-ink hover:text-ink';
             const dotHtml = t.dot ? `<span class="w-2 h-2 rounded-full ${t.dot} shrink-0"></span>` : '';
             const countCls = active ? '' : 'text-ink/50';
             return `<button type="button" onclick="filterReviewItemsByStatus('${t.key}')"
-                class="elev-chip px-4 py-2.5 rounded-xl text-sm font-bold transition-colors flex items-center gap-2 cursor-pointer ${cls}">
+                class="elev-chip tab-toggle-btn px-4 py-2.5 rounded-xl text-sm font-bold transition-colors flex items-center gap-2 cursor-pointer ${cls}">
                 ${dotHtml}<span>${t.label}</span><span class="font-mono ${countCls}">${t.count}</span>
             </button>`;
         }).join('');
     }
 
+    // ข้อมูลที่คำนวณร่วมกันระหว่างแถวตารางกับการ์ดของตาราง "รายการที่สแกนในรอบที่เลือก"
+    const buildReviewItemData = (item) => {
+        const tone = ITEM_STATUS_TONE[item.scan_status] || 'muted';
+        const photoHtmlSmall = item.box_photo_url
+            ? `<a href="${item.box_photo_url}" target="_blank" rel="noreferrer" title="เปิดรูปกล่องขนาดเต็ม"
+                 class="elev-chip block w-10 h-10 rounded-[0.375rem] overflow-hidden hover:ring-1 hover:ring-accent-ink transition-colors">
+                 <img src="${item.box_photo_url}" referrerpolicy="no-referrer" class="w-full h-full object-cover" loading="lazy" width="40" height="40" alt="รูปกล่องสินค้าของ IMEI ${item.imei}" />
+               </a>`
+            : `<div class="elev-card w-10 h-10 rounded-[0.375rem] bg-panel/40 flex items-center justify-center text-ink/50">
+                 <i class="fa-solid fa-image text-sm"></i>
+               </div>`;
+        // การ์ดมีที่ทางมากกว่าแถวตาราง — รูปกล่องขยายเป็น 56px แทน 40px (สูตรเดียวกับตาราง "รายการที่สแกนแล้ว" ในหน้าตรวจนับ)
+        const photoHtmlLarge = item.box_photo_url
+            ? `<a href="${item.box_photo_url}" target="_blank" rel="noreferrer" title="เปิดรูปกล่องขนาดเต็ม"
+                 class="elev-chip block w-14 h-14 rounded-[0.375rem] overflow-hidden hover:ring-1 hover:ring-accent-ink transition-colors shrink-0">
+                 <img src="${item.box_photo_url}" referrerpolicy="no-referrer" class="w-full h-full object-cover" loading="lazy" width="56" height="56" alt="รูปกล่องสินค้าของ IMEI ${item.imei}" />
+               </a>`
+            : `<div class="elev-card w-14 h-14 rounded-[0.375rem] bg-panel/40 flex items-center justify-center text-ink/50 shrink-0">
+                 <i class="fa-solid fa-image text-lg"></i>
+               </div>`;
+        const btnLabel = item.scan_status === 'รอตรวจสอบ' ? 'ตรวจสอบสินค้า' : 'ดูรายละเอียด';
+        const btnIcon = item.scan_status === 'รอตรวจสอบ' ? 'fa-magnifying-glass' : 'fa-circle-info';
+        return { tone, photoHtmlSmall, photoHtmlLarge, btnLabel, btnIcon };
+    };
+
+    const reviewItemRowHtml = (item) => {
+        const d = buildReviewItemData(item);
+        return `
+        <tr class="hover:bg-divider transition-colors">
+            <td class="px-6 py-4">${d.photoHtmlSmall}</td>
+            <td class="px-6 py-4"><span class="font-mono font-semibold text-accent-ink">${item.imei}</span></td>
+            <td class="px-6 py-4">
+                <p class="font-medium text-ink truncate">${item.product_name}</p>
+                <p class="text-xs text-ink/70">สแกนโดย ${item.scanned_by?.name || '—'}${item.scan_notes ? ` · "${item.scan_notes}"` : ''}</p>
+            </td>
+            <td class="px-6 py-4">${statusBadge(d.tone, item.scan_status)}</td>
+            <td class="px-6 py-4 text-right">
+                <button type="button" onclick="openAuditReviewItemModal('${item._id}')" title="${d.btnLabel}"
+                    aria-label="${d.btnLabel} IMEI ${item.imei}"
+                    class="text-ink hover:text-accent-ink transition-colors p-2">
+                    <i class="fa-solid ${d.btnIcon}"></i>
+                </button>
+            </td>
+        </tr>`;
+    };
+
+    // การ์ด — คลิกทั้งใบเปิด modal ตรวจสอบ/ดูรายละเอียดได้เหมือนปุ่ม
+    const reviewItemCardHtml = (item) => {
+        const d = buildReviewItemData(item);
+        return `
+        <div class="elev-card bg-surface-tile-3 rounded-md p-3.5 transition-all hover:-translate-y-1 border-none cursor-pointer"
+             onclick="openAuditReviewItemModal('${item._id}')">
+            <div class="flex items-start gap-3">
+                ${d.photoHtmlLarge}
+                <div class="min-w-0 flex-1">
+                    <span class="font-mono font-semibold text-accent-ink text-xs">${item.imei}</span>
+                    <p class="font-medium text-ink mt-0.5 truncate">${item.product_name}</p>
+                    <p class="text-xs text-ink/70 mt-0.5 truncate">สแกนโดย ${item.scanned_by?.name || '—'}${item.scan_notes ? ` · "${item.scan_notes}"` : ''}</p>
+                </div>
+            </div>
+            <div class="flex items-center justify-between mt-3.5 pt-3 border-t border-hairline">
+                ${statusBadge(d.tone, item.scan_status)}
+                <button type="button" onclick="event.stopPropagation(); openAuditReviewItemModal('${item._id}')" title="${d.btnLabel}"
+                    aria-label="${d.btnLabel} IMEI ${item.imei}"
+                    class="text-ink hover:text-accent-ink transition-colors p-2">
+                    <i class="fa-solid ${d.btnIcon}"></i>
+                </button>
+            </div>
+        </div>`;
+    };
+
     function renderReviewItemsGrid() {
         const tbody = document.getElementById('audit-review-items-tbody');
+        const cardsWrap = document.getElementById('audit-review-items-view-cards');
         if (!tbody) return;
+
+        const listWrap = document.getElementById('audit-review-items-view-list-wrap');
+        if (listWrap) listWrap.classList.toggle('hidden', _reviewItemsViewMode !== 'list');
+        if (cardsWrap) cardsWrap.classList.toggle('hidden', _reviewItemsViewMode !== 'card');
 
         let filteredItems = _reviewCurrentSessionItems;
         if (_reviewActiveFilter !== 'all') {
@@ -1048,43 +1389,19 @@
         }
 
         if (!filteredItems.length) {
-            tbody.innerHTML = stateRow(REVIEW_ITEMS_COLS,
-                _reviewCurrentSessionItems.length ? 'ไม่มีรายการในสถานะนี้' : 'ยังไม่มีรายการสแกนในรอบนี้');
+            const msg = _reviewCurrentSessionItems.length ? 'ไม่มีรายการในสถานะนี้' : 'ยังไม่มีรายการสแกนในรอบนี้';
+            tbody.innerHTML = stateRow(REVIEW_ITEMS_COLS, msg);
+            if (cardsWrap) cardsWrap.innerHTML = `<div class="col-span-full py-12 text-center text-ink/50 italic">${msg}</div>`;
             return;
         }
 
-        tbody.innerHTML = filteredItems.map(item => {
-            const tone = ITEM_STATUS_TONE[item.scan_status] || 'muted';
-            const photoHtml = item.box_photo_url
-                ? `<a href="${item.box_photo_url}" target="_blank" rel="noreferrer" title="เปิดรูปกล่องขนาดเต็ม"
-                     class="elev-chip block w-10 h-10 rounded-[0.375rem] overflow-hidden hover:ring-1 hover:ring-accent-ink transition-colors">
-                     <img src="${item.box_photo_url}" referrerpolicy="no-referrer" class="w-full h-full object-cover" loading="lazy" width="40" height="40" alt="รูปกล่องสินค้าของ IMEI ${item.imei}" />
-                   </a>`
-                : `<div class="elev-card w-10 h-10 rounded-[0.375rem] bg-panel/40 flex items-center justify-center text-ink/50">
-                     <i class="fa-solid fa-image text-sm"></i>
-                   </div>`;
-
-            const btnLabel = item.scan_status === 'รอตรวจสอบ' ? 'ตรวจสอบสินค้า' : 'ดูรายละเอียด';
-            const btnIcon = item.scan_status === 'รอตรวจสอบ' ? 'fa-magnifying-glass' : 'fa-circle-info';
-
-            return `
-            <tr class="hover:bg-divider transition-colors">
-                <td class="px-6 py-4">${photoHtml}</td>
-                <td class="px-6 py-4"><span class="font-mono font-semibold text-accent-ink">${item.imei}</span></td>
-                <td class="px-6 py-4">
-                    <p class="font-medium text-ink truncate">${item.product_name}</p>
-                    <p class="text-xs text-ink/70">สแกนโดย ${item.scanned_by?.name || '—'}${item.scan_notes ? ` · "${item.scan_notes}"` : ''}</p>
-                </td>
-                <td class="px-6 py-4">${statusBadge(tone, item.scan_status)}</td>
-                <td class="px-6 py-4 text-right">
-                    <button type="button" onclick="openAuditReviewItemModal('${item._id}')" title="${btnLabel}"
-                        aria-label="${btnLabel} IMEI ${item.imei}"
-                        class="text-ink hover:text-accent-ink transition-colors p-2">
-                        <i class="fa-solid ${btnIcon}"></i>
-                    </button>
-                </td>
-            </tr>`;
-        }).join('');
+        if (_reviewItemsViewMode === 'card') {
+            if (cardsWrap) cardsWrap.innerHTML = filteredItems.map(reviewItemCardHtml).join('');
+            tbody.innerHTML = '';
+        } else {
+            tbody.innerHTML = filteredItems.map(reviewItemRowHtml).join('');
+            if (cardsWrap) cardsWrap.innerHTML = '';
+        }
     }
 
     function filterReviewItemsByStatus(status) {

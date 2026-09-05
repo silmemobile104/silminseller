@@ -78,7 +78,7 @@
     };
 
     const ST_TAB_BASE = 'elev-chip settings-tab-btn px-4 py-2.5 rounded-xl text-sm font-bold transition-colors flex items-center gap-2 cursor-pointer';
-    const ST_TAB_ON = 'bg-primary text-on-primary ring-1 ring-accent-ink';
+    const ST_TAB_ON = 'bg-primary text-on-primary ring-1 ring-accent-ink apple-active-accent';
     const ST_TAB_OFF = 'elev-field bg-field text-body-muted hover:ring-1 hover:ring-accent-ink hover:text-ink';
     const ST_BADGE_ON = 'settings-tab-badge px-2 py-0.5 rounded-full text-[10px] font-bold bg-hairline/20';
     const ST_BADGE_OFF = 'settings-tab-badge px-2 py-0.5 rounded-full text-[10px] font-bold bg-chip/60 text-ink';

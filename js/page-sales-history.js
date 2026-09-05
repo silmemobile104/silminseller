@@ -26,6 +26,15 @@
     const btnSalesHistoryFilterApply = document.getElementById('btn-sales-history-filter-apply');
     const btnSalesHistoryFilterReset = document.getElementById('btn-sales-history-filter-reset');
 
+    // สลับมุมมอง List/Card (เดินตามรูปแบบเดียวกับหน้าการมัดจำ/#transactions) — จำโหมดไว้ข้ามการเข้าหน้า
+    const salesHistoryViewListBtn = document.getElementById('sales-history-view-list');
+    const salesHistoryViewCardBtn = document.getElementById('sales-history-view-card');
+    const salesHistoryViewListWrap = document.getElementById('sales-history-view-list-wrap');
+    const salesHistoryViewCardsWrap = document.getElementById('sales-history-view-cards');
+    let salesHistoryViewMode = localStorage.getItem('sales_history_view_mode') === 'card' ? 'card' : 'list';
+    // แคชผลลัพธ์ล่าสุด — สลับมุมมองแล้ว render ซ้ำจากแคชได้เลย ไม่ต้องยิง API ซ้ำ
+    let salesHistoryCache = [];
+
     // ตัวกรองที่ย้ายเข้าไปอยู่ในพาเนลละเอียด
     const salesHistoryEmployee = document.getElementById('sales-history-employee');
     const salesHistoryPaymentType = document.getElementById('sales-history-payment-type');
@@ -102,16 +111,17 @@
             const result = await response.json();
 
             if (result.success) {
-                renderSalesHistoryTable(result.data);
+                salesHistoryCache = Array.isArray(result.data) ? result.data : [];
+                renderSalesHistoryResults();
             } else {
-                if (salesHistoryTableBody) salesHistoryTableBody.innerHTML = salesHistoryStateRow('เกิดข้อผิดพลาดในการดึงข้อมูล', 'text-red-400');
-                if (salesHistoryResultCount) salesHistoryResultCount.textContent = '';
+                salesHistoryCache = [];
+                renderSalesHistoryResults('เกิดข้อผิดพลาดในการดึงข้อมูล');
                 showToast('เกิดข้อผิดพลาดในการดึงข้อมูล: ' + result.message, 'error');
             }
         } catch (error) {
             console.error('Error loading sales history:', error);
-            if (salesHistoryTableBody) salesHistoryTableBody.innerHTML = salesHistoryStateRow('เกิดข้อผิดพลาดในการดึงข้อมูล', 'text-red-400');
-            if (salesHistoryResultCount) salesHistoryResultCount.textContent = '';
+            salesHistoryCache = [];
+            renderSalesHistoryResults('เกิดข้อผิดพลาดในการดึงข้อมูล');
             showToast('เกิดข้อผิดพลาดในการดึงข้อมูล', 'error');
         }
     };
@@ -459,7 +469,7 @@
     // ==========================================
 
     // แถวโครงร่างระหว่างรอข้อมูล — ต้องเรียกก่อน await เสมอ ไม่ปล่อยตารางว่าง (ข้อ 11.7)
-    const renderSalesHistorySkeleton = (rowCount = 6) => {
+    const renderSalesHistoryTableSkeleton = (rowCount = 6) => {
         if (!salesHistoryTableBody) return;
         const bar = (w) => `<div class="h-3.5 ${w} rounded-full bg-skeleton animate-pulse"></div>`;
         const twoLine = (a, b) => `<div class="space-y-2">${bar(a)}${bar(b)}</div>`;
@@ -480,8 +490,44 @@
         salesHistoryTableBody.innerHTML = html;
     };
 
+    // โครงร่างการ์ด — สัดส่วนบล็อกเดินตามโครงจริงของ renderSalesHistoryCard ด้านล่าง
+    const renderSalesHistoryCardSkeleton = (cardCount = 6) => {
+        if (!salesHistoryViewCardsWrap) return;
+        const bar = (w) => `<div class="h-3.5 ${w} rounded-full bg-skeleton animate-pulse"></div>`;
+        let html = '';
+        for (let i = 0; i < cardCount; i++) {
+            html += `
+                <div class="elev-card bg-surface-tile-3 rounded-md p-4">
+                    <div class="flex items-start justify-between gap-2">
+                        ${bar('w-24 h-4')}
+                        ${bar('w-16 h-5')}
+                    </div>
+                    ${bar('w-40 mt-4')}
+                    ${bar('w-32 mt-4')}
+                    <div class="flex items-center justify-between mt-4 pt-3 border-t border-hairline">
+                        ${bar('w-20 h-5')}
+                        ${bar('w-24 h-5')}
+                    </div>
+                    <div class="flex items-center justify-between mt-3 pt-3 border-t border-hairline">
+                        ${bar('w-28')}
+                        <div class="w-8 h-8 rounded-[0.375rem] bg-skeleton animate-pulse"></div>
+                    </div>
+                </div>
+            `;
+        }
+        salesHistoryViewCardsWrap.innerHTML = html;
+    };
+
+    const renderSalesHistorySkeleton = (count = 6) => {
+        if (salesHistoryViewMode === 'card') renderSalesHistoryCardSkeleton(count);
+        else renderSalesHistoryTableSkeleton(count);
+    };
+
     const salesHistoryStateRow = (message, extraClass = 'text-ink/50 italic') =>
         `<tr><td colspan="${SALES_HISTORY_COLS}" class="px-6 py-8 text-center ${extraClass}">${message}</td></tr>`;
+
+    const salesHistoryStateCard = (message, extraClass = 'text-ink/50 italic') =>
+        `<div class="col-span-full py-12 text-center ${extraClass}">${message}</div>`;
 
     // ป้ายสถานะ: จุดสี + พื้น tint 12% ตามตารางสถานะใน DESIGN.md ข้อ 11.6
     const salesHistoryStatusBadge = (status) => {
@@ -610,82 +656,162 @@
         if (salesHistoryFilterPanelContent) salesHistoryFilterPanelContent.classList.add('translate-x-full');
     };
 
-    const renderSalesHistoryTable = (transactions) => {
+    // ข้อมูลที่คำนวณร่วมกันระหว่างแถวตารางกับการ์ด — แยกออกมาครั้งเดียวเพื่อไม่ให้สองมุมมองเพี้ยนจากกัน
+    const buildSalesHistoryRowData = (txn) => {
+        const isCancelled = txn.status === 'ยกเลิกแล้ว';
+        const dateStr = new Date(txn.created_at).toLocaleString('th-TH', {
+            day: '2-digit',
+            month: '2-digit',
+            year: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+        const paymentType = txn.payment_type || txn.payment_method || '-';
+        const memberCell = txn.member_id
+            ? twoLineCell(
+                `${txn.member_id.first_name} ${txn.member_id.last_name}`,
+                `<span class="font-mono">${txn.member_id.phone || '-'}</span>`
+            )
+            : '<span class="text-ink/50">-</span>';
+        return { isCancelled, dateStr, paymentType, memberCell };
+    };
+
+    const bindSalesHistoryActionHandlers = (el, txn) => {
+        const btn = el.querySelector('.view-transaction-btn');
+        if (btn) {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                viewTransactionDetails(txn._id);
+            });
+        }
+    };
+
+    const salesHistoryTableRowMarkup = (txn) => {
+        const d = buildSalesHistoryRowData(txn);
+        const row = document.createElement('tr');
+        // แถวที่ยกเลิกไม่ย้อมพื้นทั้งแถวแล้ว (พื้นแถวมีสีเดียวตามข้อ 11.6)
+        // ความหมาย "ยกเลิก" สื่อด้วยป้ายสถานะในคอลัมน์ของมัน + ขีดฆ่าเลขบิลกับยอดเงิน
+        row.className = 'hover:bg-divider transition-colors';
+        row.innerHTML = `
+            <td class="px-6 py-4">
+                <div>
+                    <p class="font-mono font-semibold text-accent-ink ${d.isCancelled ? 'line-through' : ''}">${txn.receipt_number}</p>
+                    <p class="text-xs text-ink/70 mt-0.5">${d.dateStr}</p>
+                </div>
+            </td>
+            <td class="px-6 py-4">
+                ${twoLineCell(txn.branch_id ? txn.branch_id.name : '-', txn.employee_id ? txn.employee_id.name : '-')}
+            </td>
+            <td class="px-6 py-4">${d.memberCell}</td>
+            <td class="px-6 py-4 text-right text-ink font-mono ${d.isCancelled ? 'line-through text-ink/50' : ''}">฿${txn.total_amount.toLocaleString()}</td>
+            <td class="px-6 py-4">
+                <span class="px-2.5 py-1 bg-line text-ink/70 rounded-[0.375rem] text-xs font-medium">${d.paymentType}</span>
+            </td>
+            <td class="px-6 py-4">${salesHistoryStatusBadge(txn.status)}</td>
+            <td class="px-6 py-4 text-right">
+                <div class="flex items-center justify-end gap-1">
+                    <button type="button" class="view-transaction-btn text-ink hover:text-indigo-400 transition-colors p-2"
+                            data-id="${txn._id}" title="ดูรายละเอียด">
+                        <i class="fa-solid fa-eye"></i>
+                    </button>
+                </div>
+            </td>
+        `;
+        bindSalesHistoryActionHandlers(row, txn);
+        return row;
+    };
+
+    // การ์ด — โครง: หัว (เลขที่บิล+วันที่ / สถานะ) · สาขา+พนักงาน · สมาชิก/ลูกค้า · ชำระ+ยอดรวม · footer (ปุ่มดูรายละเอียด)
+    const renderSalesHistoryCard = (txn) => {
+        const d = buildSalesHistoryRowData(txn);
+        const card = document.createElement('div');
+        card.className = 'elev-card pos-card bg-surface-tile-3 rounded-md p-4 transition-all hover:-translate-y-1 border-none cursor-pointer';
+        card.innerHTML = `
+            <div class="flex items-start justify-between gap-2">
+                <div class="min-w-0">
+                    <p class="font-mono font-semibold text-accent-ink truncate ${d.isCancelled ? 'line-through' : ''}">${txn.receipt_number}</p>
+                    <p class="text-xs text-ink/70 mt-0.5">${d.dateStr}</p>
+                </div>
+                <div class="shrink-0">${salesHistoryStatusBadge(txn.status)}</div>
+            </div>
+
+            <div class="mt-3 pt-3 border-t border-hairline">
+                ${twoLineCell(txn.branch_id ? txn.branch_id.name : '-', txn.employee_id ? txn.employee_id.name : '-')}
+            </div>
+
+            <div class="mt-3">
+                <p class="text-[10px] text-ink/60 uppercase tracking-wide">สมาชิก / ลูกค้า</p>
+                <div class="mt-1">${d.memberCell}</div>
+            </div>
+
+            <div class="flex items-center justify-between mt-3.5 pt-3 border-t border-hairline">
+                <span class="px-2.5 py-1 bg-line text-ink/70 rounded-[0.375rem] text-xs font-medium">${d.paymentType}</span>
+                <span class="text-base font-mono font-bold ${d.isCancelled ? 'line-through text-ink/50' : 'text-ink'}">฿${txn.total_amount.toLocaleString()}</span>
+            </div>
+
+            <div class="flex items-center justify-end mt-3 pt-3 border-t border-hairline">
+                <button type="button" class="view-transaction-btn text-ink hover:text-indigo-400 transition-colors p-2"
+                        data-id="${txn._id}" title="ดูรายละเอียด">
+                    <i class="fa-solid fa-eye"></i>
+                </button>
+            </div>
+        `;
+        bindSalesHistoryActionHandlers(card, txn);
+        card.addEventListener('click', () => viewTransactionDetails(txn._id));
+        return card;
+    };
+
+    // จุดเดียวที่ตัดสินว่าจะ render ตารางหรือการ์ด — ใช้ทั้งตอน fetch เสร็จและตอนแค่สลับมุมมอง (อ่านจาก salesHistoryCache)
+    const renderSalesHistoryResults = (errorMessage = null) => {
         if (!salesHistoryTableBody) return;
 
-        salesHistoryTableBody.innerHTML = '';
+        if (salesHistoryViewListWrap) salesHistoryViewListWrap.classList.toggle('hidden', salesHistoryViewMode !== 'list');
+        if (salesHistoryViewCardsWrap) salesHistoryViewCardsWrap.classList.toggle('hidden', salesHistoryViewMode !== 'card');
 
-        if (!transactions || transactions.length === 0) {
-            salesHistoryTableBody.innerHTML = salesHistoryStateRow('ไม่พบประวัติการขายตามตัวเลือก');
+        if (errorMessage) {
+            salesHistoryTableBody.innerHTML = salesHistoryStateRow(errorMessage, 'text-red-400');
+            if (salesHistoryViewCardsWrap) salesHistoryViewCardsWrap.innerHTML = salesHistoryStateCard(errorMessage, 'text-red-400');
             if (salesHistoryResultCount) salesHistoryResultCount.textContent = '';
             return;
         }
 
-        if (salesHistoryResultCount) {
-            salesHistoryResultCount.textContent = `แสดง ${transactions.length} รายการ`;
+        if (salesHistoryCache.length > 0) {
+            if (salesHistoryViewMode === 'card') {
+                const frag = document.createDocumentFragment();
+                salesHistoryCache.forEach(txn => frag.appendChild(renderSalesHistoryCard(txn)));
+                salesHistoryViewCardsWrap.innerHTML = '';
+                salesHistoryViewCardsWrap.appendChild(frag);
+            } else {
+                const frag = document.createDocumentFragment();
+                salesHistoryCache.forEach(txn => frag.appendChild(salesHistoryTableRowMarkup(txn)));
+                salesHistoryTableBody.innerHTML = '';
+                salesHistoryTableBody.appendChild(frag);
+            }
+            if (salesHistoryResultCount) salesHistoryResultCount.textContent = `แสดง ${salesHistoryCache.length} รายการ`;
+        } else {
+            salesHistoryTableBody.innerHTML = salesHistoryStateRow('ไม่พบประวัติการขายตามตัวเลือก');
+            if (salesHistoryViewCardsWrap) salesHistoryViewCardsWrap.innerHTML = salesHistoryStateCard('ไม่พบประวัติการขายตามตัวเลือก');
+            if (salesHistoryResultCount) salesHistoryResultCount.textContent = '';
         }
-
-        transactions.forEach(txn => {
-            const row = document.createElement('tr');
-            const isCancelled = txn.status === 'ยกเลิกแล้ว';
-
-            // แถวที่ยกเลิกไม่ย้อมพื้นทั้งแถวแล้ว (พื้นแถวมีสีเดียวตามข้อ 11.6)
-            // ความหมาย "ยกเลิก" สื่อด้วยป้ายสถานะในคอลัมน์ของมัน + ขีดฆ่าเลขบิลกับยอดเงิน
-            row.className = 'hover:bg-divider transition-colors';
-
-            const dateStr = new Date(txn.created_at).toLocaleString('th-TH', {
-                day: '2-digit',
-                month: '2-digit',
-                year: '2-digit',
-                hour: '2-digit',
-                minute: '2-digit'
-            });
-
-            const paymentType = txn.payment_type || txn.payment_method || '-';
-            const memberCell = txn.member_id
-                ? twoLineCell(
-                    `${txn.member_id.first_name} ${txn.member_id.last_name}`,
-                    `<span class="font-mono">${txn.member_id.phone || '-'}</span>`
-                )
-                : '<span class="text-ink/50">-</span>';
-
-            row.innerHTML = `
-                <td class="px-6 py-4">
-                    <div>
-                        <p class="font-mono font-semibold text-accent-ink ${isCancelled ? 'line-through' : ''}">${txn.receipt_number}</p>
-                        <p class="text-xs text-ink/70 mt-0.5">${dateStr}</p>
-                    </div>
-                </td>
-                <td class="px-6 py-4">
-                    ${twoLineCell(txn.branch_id ? txn.branch_id.name : '-', txn.employee_id ? txn.employee_id.name : '-')}
-                </td>
-                <td class="px-6 py-4">${memberCell}</td>
-                <td class="px-6 py-4 text-right text-ink font-mono ${isCancelled ? 'line-through text-ink/50' : ''}">฿${txn.total_amount.toLocaleString()}</td>
-                <td class="px-6 py-4">
-                    <span class="px-2.5 py-1 bg-line text-ink/70 rounded-[0.375rem] text-xs font-medium">${paymentType}</span>
-                </td>
-                <td class="px-6 py-4">${salesHistoryStatusBadge(txn.status)}</td>
-                <td class="px-6 py-4 text-right">
-                    <div class="flex items-center justify-end gap-1">
-                        <button type="button" class="view-transaction-btn text-ink hover:text-indigo-400 transition-colors p-2"
-                                data-id="${txn._id}" title="ดูรายละเอียด">
-                            <i class="fa-solid fa-eye"></i>
-                        </button>
-                    </div>
-                </td>
-            `;
-
-            salesHistoryTableBody.appendChild(row);
-        });
-
-        // Add click listeners to view buttons
-        document.querySelectorAll('.view-transaction-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                const txnId = btn.dataset.id;
-                viewTransactionDetails(txnId);
-            });
-        });
     };
+
+    // ซิงก์คลาส active/idle ของปุ่มสลับมุมมองให้ตรงกับ salesHistoryViewMode ปัจจุบัน (ไม่ render ข้อมูล)
+    const syncSalesHistoryViewButtons = (mode) => window.syncViewToggleButtons(salesHistoryViewListBtn, salesHistoryViewCardBtn, mode);
+
+    // สลับมุมมอง List/Card — re-render จาก salesHistoryCache ทันที ไม่ยิง API ซ้ำ
+    const applySalesHistoryViewMode = (mode) => {
+        salesHistoryViewMode = mode;
+        localStorage.setItem('sales_history_view_mode', mode);
+        syncSalesHistoryViewButtons(mode);
+        renderSalesHistoryResults();
+    };
+
+    if (salesHistoryViewListBtn) salesHistoryViewListBtn.addEventListener('click', () => applySalesHistoryViewMode('list'));
+    if (salesHistoryViewCardBtn) salesHistoryViewCardBtn.addEventListener('click', () => applySalesHistoryViewMode('card'));
+    // ซิงก์ปุ่มให้ตรงกับโหมดที่จำไว้ตั้งแต่โหลดสคริปต์ครั้งแรก — ก่อน loadSalesHistory() ที่ script.js เรียกตอนเข้าเพจ
+    syncSalesHistoryViewButtons(salesHistoryViewMode);
+    if (salesHistoryViewListWrap) salesHistoryViewListWrap.classList.toggle('hidden', salesHistoryViewMode !== 'list');
+    if (salesHistoryViewCardsWrap) salesHistoryViewCardsWrap.classList.toggle('hidden', salesHistoryViewMode !== 'card');
 
     const viewTransactionDetails = async (txnId) => {
         try {

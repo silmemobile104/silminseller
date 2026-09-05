@@ -29,12 +29,12 @@
                 </div>
                 <label for="arrival-filter-status" class="sr-only">กรองตามสถานะ</label>
                 <select id="arrival-filter-status"
-                    class="bg-panel/40 cursor-pointer text-sm rounded-[0.5rem] px-3 py-2 text-ink focus:outline-none focus:ring-1 focus:ring-accent-ink w-full sm:w-auto [&>option]:bg-panel [&>option:checked]:bg-primary [&>option:checked]:text-on-primary">
+                    class="page-filter-control bg-panel/40 cursor-pointer text-sm rounded-[0.5rem] px-3 py-2 text-ink focus:outline-none focus:ring-1 focus:ring-accent-ink w-full sm:w-auto [&>option]:bg-panel [&>option:checked]:bg-primary [&>option:checked]:text-on-primary">
                     <option value="">สถานะทั้งหมด</option>
                 </select>
                 <label for="arrival-filter-branch" class="sr-only">กรองตามสาขา</label>
                 <select id="arrival-filter-branch"
-                    class="bg-panel/40 cursor-pointer text-sm rounded-[0.5rem] px-3 py-2 text-ink focus:outline-none focus:ring-1 focus:ring-accent-ink w-full sm:w-auto [&>option]:bg-panel [&>option:checked]:bg-primary [&>option:checked]:text-on-primary">
+                    class="page-filter-control bg-panel/40 cursor-pointer text-sm rounded-[0.5rem] px-3 py-2 text-ink focus:outline-none focus:ring-1 focus:ring-accent-ink w-full sm:w-auto [&>option]:bg-panel [&>option:checked]:bg-primary [&>option:checked]:text-on-primary">
                     <option value="">เลือกสาขา</option>
                 </select>
                 <label for="arrival-filter-start" class="sr-only">วันที่เริ่มต้น</label>
@@ -46,16 +46,28 @@
             </div>
         </div>
 
-        <!-- ชิปตัวกรอง + ตัวนับผลลัพธ์ (DESIGN.md ข้อ 11.5) -->
+        <!-- ชิปตัวกรอง + ตัวนับผลลัพธ์ + สลับมุมมอง (DESIGN.md ข้อ 11.5) -->
         <div class="px-6 py-4">
             <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                 <div id="arrival-active-filters" class="flex flex-wrap gap-2"></div>
-                <div id="arrival-result-count" class="text-xs text-ink font-medium"></div>
+                <div class="flex items-center gap-3">
+                    <div id="arrival-result-count" class="text-xs text-ink font-medium"></div>
+                    <div class="flex items-center gap-1 shrink-0">
+                        <button type="button" id="arrival-view-list" aria-label="มุมมองรายการ" aria-pressed="true"
+                            class="w-9 h-9 rounded-md flex items-center justify-center transition-colors bg-primary text-on-primary">
+                            <i class="fa-solid fa-list text-sm"></i>
+                        </button>
+                        <button type="button" id="arrival-view-card" aria-label="มุมมองการ์ด" aria-pressed="false"
+                            class="w-9 h-9 rounded-md flex items-center justify-center transition-colors bg-surface-chip text-body-muted hover:text-ink">
+                            <i class="fa-solid fa-table-cells-large text-sm"></i>
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
 
         <!-- ตารางเดียวรวมทุกสถานะ (ข้อ 11.6) -->
-        <div class="overflow-x-auto" tabindex="0">
+        <div id="arrival-view-list-wrap" class="overflow-x-auto" tabindex="0">
             <table class="w-full text-left text-sm whitespace-nowrap border-collapse">
                 <thead class="bg-panel/40 text-ink">
                     <tr>
@@ -70,6 +82,8 @@
                 <tbody id="table-body-arrival-po" class="divide-y divide-divider"></tbody>
             </table>
         </div>
+        <!-- มุมมองการ์ด (ทางเลือก — ซ่อนไว้ก่อน สลับผ่านปุ่มด้านบน) -->
+        <div id="arrival-view-cards" class="hidden grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 p-6"></div>
 
         <!-- แบ่งหน้า -->
         <div id="arrival-pagination" class="px-6 py-5 flex items-center justify-center gap-2"></div>
@@ -292,7 +306,7 @@
                 <option value="">ทุกสาขา</option>
             </select>
             <button id="btn-reload-import-list" type="button" aria-label="โหลดข้อมูลใหม่"
-                class="px-3 py-2 bg-panel/40 cursor-pointer text-ink flex items-center justify-center gap-1.5 rounded-[0.5rem] text-sm hover:bg-skeleton transition-colors">
+                class="page-filter-control px-3 py-2 bg-panel/40 cursor-pointer text-ink flex items-center justify-center gap-1.5 rounded-[0.5rem] text-sm hover:bg-skeleton transition-colors">
                 <i class="fa-solid fa-arrows-rotate"></i> โหลดใหม่
             </button>
         </div>
@@ -327,9 +341,21 @@
                 <h3 class="text-lg text-ink flex items-center gap-2">
                     <i class="fa-solid fa-file-invoice text-accent-ink"></i> ใบสั่งซื้อที่รออนุมัตินำเข้าคลัง
                 </h3>
-                <div id="approve-po-result-count" class="text-xs text-ink font-medium"></div>
+                <div class="flex items-center gap-3">
+                    <div id="approve-po-result-count" class="text-xs text-ink font-medium"></div>
+                    <div class="flex items-center gap-1 shrink-0">
+                        <button type="button" id="approve-po-view-list" aria-label="มุมมองรายการ" aria-pressed="true"
+                            class="w-9 h-9 rounded-md flex items-center justify-center transition-colors bg-primary text-on-primary">
+                            <i class="fa-solid fa-list text-sm"></i>
+                        </button>
+                        <button type="button" id="approve-po-view-card" aria-label="มุมมองการ์ด" aria-pressed="false"
+                            class="w-9 h-9 rounded-md flex items-center justify-center transition-colors bg-surface-chip text-body-muted hover:text-ink">
+                            <i class="fa-solid fa-table-cells-large text-sm"></i>
+                        </button>
+                    </div>
+                </div>
             </div>
-            <div class="mt-4 overflow-x-auto" tabindex="0">
+            <div id="approve-po-view-list-wrap" class="mt-4 overflow-x-auto" tabindex="0">
                 <table class="w-full text-left text-sm whitespace-nowrap border-collapse">
                     <thead class="bg-panel/40 text-ink">
                         <tr>
@@ -343,6 +369,7 @@
                     <tbody id="table-body-approve-po" class="divide-y divide-divider"></tbody>
                 </table>
             </div>
+            <div id="approve-po-view-cards" class="hidden grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 p-6"></div>
         </div>
     </div>
 
@@ -355,9 +382,21 @@
                 <h3 class="text-lg text-ink flex items-center gap-2">
                     <i class="fa-solid fa-circle-exclamation text-accent-ink"></i> สินค้านอกระบบ PO ที่รออนุมัติ
                 </h3>
-                <div id="approve-nonpo-result-count" class="text-xs text-ink font-medium"></div>
+                <div class="flex items-center gap-3">
+                    <div id="approve-nonpo-result-count" class="text-xs text-ink font-medium"></div>
+                    <div class="flex items-center gap-1 shrink-0">
+                        <button type="button" id="approve-nonpo-view-list" aria-label="มุมมองรายการ" aria-pressed="true"
+                            class="w-9 h-9 rounded-md flex items-center justify-center transition-colors bg-primary text-on-primary">
+                            <i class="fa-solid fa-list text-sm"></i>
+                        </button>
+                        <button type="button" id="approve-nonpo-view-card" aria-label="มุมมองการ์ด" aria-pressed="false"
+                            class="w-9 h-9 rounded-md flex items-center justify-center transition-colors bg-surface-chip text-body-muted hover:text-ink">
+                            <i class="fa-solid fa-table-cells-large text-sm"></i>
+                        </button>
+                    </div>
+                </div>
             </div>
-            <div class="mt-4 overflow-x-auto" tabindex="0">
+            <div id="approve-nonpo-view-list-wrap" class="mt-4 overflow-x-auto" tabindex="0">
                 <table class="w-full text-left text-sm whitespace-nowrap border-collapse">
                     <thead class="bg-panel/40 text-ink">
                         <tr>
@@ -372,6 +411,7 @@
                     <tbody id="approve-import-table-body" class="divide-y divide-divider"></tbody>
                 </table>
             </div>
+            <div id="approve-nonpo-view-cards" class="hidden grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 p-6"></div>
         </div>
     </div>
 
@@ -385,9 +425,21 @@
                 <h3 class="text-lg text-ink flex items-center gap-2">
                     <i class="fa-solid fa-file-invoice text-accent-ink"></i> ประวัติการอนุมัติใบสั่งซื้อ (PO)
                 </h3>
-                <div id="history-po-result-count" class="text-xs text-ink font-medium"></div>
+                <div class="flex items-center gap-3">
+                    <div id="history-po-result-count" class="text-xs text-ink font-medium"></div>
+                    <div class="flex items-center gap-1 shrink-0">
+                        <button type="button" id="history-po-view-list" aria-label="มุมมองรายการ" aria-pressed="true"
+                            class="w-9 h-9 rounded-md flex items-center justify-center transition-colors bg-primary text-on-primary">
+                            <i class="fa-solid fa-list text-sm"></i>
+                        </button>
+                        <button type="button" id="history-po-view-card" aria-label="มุมมองการ์ด" aria-pressed="false"
+                            class="w-9 h-9 rounded-md flex items-center justify-center transition-colors bg-surface-chip text-body-muted hover:text-ink">
+                            <i class="fa-solid fa-table-cells-large text-sm"></i>
+                        </button>
+                    </div>
+                </div>
             </div>
-            <div class="mt-4 overflow-x-auto" tabindex="0">
+            <div id="history-po-view-list-wrap" class="mt-4 overflow-x-auto" tabindex="0">
                 <table class="w-full text-left text-sm whitespace-nowrap border-collapse">
                     <thead class="bg-panel/40 text-ink">
                         <tr>
@@ -401,6 +453,7 @@
                     <tbody id="table-body-history-po" class="divide-y divide-divider"></tbody>
                 </table>
             </div>
+            <div id="history-po-view-cards" class="hidden grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 p-6"></div>
         </div>
 
         <!-- 3b ประวัติอนุมัติสินค้านอกระบบ PO -->
@@ -409,9 +462,21 @@
                 <h3 class="text-lg text-ink flex items-center gap-2">
                     <i class="fa-solid fa-circle-exclamation text-accent-ink"></i> ประวัติการอนุมัติสินค้านอกระบบ PO
                 </h3>
-                <div id="history-nonpo-result-count" class="text-xs text-ink font-medium"></div>
+                <div class="flex items-center gap-3">
+                    <div id="history-nonpo-result-count" class="text-xs text-ink font-medium"></div>
+                    <div class="flex items-center gap-1 shrink-0">
+                        <button type="button" id="history-nonpo-view-list" aria-label="มุมมองรายการ" aria-pressed="true"
+                            class="w-9 h-9 rounded-md flex items-center justify-center transition-colors bg-primary text-on-primary">
+                            <i class="fa-solid fa-list text-sm"></i>
+                        </button>
+                        <button type="button" id="history-nonpo-view-card" aria-label="มุมมองการ์ด" aria-pressed="false"
+                            class="w-9 h-9 rounded-md flex items-center justify-center transition-colors bg-surface-chip text-body-muted hover:text-ink">
+                            <i class="fa-solid fa-table-cells-large text-sm"></i>
+                        </button>
+                    </div>
+                </div>
             </div>
-            <div class="mt-4 overflow-x-auto" tabindex="0">
+            <div id="history-nonpo-view-list-wrap" class="mt-4 overflow-x-auto" tabindex="0">
                 <table class="w-full text-left text-sm whitespace-nowrap border-collapse">
                     <thead class="bg-panel/40 text-ink">
                         <tr>
@@ -426,6 +491,7 @@
                     <tbody id="table-body-history-nonpo" class="divide-y divide-divider"></tbody>
                 </table>
             </div>
+            <div id="history-nonpo-view-cards" class="hidden grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 p-6"></div>
         </div>
 
         <!-- 3c ประวัตินำเข้าคลังโดยตรง (ไม่มีใบสั่งซื้อ / Excel) -->
@@ -435,9 +501,21 @@
                     <i class="fa-solid fa-clock-rotate-left text-accent-ink"></i> ประวัติการนำเข้าคลังโดยตรง
                     <span class="text-sm text-ink/70">(ไม่มีใบสั่งซื้อ / Excel)</span>
                 </h3>
-                <div id="history-direct-result-count" class="text-xs text-ink font-medium"></div>
+                <div class="flex items-center gap-3">
+                    <div id="history-direct-result-count" class="text-xs text-ink font-medium"></div>
+                    <div class="flex items-center gap-1 shrink-0">
+                        <button type="button" id="history-direct-view-list" aria-label="มุมมองรายการ" aria-pressed="true"
+                            class="w-9 h-9 rounded-md flex items-center justify-center transition-colors bg-primary text-on-primary">
+                            <i class="fa-solid fa-list text-sm"></i>
+                        </button>
+                        <button type="button" id="history-direct-view-card" aria-label="มุมมองการ์ด" aria-pressed="false"
+                            class="w-9 h-9 rounded-md flex items-center justify-center transition-colors bg-surface-chip text-body-muted hover:text-ink">
+                            <i class="fa-solid fa-table-cells-large text-sm"></i>
+                        </button>
+                    </div>
+                </div>
             </div>
-            <div class="mt-4 overflow-x-auto" tabindex="0">
+            <div id="history-direct-view-list-wrap" class="mt-4 overflow-x-auto" tabindex="0">
                 <table class="w-full text-left text-sm whitespace-nowrap border-collapse">
                     <thead class="bg-panel/40 text-ink">
                         <tr>
@@ -453,6 +531,7 @@
                     <tbody id="table-body-history-direct-imports" class="divide-y divide-divider"></tbody>
                 </table>
             </div>
+            <div id="history-direct-view-cards" class="hidden grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 p-6"></div>
         </div>
     </div>
 </div>
@@ -608,7 +687,7 @@
                     </div>
                     <!-- Status Filter -->
                     <select id="filter-po-status"
-                        class="bg-panel/40 rounded-2xl shadow-lg cursor-pointer text-sm rounded-[0.5rem] px-3 py-2 text-ink focus:outline-none focus:ring-2 focus:ring-accent-ink focus:ring-1 focus:ring-accent-ink w-full sm:w-auto [&>option]:bg-panel [&>option:hover]:bg-primary [&>option:hover]:text-on-primary [&>option:checked]:bg-primary [&>option:checked]:text-on-primary">
+                        class="page-filter-control bg-panel/40 rounded-2xl shadow-lg cursor-pointer text-sm rounded-[0.5rem] px-3 py-2 text-ink focus:outline-none focus:ring-2 focus:ring-accent-ink focus:ring-1 focus:ring-accent-ink w-full sm:w-auto [&>option]:bg-panel [&>option:hover]:bg-primary [&>option:hover]:text-on-primary [&>option:checked]:bg-primary [&>option:checked]:text-on-primary">
                         <option value="">สถานะ: ทั้งหมด</option>
                         <option value="รอจัดส่ง">สถานะ: รอจัดส่ง</option>
                         <option value="ของถึงสาขาแล้ว">สถานะ: ของถึงสาขาแล้ว</option>
@@ -618,12 +697,12 @@
                     </select>
                     <!-- Branch Filter -->
                     <select id="filter-po-branch"
-                        class="bg-panel/40 rounded-2xl shadow-lg cursor-pointer text-sm rounded-[0.5rem] px-3 py-2 text-ink focus:outline-none focus:ring-2 focus:ring-accent-ink focus:ring-1 focus:ring-accent-ink w-full sm:w-auto [&>option]:bg-panel [&>option:hover]:bg-primary [&>option:hover]:text-on-primary [&>option:checked]:bg-primary [&>option:checked]:text-on-primary">
+                        class="page-filter-control bg-panel/40 rounded-2xl shadow-lg cursor-pointer text-sm rounded-[0.5rem] px-3 py-2 text-ink focus:outline-none focus:ring-2 focus:ring-accent-ink focus:ring-1 focus:ring-accent-ink w-full sm:w-auto [&>option]:bg-panel [&>option:hover]:bg-primary [&>option:hover]:text-on-primary [&>option:checked]:bg-primary [&>option:checked]:text-on-primary">
                         <option value="">เลือกสาขา</option>
                     </select>
                     <!-- Supplier Filter -->
                     <select id="filter-po-supplier"
-                        class="bg-panel/40 rounded-2xl shadow-lg cursor-pointer text-sm rounded-[0.5rem] px-3 py-2 text-ink focus:outline-none focus:ring-2 focus:ring-accent-ink focus:ring-1 focus:ring-accent-ink w-full sm:w-auto [&>option]:bg-panel [&>option:hover]:bg-primary [&>option:hover]:text-on-primary [&>option:checked]:bg-primary [&>option:checked]:text-on-primary">
+                        class="page-filter-control bg-panel/40 rounded-2xl shadow-lg cursor-pointer text-sm rounded-[0.5rem] px-3 py-2 text-ink focus:outline-none focus:ring-2 focus:ring-accent-ink focus:ring-1 focus:ring-accent-ink w-full sm:w-auto [&>option]:bg-panel [&>option:hover]:bg-primary [&>option:hover]:text-on-primary [&>option:checked]:bg-primary [&>option:checked]:text-on-primary">
                         <option value="">ซัพพลายเออร์</option>
                     </select>
                     <!-- Hidden refresh button to keep JS working -->
@@ -631,7 +710,7 @@
                 </div>
             </div>
 
-            <!-- Active filters chip and count -->
+            <!-- Active filters chip and count + สลับมุมมอง -->
             <div class="px-6 py-4">
                 <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                     <div class="flex flex-wrap gap-2" id="po-active-filters-container">
@@ -645,14 +724,26 @@
                             </button>
                         </div>
                     </div>
-                    <div class="text-xs text-ink font-medium">
-                        สินค้าทั้งหมด <span id="po-history-total-count">0</span> รายการ
+                    <div class="flex items-center gap-3">
+                        <div class="text-xs text-ink font-medium">
+                            สินค้าทั้งหมด <span id="po-history-total-count">0</span> รายการ
+                        </div>
+                        <div class="flex items-center gap-1 shrink-0">
+                            <button type="button" id="po-history-view-list" aria-label="มุมมองรายการ" aria-pressed="true"
+                                class="w-9 h-9 rounded-md flex items-center justify-center transition-colors bg-primary text-on-primary">
+                                <i class="fa-solid fa-list text-sm"></i>
+                            </button>
+                            <button type="button" id="po-history-view-card" aria-label="มุมมองการ์ด" aria-pressed="false"
+                                class="w-9 h-9 rounded-md flex items-center justify-center transition-colors bg-surface-chip text-body-muted hover:text-ink">
+                                <i class="fa-solid fa-table-cells-large text-sm"></i>
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
 
             <!-- PO History Table -->
-            <div class="overflow-x-auto">
+            <div id="po-history-view-list-wrap" class="overflow-x-auto">
                 <table class="w-full text-left text-sm whitespace-nowrap border-collapse">
                     <thead class="bg-panel/40 text-ink">
                         <tr>
@@ -669,6 +760,10 @@
                         <!-- Dynamic rows will be rendered here by JS -->
                     </tbody>
                 </table>
+            </div>
+            <!-- มุมมองการ์ด (ทางเลือก — ซ่อนไว้ก่อน สลับผ่านปุ่มด้านบน) -->
+            <div id="po-history-view-cards" class="hidden grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 p-6">
+                <!-- การ์ดถูกสร้างจาก js/page-po-accounting.js -->
             </div>
         </div>
     </div>
@@ -689,7 +784,7 @@
             <input type="date" id="accounting-end-date"
                 class="page-filter-control elev-chip bg-transparent rounded-[10px] text-sm px-3 py-2 text-ink focus:outline-none focus:ring-1 focus:ring-accent-ink [color-scheme:dark]">
             <button id="btn-refresh-accounting" type="button"
-                class="px-3 py-2 bg-panel/40 cursor-pointer text-ink flex items-center justify-center gap-1.5 rounded-[0.5rem] text-sm hover:bg-skeleton transition-colors">
+                class="page-filter-control px-3 py-2 bg-panel/40 cursor-pointer text-ink flex items-center justify-center gap-1.5 rounded-[0.5rem] text-sm hover:bg-skeleton transition-colors">
                 <i class="fa-solid fa-rotate"></i> รีเฟรช
             </button>
             <button id="btn-open-expense-modal" type="button"
@@ -812,7 +907,7 @@
                 <div class="flex flex-wrap items-center gap-2.5 w-full lg:w-auto">
                     <label for="filter-ap-supplier" class="sr-only">กรองตามซัพพลายเออร์</label>
                     <select id="filter-ap-supplier"
-                        class="bg-panel/40 cursor-pointer text-sm rounded-[0.5rem] px-3 py-2 text-ink focus:outline-none focus:ring-1 focus:ring-accent-ink w-full sm:w-auto [&>option]:bg-panel [&>option:checked]:bg-primary [&>option:checked]:text-on-primary">
+                        class="page-filter-control bg-panel/40 cursor-pointer text-sm rounded-[0.5rem] px-3 py-2 text-ink focus:outline-none focus:ring-1 focus:ring-accent-ink w-full sm:w-auto [&>option]:bg-panel [&>option:checked]:bg-primary [&>option:checked]:text-on-primary">
                         <option value="">ทุกซัพพลายเออร์</option>
                     </select>
                 </div>
@@ -820,10 +915,22 @@
             <div class="px-6 py-4">
                 <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                     <div id="acc-ap-filters" class="flex flex-wrap gap-2"></div>
-                    <div id="acc-ap-count" class="text-xs text-ink font-medium"></div>
+                    <div class="flex items-center gap-3">
+                        <div id="acc-ap-count" class="text-xs text-ink font-medium"></div>
+                        <div class="flex items-center gap-1 shrink-0">
+                            <button type="button" id="acc-ap-view-list" aria-label="มุมมองรายการ" aria-pressed="true"
+                                class="w-9 h-9 rounded-md flex items-center justify-center transition-colors bg-primary text-on-primary">
+                                <i class="fa-solid fa-list text-sm"></i>
+                            </button>
+                            <button type="button" id="acc-ap-view-card" aria-label="มุมมองการ์ด" aria-pressed="false"
+                                class="w-9 h-9 rounded-md flex items-center justify-center transition-colors bg-surface-chip text-body-muted hover:text-ink">
+                                <i class="fa-solid fa-table-cells-large text-sm"></i>
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
-            <div class="overflow-x-auto" tabindex="0">
+            <div id="acc-ap-view-list-wrap" class="overflow-x-auto" tabindex="0">
                 <table class="w-full text-left text-sm whitespace-nowrap border-collapse">
                     <thead class="bg-panel/40 text-ink">
                         <tr>
@@ -840,6 +947,7 @@
                     <tbody id="table-body-accounting-ap" class="divide-y divide-divider"></tbody>
                 </table>
             </div>
+            <div id="acc-ap-view-cards" class="hidden grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 p-6"></div>
         </div>
     </div>
 
@@ -850,9 +958,21 @@
                 <h3 class="text-lg text-ink flex items-center gap-2">
                     <i class="fa-solid fa-file-invoice-dollar text-accent-ink"></i> รายการเดินบัญชี (Ledger)
                 </h3>
-                <div id="acc-pl-count" class="text-xs text-ink font-medium"></div>
+                <div class="flex items-center gap-3">
+                    <div id="acc-pl-count" class="text-xs text-ink font-medium"></div>
+                    <div class="flex items-center gap-1 shrink-0">
+                        <button type="button" id="acc-pl-view-list" aria-label="มุมมองรายการ" aria-pressed="true"
+                            class="w-9 h-9 rounded-md flex items-center justify-center transition-colors bg-primary text-on-primary">
+                            <i class="fa-solid fa-list text-sm"></i>
+                        </button>
+                        <button type="button" id="acc-pl-view-card" aria-label="มุมมองการ์ด" aria-pressed="false"
+                            class="w-9 h-9 rounded-md flex items-center justify-center transition-colors bg-surface-chip text-body-muted hover:text-ink">
+                            <i class="fa-solid fa-table-cells-large text-sm"></i>
+                        </button>
+                    </div>
+                </div>
             </div>
-            <div class="mt-4 overflow-x-auto" tabindex="0">
+            <div id="acc-pl-view-list-wrap" class="mt-4 overflow-x-auto" tabindex="0">
                 <table class="w-full text-left text-sm whitespace-nowrap border-collapse">
                     <thead class="bg-panel/40 text-ink">
                         <tr>
@@ -866,6 +986,7 @@
                     <tbody id="table-body-accounting-pl" class="divide-y divide-divider"></tbody>
                 </table>
             </div>
+            <div id="acc-pl-view-cards" class="hidden grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 p-6"></div>
         </div>
     </div>
 
@@ -878,9 +999,21 @@
                 <h3 class="text-lg text-ink flex items-center gap-2">
                     <i class="fa-solid fa-hand-holding-dollar text-accent-ink"></i> ยอดจัดไฟแนนซ์ค้างรับ
                 </h3>
-                <div id="acc-ar-count" class="text-xs text-ink font-medium"></div>
+                <div class="flex items-center gap-3">
+                    <div id="acc-ar-count" class="text-xs text-ink font-medium"></div>
+                    <div class="flex items-center gap-1 shrink-0">
+                        <button type="button" id="acc-ar-view-list" aria-label="มุมมองรายการ" aria-pressed="true"
+                            class="w-9 h-9 rounded-md flex items-center justify-center transition-colors bg-primary text-on-primary">
+                            <i class="fa-solid fa-list text-sm"></i>
+                        </button>
+                        <button type="button" id="acc-ar-view-card" aria-label="มุมมองการ์ด" aria-pressed="false"
+                            class="w-9 h-9 rounded-md flex items-center justify-center transition-colors bg-surface-chip text-body-muted hover:text-ink">
+                            <i class="fa-solid fa-table-cells-large text-sm"></i>
+                        </button>
+                    </div>
+                </div>
             </div>
-            <div class="mt-4 overflow-x-auto" tabindex="0">
+            <div id="acc-ar-view-list-wrap" class="mt-4 overflow-x-auto" tabindex="0">
                 <table class="w-full text-left text-sm whitespace-nowrap border-collapse">
                     <thead class="bg-panel/40 text-ink">
                         <tr>
@@ -894,6 +1027,7 @@
                     <tbody id="table-body-accounting-ar" class="divide-y divide-divider"></tbody>
                 </table>
             </div>
+            <div id="acc-ar-view-cards" class="hidden grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 p-6"></div>
         </div>
     </div>
 </div>
@@ -906,7 +1040,7 @@
             <h3 class="text-2xl text-ink">ตรวจรับของเข้า (PO)</h3>
         </div>
         <button id="btn-refresh-po-receive" type="button"
-            class="px-3 py-2 bg-panel/40 cursor-pointer text-ink flex items-center justify-center gap-1.5 rounded-[0.5rem] text-sm hover:bg-skeleton transition-colors w-fit">
+            class="page-filter-control px-3 py-2 bg-panel/40 cursor-pointer text-ink flex items-center justify-center gap-1.5 rounded-[0.5rem] text-sm hover:bg-skeleton transition-colors w-fit">
             <i class="fa-solid fa-rotate"></i> รีเฟรชรายการ
         </button>
     </div>
@@ -970,22 +1104,34 @@
                 </div>
                 <label for="receive-filter-branch" class="sr-only">กรองตามสาขา</label>
                 <select id="receive-filter-branch"
-                    class="bg-panel/40 cursor-pointer text-sm rounded-[0.5rem] px-3 py-2 text-ink focus:outline-none focus:ring-1 focus:ring-accent-ink w-full sm:w-auto [&>option]:bg-panel [&>option:checked]:bg-primary [&>option:checked]:text-on-primary">
+                    class="page-filter-control bg-panel/40 cursor-pointer text-sm rounded-[0.5rem] px-3 py-2 text-ink focus:outline-none focus:ring-1 focus:ring-accent-ink w-full sm:w-auto [&>option]:bg-panel [&>option:checked]:bg-primary [&>option:checked]:text-on-primary">
                     <option value="">ทุกสาขา</option>
                 </select>
             </div>
         </div>
 
-        <!-- 2b ชิปตัวกรอง + ตัวนับผลลัพธ์ (ข้อ 11.5) -->
+        <!-- 2b ชิปตัวกรอง + ตัวนับผลลัพธ์ + สลับมุมมอง (ข้อ 11.5) -->
         <div class="px-6 py-4">
             <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                 <div id="receive-active-filters" class="flex flex-wrap gap-2"></div>
-                <div id="receive-po-total-count" class="text-xs text-ink font-medium"></div>
+                <div class="flex items-center gap-3">
+                    <div id="receive-po-total-count" class="text-xs text-ink font-medium"></div>
+                    <div class="flex items-center gap-1 shrink-0">
+                        <button type="button" id="receive-view-list" aria-label="มุมมองรายการ" aria-pressed="true"
+                            class="w-9 h-9 rounded-md flex items-center justify-center transition-colors bg-primary text-on-primary">
+                            <i class="fa-solid fa-list text-sm"></i>
+                        </button>
+                        <button type="button" id="receive-view-card" aria-label="มุมมองการ์ด" aria-pressed="false"
+                            class="w-9 h-9 rounded-md flex items-center justify-center transition-colors bg-surface-chip text-body-muted hover:text-ink">
+                            <i class="fa-solid fa-table-cells-large text-sm"></i>
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
 
         <!-- 2c ตาราง (ข้อ 11.6) -->
-        <div class="overflow-x-auto" tabindex="0">
+        <div id="receive-view-list-wrap" class="overflow-x-auto" tabindex="0">
             <table class="w-full text-left text-sm whitespace-nowrap border-collapse">
                 <thead class="bg-panel/40 text-ink">
                     <tr>
@@ -1000,5 +1146,7 @@
                 <tbody id="table-body-receive-po" class="divide-y divide-divider"></tbody>
             </table>
         </div>
+        <!-- 2c' การ์ด (มุมมองทางเลือก — ซ่อนไว้ก่อน สลับผ่านปุ่มด้านบน) -->
+        <div id="receive-view-cards" class="hidden grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 p-6"></div>
     </div>
 </div>

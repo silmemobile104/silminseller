@@ -6,6 +6,17 @@
     // ============================================================================
     let auditCurrentPage = 1;
     let auditLogsCache = [];
+    // มุมมองตาราง/การ์ด — จำค่าไว้ข้ามการเข้าหน้า (เหมือนหน้า #deposits)
+    let auditViewMode = localStorage.getItem('audit_view_mode') === 'card' ? 'card' : 'list';
+
+    // สลับ list-wrap/cards ให้ตรงมุมมองที่จำไว้ - ต้องเรียกตอนวาดโครงร่างด้วย ไม่ใช่แค่ตอน render ข้อมูลจริง
+    // ไม่งั้นถ้าจำโหมดการ์ดไว้ โครงร่างจะไปวาดใน wrap ที่ยังซ่อนอยู่ (ผู้ใช้เห็นพื้นที่ว่างจนกว่า fetch จะเสร็จ)
+    const syncViewWrapVisibility = (prefix, mode) => {
+        const listWrap = document.getElementById(`${prefix}-view-list-wrap`);
+        const cardsWrap = document.getElementById(`${prefix}-view-cards`);
+        if (listWrap) listWrap.classList.toggle('hidden', mode !== 'list');
+        if (cardsWrap) cardsWrap.classList.toggle('hidden', mode !== 'card');
+    };
 
     // Helper to format date cleanly in Thai format
     const formatThaiDateTime = (dateStr) => {
@@ -34,7 +45,10 @@
     const adStateRow = (msg, cls = 'text-ink/50 italic') =>
         `<tr><td colspan="${AUDIT_COLS}" class="px-6 py-8 text-center ${cls}">${adEsc(msg)}</td></tr>`;
 
-    const adSkeleton = (rows = 6) => {
+    const adStateCard = (msg, cls = 'text-ink/50 italic') =>
+        `<div class="col-span-full py-12 text-center ${cls}">${adEsc(msg)}</div>`;
+
+    const adTableSkeleton = (rows = 6) => {
         const tbody = document.getElementById('audit-logs-table-body');
         if (!tbody) return;
         const bar = (w) => `<div class="h-3.5 ${w} rounded-full bg-skeleton animate-pulse"></div>`;
@@ -52,6 +66,30 @@
                 <td class="px-6 py-4">${bar('w-24')}</td>
                 <td class="px-6 py-4">${bar('w-8')}</td>
             </tr>`).join('');
+    };
+
+    // โครงร่างการ์ด — สัดส่วนบล็อกเดินตามโครงจริงของ adCardMarkup ด้านล่าง
+    const adCardSkeleton = (count = 6) => {
+        const cardsWrap = document.getElementById('audit-view-cards');
+        if (!cardsWrap) return;
+        const bar = (w) => `<div class="h-3.5 ${w} rounded-full bg-skeleton animate-pulse"></div>`;
+        cardsWrap.innerHTML = Array.from({ length: count }).map(() => `
+            <div class="elev-card bg-surface-tile-3 rounded-md p-4">
+                <div class="flex items-start justify-between gap-2">${bar('w-28')}${bar('w-20 h-6')}</div>
+                <div class="flex items-center gap-2 mt-3.5">
+                    <div class="w-7 h-7 rounded-full bg-skeleton animate-pulse shrink-0"></div>${bar('w-24')}
+                </div>
+                ${bar('w-full mt-3')}
+                <div class="flex items-center justify-between mt-3.5 pt-3 border-t border-hairline">
+                    ${bar('w-20')}
+                    <div class="w-8 h-8 rounded-lg bg-skeleton animate-pulse"></div>
+                </div>
+            </div>`).join('');
+    };
+
+    const adSkeleton = (rows = 6) => {
+        syncViewWrapVisibility('audit', auditViewMode);
+        if (auditViewMode === 'card') adCardSkeleton(rows); else adTableSkeleton(rows);
     };
 
     // ประเภทกิจกรรมยุบเหลือ 3 โทนตามตารางข้อ 11.6 (สร้าง=สำเร็จ · แก้ไข=ระหว่างดำเนินการ · ลบ/ยกเลิก=ล้มเหลว)
@@ -182,9 +220,109 @@
         }
     };
 
+    const adRowMarkup = (log) => {
+        const refBadge = log.reference_no
+            ? `<span class="font-mono font-semibold text-accent-ink">${adEsc(log.reference_no)}</span>`
+            : '<span class="text-ink/50">-</span>';
+        const initial = adEsc((log.user_name || 'ร').trim().charAt(0).toUpperCase());
+        return `
+        <tr class="hover:bg-divider transition-colors">
+            <td class="px-6 py-4 text-ink/70 font-mono text-xs">${adEsc(formatThaiDateTime(log.createdAt))}</td>
+            <td class="px-6 py-4">
+                <div class="flex items-center gap-2">
+                    <div class="w-7 h-7 rounded-full flex items-center justify-center shrink-0 text-xs font-semibold bg-primary/[0.12] text-accent-ink"
+                         aria-hidden="true">${initial}</div>
+                    <span class="text-ink font-medium">${adEsc(log.user_name || 'ระบบ')}</span>
+                </div>
+            </td>
+            <td class="px-6 py-4">${getActionBadgeHtml(log.action)}</td>
+            <td class="px-6 py-4">${getModuleBadgeHtml(log.module)}</td>
+            <td class="px-6 py-4">
+                <span class="text-ink block max-w-[420px] truncate" title="${adEsc(log.description || '')}">${adEsc(log.description || '-')}</span>
+            </td>
+            <td class="px-6 py-4">${refBadge}</td>
+            <td class="px-6 py-4 text-right">
+                <div class="flex items-center justify-end gap-1">
+                    <button type="button" class="btn-audit-detail text-ink hover:text-indigo-400 transition-colors p-2 cursor-pointer"
+                        data-id="${adEsc(log._id)}" title="ดูรายละเอียดเชิงลึก"
+                        aria-label="ดูรายละเอียดเชิงลึกของกิจกรรม ${adEsc(log.description || '')}">
+                        <i class="fa-solid fa-circle-info"></i>
+                    </button>
+                </div>
+            </td>
+        </tr>`;
+    };
+
+    // การ์ด — โครง: หัว (วัน-เวลา / ประเภท) · ผู้ทำรายการ · รายละเอียดกิจกรรม · footer (โมดูล+เอกสาร + ปุ่มดูเชิงลึก)
+    const adCardMarkup = (log) => {
+        const refBadge = log.reference_no
+            ? `<span class="font-mono font-semibold text-accent-ink">${adEsc(log.reference_no)}</span>`
+            : '<span class="text-ink/50">-</span>';
+        const initial = adEsc((log.user_name || 'ร').trim().charAt(0).toUpperCase());
+        return `
+        <div class="elev-card bg-surface-tile-3 rounded-md p-4">
+            <div class="flex items-start justify-between gap-2">
+                <span class="text-ink/70 font-mono text-xs">${adEsc(formatThaiDateTime(log.createdAt))}</span>
+                <div class="shrink-0">${getActionBadgeHtml(log.action)}</div>
+            </div>
+
+            <div class="flex items-center gap-2 mt-3.5">
+                <div class="w-7 h-7 rounded-full flex items-center justify-center shrink-0 text-xs font-semibold"
+                     style="color:#FFE169;background-color:#FFE1691F;"
+                     aria-hidden="true">${initial}</div>
+                <span class="text-ink font-medium truncate">${adEsc(log.user_name || 'ระบบ')}</span>
+            </div>
+
+            <p class="text-ink text-sm mt-3 truncate" title="${adEsc(log.description || '')}">${adEsc(log.description || '-')}</p>
+
+            <div class="flex items-center justify-between mt-3.5 pt-3 border-t border-hairline gap-2">
+                <div class="min-w-0 flex items-center gap-2">
+                    ${getModuleBadgeHtml(log.module)}
+                    ${refBadge}
+                </div>
+                <button type="button" class="btn-audit-detail shrink-0 text-ink hover:text-indigo-400 transition-colors p-2 cursor-pointer"
+                    data-id="${adEsc(log._id)}" title="ดูรายละเอียดเชิงลึก"
+                    aria-label="ดูรายละเอียดเชิงลึกของกิจกรรม ${adEsc(log.description || '')}">
+                    <i class="fa-solid fa-circle-info"></i>
+                </button>
+            </div>
+        </div>`;
+    };
+
+    // เรนเดอร์จาก auditLogsCache (ข้อมูลหน้าปัจจุบันที่โหลดมาแล้ว) — ใช้ทั้งตอน fetch เสร็จ
+    // และตอนแค่สลับมุมมอง List/Card โดยไม่ยิง /api/audit-logs ซ้ำ
+    const adRenderResults = () => {
+        const tableBody = document.getElementById('audit-logs-table-body');
+        const listWrap = document.getElementById('audit-view-list-wrap');
+        const cardsWrap = document.getElementById('audit-view-cards');
+        if (!tableBody) return;
+
+        if (listWrap) listWrap.classList.toggle('hidden', auditViewMode !== 'list');
+        if (cardsWrap) cardsWrap.classList.toggle('hidden', auditViewMode !== 'card');
+
+        const logs = auditLogsCache;
+        if (!logs.length) {
+            const emptyMsg = 'ไม่พบประวัติกิจกรรมตามตัวกรองที่เลือก';
+            tableBody.innerHTML = adStateRow(emptyMsg);
+            if (cardsWrap) cardsWrap.innerHTML = adStateCard(emptyMsg);
+            return;
+        }
+
+        if (auditViewMode === 'card') {
+            cardsWrap.innerHTML = logs.map(adCardMarkup).join('');
+            cardsWrap.querySelectorAll('.btn-audit-detail').forEach(btn =>
+                btn.addEventListener('click', () => window.viewAuditLogDetail(btn.dataset.id)));
+        } else {
+            tableBody.innerHTML = logs.map(adRowMarkup).join('');
+            tableBody.querySelectorAll('.btn-audit-detail').forEach(btn =>
+                btn.addEventListener('click', () => window.viewAuditLogDetail(btn.dataset.id)));
+        }
+    };
+
     const fetchAuditLogs = async (page = 1) => {
         auditCurrentPage = page;
         const tableBody = document.getElementById('audit-logs-table-body');
+        const cardsWrap = document.getElementById('audit-view-cards');
         const pageIndicator = document.getElementById('audit-current-page');
         const prevBtn = document.getElementById('btn-audit-prev');
         const nextBtn = document.getElementById('btn-audit-next');
@@ -208,58 +346,25 @@
             const result = await res.json();
 
             if (!result.success) {
+                auditLogsCache = [];
+                const listWrap = document.getElementById('audit-view-list-wrap');
+                if (listWrap) listWrap.classList.toggle('hidden', auditViewMode !== 'list');
+                if (cardsWrap) cardsWrap.classList.toggle('hidden', auditViewMode !== 'card');
                 tableBody.innerHTML = adStateRow(result.message || 'เกิดข้อผิดพลาดในการโหลดข้อมูล', 'text-red-400');
+                if (cardsWrap) cardsWrap.innerHTML = adStateCard(result.message || 'เกิดข้อผิดพลาดในการโหลดข้อมูล', 'text-red-400');
                 if (paginationInfo) paginationInfo.textContent = '';
                 return;
             }
 
             auditLogsCache = result.data || [];
-            const logs = auditLogsCache;
             const pag = result.pagination || { total: 0, pages: 1, page: 1, limit: 50 };
+            adRenderResults();
 
-            if (!logs.length) {
-                tableBody.innerHTML = adStateRow('ไม่พบประวัติกิจกรรมตามตัวกรองที่เลือก');
+            if (!auditLogsCache.length) {
                 if (paginationInfo) paginationInfo.textContent = '';
                 if (pageIndicator) pageIndicator.textContent = '1';
                 return;
             }
-
-            tableBody.innerHTML = logs.map(log => {
-                const refBadge = log.reference_no
-                    ? `<span class="font-mono font-semibold text-accent-ink">${adEsc(log.reference_no)}</span>`
-                    : '<span class="text-ink/50">-</span>';
-                const initial = adEsc((log.user_name || 'ร').trim().charAt(0).toUpperCase());
-                return `
-                <tr class="hover:bg-divider transition-colors">
-                    <td class="px-6 py-4 text-ink/70 font-mono text-xs">${adEsc(formatThaiDateTime(log.createdAt))}</td>
-                    <td class="px-6 py-4">
-                        <div class="flex items-center gap-2">
-                            <div class="w-7 h-7 rounded-full flex items-center justify-center shrink-0 text-xs font-semibold"
-                                 style="color:#FFE169;background-color:#FFE1691F;"
-                                 aria-hidden="true">${initial}</div>
-                            <span class="text-ink font-medium">${adEsc(log.user_name || 'ระบบ')}</span>
-                        </div>
-                    </td>
-                    <td class="px-6 py-4">${getActionBadgeHtml(log.action)}</td>
-                    <td class="px-6 py-4">${getModuleBadgeHtml(log.module)}</td>
-                    <td class="px-6 py-4">
-                        <span class="text-ink block max-w-[420px] truncate" title="${adEsc(log.description || '')}">${adEsc(log.description || '-')}</span>
-                    </td>
-                    <td class="px-6 py-4">${refBadge}</td>
-                    <td class="px-6 py-4 text-right">
-                        <div class="flex items-center justify-end gap-1">
-                            <button type="button" class="btn-audit-detail text-ink hover:text-indigo-400 transition-colors p-2 cursor-pointer"
-                                data-id="${adEsc(log._id)}" title="ดูรายละเอียดเชิงลึก"
-                                aria-label="ดูรายละเอียดเชิงลึกของกิจกรรม ${adEsc(log.description || '')}">
-                                <i class="fa-solid fa-circle-info"></i>
-                            </button>
-                        </div>
-                    </td>
-                </tr>`;
-            }).join('');
-
-            tableBody.querySelectorAll('.btn-audit-detail').forEach(btn =>
-                btn.addEventListener('click', () => window.viewAuditLogDetail(btn.dataset.id)));
 
             const startItem = (pag.page - 1) * pag.limit + 1;
             const endItem = Math.min(pag.page * pag.limit, pag.total);
@@ -272,10 +377,28 @@
         } catch (error) {
             console.error('fetchAuditLogs error:', error);
             tableBody.innerHTML = adStateRow('ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์เพื่อดึงข้อมูลประวัติกิจกรรมได้', 'text-red-400');
+            if (cardsWrap) cardsWrap.innerHTML = adStateCard('ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์เพื่อดึงข้อมูลประวัติกิจกรรมได้', 'text-red-400');
             if (paginationInfo) paginationInfo.textContent = '';
         }
     };
     window.fetchAuditLogs = fetchAuditLogs;
+
+    // สลับมุมมอง List/Card — ผูกที่ top-level ได้ (ไฟล์นี้เป็น js/page-*.js โหลดหลัง loadPageView
+    // แทรก HTML ของ audit-logs.html เข้า DOM แล้วเสมอ) — re-render จาก auditLogsCache ทันที ไม่ยิง API ซ้ำ
+    const auditViewListBtn = document.getElementById('audit-view-list');
+    const auditViewCardBtn = document.getElementById('audit-view-card');
+    if (auditViewListBtn && auditViewCardBtn) {
+        const syncAuditViewButtons = (mode) => window.syncViewToggleButtons(auditViewListBtn, auditViewCardBtn, mode);
+        const applyAuditViewMode = (mode) => {
+            auditViewMode = mode;
+            localStorage.setItem('audit_view_mode', mode);
+            syncAuditViewButtons(mode);
+            adRenderResults();
+        };
+        auditViewListBtn.addEventListener('click', () => applyAuditViewMode('list'));
+        auditViewCardBtn.addEventListener('click', () => applyAuditViewMode('card'));
+        syncAuditViewButtons(auditViewMode);
+    }
 
     // Open detailed security payload view
     window.viewAuditLogDetail = (logId) => {

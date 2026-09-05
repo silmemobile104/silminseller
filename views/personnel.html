@@ -32,27 +32,39 @@
                 </div>
                 <label for="employee-filter-role" class="sr-only">กรองตามตำแหน่ง</label>
                 <select id="employee-filter-role"
-                    class="bg-panel/40 cursor-pointer text-sm rounded-[0.5rem] px-3 py-2 text-ink focus:outline-none focus:ring-1 focus:ring-accent-ink w-full sm:w-auto [&>option]:bg-panel [&>option:checked]:bg-primary [&>option:checked]:text-on-primary">
+                    class="page-filter-control bg-panel/40 cursor-pointer text-sm rounded-[0.5rem] px-3 py-2 text-ink focus:outline-none focus:ring-1 focus:ring-accent-ink w-full sm:w-auto [&>option]:bg-panel [&>option:checked]:bg-primary [&>option:checked]:text-on-primary">
                     <option value="">ทุกตำแหน่ง</option>
                 </select>
                 <label for="employee-filter-branch" class="sr-only">กรองตามสาขา</label>
                 <select id="employee-filter-branch"
-                    class="hidden md:block bg-panel/40 cursor-pointer text-sm rounded-[0.5rem] px-3 py-2 text-ink focus:outline-none focus:ring-1 focus:ring-accent-ink [&>option]:bg-panel [&>option:checked]:bg-primary [&>option:checked]:text-on-primary">
+                    class="page-filter-control hidden md:block bg-panel/40 cursor-pointer text-sm rounded-[0.5rem] px-3 py-2 text-ink focus:outline-none focus:ring-1 focus:ring-accent-ink [&>option]:bg-panel [&>option:checked]:bg-primary [&>option:checked]:text-on-primary">
                     <option value="">ทุกสาขา</option>
                 </select>
             </div>
         </div>
 
-        <!-- 2b ชิปตัวกรอง + ตัวนับผลลัพธ์ (ข้อ 11.5) -->
+        <!-- 2b ชิปตัวกรอง + ตัวนับผลลัพธ์ + สลับมุมมอง (ข้อ 11.5) -->
         <div class="px-6 py-4">
             <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                 <div id="employee-active-filters" class="flex flex-wrap gap-2"></div>
-                <div id="employee-result-count" class="text-xs text-ink font-medium"></div>
+                <div class="flex items-center gap-3">
+                    <div id="employee-result-count" class="text-xs text-ink font-medium"></div>
+                    <div class="flex items-center gap-1 shrink-0">
+                        <button type="button" id="employee-view-list" aria-label="มุมมองรายการ" aria-pressed="true"
+                            class="w-9 h-9 rounded-md flex items-center justify-center transition-colors bg-primary text-on-primary">
+                            <i class="fa-solid fa-list text-sm"></i>
+                        </button>
+                        <button type="button" id="employee-view-card" aria-label="มุมมองการ์ด" aria-pressed="false"
+                            class="w-9 h-9 rounded-md flex items-center justify-center transition-colors bg-surface-chip text-body-muted hover:text-ink">
+                            <i class="fa-solid fa-table-cells-large text-sm"></i>
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
 
         <!-- 2c ตาราง (ข้อ 11.6) -->
-        <div class="overflow-x-auto" tabindex="0">
+        <div id="employee-view-list-wrap" class="overflow-x-auto" tabindex="0">
             <table class="w-full text-left text-sm whitespace-nowrap border-collapse">
                 <thead class="bg-panel/40 text-ink">
                     <tr>
@@ -67,5 +79,7 @@
                 <tbody id="employee-table-body" class="divide-y divide-divider"></tbody>
             </table>
         </div>
+        <!-- 2c' การ์ด (มุมมองทางเลือก — ซ่อนไว้ก่อน สลับผ่านปุ่มด้านบน) -->
+        <div id="employee-view-cards" class="hidden grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 p-6"></div>
     </div>
 </div>

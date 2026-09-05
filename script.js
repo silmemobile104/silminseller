@@ -171,7 +171,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // โหลดสคริปต์เฉพาะหน้า (js/page-<name>.js) แบบ dynamic ครั้งเดียว แล้ว cache ไว้
     // PAGE_SCRIPT_VERSION: บัมพ์เลขนี้ทุกครั้งที่แก้ไฟล์ใน js/ เพื่อไม่ให้เบราว์เซอร์ใช้ของเก่าที่ cache ไว้
-    const PAGE_SCRIPT_VERSION = 'theme_v5';
+    const PAGE_SCRIPT_VERSION = 'apple_active_v29';
     const __loadedPageScripts = {};
     function loadPageScript(name) {
         if (__loadedPageScripts[name]) return __loadedPageScripts[name];
@@ -224,7 +224,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // ไม่ได้รอ init function ถ้า HTML ยังไม่ถูกแทรกเข้า DOM ก่อน ตัวแปรที่ query ไว้จะเป็น null ถาวร
     // ชื่อ name ต้องตรงกับชื่อที่ใช้ใน loadPageScript — ไฟล์เดียวอาจมีหลาย <div id="view-XXX"> รวมกัน
     // ถ้าหน้านั้นถูก share โดยสคริปต์เดียวกันหลาย view (ดูตาราง mapping ในแผน)
-    const VIEW_FRAGMENT_VERSION = 'v49'; // บัมพ์เลขนี้ทุกครั้งที่แก้ไฟล์ใน views/
+    const VIEW_FRAGMENT_VERSION = 'v73'; // บัมพ์เลขนี้ทุกครั้งที่แก้ไฟล์ใน views/
     const __loadedPageViews = {};
     function loadPageView(name) {
         if (__loadedPageViews[name]) return __loadedPageViews[name];
@@ -351,6 +351,22 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     window.setPoRowValue = setPoRowValue;
 
+    // ซิงก์คลาส active/idle ของปุ่มสลับมุมมอง List/Card ให้ตรงกับโหมดปัจจุบัน — ใช้ร่วมกันทุกหน้าที่มีสลับมุมมองนี้
+    // (แยกออกมาเพราะเดิม script.js กับ js/page-*.js ทุกไฟล์ต่างประกาศ activeCls/idleCls ซ้ำกันเป๊ะๆ กว่า 20 จุด)
+    const syncViewToggleButtons = (listBtn, cardBtn, mode) => {
+        const activeCls = 'w-9 h-9 rounded-md flex items-center justify-center transition-colors bg-primary text-on-primary';
+        const idleCls = 'w-9 h-9 rounded-md flex items-center justify-center transition-colors bg-surface-chip text-body-muted hover:text-ink';
+        if (listBtn) {
+            listBtn.className = mode === 'list' ? activeCls : idleCls;
+            listBtn.setAttribute('aria-pressed', String(mode === 'list'));
+        }
+        if (cardBtn) {
+            cardBtn.className = mode === 'card' ? activeCls : idleCls;
+            cardBtn.setAttribute('aria-pressed', String(mode === 'card'));
+        }
+    };
+    window.syncViewToggleButtons = syncViewToggleButtons;
+
     // ==========================================
     // DOM Elements
     // ==========================================
@@ -416,14 +432,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const navAccountingSettings = document.getElementById('nav-accounting-settings');
     const navDisbursement = document.getElementById('nav-disbursement');
 
-    // Mobile Navigation Buttons
-    const mobileNavTransactions = document.getElementById('mobile-nav-transactions');
-    const mobileNavStock = document.getElementById('mobile-nav-stock');
-    const mobileNavAccountingPO = document.getElementById('mobile-nav-accounting-po');
-    const mobileNavMembers = document.getElementById('mobile-nav-members');
-    const mobileNavDailySummary = document.getElementById('mobile-nav-daily-summary');
-    const mobileNavStockAudit = document.getElementById('mobile-nav-stock-audit');
-
     const viewDashboard = document.getElementById('view-dashboard');
     const viewStock = document.getElementById('view-stock');
     const viewTransactions = document.getElementById('view-transactions');
@@ -485,6 +493,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const stockFilterSort = document.getElementById('stock-filter-sort');
     const stockActiveFilters = document.getElementById('stock-active-filters');
     const stockResultCount = document.getElementById('stock-result-count');
+
+    // สลับมุมมอง List/Card — จำโหมดไว้ข้ามการเข้าหน้า (เดินตามรูปแบบเดียวกับหน้าการมัดจำ/ประวัติการขาย/สมาชิก/เช็คประกัน)
+    const stockViewListBtn = document.getElementById('stock-view-list');
+    const stockViewCardBtn = document.getElementById('stock-view-card');
+    const stockViewListWrap = document.getElementById('stock-view-list-wrap');
+    const stockViewCardsWrap = document.getElementById('stock-view-cards');
+    let stockViewMode = localStorage.getItem('stock_view_mode') === 'card' ? 'card' : 'list';
 
     // UI Helper Elements (Custom Modals & Toasts)
     const toastContainer = document.getElementById('toast-container');
@@ -878,6 +893,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const renderStockPage = () => {
         stockLoadedCount = 0;
         if (productTableBody) productTableBody.innerHTML = '';
+        if (stockViewCardsWrap) stockViewCardsWrap.innerHTML = '';
         if (stockFilteredCache.length === 0) {
             renderProductTable([]); // แสดงข้อความ "ไม่พบสินค้าที่ค้นหา"
             return;
@@ -921,7 +937,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Add "All" option
         const allBtn = document.createElement('button');
         allBtn.type = 'button';
-        allBtn.className = 'custom-pill flex-shrink-0 px-4 py-2.5 bg-field ring-1 ring-accent-ink rounded-xl text-accent-ink text-sm hover:ring-1 hover:ring-accent-ink hover:text-ink transition-colors filter-pill active';
+        allBtn.className = 'elev-field apple-active-neutral custom-pill flex-shrink-0 px-4 py-2.5 bg-field ring-1 ring-accent-ink rounded-xl text-accent-ink text-sm hover:ring-1 hover:ring-accent-ink hover:text-ink transition-colors filter-pill active';
         allBtn.dataset.target = targetId;
         allBtn.dataset.value = '';
         allBtn.textContent = allLabel;
@@ -947,7 +963,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 // Remove active from all siblings
                 this.parentElement.querySelectorAll('.filter-pill').forEach(s => {
-                    s.classList.remove('active', 'ring-2', 'ring-accent-ink', 'text-accent-ink');
+                    s.classList.remove('active', 'ring-2', 'ring-accent-ink', 'text-accent-ink', 'apple-active-neutral');
                     s.classList.add('border-line', 'text-body-muted');
                 });
 
@@ -956,7 +972,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     const allOpt = this.parentElement.querySelector('.filter-pill[data-value=""]');
                     if (allOpt) {
                         allOpt.classList.remove('border-line', 'text-body-muted');
-                        allOpt.classList.add('active', 'ring-2', 'ring-accent-ink', 'text-accent-ink');
+                        allOpt.classList.add('active', 'ring-2', 'ring-accent-ink', 'text-accent-ink', 'apple-active-neutral');
                     }
                     if (targetSelect) {
                         targetSelect.value = '';
@@ -965,7 +981,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 } else {
                     // Toggle on
                     this.classList.remove('border-line', 'text-body-muted');
-                    this.classList.add('active', 'ring-2', 'ring-accent-ink', 'text-accent-ink');
+                    this.classList.add('active', 'ring-2', 'ring-accent-ink', 'text-accent-ink', 'apple-active-neutral');
                     if (targetSelect) {
                         targetSelect.value = value;
                         targetSelect.dispatchEvent(new Event('change'));
@@ -1158,7 +1174,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // จะกลืนกับพื้นการ์ดสีเข้ม เป็นข้อแลกที่ยอมรับแล้ว
     const productColorDot = (colorName, colorDoc) => {
         const hex = toSixDigitHex(resolveProductColorHex(colorName, colorDoc));
-        return `<span class="w-4 h-4 rounded-full shrink-0" style="background-color:${hex};"></span>`;
+        return `<span class="w-4 h-4 rounded-full shrink-0 border border-gray-400" style="background-color:${hex};"></span>`;
     };
     window.productColorDot = productColorDot;
 
@@ -1177,7 +1193,7 @@ document.addEventListener('DOMContentLoaded', () => {
             wrapper.dataset.value = item._id;
 
             const swatch = document.createElement('div');
-            swatch.className = 'elev-chip w-7 h-7 rounded-full transition-all custom-swatch swatch-indicator';
+            swatch.className = 'elev-chip w-7 h-7 rounded-full border border-gray-400 transition-all custom-swatch swatch-indicator';
 
             swatch.style.backgroundColor = resolveProductColorHex(item.name, item);
 
@@ -1203,8 +1219,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     s.classList.remove('active');
                     const indicator = s.querySelector('.swatch-indicator');
                     if (indicator) {
-                        indicator.classList.remove('ring-2', 'ring-accent-ink', 'scale-110');
-                        indicator.classList.add('border-transparent');
+                        indicator.classList.remove('ring-2', 'ring-accent-ink', 'apple-active-neutral');
                     }
                     const label = s.querySelector('.swatch-text');
                     if (label) {
@@ -1224,8 +1239,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     this.classList.add('active');
                     const indicator = this.querySelector('.swatch-indicator');
                     if (indicator) {
-                        indicator.classList.remove('border-transparent');
-                        indicator.classList.add('ring-2', 'ring-accent-ink', 'scale-110');
+                        indicator.classList.add('ring-2', 'ring-accent-ink', 'apple-active-neutral');
                     }
                     const label = this.querySelector('.swatch-text');
                     if (label) {
@@ -1552,12 +1566,12 @@ document.addEventListener('DOMContentLoaded', () => {
             btn.addEventListener('click', () => {
                 // Remove active from all
                 Array.from(container.children).forEach(child => {
-                    child.classList.remove('ring-2', 'ring-accent-ink', 'text-accent-ink');
+                    child.classList.remove('ring-2', 'ring-accent-ink', 'text-accent-ink', 'apple-active-neutral');
                     child.classList.add('border-line', 'text-body-muted');
                 });
                 // Set active to clicked
                 btn.classList.remove('border-line', 'text-body-muted');
-                btn.classList.add('ring-2', 'ring-accent-ink', 'text-accent-ink');
+                btn.classList.add('ring-2', 'ring-accent-ink', 'text-accent-ink', 'apple-active-neutral');
                 // Update hidden input
                 hiddenInput.value = item._id;
             });
@@ -1580,7 +1594,7 @@ document.addEventListener('DOMContentLoaded', () => {
             wrapper.dataset.value = item._id;
 
             const swatch = document.createElement('div');
-            swatch.className = 'elev-chip w-7 h-7 rounded-full transition-all custom-swatch';
+            swatch.className = 'elev-chip w-7 h-7 rounded-full border border-gray-400 transition-all custom-swatch';
 
             swatch.style.backgroundColor = resolveProductColorHex(item.name, item);
 
@@ -1594,14 +1608,12 @@ document.addEventListener('DOMContentLoaded', () => {
             wrapper.addEventListener('click', () => {
                 // Remove active from all
                 Array.from(container.children).forEach(child => {
-                    child.querySelector('.custom-swatch').classList.remove('ring-2', 'ring-accent-ink', 'scale-110');
-                    child.querySelector('.custom-swatch').classList.add('border-transparent');
+                    child.querySelector('.custom-swatch').classList.remove('ring-2', 'ring-accent-ink', 'apple-active-neutral');
                     child.querySelector('.custom-swatch-label').classList.remove('text-accent-ink', 'text-[13px]');
                     child.querySelector('.custom-swatch-label').classList.add('text-body-muted', 'text-[10px]');
                 });
                 // Set active to clicked
-                swatch.classList.remove('border-transparent');
-                swatch.classList.add('ring-2', 'ring-accent-ink', 'scale-110');
+                swatch.classList.add('ring-2', 'ring-accent-ink', 'apple-active-neutral');
                 label.classList.remove('text-body-muted', 'text-[10px]');
                 label.classList.add('text-accent-ink', 'text-[13px]');
                 // Update hidden input
@@ -2313,12 +2325,6 @@ document.addEventListener('DOMContentLoaded', () => {
         setVisible(navDisbursement, permissions.manage_finance);
         setVisible(navBranchInventory, permissions.view_branch_inventory);
 
-        // Mobile Nav Permissions mapping
-        setVisible(mobileNavTransactions, permissions.do_pos);
-        setVisible(mobileNavStock, permissions.manage_stock);
-        setVisible(mobileNavAccountingPO, permissions.manage_po);
-        setVisible(mobileNavMembers, permissions.do_pos);
-
         // Toggle Audit Logs Sidebar view
         setVisible(navAuditLogs, permissions.view_audit_logs);
         setVisible(navDatabase, permissions.manage_database);
@@ -2332,10 +2338,8 @@ document.addEventListener('DOMContentLoaded', () => {
         setVisible(stockFilterBranch, permissions.filter_stock_branch);
 
         setVisible(navDailySummary, permissions.view_daily_summary);
-        setVisible(mobileNavDailySummary, permissions.view_daily_summary);
 
         setVisible(navStockAudit, permissions.do_stock_audit);
-        setVisible(mobileNavStockAudit, permissions.do_stock_audit);
         setVisible(navStockAuditReview, permissions.manage_stock_audit);
 
         // ซ่อน/แสดงหัวข้อกลุ่มเมนู (nav-section-header) อัตโนมัติ:
@@ -2361,7 +2365,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     // Skeleton loading แถวตารางสต็อก — แสดงระหว่างรอข้อมูลสินค้าจาก server ครั้งแรก (ก่อน renderProductTable มีข้อมูลจริงมาแทนที่)
-    const renderStockTableSkeleton = (rowCount = 8) => {
+    const renderStockTableSkeletonRows = (rowCount = 8) => {
         if (!productTableBody) return;
         const bar = (widthClass, extraClass = '') => `<div class="h-3.5 ${widthClass} rounded-full bg-skeleton animate-pulse ${extraClass}"></div>`;
         let rowsHtml = '';
@@ -2396,6 +2400,47 @@ document.addEventListener('DOMContentLoaded', () => {
         productTableBody.innerHTML = rowsHtml;
     };
 
+    // โครงร่างการ์ด — สัดส่วนบล็อกเดินตามโครงจริงของ renderProductCard ด้านล่าง
+    const renderStockCardSkeleton = (cardCount = 9) => {
+        if (!stockViewCardsWrap) return;
+        const bar = (widthClass, extraClass = '') => `<div class="h-3.5 ${widthClass} rounded-full bg-skeleton animate-pulse ${extraClass}"></div>`;
+        let html = '';
+        for (let i = 0; i < cardCount; i++) {
+            html += `
+                <div class="elev-card bg-surface-tile-3 rounded-md p-3.5">
+                    <div class="flex items-start gap-2">
+                        <div class="w-4 h-4 rounded-full bg-skeleton animate-pulse shrink-0"></div>
+                        ${bar('flex-1 h-3.5')}
+                        ${bar('w-16 h-5')}
+                    </div>
+                    ${bar('w-32 mt-2.5')}
+                    ${bar('w-28 mt-2.5 h-6')}
+                    <div class="grid grid-cols-2 gap-2 mt-3.5 pt-3 border-t border-hairline">
+                        <div class="space-y-2">${bar('w-16')}${bar('w-20')}</div>
+                        <div class="space-y-2">${bar('w-14')}${bar('w-16')}</div>
+                    </div>
+                    <div class="flex items-center justify-between mt-3.5 pt-3 border-t border-hairline">
+                        ${bar('w-16 h-5')}
+                        ${bar('w-20 h-5')}
+                    </div>
+                    <div class="flex items-center justify-between mt-3.5 pt-3 border-t border-hairline">
+                        ${bar('w-16')}
+                        <div class="flex items-center gap-1.5">
+                            <div class="w-8 h-8 rounded-lg bg-skeleton animate-pulse"></div>
+                            <div class="w-8 h-8 rounded-lg bg-skeleton animate-pulse"></div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        stockViewCardsWrap.innerHTML = html;
+    };
+
+    const renderStockTableSkeleton = (count = 8) => {
+        if (stockViewMode === 'card') renderStockCardSkeleton(count);
+        else renderStockTableSkeletonRows(count);
+    };
+
     // Fetch All Products
     async function fetchProducts() {
         renderStockTableSkeleton();
@@ -2419,9 +2464,155 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     window.fetchProducts = fetchProducts;
 
+    // ข้อมูลที่คำนวณร่วมกันระหว่างแถวตารางกับการ์ด — แยกออกมาครั้งเดียวเพื่อไม่ให้สองมุมมองเพี้ยนจากกัน
+    const buildProductCardData = (product) => {
+        const categoryName = product.type_id ? product.type_id.name : 'ทั่วไป';
+        const unitName = product.unit_id ? product.unit_id.name : '';
+        const colorName = product.color_id ? product.color_id.name : '';
+        const capacityName = product.capacity_id ? product.capacity_id.name : '';
+        const conditionName = product.condition_id ? product.condition_id.name : '';
+
+        const isDevice = checkIsDevice(categoryName, product);
+        const stockQty = isDevice ? (product.quantity || product.imeis.length) : product.quantity;
+        const stockUnit = isDevice ? 'เครื่อง' : unitName;
+        const stockDisplay = `${stockQty} <span class="text-xs text-ink font-normal">${stockUnit}</span>`;
+
+        let statusColor = (product.quantity) > 0 ? 'bg-state-ok' : 'bg-state-danger';
+        let statusText = (product.quantity) > 0 ? 'มีสินค้า' : 'สินค้าหมด';
+        let statusClass = (product.quantity) > 0 ? 'text-state-ok' : 'text-state-danger';
+        let statusBadge = (product.quantity) > 0 ? 'bg-state-ok-tint/[0.12]' : 'bg-state-danger/[0.12]';
+
+        if (product.is_transferring) {
+            statusColor = 'bg-orange-500';
+            statusText = 'กำลังโอนย้าย';
+            statusClass = 'text-orange-600';
+            statusBadge = 'bg-orange-50 border border-orange-200';
+        }
+
+        return {
+            categoryName, unitName, colorName, capacityName, conditionName,
+            isDevice, stockDisplay, statusColor, statusText, statusClass, statusBadge,
+            colorDot: productColorDot(colorName, product.color_id),
+            branchName: product.branch_id ? product.branch_id.name : '-',
+            supplierName: product.supplier_id ? product.supplier_id.name : '-'
+        };
+    };
+
+    const canDeleteStock = () => !!(window.__userPermissions && window.__userPermissions.delete_stock);
+
+    const bindProductActionHandlers = (el, product) => {
+        const printBtn = el.querySelector('.print-barcode-btn');
+        if (printBtn) printBtn.addEventListener('click', (e) => { e.stopPropagation(); openBarcodeModal(product); });
+        const viewBtn = el.querySelector('.view-product-btn');
+        if (viewBtn) viewBtn.addEventListener('click', (e) => { e.stopPropagation(); openViewProductModal(product); });
+        const delBtn = el.querySelector('.delete-product-btn');
+        if (delBtn) delBtn.addEventListener('click', (e) => { e.stopPropagation(); deleteProduct(product._id); });
+    };
+
+    const productTableRowMarkup = (product) => {
+        const d = buildProductCardData(product);
+        const row = document.createElement('tr');
+        row.className = 'hover:bg-divider transition-colors';
+        row.innerHTML = `
+            <td class="px-6 py-4">
+                <span class=" font-mono text-md text-center font-semibold text-accent-ink  ">${product.product_code || '-'}</span>
+            </td>
+            <td class="px-6 py-4">
+                <div class="flex items-center gap-3">
+                    <div>
+                        <p class="font-medium text-ink flex items-center gap-2">
+                            ${d.colorDot}<span>${product.name}</span>
+                        </p>
+                        <p class="text-xs pl-6 text-ink/70">${d.capacityName} ${d.colorName} ${d.conditionName}</p>
+                    </div>
+                </div>
+            </td>
+            <td class="px-6 py-4 text-ink text-sm">${d.branchName}</td>
+            <td class="px-6 py-4 text-ink text-sm">${d.supplierName}</td>
+            <td class="px-6 py-4"><span class="px-2.5 py-1 bg-field text-body-muted rounded-[0.375rem] text-xs font-medium">${d.categoryName}</span></td>
+            <td class="px-6 py-4 text-right text-ink font-mono">฿${product.selling_price.toLocaleString()}</td>
+            <td class="px-6 py-4 text-center text-ink font-medium">${d.stockDisplay}</td>
+            <td class="px-6 py-4">
+                <div class="inline-flex items-center gap-2 px-2.5 py-1 rounded-[0.375rem] ${d.statusBadge}">
+                    <div class="w-2 h-2 rounded-full ${d.statusColor}"></div>
+                    <span class="${d.statusClass} font-medium text-xs">${d.statusText}</span>
+                </div>
+            </td>
+            <td class="px-6 py-4 text-right">
+                <div class="flex items-center justify-end gap-1">
+                    <button class="print-barcode-btn text-ink hover:text-amber-400 transition-colors p-2" data-id="${product._id}" title="พิมพ์บาร์โค้ด"><i class="fa-solid fa-print"></i></button>
+                    <button class="view-product-btn text-ink hover:text-indigo-400 transition-colors p-2" data-id="${product._id}" title="ดูรายละเอียด"><i class="fa-solid fa-eye"></i></button>
+                    ${canDeleteStock() ? `<button class="delete-product-btn text-ink hover:text-red-400 transition-colors p-2" data-id="${product._id}"><i class="fa-solid fa-trash"></i></button>` : ''}
+                </div>
+            </td>
+        `;
+        bindProductActionHandlers(row, product);
+        return row;
+    };
+
+    // การ์ด — โครง: หัว (สี+ชื่อ / สถานะ) · รหัสสินค้า · ที่จัดเก็บ+Supplier 2 คอลัมน์ · หมวดหมู่+ราคา · footer (คงเหลือ + ปุ่มจัดการ)
+    const renderProductCard = (product) => {
+        const d = buildProductCardData(product);
+        const card = document.createElement('div');
+        card.className = 'elev-card pos-card bg-surface-tile-3 rounded-md p-3.5 transition-all hover:-translate-y-1 hover:shadow-2xl border-none cursor-pointer';
+        card.innerHTML = `
+            <div class="flex items-start justify-between gap-2">
+                <h4 class="flex-1 min-w-0 flex items-center gap-2 font-bold text-ink text-[13px] leading-snug">
+                    ${d.colorDot}<span class="truncate">${product.name}</span>
+                </h4>
+                <div class="shrink-0 inline-flex items-center gap-2 px-2.5 py-1 rounded-[0.375rem] ${d.statusBadge}">
+                    <div class="w-2 h-2 rounded-full ${d.statusColor}"></div>
+                    <span class="${d.statusClass} font-medium text-xs">${d.statusText}</span>
+                </div>
+            </div>
+            <p class="text-[11px] text-body-muted mt-0.5 pl-6">${d.capacityName} ${d.colorName} ${d.conditionName}</p>
+            <div class="inline-flex items-center gap-2 mt-2">
+                <span class="inline-flex items-center gap-2 px-2.5 py-1.5 rounded-sm bg-primary/10 max-w-full">
+                    <i class="fa-solid fa-barcode text-accent-ink text-[10px] shrink-0"></i>
+                    <span class="font-mono font-extrabold text-[12px] text-accent-ink tracking-widest truncate">${product.product_code || '-'}</span>
+                </span>
+            </div>
+
+            <div class="grid grid-cols-2 gap-2 mt-3.5 pt-3 border-t border-hairline text-xs">
+                <div class="min-w-0">
+                    <p class="text-ink/60">ที่จัดเก็บ</p>
+                    <p class="text-ink mt-0.5 truncate">${d.branchName}</p>
+                </div>
+                <div class="min-w-0">
+                    <p class="text-ink/60">Supplier</p>
+                    <p class="text-ink mt-0.5 truncate">${d.supplierName}</p>
+                </div>
+            </div>
+
+            <div class="flex items-center justify-between mt-3.5 pt-3 border-t border-hairline">
+                <span class="px-2.5 py-1 bg-field text-body-muted rounded-[0.375rem] text-xs font-medium">${d.categoryName}</span>
+                <span class="text-[15px] font-extrabold font-mono text-accent-ink tabular-nums">฿${product.selling_price.toLocaleString()}</span>
+            </div>
+
+            <div class="flex items-center justify-between mt-3.5 pt-3 border-t border-hairline">
+                <span class="text-ink font-medium text-sm">${d.stockDisplay}</span>
+                <div class="flex items-center gap-1">
+                    <button class="print-barcode-btn text-ink hover:text-amber-400 transition-colors p-2" data-id="${product._id}" title="พิมพ์บาร์โค้ด"><i class="fa-solid fa-print"></i></button>
+                    <button class="view-product-btn text-ink hover:text-indigo-400 transition-colors p-2" data-id="${product._id}" title="ดูรายละเอียด"><i class="fa-solid fa-eye"></i></button>
+                    ${canDeleteStock() ? `<button class="delete-product-btn text-ink hover:text-red-400 transition-colors p-2" data-id="${product._id}"><i class="fa-solid fa-trash"></i></button>` : ''}
+                </div>
+            </div>
+        `;
+        bindProductActionHandlers(card, product);
+        card.addEventListener('click', () => openViewProductModal(product));
+        return card;
+    };
+
     const renderProductTable = (products, append = false) => {
         if (!productTableBody) return;
-        if (!append) productTableBody.innerHTML = '';
+
+        if (stockViewListWrap) stockViewListWrap.classList.toggle('hidden', stockViewMode !== 'list');
+        if (stockViewCardsWrap) stockViewCardsWrap.classList.toggle('hidden', stockViewMode !== 'card');
+
+        if (!append) {
+            productTableBody.innerHTML = '';
+            if (stockViewCardsWrap) stockViewCardsWrap.innerHTML = '';
+        }
 
         if (products.length === 0) {
             if (!append) {
@@ -2432,80 +2623,22 @@ document.addEventListener('DOMContentLoaded', () => {
                         </td>
                     </tr>
                 `;
+                if (stockViewCardsWrap) {
+                    stockViewCardsWrap.innerHTML = `<div class="col-span-full py-12 text-center text-body-muted italic">ไม่พบสินค้าที่ค้นหา</div>`;
+                }
             }
             return;
         }
 
-        products.forEach(product => {
-            const row = document.createElement('tr');
-            row.className = 'hover:bg-divider transition-colors';
-
-            const categoryName = product.type_id ? product.type_id.name : 'ทั่วไป';
-            const unitName = product.unit_id ? product.unit_id.name : '';
-            const colorName = product.color_id ? product.color_id.name : '';
-            const capacityName = product.capacity_id ? product.capacity_id.name : '';
-            const conditionName = product.condition_id ? product.condition_id.name : '';
-
-
-            const isDevice = checkIsDevice(categoryName, product);
-            const stockDisplay = isDevice
-                ? `${product.quantity || product.imeis.length} <span class="text-xs text-ink font-normal">เครื่อง</span>`
-                : `${product.quantity} <span class="text-xs text-ink font-normal">${unitName}</span>`;
-
-            let statusColor = (product.quantity) > 0 ? 'bg-state-ok' : 'bg-state-danger';
-            let statusText = (product.quantity) > 0 ? 'มีสินค้า' : 'สินค้าหมด';
-            let statusClass = (product.quantity) > 0 ? 'text-state-ok' : 'text-state-danger';
-            let statusBadge = (product.quantity) > 0 ? 'bg-state-ok-tint/[0.12]' : 'bg-state-danger/[0.12]';
-
-            if (product.is_transferring) {
-                statusColor = 'bg-orange-500';
-                statusText = 'กำลังโอนย้าย';
-                statusClass = 'text-orange-600';
-                statusBadge = 'bg-orange-50 border border-orange-200';
-            }
-
-            row.innerHTML = `
-                <td class="px-6 py-4">
-                    <span class=" font-mono text-md text-center font-semibold text-accent-ink  ">${product.product_code || '-'}</span>
-                </td>
-                <td class="px-6 py-4">
-                    <div class="flex items-center gap-3">
-                        <div>
-                            <p class="font-medium text-ink flex items-center gap-2">
-                                ${productColorDot(colorName, product.color_id)}<span>${product.name}</span>
-                            </p>
-                            <p class="text-xs pl-6 text-ink/70">${capacityName} ${colorName} ${conditionName}</p>
-                        </div>
-                    </div>
-                </td>
-                <td class="px-6 py-4 text-ink text-sm">${product.branch_id ? product.branch_id.name : '-'}</td>
-                <td class="px-6 py-4 text-ink text-sm">${product.supplier_id ? product.supplier_id.name : '-'}</td>
-                <td class="px-6 py-4"><span class="px-2.5 py-1 bg-field text-body-muted rounded-[0.375rem] text-xs font-medium">${categoryName}</span></td>
-                <td class="px-6 py-4 text-right text-ink font-mono">฿${product.selling_price.toLocaleString()}</td>
-                <td class="px-6 py-4 text-center text-ink font-medium">${stockDisplay}</td>
-                <td class="px-6 py-4">
-                    <div class="inline-flex items-center gap-2 px-2.5 py-1 rounded-[0.375rem] ${statusBadge}">
-                        <div class="w-2 h-2 rounded-full ${statusColor}"></div>
-                        <span class="${statusClass} font-medium text-xs">${statusText}</span>
-                    </div>
-                </td>
-                <td class="px-6 py-4 text-right">
-                    <div class="flex items-center justify-end gap-1">
-                        <button class="print-barcode-btn text-ink hover:text-amber-400 transition-colors p-2" data-id="${product._id}" title="พิมพ์บาร์โค้ด"><i class="fa-solid fa-print"></i></button>
-                        <button class="view-product-btn text-ink hover:text-indigo-400 transition-colors p-2" data-id="${product._id}" title="ดูรายละเอียด"><i class="fa-solid fa-eye"></i></button>
-                        ${window.__userPermissions && window.__userPermissions.delete_stock ? `<button class="delete-product-btn text-ink hover:text-red-400 transition-colors p-2" data-id="${product._id}"><i class="fa-solid fa-trash"></i></button>` : ''}
-                    </div>
-                </td>
-            `;
-            productTableBody.appendChild(row);
-
-            // Attach listeners to buttons
-            const printBtn = row.querySelector('.print-barcode-btn');
-            if (printBtn) printBtn.addEventListener('click', () => openBarcodeModal(product));
-            row.querySelector('.view-product-btn').addEventListener('click', () => openViewProductModal(product));
-            const delBtn = row.querySelector('.delete-product-btn');
-            if (delBtn) delBtn.addEventListener('click', () => deleteProduct(product._id));
-        });
+        if (stockViewMode === 'card') {
+            const frag = document.createDocumentFragment();
+            products.forEach(product => frag.appendChild(renderProductCard(product)));
+            stockViewCardsWrap.appendChild(frag);
+        } else {
+            const frag = document.createDocumentFragment();
+            products.forEach(product => frag.appendChild(productTableRowMarkup(product)));
+            productTableBody.appendChild(frag);
+        }
     };
 
     const deleteProduct = (id) => {
@@ -3402,15 +3535,6 @@ document.addEventListener('DOMContentLoaded', () => {
             item.classList.remove('active');
         });
 
-        // Reset all mobile bottom nav items active states
-        const mobileNavItems = [mobileNavTransactions, mobileNavStock, mobileNavAccountingPO, mobileNavMembers];
-        mobileNavItems.forEach(item => {
-            if (item) {
-                item.classList.remove('text-accent-ink', 'scale-105', 'font-semibold');
-                item.classList.add('text-body-muted');
-            }
-        });
-
         // Auto-close mobile sidebar when switching views
         if (window.innerWidth < 768) {
             if (sidebar && sidebar.classList.contains('translate-x-0')) {
@@ -3454,14 +3578,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         };
 
-        // Helper to activate mobile nav item
-        const activateMobileNav = (mobileNav) => {
-            if (mobileNav) {
-                mobileNav.classList.remove('text-body-muted');
-                mobileNav.classList.add('text-accent-ink', 'scale-105', 'font-semibold');
-            }
-        };
-
         try {
             if (viewName === 'dashboard') {
                 activateView(viewDashboard, navDashboard);
@@ -3473,14 +3589,12 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             else if (viewName === 'stock') {
                 activateView(viewStock, navStock);
-                activateMobileNav(mobileNavStock);
                 allProductsCache = []; // Clear cache to ensure fresh data including transferring items
                 window.allProductsCache = allProductsCache;
                 await fetchProducts();
             }
             else if (viewName === 'transactions') {
                 activateView(viewTransactions, navTransactions);
-                activateMobileNav(mobileNavTransactions);
                 // โหลดสินค้าสำหรับ POS (Backend จะกรองตามสาขาอัตโนมัติสำหรับพนักงานขาย)
                 await fetchPosProducts();
                 updatePosBranchBadge();
@@ -3524,7 +3638,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             else if (viewName === 'daily-summary') {
                 activateView(viewDailySummary, navDailySummary);
-                activateMobileNav(mobileNavDailySummary);
                 await loadPageView('sales-history');
                 await loadPageScript('sales-history');
                 loadDailySummary();
@@ -3553,7 +3666,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             else if (viewName === 'members') {
                 activateView(viewMembers, navMembers);
-                activateMobileNav(mobileNavMembers);
                 await loadPageView('members');
                 await loadPageScript('members');
                 loadMembers();
@@ -3592,7 +3704,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             else if (viewName === 'accounting-po') {
                 activateView(viewAccountingPO, navAccountingPO);
-                activateMobileNav(mobileNavAccountingPO);
                 await loadPageView('po-accounting');
                 await loadPageScript('po-accounting');
                 if (typeof initAccountingPO === 'function') initAccountingPO();
@@ -3623,7 +3734,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             else if (viewName === 'stock-audit') {
                 activateView(viewStockAudit, navStockAudit);
-                activateMobileNav(mobileNavStockAudit);
                 await loadPageView('stock-audit');
                 await loadPageScript('stock-audit');
                 if (typeof initStockAudit === 'function') initStockAudit();
@@ -3682,16 +3792,9 @@ document.addEventListener('DOMContentLoaded', () => {
     if (navDisbursement) navDisbursement.style.display = 'none'; // Will be managed by applyPermissions
     if (navDisbursement) navDisbursement.addEventListener('click', (e) => { e.preventDefault(); switchView('disbursement'); });
 
-    // Mobile Navigation Click Listeners
-    if (mobileNavTransactions) mobileNavTransactions.addEventListener('click', (e) => { e.preventDefault(); switchView('transactions'); });
-    if (mobileNavStock) mobileNavStock.addEventListener('click', (e) => { e.preventDefault(); switchView('stock'); });
-    if (mobileNavAccountingPO) mobileNavAccountingPO.addEventListener('click', (e) => { e.preventDefault(); switchView('accounting-po'); });
-    if (mobileNavMembers) mobileNavMembers.addEventListener('click', (e) => { e.preventDefault(); switchView('members'); });
     if (navDailySummary) navDailySummary.addEventListener('click', (e) => { e.preventDefault(); switchView('daily-summary'); });
-    if (mobileNavDailySummary) mobileNavDailySummary.addEventListener('click', (e) => { e.preventDefault(); switchView('daily-summary'); });
     if (navStockAudit) navStockAudit.addEventListener('click', (e) => { e.preventDefault(); switchView('stock-audit'); });
     if (navStockAuditReview) navStockAuditReview.addEventListener('click', (e) => { e.preventDefault(); switchView('stock-audit-review'); });
-    if (mobileNavStockAudit) mobileNavStockAudit.addEventListener('click', (e) => { e.preventDefault(); switchView('stock-audit'); });
 
 
     // Auto-login check (JWT Token) - moved here after switchView is defined
@@ -3798,7 +3901,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // Remove active from all siblings
             this.parentElement.querySelectorAll('.filter-pill').forEach(s => {
-                s.classList.remove('active', 'ring-2', 'ring-accent-ink', 'text-accent-ink');
+                s.classList.remove('active', 'ring-2', 'ring-accent-ink', 'text-accent-ink', 'apple-active-neutral');
                 s.classList.add('border-line', 'text-body-muted');
             });
 
@@ -3807,7 +3910,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const allOption = this.parentElement.querySelector('.filter-pill[data-value=""]');
                 if (allOption) {
                     allOption.classList.remove('border-line', 'text-body-muted');
-                    allOption.classList.add('active', 'ring-2', 'ring-accent-ink', 'text-accent-ink');
+                    allOption.classList.add('active', 'ring-2', 'ring-accent-ink', 'text-accent-ink', 'apple-active-neutral');
                 }
                 if (targetSelect) {
                     targetSelect.value = '';
@@ -3816,7 +3919,7 @@ document.addEventListener('DOMContentLoaded', () => {
             } else {
                 // Toggle on
                 this.classList.remove('border-line', 'text-body-muted');
-                this.classList.add('active', 'ring-2', 'ring-accent-ink', 'text-accent-ink');
+                this.classList.add('active', 'ring-2', 'ring-accent-ink', 'text-accent-ink', 'apple-active-neutral');
                 if (targetSelect) {
                     targetSelect.value = value;
                     targetSelect.dispatchEvent(new Event('change'));
@@ -3839,8 +3942,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 s.classList.remove('active');
                 const indicator = s.querySelector('.swatch-indicator');
                 if (indicator) {
-                    indicator.classList.remove('ring-2', 'ring-accent-ink', 'scale-110');
-                    indicator.classList.add('border-transparent');
+                    indicator.classList.remove('ring-2', 'ring-accent-ink', 'apple-active-neutral');
                 }
                 const label = s.querySelector('.swatch-text');
                 if (label) {
@@ -3860,8 +3962,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 this.classList.add('active');
                 const indicator = this.querySelector('.swatch-indicator');
                 if (indicator) {
-                    indicator.classList.remove('border-transparent');
-                    indicator.classList.add('ring-2', 'ring-accent-ink', 'scale-110');
+                    indicator.classList.add('ring-2', 'ring-accent-ink', 'apple-active-neutral');
                 }
                 const label = this.querySelector('.swatch-text');
                 if (label) {
@@ -3881,11 +3982,11 @@ document.addEventListener('DOMContentLoaded', () => {
         document.querySelectorAll('.filter-pill[data-value=""]').forEach(allPill => {
             const siblings = allPill.parentElement.querySelectorAll('.filter-pill');
             siblings.forEach(s => {
-                s.classList.remove('active', 'ring-2', 'ring-accent-ink', 'text-accent-ink');
+                s.classList.remove('active', 'ring-2', 'ring-accent-ink', 'text-accent-ink', 'apple-active-neutral');
                 s.classList.add('border-line', 'text-body-muted');
             });
             allPill.classList.remove('border-line', 'text-body-muted');
-            allPill.classList.add('active', 'ring-2', 'ring-accent-ink', 'text-accent-ink');
+            allPill.classList.add('active', 'ring-2', 'ring-accent-ink', 'text-accent-ink', 'apple-active-neutral');
         });
 
         // Reset swatches
@@ -3893,8 +3994,7 @@ document.addEventListener('DOMContentLoaded', () => {
             s.classList.remove('active');
             const indicator = s.querySelector('.swatch-indicator');
             if (indicator) {
-                indicator.classList.remove('ring-2', 'ring-accent-ink', 'scale-110');
-                indicator.classList.add('border-transparent');
+                indicator.classList.remove('ring-2', 'ring-accent-ink', 'apple-active-neutral');
             }
             const label = s.querySelector('.swatch-text');
             if (label) {
@@ -3937,6 +4037,24 @@ document.addEventListener('DOMContentLoaded', () => {
     if (stockFilterQtyMin) stockFilterQtyMin.addEventListener('input', () => { syncFiltersFromPanel(); applyStockSearchAndFilters(); });
     if (stockFilterQtyMax) stockFilterQtyMax.addEventListener('input', () => { syncFiltersFromPanel(); applyStockSearchAndFilters(); });
     if (stockFilterSort) stockFilterSort.addEventListener('change', () => { syncFiltersFromPanel(); applyStockSearchAndFilters(); });
+
+    // ซิงก์คลาส active/idle ของปุ่มสลับมุมมองให้ตรงกับ stockViewMode ปัจจุบัน (ไม่ render ข้อมูล)
+    const syncStockViewButtons = (mode) => syncViewToggleButtons(stockViewListBtn, stockViewCardBtn, mode);
+
+    // สลับมุมมอง List/Card — re-render จาก stockFilteredCache ทันที ไม่ต้องคำนวณตัวกรองซ้ำ
+    const applyStockViewMode = (mode) => {
+        stockViewMode = mode;
+        localStorage.setItem('stock_view_mode', mode);
+        syncStockViewButtons(mode);
+        renderStockPage();
+    };
+
+    if (stockViewListBtn) stockViewListBtn.addEventListener('click', () => applyStockViewMode('list'));
+    if (stockViewCardBtn) stockViewCardBtn.addEventListener('click', () => applyStockViewMode('card'));
+    // ซิงก์ปุ่มให้ตรงกับโหมดที่จำไว้ตั้งแต่โหลดสคริปต์ครั้งแรก — ก่อน fetchProducts() ที่เรียกตอนเข้าเพจ
+    syncStockViewButtons(stockViewMode);
+    if (stockViewListWrap) stockViewListWrap.classList.toggle('hidden', stockViewMode !== 'list');
+    if (stockViewCardsWrap) stockViewCardsWrap.classList.toggle('hidden', stockViewMode !== 'card');
 
     // Infinite scroll สำหรับตารางจัดการสต็อก — โหลดเพิ่มทีละ stockItemsPerPage เมื่อเลื่อนใกล้ถึงจุดล่างสุดของพื้นที่เนื้อหา
     const mainContentEl = document.getElementById('main-content');
@@ -4412,9 +4530,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
         tabsEl.innerHTML = tabs.map(t => {
             const isActive = t.value === posActiveCategory;
+            // idle ไม่ต้องมี elev-card ซ้อน elev-chip ที่เป็นฐานอยู่แล้ว (มี border โปร่งใสให้แล้ว)
+            // เดิมใส่ elev-card ซ้ำโดยไม่จำเป็น — box-shadow ของ elev-chip ชนะอยู่แล้วในทางปฏิบัติ
+            // แต่ทิ้ง elev-card ไว้ก็ทำให้โค้ดอ่านสับสนว่าปุ่มนี้ตั้งใจให้มีเงาระดับการ์ดใหญ่
             const cls = isActive
-                ? 'bg-primary text-on-primary ring-1 ring-accent-ink'
-                : 'elev-card bg-canvas-elevated text-body-muted hover:text-ink hover:ring-1 hover:ring-accent-ink/40';
+                ? 'bg-primary text-on-primary ring-1 ring-accent-ink apple-active-accent'
+                : 'bg-canvas-elevated text-body-muted hover:text-ink hover:ring-1 hover:ring-accent-ink/40';
             return `<button type="button" class="elev-chip pos-cat-tab shrink-0 px-5 py-2.5 rounded-md text-[13px] font-semibold transition-colors flex items-center gap-2 ${cls}" data-category="${escapeAttr(t.value)}" aria-pressed="${isActive}"><i class="fa-solid ${t.icon}"></i> ${t.label}</button>`;
         }).join('');
 
@@ -7482,25 +7603,115 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // ตารางแท็บ "สินค้านอกระบบ PO" ในหน้าตรวจสอบนำเข้าสินค้า
     // เดินตามแบบแปลนหน้า #stock ใน DESIGN.md ข้อ 11.6 - 11.7 (เซลล์ px-6 py-4, แถวโครงร่างก่อน await)
-    window.loadImportNotifications = async () => {
-        const NONPO_COLS = 6;
+    // สลับมุมมอง List/Card — จำโหมดไว้ข้ามการเข้าหน้า ประกาศ let ไว้เหนือทุกจุดใช้งานเสมอ (กัน TDZ)
+    let approveNonPoViewMode = localStorage.getItem('approve_nonpo_view_mode') === 'card' ? 'card' : 'list';
+    let _approveNonPoRows = []; // แคชผลลัพธ์ล่าสุด — สลับมุมมองแล้ว re-render ได้โดยไม่ยิง API ซ้ำ
+
+    const nonPoEsc = (s) => String(s == null ? '' : s)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    const nonPoDateTime = (d) => new Date(d).toLocaleString('th-TH',
+        { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+
+    const nonPoRowMarkup = (item) => `
+        <tr class="hover:bg-divider transition-colors">
+            <td class="px-6 py-4 text-ink font-medium">${nonPoEsc(item.product_name)}</td>
+            <td class="px-6 py-4">
+                <p class="font-medium text-ink">${nonPoEsc(item.branch_id ? item.branch_id.name : '-')}</p>
+                <p class="text-xs text-ink/70 mt-0.5">${nonPoEsc(item.reported_by ? item.reported_by.name : '-')}</p>
+            </td>
+            <td class="px-6 py-4 text-ink">${nonPoDateTime(item.created_at)}</td>
+            <td class="px-6 py-4 text-center text-ink font-mono">${item.imeis ? item.imeis.length : 0}</td>
+            <td class="px-6 py-4 text-ink/70">${item.notes ? nonPoEsc(item.notes) : '<span class="text-ink/50">-</span>'}</td>
+            <td class="px-6 py-4 text-right">
+                <button type="button" onclick="approveImport('${nonPoEsc(item._id)}')"
+                    class="px-3 py-1.5 bg-primary hover:bg-[#E2B93C] text-on-primary font-semibold rounded-[0.375rem] text-xs transition-colors inline-flex items-center gap-1.5 cursor-pointer">
+                    <i class="fa-solid fa-check"></i> อนุมัติ
+                </button>
+            </td>
+        </tr>`;
+
+    // การ์ด — โครง: หัว (ชื่อสินค้า / จำนวน IMEI) · สาขา+ผู้แจ้ง 2 คอลัมน์ · footer (วันที่แจ้ง/หมายเหตุ + ปุ่มอนุมัติเต็มความกว้าง)
+    const nonPoCardMarkup = (item) => `
+        <div class="elev-card bg-surface-tile-3 rounded-md p-3.5">
+            <div class="flex items-start justify-between gap-2">
+                <span class="text-ink font-medium truncate">${nonPoEsc(item.product_name)}</span>
+                <span class="shrink-0 text-xs font-mono text-ink/70">IMEI ${item.imeis ? item.imeis.length : 0}</span>
+            </div>
+            <div class="grid grid-cols-2 gap-2 mt-3.5 pt-3 border-t border-hairline text-xs">
+                <div class="min-w-0"><p class="text-ink/60">สาขา</p><p class="text-ink mt-0.5 truncate">${nonPoEsc(item.branch_id ? item.branch_id.name : '-')}</p></div>
+                <div class="min-w-0"><p class="text-ink/60">ผู้แจ้ง</p><p class="text-ink mt-0.5 truncate">${nonPoEsc(item.reported_by ? item.reported_by.name : '-')}</p></div>
+            </div>
+            <div class="mt-3.5 pt-3 border-t border-hairline space-y-2.5">
+                <div class="text-xs text-ink/70">
+                    <p>${nonPoDateTime(item.created_at)}</p>
+                    ${item.notes ? `<p class="mt-0.5 truncate">"${nonPoEsc(item.notes)}"</p>` : ''}
+                </div>
+                <button type="button" onclick="approveImport('${nonPoEsc(item._id)}')"
+                    class="w-full py-2 bg-primary hover:bg-[#E2B93C] text-on-primary font-semibold rounded-[0.375rem] text-xs transition-colors inline-flex items-center justify-center gap-1.5 cursor-pointer">
+                    <i class="fa-solid fa-check"></i> อนุมัติ
+                </button>
+            </div>
+        </div>`;
+
+    const NONPO_COLS = 6;
+    const nonPoStateRow = (msg, cls = 'text-ink/50 italic') =>
+        `<tr><td colspan="${NONPO_COLS}" class="px-6 py-8 text-center ${cls}">${nonPoEsc(msg)}</td></tr>`;
+
+    // จุดเดียวที่ตัดสินว่าจะ render ตารางหรือการ์ด — ใช้ทั้งตอน fetch เสร็จและตอนแค่สลับมุมมอง
+    const renderApproveNonPoResults = () => {
         const tbody = document.getElementById('approve-import-table-body');
+        const cardsWrap = document.getElementById('approve-nonpo-view-cards');
+        if (!tbody) return;
+
+        const listWrap = document.getElementById('approve-nonpo-view-list-wrap');
+        if (listWrap) listWrap.classList.toggle('hidden', approveNonPoViewMode !== 'list');
+        if (cardsWrap) cardsWrap.classList.toggle('hidden', approveNonPoViewMode !== 'card');
+
+        if (!_approveNonPoRows.length) {
+            const msg = 'ไม่มีรายการรออนุมัติ';
+            tbody.innerHTML = nonPoStateRow(msg);
+            if (cardsWrap) cardsWrap.innerHTML = `<div class="col-span-full py-12 text-center text-ink/50 italic">${msg}</div>`;
+            return;
+        }
+
+        if (approveNonPoViewMode === 'card') {
+            cardsWrap.innerHTML = _approveNonPoRows.map(nonPoCardMarkup).join('');
+            tbody.innerHTML = '';
+        } else {
+            tbody.innerHTML = _approveNonPoRows.map(nonPoRowMarkup).join('');
+            if (cardsWrap) cardsWrap.innerHTML = '';
+        }
+    };
+
+    window.loadImportNotifications = async () => {
+        const tbody = document.getElementById('approve-import-table-body');
+        const cardsWrap = document.getElementById('approve-nonpo-view-cards');
         const filterBranch = document.getElementById('approve-import-filter-branch');
         const countEl = document.getElementById('approve-nonpo-result-count');
         const badge = document.getElementById('nonpo-approve-pending-count');
         if (!tbody) return;
 
-        const esc = (s) => String(s == null ? '' : s)
-            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-        const stateRow = (msg, cls = 'text-ink/50 italic') =>
-            `<tr><td colspan="${NONPO_COLS}" class="px-6 py-8 text-center ${cls}">${esc(msg)}</td></tr>`;
+        // DOM ของปุ่มสลับมุมมองเพิ่งมีจริงตอนนี้ (มาจาก view fragment ที่โหลดแบบ dynamic) — ผูกแบบ lazy ตรงนี้
+        bindApproveNonPoViewToggle();
 
         // แถวโครงร่างก่อนยิง API เสมอ ไม่ปล่อยตารางว่างระหว่างรอ (ข้อ 11.7)
         const bar = (w) => `<div class="h-3.5 ${w} rounded-full bg-skeleton animate-pulse"></div>`;
-        tbody.innerHTML = Array.from({ length: 4 }).map(() =>
-            `<tr>${Array.from({ length: NONPO_COLS }).map(() =>
-                `<td class="px-6 py-4">${bar('w-full')}</td>`).join('')}</tr>`).join('');
+        if (approveNonPoViewMode === 'card' && cardsWrap) {
+            cardsWrap.innerHTML = Array.from({ length: 4 }).map(() => `
+                <div class="elev-card bg-surface-tile-3 rounded-md p-3.5">
+                    <div class="flex items-start justify-between gap-2">${bar('w-24')}${bar('w-16 h-5')}</div>
+                    <div class="grid grid-cols-2 gap-2 mt-3.5 pt-3 border-t border-hairline">
+                        <div class="space-y-2">${bar('w-16')}${bar('w-20')}</div>
+                        <div class="space-y-2">${bar('w-14')}${bar('w-16')}</div>
+                    </div>
+                    <div class="mt-3.5 pt-3 border-t border-hairline">${bar('w-20 h-7')}</div>
+                </div>`).join('');
+        } else {
+            tbody.innerHTML = Array.from({ length: 4 }).map(() =>
+                `<tr>${Array.from({ length: NONPO_COLS }).map(() =>
+                    `<td class="px-6 py-4">${bar('w-full')}</td>`).join('')}</tr>`).join('');
+        }
 
         try {
             let url = `${API_BASE_URL}/import-notifications?status=รอดำเนินการ`;
@@ -7509,55 +7720,64 @@ document.addEventListener('DOMContentLoaded', () => {
             const res = await authFetch(url);
             const data = await res.json();
             if (!data.success) {
-                tbody.innerHTML = stateRow(data.message || 'ดึงข้อมูลไม่สำเร็จ', 'text-red-400');
+                tbody.innerHTML = nonPoStateRow(data.message || 'ดึงข้อมูลไม่สำเร็จ', 'text-red-400');
+                if (cardsWrap) cardsWrap.innerHTML = `<div class="col-span-full py-12 text-center text-red-400">${nonPoEsc(data.message || 'ดึงข้อมูลไม่สำเร็จ')}</div>`;
                 if (countEl) countEl.textContent = '';
                 return;
             }
 
-            const rows = data.data || [];
-            if (countEl) countEl.textContent = rows.length ? `แสดง ${rows.length} จาก ${rows.length} รายการ` : '';
+            _approveNonPoRows = data.data || [];
+            if (countEl) countEl.textContent = _approveNonPoRows.length ? `แสดง ${_approveNonPoRows.length} จาก ${_approveNonPoRows.length} รายการ` : '';
 
             // เก็บข้อมูลเต็มของแต่ละแถวไว้ ให้โมดัลอนุมัติ prefill ได้โดยไม่ต้องยิง API ซ้ำ
             pendingImportRows = {};
-            rows.forEach(item => { pendingImportRows[item._id] = item; });
+            _approveNonPoRows.forEach(item => { pendingImportRows[item._id] = item; });
 
             // ป้ายตัวเลขข้างเมนู (nav) และบนแท็บ ใช้จำนวนที่รออนุมัติชุดเดียวกัน
-            if (approveImportBadge) approveImportBadge.classList.toggle('hidden', rows.length === 0);
-            if (approveImportBadge && rows.length) approveImportBadge.textContent = rows.length;
+            if (approveImportBadge) approveImportBadge.classList.toggle('hidden', _approveNonPoRows.length === 0);
+            if (approveImportBadge && _approveNonPoRows.length) approveImportBadge.textContent = _approveNonPoRows.length;
             if (badge) {
-                badge.textContent = rows.length;
-                badge.classList.toggle('hidden', rows.length === 0);
+                badge.textContent = _approveNonPoRows.length;
+                badge.classList.toggle('hidden', _approveNonPoRows.length === 0);
             }
 
-            if (!rows.length) {
-                tbody.innerHTML = stateRow('ไม่มีรายการรออนุมัติ');
-                return;
-            }
-
-            tbody.innerHTML = rows.map(item => `
-                <tr class="hover:bg-divider transition-colors">
-                    <td class="px-6 py-4 text-ink font-medium">${esc(item.product_name)}</td>
-                    <td class="px-6 py-4">
-                        <p class="font-medium text-ink">${esc(item.branch_id ? item.branch_id.name : '-')}</p>
-                        <p class="text-xs text-ink/70 mt-0.5">${esc(item.reported_by ? item.reported_by.name : '-')}</p>
-                    </td>
-                    <td class="px-6 py-4 text-ink">${new Date(item.created_at).toLocaleString('th-TH',
-            { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</td>
-                    <td class="px-6 py-4 text-center text-ink font-mono">${item.imeis ? item.imeis.length : 0}</td>
-                    <td class="px-6 py-4 text-ink/70">${item.notes ? esc(item.notes) : '<span class="text-ink/50">-</span>'}</td>
-                    <td class="px-6 py-4 text-right">
-                        <button type="button" onclick="approveImport('${esc(item._id)}')"
-                            class="px-3 py-1.5 bg-primary hover:bg-[#E2B93C] text-on-primary font-semibold rounded-[0.375rem] text-xs transition-colors inline-flex items-center gap-1.5 cursor-pointer">
-                            <i class="fa-solid fa-check"></i> อนุมัติ
-                        </button>
-                    </td>
-                </tr>`).join('');
+            renderApproveNonPoResults();
 
         } catch (err) {
             console.error(err);
-            tbody.innerHTML = stateRow('เกิดข้อผิดพลาดในการโหลดข้อมูล', 'text-red-400');
+            tbody.innerHTML = nonPoStateRow('เกิดข้อผิดพลาดในการโหลดข้อมูล', 'text-red-400');
+            if (cardsWrap) cardsWrap.innerHTML = '<div class="col-span-full py-12 text-center text-red-400">เกิดข้อผิดพลาดในการโหลดข้อมูล</div>';
             if (countEl) countEl.textContent = '';
         }
+    };
+
+    // สลับมุมมอง List/Card ของตาราง "สินค้านอกระบบ PO" — ปุ่มเหล่านี้อยู่ใน views/po-accounting.html
+    // ที่โหลดแบบ dynamic ตอนเข้าหน้านี้ครั้งแรกเท่านั้น (ไม่ได้อยู่ใน DOM ตั้งแต่ script.js รันตอนโหลดหน้าเว็บ
+    // ต่างจากปุ่มสลับมุมมองอื่นในไฟล์ page-*.js ที่ผูกที่ top-level ได้เพราะ loadPageView เสร็จก่อนเสมอ)
+    // จึงต้องผูกแบบ lazy จากในนี้แทน กันซ้อนด้วย dataset.bound เพราะฟังก์ชันนี้ถูกเรียกซ้ำทุกครั้งที่เปลี่ยนตัวกรอง/เข้าแท็บ
+    const bindApproveNonPoViewToggle = () => {
+        const listBtn = document.getElementById('approve-nonpo-view-list');
+        const cardBtn = document.getElementById('approve-nonpo-view-card');
+        if (!listBtn || !cardBtn || listBtn.dataset.bound) return;
+        listBtn.dataset.bound = '1';
+
+        const activeCls = 'w-9 h-9 rounded-md flex items-center justify-center transition-colors bg-primary text-on-primary';
+        const idleCls = 'w-9 h-9 rounded-md flex items-center justify-center transition-colors bg-surface-chip text-body-muted hover:text-ink';
+        const sync = (mode) => {
+            listBtn.className = mode === 'list' ? activeCls : idleCls;
+            listBtn.setAttribute('aria-pressed', String(mode === 'list'));
+            cardBtn.className = mode === 'card' ? activeCls : idleCls;
+            cardBtn.setAttribute('aria-pressed', String(mode === 'card'));
+        };
+        const apply = (mode) => {
+            approveNonPoViewMode = mode;
+            localStorage.setItem('approve_nonpo_view_mode', mode);
+            sync(mode);
+            renderApproveNonPoResults();
+        };
+        listBtn.addEventListener('click', () => apply('list'));
+        cardBtn.addEventListener('click', () => apply('card'));
+        sync(approveNonPoViewMode);
     };
 
     // ---------- โมดัลอนุมัตินำเข้าสต็อก (#modal-approve-import อยู่ใน index.html) ----------

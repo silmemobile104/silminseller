@@ -57,7 +57,7 @@
                     </div>
                     <label for="coa-filter-category" class="sr-only">กรองตามหมวดหมู่</label>
                     <select id="coa-filter-category" onchange="filterCOATable()"
-                        class="bg-panel/40 cursor-pointer text-sm rounded-[0.5rem] px-3 py-2 text-ink focus:outline-none focus:ring-1 focus:ring-accent-ink w-full sm:w-auto [&>option]:bg-panel [&>option:checked]:bg-primary [&>option:checked]:text-on-primary">
+                        class="page-filter-control bg-panel/40 cursor-pointer text-sm rounded-[0.5rem] px-3 py-2 text-ink focus:outline-none focus:ring-1 focus:ring-accent-ink w-full sm:w-auto [&>option]:bg-panel [&>option:checked]:bg-primary [&>option:checked]:text-on-primary">
                         <option value="">ทุกหมวดหมู่</option>
                     </select>
                 </div>
@@ -66,11 +66,23 @@
             <div class="px-6 py-4">
                 <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                     <div id="coa-active-filters" class="flex flex-wrap gap-2"></div>
-                    <div id="coa-result-count" class="text-xs text-ink font-medium"></div>
+                    <div class="flex items-center gap-3">
+                        <div id="coa-result-count" class="text-xs text-ink font-medium"></div>
+                        <div class="flex items-center gap-1 shrink-0">
+                            <button type="button" id="coa-view-list" aria-label="มุมมองรายการ" aria-pressed="true"
+                                class="w-9 h-9 rounded-md flex items-center justify-center transition-colors bg-primary text-on-primary">
+                                <i class="fa-solid fa-list text-sm"></i>
+                            </button>
+                            <button type="button" id="coa-view-card" aria-label="มุมมองการ์ด" aria-pressed="false"
+                                class="w-9 h-9 rounded-md flex items-center justify-center transition-colors bg-surface-chip text-body-muted hover:text-ink">
+                                <i class="fa-solid fa-table-cells-large text-sm"></i>
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            <div class="overflow-x-auto" tabindex="0">
+            <div id="coa-view-list-wrap" class="overflow-x-auto" tabindex="0">
                 <table class="w-full text-left text-sm whitespace-nowrap border-collapse">
                     <thead class="bg-panel/40 text-ink">
                         <tr>
@@ -86,6 +98,7 @@
                     <tbody id="coa-table-body" class="divide-y divide-divider"></tbody>
                 </table>
             </div>
+            <div id="coa-view-cards" class="hidden grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 p-6"></div>
         </div>
     </div>
 
@@ -99,7 +112,7 @@
                 <div class="flex items-center gap-2.5">
                     <div id="coa-groups-count" class="text-xs text-ink font-medium"></div>
                     <button type="button" onclick="if(typeof openAddGroupModal==='function') openAddGroupModal()"
-                        class="px-3 py-2 bg-panel/40 cursor-pointer text-ink flex items-center gap-1.5 rounded-[0.5rem] text-sm hover:bg-skeleton transition-colors">
+                        class="page-filter-control px-3 py-2 bg-panel/40 cursor-pointer text-ink flex items-center gap-1.5 rounded-[0.5rem] text-sm hover:bg-skeleton transition-colors">
                         <i class="fa-solid fa-plus"></i> เพิ่มกลุ่ม
                     </button>
                 </div>
@@ -129,7 +142,7 @@
                 </h3>
                 <div class="flex flex-wrap items-center gap-2.5">
                     <button type="button" onclick="if(typeof addPnLLine==='function') addPnLLine()"
-                        class="px-3 py-2 bg-panel/40 cursor-pointer text-ink flex items-center gap-1.5 rounded-[0.5rem] text-sm hover:bg-skeleton transition-colors">
+                        class="page-filter-control px-3 py-2 bg-panel/40 cursor-pointer text-ink flex items-center gap-1.5 rounded-[0.5rem] text-sm hover:bg-skeleton transition-colors">
                         <i class="fa-solid fa-plus"></i> เพิ่มรายการ
                     </button>
                     <button type="button" onclick="if(typeof savePnLConfig==='function') savePnLConfig()"
@@ -168,7 +181,7 @@
             <h3 class="text-2xl text-ink">ใบสำคัญจ่าย</h3>
         </div>
         <button id="btn-refresh-dv" type="button"
-            class="px-3 py-2 bg-panel/40 cursor-pointer text-ink flex items-center justify-center gap-1.5 rounded-[0.5rem] text-sm hover:bg-skeleton transition-colors w-fit">
+            class="page-filter-control px-3 py-2 bg-panel/40 cursor-pointer text-ink flex items-center justify-center gap-1.5 rounded-[0.5rem] text-sm hover:bg-skeleton transition-colors w-fit">
             <i class="fa-solid fa-rotate"></i> รีเฟรชรายการ
         </button>
     </div>
@@ -326,11 +339,23 @@
             <div class="px-6 py-4">
                 <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                     <div id="dv-active-filters" class="flex flex-wrap gap-2"></div>
-                    <div id="dv-result-count" class="text-xs text-ink font-medium"></div>
+                    <div class="flex items-center gap-3">
+                        <div id="dv-result-count" class="text-xs text-ink font-medium"></div>
+                        <div class="flex items-center gap-1 shrink-0">
+                            <button type="button" id="dv-view-list" aria-label="มุมมองรายการ" aria-pressed="true"
+                                class="w-9 h-9 rounded-md flex items-center justify-center transition-colors bg-primary text-on-primary">
+                                <i class="fa-solid fa-list text-sm"></i>
+                            </button>
+                            <button type="button" id="dv-view-card" aria-label="มุมมองการ์ด" aria-pressed="false"
+                                class="w-9 h-9 rounded-md flex items-center justify-center transition-colors bg-surface-chip text-body-muted hover:text-ink">
+                                <i class="fa-solid fa-table-cells-large text-sm"></i>
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            <div class="overflow-x-auto" tabindex="0">
+            <div id="dv-view-list-wrap" class="overflow-x-auto" tabindex="0">
                 <table class="w-full text-left text-sm whitespace-nowrap border-collapse">
                     <thead class="bg-panel/40 text-ink">
                         <tr>
@@ -345,6 +370,7 @@
                     <tbody id="dv-history-table-body" class="divide-y divide-divider"></tbody>
                 </table>
             </div>
+            <div id="dv-view-cards" class="hidden grid grid-cols-1 md:grid-cols-2 gap-4 p-6"></div>
         </div>
     </div>
 </div>

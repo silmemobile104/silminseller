@@ -15,7 +15,7 @@
 
 /* Collapsed — เหลือแค่ไอคอน */
 #sidebar.collapsed {
-    width: 64px;
+    width: 90px;
 }
 
 /* ซ่อน text และ badge ตอน collapsed */
@@ -250,6 +250,7 @@ html {
         transform: translateY(0);
     }
 }
+
 /* ==========================================
    ปุ่มแฮมเบอร์เกอร์
    แทน icon/menu.png (PNG สีขาว มองไม่เห็นบนพื้นสว่าง) ด้วย SVG ที่ใช้ currentColor
@@ -268,14 +269,27 @@ html {
 }
 
 /* สัดส่วนตามไฟล์ภาพต้นฉบับ: 96 / 64 / 37 หน่วย */
-.hb-bar-1 { transform: scaleX(1); }
-.hb-bar-2 { transform: scaleX(0.667); }
-.hb-bar-3 { transform: scaleX(0.385); }
+.hb-bar-1 {
+    transform: scaleX(1);
+}
+
+.hb-bar-2 {
+    transform: scaleX(0.667);
+}
+
+.hb-bar-3 {
+    transform: scaleX(0.385);
+}
 
 /* เมนูย่ออยู่ = สลับทิศการไล่ระดับ บอกสถานะโดยไม่ต้องเปลี่ยนเป็นไอคอนคนละตัว
    อ่านจาก aria-expanded ของปุ่มเอง จึงไม่ผูกกับลำดับ DOM ของ #sidebar */
-#toggle-sidebar[aria-expanded="false"] .hb-bar-1 { transform: scaleX(0.385); }
-#toggle-sidebar[aria-expanded="false"] .hb-bar-3 { transform: scaleX(1); }
+#toggle-sidebar[aria-expanded="false"] .hb-bar-1 {
+    transform: scaleX(0.385);
+}
+
+#toggle-sidebar[aria-expanded="false"] .hb-bar-3 {
+    transform: scaleX(1);
+}
 
 #toggle-sidebar:active .hb-bar {
     transition-duration: 0.12s;

@@ -6,6 +6,16 @@
     // Member Management (จัดการสมาชิก)
     // ==========================================
     let membersData = [];
+    // รายชื่อที่ถูกกรองแล้วล่าสุดที่แสดงอยู่จริง (ต่างจาก membersData ที่เป็นก้อนดิบทั้งหมด) —
+    // ใช้ตอนสลับมุมมอง List/Card เพื่อ re-render ชุดเดิมโดยไม่ต้องรันตัวกรองซ้ำ
+    let memberLastRendered = [];
+
+    // สลับมุมมอง List/Card — จำโหมดไว้ข้ามการเข้าหน้า (เดินตามรูปแบบเดียวกับหน้าการมัดจำ/ประวัติการขาย)
+    const memberViewListBtn = document.getElementById('member-view-list');
+    const memberViewCardBtn = document.getElementById('member-view-card');
+    const memberViewListWrap = document.getElementById('member-view-list-wrap');
+    const memberViewCardsWrap = document.getElementById('member-view-cards');
+    let memberViewMode = localStorage.getItem('member_view_mode') === 'card' ? 'card' : 'list';
 
     // สมาชิกใหม่: photo เป็น URL จาก Google Drive แล้ว (ดู uploadMemberPhotoIfNeeded ใน routes/api.js)
     // สมาชิกเก่าก่อน migration: photo ยังเป็น base64 ดิบอยู่ ต้องรองรับทั้งสองแบบ
@@ -31,7 +41,7 @@
     const MEMBER_TABLE_COLS = 6;
 
     // แถวโครงร่างระหว่างรอข้อมูล — ต้องเรียกก่อน await เสมอ ไม่ปล่อยตารางว่าง (ข้อ 11.7)
-    const renderMemberSkeleton = (rowCount = 6) => {
+    const renderMemberTableSkeleton = (rowCount = 6) => {
         const tbody = document.getElementById('member-table-body');
         if (!tbody) return;
         const bar = (w) => `<div class="h-3.5 ${w} rounded-full bg-skeleton animate-pulse"></div>`;
@@ -61,8 +71,46 @@
         tbody.innerHTML = html;
     };
 
+    // โครงร่างการ์ด — สัดส่วนบล็อกเดินตามโครงจริงของ renderMemberCard ด้านล่าง
+    const renderMemberCardSkeleton = (cardCount = 6) => {
+        if (!memberViewCardsWrap) return;
+        const bar = (w) => `<div class="h-3.5 ${w} rounded-full bg-skeleton animate-pulse"></div>`;
+        let html = '';
+        for (let i = 0; i < cardCount; i++) {
+            html += `
+                <div class="elev-card bg-surface-tile-3 rounded-md p-4">
+                    <div class="flex items-start gap-3">
+                        <div class="w-12 h-12 rounded-full bg-skeleton animate-pulse shrink-0"></div>
+                        <div class="min-w-0 flex-1 space-y-2">${bar('w-32')}${bar('w-20')}</div>
+                        <div class="shrink-0 space-y-2">${bar('w-16')}${bar('w-14')}</div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2 mt-3.5 pt-3 border-t border-hairline">
+                        <div class="space-y-2">${bar('w-20')}${bar('w-24')}</div>
+                        <div class="space-y-2">${bar('w-16')}${bar('w-20')}</div>
+                    </div>
+                    <div class="flex items-center justify-between mt-3.5 pt-3 border-t border-hairline">
+                        ${bar('w-20 h-5')}
+                        <div class="flex items-center gap-1.5">
+                            <div class="w-8 h-8 rounded-[0.375rem] bg-skeleton animate-pulse"></div>
+                            <div class="w-8 h-8 rounded-[0.375rem] bg-skeleton animate-pulse"></div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        memberViewCardsWrap.innerHTML = html;
+    };
+
+    const renderMemberSkeleton = (count = 6) => {
+        if (memberViewMode === 'card') renderMemberCardSkeleton(count);
+        else renderMemberTableSkeleton(count);
+    };
+
     const memberStateRow = (message, extraClass = 'text-ink/50 italic') =>
         `<tr><td colspan="${MEMBER_TABLE_COLS}" class="px-6 py-8 text-center ${extraClass}">${message}</td></tr>`;
+
+    const memberStateCard = (message, extraClass = 'text-ink/50 italic') =>
+        `<div class="col-span-full py-12 text-center ${extraClass}">${message}</div>`;
 
     // ตัวนับผลลัพธ์ — หน้านี้กรองในเครื่องจาก membersData ทั้งก้อน จึงบอก "จาก M" ได้จริง
     const updateMemberCount = (shown) => {
@@ -112,75 +160,163 @@
     };
     window.loadMembers = loadMembers;
 
+    // ข้อมูลที่คำนวณร่วมกันระหว่างแถวตารางกับการ์ด — แยกออกมาครั้งเดียวเพื่อไม่ให้สองมุมมองเพี้ยนจากกัน
+    const buildMemberCardData = (m) => {
+        const fullName = `${m.prefix || ''} ${m.first_name || ''} ${m.last_name || ''}`.trim();
+        const citizenDisplay = m.citizen_id ? m.citizen_id.replace(/(\d{1})(\d{4})(\d{5})(\d{2})(\d{1})/, '$1-$2-$3-$4-$5') : '-';
+        const dateStr = m.createdAt ? new Date(m.createdAt).toLocaleDateString('th-TH', { year: 'numeric', month: 'short', day: 'numeric' }) : '-';
+        const nameEn = `${m.first_name_en || ''} ${m.last_name_en || ''}`.trim();
+        // รูปสมาชิกทำหน้าที่เดียวกับไอคอนวงกลมประจำแถวในหน้า #stock (ข้อ 11.6)
+        const photoHtml = m.photo
+            ? `<img src="${memberPhotoSrc(m.photo)}" alt="" class="border border-transparent w-10 h-10 rounded-full object-cover shrink-0 ring-1 ring-ink/20">`
+            : `<div class="w-10 h-10 rounded-full bg-line flex items-center justify-center text-ink/70 shrink-0"><i class="fa-solid fa-user"></i></div>`;
+        const referralBadge = m.referral_source
+            ? `<span class="px-2.5 py-1 bg-line text-ink/70 rounded-[0.375rem] text-xs font-medium">${m.referral_source}</span>`
+            : '<span class="text-ink/50">-</span>';
+        return { fullName, citizenDisplay, dateStr, nameEn, photoHtml, referralBadge };
+    };
+
+    const bindMemberActionHandlers = (el, m) => {
+        el.querySelector('.view-member-btn').addEventListener('click', (e) => {
+            e.stopPropagation();
+            openViewMemberModal(m);
+        });
+        el.querySelector('.delete-member-btn').addEventListener('click', (e) => {
+            e.stopPropagation();
+            deleteMember(m._id);
+        });
+    };
+
+    const memberTableRowMarkup = (m) => {
+        const d = buildMemberCardData(m);
+        const row = document.createElement('tr');
+        row.className = 'hover:bg-divider transition-colors';
+        row.innerHTML = `
+            <td class="px-6 py-4">
+                <div>
+                    <p class="font-mono font-semibold text-accent-ink">${m.member_number || '-'}</p>
+                    <p class="text-xs text-ink/70 mt-0.5">${d.dateStr}</p>
+                </div>
+            </td>
+            <td class="px-6 py-4">
+                <div class="flex items-center gap-3">
+                    ${d.photoHtml}
+                    <div>
+                        <p class="font-medium text-ink">${d.fullName || '-'}</p>
+                        <p class="text-xs text-ink/70 mt-0.5">${d.nameEn || '-'}</p>
+                    </div>
+                </div>
+            </td>
+            <td class="px-6 py-4 text-ink font-mono">${d.citizenDisplay}</td>
+            <td class="px-6 py-4 text-ink font-mono">${m.phone || '-'}</td>
+            <td class="px-6 py-4">${d.referralBadge}</td>
+            <td class="px-6 py-4 text-right">
+                <div class="flex items-center justify-end gap-1">
+                    <button type="button" class="view-member-btn text-ink hover:text-indigo-400 transition-colors p-2" data-id="${m._id}" title="ดูรายละเอียด"><i class="fa-solid fa-eye"></i></button>
+                    <button type="button" class="delete-member-btn text-ink hover:text-red-400 transition-colors p-2" data-id="${m._id}" title="ลบสมาชิก"><i class="fa-solid fa-trash"></i></button>
+                </div>
+            </td>
+        `;
+        bindMemberActionHandlers(row, m);
+        return row;
+    };
+
+    // การ์ด — โครง: หัว (รูป+ชื่อ / เลขสมาชิก+วันที่) · เลขบัตร+เบอร์โทร 2 คอลัมน์ · footer (แหล่งที่มา + ปุ่ม)
+    const renderMemberCard = (m) => {
+        const d = buildMemberCardData(m);
+        const card = document.createElement('div');
+        card.className = 'elev-card pos-card bg-surface-tile-3 rounded-md p-4 transition-all hover:-translate-y-1 border-none cursor-pointer';
+        card.innerHTML = `
+            <div class="flex items-start gap-3">
+                ${d.photoHtml}
+                <div class="min-w-0 flex-1">
+                    <p class="font-medium text-ink truncate">${d.fullName || '-'}</p>
+                    <p class="text-xs text-ink/70 truncate mt-0.5">${d.nameEn || '-'}</p>
+                </div>
+                <div class="shrink-0 text-right">
+                    <p class="font-mono font-semibold text-accent-ink text-xs">${m.member_number || '-'}</p>
+                    <p class="text-[10px] text-ink/60 mt-0.5">${d.dateStr}</p>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-2 mt-3.5 pt-3 border-t border-hairline text-xs">
+                <div class="min-w-0">
+                    <p class="text-ink/60">เลขบัตรประชาชน</p>
+                    <p class="font-mono text-ink mt-0.5 truncate">${d.citizenDisplay}</p>
+                </div>
+                <div class="min-w-0">
+                    <p class="text-ink/60">เบอร์โทร</p>
+                    <p class="font-mono text-ink mt-0.5 truncate">${m.phone || '-'}</p>
+                </div>
+            </div>
+
+            <div class="flex items-center justify-between mt-3.5 pt-3 border-t border-hairline">
+                ${d.referralBadge}
+                <div class="flex items-center gap-1">
+                    <button type="button" class="view-member-btn text-ink hover:text-indigo-400 transition-colors p-2" data-id="${m._id}" title="ดูรายละเอียด"><i class="fa-solid fa-eye"></i></button>
+                    <button type="button" class="delete-member-btn text-ink hover:text-red-400 transition-colors p-2" data-id="${m._id}" title="ลบสมาชิก"><i class="fa-solid fa-trash"></i></button>
+                </div>
+            </div>
+        `;
+        bindMemberActionHandlers(card, m);
+        card.addEventListener('click', () => openViewMemberModal(m));
+        return card;
+    };
+
+    // จุดเดียวที่ตัดสินว่าจะ render ตารางหรือการ์ด — ใช้ทั้งตอน filter/search และตอนแค่สลับมุมมอง (อ่านจาก memberLastRendered)
     const renderMemberTable = (members) => {
         const tbody = document.getElementById('member-table-body');
         if (!tbody) return;
-        tbody.innerHTML = '';
+
+        memberLastRendered = members;
+
+        if (memberViewListWrap) memberViewListWrap.classList.toggle('hidden', memberViewMode !== 'list');
+        if (memberViewCardsWrap) memberViewCardsWrap.classList.toggle('hidden', memberViewMode !== 'card');
 
         renderMemberChips();
         updateMemberCount(members.length);
 
         if (members.length === 0) {
             // ข้อความต่างกันระหว่าง "ยังไม่มีสมาชิกเลย" กับ "ค้นหาแล้วไม่เจอ"
-            tbody.innerHTML = memberStateRow(
-                membersData.length
-                    ? 'ไม่พบสมาชิกที่ค้นหา'
-                    : 'ยังไม่มีข้อมูลสมาชิก — กดปุ่ม "เพิ่มสมาชิก" เพื่อเริ่มต้น'
-            );
+            const msg = membersData.length
+                ? 'ไม่พบสมาชิกที่ค้นหา'
+                : 'ยังไม่มีข้อมูลสมาชิก — กดปุ่ม "เพิ่มสมาชิก" เพื่อเริ่มต้น';
+            tbody.innerHTML = memberStateRow(msg);
+            if (memberViewCardsWrap) memberViewCardsWrap.innerHTML = memberStateCard(msg);
             return;
         }
 
-        members.forEach(m => {
-            const row = document.createElement('tr');
-            row.className = 'hover:bg-divider transition-colors';
-
-            const fullName = `${m.prefix || ''} ${m.first_name || ''} ${m.last_name || ''}`.trim();
-            const citizenDisplay = m.citizen_id ? m.citizen_id.replace(/(\d{1})(\d{4})(\d{5})(\d{2})(\d{1})/, '$1-$2-$3-$4-$5') : '-';
-            const dateStr = m.createdAt ? new Date(m.createdAt).toLocaleDateString('th-TH', { year: 'numeric', month: 'short', day: 'numeric' }) : '-';
-            const nameEn = `${m.first_name_en || ''} ${m.last_name_en || ''}`.trim();
-
-            // รูปสมาชิกทำหน้าที่เดียวกับไอคอนวงกลมประจำแถวในหน้า #stock (ข้อ 11.6)
-            // จึงย้ายเข้ามาอยู่ในเซลล์ชื่อ แทนที่จะกินคอลัมน์ของตัวเอง
-            const photoHtml = m.photo
-                ? `<img src="${memberPhotoSrc(m.photo)}" alt="" class="border border-transparent w-10 h-10 rounded-full object-cover shrink-0 ring-1 ring-ink/20">`
-                : `<div class="w-10 h-10 rounded-full bg-line flex items-center justify-center text-ink/70 shrink-0"><i class="fa-solid fa-user"></i></div>`;
-
-            const referralBadge = m.referral_source
-                ? `<span class="px-2.5 py-1 bg-line text-ink/70 rounded-[0.375rem] text-xs font-medium">${m.referral_source}</span>`
-                : '<span class="text-ink/50">-</span>';
-
-            row.innerHTML = `
-                <td class="px-6 py-4">
-                    <div>
-                        <p class="font-mono font-semibold text-accent-ink">${m.member_number || '-'}</p>
-                        <p class="text-xs text-ink/70 mt-0.5">${dateStr}</p>
-                    </div>
-                </td>
-                <td class="px-6 py-4">
-                    <div class="flex items-center gap-3">
-                        ${photoHtml}
-                        <div>
-                            <p class="font-medium text-ink">${fullName || '-'}</p>
-                            <p class="text-xs text-ink/70 mt-0.5">${nameEn || '-'}</p>
-                        </div>
-                    </div>
-                </td>
-                <td class="px-6 py-4 text-ink font-mono">${citizenDisplay}</td>
-                <td class="px-6 py-4 text-ink font-mono">${m.phone || '-'}</td>
-                <td class="px-6 py-4">${referralBadge}</td>
-                <td class="px-6 py-4 text-right">
-                    <div class="flex items-center justify-end gap-1">
-                        <button type="button" class="view-member-btn text-ink hover:text-indigo-400 transition-colors p-2" data-id="${m._id}" title="ดูรายละเอียด"><i class="fa-solid fa-eye"></i></button>
-                        <button type="button" class="delete-member-btn text-ink hover:text-red-400 transition-colors p-2" data-id="${m._id}" title="ลบสมาชิก"><i class="fa-solid fa-trash"></i></button>
-                    </div>
-                </td>
-            `;
-            tbody.appendChild(row);
-
-            row.querySelector('.view-member-btn').addEventListener('click', () => openViewMemberModal(m));
-            row.querySelector('.delete-member-btn').addEventListener('click', () => deleteMember(m._id));
-        });
+        if (memberViewMode === 'card') {
+            const frag = document.createDocumentFragment();
+            members.forEach(m => frag.appendChild(renderMemberCard(m)));
+            memberViewCardsWrap.innerHTML = '';
+            memberViewCardsWrap.appendChild(frag);
+            tbody.innerHTML = '';
+        } else {
+            const frag = document.createDocumentFragment();
+            members.forEach(m => frag.appendChild(memberTableRowMarkup(m)));
+            tbody.innerHTML = '';
+            tbody.appendChild(frag);
+        }
     };
+
+    // ซิงก์คลาส active/idle ของปุ่มสลับมุมมองให้ตรงกับ memberViewMode ปัจจุบัน (ไม่ render ข้อมูล)
+    const syncMemberViewButtons = (mode) => window.syncViewToggleButtons(memberViewListBtn, memberViewCardBtn, mode);
+
+    // สลับมุมมอง List/Card — re-render จาก memberLastRendered ทันที ไม่ยิง API ซ้ำ
+    const applyMemberViewMode = (mode) => {
+        memberViewMode = mode;
+        localStorage.setItem('member_view_mode', mode);
+        syncMemberViewButtons(mode);
+        renderMemberTable(memberLastRendered);
+    };
+
+    if (memberViewListBtn) memberViewListBtn.addEventListener('click', () => applyMemberViewMode('list'));
+    if (memberViewCardBtn) memberViewCardBtn.addEventListener('click', () => applyMemberViewMode('card'));
+    // ซิงก์ปุ่มให้ตรงกับโหมดที่จำไว้ตั้งแต่โหลดสคริปต์ครั้งแรก — ก่อน loadMembers() ที่ script.js เรียกตอนเข้าเพจ
+    syncMemberViewButtons(memberViewMode);
+    if (memberViewListWrap) memberViewListWrap.classList.toggle('hidden', memberViewMode !== 'list');
+    if (memberViewCardsWrap) memberViewCardsWrap.classList.toggle('hidden', memberViewMode !== 'card');
 
     // Member Search
     const memberSearchInput = document.getElementById('member-search-input');

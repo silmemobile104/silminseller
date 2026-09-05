@@ -17,6 +17,15 @@
             .replace(/'/g, '&#39;');
     }
 
+    // สลับ list-wrap/cards ให้ตรงมุมมองที่จำไว้ - ต้องเรียกตอนวาดโครงร่างด้วย ไม่ใช่แค่ตอน render ข้อมูลจริง
+    // ไม่งั้นถ้าจำโหมดการ์ดไว้ โครงร่างจะไปวาดใน wrap ที่ยังซ่อนอยู่ (ผู้ใช้เห็นพื้นที่ว่างจนกว่า fetch จะเสร็จ)
+    function syncViewWrapVisibility(prefix, mode) {
+        const listWrap = document.getElementById(`${prefix}-view-list-wrap`);
+        const cardsWrap = document.getElementById(`${prefix}-view-cards`);
+        if (listWrap) listWrap.classList.toggle('hidden', mode !== 'list');
+        if (cardsWrap) cardsWrap.classList.toggle('hidden', mode !== 'card');
+    }
+
     // Unwraps a Mongoose-populated reference field back to its plain id string
     // (fields like category_id/group_id come populated from some endpoints, as
     // a raw id string from others).
@@ -34,6 +43,8 @@
     }
 
     let _coaCache = { categories: [], groups: [], accounts: [] };
+    // มุมมองตาราง/การ์ดของตาราง "ผังบัญชีทั้งหมด" — จำค่าไว้ข้ามการเข้าหน้า (เหมือนหน้า #deposits)
+    let coaViewMode = localStorage.getItem('coa_view_mode') === 'card' ? 'card' : 'list';
 
     function thaiBahtText(number) {
         if (isNaN(number)) return '';
@@ -101,6 +112,9 @@
     const coaStateRow = (cols, msg, cls = 'text-ink/50 italic') =>
         `<tr><td colspan="${cols}" class="px-6 py-8 text-center ${cls}">${escapeHtml(msg)}</td></tr>`;
 
+    const coaStateCard = (msg, cls = 'text-ink/50 italic') =>
+        `<div class="col-span-full py-12 text-center ${cls}">${escapeHtml(msg)}</div>`;
+
     const coaSkeleton = (tbodyId, cols, rows = 4) => {
         const tbody = document.getElementById(tbodyId);
         if (!tbody) return;
@@ -108,6 +122,26 @@
         tbody.innerHTML = Array.from({ length: rows }).map(() =>
             `<tr>${Array.from({ length: cols }).map(() =>
                 `<td class="px-6 py-4">${bar}</td>`).join('')}</tr>`).join('');
+    };
+
+    // โครงร่างการ์ดผังบัญชี — สัดส่วนบล็อกเดินตามโครงจริงของ coaCardMarkup ด้านล่าง
+    const coaCardSkeleton = (count = 4) => {
+        const cardsWrap = document.getElementById('coa-view-cards');
+        if (!cardsWrap) return;
+        const bar = (w) => `<div class="h-3.5 ${w} rounded-full bg-skeleton animate-pulse"></div>`;
+        cardsWrap.innerHTML = Array.from({ length: count }).map(() => `
+            <div class="elev-card bg-surface-tile-3 rounded-md p-3.5">
+                <div class="flex items-start justify-between gap-2">${bar('w-20')}${bar('w-16')}</div>
+                ${bar('w-32 mt-2.5')}
+                <div class="flex items-center gap-2 mt-3.5 pt-3 border-t border-hairline">${bar('w-16 h-6')}${bar('w-16 h-6')}</div>
+                <div class="flex items-center justify-between mt-3.5 pt-3 border-t border-hairline">
+                    ${bar('w-12')}
+                    <div class="flex items-center gap-1.5">
+                        <div class="w-8 h-8 rounded-lg bg-skeleton animate-pulse"></div>
+                        <div class="w-8 h-8 rounded-lg bg-skeleton animate-pulse"></div>
+                    </div>
+                </div>
+            </div>`).join('');
     };
 
     const coaSetText = (id, text) => {
@@ -120,7 +154,8 @@
         `<span class="px-2.5 py-1 rounded-[0.375rem] text-xs font-medium bg-chip/60 text-ink">${escapeHtml(text)}</span>`;
 
     async function initAccountingSettings() {
-        coaSkeleton('coa-table-body', COA_COLS);
+        syncViewWrapVisibility('coa', coaViewMode);
+        if (coaViewMode === 'card') coaCardSkeleton(); else coaSkeleton('coa-table-body', COA_COLS);
         coaSkeleton('coa-groups-table-body', GRP_COLS);
         await loadCOAData();
         switchCOATab('accounts');
@@ -214,9 +249,87 @@
         }
     }
 
+    // ข้อมูลที่คำนวณร่วมกันระหว่างแถวตารางกับการ์ด — แยกออกมาครั้งเดียวเพื่อไม่ให้สองมุมมองเพี้ยนจากกัน
+    const coaBuildRowData = (acc) => {
+        const cat = _coaCache.categories.find(c => c._id === idOf(acc.category_id)) || {};
+        const grp = _coaCache.groups.find(g => g._id === idOf(acc.group_id)) || {};
+
+        // บัญชีของระบบแก้/ลบไม่ได้ จึงไม่เรนเดอร์ปุ่มตั้งแต่แรก (ข้อ 11.12 ข้อ 11)
+        const actions = acc.is_system
+            ? '<span class="text-ink/50">-</span>'
+            : `<button type="button" class="btn-coa-edit text-ink hover:text-amber-400 transition-colors p-2 cursor-pointer"
+                    data-id="${escapeHtml(acc._id)}" title="แก้ไขบัญชี"
+                    aria-label="แก้ไขบัญชี ${escapeHtml(acc.account_code)}">
+                    <i class="fa-solid fa-pen-to-square"></i>
+               </button>
+               <button type="button" class="btn-coa-delete text-ink hover:text-red-400 transition-colors p-2 cursor-pointer"
+                    data-id="${escapeHtml(acc._id)}" data-code="${escapeHtml(acc.account_code)}"
+                    data-name="${escapeHtml(acc.account_name)}" title="ลบบัญชี"
+                    aria-label="ลบบัญชี ${escapeHtml(acc.account_code)}">
+                    <i class="fa-solid fa-trash"></i>
+               </button>`;
+
+        const typeBadge = acc.is_system
+            ? '<span class="px-2.5 py-1 rounded-[0.375rem] text-xs font-medium bg-chip/60 text-ink">ระบบ</span>'
+            : '<span class="px-2.5 py-1 rounded-[0.375rem] text-xs font-medium bg-state-ok-tint/[0.12] text-state-ok">กำหนดเอง</span>';
+
+        return { cat, grp, actions, typeBadge };
+    };
+
+    const coaRowMarkup = (acc) => {
+        const d = coaBuildRowData(acc);
+        return `
+        <tr class="hover:bg-divider transition-colors">
+            <td class="px-6 py-4"><span class="font-mono font-semibold text-accent-ink">${escapeHtml(acc.account_code)}</span></td>
+            <td class="px-6 py-4 text-ink">${escapeHtml(acc.account_name)}</td>
+            <td class="px-6 py-4">${d.cat.category_name ? coaChipLabel(d.cat.category_name) : '<span class="text-ink/50">-</span>'}</td>
+            <td class="px-6 py-4">${d.grp.group_name ? coaChipLabel(d.grp.group_name) : '<span class="text-ink/50">-</span>'}</td>
+            <td class="px-6 py-4 text-center text-ink font-medium">${acc.level || '-'}</td>
+            <td class="px-6 py-4">${d.typeBadge}</td>
+            <td class="px-6 py-4 text-right">
+                <div class="flex items-center justify-end gap-1">${d.actions}</div>
+            </td>
+        </tr>`;
+    };
+
+    // การ์ด — โครง: หัว (รหัสบัญชี / ประเภท) · ชื่อบัญชี · หมวดหมู่+กลุ่ม · footer (ระดับ + ปุ่มจัดการ)
+    const coaCardMarkup = (acc) => {
+        const d = coaBuildRowData(acc);
+        return `
+        <div class="elev-card bg-surface-tile-3 rounded-md p-3.5">
+            <div class="flex items-start justify-between gap-2">
+                <span class="font-mono font-semibold text-accent-ink truncate">${escapeHtml(acc.account_code)}</span>
+                <div class="shrink-0">${d.typeBadge}</div>
+            </div>
+            <p class="text-ink font-medium mt-2.5 truncate">${escapeHtml(acc.account_name)}</p>
+
+            <div class="flex flex-wrap items-center gap-2 mt-3.5 pt-3 border-t border-hairline">
+                ${d.cat.category_name ? coaChipLabel(d.cat.category_name) : '<span class="text-ink/50 text-xs">ไม่มีหมวดหมู่</span>'}
+                ${d.grp.group_name ? coaChipLabel(d.grp.group_name) : ''}
+            </div>
+
+            <div class="flex items-center justify-between mt-3.5 pt-3 border-t border-hairline">
+                <span class="text-xs text-ink/70">ระดับ ${acc.level || '-'}</span>
+                <div class="flex items-center gap-1">${d.actions}</div>
+            </div>
+        </div>`;
+    };
+
+    const coaBindRowHandlers = (container) => {
+        container.querySelectorAll('.btn-coa-edit').forEach(b =>
+            b.addEventListener('click', () => editAccountChart(b.dataset.id)));
+        container.querySelectorAll('.btn-coa-delete').forEach(b =>
+            b.addEventListener('click', () => deleteAccountChart(b.dataset.id, b.dataset.code, b.dataset.name)));
+    };
+
     function renderCOATable(accountsToRender) {
         const tbody = document.getElementById('coa-table-body');
         if (!tbody) return;
+
+        const listWrap = document.getElementById('coa-view-list-wrap');
+        const cardsWrap = document.getElementById('coa-view-cards');
+        if (listWrap) listWrap.classList.toggle('hidden', coaViewMode !== 'list');
+        if (cardsWrap) cardsWrap.classList.toggle('hidden', coaViewMode !== 'card');
 
         renderCOAChips();
         const rows = accountsToRender || [];
@@ -224,51 +337,19 @@
         coaSetText('coa-result-count', total ? `แสดง ${rows.length} จาก ${total} รายการ` : '');
 
         if (!rows.length) {
-            tbody.innerHTML = coaStateRow(COA_COLS, total ? 'ไม่พบบัญชีที่ตรงกับตัวกรอง' : 'ยังไม่มีข้อมูลผังบัญชี');
+            const emptyMsg = total ? 'ไม่พบบัญชีที่ตรงกับตัวกรอง' : 'ยังไม่มีข้อมูลผังบัญชี';
+            tbody.innerHTML = coaStateRow(COA_COLS, emptyMsg);
+            if (cardsWrap) cardsWrap.innerHTML = coaStateCard(emptyMsg);
             return;
         }
 
-        tbody.innerHTML = rows.map(acc => {
-            const cat = _coaCache.categories.find(c => c._id === idOf(acc.category_id)) || {};
-            const grp = _coaCache.groups.find(g => g._id === idOf(acc.group_id)) || {};
-
-            // บัญชีของระบบแก้/ลบไม่ได้ จึงไม่เรนเดอร์ปุ่มตั้งแต่แรก (ข้อ 11.12 ข้อ 11)
-            const actions = acc.is_system
-                ? '<span class="text-ink/50">-</span>'
-                : `<button type="button" class="btn-coa-edit text-ink hover:text-amber-400 transition-colors p-2 cursor-pointer"
-                        data-id="${escapeHtml(acc._id)}" title="แก้ไขบัญชี"
-                        aria-label="แก้ไขบัญชี ${escapeHtml(acc.account_code)}">
-                        <i class="fa-solid fa-pen-to-square"></i>
-                   </button>
-                   <button type="button" class="btn-coa-delete text-ink hover:text-red-400 transition-colors p-2 cursor-pointer"
-                        data-id="${escapeHtml(acc._id)}" data-code="${escapeHtml(acc.account_code)}"
-                        data-name="${escapeHtml(acc.account_name)}" title="ลบบัญชี"
-                        aria-label="ลบบัญชี ${escapeHtml(acc.account_code)}">
-                        <i class="fa-solid fa-trash"></i>
-                   </button>`;
-
-            const typeBadge = acc.is_system
-                ? '<span class="px-2.5 py-1 rounded-[0.375rem] text-xs font-medium bg-chip/60 text-ink">ระบบ</span>'
-                : '<span class="px-2.5 py-1 rounded-[0.375rem] text-xs font-medium bg-state-ok-tint/[0.12] text-state-ok">กำหนดเอง</span>';
-
-            return `
-            <tr class="hover:bg-divider transition-colors">
-                <td class="px-6 py-4"><span class="font-mono font-semibold text-accent-ink">${escapeHtml(acc.account_code)}</span></td>
-                <td class="px-6 py-4 text-ink">${escapeHtml(acc.account_name)}</td>
-                <td class="px-6 py-4">${cat.category_name ? coaChipLabel(cat.category_name) : '<span class="text-ink/50">-</span>'}</td>
-                <td class="px-6 py-4">${grp.group_name ? coaChipLabel(grp.group_name) : '<span class="text-ink/50">-</span>'}</td>
-                <td class="px-6 py-4 text-center text-ink font-medium">${acc.level || '-'}</td>
-                <td class="px-6 py-4">${typeBadge}</td>
-                <td class="px-6 py-4 text-right">
-                    <div class="flex items-center justify-end gap-1">${actions}</div>
-                </td>
-            </tr>`;
-        }).join('');
-
-        tbody.querySelectorAll('.btn-coa-edit').forEach(b =>
-            b.addEventListener('click', () => editAccountChart(b.dataset.id)));
-        tbody.querySelectorAll('.btn-coa-delete').forEach(b =>
-            b.addEventListener('click', () => deleteAccountChart(b.dataset.id, b.dataset.code, b.dataset.name)));
+        if (coaViewMode === 'card') {
+            cardsWrap.innerHTML = rows.map(coaCardMarkup).join('');
+            coaBindRowHandlers(cardsWrap);
+        } else {
+            tbody.innerHTML = rows.map(coaRowMarkup).join('');
+            coaBindRowHandlers(tbody);
+        }
     }
 
     function filterCOATable() {
@@ -312,8 +393,8 @@
     }
 
     // ---------- แท็บ ----------
-    const COA_TAB_BASE = 'elev-chip px-4 py-2.5 rounded-xl text-sm font-bold transition-colors flex items-center gap-2 cursor-pointer';
-    const COA_TAB_ON = 'bg-primary text-on-primary ring-1 ring-accent-ink';
+    const COA_TAB_BASE = 'elev-chip tab-toggle-btn px-4 py-2.5 rounded-xl text-sm font-bold transition-colors flex items-center gap-2 cursor-pointer';
+    const COA_TAB_ON = 'bg-primary text-on-primary ring-1 ring-accent-ink apple-active-accent';
     const COA_TAB_OFF = 'elev-field bg-field text-body-muted hover:ring-1 hover:ring-accent-ink hover:text-ink';
     const COA_BADGE_ON = 'px-2 py-0.5 rounded-full text-[10px] font-bold bg-hairline/20';
     const COA_BADGE_OFF = 'px-2 py-0.5 rounded-full text-[10px] font-bold bg-chip/60 text-ink';
@@ -336,6 +417,23 @@
             coaSkeleton('pnl-config-table-body', PNL_COLS, 3);
             loadPnLConfig();
         }
+    }
+
+    // สลับมุมมอง List/Card ของตาราง "ผังบัญชีทั้งหมด" — ผูกที่ top-level ได้ (ไฟล์นี้เป็น js/page-*.js
+    // โหลดหลัง loadPageView แทรก HTML ของ accounting-settings.html เข้า DOM แล้วเสมอ)
+    const coaViewListBtn = document.getElementById('coa-view-list');
+    const coaViewCardBtn = document.getElementById('coa-view-card');
+    if (coaViewListBtn && coaViewCardBtn) {
+        const syncCoaViewButtons = (mode) => window.syncViewToggleButtons(coaViewListBtn, coaViewCardBtn, mode);
+        const applyCoaViewMode = (mode) => {
+            coaViewMode = mode;
+            localStorage.setItem('coa_view_mode', mode);
+            syncCoaViewButtons(mode);
+            filterCOATable();
+        };
+        coaViewListBtn.addEventListener('click', () => applyCoaViewMode('list'));
+        coaViewCardBtn.addEventListener('click', () => applyCoaViewMode('card'));
+        syncCoaViewButtons(coaViewMode);
     }
 
     function openAddAccountModal(editData = null) {
@@ -878,6 +976,8 @@
     let _dvCache = [];
     let _dvSearch = '';
     let _dvBound = false;
+    // มุมมองตาราง/การ์ด — จำค่าไว้ข้ามการเข้าหน้า (เหมือนหน้า #deposits)
+    let dvViewMode = localStorage.getItem('dv_view_mode') === 'card' ? 'card' : 'list';
 
     const dvBaht = (n) => '฿' + Number(n || 0).toLocaleString('th-TH',
         { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -892,13 +992,41 @@
     const dvStateRow = (msg, cls = 'text-ink/50 italic') =>
         `<tr><td colspan="${DV_COLS}" class="px-6 py-8 text-center ${cls}">${escapeHtml(msg)}</td></tr>`;
 
-    const dvSkeleton = (rows = 4) => {
+    const dvStateCard = (msg, cls = 'text-ink/50 italic') =>
+        `<div class="col-span-full py-12 text-center ${cls}">${escapeHtml(msg)}</div>`;
+
+    const dvTableSkeleton = (rows = 4) => {
         const tbody = document.getElementById('dv-history-table-body');
         if (!tbody) return;
         const bar = '<div class="h-3.5 w-full rounded-full bg-skeleton animate-pulse"></div>';
         tbody.innerHTML = Array.from({ length: rows }).map(() =>
             `<tr>${Array.from({ length: DV_COLS }).map(() =>
                 `<td class="px-6 py-4">${bar}</td>`).join('')}</tr>`).join('');
+    };
+
+    // โครงร่างการ์ด — สัดส่วนบล็อกเดินตามโครงจริงของ dvCardMarkup ด้านล่าง
+    const dvCardSkeleton = (count = 4) => {
+        const cardsWrap = document.getElementById('dv-view-cards');
+        if (!cardsWrap) return;
+        const bar = (w) => `<div class="h-3.5 ${w} rounded-full bg-skeleton animate-pulse"></div>`;
+        cardsWrap.innerHTML = Array.from({ length: count }).map(() => `
+            <div class="elev-card bg-surface-tile-3 rounded-md p-3.5">
+                <div class="flex items-start justify-between gap-2">${bar('w-28')}${bar('w-20')}</div>
+                ${bar('w-32 mt-2.5')}
+                <div class="grid grid-cols-2 gap-2 mt-3.5 pt-3 border-t border-hairline">
+                    <div class="space-y-2">${bar('w-16')}${bar('w-24')}</div>
+                    <div class="space-y-2">${bar('w-16')}${bar('w-24')}</div>
+                </div>
+                <div class="flex items-center justify-between mt-3.5 pt-3 border-t border-hairline">
+                    ${bar('w-20')}
+                    <div class="w-8 h-8 rounded-lg bg-skeleton animate-pulse"></div>
+                </div>
+            </div>`).join('');
+    };
+
+    const dvSkeleton = (rows = 4) => {
+        syncViewWrapVisibility('dv', dvViewMode);
+        if (dvViewMode === 'card') dvCardSkeleton(rows); else dvTableSkeleton(rows);
     };
 
     const dvAccountCell = (acc) => {
@@ -966,10 +1094,85 @@
         }
     };
 
+    // ข้อมูลที่คำนวณร่วมกันระหว่างแถวตารางกับการ์ด — แยกออกมาครั้งเดียวเพื่อไม่ให้สองมุมมองเพี้ยนจากกัน
+    const dvBuildRowData = (v) => {
+        const total = v.total_amount != null ? v.total_amount : (v.amount || 0);
+        const hasVat = v.vat_type && v.vat_type !== 'NO_VAT' && (v.vat_amount || 0) > 0;
+        return { total, hasVat };
+    };
+
+    const dvRowMarkup = (v) => {
+        const d = dvBuildRowData(v);
+        return `
+        <tr class="hover:bg-divider transition-colors">
+            <td class="px-6 py-4">
+                <p class="font-mono font-semibold text-accent-ink">${escapeHtml(v.voucher_no || '-')}</p>
+                <p class="text-xs text-ink/70 mt-0.5">${escapeHtml(dvDate(v.payment_date))}</p>
+            </td>
+            <td class="px-6 py-4 text-ink">${escapeHtml(v.payee_name || '-')}</td>
+            <td class="px-6 py-4">${dvAccountCell(v.debit_account_id)}</td>
+            <td class="px-6 py-4">${dvAccountCell(v.credit_account_id)}</td>
+            <td class="px-6 py-4 text-right">
+                <p class="text-ink font-mono font-semibold">${dvBaht(d.total)}</p>
+                ${d.hasVat ? `<p class="text-xs text-ink/70 mt-0.5 font-mono">รวม VAT ${dvBaht(v.vat_amount)}</p>` : ''}
+            </td>
+            <td class="px-6 py-4 text-right">
+                <div class="flex items-center justify-end gap-1">
+                    <button type="button" class="btn-print-dv text-ink hover:text-accent-ink transition-colors p-2 cursor-pointer"
+                        data-id="${escapeHtml(v._id)}" title="พิมพ์ใบสำคัญจ่าย"
+                        aria-label="พิมพ์ใบสำคัญจ่าย ${escapeHtml(v.voucher_no || '')}">
+                        <i class="fa-solid fa-print"></i>
+                    </button>
+                </div>
+            </td>
+        </tr>`;
+    };
+
+    // การ์ด — โครง: หัว (เลขที่ / วันที่จ่าย · จำนวนเงิน) · ผู้รับเงิน · เดบิต/เครดิต 2 คอลัมน์ · footer (VAT + ปุ่มพิมพ์)
+    const dvCardMarkup = (v) => {
+        const d = dvBuildRowData(v);
+        return `
+        <div class="elev-card bg-surface-tile-3 rounded-md p-3.5">
+            <div class="flex items-start justify-between gap-2">
+                <div class="min-w-0">
+                    <p class="font-mono font-semibold text-accent-ink truncate">${escapeHtml(v.voucher_no || '-')}</p>
+                    <p class="text-xs text-ink/70 mt-0.5">${escapeHtml(dvDate(v.payment_date))}</p>
+                </div>
+                <p class="text-ink font-mono font-semibold shrink-0">${dvBaht(d.total)}</p>
+            </div>
+            <p class="text-ink font-medium mt-2.5 truncate">${escapeHtml(v.payee_name || '-')}</p>
+
+            <div class="grid grid-cols-2 gap-2 mt-3.5 pt-3 border-t border-hairline text-xs">
+                <div class="min-w-0">
+                    <p class="text-ink/60">บัญชีเดบิต</p>
+                    <div class="mt-0.5">${dvAccountCell(v.debit_account_id)}</div>
+                </div>
+                <div class="min-w-0">
+                    <p class="text-ink/60">บัญชีเครดิต</p>
+                    <div class="mt-0.5">${dvAccountCell(v.credit_account_id)}</div>
+                </div>
+            </div>
+
+            <div class="flex items-center justify-between mt-3.5 pt-3 border-t border-hairline">
+                <span class="text-xs text-ink/70">${d.hasVat ? `รวม VAT ${dvBaht(v.vat_amount)}` : 'ไม่มี VAT'}</span>
+                <button type="button" class="btn-print-dv text-ink hover:text-accent-ink transition-colors p-2 cursor-pointer"
+                    data-id="${escapeHtml(v._id)}" title="พิมพ์ใบสำคัญจ่าย"
+                    aria-label="พิมพ์ใบสำคัญจ่าย ${escapeHtml(v.voucher_no || '')}">
+                    <i class="fa-solid fa-print"></i>
+                </button>
+            </div>
+        </div>`;
+    };
+
     // เรนเดอร์จากชุดที่โหลดมาแล้ว (ช่องค้นหากรองในหน่วยความจำ ไม่ยิง API ซ้ำ)
     const dvRenderTable = () => {
         const tbody = document.getElementById('dv-history-table-body');
         if (!tbody) return;
+
+        const listWrap = document.getElementById('dv-view-list-wrap');
+        const cardsWrap = document.getElementById('dv-view-cards');
+        if (listWrap) listWrap.classList.toggle('hidden', dvViewMode !== 'list');
+        if (cardsWrap) cardsWrap.classList.toggle('hidden', dvViewMode !== 'card');
 
         dvRenderChips();
 
@@ -986,45 +1189,43 @@
         if (countEl) countEl.textContent = _dvCache.length ? `แสดง ${rows.length} จาก ${_dvCache.length} รายการ` : '';
 
         if (!rows.length) {
-            tbody.innerHTML = dvStateRow(_dvCache.length
+            const emptyMsg = _dvCache.length
                 ? 'ไม่พบใบสำคัญจ่ายที่ตรงกับตัวกรอง'
-                : 'ยังไม่มีใบสำคัญจ่ายในช่วงเวลานี้');
+                : 'ยังไม่มีใบสำคัญจ่ายในช่วงเวลานี้';
+            tbody.innerHTML = dvStateRow(emptyMsg);
+            if (cardsWrap) cardsWrap.innerHTML = dvStateCard(emptyMsg);
             return;
         }
 
-        // ลำดับเซลล์ต้องตรงกับหัวตารางเป๊ะ
-        // (ของเดิมสลับกันอยู่: ผู้รับเงินไปโผล่ใต้หัว "บัญชีเดบิต" และยอดเงินไปอยู่ใต้ "ผู้รับเงิน")
-        tbody.innerHTML = rows.map(v => {
-            const total = v.total_amount != null ? v.total_amount : (v.amount || 0);
-            const hasVat = v.vat_type && v.vat_type !== 'NO_VAT' && (v.vat_amount || 0) > 0;
-            return `
-            <tr class="hover:bg-divider transition-colors">
-                <td class="px-6 py-4">
-                    <p class="font-mono font-semibold text-accent-ink">${escapeHtml(v.voucher_no || '-')}</p>
-                    <p class="text-xs text-ink/70 mt-0.5">${escapeHtml(dvDate(v.payment_date))}</p>
-                </td>
-                <td class="px-6 py-4 text-ink">${escapeHtml(v.payee_name || '-')}</td>
-                <td class="px-6 py-4">${dvAccountCell(v.debit_account_id)}</td>
-                <td class="px-6 py-4">${dvAccountCell(v.credit_account_id)}</td>
-                <td class="px-6 py-4 text-right">
-                    <p class="text-ink font-mono font-semibold">${dvBaht(total)}</p>
-                    ${hasVat ? `<p class="text-xs text-ink/70 mt-0.5 font-mono">รวม VAT ${dvBaht(v.vat_amount)}</p>` : ''}
-                </td>
-                <td class="px-6 py-4 text-right">
-                    <div class="flex items-center justify-end gap-1">
-                        <button type="button" class="btn-print-dv text-ink hover:text-accent-ink transition-colors p-2 cursor-pointer"
-                            data-id="${escapeHtml(v._id)}" title="พิมพ์ใบสำคัญจ่าย"
-                            aria-label="พิมพ์ใบสำคัญจ่าย ${escapeHtml(v.voucher_no || '')}">
-                            <i class="fa-solid fa-print"></i>
-                        </button>
-                    </div>
-                </td>
-            </tr>`;
-        }).join('');
-
-        tbody.querySelectorAll('.btn-print-dv').forEach(btn =>
-            btn.addEventListener('click', () => printDisbursementVoucher(btn.dataset.id)));
+        if (dvViewMode === 'card') {
+            cardsWrap.innerHTML = rows.map(dvCardMarkup).join('');
+            cardsWrap.querySelectorAll('.btn-print-dv').forEach(btn =>
+                btn.addEventListener('click', () => printDisbursementVoucher(btn.dataset.id)));
+        } else {
+            // ลำดับเซลล์ต้องตรงกับหัวตารางเป๊ะ
+            // (ของเดิมสลับกันอยู่: ผู้รับเงินไปโผล่ใต้หัว "บัญชีเดบิต" และยอดเงินไปอยู่ใต้ "ผู้รับเงิน")
+            tbody.innerHTML = rows.map(dvRowMarkup).join('');
+            tbody.querySelectorAll('.btn-print-dv').forEach(btn =>
+                btn.addEventListener('click', () => printDisbursementVoucher(btn.dataset.id)));
+        }
     };
+
+    // สลับมุมมอง List/Card — ผูกที่ top-level ได้ (ไฟล์นี้เป็น js/page-*.js โหลดหลัง loadPageView
+    // แทรก HTML ของ accounting-settings.html เข้า DOM แล้วเสมอ)
+    const dvViewListBtn = document.getElementById('dv-view-list');
+    const dvViewCardBtn = document.getElementById('dv-view-card');
+    if (dvViewListBtn && dvViewCardBtn) {
+        const syncDvViewButtons = (mode) => window.syncViewToggleButtons(dvViewListBtn, dvViewCardBtn, mode);
+        const applyDvViewMode = (mode) => {
+            dvViewMode = mode;
+            localStorage.setItem('dv_view_mode', mode);
+            syncDvViewButtons(mode);
+            dvRenderTable();
+        };
+        dvViewListBtn.addEventListener('click', () => applyDvViewMode('list'));
+        dvViewCardBtn.addEventListener('click', () => applyDvViewMode('card'));
+        syncDvViewButtons(dvViewMode);
+    }
 
     async function loadDisbursements() {
         const tbody = document.getElementById('dv-history-table-body');

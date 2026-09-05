@@ -36,12 +36,18 @@
   --color-surface-chip-translucent: rgba(60, 60, 64, 0.72);
 
   /* พื้นผิวของหน้าในระบบ (ข้อ 11) ที่เดิมเขียน hex ตรง ๆ */
-  --color-panel: #4D4D4D;         /* การ์ดพาเนล ใช้คู่กับ /40 */
-  --color-chip: #4D4D4D;          /* ชิป/พิล ใช้คู่กับ /60 */
-  --color-field: #27272A;         /* ช่องกรอก ไทล์ในฟอร์ม */
-  --color-elevated: #18181B;      /* โมดัล ลิ้นชัก */
-  --color-line: #3F3F46;          /* เส้นขอบมาตรฐานของหน้าในระบบ (ข้อ 11) */
-  --color-skeleton: #5C5C5C;      /* แถบโครงร่างระหว่างโหลด */
+  --color-panel: #4D4D4D;
+  /* การ์ดพาเนล ใช้คู่กับ /40 */
+  --color-chip: #4D4D4D;
+  /* ชิป/พิล ใช้คู่กับ /60 */
+  --color-field: #27272A;
+  /* ช่องกรอก ไทล์ในฟอร์ม */
+  --color-elevated: #18181B;
+  /* โมดัล ลิ้นชัก */
+  --color-line: #3F3F46;
+  /* เส้นขอบมาตรฐานของหน้าในระบบ (ข้อ 11) */
+  --color-skeleton: #5C5C5C;
+  /* แถบโครงร่างระหว่างโหลด */
 
   /* ---------- Text ---------- */
   --color-ink: #f5f5f7;
@@ -50,16 +56,20 @@
 
   /* ---------- Hairlines ---------- */
   --color-hairline: #38383a;
-  --color-line-strong: #4D4D4D;   /* ขอบลิ้นชัก/โมดัล สว่างกว่า line */
-  --color-divider: #464646;       /* เส้นคั่นแถวตาราง + สีแถวตอนชี้ */
+  --color-line-strong: #4D4D4D;
+  /* ขอบลิ้นชัก/โมดัล สว่างกว่า line */
+  --color-divider: #464646;
+  /* เส้นคั่นแถวตาราง + สีแถวตอนชี้ */
   --color-divider-soft: rgba(255, 255, 255, 0.08);
 
   /* ---------- สีบอกสถานะ ----------
      ได้เป็นโทเคนตามข้อเสนอ DESIGN.md ข้อ 12.1 — ใช้ได้เฉพาะป้ายสถานะที่กดไม่ได้
      ห้ามใช้สื่อความว่ากดได้ เพราะสิ่งที่กดได้ถูกจองไว้ให้เหลือง accent เท่านั้น */
   --color-state-ok: #20D500;
-  --color-on-state-ok: #1d1d1f;  /* ตัวอักษรบนปุ่มเขียว — กลับด้านตามธีมเหมือน on-primary */
-  --color-state-ok-tint: #42A231;   /* ฐานของพื้นจาง bg-state-ok-tint/[0.12] */
+  --color-on-state-ok: #1d1d1f;
+  /* ตัวอักษรบนปุ่มเขียว — กลับด้านตามธีมเหมือน on-primary */
+  --color-state-ok-tint: #42A231;
+  /* ฐานของพื้นจาง bg-state-ok-tint/[0.12] */
   --color-state-danger: #FE0000;
   --color-state-danger-soft: #FF6B6B;
   --color-state-pending: #FF9F0A;
@@ -235,6 +245,94 @@
 }
 
 /* ----------------------------------------------------------------------------
+   สถานะ "active/เลือกอยู่" ของปุ่ม พิล แท็บ สวอทช์ — ทุกหน้าทั้งระบบ ทั้งสองธีม
+   (แต่ก่อนทำแค่โหมดสว่าง ผู้ใช้ขอให้ครอบทั้งมืด/สว่างในภายหลัง)
+   เปลี่ยนจากขอบ/วงแหวนสีเหลืองเป็นเงาแบบเว็บ Apple — segment ที่เลือกอยู่ = พื้นยกตัว
+   เงาที่ใช้เป็นโทเคน --color-divider-soft ซึ่งพลิกสีเองตามธีม (ขาวจาง 8% ในมืด, ดำจาง 8% ในสว่าง)
+   จึงไม่ต้องแยกเขียนคนละชุดค่าต่อธีมเหมือนตัวอื่น ๆ ในไฟล์นี้
+
+   ไม่มีจุดไหนที่ใช้คลาสนี้มี focus:ring/focus:border คู่กันอยู่แล้ว (ตรวจสอบแล้ว)
+   จึงไม่ต้องกัน :not(:focus) เหมือน page-filter-control ด้านบน
+
+   ⚠️ เงาต้องเป็น inset ล้วน ห้ามมีส่วนทิ้งตัวออกนอกกล่อง (0 Npx blur โดยไม่มี inset)
+   เพราะเงาที่ทิ้งตัวออกนอกกล่อง แม้เบลอแค่ 2-3px ก็ทำให้ปุ่มดู "ใหญ่ขึ้น" ตอน active
+   เทียบกับ idle ที่ปกติไม่มีเงาทิ้งตัวเลย (ปัญหานี้เจอจริงที่แท็บหมวดหมู่สินค้าหน้า POS) */
+
+/* ก. พิล/สวอทช์พื้นเรียบ (bg-field) ที่ active ด้วยขอบหรือวงแหวนสีเหลือง
+   เช่น filter-pill, custom-pill, custom-swatch, NP_PILL
+   ผู้ใช้ขอให้ปุ่ม active ทุกปุ่มเป็นพื้นเหลือง + ตัวอักษรเข้ม แบบเดียวกับแท็บ (ข้อ ข.) ทั้งหมด
+   จึงตั้ง background-color/color ตรงนี้ตรง ๆ — ชนะคลาส bg-field, text-accent-ink ที่ JS ยังใส่มา
+   ด้วย (ไม่ต้องตามไปแก้ทุกจุดที่เรียก classList.add ในไฟล์ JS หลายสิบจุด)
+   border-color: transparent ไว้ปิดกรณีที่ active เดิมใช้ border-accent-ink ตรง ๆ (ไม่ใช่ ring)
+   --color-primary และ --color-on-primary ไม่มีค่าคนละชุดต่อธีม จึงได้ผลเหมือนกันทั้งมืด/สว่างเอง */
+.apple-active-neutral {
+  background-color: var(--color-primary);
+  color: var(--color-on-primary);
+  border-color: transparent;
+  box-shadow: inset 0 0 0 1px var(--color-divider-soft);
+}
+
+/* สวอทช์สี (custom-swatch/swatch-indicator) พื้นเป็นสีสินค้าจริงเสมอ (ตั้งผ่าน inline style
+   ชนะ background-color ของ .apple-active-neutral ด้านบนอยู่แล้ว) จึงไม่ต้องพึ่งพื้นเหลืองบอกว่า
+   active — แต่ border-color: transparent ของ .apple-active-neutral ไปลบขอบที่ควรเห็นตอน active
+   ผู้ใช้ขอให้ตอนเลือกสี ต้องเห็น border สีเหลืองจริง ๆ (ไม่ใช่แค่ ring ที่โดน border-color บังไปแล้ว)
+   ใช้สอง class ต่อกันให้ specificity สูงกว่า .apple-active-neutral เฉย ๆ (ทั้งคู่ไม่อยู่ใน @layer) */
+.custom-swatch.apple-active-neutral,
+.swatch-indicator.apple-active-neutral,
+.color-ring.apple-active-neutral {
+  border-color: var(--color-accent-ink);
+}
+
+/* ข. แท็บพื้นเหลือง (bg-primary text-on-primary ตั้งมาจาก JS อยู่แล้ว) ที่มีวงแหวนสีเหลือง
+   ซ้อนอยู่อีกชั้น — ตัดแค่วงแหวนที่ซ้อนทับออก เหลือเงา inset บาง ๆ แทน (สีพื้น/ตัวอักษรไม่ต้องตั้งซ้ำ) */
+.apple-active-accent {
+  box-shadow: inset 0 0 0 1px var(--color-divider-soft);
+}
+
+/* พื้นเหลืองเข้มพอที่เส้น inset (ดำจาง 8%) จะยังพอเห็นเป็นขอบรอบปุ่มในโหมดสว่าง — ตัดทิ้งไปเลย
+   ไม่ต้องมีเส้นใด ๆ ก็เพียงพอ เพราะพื้นเหลืองต่างจากพื้นรอบข้างชัดเจนอยู่แล้ว (โหมดมืดเก็บไว้เหมือนเดิม
+   เพราะเส้นขาวจาง 8% บนพื้นเหลืองแทบไม่มีผล ไม่ใช่ปัญหาแบบเดียวกัน) */
+:root[data-theme="light"] .apple-active-neutral,
+:root[data-theme="light"] .apple-active-accent {
+  box-shadow: none;
+}
+
+@media (prefers-color-scheme: light) {
+
+  :root:not([data-theme="dark"]) .apple-active-neutral,
+  :root:not([data-theme="dark"]) .apple-active-accent {
+    box-shadow: none;
+  }
+}
+
+/* ----------------------------------------------------------------------------
+   ปุ่มเลือก/สวอทช์ทุกกลุ่มในระบบ ตอนไม่ active ให้เรียบสนิท ไม่มีเส้น/เงาเลย
+   ทั้ง hover และไม่ hover ทั้งสองธีม — เดิมพึ่ง elev-chip/elev-field/elev-card ให้เส้น inset
+   จาง ๆ ไว้เป็นขอบเริ่มต้น แต่บางจุดมีสองคลาสซ้อนกันโดยไม่จำเป็น (เช่น elev-chip เป็นฐาน
+   แล้วยังใส่ elev-card/elev-field ทับอีกที) เห็นเป็น "เส้นขอบซ่อนอยู่ข้างใน" ที่ไม่ได้ตั้งใจ
+
+   แก้ที่รากด้วยการตัด box-shadow ทิ้งทั้งหมดตอนไม่ active ให้กับทุกคลาสที่เป็น "ตัวเลือกแบบ
+   toggle" โดยเฉพาะ (ไม่แตะ .elev-card/.elev-modal/.elev-field/.elev-chip ตรง ๆ เพราะพวกนั้น
+   ยังใช้กับ input ช่องกรอก การ์ด โมดัลทั่วไปที่ไม่ใช่ปุ่มเลือกอยู่)
+   สัญญาณ hover ที่เหลือคือสีตัวอักษร/ไอคอนเปลี่ยน (text-body-muted -> text-ink) ก็เพียงพอ
+
+   pos-cat-tab เท่านั้นที่ปลอดภัยกับกฎนี้ เพราะพื้นไม่ active ของมันคือ bg-canvas-elevated
+   ซึ่งต่างจากพื้นหลังที่มันวางอยู่โดยตั้งใจ — .receive-tab / .settings-tab-btn / .tab-toggle-btn
+   ใช้ bg-field ซึ่งค่าเท่ากับ bg-canvas เป๊ะในโหมดสว่าง แล้ว 3 กลุ่มนี้วางอยู่บนหัวหน้าของ
+   ตัวเองตรง ๆ (ไม่ได้อยู่ในการ์ด bg-panel/40) ตัดเงาออกจึงทำให้ปุ่มไม่ active มองไม่เห็นเลย
+   ในโหมดสว่าง — จึงปล่อยให้ elev-chip/elev-field เดิมให้เส้น inset จาง ๆ ต่อไปตามปกติ
+   -------------------------------------------------------------------------- */
+.filter-pill:not(.apple-active-accent):not(.apple-active-neutral),
+.custom-pill:not(.apple-active-accent):not(.apple-active-neutral),
+.custom-swatch:not(.apple-active-accent):not(.apple-active-neutral),
+.swatch-indicator:not(.apple-active-accent):not(.apple-active-neutral),
+.np-swatch-dot:not(.apple-active-accent):not(.apple-active-neutral),
+.color-ring:not(.apple-active-accent):not(.apple-active-neutral),
+.pos-cat-tab:not(.apple-active-accent):not(.apple-active-neutral) {
+  box-shadow: none;
+}
+
+/* ----------------------------------------------------------------------------
    ตัวอักษรที่จางด้วย alpha — ใช้ได้เฉพาะบนพื้นมืด
    text-ink/50 บนพื้นดำคือขาว 50% (อ่านออกสบาย) แต่บนพื้นขาวคือเทาอ่อน 3.2:1 (อ่านไม่ออก)
    โหมดสว่างจึงส่งไปใช้โทเคนตัวอักษรรองแทน — โหมดมืดไม่ถูกแตะ
@@ -257,6 +355,7 @@
 }
 
 @media (prefers-color-scheme: light) {
+
   :root:not([data-theme="dark"]) .text-ink\/60,
   :root:not([data-theme="dark"]) .text-ink\/50 {
     color: var(--color-body-muted);
@@ -284,6 +383,7 @@
 }
 
 @media (prefers-color-scheme: light) {
+
   :root:not([data-theme="dark"]) .bg-state-danger\/30,
   :root:not([data-theme="dark"]) .bg-state-danger\/20,
   :root:not([data-theme="dark"]) .bg-state-pending\/20,
@@ -303,23 +403,40 @@
    (แทนที่กฎเดิมใน DESIGN.md ข้อ 4 ที่ห้ามใส่เงาให้การ์ด — ดูข้อ 13)
    ============================================================================ */
 @layer components {
+
   /* คืนพื้นที่ 1px ที่เส้นขอบเดิมเคยกิน — box-sizing: border-box คุมเฉพาะกล่องที่กำหนดขนาดตายตัว
      กล่องที่สูงตามเนื้อหา (px-4 py-2.5) เคยได้ความสูงจากเส้นขอบบน+ล่างจริง ๆ 2px
      ใส่ขอบโปร่งใสไว้แทน เรขาคณิตจึงเท่าเดิมเป๊ะ แต่เส้นที่มองเห็นมาจากเงาอย่างเดียว */
-  .elev-card, .elev-modal, .elev-field, .elev-chip {
+  .elev-card,
+  .elev-modal,
+  .elev-field,
+  .elev-chip {
     border: 1px solid transparent;
+  }
+
+  /* กันไม่ให้พิล/สวอทช์ที่สลับสถานะ active เปลี่ยนขนาดกล่อง — ต้องมีความหนาเส้นขอบเท่ากันเสมอ
+     ไม่ว่าจะกำลังโชว์สี (border-line/border-accent-ink) หรือไม่ก็ตาม
+     ตั้งเฉพาะ width/style ไม่แตะสี ให้ยูทิลิตี้สีของ Tailwind ควบคุมสีต่อไปได้ตามปกติ
+     (ที่ผ่านมาบางจุดพึ่งแค่ elev-field/elev-chip ให้ความหนาไว้ แต่ปุ่มที่สร้างแยกกันบางปุ่มลืมใส่
+     ทำให้ปุ่ม active ตัวนั้นเล็กกว่าปุ่มข้างเคียง 2px — กฎนี้การันตีให้ทุกปุ่มในกลุ่มเดียวกัน) */
+  .filter-pill,
+  .custom-pill,
+  .custom-swatch,
+  .swatch-indicator {
+    border-width: 1px;
+    border-style: solid;
   }
 
   .elev-card {
     box-shadow: inset 0 0 0 1px var(--color-divider-soft),
-                0 1px 2px rgb(0 0 0 / 0.28),
-                0 4px 12px rgb(0 0 0 / 0.22);
+      0 1px 2px rgb(0 0 0 / 0.28),
+      0 4px 12px rgb(0 0 0 / 0.22);
   }
 
   .elev-modal {
     box-shadow: inset 0 0 0 1px var(--color-divider-soft),
-                0 8px 24px rgb(0 0 0 / 0.38),
-                0 24px 64px rgb(0 0 0 / 0.30);
+      0 8px 24px rgb(0 0 0 / 0.38),
+      0 24px 64px rgb(0 0 0 / 0.30);
   }
 
   .elev-field {
@@ -333,14 +450,14 @@
   /* โหมดสว่าง: เงาทิ้งตัวจริง ๆ ทำงานได้ดี ลดวงแหวนลงเหลือบางมากพอกันขอบจมพื้น */
   :root[data-theme="light"] .elev-card {
     box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.04),
-                0 1px 2px rgb(16 24 40 / 0.06),
-                0 4px 12px rgb(16 24 40 / 0.08);
+      0 1px 2px rgb(16 24 40 / 0.06),
+      0 4px 12px rgb(16 24 40 / 0.08);
   }
 
   :root[data-theme="light"] .elev-modal {
     box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.05),
-                0 8px 24px rgb(16 24 40 / 0.12),
-                0 24px 64px rgb(16 24 40 / 0.14);
+      0 8px 24px rgb(16 24 40 / 0.12),
+      0 24px 64px rgb(16 24 40 / 0.14);
   }
 
   :root[data-theme="light"] .elev-field,
@@ -351,14 +468,14 @@
   @media (prefers-color-scheme: light) {
     :root:not([data-theme="dark"]) .elev-card {
       box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.04),
-                  0 1px 2px rgb(16 24 40 / 0.06),
-                  0 4px 12px rgb(16 24 40 / 0.08);
+        0 1px 2px rgb(16 24 40 / 0.06),
+        0 4px 12px rgb(16 24 40 / 0.08);
     }
 
     :root:not([data-theme="dark"]) .elev-modal {
       box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.05),
-                  0 8px 24px rgb(16 24 40 / 0.12),
-                  0 24px 64px rgb(16 24 40 / 0.14);
+        0 8px 24px rgb(16 24 40 / 0.12),
+        0 24px 64px rgb(16 24 40 / 0.14);
     }
 
     :root:not([data-theme="dark"]) .elev-field,

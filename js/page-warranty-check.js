@@ -13,6 +13,13 @@
     const chipsBox = document.getElementById('warranty-active-filters');
     const countEl = document.getElementById('warranty-result-count');
 
+    // สลับมุมมอง List/Card — จำโหมดไว้ข้ามการเข้าหน้า (เดินตามรูปแบบเดียวกับหน้าการมัดจำ/ประวัติการขาย/สมาชิก)
+    const viewListBtn = document.getElementById('warranty-view-list');
+    const viewCardBtn = document.getElementById('warranty-view-card');
+    const viewListWrap = document.getElementById('warranty-view-list-wrap');
+    const viewCardsWrap = document.getElementById('warranty-view-cards');
+    let _viewMode = localStorage.getItem('warranty_view_mode') === 'card' ? 'card' : 'list';
+
     const COLS = 8;
     // จำนวนวันก่อนหมดประกันที่ถือว่า "ใกล้หมด" — ใช้โทนสีระหว่างดำเนินการ (ข้อ 11.6)
     const SOON_DAYS = 30;
@@ -59,8 +66,11 @@
     const stateRow = (msg, extraClass = 'text-ink/50 italic') =>
         `<tr><td colspan="${COLS}" class="px-6 py-8 text-center ${extraClass}">${esc(msg)}</td></tr>`;
 
+    const stateCard = (msg, extraClass = 'text-ink/50 italic') =>
+        `<div class="col-span-full py-12 text-center ${extraClass}">${esc(msg)}</div>`;
+
     // แถวโครงร่างระหว่างรอผลค้นหา — ต้องวางก่อน await เสมอ (ข้อ 11.7)
-    const renderSkeleton = (rows = 4) => {
+    const renderTableSkeleton = (rows = 4) => {
         if (!tbody) return;
         const bar = (w) => `<div class="h-3.5 ${w} rounded-full bg-skeleton animate-pulse"></div>`;
         tbody.innerHTML = Array.from({ length: rows }).map(() => `
@@ -74,6 +84,34 @@
                 <td class="px-6 py-4">${bar('w-24')}</td>
                 <td class="px-6 py-4">${bar('w-8 ml-auto')}</td>
             </tr>`).join('');
+    };
+
+    // โครงร่างการ์ด — สัดส่วนบล็อกเดินตามโครงจริงของ cardHtml ด้านล่าง
+    const renderCardSkeleton = (count = 6) => {
+        if (!viewCardsWrap) return;
+        const bar = (w) => `<div class="h-3.5 ${w} rounded-full bg-skeleton animate-pulse"></div>`;
+        viewCardsWrap.innerHTML = Array.from({ length: count }).map(() => `
+            <div class="elev-card bg-surface-tile-3 rounded-md p-4">
+                <div class="flex items-start justify-between gap-2">
+                    ${bar('w-36')}
+                    ${bar('w-16 h-5')}
+                </div>
+                ${bar('w-28 mt-4')}
+                <div class="grid grid-cols-2 gap-2 mt-3.5 pt-3 border-t border-hairline">
+                    <div class="space-y-2">${bar('w-20')}${bar('w-24')}</div>
+                    <div class="space-y-2">${bar('w-16')}${bar('w-20')}</div>
+                </div>
+                <div class="flex items-center justify-between mt-3.5 pt-3 border-t border-hairline">
+                    ${bar('w-24')}
+                    <div class="w-8 h-8 rounded-[0.375rem] bg-skeleton animate-pulse"></div>
+                </div>
+            </div>
+        `).join('');
+    };
+
+    const renderSkeleton = (count = 4) => {
+        if (_viewMode === 'card') renderCardSkeleton(count);
+        else renderTableSkeleton(count);
     };
 
     const selectedText = (sel) => {
@@ -138,7 +176,8 @@
         }
     };
 
-    const rowHtml = (item) => {
+    // ข้อมูลที่คำนวณร่วมกันระหว่างแถวตารางกับการ์ด — แยกออกมาครั้งเดียวเพื่อไม่ให้สองมุมมองเพี้ยนจากกัน
+    const buildWarrantyRowData = (item) => {
         const st = statusOf(item);
         const memberName = item.member
             ? `${item.member.first_name || ''} ${item.member.last_name || ''}`.trim() || 'ลูกค้าทั่วไป'
@@ -153,6 +192,11 @@
                 ? `<span class="text-orange-400">หมดวันนี้</span>`
                 : `<span class="${st.key === 'soon' ? 'text-orange-400' : 'text-ink/70'}">เหลืออีก ${st.days} วัน</span>`;
 
+        return { st, memberName, phone, branchName, dayNote };
+    };
+
+    const rowHtml = (item) => {
+        const d = buildWarrantyRowData(item);
         return `
         <tr class="hover:bg-divider transition-colors">
             <td class="px-6 py-4">
@@ -160,17 +204,17 @@
                 <p class="text-xs mt-0.5"><span class="font-mono font-semibold text-accent-ink">${esc(item.imei_sold)}</span></p>
             </td>
             <td class="px-6 py-4">
-                <p class="text-ink">${esc(memberName)}</p>
-                ${phone ? `<p class="text-xs text-ink/70 font-mono mt-0.5">${esc(phone)}</p>` : ''}
+                <p class="text-ink">${esc(d.memberName)}</p>
+                ${d.phone ? `<p class="text-xs text-ink/70 font-mono mt-0.5">${esc(d.phone)}</p>` : ''}
             </td>
-            <td class="px-6 py-4 text-ink">${esc(branchName)}</td>
+            <td class="px-6 py-4 text-ink">${esc(d.branchName)}</td>
             <td class="px-6 py-4 text-ink">${dateTH(item.created_at)}</td>
             <td class="px-6 py-4 text-ink">${item.warranty_period ? esc(item.warranty_period) : '<span class="text-ink/50">-</span>'}</td>
             <td class="px-6 py-4">
                 <p class="text-ink">${dateTH(item.warranty_expiry)}</p>
-                <p class="text-xs mt-0.5">${dayNote}</p>
+                <p class="text-xs mt-0.5">${d.dayNote}</p>
             </td>
-            <td class="px-6 py-4">${badge(st.tone, st.label)}</td>
+            <td class="px-6 py-4">${badge(d.st.tone, d.st.label)}</td>
             <td class="px-6 py-4 text-right">
                 <button type="button" class="warranty-receipt-link text-ink hover:text-accent-ink transition-colors p-2"
                     data-id="${esc(item.txn_id)}" title="ดูใบเสร็จ ${esc(item.receipt_number)}"
@@ -181,10 +225,79 @@
         </tr>`;
     };
 
-    // วาดตาราง + ชิป + ตัวนับ จากผลลัพธ์ที่มีอยู่ (กรองสถานะฝั่งหน้าเว็บ ไม่ต้องยิงซ้ำ)
+    // การ์ด — โครง: หัว (สินค้า+IMEI / สถานะ) · ลูกค้า · สาขา+วันที่ซื้อ 2 คอลัมน์ · footer (ระยะประกัน+วันหมดอายุ + ปุ่มดูใบเสร็จ)
+    const cardHtml = (item) => {
+        const d = buildWarrantyRowData(item);
+        return `
+        <div class="elev-card pos-card bg-surface-tile-3 rounded-md p-4 transition-all hover:-translate-y-1 border-none cursor-pointer warranty-card"
+             data-id="${esc(item.txn_id)}">
+            <div class="flex items-start justify-between gap-2">
+                <div class="min-w-0">
+                    <p class="font-medium text-ink truncate">${esc(item.product_name)}</p>
+                    <p class="text-xs mt-0.5"><span class="font-mono font-semibold text-accent-ink">${esc(item.imei_sold)}</span></p>
+                </div>
+                <div class="shrink-0">${badge(d.st.tone, d.st.label)}</div>
+            </div>
+
+            <div class="mt-3 pt-3 border-t border-hairline">
+                <p class="text-ink">${esc(d.memberName)}</p>
+                ${d.phone ? `<p class="text-xs text-ink/70 font-mono mt-0.5">${esc(d.phone)}</p>` : ''}
+            </div>
+
+            <div class="grid grid-cols-2 gap-2 mt-3.5 pt-3 border-t border-hairline text-xs">
+                <div class="min-w-0">
+                    <p class="text-ink/60">สาขาที่ซื้อ</p>
+                    <p class="text-ink mt-0.5 truncate">${esc(d.branchName)}</p>
+                </div>
+                <div class="min-w-0">
+                    <p class="text-ink/60">วันที่ซื้อ</p>
+                    <p class="text-ink mt-0.5 truncate">${dateTH(item.created_at)}</p>
+                </div>
+            </div>
+
+            <div class="flex items-center justify-between mt-3.5 pt-3 border-t border-hairline">
+                <div class="min-w-0">
+                    <p class="text-ink">${dateTH(item.warranty_expiry)}</p>
+                    <p class="text-xs mt-0.5">${d.dayNote}</p>
+                </div>
+                <button type="button" class="warranty-receipt-link text-ink hover:text-accent-ink transition-colors p-2 shrink-0"
+                    data-id="${esc(item.txn_id)}" title="ดูใบเสร็จ ${esc(item.receipt_number)}"
+                    aria-label="ดูใบเสร็จ ${esc(item.receipt_number)}">
+                    <i class="fa-solid fa-file-invoice"></i>
+                </button>
+            </div>
+        </div>`;
+    };
+
+    const bindReceiptLinks = (container) => {
+        if (!container) return;
+        container.querySelectorAll('.warranty-receipt-link').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const txnId = btn.dataset.id;
+                if (txnId && typeof window.viewTransactionDetails === 'function') {
+                    window.viewTransactionDetails(txnId);
+                }
+            });
+        });
+        // การ์ดทั้งใบคลิกได้เหมือนกัน (ทางลัดของเมาส์) — ปุ่มดูใบเสร็จยังเป็นทางเข้าที่คีย์บอร์ดใช้ได้จริง
+        container.querySelectorAll('.warranty-card').forEach(card => {
+            card.addEventListener('click', () => {
+                const txnId = card.dataset.id;
+                if (txnId && typeof window.viewTransactionDetails === 'function') {
+                    window.viewTransactionDetails(txnId);
+                }
+            });
+        });
+    };
+
+    // วาดตาราง/การ์ด + ชิป + ตัวนับ จากผลลัพธ์ที่มีอยู่ (กรองสถานะฝั่งหน้าเว็บ ไม่ต้องยิงซ้ำ)
     const render = () => {
         renderChips();
         if (!tbody) return;
+
+        if (viewListWrap) viewListWrap.classList.toggle('hidden', _viewMode !== 'list');
+        if (viewCardsWrap) viewCardsWrap.classList.toggle('hidden', _viewMode !== 'card');
 
         const want = statusFilter ? statusFilter.value : '';
         const rows = want ? _all.filter(i => statusOf(i).key === want) : _all;
@@ -195,38 +308,43 @@
                 : '';
         }
 
+        const setEmptyState = (msg) => {
+            tbody.innerHTML = stateRow(msg);
+            if (viewCardsWrap) viewCardsWrap.innerHTML = stateCard(msg);
+        };
+
         if (!_searched) {
-            tbody.innerHTML = stateRow('ระบุ IMEI ชื่อลูกค้า หรือเบอร์โทรศัพท์ แล้วกดค้นหา');
+            setEmptyState('ระบุ IMEI ชื่อลูกค้า หรือเบอร์โทรศัพท์ แล้วกดค้นหา');
             return;
         }
         if (!_all.length) {
-            tbody.innerHTML = stateRow('ไม่พบข้อมูลการรับประกันที่ตรงกับคำค้นหา');
+            setEmptyState('ไม่พบข้อมูลการรับประกันที่ตรงกับคำค้นหา');
             return;
         }
         if (!rows.length) {
-            tbody.innerHTML = stateRow('ไม่มีรายการในสถานะนี้');
+            setEmptyState('ไม่มีรายการในสถานะนี้');
             return;
         }
 
         // เรียงให้เครื่องที่ใกล้หมด/หมดแล้วขึ้นก่อน เพราะเป็นเคสที่ต้องรีบจัดการ
         const order = { soon: 0, expired: 1, active: 2 };
-        tbody.innerHTML = [..._all]
+        const sorted = [..._all]
             .filter(i => !want || statusOf(i).key === want)
             .sort((a, b) => {
                 const sa = statusOf(a), sb = statusOf(b);
                 if (order[sa.key] !== order[sb.key]) return order[sa.key] - order[sb.key];
                 return sa.days - sb.days;
-            })
-            .map(rowHtml).join('');
-
-        tbody.querySelectorAll('.warranty-receipt-link').forEach(btn => {
-            btn.addEventListener('click', () => {
-                const txnId = btn.dataset.id;
-                if (txnId && typeof window.viewTransactionDetails === 'function') {
-                    window.viewTransactionDetails(txnId);
-                }
             });
-        });
+
+        if (_viewMode === 'card') {
+            viewCardsWrap.innerHTML = sorted.map(cardHtml).join('');
+            tbody.innerHTML = '';
+            bindReceiptLinks(viewCardsWrap);
+        } else {
+            tbody.innerHTML = sorted.map(rowHtml).join('');
+            if (viewCardsWrap) viewCardsWrap.innerHTML = '';
+            bindReceiptLinks(tbody);
+        }
     };
 
     const checkWarranty = async (query) => {
@@ -251,9 +369,9 @@
             const expired = String(error && error.message || '').includes('เซสชั่นหมดอายุ');
             if (!expired) window.showToast('เชื่อมต่อเซิร์ฟเวอร์ไม่ได้', 'error');
             _all = [];
-            if (tbody) tbody.innerHTML = stateRow(
-                expired ? 'เซสชั่นหมดอายุ กรุณาเข้าสู่ระบบใหม่' : 'เชื่อมต่อเซิร์ฟเวอร์ไม่ได้ กรุณาลองใหม่อีกครั้ง',
-                'text-red-400');
+            const errMsg = expired ? 'เซสชั่นหมดอายุ กรุณาเข้าสู่ระบบใหม่' : 'เชื่อมต่อเซิร์ฟเวอร์ไม่ได้ กรุณาลองใหม่อีกครั้ง';
+            if (tbody) tbody.innerHTML = stateRow(errMsg, 'text-red-400');
+            if (viewCardsWrap) viewCardsWrap.innerHTML = stateCard(errMsg, 'text-red-400');
             renderChips();
             if (countEl) countEl.textContent = '';
         }
@@ -278,6 +396,21 @@
 
     // เปลี่ยนสถานะ = กรองจากผลที่มีอยู่ ไม่ต้องยิง API ใหม่
     if (statusFilter) statusFilter.addEventListener('change', render);
+
+    // ซิงก์คลาส active/idle ของปุ่มสลับมุมมองให้ตรงกับ _viewMode ปัจจุบัน (ไม่ render ข้อมูล)
+    const syncViewButtons = (mode) => window.syncViewToggleButtons(viewListBtn, viewCardBtn, mode);
+
+    // สลับมุมมอง List/Card — re-render จาก _all ทันที ไม่ยิง API ซ้ำ
+    const applyViewMode = (mode) => {
+        _viewMode = mode;
+        localStorage.setItem('warranty_view_mode', mode);
+        syncViewButtons(mode);
+        render();
+    };
+
+    if (viewListBtn) viewListBtn.addEventListener('click', () => applyViewMode('list'));
+    if (viewCardBtn) viewCardBtn.addEventListener('click', () => applyViewMode('card'));
+    syncViewButtons(_viewMode);
 
     // สถานะเริ่มต้นก่อนค้นหาครั้งแรก
     render();

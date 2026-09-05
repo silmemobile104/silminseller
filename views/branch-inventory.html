@@ -8,11 +8,11 @@
         <!-- แท็บ: ปุ่มทึบเหลืองของหน้านี้มีได้ปุ่มเดียว = แท็บที่เลือกอยู่ (DESIGN.md ข้อ 6) -->
         <div class="flex flex-wrap items-center gap-2">
             <button id="tab-branch-mystock" type="button" aria-pressed="true"
-                class="border border-transparent px-4 py-2.5 rounded-xl text-sm font-bold transition-colors flex items-center gap-2 cursor-pointer bg-primary text-on-primary ring-1 ring-accent-ink">
+                class="elev-chip px-4 py-2.5 rounded-xl text-sm font-bold transition-colors flex items-center gap-2 cursor-pointer bg-primary text-on-primary ring-1 ring-accent-ink apple-active-accent">
                 <i class="fa-solid fa-box-open"></i> สินค้าในสาขาของฉัน
             </button>
             <button id="tab-branch-globalstock" type="button" aria-pressed="false"
-                class="elev-field px-4 py-2.5 rounded-xl text-sm font-bold transition-colors flex items-center gap-2 cursor-pointer bg-field text-body-muted hover:ring-1 hover:ring-accent-ink hover:text-ink">
+                class="elev-chip px-4 py-2.5 rounded-xl text-sm font-bold transition-colors flex items-center gap-2 cursor-pointer bg-field text-body-muted hover:ring-1 hover:ring-accent-ink hover:text-ink">
                 <i class="fa-solid fa-globe"></i> สินค้าและราคาสาขาอื่น
             </button>
         </div>
@@ -29,7 +29,7 @@
                 <i class="fa-solid fa-box-open text-accent-ink"></i> สต็อกในสาขาของฉัน
             </h3>
             <div class="flex flex-wrap items-center gap-2.5 relative w-full lg:w-auto">
-                <div class="relative group w-full sm:w-64 rounded-[0.5rem] overflow-hidden">
+                <div class="relative group w-full sm:w-64 rounded-[0.5rem]">
                     <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                         <i
                             class="fa-solid fa-search text-ink group-focus-within:text-accent-ink transition-colors"></i>
@@ -46,7 +46,7 @@
                     <option value="มือ2">มือ 2</option>
                 </select>
                 <button id="btn-refresh-mystock" type="button"
-                    class="px-3 py-2 bg-panel/40 cursor-pointer text-ink flex items-center justify-center gap-1.5 rounded-[0.5rem] text-sm hover:bg-skeleton transition-colors w-full sm:w-auto">
+                    class="page-filter-control px-3 py-2 bg-panel/40 cursor-pointer text-ink flex items-center justify-center gap-1.5 rounded-[0.5rem] text-sm hover:bg-skeleton transition-colors w-full sm:w-auto">
                     <i class="fa-solid fa-rotate"></i> รีเฟรช
                 </button>
             </div>
@@ -90,7 +90,7 @@
                 <i class="fa-solid fa-globe text-accent-ink"></i> สต็อกและราคาอ้างอิงทุกสาขา
             </h3>
             <div class="flex flex-wrap items-center gap-2.5 relative w-full lg:w-auto">
-                <div class="relative group w-full sm:w-64 rounded-[0.5rem] overflow-hidden">
+                <div class="relative group w-full sm:w-64 rounded-[0.5rem]">
                     <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                         <i
                             class="fa-solid fa-search text-ink group-focus-within:text-accent-ink transition-colors"></i>
@@ -100,17 +100,17 @@
                         class="page-filter-control elev-chip bg-transparent text-sm pl-10 pr-4 py-2 w-full text-ink focus:outline-none focus:ring-1 focus:ring-accent-ink transition-all placeholder-body-muted">
                 </div>
                 <select id="filter-branch-globalstock-type" aria-label="กรองตามประเภทสินค้า"
-                    class="bg-panel/40 cursor-pointer text-sm rounded-[0.5rem] px-3 py-2 text-ink focus:outline-none focus:ring-1 focus:ring-accent-ink w-full sm:w-auto [&>option]:bg-panel [&>option:checked]:bg-primary [&>option:checked]:text-on-primary">
+                    class="page-filter-control bg-panel/40 cursor-pointer text-sm rounded-[0.5rem] px-3 py-2 text-ink focus:outline-none focus:ring-1 focus:ring-accent-ink w-full sm:w-auto [&>option]:bg-panel [&>option:checked]:bg-primary [&>option:checked]:text-on-primary">
                     <option value="ALL">ประเภททั้งหมด</option>
                 </select>
                 <select id="filter-branch-globalstock-condition" aria-label="กรองตามสภาพเครื่อง"
-                    class="bg-panel/40 cursor-pointer text-sm rounded-[0.5rem] px-3 py-2 text-ink focus:outline-none focus:ring-1 focus:ring-accent-ink w-full sm:w-auto [&>option]:bg-panel [&>option:checked]:bg-primary [&>option:checked]:text-on-primary">
+                    class="page-filter-control bg-panel/40 cursor-pointer text-sm rounded-[0.5rem] px-3 py-2 text-ink focus:outline-none focus:ring-1 focus:ring-accent-ink w-full sm:w-auto [&>option]:bg-panel [&>option:checked]:bg-primary [&>option:checked]:text-on-primary">
                     <option value="ALL">สภาพทั้งหมด</option>
                     <option value="มือ1">มือ 1</option>
                     <option value="มือ2">มือ 2</option>
                 </select>
                 <button id="btn-refresh-globalstock" type="button"
-                    class="px-3 py-2 bg-panel/40 cursor-pointer text-ink flex items-center justify-center gap-1.5 rounded-[0.5rem] text-sm hover:bg-skeleton transition-colors w-full sm:w-auto">
+                    class="page-filter-control px-3 py-2 bg-panel/40 cursor-pointer text-ink flex items-center justify-center gap-1.5 rounded-[0.5rem] text-sm hover:bg-skeleton transition-colors w-full sm:w-auto">
                     <i class="fa-solid fa-rotate"></i> รีเฟรช
                 </button>
             </div>

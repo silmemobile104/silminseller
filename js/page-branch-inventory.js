@@ -332,16 +332,18 @@
             const contentGlobalStock = document.getElementById('content-branch-globalstock');
 
             // แท็บที่เลือกอยู่ = ปุ่มทึบเหลืองปุ่มเดียวของหน้า ที่เหลือเป็นพิลล์ขอบเทาตามข้อ 11.9
-            const TAB_ACTIVE = ['bg-primary', 'text-on-primary', 'ring-2', 'ring-accent-ink'];
-            const TAB_IDLE = ['bg-field', 'text-body-muted', 'border-line', 'hover:border-accent-ink', 'hover:text-ink'];
+            // เขียนเป็น className เต็มแทนการ add/remove ทีละคลาส (แบบเดียวกับแท็บหน้าอื่นทั้งหมดในระบบ)
+            // เพราะ array แบบเดิมไม่ตรงกับ class ที่ประกาศไว้ในมาร์กอัปตั้งต้น (ring-1 vs ring-2,
+            // border-transparent/elev-field vs border-line) ทำให้คลาสตกค้างและปุ่มมีเส้นขอบหนาไม่เท่ากัน
+            const TAB_BASE = 'elev-chip tab-toggle-btn px-4 py-2.5 rounded-xl text-sm font-bold transition-colors flex items-center gap-2 cursor-pointer';
+            const TAB_ON = 'bg-primary text-on-primary ring-1 ring-accent-ink apple-active-accent';
+            const TAB_OFF = 'bg-field text-body-muted hover:ring-1 hover:ring-accent-ink hover:text-ink';
 
             const activateTab = (activeTab, inactiveTab, activeContent, inactiveContent) => {
-                activeTab.classList.remove(...TAB_IDLE);
-                activeTab.classList.add(...TAB_ACTIVE);
+                activeTab.className = `${TAB_BASE} ${TAB_ON}`;
                 activeTab.setAttribute('aria-pressed', 'true');
 
-                inactiveTab.classList.remove(...TAB_ACTIVE);
-                inactiveTab.classList.add(...TAB_IDLE);
+                inactiveTab.className = `${TAB_BASE} ${TAB_OFF}`;
                 inactiveTab.setAttribute('aria-pressed', 'false');
 
                 activeContent.classList.remove('hidden');
@@ -349,6 +351,11 @@
             };
 
             if (tabMyStock && tabGlobalStock) {
+                // มาร์กอัปตั้งต้นของแท็บ "สินค้าในสาขาของฉัน" ยังไม่มีคลาส tab-toggle-btn/
+                // apple-active-accent (ใส่เฉพาะตอน activateTab สลับแท็บ) เรียกครั้งแรกให้ตรงกัน
+                // ตั้งแต่เปิดหน้า ไม่งั้นแท็บที่ active อยู่ตั้งแต่ต้นจะยังมีเส้นขอบเดิมค้างอยู่ในโหมดสว่าง
+                activateTab(tabMyStock, tabGlobalStock, contentMyStock, contentGlobalStock);
+
                 tabMyStock.addEventListener('click', () => {
                     activateTab(tabMyStock, tabGlobalStock, contentMyStock, contentGlobalStock);
                     window.loadBranchInventoryMyStock();

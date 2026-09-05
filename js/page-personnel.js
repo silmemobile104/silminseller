@@ -6,6 +6,15 @@
     // Employee Management Logic (จัดการพนักงาน)
     // ==========================================
 
+    // สลับ list-wrap/cards ให้ตรงมุมมองที่จำไว้ - ต้องเรียกตอนวาดโครงร่างด้วย ไม่ใช่แค่ตอน render ข้อมูลจริง
+    // ไม่งั้นถ้าจำโหมดการ์ดไว้ โครงร่างจะไปวาดใน wrap ที่ยังซ่อนอยู่ (ผู้ใช้เห็นพื้นที่ว่างจนกว่า fetch จะเสร็จ)
+    const syncViewWrapVisibility = (prefix, mode) => {
+        const listWrap = document.getElementById(`${prefix}-view-list-wrap`);
+        const cardsWrap = document.getElementById(`${prefix}-view-cards`);
+        if (listWrap) listWrap.classList.toggle('hidden', mode !== 'list');
+        if (cardsWrap) cardsWrap.classList.toggle('hidden', mode !== 'card');
+    };
+
     const employeeTableBody = document.getElementById('employee-table-body');
     const employeeCountBadge = document.getElementById('employee-count-badge');
     const btnAddEmployee = document.getElementById('btn-add-employee');
@@ -32,6 +41,8 @@
     let _empRole = '';
     let _empBranch = '';
     let _empBound = false;
+    // มุมมองตาราง/การ์ด — จำค่าไว้ข้ามการเข้าหน้า (เหมือนหน้า #deposits)
+    let empViewMode = localStorage.getItem('emp_view_mode') === 'card' ? 'card' : 'list';
 
     const empEsc = (s) => String(s == null ? '' : s)
         .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -40,7 +51,10 @@
     const empStateRow = (msg, cls = 'text-ink/50 italic') =>
         `<tr><td colspan="${EMP_COLS}" class="px-6 py-8 text-center ${cls}">${empEsc(msg)}</td></tr>`;
 
-    const empSkeleton = (rows = 5) => {
+    const empStateCard = (msg, cls = 'text-ink/50 italic') =>
+        `<div class="col-span-full py-12 text-center ${cls}">${empEsc(msg)}</div>`;
+
+    const empTableSkeleton = (rows = 5) => {
         if (!employeeTableBody) return;
         const bar = (w) => `<div class="h-3.5 ${w} rounded-full bg-skeleton animate-pulse"></div>`;
         employeeTableBody.innerHTML = Array.from({ length: rows }).map(() => `
@@ -57,6 +71,34 @@
                 <td class="px-6 py-4">${bar('w-20')}</td>
                 <td class="px-6 py-4">${bar('w-16')}</td>
             </tr>`).join('');
+    };
+
+    // โครงร่างการ์ด — สัดส่วนบล็อกเดินตามโครงจริงของ empCardMarkup ด้านล่าง
+    const empCardSkeleton = (count = 6) => {
+        const cardsWrap = document.getElementById('employee-view-cards');
+        if (!cardsWrap) return;
+        const bar = (w) => `<div class="h-3.5 ${w} rounded-full bg-skeleton animate-pulse"></div>`;
+        cardsWrap.innerHTML = Array.from({ length: count }).map(() => `
+            <div class="elev-card bg-surface-tile-3 rounded-md p-4">
+                <div class="flex items-center gap-3">
+                    <div class="w-9 h-9 rounded-full bg-skeleton animate-pulse shrink-0"></div>
+                    ${bar('w-32')}
+                </div>
+                <div class="flex items-center gap-2 mt-3.5 pt-3 border-t border-hairline">${bar('w-20 h-6')}${bar('w-16 h-6')}</div>
+                ${bar('w-24 mt-3')}
+                <div class="flex items-center justify-between mt-3.5 pt-3 border-t border-hairline">
+                    ${bar('w-16')}
+                    <div class="flex items-center gap-1.5">
+                        <div class="w-8 h-8 rounded-lg bg-skeleton animate-pulse"></div>
+                        <div class="w-8 h-8 rounded-lg bg-skeleton animate-pulse"></div>
+                    </div>
+                </div>
+            </div>`).join('');
+    };
+
+    const empSkeleton = (rows = 5) => {
+        syncViewWrapVisibility('employee', empViewMode);
+        if (empViewMode === 'card') empCardSkeleton(rows); else empTableSkeleton(rows);
     };
 
     // รูปประจำตัวสร้างในเครื่อง — เดิมยิงไปที่บริการทำ avatar ภายนอก ซึ่งส่ง "ชื่อพนักงานจริง"
@@ -181,8 +223,75 @@
         }
     };
 
+    // ปุ่มจัดการที่ใช้ร่วมกันทั้งแถวตารางและการ์ด
+    const empActionsHtml = (emp) => `
+        <button type="button" class="view-emp-btn text-ink hover:text-indigo-400 transition-colors p-2 cursor-pointer"
+            data-id="${empEsc(emp._id)}" title="ดูรายละเอียด"
+            aria-label="ดูรายละเอียดพนักงาน ${empEsc(emp.name || '')}">
+            <i class="fa-solid fa-eye"></i>
+        </button>
+        <button type="button" class="delete-emp-btn text-ink hover:text-red-400 transition-colors p-2 cursor-pointer"
+            data-id="${empEsc(emp._id)}" title="ลบพนักงาน"
+            aria-label="ลบพนักงาน ${empEsc(emp.name || '')}">
+            <i class="fa-solid fa-trash"></i>
+        </button>`;
+
+    const empRowMarkup = (emp) => `
+        <tr class="hover:bg-divider transition-colors">
+            <td class="px-6 py-4">
+                <div class="flex items-center gap-3">
+                    ${empAvatar(emp.name, emp.emp_id || emp._id)}
+                    <p class="font-medium text-ink">${empEsc(emp.name || '-')}</p>
+                </div>
+            </td>
+            <td class="px-6 py-4"><span class="font-mono font-semibold text-accent-ink">${empEsc(emp.emp_id || '-')}</span></td>
+            <td class="px-6 py-4">${empRoleBadge(emp.role)}</td>
+            <td class="px-6 py-4 text-ink">${empEsc(emp.branch_id && emp.branch_id.name ? emp.branch_id.name : '-')}</td>
+            <td class="px-6 py-4">${empStatusBadge(emp.status)}</td>
+            <td class="px-6 py-4 text-right">
+                <div class="flex items-center justify-end gap-1">${empActionsHtml(emp)}</div>
+            </td>
+        </tr>`;
+
+    // การ์ด — โครง: หัว (อวาตาร์ + ชื่อ) · ตำแหน่ง+รหัสพนักงาน · สาขา · footer (สถานะ + ปุ่มจัดการ)
+    const empCardMarkup = (emp) => `
+        <div class="elev-card bg-surface-tile-3 rounded-md p-4">
+            <div class="flex items-center gap-3 min-w-0">
+                ${empAvatar(emp.name, emp.emp_id || emp._id)}
+                <p class="font-medium text-ink truncate">${empEsc(emp.name || '-')}</p>
+            </div>
+
+            <div class="flex flex-wrap items-center gap-2 mt-3.5 pt-3 border-t border-hairline">
+                ${empRoleBadge(emp.role)}
+                <span class="font-mono text-xs text-accent-ink">${empEsc(emp.emp_id || '-')}</span>
+            </div>
+
+            <p class="text-ink/70 text-xs mt-3 truncate">
+                <i class="fa-solid fa-location-dot text-[10px] mr-1"></i>${empEsc(emp.branch_id && emp.branch_id.name ? emp.branch_id.name : 'ไม่ระบุสาขา')}
+            </p>
+
+            <div class="flex items-center justify-between mt-3.5 pt-3 border-t border-hairline">
+                ${empStatusBadge(emp.status)}
+                <div class="flex items-center gap-1">${empActionsHtml(emp)}</div>
+            </div>
+        </div>`;
+
+    const empBindRowHandlers = (container, rows) => {
+        const byId = (id) => rows.find(e => String(e._id) === String(id));
+        container.querySelectorAll('.view-emp-btn').forEach(b =>
+            b.addEventListener('click', () => { const e = byId(b.dataset.id); if (e) openViewEmployeeModal(e); }));
+        container.querySelectorAll('.delete-emp-btn').forEach(b =>
+            b.addEventListener('click', () => { const e = byId(b.dataset.id); if (e) deleteEmployee(e._id, e.name); }));
+    };
+
     const empRender = () => {
         if (!employeeTableBody) return;
+
+        const listWrap = document.getElementById('employee-view-list-wrap');
+        const cardsWrap = document.getElementById('employee-view-cards');
+        if (listWrap) listWrap.classList.toggle('hidden', empViewMode !== 'list');
+        if (cardsWrap) cardsWrap.classList.toggle('hidden', empViewMode !== 'card');
+
         empRenderChips();
 
         const q = _empSearch.trim().toLowerCase();
@@ -202,46 +311,37 @@
         if (employeeCountBadge) employeeCountBadge.textContent = `${_empCache.length} คน`;
 
         if (!rows.length) {
-            employeeTableBody.innerHTML = empStateRow(_empCache.length
-                ? 'ไม่พบพนักงานที่ตรงกับตัวกรอง'
-                : 'ยังไม่มีข้อมูลพนักงานในระบบ');
+            const emptyMsg = _empCache.length ? 'ไม่พบพนักงานที่ตรงกับตัวกรอง' : 'ยังไม่มีข้อมูลพนักงานในระบบ';
+            employeeTableBody.innerHTML = empStateRow(emptyMsg);
+            if (cardsWrap) cardsWrap.innerHTML = empStateCard(emptyMsg);
             return;
         }
 
-        employeeTableBody.innerHTML = rows.map(emp => `
-            <tr class="hover:bg-divider transition-colors">
-                <td class="px-6 py-4">
-                    <div class="flex items-center gap-3">
-                        ${empAvatar(emp.name, emp.emp_id || emp._id)}
-                        <p class="font-medium text-ink">${empEsc(emp.name || '-')}</p>
-                    </div>
-                </td>
-                <td class="px-6 py-4"><span class="font-mono font-semibold text-accent-ink">${empEsc(emp.emp_id || '-')}</span></td>
-                <td class="px-6 py-4">${empRoleBadge(emp.role)}</td>
-                <td class="px-6 py-4 text-ink">${empEsc(emp.branch_id && emp.branch_id.name ? emp.branch_id.name : '-')}</td>
-                <td class="px-6 py-4">${empStatusBadge(emp.status)}</td>
-                <td class="px-6 py-4 text-right">
-                    <div class="flex items-center justify-end gap-1">
-                        <button type="button" class="view-emp-btn text-ink hover:text-indigo-400 transition-colors p-2 cursor-pointer"
-                            data-id="${empEsc(emp._id)}" title="ดูรายละเอียด"
-                            aria-label="ดูรายละเอียดพนักงาน ${empEsc(emp.name || '')}">
-                            <i class="fa-solid fa-eye"></i>
-                        </button>
-                        <button type="button" class="delete-emp-btn text-ink hover:text-red-400 transition-colors p-2 cursor-pointer"
-                            data-id="${empEsc(emp._id)}" title="ลบพนักงาน"
-                            aria-label="ลบพนักงาน ${empEsc(emp.name || '')}">
-                            <i class="fa-solid fa-trash"></i>
-                        </button>
-                    </div>
-                </td>
-            </tr>`).join('');
-
-        const byId = (id) => rows.find(e => String(e._id) === String(id));
-        employeeTableBody.querySelectorAll('.view-emp-btn').forEach(b =>
-            b.addEventListener('click', () => { const e = byId(b.dataset.id); if (e) openViewEmployeeModal(e); }));
-        employeeTableBody.querySelectorAll('.delete-emp-btn').forEach(b =>
-            b.addEventListener('click', () => { const e = byId(b.dataset.id); if (e) deleteEmployee(e._id, e.name); }));
+        if (empViewMode === 'card') {
+            cardsWrap.innerHTML = rows.map(empCardMarkup).join('');
+            empBindRowHandlers(cardsWrap, rows);
+        } else {
+            employeeTableBody.innerHTML = rows.map(empRowMarkup).join('');
+            empBindRowHandlers(employeeTableBody, rows);
+        }
     };
+
+    // สลับมุมมอง List/Card — ผูกที่ top-level ได้ (ไฟล์นี้เป็น js/page-*.js โหลดหลัง loadPageView
+    // แทรก HTML ของ personnel.html เข้า DOM แล้วเสมอ)
+    const employeeViewListBtn = document.getElementById('employee-view-list');
+    const employeeViewCardBtn = document.getElementById('employee-view-card');
+    if (employeeViewListBtn && employeeViewCardBtn) {
+        const syncEmpViewButtons = (mode) => window.syncViewToggleButtons(employeeViewListBtn, employeeViewCardBtn, mode);
+        const applyEmpViewMode = (mode) => {
+            empViewMode = mode;
+            localStorage.setItem('emp_view_mode', mode);
+            syncEmpViewButtons(mode);
+            empRender();
+        };
+        employeeViewListBtn.addEventListener('click', () => applyEmpViewMode('list'));
+        employeeViewCardBtn.addEventListener('click', () => applyEmpViewMode('card'));
+        syncEmpViewButtons(empViewMode);
+    }
 
     // Load employees from API
     async function loadEmployees() {
