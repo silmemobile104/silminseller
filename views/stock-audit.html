@@ -30,20 +30,15 @@
         </div>
 
         <!-- ============================================================ -->
-        <!-- [2] การ์ดพาเนล A — รอบตรวจนับวันนี้ (สแกน + ความคืบหน้า)      -->
+        <!-- [2] การ์ดสรุป + จุดสแกนหลัก — ความคืบหน้าคือข้อมูลสำคัญที่สุดของหน้านี้
+             จึงรวมกับช่องสแกนไว้การ์ดเดียวแทนที่จะมีหัวข้อย่อยคั่นกลาง (distill: ตัดหัวข้อซ้ำ
+             "รอบตรวจนับวันนี้" ออก — ตำแหน่งบนสุดของหน้าสื่อความหมายนี้อยู่แล้ว) -->
         <!-- ============================================================ -->
-        <div class="bg-panel/40 rounded-2xl shadow-lg overflow-hidden backdrop-blur-sm">
-            <!-- 2a หัวข้อพาเนล — บล็อกนี้ไม่มีตัวควบคุมอื่น (ไม่มีสาขา/วันที่ตามที่ตัดออก) จึงไม่ใช้ justify-between -->
-            <div class="p-6 pb-0">
-                <h3 class="text-lg text-ink flex items-center gap-2">
-                    <i class="fa-solid fa-barcode text-accent-ink"></i> รอบตรวจนับวันนี้
-                </h3>
-            </div>
-
+        <div class="elev-card bg-panel/40 rounded-2xl overflow-hidden">
             <!-- ตัวสแกนกับความคืบหน้าอยู่แถวเดียวกันบนจอกว้าง
                  flex-1 ทั้งคู่ ทำให้ตอนรอบถูกอนุมัติแล้ว (#audit-scan-area ถูกซ่อน)
                  ความคืบหน้าขยายเต็มความกว้างเอง ไม่ทิ้งช่องว่างครึ่งการ์ด -->
-            <div class="px-6 py-5 flex flex-col lg:flex-row lg:items-end gap-6 lg:gap-10">
+            <div class="p-6 flex flex-col lg:flex-row lg:items-end gap-6 lg:gap-10">
                 <!-- ช่องสแกน IMEI — ซ่อนทั้งบล็อกเมื่อรอบถูกอนุมัติแล้ว (JS สลับคลาส hidden ที่ id นี้) -->
                 <div id="audit-scan-area" class="flex-1 min-w-0">
                     <label for="audit-imei-input" class="text-ink font-medium flex items-center gap-2 text-xs mb-2">
@@ -68,21 +63,22 @@
 
                 </div>
 
-                <!-- ความคืบหน้าของรอบ -->
+                <!-- ความคืบหน้าของรอบ — ตัวเลขที่สแกนแล้วเป็นข้อมูลเด่นที่สุดของหน้านี้ (text-4xl)
+                     ส่วนยอดที่ต้องตรวจทั้งหมดเป็นข้อมูลรอง (text-2xl, สีจาง) -->
                 <div class="flex-1 min-w-0">
                     <div class="flex flex-wrap items-end justify-between gap-3 mb-3">
                         <div>
-                            <p class="text-xs text-ink/70">ความคืบหน้าการสแกน</p>
+                            <p class="text-xs text-ink/70">ความคืบหน้าการสแกนวันนี้</p>
                             <p class="flex items-baseline gap-1.5 mt-1">
-                                <span id="audit-scanned-count" class="text-3xl font-semibold text-ink">0</span>
+                                <span id="audit-scanned-count" class="text-4xl font-semibold text-ink">0</span>
                                 <span class="text-xl text-ink/70">/</span>
-                                <span id="audit-expected-count" class="text-3xl font-semibold text-ink/70">0</span>
+                                <span id="audit-expected-count" class="text-2xl font-medium text-ink/70">0</span>
                                 <span class="text-sm text-ink/70 ml-1">เครื่อง</span>
                             </p>
                         </div>
                         <p id="audit-progress-pct" class="text-xs text-ink font-medium">0% สำเร็จ</p>
                     </div>
-                    <div class="w-full bg-panel/40 rounded-full h-2 overflow-hidden">
+                    <div class="w-full bg-skeleton/60 rounded-full h-2 overflow-hidden">
                         <div id="audit-progress-bar" class="h-2 rounded-full bg-primary transition-all duration-500"
                             style="width:0%"></div>
                     </div>
@@ -94,11 +90,11 @@
         <!-- [3] การ์ดพาเนล B — สินค้าที่ต้องตรวจนับวันนี้                  -->
         <!-- แถบควบคุม + ชิปตัวกรอง + ตาราง อยู่ในการ์ดใบเดียว (ข้อ 11.1) -->
         <!-- ============================================================ -->
-        <div class="bg-panel/40 rounded-2xl shadow-lg overflow-hidden backdrop-blur-sm">
+        <div class="elev-card bg-panel/40 rounded-2xl overflow-hidden">
             <!-- 2a แถบควบคุม (ข้อ 11.4) -->
             <div class="p-6 pb-0 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
                 <h3 class="text-lg text-ink flex items-center gap-2">
-                    <i class="fa-solid fa-boxes-stacking text-accent-ink"></i> สินค้าที่ต้องตรวจนับวันนี้
+                    <i class="fa-solid fa-boxes-stacking text-ink/60"></i> สินค้าที่ต้องตรวจนับวันนี้
                     <!-- คลาสเต็มถูกเขียนทับจาก renderExpectedList() -->
                     <span id="expected-list-pill"
                         class="px-2.5 py-1 rounded-[0.375rem] text-xs font-medium bg-panel/40 text-ink">0
@@ -136,10 +132,10 @@
                 <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                     <div id="expected-active-filters" class="flex flex-wrap gap-2"></div>
                     <div class="flex items-center gap-3">
-                        <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-ink font-medium">
-                            <span id="expected-list-summary"></span>
-                            <span id="expected-result-count"></span>
-                        </div>
+                        <!-- แถวเดียวที่บอกทั้งจำนวนแสดง/ทั้งหมดและจำนวนรอสแกน (distill: เดิมมี 3 ตัวนับซ้อนกัน
+                             — pill ที่หัวข้อ, บรรทัดนี้, และตัวเลขในการ์ดสรุปด้านบน — เหลือ pill ไว้เป็นสัญญาณ
+                             "ครบหรือยัง" แบบเร็ว ส่วนรายละเอียดตัวกรองอยู่ที่นี่ที่เดียว) -->
+                        <span id="expected-result-count" class="text-xs text-ink font-medium"></span>
                         <div class="flex items-center gap-1 shrink-0">
                             <button type="button" id="expected-view-list" aria-label="มุมมองรายการ" aria-pressed="true"
                                 class="w-9 h-9 rounded-md flex items-center justify-center transition-colors bg-primary text-on-primary">
@@ -183,11 +179,11 @@
         <!-- ============================================================ -->
         <!-- [4] การ์ดพาเนล C — รายการที่สแกนแล้ว                          -->
         <!-- ============================================================ -->
-        <div class="bg-panel/40 rounded-2xl shadow-lg overflow-hidden backdrop-blur-sm">
+        <div class="elev-card bg-panel/40 rounded-2xl overflow-hidden">
             <!-- 2a แถบควบคุม -->
             <div class="p-6 pb-0 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
                 <h3 class="text-lg text-ink flex items-center gap-2">
-                    <i class="fa-solid fa-list-check text-accent-ink"></i> รายการที่สแกนแล้ว
+                    <i class="fa-solid fa-list-check text-ink/60"></i> รายการที่สแกนแล้ว
                 </h3>
             </div>
 
@@ -243,7 +239,7 @@
         </div>
 
         <div id="audit-submitted-msg"
-            class="hidden bg-panel/40 rounded-2xl shadow-lg backdrop-blur-sm p-6 flex items-center gap-4">
+            class="hidden elev-card bg-panel/40 rounded-2xl p-6 flex items-center gap-4">
             <div
                 class="w-12 h-12 rounded-full bg-orange-500/[0.12] flex items-center justify-center shrink-0 text-orange-400">
                 <i class="fa-solid fa-hourglass-half text-xl"></i>
@@ -255,7 +251,7 @@
         </div>
 
         <div id="audit-approved-msg"
-            class="hidden bg-panel/40 rounded-2xl shadow-lg backdrop-blur-sm p-6 flex items-center gap-4">
+            class="hidden elev-card bg-panel/40 rounded-2xl p-6 flex items-center gap-4">
             <div
                 class="w-12 h-12 rounded-full bg-state-ok-tint/[0.12] flex items-center justify-center shrink-0 text-state-ok">
                 <i class="fa-solid fa-circle-check text-xl"></i>

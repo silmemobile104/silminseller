@@ -537,16 +537,24 @@
             if (branchName) branchName.textContent = session.branch_id?.name || '—';
             if (sessionDate) sessionDate.textContent = new Date(session.session_date).toLocaleDateString('th-TH', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
-            // แสดง scan area หรือแสดงสถานะ
+            // แสดง scan area หรือแสดงสถานะ — สามสถานะต้องแยกกันจริง (เดิม "กำลังตรวจนับ" กับ "รอการอนุมัติ"
+            // ถูกจับรวมกัน ทำให้ปุ่มส่งผลไม่มีวันโผล่ และข้อความ "ส่งผลสำเร็จแล้ว" ก็ไม่มีวันแสดงเช่นกัน)
             const scanArea = document.getElementById('audit-scan-area');
             const submitArea = document.getElementById('audit-submit-area');
             const submittedMsg = document.getElementById('audit-submitted-msg');
             const approvedMsg = document.getElementById('audit-approved-msg');
 
-            if (session.status === 'กำลังตรวจนับ' || session.status === 'รอการอนุมัติ') {
+            if (session.status === 'กำลังตรวจนับ') {
                 if (scanArea) scanArea.classList.remove('hidden');
-                if (submitArea) submitArea.classList.add('hidden');
+                // ปุ่มส่งผลโผล่ทันทีที่มีรายการสแกนอย่างน้อย 1 ชิ้น — ตรงกับเงื่อนไขฝั่ง backend
+                // (itemCount === 0 ถึงจะปฏิเสธ) ไม่บังคับสแกนครบ 100% ก่อนถึงจะส่งได้
+                if (submitArea) submitArea.classList.toggle('hidden', !(items || []).length);
                 if (submittedMsg) submittedMsg.classList.add('hidden');
+                if (approvedMsg) approvedMsg.classList.add('hidden');
+            } else if (session.status === 'รอการอนุมัติ') {
+                if (scanArea) scanArea.classList.add('hidden');
+                if (submitArea) submitArea.classList.add('hidden');
+                if (submittedMsg) submittedMsg.classList.remove('hidden');
                 if (approvedMsg) approvedMsg.classList.add('hidden');
             } else if (session.status === 'อนุมัติแล้ว') {
                 if (scanArea) scanArea.classList.add('hidden');
@@ -572,7 +580,6 @@
         _scannedImeiSet = new Set((scannedItems || []).map(i => i.imei));
 
         const pill = document.getElementById('expected-list-pill');
-        const summaryEl = document.getElementById('expected-list-summary');
         const total = _expectedImeiData.length;
         const resolved = _expectedImeiData.filter(e => _scannedImeiSet.has(e.imei) || e.sold).length;
         const pending = total - resolved;
@@ -585,9 +592,6 @@
                 pill.className = 'px-2.5 py-1 rounded-[0.375rem] text-xs font-medium bg-panel/40 text-ink';
                 pill.textContent = `${total} เครื่อง`;
             }
-        }
-        if (summaryEl) {
-            summaryEl.textContent = total > 0 ? `สแกนแล้ว ${resolved} · รอสแกน ${pending}` : '';
         }
 
         // ถ้าผู้ใช้ตั้งตัวกรองไว้ ต้องเรนเดอร์ผ่านตัวกรองเดิม ไม่ใช่โยนรายการเต็มทับ
@@ -637,18 +641,16 @@
                 + ` class="text-ink hover:text-accent-ink transition-colors p-2"><i class="fa-solid fa-arrow-up-from-bracket text-xs"></i></button>`;
         }
 
-        // จุดสีหน้าชื่อสินค้า — สร้างจากตัวสร้างกลางเท่านั้น (ข้อ 11.14)
-        // ข้อมูลชุดนี้ส่งมาแค่ "ชื่อสี" ไม่มีเอกสารสี จึงให้ resolveProductColorHex เดาจากชื่อ
-        const dot = (typeof window.productColorDot === 'function')
-            ? window.productColorDot(e.color, null)
-            : '';
+        // distill: ตัดจุดสีหน้าชื่อสินค้าออก — ตารางนี้มีคอลัมน์ "สี" เป็นข้อความเต็มอยู่แล้ว
+        // (ต่างจากตารางอื่นที่ใช้จุดสีตามข้อ 11.14 เพราะตารางนั้นไม่มีคอลัมน์สีแยกต่างหาก)
+        // ข้อความเต็มยังอ่านง่ายกว่าจุดสีสำหรับคนตาบอดสี จึงเก็บไว้เป็นแหล่งความจริงเดียว
 
         return {
             row: `
         <tr class="${rowClass} transition-colors" data-imei="${e.imei}" data-name="${e.product_name}" data-status="${isScanned ? 'scanned' : (isSold ? 'sold' : 'pending')}">
             <td class="px-6 py-4 text-ink/70">${idx + 1}</td>
             <td class="px-6 py-4">
-                <p class="font-medium ${isSold ? 'text-ink/70' : 'text-ink'} flex items-center gap-2">${dot}<span>${e.product_name}</span></p>
+                <p class="font-medium ${isSold ? 'text-ink/70' : 'text-ink'}">${e.product_name}</p>
             </td>
             <td class="px-6 py-4">${tagCell(e.color)}</td>
             <td class="px-6 py-4">${tagCell(e.capacity)}</td>
@@ -658,7 +660,7 @@
             card: `
         <div class="elev-card bg-surface-tile-3 rounded-md p-3.5" data-imei="${e.imei}" data-name="${e.product_name}" data-status="${isScanned ? 'scanned' : (isSold ? 'sold' : 'pending')}">
             <div class="flex items-start justify-between gap-2">
-                <p class="font-medium ${isSold ? 'text-ink/70' : 'text-ink'} flex items-center gap-2 min-w-0 flex-1">${dot}<span class="truncate">${e.product_name}</span></p>
+                <p class="font-medium ${isSold ? 'text-ink/70' : 'text-ink'} min-w-0 flex-1 truncate">${e.product_name}</p>
                 <div class="shrink-0">${badgeHtml}</div>
             </div>
             <div class="flex items-center gap-2 mt-2.5">${tagCell(e.color)}${tagCell(e.capacity)}</div>
@@ -705,11 +707,15 @@
         if (cardsWrap) cardsWrap.classList.toggle('hidden', _expectedViewMode !== 'card');
 
         // ตัวนับผลลัพธ์ — ตัวหารคือจำนวนเครื่องทั้งหมดของรอบ ไม่ใช่จำนวนแถวที่โหลดมาแสดง (ข้อ 11.5)
+        // รวม "รอสแกน" ไว้ในบรรทัดเดียวกัน (distill: เดิมแยกเป็นอีกบรรทัด "expected-list-summary" ซ้ำซ้อน)
         const countEl = document.getElementById('expected-result-count');
         if (countEl) {
-            countEl.textContent = _expectedImeiData.length
-                ? `แสดง ${rows.length} จาก ${_expectedImeiData.length} รายการ`
-                : '';
+            if (_expectedImeiData.length) {
+                const pending = _expectedImeiData.filter(e => !_scannedImeiSet.has(e.imei) && !e.sold).length;
+                countEl.textContent = `แสดง ${rows.length} จาก ${_expectedImeiData.length} รายการ · รอสแกน ${pending} เครื่อง`;
+            } else {
+                countEl.textContent = '';
+            }
         }
 
         _expectedRenderRows = rows;
@@ -804,6 +810,42 @@
         reviewItemsViewListBtn.addEventListener('click', () => apply('list'));
         reviewItemsViewCardBtn.addEventListener('click', () => apply('card'));
         _syncViewToggleButtons(reviewItemsViewListBtn, reviewItemsViewCardBtn, _reviewItemsViewMode);
+    }
+
+    // ส่งผลการตรวจนับให้พนักงานสต็อกตรวจสอบ — ผูกครั้งเดียวตอนไฟล์นี้ถูกโหลด (เหตุผลเดียวกับปุ่มอื่นด้านบน)
+    // เดิมปุ่มนี้มีอยู่ใน HTML แต่ไม่เคยถูกผูก handler เลย ทำให้สแกนครบแล้วส่งผลจากหน้านี้ไม่ได้
+    const btnAuditSubmit = document.getElementById('btn-audit-submit');
+    if (btnAuditSubmit) {
+        btnAuditSubmit.addEventListener('click', () => {
+            if (!_auditSessionId) return;
+            showConfirm(
+                'ยืนยันส่งผลตรวจนับ',
+                'ส่งผลการตรวจนับให้พนักงานสต็อกตรวจสอบ? หลังส่งแล้วจะสแกนเพิ่มไม่ได้จนกว่าจะถูกตีกลับให้ตรวจใหม่',
+                async () => {
+                    btnAuditSubmit.disabled = true;
+                    btnAuditSubmit.classList.add('opacity-60', 'cursor-not-allowed');
+                    try {
+                        const token = localStorage.getItem('silmin_token');
+                        const r = await fetch(`/api/stock-audit/sessions/${_auditSessionId}/submit`, {
+                            method: 'POST', headers: { 'Authorization': `Bearer ${token}` }
+                        });
+                        const d = await r.json();
+                        if (d.success) {
+                            showToast(d.message);
+                            await loadTodayAuditSession();
+                        } else {
+                            showToast(d.message || 'เกิดข้อผิดพลาด', 'error');
+                            btnAuditSubmit.disabled = false;
+                            btnAuditSubmit.classList.remove('opacity-60', 'cursor-not-allowed');
+                        }
+                    } catch (e) {
+                        showToast('ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้', 'error');
+                        btnAuditSubmit.disabled = false;
+                        btnAuditSubmit.classList.remove('opacity-60', 'cursor-not-allowed');
+                    }
+                }
+            );
+        });
     }
 
     function toggleExpectedList() {
