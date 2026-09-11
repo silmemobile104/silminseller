@@ -2937,7 +2937,17 @@
         container.querySelectorAll('.btn-action-arrival').forEach(b =>
             b.addEventListener('click', () => { const po = byId(b.dataset.id); if (po) openArrivalModal(po); }));
         container.querySelectorAll('.btn-open-receive').forEach(b =>
-            b.addEventListener('click', () => { const po = byId(b.dataset.id); if (po) openReceiveModal(po); }));
+            b.addEventListener('click', () => {
+                const po = byId(b.dataset.id);
+                if (!po) return;
+                // ต่ำกว่า lg (1024px): เปิด step-flow แบบแอปสำหรับมือถือ/แท็บเล็ตแนวตั้ง
+                // lg ขึ้นไป: เปิดโมดัลตรวจรับเดิมเป๊ะ ไม่เปลี่ยนพฤติกรรมเดสก์ท็อปเลย
+                if (window.innerWidth < 1024 && typeof openMobileReceiveFlow === 'function') {
+                    openMobileReceiveFlow(po);
+                } else {
+                    openReceiveModal(po);
+                }
+            }));
         container.querySelectorAll('.btn-view-po').forEach(b =>
             b.addEventListener('click', () => { const po = byId(b.dataset.id); if (po) openViewPOModal(po); }));
     };
@@ -3828,6 +3838,348 @@
             }
         });
     }
+
+    // ==========================================
+    // Mobile step-flow สำหรับ "ตรวจรับของ" — ใช้เฉพาะจอ < lg (มือถือ/แท็บเล็ตแนวตั้ง)
+    // เดสก์ท็อปยังใช้ openReceiveModal()/#modal-po-receive เดิมเป๊ะ ไม่แตะ
+    // ทั้งสองโหมดอ่าน/เขียนข้อมูลชุดเดียวกัน (po.items) และยิง endpoint เดิมตัวเดียวกัน
+    // (POST /po/:id/scan-item) — ไม่มี API ใหม่ ไม่มีจังหวะเรียก API เพิ่มจากเดิม (ยังส่งครั้งเดียว
+    // ตอนกด "ยืนยันและส่ง" เท่านั้น เหมือนปุ่ม "ยืนยันการตรวจรับสินค้า" ของเดสก์ท็อป) — กันข้อมูลหาย
+    // ระหว่างคีย์ด้วย localStorage draft ต่อ PO ล้วนๆ (client-side เท่านั้น ไม่กระทบสถานะเอกสารฝั่งระบบ)
+    // ==========================================
+    let _mobReceivePO = null;
+    let _mobReceiveItems = [];   // รายการที่ยังค้างรับ (กรองเงื่อนไขเดียวกับ openReceiveModal)
+    let _mobReceiveIndex = 0;
+    let _mobReceiveData = {};    // { [itemId]: { qty } | { imeis: [...] } } — สะสมจนกว่าจะกด "ยืนยันและส่ง"
+
+    const _mobDraftKey = (poId) => `branch_receive_draft_${poId}`;
+
+    const _mobSaveDraft = () => {
+        if (!_mobReceivePO) return;
+        try { localStorage.setItem(_mobDraftKey(_mobReceivePO._id), JSON.stringify(_mobReceiveData)); }
+        catch (e) { /* localStorage เต็ม/ปิดใช้งาน — เสียแค่การกันข้อมูลหาย ไม่กระทบฟีเจอร์หลัก */ }
+    };
+    const _mobLoadDraft = (poId) => {
+        try { const raw = localStorage.getItem(_mobDraftKey(poId)); return raw ? JSON.parse(raw) : {}; }
+        catch (e) { return {}; }
+    };
+    const _mobClearDraft = (poId) => {
+        try { localStorage.removeItem(_mobDraftKey(poId)); } catch (e) { /* ignore */ }
+    };
+
+    const openMobileReceiveFlow = (po) => {
+        _mobReceivePO = po;
+        _mobReceiveItems = (po.items || []).filter(item => (item.ordered_qty - (item.imported_qty || 0)) > 0);
+        _mobReceiveIndex = 0;
+        _mobReceiveData = _mobLoadDraft(po._id);
+
+        if (_mobReceiveItems.length === 0) {
+            showToast('รับสินค้าครบทุกรายการแล้ว', 'success');
+            return;
+        }
+
+        const flow = document.getElementById('receive-mobile-flow');
+        if (flow) { flow.classList.remove('hidden'); flow.classList.add('flex'); }
+        _mobShowItemScreen();
+    };
+
+    const _mobCloseFlow = () => {
+        const flow = document.getElementById('receive-mobile-flow');
+        if (flow) { flow.classList.add('hidden'); flow.classList.remove('flex'); }
+    };
+
+    const _mobShowScreen = (name) => {
+        const itemScreen = document.getElementById('receive-mobile-item-screen');
+        const summaryScreen = document.getElementById('receive-mobile-summary-screen');
+        if (itemScreen) {
+            itemScreen.classList.toggle('hidden', name !== 'item');
+            itemScreen.classList.toggle('flex', name === 'item');
+        }
+        if (summaryScreen) {
+            summaryScreen.classList.toggle('hidden', name !== 'summary');
+            summaryScreen.classList.toggle('flex', name === 'summary');
+        }
+    };
+
+    const _mobShowItemScreen = () => {
+        const item = _mobReceiveItems[_mobReceiveIndex];
+        if (!item) { _mobShowSummaryScreen(); return; }
+        _mobShowScreen('item');
+
+        const pendingQty = item.ordered_qty - (item.imported_qty || 0);
+        const saved = _mobReceiveData[item._id];
+
+        document.getElementById('receive-mobile-po-number').textContent = _mobReceivePO.po_number;
+        document.getElementById('receive-mobile-item-progress').textContent =
+            `รายการที่ ${_mobReceiveIndex + 1} จาก ${_mobReceiveItems.length}`;
+
+        const body = document.getElementById('receive-mobile-item-body');
+        const nextHint = document.getElementById('receive-mobile-next-hint');
+        const nextLabel = document.getElementById('receive-mobile-next-label');
+        nextLabel.textContent = _mobReceiveIndex === _mobReceiveItems.length - 1 ? 'ไปหน้าสรุป' : 'ถัดไป';
+        nextHint.textContent = '';
+
+        if (item.track_imei) {
+            const imeis = (saved && Array.isArray(saved.imeis)) ? [...saved.imeis] : [];
+            body.innerHTML = `
+                <div class="elev-card bg-panel/40 rounded-2xl p-5">
+                    <h4 class="text-lg font-bold text-ink">${rcEsc(item.product_name)}</h4>
+                    <p class="text-xs text-ink/60 font-mono mt-0.5">${rcEsc(item.product_code || '')}</p>
+                    <p class="text-sm text-ink/70 mt-3">สั่ง ${item.ordered_qty} เครื่อง · ค้างรับ ${pendingQty} เครื่อง</p>
+                    <p class="text-sm text-ink font-medium mt-4">สแกนแล้ว <span id="mob-imei-count" class="font-mono">${imeis.length}</span> / ${pendingQty} เครื่อง</p>
+                    <label for="mob-imei-input" class="sr-only">สแกนหรือพิมพ์ IMEI</label>
+                    <input id="mob-imei-input" type="text" inputmode="numeric" autocomplete="off"
+                        placeholder="สแกนหรือพิมพ์ IMEI..."
+                        class="elev-chip bg-transparent rounded-xl font-mono text-base px-4 py-3.5 w-full mt-2 text-ink focus:outline-none focus:ring-1 focus:ring-accent-ink">
+                    <div id="mob-imei-tags" class="flex flex-wrap gap-2 mt-3"></div>
+                </div>`;
+
+            const tagsBox = document.getElementById('mob-imei-tags');
+            const countEl = document.getElementById('mob-imei-count');
+            const renderTags = () => {
+                tagsBox.innerHTML = imeis.map(val => `
+                    <div class="elev-chip inline-flex items-center gap-1.5 bg-surface-chip text-ink px-3 py-2 rounded-lg text-sm font-mono">
+                        <span>${rcEsc(val)}</span>
+                        <button type="button" class="mob-imei-remove text-accent-ink hover:text-red-400 text-base leading-none" data-val="${rcEsc(val)}" aria-label="ลบ IMEI ${rcEsc(val)}">&times;</button>
+                    </div>`).join('');
+                countEl.textContent = imeis.length;
+                tagsBox.querySelectorAll('.mob-imei-remove').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        const v = btn.dataset.val;
+                        const idx = imeis.indexOf(v);
+                        if (idx >= 0) imeis.splice(idx, 1);
+                        _mobReceiveData[item._id] = { imeis: [...imeis] };
+                        _mobSaveDraft();
+                        renderTags();
+                    });
+                });
+            };
+            renderTags();
+
+            const input = document.getElementById('mob-imei-input');
+            input.focus();
+            input.addEventListener('keydown', async (e) => {
+                if (e.key !== 'Enter') return;
+                e.preventDefault();
+                const val = input.value.trim();
+                if (!val) return;
+                if (imeis.includes(val)) {
+                    showToast('IMEI นี้ถูกสแกนในรายการนี้แล้ว', 'warning');
+                    input.value = '';
+                    return;
+                }
+                if (imeis.length >= pendingQty) {
+                    showToast(`สแกนครบตามจำนวนค้างรับ (${pendingQty} เครื่อง) แล้ว`, 'warning');
+                    input.value = '';
+                    return;
+                }
+                try {
+                    input.disabled = true;
+                    const res = await authFetch(`${API_BASE_URL}/products/check-existence?code=${encodeURIComponent(val)}`);
+                    const data = await res.json();
+                    input.disabled = false;
+                    input.focus();
+                    if (data.success && data.exists) {
+                        showToast(`⚠️ รหัสสินค้า/IMEI (${val}) มีอยู่ในระบบแล้ว`, 'error');
+                        input.value = '';
+                        return;
+                    }
+                } catch (err) {
+                    input.disabled = false;
+                    input.focus();
+                }
+                imeis.push(val);
+                _mobReceiveData[item._id] = { imeis: [...imeis] };
+                _mobSaveDraft();
+                input.value = '';
+                renderTags();
+            });
+        } else {
+            const qty = (saved && typeof saved.qty === 'number') ? saved.qty : 0;
+            body.innerHTML = `
+                <div class="elev-card bg-panel/40 rounded-2xl p-5">
+                    <h4 class="text-lg font-bold text-ink">${rcEsc(item.product_name)}</h4>
+                    <p class="text-xs text-ink/60 font-mono mt-0.5">${rcEsc(item.product_code || '')}</p>
+                    <p class="text-sm text-ink/70 mt-3">สั่ง ${item.ordered_qty} ชิ้น · ค้างรับ ${pendingQty} ชิ้น</p>
+
+                    <button type="button" id="mob-btn-fullqty"
+                        class="w-full mt-5 py-3.5 rounded-xl bg-state-ok-tint/[0.12] text-state-ok font-semibold flex items-center justify-center gap-2 hover:bg-state-ok-tint/[0.18] active:scale-[0.98] transition-all">
+                        <i class="fa-solid fa-check-double"></i> รับครบตามจำนวน (${pendingQty})
+                    </button>
+
+                    <div class="flex items-center justify-center gap-5 mt-6">
+                        <button type="button" id="mob-btn-minus" aria-label="ลดจำนวนลง 1"
+                            class="w-14 h-14 rounded-full elev-field bg-field text-ink text-2xl font-semibold flex items-center justify-center hover:ring-1 hover:ring-accent-ink active:scale-95 transition-all">−</button>
+                        <label for="mob-qty-input" class="sr-only">จำนวนที่รับ</label>
+                        <input id="mob-qty-input" type="number" inputmode="numeric" min="0" max="${pendingQty}" value="${qty}"
+                            class="text-5xl font-mono font-semibold text-ink w-28 text-center bg-transparent focus:outline-none focus:ring-2 focus:ring-accent-ink rounded-xl">
+                        <button type="button" id="mob-btn-plus" aria-label="เพิ่มจำนวนขึ้น 1"
+                            class="w-14 h-14 rounded-full elev-field bg-field text-ink text-2xl font-semibold flex items-center justify-center hover:ring-1 hover:ring-accent-ink active:scale-95 transition-all">+</button>
+                    </div>
+                </div>`;
+
+            const qtyInput = document.getElementById('mob-qty-input');
+            const commitQty = (val) => {
+                const clamped = Math.max(0, Math.min(pendingQty, Number(val) || 0));
+                qtyInput.value = clamped;
+                _mobReceiveData[item._id] = { qty: clamped };
+                _mobSaveDraft();
+            };
+            document.getElementById('mob-btn-minus').addEventListener('click', () => {
+                commitQty(Number(qtyInput.value || 0) - 1);
+                if (navigator.vibrate) navigator.vibrate(8);
+            });
+            document.getElementById('mob-btn-plus').addEventListener('click', () => {
+                commitQty(Number(qtyInput.value || 0) + 1);
+                if (navigator.vibrate) navigator.vibrate(8);
+            });
+            qtyInput.addEventListener('input', () => commitQty(qtyInput.value));
+            document.getElementById('mob-btn-fullqty').addEventListener('click', () => {
+                commitQty(pendingQty);
+                if (navigator.vibrate) navigator.vibrate(15);
+            });
+        }
+    };
+
+    const _mobShowSummaryScreen = () => {
+        _mobShowScreen('summary');
+        const body = document.getElementById('receive-mobile-summary-body');
+        body.innerHTML = _mobReceiveItems.map(item => {
+            const pendingQty = item.ordered_qty - (item.imported_qty || 0);
+            const saved = _mobReceiveData[item._id];
+            let doneLabel, tone;
+            if (item.track_imei) {
+                const count = (saved && Array.isArray(saved.imeis)) ? saved.imeis.length : 0;
+                tone = count >= pendingQty ? 'ok' : (count > 0 ? 'pending' : 'muted');
+                doneLabel = `สแกนแล้ว ${count} / ${pendingQty} เครื่อง`;
+            } else {
+                const qty = (saved && typeof saved.qty === 'number') ? saved.qty : 0;
+                tone = qty >= pendingQty ? 'ok' : (qty > 0 ? 'pending' : 'muted');
+                doneLabel = `รับ ${qty} / ${pendingQty} ชิ้น`;
+            }
+            const toneCls = tone === 'ok' ? 'bg-state-ok-tint/[0.12] text-state-ok'
+                : tone === 'pending' ? 'bg-orange-500/[0.12] text-orange-400'
+                    : 'bg-panel/40 text-ink/60';
+            const icon = tone === 'ok' ? 'fa-circle-check' : tone === 'pending' ? 'fa-circle-half-stroke' : 'fa-circle';
+            return `
+            <div class="elev-card bg-panel/40 rounded-xl p-4 flex items-center justify-between gap-3">
+                <div class="min-w-0">
+                    <p class="text-sm font-medium text-ink truncate">${rcEsc(item.product_name)}</p>
+                    <p class="text-xs text-ink/60 font-mono mt-0.5">${rcEsc(item.product_code || '')}</p>
+                </div>
+                <div class="shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[0.375rem] text-xs font-medium ${toneCls}">
+                    <i class="fa-solid ${icon}"></i> ${doneLabel}
+                </div>
+            </div>`;
+        }).join('');
+    };
+
+    const _mobOpenConfirmSheet = () => {
+        const overlay = document.getElementById('receive-mobile-confirm-overlay');
+        const sheet = document.getElementById('receive-mobile-confirm-sheet');
+        if (overlay) {
+            overlay.classList.remove('hidden');
+            void overlay.offsetWidth;
+            overlay.classList.remove('opacity-0', 'pointer-events-none');
+        }
+        if (sheet) {
+            sheet.classList.remove('hidden');
+            sheet.classList.add('flex');
+            void sheet.offsetWidth;
+            sheet.classList.remove('translate-y-full');
+        }
+    };
+    const _mobCloseConfirmSheet = () => {
+        const overlay = document.getElementById('receive-mobile-confirm-overlay');
+        const sheet = document.getElementById('receive-mobile-confirm-sheet');
+        if (sheet) sheet.classList.add('translate-y-full');
+        if (overlay) overlay.classList.add('opacity-0', 'pointer-events-none');
+        setTimeout(() => {
+            if (overlay) overlay.classList.add('hidden');
+            if (sheet) { sheet.classList.add('hidden'); sheet.classList.remove('flex'); }
+        }, 300);
+    };
+
+    const _mobSubmitReceive = async () => {
+        const btn = document.getElementById('btn-receive-mobile-confirm-submit');
+        const received_items = {};
+        let hasInput = false;
+
+        _mobReceiveItems.forEach(item => {
+            const importedImeis = Array.isArray(item.imported_imeis) ? item.imported_imeis : [];
+            const importedQty = item.imported_qty || 0;
+            const saved = _mobReceiveData[item._id];
+            if (item.track_imei) {
+                const uiImeis = (saved && Array.isArray(saved.imeis)) ? saved.imeis : [];
+                received_items[item._id] = { imeis: [...importedImeis, ...uiImeis] };
+                if (uiImeis.length > 0) hasInput = true;
+            } else {
+                const qtyNewRound = (saved && typeof saved.qty === 'number') ? saved.qty : 0;
+                received_items[item._id] = { qty: importedQty + qtyNewRound };
+                if (qtyNewRound > 0) hasInput = true;
+            }
+        });
+
+        if (!hasInput) {
+            showToast('กรุณาระบุจำนวนหรือ IMEI อย่างน้อย 1 รายการ', 'error');
+            return;
+        }
+
+        const originalHtml = btn.innerHTML;
+        try {
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> กำลังส่ง...';
+            const res = await authFetch(`${API_BASE_URL}/po/${_mobReceivePO._id}/scan-item`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ received_items })
+            });
+            const json = await res.json();
+            if (json.success) {
+                showToast('บันทึกความคืบหน้าการตรวจรับเรียบร้อยแล้ว (รอผู้จัดการอนุมัติเพื่อนำเข้าคลังสินค้า)', 'success');
+                if (navigator.vibrate) navigator.vibrate([10, 40, 10]);
+                _mobClearDraft(_mobReceivePO._id);
+                _mobCloseConfirmSheet();
+                _mobCloseFlow();
+                if (typeof loadPOs === 'function') loadPOs();
+            } else {
+                showToast(json.message || 'เกิดข้อผิดพลาด', 'error');
+            }
+        } catch (err) {
+            console.error(err);
+            // ข้อมูลที่คีย์ไว้ยังอยู่ครบใน _mobReceiveData/localStorage — ไม่หายแม้เน็ตหลุด ลองกดใหม่ได้ทันที
+            showToast('ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้ ข้อมูลที่คีย์ไว้ยังอยู่ครบ ลองกดใหม่อีกครั้ง', 'error');
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = originalHtml;
+        }
+    };
+
+    // ผูกปุ่มนำทางของ step-flow — ผูกครั้งเดียวตอนไฟล์นี้ถูกโหลด (element เหล่านี้อยู่ใน view fragment
+    // เดียวกับตารางตรวจรับ ซึ่งโหลดมาก่อนสคริปต์นี้เสมอตามลำดับ loadPageView → loadPageScript)
+    const btnMobBack = document.getElementById('btn-receive-mobile-back');
+    if (btnMobBack) btnMobBack.addEventListener('click', () => {
+        if (_mobReceiveIndex > 0) { _mobReceiveIndex -= 1; _mobShowItemScreen(); }
+        else _mobCloseFlow();
+    });
+    const btnMobNext = document.getElementById('btn-receive-mobile-next');
+    if (btnMobNext) btnMobNext.addEventListener('click', () => {
+        if (_mobReceiveIndex >= _mobReceiveItems.length - 1) { _mobShowSummaryScreen(); }
+        else { _mobReceiveIndex += 1; _mobShowItemScreen(); }
+    });
+    const btnMobSummaryBack = document.getElementById('btn-receive-mobile-summary-back');
+    if (btnMobSummaryBack) btnMobSummaryBack.addEventListener('click', () => {
+        _mobReceiveIndex = _mobReceiveItems.length - 1;
+        _mobShowItemScreen();
+    });
+    const btnMobSubmit = document.getElementById('btn-receive-mobile-submit');
+    if (btnMobSubmit) btnMobSubmit.addEventListener('click', () => _mobOpenConfirmSheet());
+    const btnMobConfirmClose = document.getElementById('btn-receive-mobile-confirm-close');
+    if (btnMobConfirmClose) btnMobConfirmClose.addEventListener('click', () => _mobCloseConfirmSheet());
+    const mobConfirmOverlay = document.getElementById('receive-mobile-confirm-overlay');
+    if (mobConfirmOverlay) mobConfirmOverlay.addEventListener('click', () => _mobCloseConfirmSheet());
+    const btnMobConfirmSubmit = document.getElementById('btn-receive-mobile-confirm-submit');
+    if (btnMobConfirmSubmit) btnMobConfirmSubmit.addEventListener('click', () => _mobSubmitReceive());
 
     // ==========================================
     // Connected PO Workflow: แจ้งของถึงสาขา (Sales/Front Store)

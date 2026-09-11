@@ -813,19 +813,22 @@
 </div>
 
 <div id="view-accounting">
-    <!-- [1] หัวหน้า + ตัวกรองช่วงเวลา — เดินตามหน้า #dashboard -->
+    <!-- หัวหน้า: ชื่อหน้า + ตัวกรองช่วงเวลาที่ขับข้อมูลทั้งหน้า + action หลัก -->
     <div class="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4">
         <div class="flex items-center gap-4">
             <i class="hidden md:block bi bi-cash-stack text-ink w-5 text-2xl text-center"></i>
             <h3 class="hidden md:block text-2xl text-ink">ระบบบัญชีและการเงิน</h3>
         </div>
         <div class="flex flex-wrap items-center gap-2.5">
-            <label for="accounting-start-date" class="sr-only">วันที่เริ่มต้น</label>
-            <input type="date" id="accounting-start-date"
-                class="page-filter-control elev-chip bg-transparent rounded-[10px] text-sm px-3 py-2 text-ink focus:outline-none focus:ring-1 focus:ring-accent-ink [color-scheme:dark]">
-            <label for="accounting-end-date" class="sr-only">วันที่สิ้นสุด</label>
-            <input type="date" id="accounting-end-date"
-                class="page-filter-control elev-chip bg-transparent rounded-[10px] text-sm px-3 py-2 text-ink focus:outline-none focus:ring-1 focus:ring-accent-ink [color-scheme:dark]">
+            <div class="flex items-center gap-1.5">
+                <label for="accounting-start-date" class="sr-only">วันที่เริ่มต้น</label>
+                <input type="date" id="accounting-start-date"
+                    class="page-filter-control elev-chip bg-transparent rounded-[10px] text-sm px-3 py-2 text-ink focus:outline-none focus:ring-1 focus:ring-accent-ink [color-scheme:dark]">
+                <i class="fa-solid fa-arrow-right-long text-ink/40 text-xs" aria-hidden="true"></i>
+                <label for="accounting-end-date" class="sr-only">วันที่สิ้นสุด</label>
+                <input type="date" id="accounting-end-date"
+                    class="page-filter-control elev-chip bg-transparent rounded-[10px] text-sm px-3 py-2 text-ink focus:outline-none focus:ring-1 focus:ring-accent-ink [color-scheme:dark]">
+            </div>
             <button id="btn-refresh-accounting" type="button"
                 class="page-filter-control px-3 py-2 bg-panel/40 cursor-pointer text-ink flex items-center justify-center gap-1.5 rounded-[0.5rem] text-sm hover:bg-skeleton transition-colors">
                 <i class="fa-solid fa-rotate"></i> รีเฟรช
@@ -838,87 +841,94 @@
         </div>
     </div>
 
-    <!-- [2] การ์ดตัวเลขหลัก 4 ใบ — รูปทรงเดียวกับ KPI ของ #dashboard -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-        <div class="bg-panel/40 rounded-2xl shadow-lg backdrop-blur-sm p-5 flex items-start gap-4">
-            <div class="w-11 h-11 rounded-full flex items-center justify-center shrink-0"
-                style="color:#20D500;background-color:#20D5001F;">
-                <i class="fa-solid fa-arrow-down text-lg"></i>
-            </div>
-            <div class="min-w-0 flex-1">
-                <p class="text-xs text-ink/70 truncate">รายรับรวม</p>
-                <p id="kpi-revenue" class="text-2xl font-semibold text-ink font-mono mt-0.5 truncate">฿0.00</p>
-                <p id="kpi-revenue-sub" class="text-xs text-ink/50 mt-1">ยอดขายและรายรับอื่น</p>
-            </div>
-        </div>
-        <div class="bg-panel/40 rounded-2xl shadow-lg backdrop-blur-sm p-5 flex items-start gap-4">
-            <div class="w-11 h-11 rounded-full flex items-center justify-center shrink-0"
-                style="color:#FE0000;background-color:#FE00001F;">
-                <i class="fa-solid fa-arrow-up text-lg"></i>
-            </div>
-            <div class="min-w-0 flex-1">
-                <p class="text-xs text-ink/70 truncate">รายจ่ายรวม</p>
-                <p id="kpi-expense" class="text-2xl font-semibold text-ink font-mono mt-0.5 truncate">฿0.00</p>
-                <p id="kpi-expense-sub" class="text-xs text-ink/50 mt-1">ค่าสินค้า (PO) และค่าใช้จ่ายทั่วไป</p>
-            </div>
-        </div>
-        <div class="bg-panel/40 rounded-2xl shadow-lg backdrop-blur-sm p-5 flex items-start gap-4">
-            <div class="w-11 h-11 rounded-full flex items-center justify-center shrink-0"
-                style="color:#FFE169;background-color:#FFE1691F;">
-                <i class="fa-solid fa-chart-line text-lg"></i>
-            </div>
-            <div class="min-w-0 flex-1">
-                <p class="text-xs text-ink/70 truncate">กำไรสุทธิ</p>
-                <p id="kpi-profit" class="text-2xl font-semibold text-ink font-mono mt-0.5 truncate">฿0.00</p>
-                <p id="kpi-profit-sub" class="text-xs text-ink/50 mt-1">รายรับรวม หัก รายจ่ายรวม</p>
-            </div>
-        </div>
-        <div class="bg-panel/40 rounded-2xl shadow-lg backdrop-blur-sm p-5 flex items-start gap-4">
-            <div class="w-11 h-11 rounded-full flex items-center justify-center shrink-0"
-                style="color:#22D3EE;background-color:#22D3EE1F;">
-                <i class="fa-solid fa-receipt text-lg"></i>
-            </div>
-            <div class="min-w-0 flex-1">
-                <p class="text-xs text-ink/70 truncate">ภาษีค้างจ่าย (VAT 7%)</p>
-                <p id="kpi-vat" class="text-2xl font-semibold text-ink font-mono mt-0.5 truncate">฿0.00</p>
-                <p id="kpi-vat-sub" class="text-xs text-ink/50 mt-1">ภาษีขาย หัก ภาษีซื้อ</p>
-            </div>
-        </div>
-    </div>
+    <!-- ส่วนที่ 1: สรุปภาพรวม — สิ่งที่ต้องเห็นก่อนสุดของหน้าบัญชี คือตัวเลขสรุปของช่วงเวลาที่เลือก -->
+    <div class="space-y-4">
+        <span class="text-body-muted font-bold text-xs uppercase tracking-wider block px-1">สรุปภาพรวมตามช่วงเวลาที่เลือก</span>
 
-    <!-- [3] โครงสร้างรายรับ-รายจ่าย + ภาษีมูลค่าเพิ่ม — ใช้ฟิลด์ที่ API ส่งมาอยู่แล้วแต่เดิมไม่ได้แสดง -->
-    <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
-        <div class="lg:col-span-8 bg-panel/40 rounded-2xl shadow-lg overflow-hidden backdrop-blur-sm">
-            <div class="p-6 pb-0 flex flex-wrap items-center justify-between gap-3">
-                <h3 class="text-lg text-ink flex items-center gap-2">
-                    <i class="fa-solid fa-money-bill-transfer text-accent-ink"></i>
-                    โครงสร้างรายรับ - รายจ่าย
-                    <span id="acc-breakdown-period" class="text-sm text-ink/70"></span>
-                </h3>
-                <div class="flex flex-wrap items-center gap-4 text-xs text-ink">
-                    <span class="flex items-center gap-2">
-                        <span class="w-2.5 h-2.5 rounded-full bg-state-ok shrink-0"></span> รายรับ
-                    </span>
-                    <span class="flex items-center gap-2">
-                        <span class="w-2.5 h-2.5 rounded-full bg-state-danger shrink-0"></span> รายจ่าย
-                    </span>
+        <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+            <div class="bg-panel/40 rounded-2xl shadow-lg backdrop-blur-sm p-5 flex items-start gap-4">
+                <div class="w-11 h-11 rounded-full flex items-center justify-center shrink-0"
+                    style="color:#20D500;background-color:#20D5001F;">
+                    <i class="fa-solid fa-arrow-down text-lg"></i>
+                </div>
+                <div class="min-w-0 flex-1">
+                    <p class="text-xs text-ink/70 truncate">รายรับรวม</p>
+                    <p id="kpi-revenue" class="text-2xl font-semibold text-ink font-mono mt-0.5 truncate">฿0.00</p>
+                    <p id="kpi-revenue-sub" class="text-xs text-ink/50 mt-1">ยอดขายและรายรับอื่น</p>
                 </div>
             </div>
-            <div id="acc-breakdown-body" class="p-6"></div>
+            <div class="bg-panel/40 rounded-2xl shadow-lg backdrop-blur-sm p-5 flex items-start gap-4">
+                <div class="w-11 h-11 rounded-full flex items-center justify-center shrink-0"
+                    style="color:#FE0000;background-color:#FE00001F;">
+                    <i class="fa-solid fa-arrow-up text-lg"></i>
+                </div>
+                <div class="min-w-0 flex-1">
+                    <p class="text-xs text-ink/70 truncate">รายจ่ายรวม</p>
+                    <p id="kpi-expense" class="text-2xl font-semibold text-ink font-mono mt-0.5 truncate">฿0.00</p>
+                    <p id="kpi-expense-sub" class="text-xs text-ink/50 mt-1">ค่าสินค้า (PO) และค่าใช้จ่ายทั่วไป</p>
+                </div>
+            </div>
+            <div class="bg-panel/40 rounded-2xl shadow-lg backdrop-blur-sm p-5 flex items-start gap-4">
+                <div class="w-11 h-11 rounded-full flex items-center justify-center shrink-0"
+                    style="color:#FFE169;background-color:#FFE1691F;">
+                    <i class="fa-solid fa-chart-line text-lg"></i>
+                </div>
+                <div class="min-w-0 flex-1">
+                    <p class="text-xs text-ink/70 truncate">กำไรสุทธิ</p>
+                    <p id="kpi-profit" class="text-2xl font-semibold text-ink font-mono mt-0.5 truncate">฿0.00</p>
+                    <p id="kpi-profit-sub" class="text-xs text-ink/50 mt-1">รายรับรวม หัก รายจ่ายรวม</p>
+                </div>
+            </div>
+            <div class="bg-panel/40 rounded-2xl shadow-lg backdrop-blur-sm p-5 flex items-start gap-4">
+                <div class="w-11 h-11 rounded-full flex items-center justify-center shrink-0"
+                    style="color:#22D3EE;background-color:#22D3EE1F;">
+                    <i class="fa-solid fa-receipt text-lg"></i>
+                </div>
+                <div class="min-w-0 flex-1">
+                    <p class="text-xs text-ink/70 truncate">ภาษีค้างจ่าย (VAT 7%)</p>
+                    <p id="kpi-vat" class="text-2xl font-semibold text-ink font-mono mt-0.5 truncate">฿0.00</p>
+                    <p id="kpi-vat-sub" class="text-xs text-ink/50 mt-1">ภาษีขาย หัก ภาษีซื้อ</p>
+                </div>
+            </div>
         </div>
 
-        <div class="lg:col-span-4 bg-panel/40 rounded-2xl shadow-lg overflow-hidden backdrop-blur-sm">
-            <div class="p-6 pb-0">
-                <h3 class="text-lg text-ink flex items-center gap-2">
-                    <i class="fa-solid fa-receipt text-accent-ink"></i> ภาษีมูลค่าเพิ่ม
-                </h3>
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
+            <div class="lg:col-span-8 bg-panel/40 rounded-2xl shadow-lg overflow-hidden backdrop-blur-sm">
+                <div class="p-6 pb-0 flex flex-wrap items-center justify-between gap-3">
+                    <h3 class="text-lg text-ink flex items-center gap-2">
+                        <i class="fa-solid fa-money-bill-transfer text-accent-ink"></i>
+                        โครงสร้างรายรับ - รายจ่าย
+                        <span id="acc-breakdown-period" class="text-sm text-ink/70"></span>
+                    </h3>
+                    <div class="flex flex-wrap items-center gap-4 text-xs text-ink">
+                        <span class="flex items-center gap-2">
+                            <span class="w-2.5 h-2.5 rounded-full bg-state-ok shrink-0"></span> รายรับ
+                        </span>
+                        <span class="flex items-center gap-2">
+                            <span class="w-2.5 h-2.5 rounded-full bg-state-danger shrink-0"></span> รายจ่าย
+                        </span>
+                    </div>
+                </div>
+                <div id="acc-breakdown-body" class="p-6"></div>
             </div>
-            <div id="acc-vat-body" class="p-6"></div>
+
+            <div class="lg:col-span-4 bg-panel/40 rounded-2xl shadow-lg overflow-hidden backdrop-blur-sm">
+                <div class="p-6 pb-0">
+                    <h3 class="text-lg text-ink flex items-center gap-2">
+                        <i class="fa-solid fa-receipt text-accent-ink"></i> ภาษีมูลค่าเพิ่ม
+                    </h3>
+                </div>
+                <div id="acc-vat-body" class="p-6"></div>
+            </div>
         </div>
     </div>
 
-    <!-- [4] แท็บ — ปุ่มทึบเหลืองของหน้านี้คือปุ่ม "บันทึกค่าใช้จ่าย" แท็บจึงใช้สูตรแท็บมาตรฐาน -->
-    <div class="flex flex-wrap items-center gap-2">
+    <!-- ส่วนที่ 2: รายการที่ต้องดำเนินการ — 3 worklist ประจำวัน (เจ้าหนี้ / เดินบัญชี / ลูกหนี้)
+         ปุ่มทึบเหลืองของหน้านี้คือ "บันทึกค่าใช้จ่าย" ในหัวหน้าเท่านั้น แท็บจึงใช้สูตรแท็บมาตรฐานของระบบ -->
+    <div class="space-y-4">
+        <span class="text-body-muted font-bold text-xs uppercase tracking-wider block px-1">บัญชีเจ้าหนี้ · รายการเดินบัญชี · บัญชีลูกหนี้</span>
+
+        <div class="flex flex-wrap items-center gap-2">
         <button id="tab-accounting-ap" type="button" aria-pressed="true"
             class="border border-transparent px-4 py-2.5 rounded-xl text-sm font-bold transition-colors flex items-center gap-2 cursor-pointer bg-primary text-on-primary ring-1 ring-accent-ink">
             <i class="fa-solid fa-hourglass-half"></i> บัญชีเจ้าหนี้ (AP)
@@ -974,7 +984,7 @@
             </div>
             <div id="acc-ap-view-list-wrap" class="overflow-x-auto" tabindex="0">
                 <table class="w-full text-left text-sm whitespace-nowrap border-collapse">
-                    <thead class="bg-panel/40 text-ink">
+                    <thead class="bg-panel/90 backdrop-blur-sm text-ink sticky top-0 z-10">
                         <tr>
                             <th class="px-6 py-4 font-semibold text-[15px]">เลขที่ PO / วันที่</th>
                             <th class="px-6 py-4 font-semibold text-[15px] w-full">ซัพพลายเออร์</th>
@@ -1016,7 +1026,7 @@
             </div>
             <div id="acc-pl-view-list-wrap" class="mt-4 overflow-x-auto" tabindex="0">
                 <table class="w-full text-left text-sm whitespace-nowrap border-collapse">
-                    <thead class="bg-panel/40 text-ink">
+                    <thead class="bg-panel/90 backdrop-blur-sm text-ink sticky top-0 z-10">
                         <tr>
                             <th class="px-6 py-4 font-semibold text-[15px]">เลขที่ธุรกรรม / วันที่</th>
                             <th class="px-6 py-4 font-semibold text-[15px]">ประเภท</th>
@@ -1057,7 +1067,7 @@
             </div>
             <div id="acc-ar-view-list-wrap" class="mt-4 overflow-x-auto" tabindex="0">
                 <table class="w-full text-left text-sm whitespace-nowrap border-collapse">
-                    <thead class="bg-panel/40 text-ink">
+                    <thead class="bg-panel/90 backdrop-blur-sm text-ink sticky top-0 z-10">
                         <tr>
                             <th class="px-6 py-4 font-semibold text-[15px]">เลขที่ใบเสร็จ / วันที่ขาย</th>
                             <th class="px-6 py-4 font-semibold text-[15px] w-full">บริษัทไฟแนนซ์</th>
@@ -1071,6 +1081,7 @@
             </div>
             <div id="acc-ar-view-cards" class="hidden grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 p-6"></div>
         </div>
+    </div>
     </div>
 </div>
 
@@ -1190,5 +1201,86 @@
         </div>
         <!-- 2c' การ์ด (มุมมองทางเลือก — ซ่อนไว้ก่อน สลับผ่านปุ่มด้านบน) -->
         <div id="receive-view-cards" class="hidden grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 p-6"></div>
+    </div>
+
+    <!-- ============================================================================
+         Mobile step-flow สำหรับ "ตรวจรับของ" — ใช้เฉพาะจอ < lg (มือถือ/แท็บเล็ตแนวตั้ง)
+         เดสก์ท็อป (lg+) ยังคงเปิด #modal-po-receive เดิมเป๊ะ ไม่มีการเปลี่ยนแปลงใดๆ กับเดสก์ท็อป
+         ทั้งสองโหมดใช้ po.items ชุดเดียวกัน และส่งไป endpoint POST /po/:id/scan-item ตัวเดียวกัน
+         (js/page-po-accounting.js: openMobileReceiveFlow) — lg:hidden กันไว้สองชั้นกับ JS ที่เช็ค
+         window.innerWidth ก่อนเปิดอยู่แล้ว เผื่อกรณี resize หน้าต่างขณะเปิดค้างอยู่
+    ============================================================================ -->
+    <div id="receive-mobile-flow" class="hidden lg:hidden fixed inset-0 z-[52] bg-canvas flex-col">
+        <!-- จอ: คีย์รับทีละรายการ -->
+        <div id="receive-mobile-item-screen" class="hidden flex-1 flex-col min-h-0">
+            <div class="shrink-0 elev-chip bg-panel/90 backdrop-blur-sm px-4 py-3 flex items-center gap-3">
+                <button type="button" id="btn-receive-mobile-back" aria-label="ย้อนกลับ"
+                    class="w-11 h-11 rounded-full flex items-center justify-center text-ink hover:bg-surface-chip active:scale-95 transition-all shrink-0">
+                    <i class="fa-solid fa-arrow-left text-lg"></i>
+                </button>
+                <div class="min-w-0 flex-1">
+                    <p id="receive-mobile-po-number" class="text-sm font-mono font-semibold text-accent-ink truncate"></p>
+                    <p id="receive-mobile-item-progress" class="text-xs text-ink/70"></p>
+                </div>
+            </div>
+            <div id="receive-mobile-item-body" class="flex-1 overflow-y-auto p-4"></div>
+            <div class="shrink-0 px-4 pt-3 border-t border-hairline"
+                style="padding-bottom:max(1rem, env(safe-area-inset-bottom));">
+                <button type="button" id="btn-receive-mobile-next"
+                    class="w-full px-4 py-3.5 bg-primary hover:bg-[#E2B93C] active:scale-[0.98] text-on-primary font-semibold rounded-xl transition-all flex items-center justify-center gap-2">
+                    <span id="receive-mobile-next-label">ถัดไป</span>
+                    <i class="fa-solid fa-arrow-right"></i>
+                </button>
+                <p id="receive-mobile-next-hint" class="text-center text-xs text-ink/50 mt-2"></p>
+            </div>
+        </div>
+
+        <!-- จอ: สรุปก่อนส่ง -->
+        <div id="receive-mobile-summary-screen" class="hidden flex-1 flex-col min-h-0">
+            <div class="shrink-0 elev-chip bg-panel/90 backdrop-blur-sm px-4 py-3 flex items-center gap-3">
+                <button type="button" id="btn-receive-mobile-summary-back" aria-label="ย้อนกลับ"
+                    class="w-11 h-11 rounded-full flex items-center justify-center text-ink hover:bg-surface-chip active:scale-95 transition-all shrink-0">
+                    <i class="fa-solid fa-arrow-left text-lg"></i>
+                </button>
+                <p class="text-sm font-semibold text-ink">สรุปก่อนส่งตรวจสอบ</p>
+            </div>
+            <div id="receive-mobile-summary-body" class="flex-1 overflow-y-auto p-4 space-y-3"></div>
+            <div class="shrink-0 px-4 pt-3 border-t border-hairline"
+                style="padding-bottom:max(1rem, env(safe-area-inset-bottom));">
+                <button type="button" id="btn-receive-mobile-submit"
+                    class="w-full px-4 py-3.5 bg-primary hover:bg-[#E2B93C] active:scale-[0.98] text-on-primary font-semibold rounded-xl transition-all flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-paper-plane"></i> ยืนยันส่งตรวจสอบ
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bottom sheet ยืนยันขั้นสุดท้าย — สูตรเดียวกับ #pos-mobile-cart-panel ของหน้า POS -->
+    <div id="receive-mobile-confirm-overlay"
+        class="hidden lg:hidden fixed inset-0 z-[57] bg-canvas/70 backdrop-blur-sm opacity-0 pointer-events-none transition-opacity duration-300">
+    </div>
+    <div id="receive-mobile-confirm-sheet"
+        class="hidden lg:hidden fixed bottom-0 inset-x-0 z-[58] bg-canvas-elevated rounded-t-2xl border-t border-hairline translate-y-full transition-transform duration-300 max-h-[85vh] flex-col">
+        <div class="shrink-0 px-5 py-4 border-b border-hairline flex items-center justify-between">
+            <h3 class="text-base font-bold text-ink flex items-center gap-2">
+                <i class="fa-solid fa-triangle-exclamation text-accent-ink"></i> ยืนยันส่งตรวจสอบ
+            </h3>
+            <button type="button" id="btn-receive-mobile-confirm-close" aria-label="ปิด"
+                class="w-9 h-9 rounded-full flex items-center justify-center text-body-muted hover:text-ink hover:bg-surface-chip transition-colors">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+        <div class="flex-1 overflow-y-auto p-5">
+            <p class="text-sm text-ink/80 leading-relaxed">
+                ส่งรายการนี้ให้ผู้จัดการตรวจสอบ — หลังส่งแล้วจะ<strong class="text-ink">แก้ไขจำนวน/IMEI ในรอบนี้ไม่ได้</strong>
+                สินค้าจะ<strong class="text-ink">ยังไม่เข้าสต็อก</strong>จนกว่าผู้จัดการจะอนุมัติการนำเข้า
+            </p>
+        </div>
+        <div class="shrink-0 p-5 border-t border-hairline" style="padding-bottom:max(1.25rem, env(safe-area-inset-bottom));">
+            <button type="button" id="btn-receive-mobile-confirm-submit"
+                class="w-full px-4 py-3.5 bg-primary hover:bg-[#E2B93C] active:scale-[0.98] text-on-primary font-bold rounded-xl transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
+                <i class="fa-solid fa-paper-plane"></i> ยืนยันและส่ง
+            </button>
+        </div>
     </div>
 </div>

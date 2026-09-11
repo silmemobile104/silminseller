@@ -5,8 +5,8 @@
             <i class="hidden md:block bi bi-check-square text-ink w-5 text-2xl text-center"></i>
             <h3 class="hidden md:block text-2xl text-ink">ตรวจนับสต็อกประจำวัน</h3>
         </div>
-        <div class="flex items-center gap-3">
-            <!-- ป้ายสถานะรอบ — คลาสเต็มถูกเขียนทับจาก js/page-stock-audit.js (auditStatusBadge) -->
+        <div class="flex flex-wrap items-center gap-3">
+            <!-- ป้ายสถานะรอบ — คลาสเต็มถูกเขียนทับจาก js/page-stock-audit.js (loadTodayAuditSession) -->
             <span id="audit-session-status-badge" class="hidden"></span>
         </div>
     </div>
@@ -30,17 +30,14 @@
         </div>
 
         <!-- ============================================================ -->
-        <!-- [2] การ์ดสรุป + จุดสแกนหลัก — ความคืบหน้าคือข้อมูลสำคัญที่สุดของหน้านี้
-             จึงรวมกับช่องสแกนไว้การ์ดเดียวแทนที่จะมีหัวข้อย่อยคั่นกลาง (distill: ตัดหัวข้อซ้ำ
-             "รอบตรวจนับวันนี้" ออก — ตำแหน่งบนสุดของหน้าสื่อความหมายนี้อยู่แล้ว) -->
+        <!-- [2] การ์ดสรุป + จุดสแกนหลัก — รื้อสร้างใหม่ (ไม่ใช่ปรับของเดิม): ช่องสแกนอยู่บนสุดเสมอเพราะเป็น
+             action ที่ผู้ใช้ต้องกดถึงทันทีที่เปิดหน้า ความคืบหน้าเป็น hero เต็มความกว้างด้านล่าง คั่นด้วยเส้น —
+             แทนที่โครงเดิมที่บีบทั้งสองอย่างให้แชร์ที่กันแบบ 50/50 ในแถวเดียว -->
         <!-- ============================================================ -->
-        <div class="elev-card bg-panel/40 rounded-2xl overflow-hidden">
-            <!-- ตัวสแกนกับความคืบหน้าอยู่แถวเดียวกันบนจอกว้าง
-                 flex-1 ทั้งคู่ ทำให้ตอนรอบถูกอนุมัติแล้ว (#audit-scan-area ถูกซ่อน)
-                 ความคืบหน้าขยายเต็มความกว้างเอง ไม่ทิ้งช่องว่างครึ่งการ์ด -->
-            <div class="p-6 flex flex-col lg:flex-row lg:items-end gap-6 lg:gap-10">
+        <div id="audit-progress-card" class="elev-card bg-panel/40 rounded-2xl overflow-hidden">
+            <div class="p-6 sm:p-8">
                 <!-- ช่องสแกน IMEI — ซ่อนทั้งบล็อกเมื่อรอบถูกอนุมัติแล้ว (JS สลับคลาส hidden ที่ id นี้) -->
-                <div id="audit-scan-area" class="flex-1 min-w-0">
+                <div id="audit-scan-area">
                     <label for="audit-imei-input" class="text-ink font-medium flex items-center gap-2 text-xs mb-2">
                         <i class="fa-solid fa-qrcode text-ink"></i> สแกนหรือพิมพ์หมายเลข IMEI
                         <span class="text-red-500">*</span>
@@ -60,27 +57,72 @@
                             <i class="fa-solid fa-circle-check"></i> ยืนยัน IMEI
                         </button>
                     </div>
-
                 </div>
 
-                <!-- ความคืบหน้าของรอบ — ตัวเลขที่สแกนแล้วเป็นข้อมูลเด่นที่สุดของหน้านี้ (text-4xl)
-                     ส่วนยอดที่ต้องตรวจทั้งหมดเป็นข้อมูลรอง (text-2xl, สีจาง) -->
-                <div class="flex-1 min-w-0">
-                    <div class="flex flex-wrap items-end justify-between gap-3 mb-3">
-                        <div>
-                            <p class="text-xs text-ink/70">ความคืบหน้าการสแกนวันนี้</p>
-                            <p class="flex items-baseline gap-1.5 mt-1">
-                                <span id="audit-scanned-count" class="text-4xl font-semibold text-ink">0</span>
-                                <span class="text-xl text-ink/70">/</span>
-                                <span id="audit-expected-count" class="text-2xl font-medium text-ink/70">0</span>
-                                <span class="text-sm text-ink/70 ml-1">เครื่อง</span>
-                            </p>
-                        </div>
-                        <p id="audit-progress-pct" class="text-xs text-ink font-medium">0% สำเร็จ</p>
-                    </div>
-                    <div class="w-full bg-skeleton/60 rounded-full h-2 overflow-hidden">
-                        <div id="audit-progress-bar" class="h-2 rounded-full bg-primary transition-all duration-500"
+                <!-- Hero ความคืบหน้า — ตัวเลขใหญ่ที่สุดในหน้ากลางจอเต็มความกว้าง (เดิมถูกบีบเป็นคอลัมน์ครึ่งจอ) -->
+                <div class="mt-8 pt-8 border-t border-hairline text-center">
+                    <p class="text-xs text-ink/70">ความคืบหน้าการสแกนวันนี้</p>
+                    <p class="flex items-baseline justify-center gap-2 mt-2">
+                        <span id="audit-scanned-count" class="text-6xl font-semibold text-ink font-mono">0</span>
+                        <span class="text-2xl text-ink/50">/</span>
+                        <span id="audit-expected-count" class="text-3xl font-medium text-ink/70 font-mono">0</span>
+                        <span class="text-sm text-ink/70 ml-1">เครื่อง</span>
+                    </p>
+                    <p id="audit-progress-pct"
+                        class="text-sm text-ink font-medium mt-2 flex items-center justify-center gap-1.5">
+                        <span>0% สำเร็จ</span>
+                        <!-- โผล่เฉพาะตอนสแกนครบ 100% — โมเมนต์ "เสร็จแล้ว พร้อมส่ง" ที่เดิมไม่มี เขียนจาก loadTodayAuditSession() -->
+                        <span id="audit-progress-complete-flag" class="hidden items-center gap-1 text-state-ok">
+                            <i class="fa-solid fa-circle-check"></i> ครบแล้ว พร้อมส่ง
+                        </span>
+                    </p>
+                    <div class="w-full max-w-md mx-auto bg-skeleton/60 rounded-full h-3 overflow-hidden mt-4">
+                        <div id="audit-progress-bar" class="h-3 rounded-full bg-primary transition-all duration-500"
                             style="width:0%"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- การ์ดสรุปผลต่าง — แทนที่การ์ดสแกน+ความคืบหน้าด้านบนหลังส่งผลแล้ว (สถานะ != "กำลังตรวจนับ")
+             ใช้ข้อมูลชุดเดียวกับตาราง "สินค้าที่ต้องตรวจนับวันนี้"/"รายการที่สแกนแล้ว" ด้านล่าง ไม่มีตัวเลขมูลค่าเงิน
+             เพราะโมดูลนี้เป็นการกระทบยอดระดับ IMEI ไม่มีฟิลด์ต้นทุน/มูลค่าให้คำนวณ (เขียนจาก renderAuditVarianceSummary()) -->
+        <div id="audit-variance-summary" class="hidden elev-card bg-panel/40 rounded-2xl p-6">
+            <h3 class="text-lg text-ink flex items-center gap-2 mb-5">
+                <i class="fa-solid fa-scale-balanced text-accent-ink"></i> สรุปผลต่างการตรวจนับ
+            </h3>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div class="flex items-center gap-4">
+                    <div
+                        class="w-11 h-11 rounded-full flex items-center justify-center shrink-0 bg-state-ok-tint/[0.12] text-state-ok">
+                        <i class="fa-solid fa-circle-check text-lg"></i>
+                    </div>
+                    <div class="min-w-0">
+                        <p class="text-xs text-ink/70">ตรงตามแผน</p>
+                        <p id="audit-variance-match" class="text-2xl font-semibold text-ink font-mono mt-0.5">0 <span
+                                class="text-xs font-normal text-ink/70">เครื่อง</span></p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-4">
+                    <div
+                        class="w-11 h-11 rounded-full flex items-center justify-center shrink-0 bg-state-danger/[0.12] text-state-danger">
+                        <i class="fa-solid fa-triangle-exclamation text-lg"></i>
+                    </div>
+                    <div class="min-w-0">
+                        <p class="text-xs text-ink/70">ขาด (ยังไม่สแกน)</p>
+                        <p id="audit-variance-missing" class="text-2xl font-semibold text-ink font-mono mt-0.5">0 <span
+                                class="text-xs font-normal text-ink/70">เครื่อง</span></p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-4">
+                    <div
+                        class="w-11 h-11 rounded-full flex items-center justify-center shrink-0 bg-orange-500/[0.12] text-orange-400">
+                        <i class="fa-solid fa-circle-plus text-lg"></i>
+                    </div>
+                    <div class="min-w-0">
+                        <p class="text-xs text-ink/70">เกิน (นอกแผน)</p>
+                        <p id="audit-variance-extra" class="text-2xl font-semibold text-ink font-mono mt-0.5">0 <span
+                                class="text-xs font-normal text-ink/70">เครื่อง</span></p>
                     </div>
                 </div>
             </div>
@@ -154,7 +196,7 @@
             <div id="expected-list-body">
                 <div id="expected-view-list-wrap" class="overflow-x-auto" tabindex="0">
                     <table id="expected-items-table" class="w-full text-left text-sm whitespace-nowrap border-collapse">
-                        <thead class="bg-panel/40 text-ink">
+                        <thead class="bg-panel/90 backdrop-blur-sm text-ink sticky top-0 z-10">
                             <tr>
                                 <th class="px-6 py-4 font-semibold text-[15px]">#</th>
                                 <th class="px-6 py-4 font-semibold text-[15px] w-full">ชื่อสินค้า</th>
@@ -185,11 +227,23 @@
                 <h3 class="text-lg text-ink flex items-center gap-2">
                     <i class="fa-solid fa-list-check text-ink/60"></i> รายการที่สแกนแล้ว
                 </h3>
+                <div class="flex flex-wrap items-center gap-2.5 relative w-full lg:w-auto">
+                    <label for="scan-list-filter" class="sr-only">กรองตามผลการตรวจ</label>
+                    <select id="scan-list-filter" aria-label="กรองตามผลการตรวจ"
+                        onchange="filterAuditScanList(this.value)"
+                        class="page-filter-control elev-card bg-transparent rounded-[10px] cursor-pointer text-sm px-3 py-2 text-ink focus:outline-none focus:ring-1 focus:ring-accent-ink w-full sm:w-auto [&>option]:bg-panel [&>option:checked]:bg-primary [&>option:checked]:text-on-primary">
+                        <option value="all">ผลตรวจทั้งหมด</option>
+                        <option value="ok">พบในระบบ</option>
+                        <option value="unexpected">ไม่พบในระบบ</option>
+                    </select>
+                </div>
             </div>
 
-            <!-- 2b ตัวนับผลลัพธ์ (ตารางนี้ไม่มีตัวกรองของตัวเอง จึงไม่มีชิป) + สลับมุมมอง -->
+            <!-- 2b ชิปตัวกรองที่ใช้อยู่ + ตัวนับผลลัพธ์ + สลับมุมมอง (ข้อ 11.5) -->
             <div class="px-6 py-4">
-                <div class="flex items-center justify-end gap-3">
+                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <div id="audit-scan-list-filters" class="flex flex-wrap gap-2"></div>
+                    <div class="flex items-center gap-3">
                     <div id="audit-scan-list-count" class="text-xs text-ink font-medium"></div>
                     <div class="flex items-center gap-1 shrink-0">
                         <button type="button" id="scan-list-view-list" aria-label="มุมมองรายการ" aria-pressed="true"
@@ -203,11 +257,12 @@
                     </div>
                 </div>
             </div>
+            </div>
 
             <!-- 2c ตาราง -->
             <div id="scan-list-view-list-wrap" class="overflow-x-auto" tabindex="0">
                 <table class="w-full text-left text-sm whitespace-nowrap border-collapse">
-                    <thead class="bg-panel/40 text-ink">
+                    <thead class="bg-panel/90 backdrop-blur-sm text-ink sticky top-0 z-10">
                         <tr>
                             <th class="px-6 py-4 font-semibold text-[15px]">#</th>
                             <th class="px-6 py-4 font-semibold text-[15px]">รูปกล่อง</th>
@@ -230,12 +285,18 @@
 
         <!-- [5] ปุ่มส่งผล + ข้อความสถานะปลายทาง -->
         <div id="audit-submit-area" class="hidden">
-            <button id="btn-audit-submit" type="button"
-                class="w-full px-4 py-3 bg-primary hover:bg-[#E2B93C] text-on-primary font-medium rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer">
-                <i class="fa-solid fa-paper-plane"></i>
-                ส่งผลการตรวจนับให้ตรวจสอบ
-            </button>
-            <p class="text-center text-xs text-ink/70 mt-2">หลังส่งแล้ว พนักงานสต็อกจะตรวจสอบและอนุมัติ</p>
+            <!-- มือถือ (ต่ำกว่า sm): แปะติดล่างจอแบบ floating-sticky-bar (DESIGN.md ข้อ 6) เพราะต้องกดได้ทันทีระหว่างเดินคลัง
+                 ไม่ต้องเลื่อนกลับไปหาปุ่มที่ตำแหน่งเดิม — ใช้เบรกพอยต์เดียวกับที่ #main-content มี pb-24 ให้พอดี
+                 (ลดเหลือ pb-6 ตั้งแต่ sm: ขึ้นไป) sm+ ขึ้นไป: กลับเป็นปุ่มปกติในลำดับเนื้อหาเหมือนเดิม -->
+            <div class="fixed inset-x-0 bottom-0 z-40 bg-surface-tile-3/80 backdrop-blur-[20px] border-t border-hairline px-4 py-3
+                        sm:static sm:z-auto sm:bg-transparent sm:backdrop-blur-none sm:border-t-0 sm:px-0 sm:py-0">
+                <button id="btn-audit-submit" type="button"
+                    class="w-full px-4 py-3 bg-primary hover:bg-[#E2B93C] text-on-primary font-medium rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer">
+                    <i class="fa-solid fa-paper-plane"></i>
+                    ส่งผลการตรวจนับให้ตรวจสอบ
+                </button>
+                <p class="text-center text-xs text-ink/70 mt-2">หลังส่งแล้ว พนักงานสต็อกจะตรวจสอบและอนุมัติ</p>
+            </div>
         </div>
 
         <div id="audit-submitted-msg"
@@ -259,6 +320,19 @@
             <div>
                 <p class="text-ink font-medium">รอบการตรวจนับสต็อกวันนี้อนุมัติแล้ว</p>
                 <p class="text-xs text-ink/70 mt-0.5">ผลการตรวจนับได้รับการอนุมัติจากพนักงานสต็อกเรียบร้อย</p>
+            </div>
+        </div>
+
+        <!-- สถานะที่ 4 "ปิดโดยอัตโนมัติ" — เดิมไม่มีข้อความอธิบายเลย ทำให้หน้าดูค้างเงียบๆ เมื่อ cron ปิดรอบที่ถูกทิ้งไว้ -->
+        <div id="audit-autoclosed-msg"
+            class="hidden elev-card bg-panel/40 rounded-2xl p-6 flex items-center gap-4">
+            <div
+                class="w-12 h-12 rounded-full bg-panel/40 flex items-center justify-center shrink-0 text-ink/70">
+                <i class="fa-solid fa-lock text-xl"></i>
+            </div>
+            <div>
+                <p class="text-ink font-medium">รอบตรวจนับนี้ถูกปิดโดยอัตโนมัติ</p>
+                <p class="text-xs text-ink/70 mt-0.5">ไม่มีการส่งผลภายในเวลาที่กำหนด ระบบจึงปิดรอบให้ — ติดต่อพนักงานสต็อกหากต้องเปิดรอบใหม่</p>
             </div>
         </div>
     </div>

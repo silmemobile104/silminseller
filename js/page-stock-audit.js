@@ -14,6 +14,11 @@
     let _auditSessionData = null;
     let _expectedImeiData = [];
     let _scannedImeiSet = new Set();
+    // สถานะรอบล่าสุดที่เคย render ไปแล้ว — ใช้กันไม่ให้ตัวกรองเริ่มต้น (ดู loadTodayAuditSession)
+    // ถูกตั้งทับตัวเลือกที่ผู้ใช้เพิ่งกดเองซ้ำทุกครั้งที่ฟังก์ชันนี้ถูกเรียกโดยสถานะไม่ได้เปลี่ยนจริง
+    let _lastAuditStatus = null;
+    // ผลกรอง "ผลการตรวจ" ล่าสุดของตาราง "รายการที่สแกนแล้ว" (all/ok/unexpected)
+    let _scanListFilterValue = 'all';
 
     // เพจจิเนชันของตาราง "สินค้าที่ต้องตรวจนับวันนี้" — เหมือนหน้าจัดการสต็อก (script.js: stockLoadedCount/stockItemsPerPage)
     // เก็บชุดแถวที่ผ่านการกรอง/เรียงล่าสุดไว้ต่างหาก ให้ loadMoreExpectedItems() สไลซ์ทีละหน้าได้โดยไม่ต้องกรองซ้ำ
@@ -32,8 +37,16 @@
 
     // สลับมุมมอง List/Card ของทั้งสองตารางในหน้านี้ — จำโหมดไว้ข้ามการเข้าหน้า
     // (เดินตามรูปแบบเดียวกับหน้าการมัดจำ/ประวัติการขาย/สมาชิก/เช็คประกัน/จัดการสต็อก)
-    let _expectedViewMode = localStorage.getItem('audit_expected_view_mode') === 'card' ? 'card' : 'list';
-    let _scanListViewMode = localStorage.getItem('audit_scan_view_mode') === 'card' ? 'card' : 'list';
+    // ค่าเริ่มต้นบนจอเล็ก (ยังไม่เคยเลือกมุมมองเองมาก่อน) เป็น "การ์ด" แทน "รายการ" — หน้านี้ใช้งานระหว่าง
+    // เดินในคลังจริงบนมือถือ ตาราง 6 คอลัมน์เลื่อนซ้ายขวาไม่เหมาะเท่าการ์ดที่ปัดขึ้นลงด้วยนิ้วได้ตรงๆ (STEP 3.7)
+    // ถ้าผู้ใช้เคยกดเลือกมุมมองเองแล้วไม่ว่าจอขนาดไหน ให้ยึดตามที่เลือกไว้เสมอ ไม่ทับด้วยค่าเริ่มต้นนี้
+    const _auditIsNarrowViewport = typeof window !== 'undefined' && window.innerWidth < 640;
+    let _expectedViewMode = localStorage.getItem('audit_expected_view_mode')
+        ? (localStorage.getItem('audit_expected_view_mode') === 'card' ? 'card' : 'list')
+        : (_auditIsNarrowViewport ? 'card' : 'list');
+    let _scanListViewMode = localStorage.getItem('audit_scan_view_mode')
+        ? (localStorage.getItem('audit_scan_view_mode') === 'card' ? 'card' : 'list')
+        : (_auditIsNarrowViewport ? 'card' : 'list');
     // ตัวแปรเดียวกันของหน้า "ตรวจสอบผลการตรวจนับสต็อก" (#stock-audit-review) — ประกาศไว้ต้นไฟล์เพราะ
     // ปุ่มสลับมุมมองถูกผูก (และเรียก _syncViewToggleButtons ทันที) ที่ top-level ของไฟล์นี้ตอนโหลดสคริปต์
     // ก่อนจุดที่ตัวแปรเหล่านี้เคยประกาศไว้เดิม (ใกล้โค้ดส่วนตรวจสอบผล) — ต้องอยู่เหนือจุดใช้งานเสมอ (TDZ ของ let)
@@ -63,6 +76,26 @@
         return `<div class="inline-flex items-center gap-2 px-2.5 py-1 rounded-[0.375rem] ${t.bg}">`
             + `<div class="w-2 h-2 rounded-full ${t.dot}"></div>`
             + `<span class="${t.text} font-medium text-xs">${label}</span></div>`;
+    };
+
+    // การ์ดสรุปผลต่าง (ตรง/ขาด/เกิน) — นับจากข้อมูลชุดเดียวกับตารางด้านล่าง ไม่มีมูลค่าเงิน
+    // เพราะโมดูลนี้เป็นการกระทบยอดระดับ IMEI ไม่มีฟิลด์ต้นทุน/ราคาอยู่ในระบบให้คำนวณ
+    const renderAuditVarianceSummary = (expectedImeis, scannedItems) => {
+        const matchEl = document.getElementById('audit-variance-match');
+        const missingEl = document.getElementById('audit-variance-missing');
+        const extraEl = document.getElementById('audit-variance-extra');
+        if (!matchEl || !missingEl || !extraEl) return;
+
+        const scannedSet = new Set((scannedItems || []).map(i => i.imei));
+        const expectedSet = new Set((expectedImeis || []).map(e => e.imei));
+
+        const match = (expectedImeis || []).filter(e => scannedSet.has(e.imei)).length;
+        const missing = (expectedImeis || []).filter(e => !scannedSet.has(e.imei) && !e.sold).length;
+        const extra = (scannedItems || []).filter(i => !expectedSet.has(i.imei)).length;
+
+        matchEl.innerHTML = `${match} <span class="text-xs font-normal text-ink/70">เครื่อง</span>`;
+        missingEl.innerHTML = `${missing} <span class="text-xs font-normal text-ink/70">เครื่อง</span>`;
+        extraEl.innerHTML = `${extra} <span class="text-xs font-normal text-ink/70">เครื่อง</span>`;
     };
 
     // ป้ายหมวดหมู่ในเซลล์ (สี / ความจุ) — ไม่มีค่าให้ใช้ "-" ไม่ปล่อยว่าง (ข้อ 11.6)
@@ -276,6 +309,7 @@
                         preview.src = _auditPhotoBase64;
                         preview.classList.remove('hidden');
                     }
+                    setAuditModalSubmitEnabled(true);
                 };
                 reader.readAsDataURL(file);
             });
@@ -336,6 +370,7 @@
         if (btnCamera) btnCamera.innerHTML = '<i class="fa-solid fa-camera text-base"></i> <span>เปิดกล้อง / เลือกรูป</span>';
         if (notesInput) notesInput.value = '';
         if (photoInput) photoInput.value = '';
+        setAuditModalSubmitEnabled(false);
 
         // แสดง Modal
         if (modal) {
@@ -361,6 +396,7 @@
             if (btnCamera) btnCamera.innerHTML = '<i class="fa-solid fa-camera text-base"></i> <span>เปิดกล้อง / เลือกรูป</span>';
             if (notesInput) notesInput.value = '';
             if (photoInput) photoInput.value = '';
+            setAuditModalSubmitEnabled(false);
 
             const imeiInput = document.getElementById('audit-imei-input');
             if (imeiInput) {
@@ -395,6 +431,17 @@
             cleanFields();
         }
     }
+
+    // ปิด/เปิดปุ่ม "ยืนยันการตรวจสอบ" ตามว่ามีรูปหลักฐานแล้วหรือยัง — สัญญาณ error ต้องอยู่ที่จุดเกิดเหตุ
+    // (ตัวปุ่มเอง) ไม่ใช่พึ่ง toast ชั่วคราวเพียงอย่างเดียวเหมือนเดิม (STEP 3.3)
+    const setAuditModalSubmitEnabled = (enabled) => {
+        const btn = document.getElementById('btn-audit-modal-submit');
+        if (!btn) return;
+        btn.disabled = !enabled;
+        btn.classList.toggle('opacity-50', !enabled);
+        btn.classList.toggle('cursor-not-allowed', !enabled);
+        btn.classList.toggle('cursor-pointer', enabled);
+    };
 
     async function submitModalAuditItem() {
         if (!_auditSessionId) return;
@@ -522,6 +569,7 @@
             const expectedCount = document.getElementById('audit-expected-count');
             const progressBar = document.getElementById('audit-progress-bar');
             const progressPct = document.getElementById('audit-progress-pct');
+            const completeFlag = document.getElementById('audit-progress-complete-flag');
             const branchName = document.getElementById('audit-branch-name');
             const sessionDate = document.getElementById('audit-session-date');
 
@@ -533,16 +581,50 @@
             if (scannedCount) scannedCount.textContent = resolved;
             if (expectedCount) expectedCount.textContent = total;
             if (progressBar) progressBar.style.width = `${pct}%`;
-            if (progressPct) progressPct.textContent = `${pct}% สำเร็จ`;
+            if (progressPct) progressPct.querySelector('span').textContent = `${pct}% สำเร็จ`;
+            // โมเมนต์ "เสร็จแล้ว พร้อมส่ง" ที่เดิมไม่มีเลยตอนสแกนครบ 100%
+            if (completeFlag) completeFlag.classList.toggle('hidden', !(pct === 100 && total > 0));
             if (branchName) branchName.textContent = session.branch_id?.name || '—';
             if (sessionDate) sessionDate.textContent = new Date(session.session_date).toLocaleDateString('th-TH', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
-            // แสดง scan area หรือแสดงสถานะ — สามสถานะต้องแยกกันจริง (เดิม "กำลังตรวจนับ" กับ "รอการอนุมัติ"
+            // แสดง scan area หรือแสดงสถานะ — สี่สถานะต้องแยกกันจริง (เดิม "กำลังตรวจนับ" กับ "รอการอนุมัติ"
             // ถูกจับรวมกัน ทำให้ปุ่มส่งผลไม่มีวันโผล่ และข้อความ "ส่งผลสำเร็จแล้ว" ก็ไม่มีวันแสดงเช่นกัน)
             const scanArea = document.getElementById('audit-scan-area');
             const submitArea = document.getElementById('audit-submit-area');
             const submittedMsg = document.getElementById('audit-submitted-msg');
             const approvedMsg = document.getElementById('audit-approved-msg');
+            const autoclosedMsg = document.getElementById('audit-autoclosed-msg');
+            const progressCard = document.getElementById('audit-progress-card');
+            const varianceSummary = document.getElementById('audit-variance-summary');
+
+            const isCounting = session.status === 'กำลังตรวจนับ';
+            // การ์ดสแกน+ความคืบหน้า vs การ์ดสรุปผลต่าง — สลับกันตามว่ายังนับอยู่หรือส่งไปแล้ว (STEP 3.2)
+            if (progressCard) progressCard.classList.toggle('hidden', !isCounting);
+            if (varianceSummary) {
+                varianceSummary.classList.toggle('hidden', isCounting);
+                if (!isCounting) renderAuditVarianceSummary(expectedImeis, items);
+            }
+
+            // ตั้งตัวกรองเริ่มต้นให้ตรงโหมดแค่ตอนสถานะ "เพิ่งเปลี่ยน" เท่านั้น — กันไม่ให้ทับตัวกรองที่ผู้ใช้
+            // เลือกเองซ้ำทุกครั้งที่ loadTodayAuditSession ถูกเรียก (เช่นหลังลบรายการระหว่างตรวจสอบ)
+            if (session.status !== _lastAuditStatus) {
+                if (!isCounting) {
+                    // เน้นสิ่งที่ยัง "ขาด" (รอสแกน) และ "เกิน" (นอกแผน) ทันทีที่ไม่มีอะไรให้สแกนต่อแล้ว
+                    const expFilter = document.getElementById('expected-list-filter');
+                    if (expFilter) { expFilter.value = 'pending'; filterExpectedList(document.getElementById('expected-list-search')?.value || ''); }
+                    const scanFilter = document.getElementById('scan-list-filter');
+                    if (scanFilter) { scanFilter.value = 'unexpected'; filterAuditScanList('unexpected'); }
+                    const expectedBody = document.getElementById('expected-list-body');
+                    if (expectedBody && expectedBody.classList.contains('hidden')) toggleExpectedList();
+                } else if (_lastAuditStatus !== null) {
+                    // ย้อนกลับมา "กำลังตรวจนับ" (เช่นถูกตีกลับให้ตรวจใหม่) — คืนตัวกรองเป็นค่าเริ่มต้นปกติ
+                    const expFilter = document.getElementById('expected-list-filter');
+                    if (expFilter) { expFilter.value = 'all'; filterExpectedList(document.getElementById('expected-list-search')?.value || ''); }
+                    const scanFilter = document.getElementById('scan-list-filter');
+                    if (scanFilter) { scanFilter.value = 'all'; filterAuditScanList('all'); }
+                }
+                _lastAuditStatus = session.status;
+            }
 
             if (session.status === 'กำลังตรวจนับ') {
                 if (scanArea) scanArea.classList.remove('hidden');
@@ -551,16 +633,25 @@
                 if (submitArea) submitArea.classList.toggle('hidden', !(items || []).length);
                 if (submittedMsg) submittedMsg.classList.add('hidden');
                 if (approvedMsg) approvedMsg.classList.add('hidden');
+                if (autoclosedMsg) autoclosedMsg.classList.add('hidden');
             } else if (session.status === 'รอการอนุมัติ') {
                 if (scanArea) scanArea.classList.add('hidden');
                 if (submitArea) submitArea.classList.add('hidden');
                 if (submittedMsg) submittedMsg.classList.remove('hidden');
                 if (approvedMsg) approvedMsg.classList.add('hidden');
+                if (autoclosedMsg) autoclosedMsg.classList.add('hidden');
             } else if (session.status === 'อนุมัติแล้ว') {
                 if (scanArea) scanArea.classList.add('hidden');
                 if (submitArea) submitArea.classList.add('hidden');
                 if (submittedMsg) submittedMsg.classList.add('hidden');
                 if (approvedMsg) approvedMsg.classList.remove('hidden');
+                if (autoclosedMsg) autoclosedMsg.classList.add('hidden');
+            } else if (session.status === 'ปิดโดยอัตโนมัติ') {
+                if (scanArea) scanArea.classList.add('hidden');
+                if (submitArea) submitArea.classList.add('hidden');
+                if (submittedMsg) submittedMsg.classList.add('hidden');
+                if (approvedMsg) approvedMsg.classList.add('hidden');
+                if (autoclosedMsg) autoclosedMsg.classList.remove('hidden');
             }
 
             // render scan lists
@@ -899,7 +990,26 @@
         }
     }
 
+    let _scannedItemsCache = [];
+
+    // ตัวกรอง "ผลการตรวจ" ของตาราง "รายการที่สแกนแล้ว" (ข้อ 11.5) — เรียกใหม่ทุกครั้งจาก select onchange
+    function filterAuditScanList(value) {
+        _scanListFilterValue = value || 'all';
+        renderAuditScanList(_scannedItemsCache);
+    }
+
+    const renderScanListChips = () => {
+        const box = document.getElementById('audit-scan-list-filters');
+        if (!box) return;
+        if (_scanListFilterValue === 'all') { box.innerHTML = ''; return; }
+        const label = _scanListFilterValue === 'unexpected' ? 'ผลการตรวจ: ไม่พบในระบบ' : 'ผลการตรวจ: พบในระบบ';
+        box.innerHTML = `<span class="px-4 py-2.5 rounded-xl bg-panel/40 border border-hairline text-ink text-sm font-medium transition-colors inline-flex items-center gap-2">
+            <span>${label}</span><i class="fa-solid fa-xmark text-[10px] opacity-80 cursor-pointer" onclick="filterAuditScanList('all'); document.getElementById('scan-list-filter').value='all';"></i>
+        </span>`;
+    };
+
     function renderAuditScanList(items) {
+        _scannedItemsCache = items || [];
         const list = document.getElementById('audit-scan-list');
         const cardsWrap = document.getElementById('scan-list-view-cards');
         const countEl = document.getElementById('audit-scan-list-count');
@@ -909,11 +1019,23 @@
         if (listWrap) listWrap.classList.toggle('hidden', _scanListViewMode !== 'list');
         if (cardsWrap) cardsWrap.classList.toggle('hidden', _scanListViewMode !== 'card');
 
-        // ตารางนี้ไม่มีตัวกรอง จึงไม่มี "จาก M" ให้เทียบ (ต่างจากตัวนับตามข้อ 11.5)
-        if (countEl) countEl.textContent = items.length ? `ทั้งหมด ${items.length} รายการ` : '';
+        renderScanListChips();
 
-        if (items.length === 0) {
-            const msg = 'ยังไม่มีรายการ เริ่มสแกน IMEI เลย';
+        const filtered = _scanListFilterValue === 'all'
+            ? _scannedItemsCache
+            : _scannedItemsCache.filter(i => _scanListFilterValue === 'unexpected' ? !i.is_expected : i.is_expected);
+
+        // มีตัวกรองแล้ว จึงใช้รูปแบบ "แสดง N จาก M" เหมือนตารางอื่นตามข้อ 11.5 เมื่อกรองอยู่
+        if (countEl) {
+            countEl.textContent = _scannedItemsCache.length
+                ? (_scanListFilterValue === 'all'
+                    ? `ทั้งหมด ${_scannedItemsCache.length} รายการ`
+                    : `แสดง ${filtered.length} จาก ${_scannedItemsCache.length} รายการ`)
+                : '';
+        }
+
+        if (filtered.length === 0) {
+            const msg = _scannedItemsCache.length ? 'ไม่พบรายการตามตัวกรองที่เลือก' : 'ยังไม่มีรายการ เริ่มสแกน IMEI เลย';
             list.innerHTML = stateRow(SCAN_TABLE_COLS, msg);
             if (cardsWrap) cardsWrap.innerHTML = `<div class="col-span-full py-12 text-center text-ink/50 italic">${msg}</div>`;
             return;
@@ -922,7 +1044,7 @@
         const rowsHtml = [];
         const cardsHtml = [];
 
-        items.forEach((item, idx) => {
+        filtered.forEach((item, idx) => {
             const badgeHtml = item.is_expected
                 ? statusBadge('ok', 'พบในระบบ')
                 : statusBadge('fail', 'ไม่พบในระบบ');
@@ -991,7 +1113,9 @@
     async function deleteAuditItem(imei) {
         if (!_auditSessionId) return;
 
-        showConfirm('ยืนยันลบรายการ', `คุณต้องการลบ IMEI ${imei} ออกจากรอบตรวจนับนี้ใช่หรือไม่?`, async () => {
+        showConfirm('ยืนยันลบรายการ',
+            `ลบ IMEI <span class="font-mono text-accent-ink">${imei}</span> ออกจากรอบตรวจนับนี้? รูปกล่องและหมายเหตุที่บันทึกไว้จะหายไปด้วย ต้องสแกนใหม่อีกครั้งถ้ายังต้องนับเครื่องนี้`,
+            async () => {
             try {
                 const token = localStorage.getItem('silmin_token');
                 const r = await fetch(`/api/stock-audit/sessions/${_auditSessionId}/scan/${encodeURIComponent(imei)}`, {
@@ -1634,6 +1758,7 @@
     window.deleteAuditItem = deleteAuditItem;
     window.toggleExpectedList = toggleExpectedList;
     window.filterExpectedList = filterExpectedList;
+    window.filterAuditScanList = filterAuditScanList;
     window.closeAuditSession = closeAuditSession;
     window.openAuditReviewDetail = openAuditReviewDetail;
     window.verifyAuditImei = verifyAuditImei;
