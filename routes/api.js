@@ -159,6 +159,84 @@ const getRequestedBranchId = (req) => {
     return userBranchId;
 };
 
+// ==========================================
+// ตรวจสอบออเดอร์ (#order-verification) — ตัวช่วยของฝ่ายบัญชี
+// ==========================================
+// ซื้อสด = เก็บเงินครบตั้งแต่หน้าร้าน ส่วนจัดไฟแนนซ์ = รอไฟแนนซ์โอนเข้ามา บัญชีถึงจะกดยืนยัน
+const resolveDefaultPaymentStatus = (paymentType) =>
+    (paymentType === 'จัดไฟแนนซ์' ? 'ยังไม่ชำระ' : 'ชำระแล้ว');
+
+// สถานะการชำระเงินที่หน้าตรวจสอบออเดอร์แสดง — มีความจริงแหล่งเดียวต่อบิลเสมอ:
+//   บิลผ่อนที่มีเอกสารลูกหนี้ (FinanceReceivable) -> ยึดสถานะของเอกสารนั้น เพราะหน้า #accounting เขียนที่นั่น
+//   บิลซื้อสด / บิลผ่อนเก่าที่ไม่มีเอกสารลูกหนี้    -> ยึด Transaction.payment_status
+// ห้าม mirror สองที่ให้ตรงกันเอง — เคยเป็นบ่อเกิดของข้อมูลเงินที่ขัดกันระหว่างสองหน้า
+const resolvePaymentStatus = (txn, receivable = null) => {
+    if (receivable) {
+        return (receivable.status === 'ชำระแล้ว' || receivable.status === 'ได้รับเงินครบแล้ว')
+            ? 'ชำระแล้ว'
+            : 'ยังไม่ชำระ';
+    }
+    return txn.payment_status || resolveDefaultPaymentStatus(txn.payment_type || txn.payment_method);
+};
+
+// ชีทคำนวณรายได้ต่อบิล — สูตรทั้งหมดยืนยันกับฝ่ายบัญชีแล้ว ห้ามแก้โดยไม่ถาม
+//
+// บิลจัดไฟแนนซ์:
+//   ราคาเต็ม       = ราคาเดิมของเครื่องในบิล (ไม่รวมอุปกรณ์เสริมและค่าธรรมเนียม)
+//   เงินรับรวม     = ราคาดาวน์ + ค่าใบสัญญา + ค่าระบบ (iCloud)
+//   ทุนเช่าซื้อ     = ราคาเต็ม − ราคาดาวน์
+//   ค่าคอม         = ทุนเช่าซื้อ × % ของไฟแนนซ์เจ้านั้น
+//   สินเชื่อ        = ทุนเช่าซื้อ + ค่าคอม
+//   รายได้ซิลมีน    = เงินรับรวม + สินเชื่อ
+//
+// บิลซื้อสด: ไม่มีไฟแนนซ์มาเกี่ยวเลย จึงไม่มีทุนเช่าซื้อ/ค่าคอม/สินเชื่อ
+//   รายได้ซิลมีน    = ยอดที่เก็บจากลูกค้าทั้งบิล
+//   ⚠️ ห้ามปล่อยให้บิลซื้อสดวิ่งผ่านสูตรไฟแนนซ์ ไม่งั้นจะได้ค่าคอมจากยอดที่ไม่มีไฟแนนซ์เจ้าไหนจ่ายจริง
+const buildOrderFinanceSheet = (txn, fullPrice, commissionRate, receivable = null) => {
+    const down = Number(txn.down_payment) || 0;
+    const contractFee = Number(txn.contract_fee) || 0;
+    const icloudFee = Number(txn.icloud_fee) || 0;
+
+    if ((txn.payment_type || txn.payment_method) !== 'จัดไฟแนนซ์') {
+        const receivedTotal = Number(txn.total_amount) || 0;
+        return {
+            full_price: fullPrice,
+            down_payment: down,
+            contract_fee: contractFee,
+            icloud_fee: icloudFee,
+            received_total: receivedTotal,
+            hire_purchase: 0,
+            down_percent: 0,
+            commission_rate: 0,
+            commission: 0,
+            credit_amount: 0,
+            silmin_revenue: receivedTotal,
+            outstanding: 0
+        };
+    }
+
+    const receivedTotal = down + contractFee + icloudFee;
+    const hirePurchase = fullPrice - down;
+    const commission = hirePurchase * (commissionRate / 100);
+    const creditAmount = hirePurchase + commission;
+
+    return {
+        full_price: fullPrice,
+        down_payment: down,
+        contract_fee: contractFee,
+        icloud_fee: icloudFee,
+        received_total: receivedTotal,
+        hire_purchase: hirePurchase,
+        down_percent: fullPrice > 0 ? (down / fullPrice) * 100 : 0,
+        commission_rate: commissionRate,
+        commission,
+        credit_amount: creditAmount,
+        silmin_revenue: receivedTotal + creditAmount,
+        // ยอดที่ไฟแนนซ์ยังค้างจ่ายให้ร้าน = สินเชื่อทั้งก้อน ตราบใดที่ยังไม่กดว่าชำระแล้ว
+        outstanding: resolvePaymentStatus(txn, receivable) === 'ชำระแล้ว' ? 0 : creditAmount
+    };
+};
+
 // เติมข้อมูล Master Data ให้เอกสารสินค้าจากแคชใน RAM แทนการใช้ .populate()
 // ให้ผลลัพธ์รูปแบบเดียวกับ .populate(path, 'name') เป๊ะๆ แต่ไม่ต้องยิง query เพิ่มไปที่ Atlas เลย
 // (วัดจริง: /products ทุกสาขา 1,516ms -> 131ms)
@@ -1279,7 +1357,8 @@ router.post('/auth/login', async (req, res) => {
             view_audit_logs: dbPerms.view_audit_logs !== undefined ? dbPerms.view_audit_logs : (dbPerms.manage_settings || false),
             view_daily_summary: dbPerms.view_daily_summary !== undefined ? dbPerms.view_daily_summary : true,
             manage_stock_audit: dbPerms.manage_stock_audit !== undefined ? dbPerms.manage_stock_audit : (employee.role === 'แอดมิน' || employee.role === 'ผู้จัดการ' || dbPerms.manage_settings || false),
-            do_stock_audit: dbPerms.do_stock_audit !== undefined ? dbPerms.do_stock_audit : (employee.role === 'แอดมิน' || employee.role === 'ผู้จัดการ' || dbPerms.do_pos || false)
+            do_stock_audit: dbPerms.do_stock_audit !== undefined ? dbPerms.do_stock_audit : (employee.role === 'แอดมิน' || employee.role === 'ผู้จัดการ' || dbPerms.do_pos || false),
+            verify_orders: dbPerms.verify_orders !== undefined ? dbPerms.verify_orders : (dbPerms.manage_finance || false)
         };
 
         // สร้าง JWT Token (รวม permissions)
@@ -1374,7 +1453,8 @@ router.get('/auth/me', async (req, res) => {
             view_audit_logs: dbPerms.view_audit_logs !== undefined ? dbPerms.view_audit_logs : (dbPerms.manage_settings || false),
             view_daily_summary: dbPerms.view_daily_summary !== undefined ? dbPerms.view_daily_summary : true,
             manage_stock_audit: dbPerms.manage_stock_audit !== undefined ? dbPerms.manage_stock_audit : (employee.role === 'แอดมิน' || employee.role === 'ผู้จัดการ' || dbPerms.manage_settings || false),
-            do_stock_audit: dbPerms.do_stock_audit !== undefined ? dbPerms.do_stock_audit : (employee.role === 'แอดมิน' || employee.role === 'ผู้จัดการ' || dbPerms.do_pos || false)
+            do_stock_audit: dbPerms.do_stock_audit !== undefined ? dbPerms.do_stock_audit : (employee.role === 'แอดมิน' || employee.role === 'ผู้จัดการ' || dbPerms.do_pos || false),
+            verify_orders: dbPerms.verify_orders !== undefined ? dbPerms.verify_orders : (dbPerms.manage_finance || false)
         };
 
         // ออก token ใหม่ที่มีสิทธิ์ล่าสุดด้วย
@@ -1621,7 +1701,7 @@ router.delete('/branches/:id', async (req, res) => {
 router.post('/master/:collection', async (req, res) => {
     try {
         const collection = req.params.collection.toLowerCase();
-        const { name, code } = req.body;
+        const { name, code, commission_rate } = req.body;
 
         if (!name) {
             return res.status(400).json({ success: false, message: 'กรุณาระบุชื่อ' });
@@ -1645,6 +1725,13 @@ router.post('/master/:collection', async (req, res) => {
         const payload = { name };
         if (collection === 'productname' && code !== undefined) {
             payload.code = code;
+        }
+        if (collection === 'financecompany' && commission_rate !== undefined) {
+            const rate = Number(commission_rate);
+            if (!Number.isFinite(rate) || rate < 0 || rate > 100) {
+                return res.status(400).json({ success: false, message: 'เปอร์เซ็นค่าคอมต้องอยู่ระหว่าง 0 - 100' });
+            }
+            payload.commission_rate = rate;
         }
         const newItem = new Model(payload);
         const savedItem = await newItem.save();
@@ -1712,7 +1799,7 @@ router.put('/master/:collection/:id', async (req, res) => {
     try {
         const collection = req.params.collection.toLowerCase();
         const id = req.params.id;
-        const { name, code } = req.body;
+        const { name, code, commission_rate } = req.body;
 
         if (!name) {
             return res.status(400).json({ success: false, message: 'กรุณาระบุชื่อ' });
@@ -1735,6 +1822,13 @@ router.put('/master/:collection/:id', async (req, res) => {
         const updateFields = { name };
         if (collection === 'productname') {
             updateFields.code = code || '';
+        }
+        if (collection === 'financecompany' && commission_rate !== undefined) {
+            const rate = Number(commission_rate);
+            if (!Number.isFinite(rate) || rate < 0 || rate > 100) {
+                return res.status(400).json({ success: false, message: 'เปอร์เซ็นค่าคอมต้องอยู่ระหว่าง 0 - 100' });
+            }
+            updateFields.commission_rate = rate;
         }
 
         const updatedItem = await Model.findByIdAndUpdate(id, updateFields, { returnDocument: 'after' });
@@ -2316,6 +2410,8 @@ router.post('/transactions', async (req, res) => {
             member_id: member_id || null,
             applied_deposit_id: applied_deposit_id || null,
             applied_deposit_amount: Number(applied_deposit_amount) || 0,
+            // ซื้อสด = รับเงินครบหน้าร้านแล้ว / จัดไฟแนนซ์ = รอไฟแนนซ์โอนเงินเข้ามา (ฝ่ายบัญชีเป็นคนกดยืนยันทีหลัง)
+            payment_status: resolveDefaultPaymentStatus(payment_type || payment_method),
             created_at: now
         });
 
@@ -2574,6 +2670,384 @@ router.get('/transactions/:id', async (req, res) => {
     } catch (error) {
         console.error('API Error GET /api/transactions/:id:', error);
         res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการดึงข้อมูลรายการขาย' });
+    }
+});
+
+// ==========================================
+// Order Verification APIs (ตรวจสอบออเดอร์ — ฝ่ายบัญชี)
+// ==========================================
+
+// GET /api/order-verifications
+// หน้าที่: รายการบิลขายพร้อมชีทคำนวณรายได้ต่อบิล ให้ฝ่ายบัญชีตรวจว่าพนักงานกรอกข้อมูลถูกต้องไหม
+router.get('/order-verifications', async (req, res) => {
+    try {
+        if (!req.user || !req.user.permissions || !req.user.permissions.verify_orders) {
+            return res.status(403).json({ success: false, message: 'คุณไม่มีสิทธิ์ตรวจสอบออเดอร์' });
+        }
+
+        const { date, search, employee_id, payment_type, payment_status, product_type, startDate, endDate } = req.query;
+        const filter = {};
+
+        // ช่วงวันที่ — ตีความชุดเดียวกับ /transactions เพื่อให้ตัวกรองสองหน้าให้ผลตรงกัน
+        if (startDate || endDate) {
+            filter.created_at = {};
+            if (startDate) {
+                const start = new Date(startDate);
+                start.setHours(0, 0, 0, 0);
+                filter.created_at.$gte = start;
+            }
+            if (endDate) {
+                const end = new Date(endDate);
+                end.setHours(23, 59, 59, 999);
+                filter.created_at.$lte = end;
+            }
+        } else if (date) {
+            const now = new Date();
+            const todayStart = new Date(now);
+            todayStart.setHours(0, 0, 0, 0);
+            const todayEnd = new Date(now);
+            todayEnd.setHours(23, 59, 59, 999);
+
+            if (date === 'today') {
+                filter.created_at = { $gte: todayStart, $lte: todayEnd };
+            } else if (date === 'week') {
+                const weekStart = new Date(todayStart);
+                weekStart.setDate(weekStart.getDate() - weekStart.getDay());
+                filter.created_at = { $gte: weekStart, $lte: todayEnd };
+            } else if (date === 'month') {
+                const monthStart = new Date(todayStart);
+                monthStart.setDate(1);
+                filter.created_at = { $gte: monthStart, $lte: todayEnd };
+            }
+        }
+
+        // สาขา: ต้องผ่าน getRequestedBranchId เสมอ (กติกาโดเมน — ห้ามอ่าน req.query.branch_id ตรงๆ)
+        const branchScope = getRequestedBranchId(req);
+        if (branchScope && branchScope !== 'ALL') filter.branch_id = branchScope;
+
+        if (employee_id) filter.employee_id = employee_id;
+        if (payment_type) filter.payment_type = payment_type;
+
+        if (search) {
+            const searchRegex = { $regex: search, $options: 'i' };
+            const orQuery = [
+                { receipt_number: searchRegex },
+                { 'items.imei_sold': searchRegex },
+                { 'items.product_name': searchRegex }
+            ];
+            const matchingMembers = await Member.find({
+                $or: [{ first_name: searchRegex }, { last_name: searchRegex }, { phone: searchRegex }]
+            }).select('_id').lean();
+            if (matchingMembers.length > 0) {
+                orQuery.push({ member_id: { $in: matchingMembers.map(m => m._id) } });
+            }
+            filter.$or = orQuery;
+        }
+
+        const transactions = await Transaction.find(filter)
+            .populate('employee_id', 'name emp_id')
+            .sort({ created_at: -1 })
+            .lean();
+
+        // เก็บ id ให้ครบก่อนแล้วยิง $in รอบเดียว — ห้าม await ใน loop (กติกา performance ใน CLAUDE.md)
+        const productIds = [];
+        const txnIds = [];
+        transactions.forEach(t => {
+            txnIds.push(t._id);
+            (t.items || []).forEach(it => { if (it.product_id) productIds.push(it.product_id); });
+        });
+
+        const [md, products, receivables] = await Promise.all([
+            mdCache.get(),
+            productIds.length
+                ? Product.find({ _id: { $in: productIds } }).select('product_code type_id color_id unit_id').lean()
+                : Promise.resolve([]),
+            txnIds.length
+                ? FinanceReceivable.find({ transaction_id: { $in: txnIds } }).lean()
+                : Promise.resolve([])
+        ]);
+
+        const { maps, lists } = md;
+        const productMap = new Map(products.map(p => [String(p._id), p]));
+        const receivableMap = new Map(receivables.map(r => [String(r.transaction_id), r]));
+
+        let rows = transactions.map(t => {
+            const items = (t.items || []).map(it => {
+                const p = it.product_id ? productMap.get(String(it.product_id)) : null;
+                const typeDoc = p && p.type_id ? maps.productTypes.get(String(p.type_id)) : null;
+                const colorDoc = p && p.color_id ? maps.productColors.get(String(p.color_id)) : null;
+                const unitDoc = p && p.unit_id ? maps.productUnits.get(String(p.unit_id)) : null;
+                return {
+                    product_name: it.product_name,
+                    product_code: p ? (p.product_code || '') : '',
+                    imei_sold: it.imei_sold || '',
+                    quantity: Number(it.quantity) || 1,
+                    price: Number(it.price) || 0,
+                    is_gift: it.is_gift === true,
+                    type_name: typeDoc ? typeDoc.name : '',
+                    color_name: colorDoc ? colorDoc.name : '',
+                    unit_name: unitDoc ? unitDoc.name : ''
+                };
+            });
+
+            // "ราคาเต็ม" = ราคาเดิมของเครื่องในบิล — นับเฉพาะหน่วย "เครื่อง" แบบเดียวกับที่ POS ใช้คิดยอดจัดไฟแนนซ์
+            // (สินค้าที่ product ถูกลบไปแล้วจะไม่มี unit_name จึงถอยไปดูว่ามี IMEI ไหมแทน)
+            const deviceItems = items.filter(it => !it.is_gift && (it.unit_name === 'เครื่อง' || (!it.unit_name && !!it.imei_sold)));
+            const fullPrice = deviceItems.reduce((sum, it) => sum + it.price * it.quantity, 0);
+
+            // finance_company เก็บได้ทั้ง _id และชื่อที่พนักงานพิมพ์เอง จึงหาแบบ id ก่อนแล้วค่อยเทียบชื่อ
+            const fcDoc = t.finance_company
+                ? (maps.financeCompanies.get(String(t.finance_company)) ||
+                    lists.financeCompanies.find(c => c.name === t.finance_company) || null)
+                : null;
+            const commissionRate = fcDoc && Number.isFinite(Number(fcDoc.commission_rate))
+                ? Number(fcDoc.commission_rate)
+                : 10;
+
+            const receivable = receivableMap.get(String(t._id)) || null;
+            const branchDoc = t.branch_id ? maps.branches.get(String(t.branch_id)) : null;
+            const paymentType = t.payment_type || t.payment_method;
+
+            return {
+                _id: t._id,
+                receipt_number: t.receipt_number,
+                created_at: t.created_at,
+                branch_name: branchDoc ? branchDoc.name : '-',
+                employee_name: t.employee_id ? t.employee_id.name : '-',
+                status: t.status,
+                payment_status: resolvePaymentStatus(t, receivable),
+                verify_status: t.verify_status || 'รอตรวจสอบ',
+                payment_type: paymentType,
+                is_financing: paymentType === 'จัดไฟแนนซ์',
+                finance_company_name: fcDoc ? fcDoc.name : (t.finance_company || ''),
+                finance_months: Number(t.finance_months) || 0,
+                total_amount: Number(t.total_amount) || 0,
+                // รูปแบบการชำระเงินของลูกค้า — บิลผ่อนแยกเงินดาวน์เป็นสด/โอน ส่วนบิลซื้อสดใช้ยอดหลัก
+                cash_amount: Number(paymentType === 'จัดไฟแนนซ์' ? t.finance_down_payment_cash : t.cash_amount) || 0,
+                transfer_amount: Number(paymentType === 'จัดไฟแนนซ์' ? t.finance_down_payment_transfer : t.transfer_amount) || 0,
+                applied_deposit_amount: Number(t.applied_deposit_amount) || 0,
+                finance_paid_at: receivable ? (receivable.settled_at || null) : (t.finance_paid_at || null),
+                verify_note: t.verify_note || '',
+                // ฝ่ายบัญชีแก้ราคาเครื่องได้เฉพาะบิลที่มีเครื่องรายการเดียว — บิลที่ขายหลายเครื่อง
+                // ระบบเดาไม่ได้ว่าจะลงราคาใหม่ให้เครื่องไหน จึงล็อกไว้แทนการเดา
+                device_item_count: deviceItems.length,
+                device_unit_price: deviceItems.length === 1 ? deviceItems[0].price : null,
+                items,
+                finance: buildOrderFinanceSheet(t, fullPrice, commissionRate, receivable)
+            };
+        });
+
+        // ประเภทสินค้าไม่ได้เก็บอยู่บนบิล ต้อง join ก่อนถึงกรองได้ จึงกรองหลังประกอบแถวเสร็จ
+        const typeFilter = (product_type || '').trim();
+        if (typeFilter) rows = rows.filter(r => r.items.some(it => it.type_name === typeFilter));
+
+        // สถานะการชำระเงินก็กรองที่นี่เช่นกัน เพราะบิลเก่ายังไม่มีฟิลด์นี้ใน DB (ตีความตอนอ่าน)
+        if (payment_status) rows = rows.filter(r => r.payment_status === payment_status);
+
+        res.status(200).json({
+            success: true,
+            message: 'ดึงข้อมูลตรวจสอบออเดอร์สำเร็จ',
+            data: rows
+        });
+    } catch (error) {
+        console.error('API Error GET /api/order-verifications:', error);
+        res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการดึงข้อมูลตรวจสอบออเดอร์' });
+    }
+});
+
+// PATCH /api/order-verifications/:id
+// หน้าที่: ฝ่ายบัญชีอัปเดตสถานะการชำระเงิน / สถานะดำเนินการ / วันที่ไฟแนนซ์โอน / หมายเหตุ ของบิลนั้น
+router.patch('/order-verifications/:id', async (req, res) => {
+    try {
+        if (!req.user || !req.user.permissions || !req.user.permissions.verify_orders) {
+            return res.status(403).json({ success: false, message: 'คุณไม่มีสิทธิ์ตรวจสอบออเดอร์' });
+        }
+
+        const { payment_status, verify_status, finance_paid_at, verify_note, device_price, down_payment } = req.body;
+        if (payment_status && !['ยังไม่ชำระ', 'ชำระแล้ว'].includes(payment_status)) {
+            return res.status(400).json({ success: false, message: 'สถานะการชำระเงินไม่ถูกต้อง' });
+        }
+        if (verify_status && !['รอตรวจสอบ', 'สำเร็จ'].includes(verify_status)) {
+            return res.status(400).json({ success: false, message: 'สถานะดำเนินการไม่ถูกต้อง' });
+        }
+        if (device_price !== undefined && (!Number.isFinite(Number(device_price)) || Number(device_price) < 0)) {
+            return res.status(400).json({ success: false, message: 'ราคาเครื่องต้องเป็นตัวเลขไม่ติดลบ' });
+        }
+        if (down_payment !== undefined && (!Number.isFinite(Number(down_payment)) || Number(down_payment) < 0)) {
+            return res.status(400).json({ success: false, message: 'ราคาดาวน์ต้องเป็นตัวเลขไม่ติดลบ' });
+        }
+
+        const txn = await Transaction.findById(req.params.id);
+        if (!txn) {
+            return res.status(404).json({ success: false, message: 'ไม่พบบิลที่ต้องการ' });
+        }
+        if (txn.status === 'ยกเลิกแล้ว') {
+            return res.status(400).json({ success: false, message: 'บิลนี้ถูกยกเลิกแล้ว แก้ไขสถานะการชำระเงินไม่ได้' });
+        }
+
+        const receivable = await FinanceReceivable.findOne({ transaction_id: txn._id });
+        const before = resolvePaymentStatus(txn, receivable);
+        const paidAt = finance_paid_at ? new Date(finance_paid_at) : new Date();
+
+        // ---------- แก้ราคาเครื่อง / ราคาดาวน์ ----------
+        // ตัวเลขสองตัวนี้กระทบยอดรวมบิล เอกสารลูกหนี้ไฟแนนซ์ และรายการเงินสดรับที่เข้า P&L
+        // จึงต้องอัปเดตให้ครบทุกที่ในคำขอเดียว ไม่งั้นงบกับบิลจะไม่ตรงกันทันที
+        const moneyChanges = [];
+        let amountsTouched = false;
+
+        if (device_price !== undefined) {
+            const units = await ProductUnit.find({}).lean();
+            const unitMap = new Map(units.map(u => [String(u._id), u.name]));
+            const products = await Product.find({ _id: { $in: txn.items.map(i => i.product_id).filter(Boolean) } })
+                .select('unit_id').lean();
+            const unitOf = new Map(products.map(p => [String(p._id), unitMap.get(String(p.unit_id)) || '']));
+
+            const deviceIdx = txn.items.reduce((acc, it, i) => {
+                if (it.is_gift) return acc;
+                const unitName = it.product_id ? (unitOf.get(String(it.product_id)) || '') : '';
+                const isDevice = unitName === 'เครื่อง' || (!unitName && !!it.imei_sold);
+                return isDevice ? acc.concat(i) : acc;
+            }, []);
+
+            if (deviceIdx.length !== 1) {
+                return res.status(400).json({
+                    success: false,
+                    message: deviceIdx.length === 0
+                        ? 'บิลนี้ไม่มีรายการเครื่อง จึงแก้ราคาเครื่องไม่ได้'
+                        : 'บิลนี้มีเครื่องหลายรายการ ต้องแก้ราคาที่หน้าแก้ไขบิลโดยตรง'
+                });
+            }
+
+            const item = txn.items[deviceIdx[0]];
+            const oldUnitPrice = Number(item.price) || 0;
+            const newUnitPrice = Number(device_price);
+            if (oldUnitPrice !== newUnitPrice) {
+                const qty = Number(item.quantity) || 1;
+                const delta = (newUnitPrice - oldUnitPrice) * qty;
+                const newTotal = Math.max(0, (Number(txn.total_amount) || 0) + delta);
+
+                moneyChanges.push(`ราคาเครื่อง ฿${oldUnitPrice.toLocaleString()} → ฿${newUnitPrice.toLocaleString()}`);
+                item.price = newUnitPrice;
+                txn.total_amount = newTotal;
+                amountsTouched = true;
+            }
+        }
+
+        if (down_payment !== undefined) {
+            const oldDown = Number(txn.down_payment) || 0;
+            const newDown = Number(down_payment);
+            if (oldDown !== newDown) {
+                moneyChanges.push(`ราคาดาวน์ ฿${oldDown.toLocaleString()} → ฿${newDown.toLocaleString()}`);
+                txn.down_payment = newDown;
+                amountsTouched = true;
+            }
+        }
+
+        if (payment_status) {
+            if (receivable) {
+                // บิลผ่อนที่มีเอกสารลูกหนี้: เขียนที่เอกสารนั้นที่เดียว หน้า #accounting จะได้เห็นตรงกัน
+                receivable.status = payment_status === 'ชำระแล้ว' ? 'ชำระแล้ว' : 'ค้างโอน';
+                receivable.settled_at = payment_status === 'ชำระแล้ว' ? paidAt : null;
+                await receivable.save();
+            } else {
+                txn.payment_status = payment_status;
+                txn.finance_paid_at = payment_status === 'ชำระแล้ว' ? paidAt : null;
+            }
+            txn.payment_status_updated_by = req.user.employee_id;
+            txn.payment_status_updated_at = new Date();
+        } else if (finance_paid_at !== undefined) {
+            if (receivable) {
+                receivable.settled_at = finance_paid_at ? new Date(finance_paid_at) : null;
+                await receivable.save();
+            } else {
+                txn.finance_paid_at = finance_paid_at ? new Date(finance_paid_at) : null;
+            }
+        }
+
+        const verifyBefore = txn.verify_status || 'รอตรวจสอบ';
+        if (verify_status) txn.verify_status = verify_status;
+
+        if (verify_note !== undefined) {
+            txn.verify_note = String(verify_note).slice(0, 500);
+        }
+
+        await txn.save();
+
+        // ยอดเปลี่ยน = เอกสารบัญชีที่ผูกกับบิลนี้ต้องเปลี่ยนตามทันที
+        // (สูตรชุดเดียวกับตอนสร้างบิลใน POST /transactions ห้ามคิดคนละแบบกัน)
+        if (amountsTouched) {
+            const units = await ProductUnit.find({}).lean();
+            const unitMap = new Map(units.map(u => [String(u._id), u.name]));
+            const products = await Product.find({ _id: { $in: txn.items.map(i => i.product_id).filter(Boolean) } })
+                .select('unit_id').lean();
+            const unitOf = new Map(products.map(p => [String(p._id), unitMap.get(String(p.unit_id)) || '']));
+
+            const itemsSubtotal = txn.items.reduce((sum, it) => sum + (Number(it.price) || 0) * (Number(it.quantity) || 1), 0);
+            const devicesTotal = txn.items.reduce((sum, it) => {
+                if (it.is_gift) return sum;
+                const unitName = it.product_id ? (unitOf.get(String(it.product_id)) || '') : '';
+                const isDevice = unitName === 'เครื่อง' || (!unitName && !!it.imei_sold);
+                return isDevice ? sum + (Number(it.price) || 0) * (Number(it.quantity) || 1) : sum;
+            }, 0);
+
+            const contractFee = Number(txn.contract_fee) || 0;
+            const icloudFee = Number(txn.icloud_fee) || 0;
+            const totalAmount = Number(txn.total_amount) || 0;
+            const inferredDiscount = Math.max(0, itemsSubtotal + contractFee + icloudFee - totalAmount);
+            const netDevicesTotal = Math.max(0, devicesTotal - inferredDiscount);
+            const financedAmount = Math.max(0, netDevicesTotal - (Number(txn.down_payment) || 0));
+            const immediateCash = Math.max(0, totalAmount - financedAmount);
+
+            if (receivable) {
+                receivable.total_finance_price = totalAmount;
+                receivable.down_payment = Number(txn.down_payment) || 0;
+                receivable.contract_fee = contractFee;
+                receivable.icloud_fee = icloudFee;
+                // financed_amount ถูกคำนวณใหม่เองใน pre('validate') ของสคีมา
+                await receivable.save();
+            }
+
+            const cashMove = await CashMovement.findOne({ reference_id: txn._id, category: 'ขายสินค้า' });
+            if (cashMove) {
+                cashMove.amount = immediateCash;
+                await cashMove.save();
+            }
+        }
+
+        const after = resolvePaymentStatus(txn, receivable);
+        const verifyAfter = txn.verify_status || 'รอตรวจสอบ';
+
+        // ทุกการเปลี่ยนสถานะที่กระทบเงินหรือการตรวจสอบต้องตามรอยย้อนหลังได้ (PRODUCT.md ข้อ 3)
+        const changes = [...moneyChanges];
+        if (payment_status && before !== after) changes.push(`สถานะการชำระเงิน "${before}" → "${after}"`);
+        if (verify_status && verifyBefore !== verifyAfter) changes.push(`สถานะดำเนินการ "${verifyBefore}" → "${verifyAfter}"`);
+        if (changes.length) {
+            await logActivity(
+                req, 'UPDATE', 'ACCOUNTING',
+                `ตรวจสอบออเดอร์ ${txn.receipt_number}: ${changes.join(', ')}`,
+                txn.receipt_number, txn._id,
+                {
+                    payment_status: after,
+                    verify_status: verifyAfter,
+                    finance_paid_at: receivable ? receivable.settled_at : txn.finance_paid_at
+                }
+            );
+        }
+
+        res.status(200).json({
+            success: true,
+            message: 'บันทึกข้อมูลการตรวจสอบแล้ว',
+            data: {
+                _id: txn._id,
+                payment_status: after,
+                verify_status: verifyAfter,
+                finance_paid_at: receivable ? (receivable.settled_at || null) : (txn.finance_paid_at || null),
+                verify_note: txn.verify_note || ''
+            }
+        });
+    } catch (error) {
+        console.error('API Error PATCH /api/order-verifications/:id:', error);
+        res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการบันทึกข้อมูลการตรวจสอบ' });
     }
 });
 
@@ -5432,7 +5906,10 @@ router.post('/stock-audit/sessions/:id/close', async (req, res) => {
 // GET /api/deposits — ดึงข้อมูลรายการมัดจำสินค้า
 router.get('/deposits', async (req, res) => {
     try {
-        if (!req.user.permissions || !req.user.permissions.manage_deposits) {
+        // ฝ่ายบัญชี (verify_orders) ต้องอ่านรายการมัดจำได้ด้วย เพราะหน้าตรวจสอบออเดอร์มีแท็บมัดจำ
+        // แต่การสร้าง/แก้/ยกเลิกใบมัดจำยังคงต้องมี manage_deposits เหมือนเดิม
+        const depositPerms = req.user.permissions || {};
+        if (!depositPerms.manage_deposits && !depositPerms.verify_orders) {
             return res.status(403).json({ success: false, message: 'ไม่มีสิทธิ์เข้าถึงข้อมูลมัดจำสินค้า' });
         }
 

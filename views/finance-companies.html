@@ -1,0 +1,109 @@
+<div id="view-finance-companies">
+    <!-- [1] หัวหน้า — DESIGN.md ข้อ 11.2 -->
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div class="flex items-center gap-4">
+            <i class="hidden md:block bi bi-bank text-ink w-5 text-2xl text-center"></i>
+            <h3 class="hidden md:block text-2xl text-ink">จัดการไฟแนนซ์</h3>
+        </div>
+        <div class="flex items-center gap-3">
+            <button id="btn-add-finance-company" type="button"
+                class="px-4 py-2 bg-primary hover:bg-primary-pressed text-on-primary font-medium rounded-xl transition-all flex items-center gap-2 w-fit cursor-pointer">
+                <i class="fa-solid fa-plus"></i>
+                <p>เพิ่มบริษัทไฟแนนซ์</p>
+            </button>
+        </div>
+    </div>
+
+    <!-- [2] การ์ดพาเนล — แถบควบคุม + ตัวนับ + ตาราง อยู่ในใบเดียว (ข้อ 11.1) -->
+    <div class="bg-panel/40 rounded-2xl shadow-lg overflow-hidden backdrop-blur-sm">
+        <!-- 2a แถบควบคุม (ข้อ 11.4) -->
+        <div class="p-6 pb-0 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+            <h3 class="text-lg text-ink flex items-center gap-2">
+                <i class="fa-solid fa-hand-holding-dollar text-accent-ink"></i> บริษัทจัดไฟแนนซ์
+            </h3>
+            <div class="flex flex-wrap items-center gap-2.5 relative w-full lg:w-auto">
+                <div class="relative group w-full sm:w-64 rounded-[0.5rem]">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <i class="fa-solid fa-search text-ink group-focus-within:text-accent-ink transition-colors"></i>
+                    </div>
+                    <input type="text" id="finance-company-search" placeholder="ค้นหาชื่อไฟแนนซ์..."
+                        aria-label="ค้นหาบริษัทไฟแนนซ์ด้วยชื่อ"
+                        class="page-filter-control elev-chip bg-transparent rounded-[10px] text-sm pl-10 pr-4 py-2 w-full text-ink focus:outline-none focus:ring-1 focus:ring-accent-ink transition-all placeholder-body-muted">
+                </div>
+            </div>
+        </div>
+
+        <!-- 2b ตัวนับผลลัพธ์ (ข้อ 11.5) -->
+        <div class="px-6 py-4">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <p class="text-xs text-body-muted">
+                    เปอร์เซ็นค่าคอมของแต่ละเจ้าใช้คำนวณ "ค่าคอมที่ซิลมีนได้" ในหน้าตรวจสอบออเดอร์ (ค่าเริ่มต้น 10%)
+                </p>
+                <div id="finance-company-result-count" class="text-xs text-ink font-medium shrink-0"></div>
+            </div>
+        </div>
+
+        <!-- 2c ตาราง (ข้อ 11.6) -->
+        <div class="overflow-x-auto" tabindex="0">
+            <table class="w-full text-left text-sm whitespace-nowrap border-collapse">
+                <thead class="bg-panel/40 text-ink">
+                    <tr>
+                        <th class="px-6 py-4 font-semibold text-[15px] w-full">ชื่อบริษัทไฟแนนซ์</th>
+                        <th class="px-6 py-4 font-semibold text-[15px] text-center">เปอร์เซ็นค่าคอม</th>
+                        <th class="px-6 py-4 font-semibold text-[15px] text-right">จัดการ</th>
+                    </tr>
+                </thead>
+                <tbody id="finance-company-table-body" class="divide-y divide-divider">
+                    <!-- แถวถูกสร้างจาก js/page-finance-companies.js -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- โมดัลเพิ่ม/แก้ไขบริษัทไฟแนนซ์ (ข้อ 11.10)                    -->
+    <!-- ============================================================ -->
+    <div id="modal-finance-company"
+        class="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-[20px] backdrop-saturate-[1.8] opacity-0 pointer-events-none transition-all duration-300 p-4">
+        <div
+            class="modal-content relative w-full max-w-md bg-canvas-elevated rounded-lg p-8 transform scale-95 transition-transform duration-300">
+            <div class="flex items-center justify-between mb-6 pb-2 border-b border-hairline">
+                <h3 id="finance-company-modal-title" class="text-lg font-medium text-ink flex items-center gap-2">
+                    <i class="fa-solid fa-hand-holding-dollar text-accent-ink"></i> เพิ่มบริษัทไฟแนนซ์
+                </h3>
+                <button aria-label="ปิด" id="btn-finance-company-close" type="button"
+                    class="text-red-500 hover:text-red-400 transition-colors">
+                    <i class="fa-solid fa-xmark text-xl"></i>
+                </button>
+            </div>
+
+            <form id="form-finance-company" class="space-y-5 text-sm">
+                <div class="space-y-2">
+                    <label for="finance-company-name" class="text-ink font-medium flex items-center gap-2 text-xs">
+                        <i class="fa-solid fa-building-columns text-ink"></i> ชื่อบริษัทไฟแนนซ์ <span
+                            class="text-red-500">*</span>
+                    </label>
+                    <input type="text" id="finance-company-name" required placeholder="เช่น SG, KTC"
+                        class="w-full px-4 py-2.5 rounded-xl bg-field border border-line-strong text-ink focus:border-accent-ink focus:outline-none transition-all placeholder-body-muted text-sm">
+                </div>
+
+                <div class="space-y-2">
+                    <label for="finance-company-rate" class="text-ink font-medium flex items-center gap-2 text-xs">
+                        <i class="fa-solid fa-percent text-ink"></i> เปอร์เซ็นค่าคอม <span class="text-red-500">*</span>
+                    </label>
+                    <input type="number" id="finance-company-rate" required inputmode="decimal" min="0" max="100"
+                        step="0.01" value="10"
+                        class="w-full px-4 py-2.5 rounded-xl bg-field border border-line-strong text-ink focus:border-accent-ink focus:outline-none transition-all placeholder-body-muted text-sm">
+                    <p class="text-[11px] text-body-muted">คิดจากทุนเช่าซื้อ (ราคาเต็ม − ราคาดาวน์) ของแต่ละบิล</p>
+                </div>
+
+                <div class="flex items-center justify-center gap-4 pt-4 border-t border-hairline">
+                    <button type="button" id="btn-finance-company-cancel"
+                        class="px-10 py-2.5 rounded-xl bg-[#E4E4E7] text-[#18181B] text-[15px] font-bold hover:bg-white transition-colors w-1/2">ยกเลิก</button>
+                    <button type="submit"
+                        class="px-12 py-2.5 rounded-xl bg-primary text-on-primary text-[15px] font-bold hover:bg-primary-pressed transition-colors flex items-center justify-center gap-2 w-1/2">บันทึก</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

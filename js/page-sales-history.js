@@ -875,12 +875,7 @@
         if (transactionDetailMember) {
             if (txn.member_id) {
                 const m = txn.member_id;
-                transactionDetailMember.innerHTML = `
-                    <div class="flex flex-col">
-                        <span class="text-ink text-base">${m.prefix || ''}${m.first_name} ${m.last_name}</span>
-                        <span class="text-body-muted text-xs font-mono">${m.phone || 'ไม่ทราบเบอร์'} | ${m.member_number || 'ไม่มีเลขสมาชิก'}</span>
-                    </div>
-                `;
+                transactionDetailMember.innerHTML = `${m.prefix || ''}${m.first_name} ${m.last_name} <span class="text-body-muted text-xs font-mono">(${m.phone || 'ไม่ทราบเบอร์'} | ${m.member_number || 'ไม่มีเลขสมาชิก'})</span>`;
             } else {
                 transactionDetailMember.textContent = 'ไม่ระบุสมาชิก (ขายเงินสด)';
             }
@@ -899,8 +894,8 @@
                 const cash = isFinancing ? (txn.finance_down_payment_cash || 0) : (txn.cash_amount || 0);
                 const transfer = isFinancing ? (txn.finance_down_payment_transfer || 0) : (txn.transfer_amount || 0);
 
-                if (cash > 0) breakdownHTML += `<div class="flex justify-between text-xs text-body-muted italic"><span>- เงินสด:</span><span>฿${cash.toLocaleString()}</span></div>`;
-                if (transfer > 0) breakdownHTML += `<div class="flex justify-between text-xs text-body-muted italic"><span>- เงินโอน:</span><span>฿${transfer.toLocaleString()}</span></div>`;
+                if (cash > 0) breakdownHTML += `<div class="flex gap-2 text-xs text-body-muted italic"><span>เงินสด:</span><span>฿${cash.toLocaleString()}</span></div>`;
+                if (transfer > 0) breakdownHTML += `<div class="flex gap-2 text-xs text-body-muted italic"><span>เงินโอน:</span><span>฿${transfer.toLocaleString()}</span></div>`;
 
                 transactionDetailPaymentBreakdown.innerHTML = breakdownHTML;
                 transactionDetailPaymentBreakdown.classList.toggle('hidden', breakdownHTML === '');
@@ -914,6 +909,7 @@
                 // Populate Finance Details
                 if (transactionDetailFinanceInfo) {
                     transactionDetailFinanceInfo.classList.remove('hidden');
+                    transactionDetailFinanceInfo.classList.add('flex');
                     if (transactionDetailFinanceCompany) {
                         let compName = txn.finance_company || '-';
                         if (window.masterDataCache && window.masterDataCache.financeCompanies) {
@@ -928,6 +924,7 @@
             } else {
                 transactionDetailBalance.textContent = `฿0`;
                 transactionDetailBalance.parentElement.classList.add('hidden');
+                if (transactionDetailFinanceInfo) transactionDetailFinanceInfo.classList.remove('flex');
                 if (transactionDetailFinanceInfo) transactionDetailFinanceInfo.classList.add('hidden');
             }
         }
@@ -938,16 +935,16 @@
             (txn.items || []).forEach(item => {
                 const productCode = (item.product_id && item.product_id.product_code) || item.product_code || '';
                 const itemRow = document.createElement('tr');
-                itemRow.className = 'border-b border-hairline';
+                itemRow.className = 'border-t border-hairline';
                 const isGift = item.is_gift === true;
                 itemRow.innerHTML = `
-                    <td class="px-4 py-3 text-ink">
+                    <td class="py-2.5 pr-2 text-ink">
                         ${item.product_name}
                         ${isGift ? '<span class="ml-2 px-1.5 py-0.5 text-[10px] font-bold bg-amber-500/20 text-amber-400 rounded">ของแถม</span>' : ''}
                     </td>
-                    <td class="px-4 py-3 text-center">${productCode ? `<span class="font-mono font-bold text-accent-ink tracking-wide">${productCode}</span>` : '<span class="text-body-muted">-</span>'}</td>
-                    <td class="px-4 py-3 text-center text-body-muted">${item.quantity}</td>
-                    <td class="px-4 py-3 text-right text-ink font-mono">${isGift ? '<span class="text-amber-400 font-bold">ของแถม</span>' : `฿${item.price.toLocaleString()}`}</td>
+                    <td class="py-2.5 px-2 text-center">${productCode ? `<span class="font-mono font-bold text-accent-ink tracking-wide">${productCode}</span>` : '<span class="text-body-muted">-</span>'}</td>
+                    <td class="py-2.5 px-2 text-center text-body-muted">${item.quantity}</td>
+                    <td class="py-2.5 pl-2 text-right text-ink font-mono">${isGift ? '<span class="text-amber-400 font-bold">ของแถม</span>' : `฿${item.price.toLocaleString()}`}</td>
                 `;
                 transactionDetailItems.appendChild(itemRow);
             });

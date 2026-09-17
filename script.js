@@ -171,7 +171,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // โหลดสคริปต์เฉพาะหน้า (js/page-<name>.js) แบบ dynamic ครั้งเดียว แล้ว cache ไว้
     // PAGE_SCRIPT_VERSION: บัมพ์เลขนี้ทุกครั้งที่แก้ไฟล์ใน js/ เพื่อไม่ให้เบราว์เซอร์ใช้ของเก่าที่ cache ไว้
-    const PAGE_SCRIPT_VERSION = 'apple_active_v35';
+    const PAGE_SCRIPT_VERSION = 'apple_active_v46';
     const __loadedPageScripts = {};
     function loadPageScript(name) {
         if (__loadedPageScripts[name]) return __loadedPageScripts[name];
@@ -224,7 +224,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // ไม่ได้รอ init function ถ้า HTML ยังไม่ถูกแทรกเข้า DOM ก่อน ตัวแปรที่ query ไว้จะเป็น null ถาวร
     // ชื่อ name ต้องตรงกับชื่อที่ใช้ใน loadPageScript — ไฟล์เดียวอาจมีหลาย <div id="view-XXX"> รวมกัน
     // ถ้าหน้านั้นถูก share โดยสคริปต์เดียวกันหลาย view (ดูตาราง mapping ในแผน)
-    const VIEW_FRAGMENT_VERSION = 'v80'; // บัมพ์เลขนี้ทุกครั้งที่แก้ไฟล์ใน views/
+    const VIEW_FRAGMENT_VERSION = 'v89'; // บัมพ์เลขนี้ทุกครั้งที่แก้ไฟล์ใน views/
     const __loadedPageViews = {};
     function loadPageView(name) {
         if (__loadedPageViews[name]) return __loadedPageViews[name];
@@ -431,6 +431,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const navStockAuditReview = document.getElementById('nav-stock-audit-review');
     const navAccountingSettings = document.getElementById('nav-accounting-settings');
     const navDisbursement = document.getElementById('nav-disbursement');
+    const navOrderVerification = document.getElementById('nav-order-verification');
+    const navFinanceCompanies = document.getElementById('nav-finance-companies');
 
     const viewDashboard = document.getElementById('view-dashboard');
     const viewStock = document.getElementById('view-stock');
@@ -458,6 +460,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const viewStockAuditReview = document.getElementById('view-stock-audit-review');
     const viewAccountingSettings = document.getElementById('view-accounting-settings');
     const viewDisbursement = document.getElementById('view-disbursement');
+    const viewOrderVerification = document.getElementById('view-order-verification');
+    const viewFinanceCompanies = document.getElementById('view-finance-companies');
 
     const settingsTabBtns = document.querySelectorAll('.settings-tab-btn');
     const masterDataInput = document.getElementById('master-data-input');
@@ -2323,6 +2327,8 @@ document.addEventListener('DOMContentLoaded', () => {
         setVisible(navAccounting, permissions.manage_finance);
         setVisible(navAccountingSettings, permissions.manage_finance);
         setVisible(navDisbursement, permissions.manage_finance);
+        setVisible(navOrderVerification, permissions.verify_orders);
+        setVisible(navFinanceCompanies, permissions.verify_orders);
         setVisible(navBranchInventory, permissions.view_branch_inventory);
 
         // Toggle Audit Logs Sidebar view
@@ -3402,7 +3408,8 @@ document.addEventListener('DOMContentLoaded', () => {
         'sales-history', 'daily-summary', 'transfers', 'deposits', 'movements', 'members',
         'report-arrival', 'approve-import', 'warranty-check', 'branch-inventory', 'accounting-po',
         'branch-receive', 'accounting', 'audit-logs', 'stock-audit', 'stock-audit-review',
-        'accounting-settings', 'disbursement', 'database'
+        'accounting-settings', 'disbursement', 'database',
+        'order-verification', 'finance-companies'
     ]);
     // อ่านชื่อ view จาก URL hash (เช่น #deposits) — คืนค่า null ถ้าไม่มีหรือไม่ใช่ view ที่รู้จัก
     const getViewFromHash = () => {
@@ -3443,6 +3450,8 @@ document.addEventListener('DOMContentLoaded', () => {
             'stock-audit-review': 'manage_stock_audit',
             'accounting-settings': 'manage_finance',
             'disbursement': 'manage_finance',
+            'order-verification': 'verify_orders',
+            'finance-companies': 'verify_orders',
             'database': 'manage_database'
         };
 
@@ -3487,6 +3496,8 @@ document.addEventListener('DOMContentLoaded', () => {
             'stock-audit-review': 'manage_stock_audit',
             'accounting-settings': 'manage_finance',
             'disbursement': 'manage_finance',
+            'order-verification': 'verify_orders',
+            'finance-companies': 'verify_orders',
             'database': 'manage_database'
         };
 
@@ -3560,7 +3571,8 @@ document.addEventListener('DOMContentLoaded', () => {
             viewBranchInventory, viewAccountingPO, viewBranchReceive,
             viewAuditLogs, viewAccounting, viewDailySummary,
             viewStockAudit, viewStockAuditReview, viewDeposits,
-            viewAccountingSettings, viewDisbursement, viewDatabase
+            viewAccountingSettings, viewDisbursement, viewDatabase,
+            viewOrderVerification, viewFinanceCompanies
         ];
         views.forEach(view => {
             if (view) {
@@ -3764,6 +3776,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 await loadPageScript('accounting-settings');
                 if (typeof initDisbursement === 'function') initDisbursement();
             }
+            else if (viewName === 'order-verification') {
+                activateView(viewOrderVerification, navOrderVerification);
+                await loadPageView('order-verification');
+                await loadPageScript('order-verification');
+                if (typeof initOrderVerification === 'function') initOrderVerification();
+            }
+            else if (viewName === 'finance-companies') {
+                activateView(viewFinanceCompanies, navFinanceCompanies);
+                await loadPageView('finance-companies');
+                await loadPageScript('finance-companies');
+                if (typeof loadFinanceCompanies === 'function') loadFinanceCompanies();
+            }
         } catch (err) {
             console.error(`switchView('${viewName}') failed:`, err);
             if (typeof showToast === 'function') {
@@ -3799,6 +3823,10 @@ document.addEventListener('DOMContentLoaded', () => {
     if (navAccountingSettings) navAccountingSettings.addEventListener('click', (e) => { e.preventDefault(); switchView('accounting-settings'); });
     if (navDisbursement) navDisbursement.style.display = 'none'; // Will be managed by applyPermissions
     if (navDisbursement) navDisbursement.addEventListener('click', (e) => { e.preventDefault(); switchView('disbursement'); });
+    if (navOrderVerification) navOrderVerification.style.display = 'none'; // Will be managed by applyPermissions
+    if (navOrderVerification) navOrderVerification.addEventListener('click', (e) => { e.preventDefault(); switchView('order-verification'); });
+    if (navFinanceCompanies) navFinanceCompanies.style.display = 'none'; // Will be managed by applyPermissions
+    if (navFinanceCompanies) navFinanceCompanies.addEventListener('click', (e) => { e.preventDefault(); switchView('finance-companies'); });
 
     if (navDailySummary) navDailySummary.addEventListener('click', (e) => { e.preventDefault(); switchView('daily-summary'); });
     if (navStockAudit) navStockAudit.addEventListener('click', (e) => { e.preventDefault(); switchView('stock-audit'); });

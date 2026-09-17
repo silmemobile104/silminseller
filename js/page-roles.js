@@ -15,7 +15,7 @@
     const closeRoleModalBtn = document.getElementById('close-role-modal-btn');
     const cancelRoleModalBtn = document.getElementById('cancel-role-modal-btn');
 
-    const permKeys = ['view_dashboard', 'manage_stock', 'delete_stock', 'do_pos', 'manage_personnel', 'manage_branches', 'manage_settings', 'manage_roles', 'view_audit_logs', 'filter_stock_branch', 'cancel_sale', 'report_arrival', 'approve_import', 'manage_po', 'receive_po', 'manage_transfers', 'manage_finance', 'view_branch_inventory', 'view_daily_summary', 'do_stock_audit', 'manage_stock_audit', 'manage_deposits', 'manage_database'];
+    const permKeys = ['view_dashboard', 'manage_stock', 'delete_stock', 'do_pos', 'manage_personnel', 'manage_branches', 'manage_settings', 'manage_roles', 'view_audit_logs', 'filter_stock_branch', 'cancel_sale', 'report_arrival', 'approve_import', 'manage_po', 'receive_po', 'manage_transfers', 'manage_finance', 'view_branch_inventory', 'view_daily_summary', 'do_stock_audit', 'manage_stock_audit', 'manage_deposits', 'manage_database', 'verify_orders'];
     const permLabels = {
         view_dashboard: 'ดูแดชบอร์ด',
         manage_stock: 'จัดการสต็อก',
@@ -39,7 +39,8 @@
         do_stock_audit: 'ตรวจนับสต็อกประจำวัน',
         manage_stock_audit: 'ตรวจสอบผลสต็อก (จัดการ/อนุมัติ)',
         manage_deposits: 'จัดการมัดจำสินค้า',
-        manage_database: 'จัดการฐานข้อมูล'
+        manage_database: 'จัดการฐานข้อมูล',
+        verify_orders: 'ตรวจสอบออเดอร์ (ฝ่ายบัญชี)'
     };
     const permIcons = {
         view_dashboard: 'fa-chart-pie',
@@ -64,7 +65,8 @@
         do_stock_audit: 'fa-qrcode',
         manage_stock_audit: 'fa-clipboard-check',
         manage_deposits: 'fa-wallet',
-        manage_database: 'fa-database'
+        manage_database: 'fa-database',
+        verify_orders: 'fa-clipboard-check'
     };
 
     const openRoleModal = () => {

@@ -35,7 +35,8 @@ const roleSchema = new mongoose.Schema({
         manage_stock_audit: { type: Boolean, default: false }, // อนุญาตให้ตรวจสอบและอนุมัติผลการตรวจนับสต็อกประจำวัน
         do_stock_audit: { type: Boolean, default: false }, // อนุญาตให้ตรวจนับสต็อกประจำวัน
         manage_deposits: { type: Boolean, default: false }, // อนุญาตให้จัดการมัดจำสินค้า
-        manage_database: { type: Boolean, default: false } // อนุญาตให้ดูแคตตาล็อกฐานข้อมูล (อ่านอย่างเดียว)
+        manage_database: { type: Boolean, default: false }, // อนุญาตให้ดูแคตตาล็อกฐานข้อมูล (อ่านอย่างเดียว)
+        verify_orders: { type: Boolean, default: false } // อนุญาตให้ตรวจสอบออเดอร์ + จัดการไฟแนนซ์ (ฝ่ายบัญชี)
     }
 }, { timestamps: true });
 const Role = mongoose.model('Role', roleSchema, 'role');
@@ -52,7 +53,7 @@ const seedDefaultRoles = async () => {
                 report_arrival: true, approve_import: true, manage_po: true, receive_po: true,
                 manage_transfers: true, manage_finance: true, view_audit_logs: true, view_branch_inventory: true,
                 view_daily_summary: true, manage_stock_audit: true, do_stock_audit: true, manage_deposits: true,
-                manage_database: true
+                manage_database: true, verify_orders: true
             }
         },
         {
@@ -64,7 +65,7 @@ const seedDefaultRoles = async () => {
                 report_arrival: true, approve_import: false, manage_po: true, receive_po: true,
                 manage_transfers: true, manage_finance: true, view_audit_logs: true, view_branch_inventory: true,
                 view_daily_summary: true, manage_stock_audit: true, do_stock_audit: true, manage_deposits: true,
-                manage_database: false
+                manage_database: false, verify_orders: true
             }
         },
         {
@@ -76,7 +77,7 @@ const seedDefaultRoles = async () => {
                 report_arrival: true, approve_import: false, manage_po: false, receive_po: true,
                 manage_transfers: false, manage_finance: false, view_audit_logs: false, view_branch_inventory: false,
                 view_daily_summary: true, manage_stock_audit: false, do_stock_audit: true, manage_deposits: true,
-                manage_database: false
+                manage_database: false, verify_orders: false
             }
         }
     ];
@@ -110,6 +111,7 @@ const seedDefaultRoles = async () => {
                 existing.permissions.do_stock_audit = true;
                 existing.permissions.manage_deposits = true;
                 existing.permissions.manage_database = true;
+                existing.permissions.verify_orders = true;
                 changed = true;
             }
             // Ensure ผู้จัดการ gets manage_stock_audit & do_stock_audit
@@ -309,6 +311,18 @@ const transactionSchema = new mongoose.Schema({
     applied_deposit_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Deposit', default: null }, // ลิงก์ใบมัดจำที่นำมาหัก
     applied_deposit_amount: { type: Number, default: 0 }, // จำนวนเงินมัดจำที่หักออก
     status: { type: String, default: 'เสร็จสิ้น', enum: ['เสร็จสิ้น', 'ยกเลิกแล้ว'] }, // สถานะรายการ
+    // ===== ฝ่ายบัญชี: ตรวจสอบออเดอร์ (#order-verification) =====
+    // ไม่มี default ในสคีมา บิลเก่าที่ยังไม่มีฟิลด์นี้จึงถูกตีความตอนอ่านแทน (ซื้อสด = ชำระแล้ว, จัดไฟแนนซ์ = ยังไม่ชำระ)
+    // เพื่อไม่ต้องเขียนทับข้อมูลเดิมทั้งคอลเล็กชัน
+    payment_status: { type: String, enum: ['ยังไม่ชำระ', 'ชำระแล้ว'] }, // สถานะการชำระเงินของไฟแนนซ์/ลูกค้า
+    // สถานะการตรวจสอบของฝ่ายบัญชี — บิลเก่าที่ไม่มีฟิลด์นี้ถูกตีความเป็น "รอตรวจสอบ" ตอนอ่าน
+    verify_status: { type: String, enum: ['รอตรวจสอบ', 'สำเร็จ'], default: 'รอตรวจสอบ' },
+    payment_status_updated_by: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee' }, // บัญชีคนที่กดเปลี่ยนสถานะ
+    payment_status_updated_at: { type: Date }, // เวลาที่เปลี่ยนสถานะล่าสุด
+    // วันที่ไฟแนนซ์โอนเงินเข้ามาจริง — ใช้เฉพาะบิลผ่อนเก่าที่ไม่มีเอกสาร FinanceReceivable คู่กัน
+    // บิลผ่อนปกติยึด FinanceReceivable.settled_at เป็นความจริงแหล่งเดียว (หน้า #accounting เขียนที่นั่น)
+    finance_paid_at: { type: Date },
+    verify_note: { type: String, default: '' }, // หมายเหตุจากฝ่ายบัญชี
     cancel_reason: { type: String }, // เหตุผลที่ยกเลิก
     cancelled_by: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee' }, // ผู้ที่กดยกเลิก
     cancelled_at: { type: Date }, // วันที่ยกเลิก
@@ -319,6 +333,8 @@ transactionSchema.index({ branch_id: 1, created_at: -1 });
 transactionSchema.index({ employee_id: 1 });
 transactionSchema.index({ status: 1 });
 transactionSchema.index({ payment_type: 1 });
+transactionSchema.index({ payment_status: 1 });
+transactionSchema.index({ verify_status: 1 });
 const Transaction = mongoose.model('Transaction', transactionSchema, 'transaction');
 
 // 13. Transfer (โอนย้ายสินค้าระหว่างสาขา)
@@ -348,7 +364,8 @@ const Transfer = mongoose.model('Transfer', transferSchema, 'transfer');
 // 14. Finance Company (บริษัทจัดไฟแนนซ์)
 const financeCompanySchema = new mongoose.Schema({
     name: { type: String, required: true, unique: true },
-    status: { type: String, default: 'ปกติ' }
+    status: { type: String, default: 'ปกติ' },
+    commission_rate: { type: Number, default: 10 } // % ค่าคอมที่ซิลมีนได้จากทุนเช่าซื้อ — แต่ละเจ้าไม่เท่ากัน
 }, { timestamps: true });
 const FinanceCompany = mongoose.model('FinanceCompany', financeCompanySchema, 'financecompany');
 
