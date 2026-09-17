@@ -73,6 +73,8 @@ Static assets are served with `maxAge: 1y` and cached again by a Service Worker 
 | `views/*.html` | `VIEW_FRAGMENT_VERSION` in `script.js` |
 | `style.css` / `tailwind.css` | their `?v=` in `index.html` |
 | icon set | `FONT_VERSION` in `tools/build-icons.js` **and** the matching `?v=` on `icons.css` + both font `<link rel="preload">` tags |
+| `receipt-rc.html` | `RECEIPT_RC_VERSION` in `script.js` (print windows are opened by URL, so they carry their own `?v=`) |
+| `receipt-template.html` | `RECEIPT_TEMPLATE_VERSION` in `script.js` (same reason) |
 | `sw.js` caching logic | `CACHE_NAME` in `sw.js` |
 
 `index.html` itself is served `Cache-Control: no-cache` (it declares everyone else's versions), as is `sw.js`.

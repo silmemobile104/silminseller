@@ -2648,7 +2648,7 @@ router.get('/transactions/:id', async (req, res) => {
     try {
         const transaction = await Transaction.findById(req.params.id)
             .populate('branch_id')
-            .populate('employee_id', 'name emp_id')
+            .populate('employee_id', 'name emp_id role')
             .populate('items.product_id', 'name product_code')
             .populate('member_id', 'prefix first_name last_name first_name_en last_name_en phone address citizen_id member_number')
             .populate('cancelled_by', 'name')
@@ -2880,6 +2880,13 @@ router.patch('/order-verifications/:id', async (req, res) => {
         const txn = await Transaction.findById(req.params.id);
         if (!txn) {
             return res.status(404).json({ success: false, message: 'ไม่พบบิลที่ต้องการ' });
+        }
+        // บิลของสาขาอื่นห้ามแก้ — ฝั่ง GET กรองสาขาไว้แล้ว (ดูข้างบน) ฝั่งเขียนต้องกันด้วย
+        // ไม่งั้นยิง id ของบิลสาขาอื่นเข้ามาตรงๆ ก็แก้ราคาเครื่อง/ยอดรวม/ลูกหนี้ไฟแนนซ์
+        // และรายการเงินสดรับที่เข้า P&L ของสาขานั้นได้ ต้องเช็กก่อนเขียนทุกจุด
+        const branchScope = getRequestedBranchId(req);
+        if (branchScope && branchScope !== 'ALL' && String(txn.branch_id) !== String(branchScope)) {
+            return res.status(403).json({ success: false, message: 'คุณไม่มีสิทธิ์แก้ไขบิลของสาขาอื่น' });
         }
         if (txn.status === 'ยกเลิกแล้ว') {
             return res.status(400).json({ success: false, message: 'บิลนี้ถูกยกเลิกแล้ว แก้ไขสถานะการชำระเงินไม่ได้' });

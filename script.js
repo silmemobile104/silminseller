@@ -171,7 +171,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // โหลดสคริปต์เฉพาะหน้า (js/page-<name>.js) แบบ dynamic ครั้งเดียว แล้ว cache ไว้
     // PAGE_SCRIPT_VERSION: บัมพ์เลขนี้ทุกครั้งที่แก้ไฟล์ใน js/ เพื่อไม่ให้เบราว์เซอร์ใช้ของเก่าที่ cache ไว้
-    const PAGE_SCRIPT_VERSION = 'apple_active_v46';
+    const PAGE_SCRIPT_VERSION = 'apple_active_v47';
     const __loadedPageScripts = {};
     function loadPageScript(name) {
         if (__loadedPageScripts[name]) return __loadedPageScripts[name];
@@ -224,7 +224,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // ไม่ได้รอ init function ถ้า HTML ยังไม่ถูกแทรกเข้า DOM ก่อน ตัวแปรที่ query ไว้จะเป็น null ถาวร
     // ชื่อ name ต้องตรงกับชื่อที่ใช้ใน loadPageScript — ไฟล์เดียวอาจมีหลาย <div id="view-XXX"> รวมกัน
     // ถ้าหน้านั้นถูก share โดยสคริปต์เดียวกันหลาย view (ดูตาราง mapping ในแผน)
-    const VIEW_FRAGMENT_VERSION = 'v89'; // บัมพ์เลขนี้ทุกครั้งที่แก้ไฟล์ใน views/
+    const VIEW_FRAGMENT_VERSION = 'v90'; // บัมพ์เลขนี้ทุกครั้งที่แก้ไฟล์ใน views/
     const __loadedPageViews = {};
     function loadPageView(name) {
         if (__loadedPageViews[name]) return __loadedPageViews[name];
@@ -7234,7 +7234,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const txnData = pendingPrintTxnData; // Capture local reference to avoid asynchronous race condition!
 
         // เปิดหน้าต่างใหม่สำหรับใบเสร็จ
-        const printWindow = window.open('receipt-template.html', '_blank');
+        // ?v= จำเป็น: ไฟล์นี้ถูกเสิร์ฟด้วย maxAge 1 ปี (ดู server.js) และไม่มี ?v= ห่อจาก index.html
+        // บัมพ์ RECEIPT_TEMPLATE_VERSION ทุกครั้งที่แก้ receipt-template.html
+        const printWindow = window.open(`receipt-template.html?v=${RECEIPT_TEMPLATE_VERSION}`, '_blank');
 
         if (!printWindow) {
             showToast('กรุณาอนุญาตให้เปิด Pop-up เพื่อพิมพ์ใบเสร็จ', 'warning');
@@ -7265,8 +7267,81 @@ document.addEventListener('DOMContentLoaded', () => {
             }, '*');
         }, 1000);
 
+        // สั่งพิมพ์ใบเสร็จไฟล์แยกเรียบร้อย — ถามต่อว่าจะพิมพ์ใบเสร็จรับเงินไหม
         closePrintOptionsModal();
+        openReceiptRcModal(txnData);
     };
+
+    // ==========================================
+    // ใบเสร็จรับเงิน (receipt-rc.html) — เอกสาร A4 แยกจากใบเสร็จไฟล์แยก
+    // ถามยืนยันผ่าน #modal-receipt-rc ต่อจาก executePrintReceipt()
+    // ใช้ข้อมูลบิลชุดเดียวกัน ไม่ยิง API ซ้ำ
+    // ==========================================
+    const modalReceiptRc = document.getElementById('modal-receipt-rc');
+    const receiptRcNumber = document.getElementById('receipt-rc-number');
+    const btnPrintReceiptRc = document.getElementById('btn-print-receipt-rc');
+    const btnCloseReceiptRc = document.getElementById('btn-close-receipt-rc');
+    let pendingReceiptRcTxn = null;
+
+    const openReceiptRcModal = (txnData) => {
+        if (!modalReceiptRc || !txnData) return;
+        pendingReceiptRcTxn = txnData;
+        if (receiptRcNumber) receiptRcNumber.textContent = `ใบเสร็จเลขที่: ${txnData.receipt_number || '-'}`;
+
+        modalReceiptRc.classList.remove('opacity-0', 'pointer-events-none');
+        modalReceiptRc.firstElementChild.classList.remove('scale-95');
+        modalReceiptRc.firstElementChild.classList.add('scale-100');
+    };
+
+    const closeReceiptRcModal = () => {
+        if (!modalReceiptRc) return;
+        modalReceiptRc.classList.add('opacity-0', 'pointer-events-none');
+        modalReceiptRc.firstElementChild.classList.remove('scale-100');
+        modalReceiptRc.firstElementChild.classList.add('scale-95');
+        pendingReceiptRcTxn = null;
+    };
+
+    // ⚠️ receipt-rc.html ถูกเสิร์ฟด้วย maxAge 1 ปี เหมือน static อื่น (ดู server.js) และไม่มี ?v= ห่อ
+    //    จาก index.html เหมือนไฟล์อื่น จึงต้องแปะเวอร์ชันตอนเปิดหน้าต่างเอง
+    //    บัมพ์เลขนี้ทุกครั้งที่แก้ receipt-rc.html ไม่งั้นผู้ใช้จะยังเห็นใบเสร็จแบบเดิม
+    const RECEIPT_RC_VERSION = 'v5';
+    // เหตุผลเดียวกัน สำหรับใบเสร็จไฟล์แยก (receipt-template.html)
+    const RECEIPT_TEMPLATE_VERSION = 'v2';
+
+    const openReceiptRcWindow = (txnData) => {
+        if (!txnData) return;
+
+        const rcWindow = window.open(`receipt-rc.html?v=${RECEIPT_RC_VERSION}`, '_blank');
+        if (!rcWindow) {
+            showToast('เบราว์เซอร์บล็อกหน้าต่างใบเสร็จรับเงิน กรุณาอนุญาต Pop-up', 'warning');
+            return;
+        }
+
+        const payload = { type: 'PRINT_RECEIPT_RC', payload: txnData };
+
+        rcWindow.onload = function () {
+            rcWindow.postMessage(payload, '*');
+        };
+
+        // Fallback กรณี onload ไม่ทำงาน (บาง browser) — ฝั่งรับกันเรนเดอร์ซ้ำไว้แล้ว
+        setTimeout(() => {
+            rcWindow.postMessage(payload, '*');
+        }, 1200);
+    };
+
+    if (btnPrintReceiptRc) {
+        btnPrintReceiptRc.addEventListener('click', () => {
+            // อ่านค่าไว้ก่อน เพราะ closeReceiptRcModal() ล้าง pendingReceiptRcTxn ทิ้ง
+            const txnToPrint = pendingReceiptRcTxn;
+            // ต้อง window.open() ในจังหวะคลิกนี้ ไม่งั้น popup blocker จะบล็อก
+            openReceiptRcWindow(txnToPrint);
+            closeReceiptRcModal();
+        });
+    }
+
+    if (btnCloseReceiptRc) {
+        btnCloseReceiptRc.addEventListener('click', closeReceiptRcModal);
+    }
 
     // Print Options Event Listeners
     if (closePrintOptionsBtn) {

@@ -1,0 +1,931 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ใบเสร็จรับเงิน - SilminMobile</title>
+    <!-- ฟอนต์ self-host เดียวกับตัวเว็บ ไม่เรียก origin ภายนอก (ดู tools/build-fonts.js) -->
+    <link rel="stylesheet" href="vendor/fonts/prompt.css?v=1">
+    <style>
+        /*
+         * ใบเสร็จรับเงิน (A4) — เอกสารสั่งพิมพ์แบบ standalone
+         * เปิดจาก script.js ด้วย window.open() แล้วรับข้อมูลผ่าน postMessage
+         * ({ type: 'PRINT_RECEIPT_RC', payload: <transaction ที่ populate แล้ว> })
+         * ไม่ได้ถูกโหลดตอนเปิดเว็บ และไม่มีไฟล์อื่นอ้างถึง จึงไม่กระทบระบบหลัก
+         *
+         * หนึ่งบิลออกได้ถึง 2 ใบเสร็จ (ดูฟังก์ชัน buildReceipts):
+         *   ใบที่ 1 — ขายเครื่อง/สินค้า
+         *   ใบที่ 2 — ค่าใบสัญญา + ค่าสมัคร iCloud
+         * ทั้งสองใบใช้เทมเพลตเดียวกัน (#page-tpl) ต่างกันแค่รายการกับยอดสรุป
+         */
+        :root {
+            --line: #8892ab;
+            /* เส้นกรอบสีน้ำเงินเทา ตามแบบเอกสาร */
+            --line-dark: #5c6880;
+            --fill: #e2e7f1;
+            /* พื้นกล่องหัวเรื่อง/หัวตาราง */
+            --ink: #111827;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Prompt', 'Sarabun', sans-serif;
+            background: #52525b;
+            color: var(--ink);
+            margin: 0;
+            padding: 18px 12px 40px;
+            font-size: 11px;
+            line-height: 1.35;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+
+        /* ความสูงต้องเท่ากับตอนพิมพ์เป๊ะ เพราะ JS วัดช่องว่างที่เหลือจากหน้าจอ
+           แล้วเอาไปตั้งความสูงแถวเปล่า (ดู fitFillers) ถ้าจอกับพิมพ์สูงไม่เท่ากันจะเพี้ยน */
+        .page {
+            background: #fff;
+            width: 210mm;
+            height: 296mm;
+            margin: 0 auto;
+            padding: 8mm 8mm 6mm;
+            box-shadow: 0 6px 24px rgba(0, 0, 0, .35);
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* เว้นช่องระหว่างใบเสร็จตอนดูบนจอ ตอนพิมพ์ใช้ page-break แทน */
+        .page + .page {
+            margin-top: 20px;
+        }
+
+        /* ── แถบเครื่องมือ (ไม่ถูกพิมพ์) ───────────────────── */
+        .toolbar {
+            width: 210mm;
+            margin: 0 auto 12px;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            justify-content: flex-end;
+        }
+
+        .toolbar .hint {
+            margin-right: auto;
+            color: #e4e4e7;
+            font-size: 12px;
+        }
+
+        .toolbar button {
+            font-family: inherit;
+            font-size: 13px;
+            font-weight: 600;
+            padding: 9px 18px;
+            border-radius: 999px;
+            border: 0;
+            cursor: pointer;
+            background: #FFE169;
+            color: #18181B;
+        }
+
+        .toolbar button.ghost {
+            background: transparent;
+            color: #e4e4e7;
+            border: 1px solid #a1a1aa;
+        }
+
+        /* ── หัวเอกสาร ─────────────────────────────────────── */
+        .doc-head {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            margin-bottom: 8px;
+        }
+
+        .doc-head .company {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .logo {
+            width: 110px;
+            height: auto;
+            display: block;
+            margin-bottom: 6px;
+        }
+
+        .company-name {
+            font-size: 13px;
+            font-weight: 700;
+        }
+
+        .company-line {
+            font-size: 11px;
+        }
+
+        .copy-badge {
+            align-self: flex-start;
+            margin-top: 2px;
+            border: 1px solid #9ca3af;
+            background: #e5e5e5;
+            padding: 3px 16px;
+            font-size: 11px;
+            text-align: center;
+        }
+
+        .doc-title-box {
+            width: 62mm;
+            border: 1px solid var(--line-dark);
+            flex: none;
+        }
+
+        .doc-title-box .t-row {
+            border-bottom: 1px solid var(--line-dark);
+            text-align: center;
+            padding: 3px 4px;
+            background: var(--fill);
+            font-weight: 700;
+            font-size: 13px;
+        }
+
+        .doc-title-box .t-row.sub {
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .doc-title-box .m-row {
+            display: flex;
+            border-bottom: 1px solid var(--line-dark);
+        }
+
+        .doc-title-box .m-row:last-child {
+            border-bottom: 0;
+        }
+
+        .doc-title-box .m-label {
+            width: 22mm;
+            flex: none;
+            padding: 3px 6px;
+            border-right: 1px solid var(--line-dark);
+        }
+
+        .doc-title-box .m-value {
+            flex: 1;
+            padding: 3px 6px;
+            text-align: center;
+            font-weight: 600;
+            min-width: 0;
+            word-break: break-all;
+        }
+
+        /* ── กล่องข้อมูลลูกค้า / ข้อมูลการขาย ──────────────── */
+        .party {
+            display: flex;
+            border: 1px solid var(--line-dark);
+            margin-bottom: -1px;
+        }
+
+        .party > div {
+            padding: 6px 8px;
+        }
+
+        .party .left {
+            flex: 1.35;
+            border-right: 1px solid var(--line-dark);
+            min-width: 0;
+        }
+
+        .party .right {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .kv {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 2px;
+        }
+
+        .kv .k {
+            width: 24mm;
+            flex: none;
+        }
+
+        .kv .v {
+            flex: 1;
+            min-width: 0;
+            word-wrap: break-word;
+        }
+
+        .kv.indent .k {
+            visibility: hidden;
+        }
+
+        /* ── ตารางรายการ ───────────────────────────────────── */
+        table.items {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+        }
+
+        table.items th,
+        table.items td {
+            border: 1px solid var(--line-dark);
+            padding: 4px 6px;
+            vertical-align: top;
+        }
+
+        table.items thead th {
+            background: var(--fill);
+            text-align: center;
+            font-weight: 600;
+        }
+
+        /* เอกสารต้นฉบับไม่มีเส้นคั่นระหว่างแถวรายการ เหลือแค่เส้นแบ่งคอลัมน์กับกรอบนอก
+           ขอบล่างของตารางได้จากเส้นบนของตารางสรุปยอดที่ซ้อนทับกันด้วย margin-top: -1px */
+        table.items tbody td {
+            border-top: 0;
+            border-bottom: 0;
+        }
+
+        table.items td.num {
+            text-align: right;
+            font-variant-numeric: tabular-nums;
+        }
+
+        table.items td.ctr {
+            text-align: center;
+        }
+
+        .item-sub {
+            font-size: 10px;
+            color: #4b5563;
+        }
+
+        /* แถวเปล่าดันความสูงตารางให้เต็มหน้า เหมือนเอกสารต้นฉบับ
+           ⚠️ ห้ามใช้ height:100% บนเซลล์ หรือ flex:1 บน <table> เด็ดขาด
+           เปอร์เซ็นต์จะอ้างอิงความสูงที่ flex กำลังคำนวณอยู่ → วนคำนวณไม่จบตอน Chrome
+           จัดหน้าเพื่อพิมพ์ แล้ว renderer ค้าง (ค้างทั้งหน้า POS ด้วย เพราะใช้ process เดียวกัน)
+           ความสูงแถวนี้ถูกตั้งเป็น px ครั้งเดียวโดย fitFillers() แทน */
+        .items-wrap {
+            flex: 1 1 auto;
+            min-height: 0;
+            overflow: hidden;
+        }
+
+        /* ── สรุปยอด ───────────────────────────────────────── */
+        table.summary {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+            margin-top: -1px;
+        }
+
+        table.summary td {
+            border: 1px solid var(--line-dark);
+            padding: 3px 6px;
+        }
+
+        td.sum-note {
+            border-right: 0 !important;
+        }
+
+        td.sum-blank {
+            border-left: 0 !important;
+            border-right: 0 !important;
+        }
+
+        td.sum-label {
+            text-align: right;
+            border-left: 0 !important;
+        }
+
+        td.sum-value {
+            text-align: right;
+            font-variant-numeric: tabular-nums;
+            font-weight: 600;
+        }
+
+        tr.grand td {
+            font-weight: 700;
+        }
+
+        /* ── ลายเซ็น ───────────────────────────────────────── */
+        .signs {
+            display: flex;
+            border: 1px solid var(--line-dark);
+            border-top: 0;
+            margin-bottom: 6px;
+        }
+
+        .signs > div {
+            flex: 1;
+            padding: 8px 10px 6px;
+            text-align: center;
+            min-height: 30mm;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .sign-title {
+            font-weight: 600;
+            margin-bottom: auto;
+        }
+
+        .sign-dots {
+            margin-bottom: 8px;
+        }
+
+        .sign-date {
+            font-size: 10px;
+        }
+
+        .page-no {
+            text-align: center;
+            font-size: 10px;
+        }
+
+        /* ── โหมดพิมพ์ ─────────────────────────────────────── */
+        @page {
+            size: A4 portrait;
+            margin: 0;
+        }
+
+        @media print {
+            body {
+                background: #fff;
+                padding: 0;
+            }
+
+            .toolbar {
+                display: none !important;
+            }
+
+            /* ขนาดและ padding ต้องเท่ากับตอนแสดงบนจอเป๊ะ เพราะ fitFillers() วัดจากบนจอ
+               ใช้ 296mm (ไม่ใช่ 297) กันเศษปัดทำให้ล้นไปเป็นแผ่นเปล่าเพิ่ม */
+            .page {
+                width: 100%;
+                height: 296mm;
+                box-shadow: none;
+                margin: 0;
+                padding: 8mm 8mm 6mm;
+            }
+
+            /* ใบเสร็จแต่ละใบขึ้นแผ่นใหม่เสมอ ใบสุดท้ายไม่ต้องขึ้น กันแผ่นเปล่าท้ายเอกสาร */
+            .page + .page {
+                margin-top: 0;
+                break-before: page;
+                page-break-before: always;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="toolbar">
+        <span class="hint" id="toolbar-hint">เลือกเครื่องพิมพ์ของใบเสร็จรับเงินในหน้าต่างพิมพ์
+            (คนละเครื่องกับใบเสร็จไฟล์แยกได้)</span>
+        <button type="button" id="btn-print">🖨 พิมพ์ใบเสร็จรับเงิน</button>
+        <button type="button" class="ghost" id="btn-close">ปิดหน้าต่าง</button>
+    </div>
+
+    <!-- ที่วางใบเสร็จที่เรนเดอร์แล้ว (1 หรือ 2 ใบ) -->
+    <div id="receipts"></div>
+
+    <!-- เทมเพลตใบเสร็จ 1 ใบ — ใช้ data-f แทน id เพราะถูกโคลนได้หลายครั้งในหน้าเดียว -->
+    <template id="page-tpl">
+        <div class="page">
+            <!-- หัวเอกสาร -->
+            <div class="doc-head">
+                <div class="company">
+                    <img class="logo" src="receipt-logo.png?v=1" alt="โลโก้ ซิลมิน โมบาย">
+                    <div class="company-name" data-f="company-name">บริษัท ซิลมิน โมบาย จำกัด</div>
+                    <div class="company-line" data-f="company-address">-</div>
+                    <div class="company-line" data-f="company-tax">-</div>
+                </div>
+                <div class="copy-badge">ต้นฉบับ</div>
+                <div class="doc-title-box">
+                    <div class="t-row">ใบเสร็จรับเงิน</div>
+                    <div class="t-row sub">Receipt</div>
+                    <div class="m-row">
+                        <div class="m-label">เลขที่</div>
+                        <div class="m-value" data-f="number">-</div>
+                    </div>
+                    <div class="m-row">
+                        <div class="m-label">วันที่</div>
+                        <div class="m-value" data-f="date">-</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ข้อมูลลูกค้า / ข้อมูลการขาย -->
+            <div class="party">
+                <div class="left">
+                    <div class="kv">
+                        <div class="k">ลูกค้า</div>
+                        <div class="v" data-f="cust-name">-</div>
+                    </div>
+                    <div class="kv">
+                        <div class="k">ที่อยู่</div>
+                        <div class="v" data-f="cust-address"></div>
+                    </div>
+                    <div class="kv indent">
+                        <div class="k">ที่อยู่</div>
+                        <div class="v" data-f="cust-tax"></div>
+                    </div>
+                    <div class="kv">
+                        <div class="k">ติดต่อกับ</div>
+                        <div class="v" data-f="cust-phone"></div>
+                    </div>
+                </div>
+                <div class="right">
+                    <div class="kv">
+                        <div class="k">เครดิต</div>
+                        <div class="v" data-f="credit">-</div>
+                    </div>
+                    <div class="kv">
+                        <div class="k">กำหนดชำระ</div>
+                        <div class="v" data-f="due"></div>
+                    </div>
+                    <div class="kv">
+                        <div class="k">พนักงานขาย</div>
+                        <div class="v" data-f="seller"></div>
+                    </div>
+                    <div class="kv">
+                        <div class="k">แผนก</div>
+                        <div class="v" data-f="dept"></div>
+                    </div>
+                    <div class="kv">
+                        <div class="k">เบอร์ติดต่อ</div>
+                        <div class="v" data-f="branch-phone"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ตารางรายการ -->
+            <div class="items-wrap">
+                <table class="items">
+                    <colgroup>
+                        <col style="width: 9mm;">
+                        <col>
+                        <col style="width: 22mm;">
+                        <col style="width: 24mm;">
+                        <col style="width: 22mm;">
+                        <col style="width: 26mm;">
+                    </colgroup>
+                    <thead>
+                        <tr>
+                            <th>No.</th>
+                            <th>รายการ</th>
+                            <th>จำนวน</th>
+                            <th>ราคาต่อหน่วย</th>
+                            <th>ส่วนลด</th>
+                            <th>รวมเงิน</th>
+                        </tr>
+                    </thead>
+                    <tbody data-f="items"></tbody>
+                </table>
+            </div>
+
+            <!-- สรุปยอด -->
+            <table class="summary">
+                <colgroup>
+                    <col style="width: 9mm;">
+                    <col>
+                    <col style="width: 22mm;">
+                    <col style="width: 24mm;">
+                    <col style="width: 22mm;">
+                    <col style="width: 26mm;">
+                </colgroup>
+                <tbody data-f="summary"></tbody>
+            </table>
+
+            <!-- ลายเซ็น -->
+            <div class="signs">
+                <div>
+                    <div class="sign-title">ผู้จ่ายเงิน</div>
+                    <div class="sign-dots">(............................................)</div>
+                    <div class="sign-date">วันที่ ............................</div>
+                </div>
+                <div>
+                    <div class="sign-title">ผู้รับเงิน</div>
+                    <div class="sign-dots">(............................................)</div>
+                    <div class="sign-date">วันที่ ............................</div>
+                </div>
+                <div>
+                    <div class="sign-title">ผู้มีอำนาจลงนาม</div>
+                    <div class="sign-dots">ผู้บริหาร<br>บริหาร</div>
+                    <div class="sign-date">วันที่ ............................</div>
+                </div>
+            </div>
+
+            <div class="page-no">หน้า 1 of 1</div>
+        </div>
+    </template>
+
+    <script>
+        (function () {
+            'use strict';
+
+            // ที่อยู่/ข้อมูลบริษัทสำรอง ใช้เมื่อสาขายังไม่ได้กรอกข้อมูลไว้ในฐานข้อมูล
+            var COMPANY = {
+                name: 'บริษัท ซิลมิน โมบาย จำกัด',
+                address: '273/11 ถนนหน้าเมือง ตำบลตลาด อำเภอเมือง จังหวัดสุราษฎร์ธานี 84000',
+                phone: '073729969',
+                tax_id: '0955562000701'
+            };
+
+            var rendered = false;
+
+            function money(n) {
+                return (Number(n) || 0).toLocaleString('en-US', {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2
+                });
+            }
+
+            // คอลัมน์ "จำนวน" ไม่แสดงทศนิยม (1 เครื่อง ไม่ใช่ 1.00 เครื่อง)
+            // ยังเปิดทศนิยมไว้ถึง 2 ตำแหน่งเผื่อเจอจำนวนที่ไม่ใช่จำนวนเต็ม จะได้ไม่ปัดเลขทิ้งเงียบๆ
+            function qty(n) {
+                return (Number(n) || 0).toLocaleString('en-US', {
+                    minimumFractionDigits: 0,
+                    maximumFractionDigits: 2
+                });
+            }
+
+            function esc(s) {
+                return String(s == null ? '' : s)
+                    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            }
+
+            // แปลงจำนวนเงินเป็นตัวอักษรภาษาไทย (ยกมาจาก po-print.html ให้เอกสารพูดภาษาเดียวกัน)
+            function arabicToThaiBaht(num) {
+                if (num === null || num === undefined || isNaN(num)) return '';
+                num = Math.round(num * 100) / 100;
+                if (num === 0) return 'ศูนย์บาทถ้วน';
+
+                var numbers = ['ศูนย์', 'หนึ่ง', 'สอง', 'สาม', 'สี่', 'ห้า', 'หก', 'เจ็ด', 'แปด', 'เก้า'];
+                var positions = ['', 'สิบ', 'ร้อย', 'พัน', 'หมื่น', 'แสน', 'ล้าน'];
+
+                var parts = num.toString().split('.');
+                var bahtStr = '';
+                var satangStr = '';
+
+                var bahtVal = parts[0];
+                if (bahtVal !== '0') {
+                    var len = bahtVal.length;
+                    for (var i = 0; i < len; i++) {
+                        var digit = parseInt(bahtVal.charAt(i), 10);
+                        var pos = len - i - 1;
+
+                        if (digit !== 0) {
+                            var word = numbers[digit];
+                            var unit = positions[pos % 6];
+
+                            if (pos % 6 === 1) {
+                                if (digit === 1) word = '';
+                                else if (digit === 2) word = 'ยี่';
+                            }
+
+                            if (pos % 6 === 0 && len > 1 && digit === 1) {
+                                if (i > 0 && bahtVal.charAt(i - 1) !== '0') word = 'เอ็ด';
+                            }
+
+                            bahtStr += word + unit;
+                        }
+
+                        if (pos > 0 && pos % 6 === 0) bahtStr += 'ล้าน';
+                    }
+                    bahtStr += 'บาท';
+                }
+
+                var satangVal = parts[1];
+                if (satangVal && satangVal !== '00') {
+                    var satangNum = parseInt(satangVal, 10);
+                    if (satangVal.length === 1) satangNum *= 10;
+
+                    var d1 = Math.floor(satangNum / 10);
+                    var d2 = satangNum % 10;
+
+                    var w1 = numbers[d1];
+                    if (d1 !== 0) {
+                        if (d1 === 1) w1 = '';
+                        else if (d1 === 2) w1 = 'ยี่';
+                        satangStr += w1 + 'สิบ';
+                    }
+                    if (d2 !== 0) {
+                        var w2 = numbers[d2];
+                        if (d2 === 1 && d1 !== 0) w2 = 'เอ็ด';
+                        satangStr += w2;
+                    }
+                    satangStr += 'สตางค์';
+                } else {
+                    satangStr = 'ถ้วน';
+                }
+
+                return bahtStr + satangStr;
+            }
+
+            function formatDate(d) {
+                var dt = new Date(d);
+                if (isNaN(dt.getTime())) return '-';
+                var dd = String(dt.getDate()).padStart(2, '0');
+                var mm = String(dt.getMonth() + 1).padStart(2, '0');
+                return dd + '/' + mm + '/' + dt.getFullYear();
+            }
+
+            // ──────────────────────────────────────────────────
+            // แบ่งบิลหนึ่งใบออกเป็นใบเสร็จรับเงินตามชนิดของรายการ
+            //   ใบที่ 1 — ขายเครื่อง/สินค้า (หักส่วนลดและเงินมัดจำที่นี่ เพราะผูกกับตะกร้าสินค้า)
+            //   ใบที่ 2 — ค่าใบสัญญา + ค่าสมัคร iCloud (เก็บเต็มจำนวน ไม่มีส่วนลด)
+            // ยอดรวมของทุกใบบวกกันต้องเท่ากับ txn.total_amount พอดี
+            // (checkout คิดว่า total = สินค้า − ส่วนลด − มัดจำ + ค่าใบสัญญา + ค่า iCloud)
+            // ──────────────────────────────────────────────────
+            function buildReceipts(txn) {
+                var items = Array.isArray(txn.items) ? txn.items : [];
+                var contractFee = Number(txn.contract_fee) || 0;
+                var icloudFee = Number(txn.icloud_fee) || 0;
+                var feeTotal = contractFee + icloudFee;
+                var deposit = Number(txn.applied_deposit_amount) || 0;
+                var grandTotal = Number(txn.total_amount) || 0;
+
+                var list = [];
+
+                // ── ใบสินค้า ──
+                var goodsRows = [];
+                var goodsSubtotal = 0;
+                items.forEach(function (item) {
+                    var isGift = item.is_gift === true;
+                    var lineTotal = (Number(item.quantity) || 0) * (Number(item.price) || 0);
+                    if (!isGift) goodsSubtotal += lineTotal;
+
+                    var sub = '';
+                    if (isGift) {
+                        sub = 'ของแถม';
+                    } else if (item.warranty_period && item.warranty_period !== 'ไม่มีประกัน') {
+                        sub = 'รับประกัน ' + esc(item.warranty_period);
+                        if (item.warranty_expiry) sub += ' (ถึง ' + formatDate(item.warranty_expiry) + ')';
+                    }
+
+                    goodsRows.push({
+                        title: (item.imei_sold ? esc(item.imei_sold) + ' - ' : '') + esc(item.product_name || '-'),
+                        sub: sub,
+                        qty: qty(item.quantity) + ' ' + (item.imei_sold ? 'เครื่อง' : 'ชิ้น'),
+                        price: isGift ? '' : money(item.price),
+                        total: isGift ? '' : money(lineTotal)
+                    });
+                });
+
+                // ยอดสุทธิของใบสินค้า = สินค้า − ส่วนลด − มัดจำ ซึ่งก็คือ total_amount ลบส่วนค่าบริการออก
+                var goodsTotal = grandTotal - feeTotal;
+                var goodsDiscount = Math.max(0, goodsSubtotal - deposit - goodsTotal);
+
+                if (goodsRows.length > 0 || feeTotal <= 0) {
+                    list.push({
+                        rows: goodsRows,
+                        subtotal: goodsSubtotal,
+                        discount: goodsDiscount,
+                        deposit: deposit,
+                        total: Math.max(0, goodsTotal)
+                    });
+                }
+
+                // ── ใบค่าบริการ (ค่าใบสัญญา + ค่าสมัคร iCloud อยู่ใบเดียวกัน) ──
+                if (feeTotal > 0) {
+                    var feeRows = [];
+                    function pushFee(label, amount) {
+                        if (amount <= 0) return;
+                        feeRows.push({
+                            title: label,
+                            sub: '',
+                            qty: '1 รายการ',
+                            price: money(amount),
+                            total: money(amount)
+                        });
+                    }
+                    pushFee('ค่าทำใบสัญญา', contractFee);
+                    pushFee('ค่าสมัคร iCloud', icloudFee);
+
+                    list.push({
+                        rows: feeRows,
+                        subtotal: feeTotal,
+                        discount: 0,
+                        deposit: 0,
+                        total: feeTotal
+                    });
+                }
+
+                return list;
+            }
+
+            // เรนเดอร์ใบเสร็จหนึ่งใบจากเทมเพลต
+            function renderReceipt(txn, receipt) {
+                var node = document.getElementById('page-tpl').content.firstElementChild.cloneNode(true);
+                var set = function (name, value) {
+                    var el = node.querySelector('[data-f="' + name + '"]');
+                    if (el) el.textContent = value == null ? '' : value;
+                };
+
+                var branch = txn.branch_id || {};
+                var member = txn.member_id || null;
+                var employee = txn.employee_id || {};
+
+                // หัวบริษัท — ใช้ข้อมูลสาขาจากฐานข้อมูลก่อน ถ้าว่างค่อยใช้ค่าสำรอง
+                var branchName = (branch.name || '').trim();
+                var suffix = '';
+                if (branchName) {
+                    suffix = /^สาขา/.test(branchName) ? ' (' + branchName + ')' : ' (สาขา' + branchName + ')';
+                }
+                set('company-name', COMPANY.name + suffix);
+                set('company-address', branch.address || COMPANY.address);
+                set('company-tax',
+                    'โทร. ' + (branch.phone || COMPANY.phone) +
+                    '  เลขประจำตัวผู้เสียภาษี ' + COMPANY.tax_id);
+
+                set('number', txn.receipt_number || '-');
+                set('date', formatDate(txn.created_at));
+
+                // ข้อมูลลูกค้า
+                if (member) {
+                    var fullName = [member.prefix, member.first_name, member.last_name]
+                        .filter(Boolean).join(' ').trim();
+                    set('cust-name', fullName || member.member_number || 'ลูกค้าทั่วไป');
+                    set('cust-address', member.address || '');
+                    set('cust-tax', member.citizen_id ? 'เลขประจำตัวผู้เสียภาษี ' + member.citizen_id : '');
+                    set('cust-phone', member.phone || '');
+                } else {
+                    set('cust-name', 'ลูกค้าทั่วไป');
+                    set('cust-address', '');
+                    set('cust-tax', '');
+                    set('cust-phone', '');
+                }
+
+                // ข้อมูลการขายฝั่งขวา
+                var isFinance = txn.payment_type === 'จัดไฟแนนซ์' || txn.payment_method === 'จัดไฟแนนซ์';
+                set('credit', isFinance ? 'ไฟแนนซ์' : 'สด');
+                set('due', (isFinance && txn.finance_payment_day > 0)
+                    ? 'ทุกวันที่ ' + txn.finance_payment_day + ' ของเดือน'
+                    : '');
+                set('seller', employee.name || '');
+                set('dept', employee.role || 'พนักงานขาย');
+                set('branch-phone', branch.phone || COMPANY.phone);
+
+                // ── แถวรายการ ──
+                var rowsHtml = receipt.rows.map(function (r, i) {
+                    return '<tr>' +
+                        '<td class="ctr">' + (i + 1) + '</td>' +
+                        '<td>' + r.title + (r.sub ? '<div class="item-sub">' + r.sub + '</div>' : '') + '</td>' +
+                        '<td class="num">' + r.qty + '</td>' +
+                        '<td class="num">' + r.price + '</td>' +
+                        '<td class="num"></td>' +
+                        '<td class="num">' + r.total + '</td>' +
+                        '</tr>';
+                });
+
+                // แถวเปล่าดันตารางให้สูงเต็มหน้าเหมือนเอกสารต้นฉบับ
+                // ความสูงจริงถูกตั้งเป็น px โดย fitFillers() หลังเรนเดอร์เสร็จ
+                rowsHtml.push(
+                    '<tr class="filler-row"><td>&nbsp;</td><td></td><td></td>' +
+                    '<td></td><td></td><td></td></tr>'
+                );
+                node.querySelector('[data-f="items"]').innerHTML = rowsHtml.join('');
+
+                // ── สรุปยอด ──
+                var financeLabel = isFinance ? (txn.finance_company || 'FINANCE') : 'เงินสด';
+                var sum = [];
+                function sumRow(label, value, opts) {
+                    opts = opts || {};
+                    sum.push(
+                        '<tr' + (opts.cls ? ' class="' + opts.cls + '"' : '') + '>' +
+                        '<td class="sum-note" colspan="2">' + (opts.note || '&nbsp;') + '</td>' +
+                        '<td class="sum-blank"></td>' +
+                        '<td class="sum-label" colspan="2">' + label + '</td>' +
+                        '<td class="sum-value">' + value + '</td>' +
+                        '</tr>'
+                    );
+                }
+
+                sumRow('รวมมูลค่าสินค้า', money(receipt.subtotal));
+                sumRow('ส่วนลด', money(receipt.discount));
+                if (receipt.deposit > 0) sumRow('หักเงินมัดจำ', money(receipt.deposit));
+                sumRow('หลังหักส่วนลด', money(receipt.total));
+                // ใบเสร็จรับเงินชุดนี้ไม่แยก VAT (ใบกำกับภาษีใช้ receipt-template.html)
+                sumRow('ภาษีมูลค่าเพิ่ม', money(0), { note: esc(financeLabel) });
+                sumRow('รวมทั้งสิ้น', money(receipt.total), {
+                    cls: 'grand',
+                    note: '<div style="text-align:center;">(' + esc(arabicToThaiBaht(receipt.total)) + ')</div>'
+                });
+
+                node.querySelector('[data-f="summary"]').innerHTML = sum.join('');
+
+                return node;
+            }
+
+            // ตั้งความสูงแถวเปล่าให้ตารางยาวจรดตารางสรุปยอด — วัดครั้งเดียวแล้วเขียนเป็น px
+            // เลี่ยง height:100%/flex บนตาราง ซึ่งทำให้ Chrome วนคำนวณไม่จบตอนจัดหน้าพิมพ์
+            function fitFillers() {
+                var pages = document.querySelectorAll('.page');
+                for (var i = 0; i < pages.length; i++) {
+                    var wrap = pages[i].querySelector('.items-wrap');
+                    // ชื่อตัวแปรต้องไม่ใช่คำว่า table เฉยๆ — ตัวสแกนของ Tailwind จะอ่าน
+                    // เครื่องหมายตกใจหน้าชื่อตัวแปรในเงื่อนไขข้างล่างเป็นชื่อคลาส
+                    // แล้วไปสร้าง utility ขยะใส่ tailwind.css (ไฟล์นี้ไม่ได้ใช้ tailwind เลยด้วยซ้ำ)
+                    var itemsTable = pages[i].querySelector('table.items');
+                    var fillerRow = pages[i].querySelector('.filler-row');
+                    var cells = pages[i].querySelectorAll('.filler-row td');
+                    if (!wrap || !itemsTable || !fillerRow || !cells.length) continue;
+
+                    // รีเซ็ตก่อนวัด ไม่งั้นรอบถัดไปจะวัดจากค่าที่ตั้งไว้เอง
+                    for (var c = 0; c < cells.length; c++) cells[c].style.height = '0px';
+                    // ต้องบวกความสูงขั้นต่ำของแถวเปล่ากลับเข้าไป เพราะมันนับรวมอยู่ใน offsetHeight แล้ว
+                    // (ตั้ง height:0 ไม่ได้ทำให้แถวสูง 0 จริง ยังมีความสูงบรรทัดขั้นต่ำอยู่)
+                    var rowH = fillerRow.offsetHeight;
+                    var extra = Math.max(0, wrap.clientHeight - itemsTable.offsetHeight + rowH);
+                    for (var d = 0; d < cells.length; d++) cells[d].style.height = extra + 'px';
+                }
+            }
+
+            // รอฟอนต์โหลดเสร็จก่อนวัด ไม่งั้นความสูงบรรทัดยังเป็นของฟอนต์สำรอง แล้ววัดผิด
+            // ⚠️ ห้ามใช้ requestAnimationFrame ตรงนี้ — ถ้าหน้าต่างพิมพ์ไม่ได้อยู่หน้าจอ
+            //    (ผู้ใช้สลับแท็บ / เปิดซ้อนหลังหน้า POS) rAF จะไม่ยิงเลย แล้วค้างไม่ได้พิมพ์
+            //    setTimeout ถูกหน่วงในแท็บพื้นหลังก็จริง แต่ยังยิงแน่นอน
+            function whenReady(cb) {
+                var done = false;
+                function run() {
+                    if (done) return;
+                    done = true;
+                    cb();
+                }
+                // กันค้าง: ต่อให้ฟอนต์โหลดไม่เสร็จ อย่างช้า 1.5 วิ ต้องเดินต่อเสมอ
+                var guard = setTimeout(run, 1500);
+                function proceed() {
+                    clearTimeout(guard);
+                    setTimeout(run, 0);
+                }
+                if (document.fonts && document.fonts.ready && document.fonts.ready.then) {
+                    document.fonts.ready.then(proceed, proceed);
+                } else {
+                    proceed();
+                }
+            }
+
+            function populate(txn) {
+                var receipts = buildReceipts(txn);
+                var host = document.getElementById('receipts');
+                host.innerHTML = '';
+                receipts.forEach(function (r) {
+                    host.appendChild(renderReceipt(txn, r));
+                });
+
+                var hint = document.getElementById('toolbar-hint');
+                if (hint && receipts.length > 1) {
+                    hint.textContent = 'บิลนี้ออกใบเสร็จรับเงิน ' + receipts.length +
+                        ' ใบ (ขายสินค้า + ค่าบริการ) สั่งพิมพ์ครั้งเดียวได้ครบทุกใบ';
+                }
+
+                document.title = 'ใบเสร็จรับเงิน ' + (txn.receipt_number || '');
+            }
+
+            window.addEventListener('message', function (event) {
+                var data = event.data;
+                if (!data || data.type !== 'PRINT_RECEIPT_RC' || !data.payload) return;
+                if (rendered) return; // กันกรณี fallback ส่งซ้ำ เรนเดอร์ครั้งเดียวพอ
+                rendered = true;
+
+                populate(data.payload);
+
+                // จัดความสูงแถวเปล่าให้เสร็จ "ก่อน" เปิด print dialog เสมอ
+                // ถ้าปล่อยให้ Chrome ต้องจัดหน้าไปพร้อมกับเปิด dialog จะหน่วงจนดูเหมือนค้าง
+                whenReady(function () {
+                    fitFillers();
+                    if (data.autoPrint === false) return;
+                    // หน่วงอีกนิดไม่ให้ dialog ชนกับหน้าต่างใบเสร็จไฟล์แยกที่เปิดก่อนหน้า
+                    setTimeout(doPrint, 400);
+                });
+            });
+
+            // กันกดพิมพ์ซ้อนกัน — เปิด print dialog สองอันพร้อมกันทำให้ renderer ค้าง
+            var printing = false;
+            function doPrint() {
+                if (printing) return;
+                printing = true;
+                try {
+                    window.print();
+                } finally {
+                    // ปลดล็อกหลัง dialog ปิด (afterprint ไม่ยิงทุกเบราว์เซอร์ จึงกันด้วย timeout ด้วย)
+                    setTimeout(function () { printing = false; }, 1000);
+                }
+            }
+            window.addEventListener('afterprint', function () { printing = false; });
+
+            document.getElementById('btn-print').addEventListener('click', doPrint);
+            document.getElementById('btn-close').addEventListener('click', function () {
+                window.close();
+            });
+        })();
+    </script>
+</body>
+
+</html>

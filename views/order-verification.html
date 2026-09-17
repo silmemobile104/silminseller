@@ -120,6 +120,11 @@
         <div id="ov-orders-cards" class="hidden grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 p-6">
             <!-- การ์ดถูกสร้างจาก js/page-order-verification.js -->
         </div>
+        <!-- 2c'' จุดสังเกตสำหรับโหลดเพิ่มอัตโนมัติตอนเลื่อนลง (ครั้งละ 10 รายการ)
+             IntersectionObserver ใน js/page-order-verification.js เฝ้าอิลิเมนต์นี้อยู่ -->
+        <div id="ov-orders-sentinel" class="hidden px-6 py-5 text-center text-xs text-body-muted">
+            <i class="fa-solid fa-circle-notch fa-spin mr-1.5"></i> กำลังโหลดรายการเพิ่ม...
+        </div>
         </div>
 
         <!-- แท็บรายการมัดจำ — ข้อมูลอ่านอย่างเดียว (จัดการใบมัดจำจริงอยู่ที่หน้า "การมัดจำ") -->

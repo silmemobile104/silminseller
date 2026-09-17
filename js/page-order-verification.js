@@ -57,6 +57,12 @@
     const OV_DEPOSIT_COLS = 7;
 
     let ovCache = [];
+    // เรนเดอร์ทีละ 10 แถว แล้วโหลดเพิ่มเองตอนเลื่อนถึงท้ายตาราง (infinite scroll)
+    // API ส่งมาทั้งชุดอยู่แล้ว (กรอง product_type / payment_status ต้องทำหลังประกอบแถว จึง paginate ที่ฝั่ง
+    // เซิร์ฟเวอร์ไม่ได้) การหั่นจึงทำที่ฝั่งหน้าเว็บ ซึ่งตัดเวลาเรนเดอร์ DOM ตอนเปิดหน้าได้เต็มๆ
+    const OV_PAGE_SIZE = 10;
+    let ovRenderedCount = 0;
+    let ovOrdersObserver = null;
     let ovCurrentOrder = null;   // บิลที่เปิดอยู่ในโมดัลรายละเอียด
     let ovMenuTargetId = null;   // บิลที่กำลังเปิดเมนูเลือกสถานะอยู่
     let ovActiveTab = 'orders';  // แท็บเริ่มต้นคือรายการตรวจสอบออเดอร์เสมอ ไม่จำค่าข้ามการเข้าหน้า
@@ -68,6 +74,7 @@
     const ovViewCardBtn = document.getElementById('ov-view-card');
     const ovOrdersListWrap = document.getElementById('ov-orders-list-wrap');
     const ovOrdersCardsWrap = document.getElementById('ov-orders-cards');
+    const ovOrdersSentinel = document.getElementById('ov-orders-sentinel');
     const ovDepositViewListBtn = document.getElementById('ov-deposit-view-list');
     const ovDepositViewCardBtn = document.getElementById('ov-deposit-view-card');
     const ovDepositsListWrap = document.getElementById('ov-deposits-list-wrap');
@@ -402,11 +409,16 @@
     // ==========================================
     // โหลดข้อมูล
     // ==========================================
-    async function loadOrderVerifications() {
+    // preserveRendered: คงจำนวนแถวที่เรนเดอร์อยู่ไว้ (ใช้ตอนโหลดซ้ำหลังบันทึกสถานะ)
+    //                   ถ้าไม่ส่งมา = เริ่มนับใหม่ที่ 10 แถว เช่นตอนเปลี่ยนตัวกรอง
+    async function loadOrderVerifications({ preserveRendered = false } = {}) {
         if (!ovTableBody) return;
+        const keepCount = preserveRendered ? ovRenderedCount : 0;
 
         renderOvChips();
         if (ovResultCount) ovResultCount.textContent = '';
+        // ซ่อนแถบโหลดเพิ่มระหว่างดึงชุดใหม่ ไม่งั้นจะค้างอยู่ใต้ skeleton
+        if (ovOrdersSentinel) ovOrdersSentinel.classList.add('hidden');
         if (ovViewMode === 'card') renderOvCardSkeleton();
         else renderOvSkeleton();
 
@@ -430,44 +442,105 @@
 
             if (!result.success) {
                 ovCache = [];
+                ovRenderedCount = 0;
+                syncOvSentinel();
                 ovTableBody.innerHTML = ovStateRow(ovEsc(result.message || 'ไม่สามารถโหลดข้อมูลได้'), 'text-red-400');
                 return;
             }
 
             ovCache = Array.isArray(result.data) ? result.data : [];
-            renderOvResults();
+            renderOvResults(keepCount);
         } catch (err) {
             console.error('[ORDER-VERIFICATION] Error loading orders:', err);
             ovCache = [];
+            ovRenderedCount = 0;
+            syncOvSentinel();
             ovTableBody.innerHTML = ovStateRow('เกิดข้อผิดพลาดในการโหลดข้อมูล', 'text-red-400');
         }
     }
     window.loadOrderVerifications = loadOrderVerifications;
 
-    const renderOvResults = () => {
-        if (!ovTableBody) return;
+    // ซ่อน/แสดงแถบ "กำลังโหลดเพิ่ม" ตามว่ายังมีรายการเหลือให้โหลดอีกไหม
+    const syncOvSentinel = () => {
+        if (!ovOrdersSentinel) return;
+        ovOrdersSentinel.classList.toggle('hidden', ovRenderedCount >= ovCache.length);
+    };
 
-        if (ovOrdersListWrap) ovOrdersListWrap.classList.toggle('hidden', ovViewMode !== 'list');
-        if (ovOrdersCardsWrap) ovOrdersCardsWrap.classList.toggle('hidden', ovViewMode !== 'card');
-
-        if (ovCache.length === 0) {
-            ovTableBody.innerHTML = ovStateRow('ไม่พบออเดอร์ตามตัวเลือก');
-            if (ovOrdersCardsWrap) ovOrdersCardsWrap.innerHTML = '<div class="col-span-full py-12 text-center text-ink/50 italic">ไม่พบออเดอร์ตามตัวเลือก</div>';
-            if (ovResultCount) ovResultCount.textContent = '';
+    // ต่อแถวชุดถัดไป (ครั้งละ OV_PAGE_SIZE) เข้าไปท้ายตาราง/กริดการ์ดที่แสดงอยู่
+    const appendOvChunk = (count = OV_PAGE_SIZE) => {
+        const next = ovCache.slice(ovRenderedCount, ovRenderedCount + count);
+        if (next.length === 0) {
+            syncOvSentinel();
             return;
         }
 
         const frag = document.createDocumentFragment();
         if (ovViewMode === 'card') {
-            ovCache.forEach(row => frag.appendChild(ovOrderCardMarkup(row)));
-            ovOrdersCardsWrap.innerHTML = '';
-            ovOrdersCardsWrap.appendChild(frag);
+            next.forEach(row => frag.appendChild(ovOrderCardMarkup(row)));
+            if (ovOrdersCardsWrap) ovOrdersCardsWrap.appendChild(frag);
         } else {
-            ovCache.forEach(row => frag.appendChild(ovRowMarkup(row)));
-            ovTableBody.innerHTML = '';
+            next.forEach(row => frag.appendChild(ovRowMarkup(row)));
             ovTableBody.appendChild(frag);
         }
-        if (ovResultCount) ovResultCount.textContent = `แสดง ${ovCache.length} รายการ`;
+
+        ovRenderedCount += next.length;
+        if (ovResultCount) ovResultCount.textContent = `แสดง ${ovRenderedCount} จาก ${ovCache.length} รายการ`;
+        syncOvSentinel();
+
+        // ถ้าแถวชุดนี้ยังไม่ยาวพอจะดันจุดสังเกตพ้นจอ ต้องโหลดต่อเอง
+        // IntersectionObserver ยิงเฉพาะตอนสถานะ "เปลี่ยน" ไม่ยิงซ้ำถ้าจุดสังเกตยังค้างอยู่ในจอ
+        if (ovRenderedCount < ovCache.length && ovOrdersSentinel) {
+            setTimeout(() => {
+                if (ovRenderedCount >= ovCache.length) return;
+                if (ovOrdersSentinel.classList.contains('hidden')) return;
+                const box = ovOrdersSentinel.getBoundingClientRect();
+                // ⚠️ ต้องเช็กว่าถูกวางผังแล้วจริง ก่อนเอา top ไปเทียบ
+                //    ตอน switchView เพิ่งฉีด fragment เข้า DOM อิลิเมนต์ยังสูง 0 และ top เป็น 0
+                //    ถ้าไม่กันไว้ เงื่อนไขจะผ่านทุกรอบ กลายเป็นเรนเดอร์รวดเดียวครบทุกแถว
+                //    (กรณีนั้นปล่อยให้ IntersectionObserver มาโหลดต่อตอนหน้าแสดงผลจริงแทน)
+                if (box.height <= 0) return;
+                if (box.top <= window.innerHeight) appendOvChunk();
+            }, 0);
+        }
+    };
+
+    // เฝ้าจุดสังเกตท้ายรายการ — เลื่อนมาใกล้เมื่อไหร่ก็โหลดเพิ่มอีกชุด
+    // ผูกครั้งเดียวพอ เพราะอิลิเมนต์ไม่เคยถูกสร้างใหม่ (แค่ซ่อน/แสดง)
+    const ensureOvOrdersObserver = () => {
+        if (ovOrdersObserver || !ovOrdersSentinel || typeof IntersectionObserver === 'undefined') return;
+        ovOrdersObserver = new IntersectionObserver((entries) => {
+            if (!entries.some(e => e.isIntersecting)) return;
+            if (ovRenderedCount >= ovCache.length) return;
+            appendOvChunk();
+            // rootMargin ต้องเป็น 0 — ถ้าเผื่อระยะไว้ ชุดที่สองจะถูกโหลดตั้งแต่เปิดหน้า
+            // กลายเป็นแสดง 20 แถวแรกแทนที่จะเป็น 10 (ข้อมูลอยู่ในหน่วยความจำแล้ว ต่อแถวทันที ไม่มีรอยสะดุดอยู่แล้ว)
+        }, { rootMargin: '0px' });
+        ovOrdersObserver.observe(ovOrdersSentinel);
+    };
+
+    // minCount: จำนวนแถวขั้นต่ำที่ต้องเรนเดอร์ใหม่ ใช้ตอนโหลดข้อมูลซ้ำหลังกดบันทึกสถานะ
+    // เพื่อไม่ให้ฝ่ายบัญชีที่เลื่อนลงไปไกลแล้วถูกดีดกลับมาเหลือ 10 แถวแรก
+    const renderOvResults = (minCount = OV_PAGE_SIZE) => {
+        if (!ovTableBody) return;
+
+        if (ovOrdersListWrap) ovOrdersListWrap.classList.toggle('hidden', ovViewMode !== 'list');
+        if (ovOrdersCardsWrap) ovOrdersCardsWrap.classList.toggle('hidden', ovViewMode !== 'card');
+
+        ovRenderedCount = 0;
+
+        if (ovCache.length === 0) {
+            ovTableBody.innerHTML = ovStateRow('ไม่พบออเดอร์ตามตัวเลือก');
+            if (ovOrdersCardsWrap) ovOrdersCardsWrap.innerHTML = '<div class="col-span-full py-12 text-center text-ink/50 italic">ไม่พบออเดอร์ตามตัวเลือก</div>';
+            if (ovResultCount) ovResultCount.textContent = '';
+            syncOvSentinel();
+            return;
+        }
+
+        ovTableBody.innerHTML = '';
+        if (ovOrdersCardsWrap) ovOrdersCardsWrap.innerHTML = '';
+
+        ensureOvOrdersObserver();
+        appendOvChunk(Math.max(OV_PAGE_SIZE, minCount));
     };
 
     // ==========================================
@@ -787,7 +860,8 @@
 
             showToast('บันทึกสถานะการชำระเงินแล้ว');
             // ดึงใหม่ทั้งชุด เพราะยอดค้างชำระถูกคำนวณจากสถานะที่เซิร์ฟเวอร์ ไม่ใช่ที่หน้าเว็บ
-            await loadOrderVerifications();
+            // preserveRendered: คงจำนวนแถวที่เลื่อนดูไว้ ไม่ดีดกลับไปเหลือ 10 แถวแรก
+            await loadOrderVerifications({ preserveRendered: true });
             if (ovCurrentOrder && String(ovCurrentOrder._id) === String(orderId)) {
                 const fresh = ovCache.find(r => String(r._id) === String(orderId));
                 if (fresh) populateOrderDetail(fresh);
@@ -996,7 +1070,8 @@
             showToast('บันทึกข้อมูลการตรวจสอบแล้ว');
             closeOrderDetailModal();
             // ดึงใหม่ทั้งชุด เพราะยอดค้างชำระถูกคำนวณจากสถานะที่เซิร์ฟเวอร์ ไม่ใช่ที่หน้าเว็บ
-            await loadOrderVerifications();
+            // preserveRendered: คงจำนวนแถวที่เลื่อนดูไว้ ไม่ดีดกลับไปเหลือ 10 แถวแรก
+            await loadOrderVerifications({ preserveRendered: true });
         } catch (err) {
             console.error('[ORDER-VERIFICATION] Error saving order detail:', err);
             showToast('เกิดข้อผิดพลาดในการบันทึก', 'error');
@@ -1037,7 +1112,8 @@
         localStorage.setItem('order_verification_view_mode', mode);
         window.syncViewToggleButtons(ovViewListBtn, ovViewCardBtn, mode);
         window.syncViewToggleButtons(ovDepositViewListBtn, ovDepositViewCardBtn, mode);
-        renderOvResults();
+        // คงจำนวนแถวที่โหลดไว้ตอนสลับ list/card ไม่ให้ที่เลื่อนดูมาหายไป
+        renderOvResults(ovRenderedCount);
         if (ovDepositsLoaded) renderOvDepositResults();
     };
 
