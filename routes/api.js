@@ -33,7 +33,8 @@ const {
     StockAuditItem,
     Deposit,
     AccountChart,
-    DisbursementVoucher
+    DisbursementVoucher,
+    Expense
 } = require('../models');
 
 const { uploadBufferToDriveInFolder } = require('../utils/googleDrive');
@@ -185,17 +186,36 @@ const resolvePaymentStatus = (txn, receivable = null) => {
 //   ราคาเต็ม       = ราคาเดิมของเครื่องในบิล (ไม่รวมอุปกรณ์เสริมและค่าธรรมเนียม)
 //   เงินรับรวม     = ราคาดาวน์ + ค่าใบสัญญา + ค่าระบบ (iCloud)
 //   ทุนเช่าซื้อ     = ราคาเต็ม − ราคาดาวน์
-//   ค่าคอม         = ทุนเช่าซื้อ × % ของไฟแนนซ์เจ้านั้น
+//   ค่าคอม         = ผลรวมของ (ทุนเช่าซื้อรายเครื่อง × % ตามประเภทสินค้าของเครื่องนั้น)
 //   สินเชื่อ        = ทุนเช่าซื้อ + ค่าคอม
 //   รายได้ซิลมีน    = เงินรับรวม + สินเชื่อ
 //
 // บิลซื้อสด: ไม่มีไฟแนนซ์มาเกี่ยวเลย จึงไม่มีทุนเช่าซื้อ/ค่าคอม/สินเชื่อ
 //   รายได้ซิลมีน    = ยอดที่เก็บจากลูกค้าทั้งบิล
 //   ⚠️ ห้ามปล่อยให้บิลซื้อสดวิ่งผ่านสูตรไฟแนนซ์ ไม่งั้นจะได้ค่าคอมจากยอดที่ไม่มีไฟแนนซ์เจ้าไหนจ่ายจริง
-const buildOrderFinanceSheet = (txn, fullPrice, commissionRate, receivable = null) => {
+const DEFAULT_COMMISSION_RATE = 10;
+
+// % ค่าคอมของประเภทสินค้าหนึ่งๆ ในไฟแนนซ์เจ้าหนึ่ง
+// ลำดับการหา: เรตเฉพาะประเภท (commission_rates[]) -> เรตเริ่มต้นของเจ้านั้น (commission_rate) -> 10%
+const resolveCommissionRate = (fcDoc, typeId) => {
+    const base = fcDoc && Number.isFinite(Number(fcDoc.commission_rate))
+        ? Number(fcDoc.commission_rate)
+        : DEFAULT_COMMISSION_RATE;
+
+    if (!fcDoc || !typeId || !Array.isArray(fcDoc.commission_rates)) return base;
+
+    const hit = fcDoc.commission_rates.find(r => r && r.type_id && String(r.type_id) === String(typeId));
+    return hit && Number.isFinite(Number(hit.rate)) ? Number(hit.rate) : base;
+};
+
+// deviceItems: รายการเครื่องในบิล ({ product_name, type_id, type_name, price, quantity })
+// ราคาเต็มและค่าคอมคิดจากอาร์เรย์นี้ตัวเดียว ผู้เรียกจึงไม่ต้องส่ง fullPrice มาซ้ำ
+const buildOrderFinanceSheet = (txn, deviceItems, fcDoc, receivable = null) => {
     const down = Number(txn.down_payment) || 0;
     const contractFee = Number(txn.contract_fee) || 0;
     const icloudFee = Number(txn.icloud_fee) || 0;
+    const lineTotal = (it) => (Number(it.price) || 0) * (Number(it.quantity) || 1);
+    const fullPrice = (deviceItems || []).reduce((sum, it) => sum + lineTotal(it), 0);
 
     if ((txn.payment_type || txn.payment_method) !== 'จัดไฟแนนซ์') {
         const receivedTotal = Number(txn.total_amount) || 0;
@@ -209,6 +229,8 @@ const buildOrderFinanceSheet = (txn, fullPrice, commissionRate, receivable = nul
             down_percent: 0,
             commission_rate: 0,
             commission: 0,
+            commission_lines: [],
+            commission_mixed: false,
             credit_amount: 0,
             silmin_revenue: receivedTotal,
             outstanding: 0
@@ -217,8 +239,35 @@ const buildOrderFinanceSheet = (txn, fullPrice, commissionRate, receivable = nul
 
     const receivedTotal = down + contractFee + icloudFee;
     const hirePurchase = fullPrice - down;
-    const commission = hirePurchase * (commissionRate / 100);
+    const baseRate = resolveCommissionRate(fcDoc, null);
+
+    // ค่าคอมคิดแยกรายเครื่อง เพราะไฟแนนซ์เจ้าเดียวกันให้เปอร์เซ็นไม่เท่ากันตามประเภทสินค้า
+    // เงินดาวน์ปันส่วนให้แต่ละเครื่องตามสัดส่วนราคา ผลรวมทุนเช่าซื้อรายเครื่องจึงเท่ากับทุนเช่าซื้อทั้งบิลเป๊ะ
+    const commissionLines = (fullPrice > 0 ? deviceItems : []).map(it => {
+        const linePrice = lineTotal(it);
+        const lineHirePurchase = linePrice - (down * (linePrice / fullPrice));
+        const rate = resolveCommissionRate(fcDoc, it.type_id);
+        return {
+            product_name: it.product_name || '',
+            type_name: it.type_name || '',
+            full_price: linePrice,
+            hire_purchase: lineHirePurchase,
+            commission_rate: rate,
+            commission: lineHirePurchase * (rate / 100)
+        };
+    });
+
+    // บิลที่หาเครื่องไม่เจอ (สินค้าถูกลบ/ราคาเป็น 0) ยังต้องได้ตัวเลขเดิมเหมือนก่อนมีเรตรายประเภท
+    const commission = commissionLines.length
+        ? commissionLines.reduce((sum, l) => sum + l.commission, 0)
+        : hirePurchase * (baseRate / 100);
     const creditAmount = hirePurchase + commission;
+
+    // เรตที่โชว์บนหน้าจอ: บิลที่ทุกเครื่องเรตเดียวกันก็คือเรตนั้น ส่วนบิลคละประเภทเป็นเรตเฉลี่ยถ่วงน้ำหนัก
+    const rates = [...new Set(commissionLines.map(l => l.commission_rate))];
+    const effectiveRate = rates.length === 1
+        ? rates[0]
+        : (hirePurchase !== 0 ? (commission / hirePurchase) * 100 : baseRate);
 
     return {
         full_price: fullPrice,
@@ -228,8 +277,10 @@ const buildOrderFinanceSheet = (txn, fullPrice, commissionRate, receivable = nul
         received_total: receivedTotal,
         hire_purchase: hirePurchase,
         down_percent: fullPrice > 0 ? (down / fullPrice) * 100 : 0,
-        commission_rate: commissionRate,
+        commission_rate: effectiveRate,
         commission,
+        commission_lines: commissionLines,
+        commission_mixed: rates.length > 1,
         credit_amount: creditAmount,
         silmin_revenue: receivedTotal + creditAmount,
         // ยอดที่ไฟแนนซ์ยังค้างจ่ายให้ร้าน = สินเชื่อทั้งก้อน ตราบใดที่ยังไม่กดว่าชำระแล้ว
@@ -1696,12 +1747,46 @@ router.delete('/branches/:id', async (req, res) => {
 // Master Data Management APIs
 // ==========================================
 
+// แปลงเปอร์เซ็นค่าคอมรายประเภทสินค้าที่หน้าจัดการไฟแนนซ์ส่งมา ให้อยู่ในรูปที่บันทึกลง FinanceCompany ได้
+// รับได้ทั้ง [{ type_id, rate }] และ object แบบ { "<type_id>": rate }
+// ประเภทที่ส่ง rate มาเป็นค่าว่าง = ไม่ตั้งเรตเฉพาะ จึงถูกตัดทิ้งเพื่อให้ตกไปใช้ commission_rate เริ่มต้นของเจ้านั้น
+const normalizeCommissionRates = async (input) => {
+    const raw = Array.isArray(input)
+        ? input
+        : Object.keys(input || {}).map(k => ({ type_id: k, rate: input[k] }));
+
+    const { maps } = await mdCache.get();
+    const seen = new Set();
+    const rates = [];
+
+    for (const row of raw) {
+        if (!row || row.type_id === undefined || row.type_id === null) continue;
+        if (row.rate === '' || row.rate === null || row.rate === undefined) continue;
+
+        const typeId = String(row.type_id);
+        if (!mongoose.Types.ObjectId.isValid(typeId) || !maps.productTypes.has(typeId)) {
+            return { error: 'ไม่พบประเภทสินค้าที่ระบุในเปอร์เซ็นค่าคอมรายประเภท' };
+        }
+
+        const rate = Number(row.rate);
+        if (!Number.isFinite(rate) || rate < 0 || rate > 100) {
+            return { error: `เปอร์เซ็นค่าคอมของ "${maps.productTypes.get(typeId).name}" ต้องอยู่ระหว่าง 0 - 100` };
+        }
+
+        if (seen.has(typeId)) continue; // ประเภทซ้ำ ยึดแถวแรก
+        seen.add(typeId);
+        rates.push({ type_id: typeId, rate });
+    }
+
+    return { rates };
+};
+
 // 4. POST /api/master/:collection
 // หน้าที่: เพิ่มข้อมูล Master Data ใหม่
 router.post('/master/:collection', async (req, res) => {
     try {
         const collection = req.params.collection.toLowerCase();
-        const { name, code, commission_rate } = req.body;
+        const { name, code, commission_rate, commission_rates } = req.body;
 
         if (!name) {
             return res.status(400).json({ success: false, message: 'กรุณาระบุชื่อ' });
@@ -1732,6 +1817,13 @@ router.post('/master/:collection', async (req, res) => {
                 return res.status(400).json({ success: false, message: 'เปอร์เซ็นค่าคอมต้องอยู่ระหว่าง 0 - 100' });
             }
             payload.commission_rate = rate;
+        }
+        if (collection === 'financecompany' && commission_rates !== undefined) {
+            const normalized = await normalizeCommissionRates(commission_rates);
+            if (normalized.error) {
+                return res.status(400).json({ success: false, message: normalized.error });
+            }
+            payload.commission_rates = normalized.rates;
         }
         const newItem = new Model(payload);
         const savedItem = await newItem.save();
@@ -1799,7 +1891,7 @@ router.put('/master/:collection/:id', async (req, res) => {
     try {
         const collection = req.params.collection.toLowerCase();
         const id = req.params.id;
-        const { name, code, commission_rate } = req.body;
+        const { name, code, commission_rate, commission_rates } = req.body;
 
         if (!name) {
             return res.status(400).json({ success: false, message: 'กรุณาระบุชื่อ' });
@@ -1829,6 +1921,13 @@ router.put('/master/:collection/:id', async (req, res) => {
                 return res.status(400).json({ success: false, message: 'เปอร์เซ็นค่าคอมต้องอยู่ระหว่าง 0 - 100' });
             }
             updateFields.commission_rate = rate;
+        }
+        if (collection === 'financecompany' && commission_rates !== undefined) {
+            const normalized = await normalizeCommissionRates(commission_rates);
+            if (normalized.error) {
+                return res.status(400).json({ success: false, message: normalized.error });
+            }
+            updateFields.commission_rates = normalized.rates;
         }
 
         const updatedItem = await Model.findByIdAndUpdate(id, updateFields, { returnDocument: 'after' });
@@ -2772,7 +2871,14 @@ router.get('/order-verifications', async (req, res) => {
         const receivableMap = new Map(receivables.map(r => [String(r.transaction_id), r]));
 
         let rows = transactions.map(t => {
-            const items = (t.items || []).map(it => {
+            const rawItems = t.items || [];
+            // เก็บ type_id ไว้นอก items เพราะ items เป็นรูป response ที่ frontend อ่านอยู่ — ที่นี่ใช้แค่คิดค่าคอมรายประเภท
+            const itemTypeIds = rawItems.map(it => {
+                const p = it.product_id ? productMap.get(String(it.product_id)) : null;
+                return p && p.type_id ? String(p.type_id) : '';
+            });
+
+            const items = rawItems.map(it => {
                 const p = it.product_id ? productMap.get(String(it.product_id)) : null;
                 const typeDoc = p && p.type_id ? maps.productTypes.get(String(p.type_id)) : null;
                 const colorDoc = p && p.color_id ? maps.productColors.get(String(p.color_id)) : null;
@@ -2792,17 +2898,15 @@ router.get('/order-verifications', async (req, res) => {
 
             // "ราคาเต็ม" = ราคาเดิมของเครื่องในบิล — นับเฉพาะหน่วย "เครื่อง" แบบเดียวกับที่ POS ใช้คิดยอดจัดไฟแนนซ์
             // (สินค้าที่ product ถูกลบไปแล้วจะไม่มี unit_name จึงถอยไปดูว่ามี IMEI ไหมแทน)
-            const deviceItems = items.filter(it => !it.is_gift && (it.unit_name === 'เครื่อง' || (!it.unit_name && !!it.imei_sold)));
-            const fullPrice = deviceItems.reduce((sum, it) => sum + it.price * it.quantity, 0);
+            const deviceItems = items
+                .map((it, i) => ({ ...it, type_id: itemTypeIds[i] }))
+                .filter(it => !it.is_gift && (it.unit_name === 'เครื่อง' || (!it.unit_name && !!it.imei_sold)));
 
             // finance_company เก็บได้ทั้ง _id และชื่อที่พนักงานพิมพ์เอง จึงหาแบบ id ก่อนแล้วค่อยเทียบชื่อ
             const fcDoc = t.finance_company
                 ? (maps.financeCompanies.get(String(t.finance_company)) ||
                     lists.financeCompanies.find(c => c.name === t.finance_company) || null)
                 : null;
-            const commissionRate = fcDoc && Number.isFinite(Number(fcDoc.commission_rate))
-                ? Number(fcDoc.commission_rate)
-                : 10;
 
             const receivable = receivableMap.get(String(t._id)) || null;
             const branchDoc = t.branch_id ? maps.branches.get(String(t.branch_id)) : null;
@@ -2833,7 +2937,7 @@ router.get('/order-verifications', async (req, res) => {
                 device_item_count: deviceItems.length,
                 device_unit_price: deviceItems.length === 1 ? deviceItems[0].price : null,
                 items,
-                finance: buildOrderFinanceSheet(t, fullPrice, commissionRate, receivable)
+                finance: buildOrderFinanceSheet(t, deviceItems, fcDoc, receivable)
             };
         });
 
@@ -3055,6 +3159,174 @@ router.patch('/order-verifications/:id', async (req, res) => {
     } catch (error) {
         console.error('API Error PATCH /api/order-verifications/:id:', error);
         res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการบันทึกข้อมูลการตรวจสอบ' });
+    }
+});
+
+// ==========================================
+// Expense APIs (ค่าใช้จ่าย — แท็บ "ประวัติค่าใช้จ่าย" ในหน้าตรวจสอบออเดอร์)
+// ==========================================
+
+// ประเภทค่าใช้จ่ายที่รับได้ — ต้องตรงกับ enum ใน models/index.js
+const EXPENSE_CATEGORIES = ['อื่นๆ', 'ทำใบสัญญา'];
+
+// GET /api/expenses — ประวัติค่าใช้จ่าย
+router.get('/expenses', async (req, res) => {
+    try {
+        if (!req.user || !req.user.permissions || !req.user.permissions.verify_orders) {
+            return res.status(403).json({ success: false, message: 'คุณไม่มีสิทธิ์ดูข้อมูลค่าใช้จ่าย' });
+        }
+
+        const { search, category, finance_company_id, startDate, endDate } = req.query;
+        const filter = {};
+
+        // สาขา: ต้องผ่าน getRequestedBranchId เสมอ (กติกาโดเมน — ห้ามอ่าน req.query.branch_id ตรงๆ)
+        const branchScope = getRequestedBranchId(req);
+        if (branchScope && branchScope !== 'ALL') filter.branch_id = branchScope;
+
+        if (category && EXPENSE_CATEGORIES.includes(category)) filter.category = category;
+        if (finance_company_id) filter.finance_company_id = finance_company_id;
+
+        // ช่วงวันที่ — ตีความชุดเดียวกับ /order-verifications เพื่อให้ตัวกรองสองแท็บให้ผลตรงกัน
+        if (startDate || endDate) {
+            filter.expense_date = {};
+            if (startDate) {
+                const start = new Date(startDate);
+                start.setHours(0, 0, 0, 0);
+                filter.expense_date.$gte = start;
+            }
+            if (endDate) {
+                const end = new Date(endDate);
+                end.setHours(23, 59, 59, 999);
+                filter.expense_date.$lte = end;
+            }
+        }
+
+        if (search) {
+            const searchRegex = { $regex: String(search).trim(), $options: 'i' };
+            filter.$or = [
+                { description: searchRegex },
+                { expense_number: searchRegex }
+            ];
+        }
+
+        const expenses = await Expense.find(filter).sort({ expense_date: -1 }).lean();
+
+        // ชื่อสาขา/ไฟแนนซ์เอาจากแคชใน RAM แทน .populate() (ดู utils/masterDataCache.js)
+        // ส่วนพนักงานไม่ใช่ master data จึงดึงรอบเดียวด้วย $in — ห้าม await ในลูป
+        const employeeIds = [...new Set(expenses.map(e => String(e.created_by)).filter(Boolean))];
+        const [md, employees] = await Promise.all([
+            mdCache.get(),
+            employeeIds.length
+                ? Employee.find({ _id: { $in: employeeIds } }).select('name').lean()
+                : Promise.resolve([])
+        ]);
+        const employeeMap = new Map(employees.map(e => [String(e._id), e]));
+
+        const data = expenses.map(e => {
+            const branchDoc = e.branch_id ? md.maps.branches.get(String(e.branch_id)) : null;
+            const fcDoc = e.finance_company_id ? md.maps.financeCompanies.get(String(e.finance_company_id)) : null;
+            const empDoc = e.created_by ? employeeMap.get(String(e.created_by)) : null;
+            return {
+                _id: e._id,
+                expense_number: e.expense_number,
+                expense_date: e.expense_date,
+                description: e.description,
+                category: e.category,
+                finance_company_id: e.finance_company_id || null,
+                finance_company_name: fcDoc ? fcDoc.name : '',
+                amount: Number(e.amount) || 0,
+                branch_name: branchDoc ? branchDoc.name : '-',
+                created_by_name: empDoc ? empDoc.name : '-',
+                created_at: e.created_at || e.createdAt
+            };
+        });
+
+        res.status(200).json({ success: true, message: 'ดึงข้อมูลค่าใช้จ่ายสำเร็จ', data });
+    } catch (error) {
+        console.error('API Error GET /api/expenses:', error);
+        res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการดึงข้อมูลค่าใช้จ่าย' });
+    }
+});
+
+// POST /api/expenses — บันทึกค่าใช้จ่ายใหม่
+router.post('/expenses', async (req, res) => {
+    try {
+        if (!req.user || !req.user.permissions || !req.user.permissions.verify_orders) {
+            return res.status(403).json({ success: false, message: 'คุณไม่มีสิทธิ์บันทึกค่าใช้จ่าย' });
+        }
+
+        const { expense_date, description, category, finance_company_id, amount } = req.body;
+
+        const desc = (description || '').trim();
+        if (!desc) return res.status(400).json({ success: false, message: 'กรุณากรอกรายการค่าใช้จ่าย' });
+        if (!EXPENSE_CATEGORIES.includes(category)) {
+            return res.status(400).json({ success: false, message: 'ประเภทค่าใช้จ่ายไม่ถูกต้อง' });
+        }
+
+        const amountNum = Number(amount);
+        if (!Number.isFinite(amountNum) || amountNum <= 0) {
+            return res.status(400).json({ success: false, message: 'จำนวนเงินต้องเป็นตัวเลขมากกว่า 0' });
+        }
+
+        const when = expense_date ? new Date(expense_date) : new Date();
+        if (Number.isNaN(when.getTime())) {
+            return res.status(400).json({ success: false, message: 'วัน/เวลาไม่ถูกต้อง' });
+        }
+
+        // ไฟแนนซ์บังคับเฉพาะประเภท "ทำใบสัญญา" — ประเภทอื่นส่งมาก็ไม่เก็บ กันข้อมูลขยะ
+        let financeCompanyId = null;
+        if (category === 'ทำใบสัญญา') {
+            if (!finance_company_id) {
+                return res.status(400).json({ success: false, message: 'กรุณาเลือกบริษัทไฟแนนซ์' });
+            }
+            if (!mongoose.Types.ObjectId.isValid(finance_company_id)) {
+                return res.status(400).json({ success: false, message: 'บริษัทไฟแนนซ์ไม่ถูกต้อง' });
+            }
+            const md = await mdCache.get();
+            if (!md.maps.financeCompanies.get(String(finance_company_id))) {
+                return res.status(400).json({ success: false, message: 'ไม่พบบริษัทไฟแนนซ์ที่เลือก' });
+            }
+            financeCompanyId = finance_company_id;
+        }
+
+        // สาขาของค่าใช้จ่าย = สาขาของผู้บันทึกเสมอ (แอดมินที่ไม่ผูกสาขาต้องเลือกสาขาผ่านตัวกรองก่อน)
+        const branchId = req.user.branch_id || null;
+        if (!branchId) {
+            return res.status(400).json({ success: false, message: 'ไม่พบข้อมูลสาขาของผู้ใช้งาน' });
+        }
+
+        // เลขที่ค่าใช้จ่ายอัตโนมัติ: EXP-YYYYMMDD-XXXX (นับตามวันที่บันทึกจริง ไม่ใช่วันที่ที่ผู้ใช้เลือก)
+        const now = new Date();
+        const dateStr = now.getFullYear() +
+            String(now.getMonth() + 1).padStart(2, '0') +
+            String(now.getDate()).padStart(2, '0');
+        const todayStart = new Date(now); todayStart.setHours(0, 0, 0, 0);
+        const todayEnd = new Date(now); todayEnd.setHours(23, 59, 59, 999);
+        const count = await Expense.countDocuments({ created_at: { $gte: todayStart, $lte: todayEnd } });
+        const expense_number = `EXP-${dateStr}-${String(count + 1).padStart(4, '0')}`;
+
+        const saved = await Expense.create({
+            expense_number,
+            expense_date: when,
+            description: desc,
+            category,
+            finance_company_id: financeCompanyId,
+            amount: amountNum,
+            branch_id: branchId,
+            created_by: req.user.employee_id,
+            created_at: now
+        });
+
+        await logActivity(
+            req, 'CREATE', 'EXPENSE',
+            `บันทึกค่าใช้จ่าย ${expense_number} (${category}) ${desc} จำนวน ฿${amountNum}`,
+            expense_number, saved._id
+        );
+
+        res.status(201).json({ success: true, message: 'บันทึกค่าใช้จ่ายสำเร็จ', data: saved });
+    } catch (error) {
+        console.error('API Error POST /api/expenses:', error);
+        res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการบันทึกค่าใช้จ่าย' });
     }
 });
 

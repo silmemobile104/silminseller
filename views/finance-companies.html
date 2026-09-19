@@ -38,6 +38,7 @@
             <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                 <p class="text-xs text-body-muted">
                     เปอร์เซ็นค่าคอมของแต่ละเจ้าใช้คำนวณ "ค่าคอมที่ซิลมีนได้" ในหน้าตรวจสอบออเดอร์ (ค่าเริ่มต้น 10%)
+                    — ตั้งเรตเฉพาะรายประเภทสินค้าได้ในหน้าต่างแก้ไข
                 </p>
                 <div id="finance-company-result-count" class="text-xs text-ink font-medium shrink-0"></div>
             </div>
@@ -48,8 +49,9 @@
             <table class="w-full text-left text-sm whitespace-nowrap border-collapse">
                 <thead class="bg-panel/40 text-ink">
                     <tr>
-                        <th class="px-6 py-4 font-semibold text-[15px] w-full">ชื่อบริษัทไฟแนนซ์</th>
-                        <th class="px-6 py-4 font-semibold text-[15px] text-center">เปอร์เซ็นค่าคอม</th>
+                        <th class="px-6 py-4 font-semibold text-[15px]">ชื่อบริษัทไฟแนนซ์</th>
+                        <th class="px-6 py-4 font-semibold text-[15px] text-center">ค่าคอมเริ่มต้น</th>
+                        <th class="px-6 py-4 font-semibold text-[15px] w-full">เรตเฉพาะรายประเภทสินค้า</th>
                         <th class="px-6 py-4 font-semibold text-[15px] text-right">จัดการ</th>
                     </tr>
                 </thead>
@@ -66,7 +68,7 @@
     <div id="modal-finance-company"
         class="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-[20px] backdrop-saturate-[1.8] opacity-0 pointer-events-none transition-all duration-300 p-4">
         <div
-            class="modal-content relative w-full max-w-md bg-canvas-elevated rounded-lg p-8 transform scale-95 transition-transform duration-300">
+            class="modal-content relative w-full max-w-md max-h-[90vh] overflow-y-auto bg-canvas-elevated rounded-lg p-8 transform scale-95 transition-transform duration-300">
             <div class="flex items-center justify-between mb-6 pb-2 border-b border-hairline">
                 <h3 id="finance-company-modal-title" class="text-lg font-medium text-ink flex items-center gap-2">
                     <i class="fa-solid fa-hand-holding-dollar text-accent-ink"></i> เพิ่มบริษัทไฟแนนซ์
@@ -95,6 +97,22 @@
                         step="0.01" value="10"
                         class="w-full px-4 py-2.5 rounded-xl bg-field border border-line-strong text-ink focus:border-accent-ink focus:outline-none transition-all placeholder-body-muted text-sm">
                     <p class="text-[11px] text-body-muted">คิดจากทุนเช่าซื้อ (ราคาเต็ม − ราคาดาวน์) ของแต่ละบิล</p>
+                </div>
+
+                <!-- เรตเฉพาะรายประเภทสินค้า — ไฟแนนซ์เจ้าเดียวกันให้ไม่เท่ากันได้ เช่น iPhone 10% / iPad 15% -->
+                <div class="space-y-2 pt-1">
+                    <div class="flex items-center justify-between gap-3">
+                        <span class="text-ink font-medium flex items-center gap-2 text-xs">
+                            <i class="fa-solid fa-layer-group text-ink"></i> ค่าคอมเฉพาะรายประเภทสินค้า
+                        </span>
+                        <button type="button" id="btn-finance-company-clear-rates"
+                            class="px-2 py-0.5 rounded-[0.375rem] bg-field text-[10px] text-body-muted hover:text-ink transition-colors">ล้างทั้งหมด</button>
+                    </div>
+                    <div id="finance-company-type-rates" tabindex="0"
+                        class="space-y-2 max-h-52 overflow-y-auto pr-1">
+                        <!-- แถวถูกสร้างจาก js/page-finance-companies.js -->
+                    </div>
+                    <p class="text-[11px] text-body-muted">ประเภทที่เว้นว่างไว้จะใช้ค่าคอมเริ่มต้นด้านบน</p>
                 </div>
 
                 <div class="flex items-center justify-center gap-4 pt-4 border-t border-hairline">

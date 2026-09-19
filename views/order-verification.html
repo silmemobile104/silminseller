@@ -5,21 +5,28 @@
             <i class="hidden md:block bi bi-journal-check text-ink w-5 text-2xl text-center"></i>
             <h3 class="hidden md:block text-2xl text-ink">ตรวจสอบออเดอร์</h3>
         </div>
+        <div class="flex items-center gap-3">
+            <!-- ปุ่มการกระทำหลักของหน้า (ทึบ accent — DESIGN.md ข้อ 11.2) -->
+            <button id="btn-add-expense" type="button"
+                class="px-4 py-2 bg-primary hover:bg-primary-pressed text-on-primary font-medium rounded-xl transition-all flex items-center gap-2 w-fit cursor-pointer">
+                <i class="fa-solid fa-plus"></i>
+                <p>เพิ่มค่าใช้จ่าย</p>
+            </button>
+        </div>
     </div>
 
     <!-- [2] การ์ดพาเนล — แถบควบคุม + ชิปตัวกรอง + ตาราง อยู่ในใบเดียว (ข้อ 11.1) -->
     <div class="bg-panel/40 rounded-2xl shadow-lg overflow-hidden backdrop-blur-sm">
         <!-- 2a แถบสลับรายการ + แถบควบคุม (ข้อ 11.4) -->
         <div class="p-6 pb-0 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-            <div id="ov-tabs" class="flex items-center gap-2 shrink-0">
-                <button type="button" data-ov-tab="orders" aria-pressed="true"
-                    class="px-4 py-2.5 rounded-xl text-sm font-bold transition-colors flex items-center gap-2 cursor-pointer bg-primary text-on-primary">
-                    <i class="fa-solid fa-clipboard-check"></i> รายการตรวจสอบออเดอร์
-                </button>
-                <button type="button" data-ov-tab="deposits" aria-pressed="false"
-                    class="px-4 py-2.5 rounded-xl text-sm font-bold transition-colors flex items-center gap-2 cursor-pointer bg-field text-body-muted hover:text-ink">
-                    <i class="fa-solid fa-hand-holding-dollar"></i> รายการมัดจำ
-                </button>
+            <!-- ตัวเลือกรายการที่จะแสดง — แทนปุ่มแท็บเดิม ค่าเริ่มต้นคือ "รายการตรวจสอบออเดอร์" เสมอ -->
+            <div class="shrink-0 w-full lg:w-auto">
+                <select id="ov-tab-select" aria-label="เลือกรายการที่ต้องการแสดง"
+                    class="page-filter-control bg-panel/40 cursor-pointer text-sm font-bold rounded-[0.5rem] px-3 py-2.5 text-ink focus:outline-none focus:ring-1 focus:ring-accent-ink w-full lg:w-auto [&>option]:bg-panel [&>option]:font-normal [&>option:checked]:bg-primary [&>option:checked]:text-on-primary">
+                    <option value="orders">รายการตรวจสอบออเดอร์</option>
+                    <option value="deposits">รายการมัดจำ</option>
+                    <option value="expenses">ประวัติค่าใช้จ่าย</option>
+                </select>
             </div>
 
             <!-- คอนโทรลของแท็บมัดจำ -->
@@ -72,6 +79,28 @@
                     <i class="fa-solid fa-filter"></i>
                     <span id="btn-order-verification-filter-text">กรองเพิ่มเติม</span>
                 </button>
+            </div>
+
+            <!-- คอนโทรลของแท็บประวัติค่าใช้จ่าย -->
+            <div id="ov-controls-expenses" class="hidden flex flex-wrap items-center gap-2.5 relative w-full lg:w-auto">
+                <div class="relative group w-full sm:w-56 rounded-[0.5rem]">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <i class="fa-solid fa-search text-ink group-focus-within:text-accent-ink transition-colors"></i>
+                    </div>
+                    <input type="text" id="ov-expense-search" placeholder="ค้นหารายการ/เลขที่..."
+                        aria-label="ค้นหาค่าใช้จ่าย ด้วยรายการหรือเลขที่ค่าใช้จ่าย"
+                        class="page-filter-control elev-chip bg-transparent rounded-[10px] text-sm pl-10 pr-4 py-2 w-full text-ink focus:outline-none focus:ring-1 focus:ring-accent-ink transition-all placeholder-body-muted">
+                </div>
+                <select id="ov-expense-category" aria-label="กรองตามประเภทค่าใช้จ่าย"
+                    class="page-filter-control bg-panel/40 cursor-pointer text-sm rounded-[0.5rem] px-3 py-2 text-ink focus:outline-none focus:ring-1 focus:ring-accent-ink w-full sm:w-auto [&>option]:bg-panel [&>option:checked]:bg-primary [&>option:checked]:text-on-primary">
+                    <option value="">ทุกประเภท</option>
+                    <option value="อื่นๆ">ค่าใช้จ่าย อื่นๆ</option>
+                    <option value="ทำใบสัญญา">ค่าใช้จ่าย ทำใบสัญญา</option>
+                </select>
+                <select id="ov-expense-branch" aria-label="กรองค่าใช้จ่ายตามสาขา"
+                    class="page-filter-control bg-panel/40 cursor-pointer text-sm rounded-[0.5rem] px-3 py-2 text-ink focus:outline-none focus:ring-1 focus:ring-accent-ink w-full sm:w-auto [&>option]:bg-panel [&>option:checked]:bg-primary [&>option:checked]:text-on-primary">
+                    <option value="">เลือกสาขา</option>
+                </select>
             </div>
         </div>
 
@@ -169,6 +198,52 @@
                 <!-- การ์ดถูกสร้างจาก js/page-order-verification.js -->
             </div>
         </div>
+
+        <!-- แท็บประวัติค่าใช้จ่าย -->
+        <div id="ov-panel-expenses" class="hidden">
+            <div class="px-6 py-4">
+                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <div class="flex items-center gap-2 text-xs text-body-muted">
+                        <span>ยอดรวมที่แสดง</span>
+                        <span id="ov-expense-total" class="text-base font-mono font-bold text-ink">฿0</span>
+                    </div>
+                    <div class="flex items-center gap-3 shrink-0">
+                        <div id="ov-expense-result-count" class="text-xs text-ink font-medium"></div>
+                        <div class="flex items-center gap-1 shrink-0">
+                            <button type="button" id="ov-expense-view-list" aria-label="มุมมองรายการ" aria-pressed="true"
+                                class="w-9 h-9 rounded-md flex items-center justify-center transition-colors bg-primary text-on-primary">
+                                <i class="fa-solid fa-list text-sm"></i>
+                            </button>
+                            <button type="button" id="ov-expense-view-card" aria-label="มุมมองการ์ด" aria-pressed="false"
+                                class="w-9 h-9 rounded-md flex items-center justify-center transition-colors bg-surface-chip text-body-muted hover:text-ink">
+                                <i class="fa-solid fa-table-cells-large text-sm"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div id="ov-expenses-list-wrap" class="overflow-x-auto" tabindex="0">
+                <table class="w-full text-left text-sm whitespace-nowrap border-collapse">
+                    <thead class="bg-panel/40 text-ink">
+                        <tr>
+                            <th class="px-6 py-4 font-semibold text-[15px]">วัน/เวลา</th>
+                            <th class="px-6 py-4 font-semibold text-[15px]">เลขที่</th>
+                            <th class="px-6 py-4 font-semibold text-[15px] w-full">รายการ</th>
+                            <th class="px-6 py-4 font-semibold text-[15px]">ประเภท</th>
+                            <th class="px-6 py-4 font-semibold text-[15px] text-right">จำนวนเงิน</th>
+                            <th class="px-6 py-4 font-semibold text-[15px]">สาขา</th>
+                            <th class="px-6 py-4 font-semibold text-[15px]">ผู้บันทึก</th>
+                        </tr>
+                    </thead>
+                    <tbody id="ov-expense-table-body" class="divide-y divide-divider">
+                        <!-- แถวถูกสร้างจาก js/page-order-verification.js -->
+                    </tbody>
+                </table>
+            </div>
+            <div id="ov-expenses-cards" class="hidden grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 p-6">
+                <!-- การ์ดถูกสร้างจาก js/page-order-verification.js -->
+            </div>
+        </div>
     </div>
 
     <!-- ============================================================ -->
@@ -246,12 +321,9 @@
                 </div>
             </div>
 
-            <div class="flex items-center justify-center gap-4 pt-6 mt-6 border-t border-hairline">
-                <button id="btn-order-verification-filter-reset" type="button"
-                    class="px-10 py-2.5 rounded-xl bg-[#E4E4E7] text-[#18181B] text-[15px] font-bold hover:bg-white transition-colors w-1/2">ล้างทั้งหมด</button>
-                <button id="btn-order-verification-filter-apply" type="button"
-                    class="px-12 py-2.5 rounded-xl bg-primary text-on-primary text-[15px] font-bold hover:bg-primary-pressed transition-colors flex items-center justify-center gap-2 w-1/2">ตกลง</button>
-            </div>
+            <!-- ไม่มีปุ่ม "ตกลง" / "ล้างทั้งหมด" — ตัวกรองในพาเนลนี้ยิงทันทีที่เปลี่ยนค่า
+                 (ต่างจากแบบแปลน #stock ใน DESIGN.md ข้อ 11.8 ที่รอกดยืนยัน)
+                 ล้างตัวกรองได้จากชิปด้านบนตาราง -->
         </div>
     </div>
 
@@ -366,6 +438,9 @@
                                     class="text-[11px] text-ink-muted-48"></span></span>
                             <span id="order-detail-commission" class="font-mono">฿0.00</span>
                         </div>
+                        <!-- บิลที่เครื่องคนละประเภทได้เรตไม่เท่ากัน จึงต้องแจกแจงให้บัญชีตรวจได้ว่าค่าคอมรวมมาจากไหน -->
+                        <div id="order-detail-commission-breakdown" class="hidden pl-4 space-y-1 text-[11px] text-ink-muted-48">
+                        </div>
                         <div class="flex justify-between gap-4">
                             <span class="text-body-muted">สินเชื่อ <span
                                     class="text-[11px] text-ink-muted-48">(ทุนเช่าซื้อ + ค่าคอม)</span></span>
@@ -456,6 +531,87 @@
                     <i class="fa-solid fa-floppy-disk"></i> บันทึก
                 </button>
             </div>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- โมดัลเพิ่มค่าใช้จ่าย                                          -->
+    <!-- ============================================================ -->
+    <div id="modal-expense"
+        class="fixed inset-0 z-[60] flex items-center justify-center backdrop-blur-[20px] backdrop-saturate-[1.8] opacity-0 pointer-events-none transition-all duration-300 p-4">
+        <div
+            class="modal-content relative w-full max-w-md max-h-[90vh] overflow-y-auto bg-canvas-elevated rounded-lg p-8 transform scale-95 transition-transform duration-300"
+            tabindex="0">
+            <div class="flex items-center justify-between mb-6 pb-2 border-b border-hairline">
+                <h3 id="expense-modal-title" class="text-lg font-medium text-ink flex items-center gap-2">
+                    <i class="fa-solid fa-receipt text-accent-ink"></i> เพิ่มค่าใช้จ่าย
+                </h3>
+                <button aria-label="ปิด" id="btn-expense-close" type="button"
+                    class="text-red-500 hover:text-red-400 transition-colors">
+                    <i class="fa-solid fa-xmark text-xl"></i>
+                </button>
+            </div>
+
+            <form id="form-expense" class="space-y-5 text-sm">
+                <div class="space-y-2">
+                    <label for="expense-date" class="text-ink font-medium flex items-center gap-2 text-xs">
+                        <i class="fa-solid fa-calendar text-ink"></i> วัน / เวลา <span class="text-red-500">*</span>
+                    </label>
+                    <input type="datetime-local" id="expense-date" required
+                        class="w-full px-4 py-2.5 rounded-xl bg-field border border-line-strong text-ink focus:border-accent-ink focus:outline-none transition-all text-sm">
+                </div>
+
+                <div class="space-y-2">
+                    <label for="expense-description" class="text-ink font-medium flex items-center gap-2 text-xs">
+                        <i class="fa-solid fa-file-lines text-ink"></i> รายการ <span class="text-red-500">*</span>
+                    </label>
+                    <input type="text" id="expense-description" required maxlength="200"
+                        placeholder="เช่น ค่าน้ำมันรถส่งของ, ค่าทำใบสัญญาบิล RC-0001"
+                        class="w-full px-4 py-2.5 rounded-xl bg-field border border-line-strong text-ink focus:border-accent-ink focus:outline-none transition-all placeholder-body-muted text-sm">
+                    <p class="text-[11px] text-body-muted">รายละเอียดว่าเป็นค่าใช้จ่ายรายการอะไร</p>
+                </div>
+
+                <div class="space-y-2">
+                    <label for="expense-category" class="text-ink font-medium flex items-center gap-2 text-xs">
+                        <i class="fa-solid fa-tags text-ink"></i> ประเภท <span class="text-red-500">*</span>
+                    </label>
+                    <select id="expense-category" required
+                        class="w-full px-4 py-2.5 rounded-xl bg-field border border-line-strong text-ink focus:border-accent-ink focus:outline-none transition-all text-sm [&>option]:bg-panel">
+                        <option value="อื่นๆ">ค่าใช้จ่าย อื่นๆ</option>
+                        <option value="ทำใบสัญญา">ค่าใช้จ่าย ทำใบสัญญา</option>
+                    </select>
+                </div>
+
+                <!-- โผล่เฉพาะประเภท "ทำใบสัญญา" — ต้องระบุว่าเป็นใบสัญญาของไฟแนนซ์เจ้าไหน -->
+                <div id="expense-finance-wrap" class="space-y-2 hidden">
+                    <label for="expense-finance-company" class="text-ink font-medium flex items-center gap-2 text-xs">
+                        <i class="fa-solid fa-building-columns text-ink"></i> บริษัทไฟแนนซ์ <span
+                            class="text-red-500">*</span>
+                    </label>
+                    <select id="expense-finance-company"
+                        class="w-full px-4 py-2.5 rounded-xl bg-field border border-line-strong text-ink focus:border-accent-ink focus:outline-none transition-all text-sm [&>option]:bg-panel">
+                        <option value="">เลือกบริษัทไฟแนนซ์</option>
+                    </select>
+                </div>
+
+                <div class="space-y-2">
+                    <label for="expense-amount" class="text-ink font-medium flex items-center gap-2 text-xs">
+                        <i class="fa-solid fa-coins text-ink"></i> จำนวนเงิน <span class="text-red-500">*</span>
+                    </label>
+                    <input type="number" id="expense-amount" required inputmode="decimal" min="0" step="0.01"
+                        placeholder="0.00"
+                        class="w-full px-4 py-2.5 rounded-xl bg-field border border-line-strong text-ink focus:border-accent-ink focus:outline-none transition-all placeholder-body-muted text-sm">
+                </div>
+
+                <div class="flex items-center justify-center gap-4 pt-4 border-t border-hairline">
+                    <button type="button" id="btn-expense-cancel"
+                        class="px-10 py-2.5 rounded-xl bg-[#E4E4E7] text-[#18181B] text-[15px] font-bold hover:bg-white transition-colors w-1/2">ยกเลิก</button>
+                    <button type="submit" id="btn-expense-save"
+                        class="px-12 py-2.5 rounded-xl bg-primary text-on-primary text-[15px] font-bold hover:bg-primary-pressed transition-colors flex items-center justify-center gap-2 w-1/2">
+                        <i class="fa-solid fa-floppy-disk"></i> บันทึก
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 </div>

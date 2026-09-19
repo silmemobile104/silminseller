@@ -1321,9 +1321,9 @@
                     <html>
                     <head>
                         <title>ใบสำคัญจ่าย - ${escapeHtml(v.voucher_no)}</title>
-                        <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700&display=swap" rel="stylesheet">
+                        <link rel="stylesheet" href="/vendor/fonts/fonts.css?v=2">
                         <style>
-                            body { font-family: 'Sarabun', sans-serif; padding: 30px; color: #333; line-height: 1.5; font-size: 14px; }
+                            body { font-family: 'Sarabun', 'Prompt', 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif; padding: 30px; color: #333; line-height: 1.5; font-size: 14px; }
                             .doc-container { max-width: 800px; margin: 0 auto; border: 1px solid #ccc; padding: 30px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
                             .header-table { width: 100%; border-collapse: collapse; margin-bottom: 25px; }
                             .header-table td { vertical-align: top; }

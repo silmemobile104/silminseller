@@ -1,5 +1,17 @@
+/* ฟอนต์ของทั้งระบบ — ประกาศที่เดียวตรงนี้ แล้วอ้างผ่านตัวแปรทุกที่
+   Sarabun = ตัวหลัก, Prompt = สำรอง, Outfit = สำรองชั้นสอง (มีเฉพาะละติน)
+   ทั้งสามตัว self-host อยู่ที่ vendor/fonts/ (ดู tools/build-fonts.js) ไม่มี origin ภายนอก
+   ⚠️ Sarabun ไม่มีน้ำหนัก 900 — font-black จึงเรนเดอร์ด้วย Sarabun 800 ซึ่งเป็นน้ำหนัก
+      ที่ใกล้ที่สุดในตระกูลเดียวกัน (เบราว์เซอร์ไม่ข้ามไปหยิบ 900 ของ Prompt ให้) */
+:root {
+    /* ค่าจริงประกาศเป็น --font-sans ใน src/tailwind-input.css (@theme) เพื่อให้ utility
+       .font-sans ของ Tailwind ใช้ลำดับเดียวกัน — ตรงนี้แค่ตั้งชื่อที่อ่านง่ายให้เรียกต่อ
+       fallback ท้ายบรรทัดกันไว้เผื่อ tailwind.css โหลดไม่สำเร็จ */
+    --font-family: var(--font-sans, 'Sarabun', 'Prompt', 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif);
+}
+
 * {
-    font-family: 'Prompt', sans-serif;
+    font-family: var(--font-family);
 }
 
 /* ==========================================

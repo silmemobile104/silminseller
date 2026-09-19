@@ -365,7 +365,14 @@ const Transfer = mongoose.model('Transfer', transferSchema, 'transfer');
 const financeCompanySchema = new mongoose.Schema({
     name: { type: String, required: true, unique: true },
     status: { type: String, default: 'ปกติ' },
-    commission_rate: { type: Number, default: 10 } // % ค่าคอมที่ซิลมีนได้จากทุนเช่าซื้อ — แต่ละเจ้าไม่เท่ากัน
+    commission_rate: { type: Number, default: 10 }, // % ค่าคอมเริ่มต้นของเจ้านี้ ใช้กับประเภทสินค้าที่ไม่ได้ตั้งเรตเฉพาะไว้
+    // เรตเฉพาะรายประเภทสินค้า — ไฟแนนซ์เจ้าเดียวกันให้ไม่เท่ากันได้ (เช่น SG: iPhone 10%, iPad 15%)
+    // ประเภทไหนไม่มีแถวในนี้ = ใช้ commission_rate ด้านบน จึงไม่ต้องกรอกครบทุกประเภท
+    commission_rates: [{
+        _id: false,
+        type_id: { type: mongoose.Schema.Types.ObjectId, ref: 'ProductType', required: true },
+        rate: { type: Number, required: true }
+    }]
 }, { timestamps: true });
 const FinanceCompany = mongoose.model('FinanceCompany', financeCompanySchema, 'financecompany');
 
@@ -617,6 +624,26 @@ const disbursementVoucherSchema = new mongoose.Schema({
 }, { timestamps: true });
 const DisbursementVoucher = mongoose.model('DisbursementVoucher', disbursementVoucherSchema, 'disbursementvoucher');
 
+// Expense (ค่าใช้จ่าย — บันทึกจากหน้าตรวจสอบออเดอร์)
+// แยกจาก DisbursementVoucher โดยตั้งใจ: ใบสำคัญจ่ายต้องผูกคู่บัญชีเดบิต/เครดิตในผังบัญชี
+// ส่วนตัวนี้เป็นบันทึกค่าใช้จ่ายหน้างานของฝ่ายบัญชี ที่ต้องกรอกเร็วและไม่ต้องรู้เลขบัญชี
+const expenseSchema = new mongoose.Schema({
+    expense_number: { type: String, required: true, unique: true },
+    expense_date: { type: Date, required: true, default: Date.now }, // วัน/เวลาที่เกิดค่าใช้จ่าย (ผู้ใช้เลือกเองได้)
+    description: { type: String, required: true },                   // รายการ — บอกว่าเป็นค่าใช้จ่ายอะไร
+    category: { type: String, required: true, enum: ['อื่นๆ', 'ทำใบสัญญา'] },
+    // มีค่าเฉพาะประเภท "ทำใบสัญญา" เท่านั้น — บอกว่าเป็นใบสัญญาของไฟแนนซ์เจ้าไหน
+    finance_company_id: { type: mongoose.Schema.Types.ObjectId, ref: 'FinanceCompany', default: null },
+    amount: { type: Number, required: true, min: 0 },
+    branch_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Branch', required: true },
+    created_by: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee', required: true },
+    created_at: { type: Date, default: Date.now }
+}, { timestamps: true });
+expenseSchema.index({ expense_date: -1 });
+expenseSchema.index({ branch_id: 1 });
+expenseSchema.index({ category: 1 });
+const Expense = mongoose.model('Expense', expenseSchema, 'expense');
+
 // Seed default COA data
 async function seedDefaultCOA() {
     try {
@@ -739,6 +766,7 @@ module.exports = {
     AccountChart,
     PnLConfig,
     DisbursementVoucher,
+    Expense,
     seedDefaultRoles,
     migrateProductsToERP,
     seedDefaultCOA

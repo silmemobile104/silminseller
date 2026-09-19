@@ -21,8 +21,6 @@
     const btnOvFilter = document.getElementById('btn-order-verification-filter');
     const btnOvFilterText = document.getElementById('btn-order-verification-filter-text');
     const btnOvFilterClose = document.getElementById('btn-order-verification-filter-close');
-    const btnOvFilterApply = document.getElementById('btn-order-verification-filter-apply');
-    const btnOvFilterReset = document.getElementById('btn-order-verification-filter-reset');
 
     const ovStartDate = document.getElementById('order-verification-start-date');
     const ovEndDate = document.getElementById('order-verification-end-date');
@@ -44,7 +42,7 @@
     const ovDetailDownInput = document.getElementById('order-detail-down-input');
 
     // แท็บรายการมัดจำ — อ่านอย่างเดียว ใช้ /deposits ตัวเดียวกับหน้า "การมัดจำ"
-    const ovTabs = document.getElementById('ov-tabs');
+    const ovTabSelect = document.getElementById('ov-tab-select');
     const ovPanelOrders = document.getElementById('ov-panel-orders');
     const ovPanelDeposits = document.getElementById('ov-panel-deposits');
     const ovControlsOrders = document.getElementById('ov-controls-orders');
@@ -55,6 +53,30 @@
     const ovDepositTableBody = document.getElementById('ov-deposit-table-body');
     const ovDepositResultCount = document.getElementById('ov-deposit-result-count');
     const OV_DEPOSIT_COLS = 7;
+
+    // แท็บประวัติค่าใช้จ่าย — ใช้ /expenses ซึ่งมีเฉพาะหน้านี้
+    const ovPanelExpenses = document.getElementById('ov-panel-expenses');
+    const ovControlsExpenses = document.getElementById('ov-controls-expenses');
+    const ovExpenseSearch = document.getElementById('ov-expense-search');
+    const ovExpenseCategory = document.getElementById('ov-expense-category');
+    const ovExpenseBranch = document.getElementById('ov-expense-branch');
+    const ovExpenseTableBody = document.getElementById('ov-expense-table-body');
+    const ovExpenseResultCount = document.getElementById('ov-expense-result-count');
+    const ovExpenseTotal = document.getElementById('ov-expense-total');
+    const OV_EXPENSE_COLS = 7;
+
+    const btnAddExpense = document.getElementById('btn-add-expense');
+    const ovExpenseModal = document.getElementById('modal-expense');
+    const ovExpenseForm = document.getElementById('form-expense');
+    const ovExpenseDate = document.getElementById('expense-date');
+    const ovExpenseDescription = document.getElementById('expense-description');
+    const ovExpenseCategoryInput = document.getElementById('expense-category');
+    const ovExpenseFinanceWrap = document.getElementById('expense-finance-wrap');
+    const ovExpenseFinanceCompany = document.getElementById('expense-finance-company');
+    const ovExpenseAmount = document.getElementById('expense-amount');
+    const btnExpenseClose = document.getElementById('btn-expense-close');
+    const btnExpenseCancel = document.getElementById('btn-expense-cancel');
+    const btnExpenseSave = document.getElementById('btn-expense-save');
 
     let ovCache = [];
     // เรนเดอร์ทีละ 10 แถว แล้วโหลดเพิ่มเองตอนเลื่อนถึงท้ายตาราง (infinite scroll)
@@ -68,6 +90,8 @@
     let ovActiveTab = 'orders';  // แท็บเริ่มต้นคือรายการตรวจสอบออเดอร์เสมอ ไม่จำค่าข้ามการเข้าหน้า
     let ovDepositsLoaded = false;
     let ovDepositCache = [];
+    let ovExpensesLoaded = false;
+    let ovExpenseCache = [];
 
     // สลับมุมมอง List/Card — ใช้ค่าเดียวกันทั้งสองแท็บ และจำไว้ข้ามการเข้าหน้า (เหมือนหน้าอื่นในระบบ)
     const ovViewListBtn = document.getElementById('ov-view-list');
@@ -79,6 +103,10 @@
     const ovDepositViewCardBtn = document.getElementById('ov-deposit-view-card');
     const ovDepositsListWrap = document.getElementById('ov-deposits-list-wrap');
     const ovDepositsCardsWrap = document.getElementById('ov-deposits-cards');
+    const ovExpenseViewListBtn = document.getElementById('ov-expense-view-list');
+    const ovExpenseViewCardBtn = document.getElementById('ov-expense-view-card');
+    const ovExpensesListWrap = document.getElementById('ov-expenses-list-wrap');
+    const ovExpensesCardsWrap = document.getElementById('ov-expenses-cards');
     let ovViewMode = localStorage.getItem('order_verification_view_mode') === 'card' ? 'card' : 'list';
 
     const ovEsc = (s) => String(s == null ? '' : s)
@@ -87,6 +115,11 @@
 
     const ovBaht = (n) => `฿${(Number(n) || 0).toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     const ovBahtShort = (n) => `฿${Math.round(Number(n) || 0).toLocaleString('th-TH')}`;
+    // เรตเฉลี่ยของบิลคละประเภทมีทศนิยมยาว แต่เรตที่ตั้งไว้ตรงๆ ไม่ควรกลายเป็น "10.00%"
+    const ovRate = (n) => {
+        const v = Number(n) || 0;
+        return Number.isInteger(v) ? String(v) : v.toFixed(2);
+    };
 
     // วันที่แบบไทย (พ.ศ.) ให้ตรงกับที่ใช้ทั้งระบบ
     const ovDateParts = (value) => {
@@ -706,29 +739,294 @@
         }
     }
 
-    const OV_TAB_ON = 'px-4 py-2.5 rounded-xl text-sm font-bold transition-colors flex items-center gap-2 cursor-pointer bg-primary text-on-primary';
-    const OV_TAB_OFF = 'px-4 py-2.5 rounded-xl text-sm font-bold transition-colors flex items-center gap-2 cursor-pointer bg-field text-body-muted hover:text-ink';
+    // ==========================================
+    // แท็บประวัติค่าใช้จ่าย
+    // ==========================================
+    const ovExpenseStateRow = (message, extraClass = 'text-ink/50 italic') =>
+        `<tr><td colspan="${OV_EXPENSE_COLS}" class="px-6 py-8 text-center ${extraClass}">${message}</td></tr>`;
+
+    const renderExpenseSkeleton = (rowCount = 6) => {
+        if (!ovExpenseTableBody) return;
+        const bar = (w) => `<div class="h-3.5 ${w} rounded-full bg-skeleton animate-pulse"></div>`;
+        let html = '';
+        for (let i = 0; i < rowCount; i++) {
+            html += `
+                <tr>
+                    <td class="px-6 py-4">${bar('w-32')}</td>
+                    <td class="px-6 py-4">${bar('w-28')}</td>
+                    <td class="px-6 py-4">${bar('w-48')}</td>
+                    <td class="px-6 py-4">${bar('w-28 h-6')}</td>
+                    <td class="px-6 py-4"><div class="flex justify-end">${bar('w-20')}</div></td>
+                    <td class="px-6 py-4">${bar('w-20')}</td>
+                    <td class="px-6 py-4">${bar('w-24')}</td>
+                </tr>
+            `;
+        }
+        ovExpenseTableBody.innerHTML = html;
+    };
+
+    // ป้ายประเภทค่าใช้จ่าย — เป็น "ป้ายหมวดหมู่" ไม่ใช่ป้ายสถานะ จึงใช้พื้นเทาทั้งสองแบบ (DESIGN.md ข้อ 11.6)
+    // "ทำใบสัญญา" ต่อท้ายด้วยชื่อไฟแนนซ์ เพราะนั่นคือสิ่งที่ฝ่ายบัญชีต้องเห็นคู่กันเสมอ
+    const ovExpenseCategoryBadge = (exp) => {
+        const label = exp.category === 'ทำใบสัญญา'
+            ? `ทำใบสัญญา${exp.finance_company_name ? ` · ${exp.finance_company_name}` : ''}`
+            : 'อื่นๆ';
+        return `
+            <span class="inline-flex items-center px-2.5 py-1 rounded-[0.375rem] bg-surface-chip text-ink text-xs font-medium">
+                ${ovEsc(label)}
+            </span>
+        `;
+    };
+
+    const ovExpenseRowMarkup = (exp) => {
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-divider transition-colors';
+        const t = ovDateParts(exp.expense_date);
+
+        tr.innerHTML = `
+            <td class="px-6 py-4 text-ink">
+                <span class="font-mono">${t.date}</span>
+                <span class="font-mono text-ink/70 ml-2">${t.time}</span>
+            </td>
+            <td class="px-6 py-4"><span class="font-mono font-semibold text-accent-ink">${ovEsc(exp.expense_number)}</span></td>
+            <td class="px-6 py-4 text-ink">
+                <div class="max-w-[420px] truncate" title="${ovEsc(exp.description)}">${ovEsc(exp.description)}</div>
+            </td>
+            <td class="px-6 py-4">${ovExpenseCategoryBadge(exp)}</td>
+            <td class="px-6 py-4 text-ink font-mono text-right">${ovBaht(exp.amount)}</td>
+            <td class="px-6 py-4 text-ink">${ovEsc(exp.branch_name || '-')}</td>
+            <td class="px-6 py-4 text-ink">${ovEsc(exp.created_by_name || '-')}</td>
+        `;
+        return tr;
+    };
+
+    const ovExpenseCardMarkup = (exp) => {
+        const card = document.createElement('div');
+        card.className = 'elev-card bg-surface-tile-3 rounded-md p-4 transition-all hover:-translate-y-1';
+        const t = ovDateParts(exp.expense_date);
+
+        card.innerHTML = `
+            <div class="flex items-start justify-between gap-2">
+                <div class="min-w-0">
+                    <p class="font-mono font-semibold text-accent-ink truncate">${ovEsc(exp.expense_number)}</p>
+                    <p class="text-xs text-ink/70 mt-0.5 font-mono">${t.date} ${t.time}</p>
+                </div>
+                <div class="shrink-0">${ovExpenseCategoryBadge(exp)}</div>
+            </div>
+
+            <div class="mt-3 pt-3 border-t border-hairline">
+                <p class="text-[10px] text-ink/60 uppercase tracking-wide">รายการ</p>
+                <p class="text-sm text-ink mt-1">${ovEsc(exp.description)}</p>
+            </div>
+
+            <div class="mt-3">
+                <p class="text-[10px] text-ink/60 uppercase tracking-wide">สาขา / ผู้บันทึก</p>
+                <p class="text-sm text-ink mt-1 truncate">${ovEsc(exp.branch_name || '-')}</p>
+                <p class="text-xs text-ink/70 truncate">${ovEsc(exp.created_by_name || '-')}</p>
+            </div>
+
+            <div class="flex items-center justify-between mt-3.5 pt-3 border-t border-hairline gap-2">
+                <span class="text-xs text-body-muted">จำนวนเงิน</span>
+                <span class="text-base font-mono font-bold text-ink">${ovBaht(exp.amount)}</span>
+            </div>
+        `;
+        return card;
+    };
+
+    const renderOvExpenseResults = () => {
+        if (!ovExpenseTableBody) return;
+
+        if (ovExpensesListWrap) ovExpensesListWrap.classList.toggle('hidden', ovViewMode !== 'list');
+        if (ovExpensesCardsWrap) ovExpensesCardsWrap.classList.toggle('hidden', ovViewMode !== 'card');
+
+        // ยอดรวมคิดจากชุดที่แสดงอยู่จริง เพื่อให้ตรงกับตัวกรองที่ผู้ใช้เลือกไว้เสมอ
+        const total = ovExpenseCache.reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
+        if (ovExpenseTotal) ovExpenseTotal.textContent = ovBahtShort(total);
+
+        if (ovExpenseCache.length === 0) {
+            ovExpenseTableBody.innerHTML = ovExpenseStateRow('ยังไม่มีรายการค่าใช้จ่ายตามตัวเลือก');
+            if (ovExpensesCardsWrap) ovExpensesCardsWrap.innerHTML = '<div class="col-span-full py-12 text-center text-ink/50 italic">ยังไม่มีรายการค่าใช้จ่ายตามตัวเลือก</div>';
+            if (ovExpenseResultCount) ovExpenseResultCount.textContent = '';
+            return;
+        }
+
+        const frag = document.createDocumentFragment();
+        if (ovViewMode === 'card') {
+            ovExpenseCache.forEach(exp => frag.appendChild(ovExpenseCardMarkup(exp)));
+            ovExpensesCardsWrap.innerHTML = '';
+            ovExpensesCardsWrap.appendChild(frag);
+        } else {
+            ovExpenseCache.forEach(exp => frag.appendChild(ovExpenseRowMarkup(exp)));
+            ovExpenseTableBody.innerHTML = '';
+            ovExpenseTableBody.appendChild(frag);
+        }
+        if (ovExpenseResultCount) ovExpenseResultCount.textContent = `แสดง ${ovExpenseCache.length} รายการ`;
+    };
+
+    async function loadOvExpenses() {
+        if (!ovExpenseTableBody) return;
+        if (ovExpenseResultCount) ovExpenseResultCount.textContent = '';
+        if (ovViewMode === 'card') renderOvCardSkeleton(8, ovExpensesCardsWrap);
+        else renderExpenseSkeleton();
+
+        try {
+            const params = new URLSearchParams();
+            const term = ovExpenseSearch && ovExpenseSearch.value.trim();
+            if (term) params.append('search', term);
+            if (ovExpenseCategory && ovExpenseCategory.value) params.append('category', ovExpenseCategory.value);
+            if (ovExpenseBranch && ovExpenseBranch.value) params.append('branch_id', ovExpenseBranch.value);
+
+            const response = await authFetch(`${API_BASE_URL}/expenses?${params.toString()}`);
+            const result = await response.json();
+
+            if (!result.success) {
+                ovExpenseTableBody.innerHTML = ovExpenseStateRow(ovEsc(result.message || 'ไม่สามารถโหลดข้อมูลได้'), 'text-red-400');
+                return;
+            }
+
+            ovExpenseCache = Array.isArray(result.data) ? result.data : [];
+            ovExpensesLoaded = true;
+            renderOvExpenseResults();
+        } catch (err) {
+            console.error('[ORDER-VERIFICATION] Error loading expenses:', err);
+            ovExpenseTableBody.innerHTML = ovExpenseStateRow('เกิดข้อผิดพลาดในการโหลดข้อมูล', 'text-red-400');
+        }
+    }
+
+    // ==========================================
+    // โมดัลเพิ่มค่าใช้จ่าย
+    // ==========================================
+
+    // ค่าเริ่มต้นของช่องวัน/เวลา = ตอนนี้ — input[type=datetime-local] รับได้เฉพาะเวลาท้องถิ่นรูป YYYY-MM-DDTHH:mm
+    // (toISOString() ใช้ไม่ได้ เพราะแปลงเป็น UTC ทำให้เวลาเพี้ยนไป 7 ชั่วโมง)
+    const ovLocalDateTimeValue = (d = new Date()) => {
+        const pad = (n) => String(n).padStart(2, '0');
+        return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    };
+
+    // ช่องไฟแนนซ์โผล่เฉพาะประเภท "ทำใบสัญญา" และต้องปลด required ตอนซ่อน
+    // ไม่งั้นฟอร์มจะ submit ไม่ได้เลยโดยที่ผู้ใช้ไม่เห็นว่าติดตรงไหน
+    const syncExpenseFinanceField = () => {
+        if (!ovExpenseFinanceWrap || !ovExpenseFinanceCompany) return;
+        const isContract = ovExpenseCategoryInput && ovExpenseCategoryInput.value === 'ทำใบสัญญา';
+        ovExpenseFinanceWrap.classList.toggle('hidden', !isContract);
+        ovExpenseFinanceCompany.required = isContract;
+        if (!isContract) ovExpenseFinanceCompany.value = '';
+    };
+
+    const populateExpenseFinanceCompanies = async () => {
+        if (!ovExpenseFinanceCompany) return;
+        if (typeof ensureMasterDataLoaded === 'function') await ensureMasterDataLoaded();
+        const companies = (window.masterDataCache && window.masterDataCache.financeCompanies) || [];
+        const current = ovExpenseFinanceCompany.value;
+        ovExpenseFinanceCompany.innerHTML = '<option value="">เลือกบริษัทไฟแนนซ์</option>';
+        companies.forEach(c => {
+            const option = document.createElement('option');
+            option.value = c._id;
+            option.textContent = c.name;
+            ovExpenseFinanceCompany.appendChild(option);
+        });
+        if (current) ovExpenseFinanceCompany.value = current;
+    };
+
+    const openExpenseModal = () => {
+        if (!ovExpenseModal) return;
+        if (ovExpenseForm) ovExpenseForm.reset();
+        if (ovExpenseDate) ovExpenseDate.value = ovLocalDateTimeValue();
+        if (ovExpenseCategoryInput) ovExpenseCategoryInput.value = 'อื่นๆ';
+        syncExpenseFinanceField();
+        populateExpenseFinanceCompanies();
+
+        ovExpenseModal.classList.remove('opacity-0', 'pointer-events-none');
+        const content = ovExpenseModal.querySelector('.modal-content');
+        if (content) content.classList.remove('scale-95');
+        if (ovExpenseDescription) ovExpenseDescription.focus();
+    };
+
+    const closeExpenseModal = () => {
+        if (!ovExpenseModal) return;
+        ovExpenseModal.classList.add('opacity-0', 'pointer-events-none');
+        const content = ovExpenseModal.querySelector('.modal-content');
+        if (content) content.classList.add('scale-95');
+    };
+
+    async function saveExpense() {
+        const description = ovExpenseDescription ? ovExpenseDescription.value.trim() : '';
+        const category = ovExpenseCategoryInput ? ovExpenseCategoryInput.value : '';
+        const amount = ovExpenseAmount ? Number(ovExpenseAmount.value) : NaN;
+        const expenseDate = ovExpenseDate ? ovExpenseDate.value : '';
+
+        if (!expenseDate) {
+            showToast('กรุณาเลือกวัน/เวลา', 'error');
+            return;
+        }
+        if (!description) {
+            showToast('กรุณากรอกรายการค่าใช้จ่าย', 'error');
+            return;
+        }
+        if (!Number.isFinite(amount) || amount <= 0) {
+            showToast('จำนวนเงินต้องเป็นตัวเลขมากกว่า 0', 'error');
+            return;
+        }
+
+        const payload = { expense_date: new Date(expenseDate).toISOString(), description, category, amount };
+        if (category === 'ทำใบสัญญา') {
+            const companyId = ovExpenseFinanceCompany ? ovExpenseFinanceCompany.value : '';
+            if (!companyId) {
+                showToast('กรุณาเลือกบริษัทไฟแนนซ์', 'error');
+                return;
+            }
+            payload.finance_company_id = companyId;
+        }
+
+        if (btnExpenseSave) btnExpenseSave.disabled = true;
+        try {
+            const response = await authFetch(`${API_BASE_URL}/expenses`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const result = await response.json();
+
+            if (!result.success) {
+                showToast(result.message || 'บันทึกค่าใช้จ่ายไม่สำเร็จ', 'error');
+                return;
+            }
+
+            showToast('บันทึกค่าใช้จ่ายแล้ว');
+            closeExpenseModal();
+            // ปุ่มอยู่บนหัวหน้า จึงกดได้จากทุกแท็บ — อยู่แท็บค่าใช้จ่ายค่อยดึงใหม่ทันที
+            // ถ้าอยู่แท็บอื่นแค่ทำเครื่องหมายว่าข้อมูลเก่าแล้ว ให้ไปโหลดตอนสลับมาแทน
+            if (ovActiveTab === 'expenses') await loadOvExpenses();
+            else ovExpensesLoaded = false;
+        } catch (err) {
+            console.error('[ORDER-VERIFICATION] Error saving expense:', err);
+            showToast('เกิดข้อผิดพลาดในการบันทึกค่าใช้จ่าย', 'error');
+        } finally {
+            if (btnExpenseSave) btnExpenseSave.disabled = false;
+        }
+    }
 
     const switchOvTab = (tab) => {
         ovActiveTab = tab;
         const onOrders = tab === 'orders';
+        const onDeposits = tab === 'deposits';
+        const onExpenses = tab === 'expenses';
 
-        if (ovTabs) {
-            ovTabs.querySelectorAll('[data-ov-tab]').forEach(btn => {
-                const active = btn.dataset.ovTab === tab;
-                btn.className = active ? OV_TAB_ON : OV_TAB_OFF;
-                btn.setAttribute('aria-pressed', String(active));
-            });
-        }
+        if (ovTabSelect && ovTabSelect.value !== tab) ovTabSelect.value = tab;
+
         if (ovPanelOrders) ovPanelOrders.classList.toggle('hidden', !onOrders);
-        if (ovPanelDeposits) ovPanelDeposits.classList.toggle('hidden', onOrders);
+        if (ovPanelDeposits) ovPanelDeposits.classList.toggle('hidden', !onDeposits);
+        if (ovPanelExpenses) ovPanelExpenses.classList.toggle('hidden', !onExpenses);
         // ใช้ flex ไม่ใช่ block เพราะแถบคอนโทรลเป็น flex-wrap
         if (ovControlsOrders) ovControlsOrders.classList.toggle('hidden', !onOrders);
-        if (ovControlsDeposits) ovControlsDeposits.classList.toggle('hidden', onOrders);
+        if (ovControlsDeposits) ovControlsDeposits.classList.toggle('hidden', !onDeposits);
+        if (ovControlsExpenses) ovControlsExpenses.classList.toggle('hidden', !onExpenses);
         closeStatusMenu();
 
-        // โหลดรายการมัดจำครั้งแรกที่สลับมาเท่านั้น ไม่ดึงซ้ำทุกครั้งที่กดสลับไปมา
-        if (!onOrders && !ovDepositsLoaded) loadOvDeposits();
+        // โหลดครั้งแรกที่สลับมาเท่านั้น ไม่ดึงซ้ำทุกครั้งที่กดสลับไปมา
+        if (onDeposits && !ovDepositsLoaded) loadOvDeposits();
+        if (onExpenses && !ovExpensesLoaded) loadOvExpenses();
     };
 
     async function loadBranchesForOrderVerification() {
@@ -737,7 +1035,7 @@
             const response = await authFetch(`${API_BASE_URL}/branches`);
             const result = await response.json();
             if (result.success && Array.isArray(result.data)) {
-                [ovBranch, ovDepositBranch].forEach(select => {
+                [ovBranch, ovDepositBranch, ovExpenseBranch].forEach(select => {
                     if (!select) return;
                     select.innerHTML = '<option value="">เลือกสาขา</option>';
                     result.data.forEach(branch => {
@@ -793,6 +1091,7 @@
                 const next = (ovProductType.value === btn.dataset.value) ? '' : btn.dataset.value;
                 ovProductType.value = next;
                 syncProductTypePills();
+                loadOrderVerifications(); // ยิงทันที เหมือนตัวกรองอื่นในพาเนลนี้
             });
             ovProductTypeContainer.appendChild(btn);
         });
@@ -963,8 +1262,25 @@
             ovSetText('order-detail-full-price', ovBaht(f.full_price));
             ovSetText('order-detail-down-percent', `${(Number(f.down_percent) || 0).toFixed(2)}%`);
             ovSetText('order-detail-hire-purchase', ovBaht(f.hire_purchase));
-            ovSetText('order-detail-commission-rate', `(${Number(f.commission_rate) || 0}% ของทุนเช่าซื้อ)`);
+            // บิลคละประเภทสินค้าได้เรตไม่เท่ากัน ตัวเลขที่โชว์จึงเป็นเรตเฉลี่ยถ่วงน้ำหนัก — บอกให้ชัดว่าเป็นค่าเฉลี่ย
+            const rateText = ovRate(f.commission_rate);
+            ovSetText('order-detail-commission-rate', f.commission_mixed
+                ? `(เฉลี่ย ${rateText}% ของทุนเช่าซื้อ)`
+                : `(${rateText}% ของทุนเช่าซื้อ)`);
             ovSetText('order-detail-commission', ovBaht(f.commission));
+
+            const breakdown = document.getElementById('order-detail-commission-breakdown');
+            if (breakdown) {
+                breakdown.classList.toggle('hidden', !f.commission_mixed);
+                breakdown.innerHTML = f.commission_mixed
+                    ? (f.commission_lines || []).map(l => `
+                        <div class="flex justify-between gap-4">
+                            <span>${ovEsc(l.product_name)}${l.type_name ? ` <span class="text-ink/40">(${ovEsc(l.type_name)})</span>` : ''} · ${ovRate(l.commission_rate)}%</span>
+                            <span class="font-mono">${ovBaht(l.commission)}</span>
+                        </div>
+                    `).join('')
+                    : '';
+            }
             ovSetText('order-detail-credit', ovBaht(f.credit_amount));
             ovSetText('order-detail-outstanding', ovBaht(f.outstanding));
             ovSetText('order-detail-paid-at', row.finance_paid_at ? ovDateTimeText(row.finance_paid_at) : 'ยังไม่ชำระ');
@@ -1112,28 +1428,34 @@
         localStorage.setItem('order_verification_view_mode', mode);
         window.syncViewToggleButtons(ovViewListBtn, ovViewCardBtn, mode);
         window.syncViewToggleButtons(ovDepositViewListBtn, ovDepositViewCardBtn, mode);
+        window.syncViewToggleButtons(ovExpenseViewListBtn, ovExpenseViewCardBtn, mode);
         // คงจำนวนแถวที่โหลดไว้ตอนสลับ list/card ไม่ให้ที่เลื่อนดูมาหายไป
         renderOvResults(ovRenderedCount);
         if (ovDepositsLoaded) renderOvDepositResults();
+        if (ovExpensesLoaded) renderOvExpenseResults();
     };
 
     if (ovViewListBtn) ovViewListBtn.addEventListener('click', () => applyOvViewMode('list'));
     if (ovViewCardBtn) ovViewCardBtn.addEventListener('click', () => applyOvViewMode('card'));
     if (ovDepositViewListBtn) ovDepositViewListBtn.addEventListener('click', () => applyOvViewMode('list'));
     if (ovDepositViewCardBtn) ovDepositViewCardBtn.addEventListener('click', () => applyOvViewMode('card'));
+    if (ovExpenseViewListBtn) ovExpenseViewListBtn.addEventListener('click', () => applyOvViewMode('list'));
+    if (ovExpenseViewCardBtn) ovExpenseViewCardBtn.addEventListener('click', () => applyOvViewMode('card'));
 
     // ซิงก์ปุ่มให้ตรงกับโหมดที่จำไว้ตั้งแต่โหลดสคริปต์ครั้งแรก
     window.syncViewToggleButtons(ovViewListBtn, ovViewCardBtn, ovViewMode);
     window.syncViewToggleButtons(ovDepositViewListBtn, ovDepositViewCardBtn, ovViewMode);
+    window.syncViewToggleButtons(ovExpenseViewListBtn, ovExpenseViewCardBtn, ovViewMode);
     if (ovOrdersListWrap) ovOrdersListWrap.classList.toggle('hidden', ovViewMode !== 'list');
     if (ovOrdersCardsWrap) ovOrdersCardsWrap.classList.toggle('hidden', ovViewMode !== 'card');
     if (ovDepositsListWrap) ovDepositsListWrap.classList.toggle('hidden', ovViewMode !== 'list');
     if (ovDepositsCardsWrap) ovDepositsCardsWrap.classList.toggle('hidden', ovViewMode !== 'card');
+    if (ovExpensesListWrap) ovExpensesListWrap.classList.toggle('hidden', ovViewMode !== 'list');
+    if (ovExpensesCardsWrap) ovExpensesCardsWrap.classList.toggle('hidden', ovViewMode !== 'card');
 
-    if (ovTabs) {
-        ovTabs.addEventListener('click', (e) => {
-            const btn = e.target.closest('[data-ov-tab]');
-            if (btn && btn.dataset.ovTab !== ovActiveTab) switchOvTab(btn.dataset.ovTab);
+    if (ovTabSelect) {
+        ovTabSelect.addEventListener('change', () => {
+            if (ovTabSelect.value !== ovActiveTab) switchOvTab(ovTabSelect.value);
         });
     }
     if (ovDepositSearch) {
@@ -1146,21 +1468,40 @@
     if (ovDepositStatus) ovDepositStatus.addEventListener('change', loadOvDeposits);
     if (ovDepositBranch) ovDepositBranch.addEventListener('change', loadOvDeposits);
 
-    // ตัวกรองใน drawer ไม่ยิงทันทีตอนเปลี่ยน รอกด "ตกลง" (ไวยากรณ์เดียวกับหน้า #stock)
+    if (ovExpenseSearch) {
+        let expenseTimeout;
+        ovExpenseSearch.addEventListener('input', () => {
+            clearTimeout(expenseTimeout);
+            expenseTimeout = setTimeout(loadOvExpenses, 500);
+        });
+    }
+    if (ovExpenseCategory) ovExpenseCategory.addEventListener('change', loadOvExpenses);
+    if (ovExpenseBranch) ovExpenseBranch.addEventListener('change', loadOvExpenses);
+
+    if (btnAddExpense) btnAddExpense.addEventListener('click', openExpenseModal);
+    if (btnExpenseClose) btnExpenseClose.addEventListener('click', closeExpenseModal);
+    if (btnExpenseCancel) btnExpenseCancel.addEventListener('click', closeExpenseModal);
+    if (ovExpenseCategoryInput) ovExpenseCategoryInput.addEventListener('change', syncExpenseFinanceField);
+    if (ovExpenseForm) {
+        ovExpenseForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            saveExpense();
+        });
+    }
+    if (ovExpenseModal) {
+        ovExpenseModal.addEventListener('click', (e) => {
+            if (e.target === ovExpenseModal) closeExpenseModal();
+        });
+    }
+
+    // ตัวกรองใน drawer ยิงทันทีที่เปลี่ยนค่า ไม่มีปุ่ม "ตกลง"
+    // (ต่างจากแบบแปลน #stock ใน DESIGN.md ข้อ 11.8 ที่รอกดยืนยัน — หน้านี้ตั้งใจให้ต่าง)
+    // พาเนลไม่ปิดเองหลังเลือก เพื่อให้ปรับหลายตัวต่อกันได้โดยเห็นผลหลังพาเนลไปเรื่อยๆ
     if (btnOvFilter) btnOvFilter.addEventListener('click', openOvFilterPanel);
     if (btnOvFilterClose) btnOvFilterClose.addEventListener('click', closeOvFilterPanel);
-    if (btnOvFilterApply) {
-        btnOvFilterApply.addEventListener('click', () => {
-            closeOvFilterPanel();
-            loadOrderVerifications();
-        });
-    }
-    if (btnOvFilterReset) {
-        btnOvFilterReset.addEventListener('click', () => {
-            closeOvFilterPanel();
-            resetAllOvFilters();
-        });
-    }
+    [ovStartDate, ovEndDate, ovEmployee, ovPaymentType].forEach(el => {
+        if (el) el.addEventListener('change', () => loadOrderVerifications());
+    });
     if (ovFilterPanel) {
         ovFilterPanel.addEventListener('click', (e) => {
             if (e.target === ovFilterPanel) closeOvFilterPanel();
@@ -1219,6 +1560,7 @@
         if (e.key !== 'Escape') return;
         closeStatusMenu();
         if (ovDetailModal && !ovDetailModal.classList.contains('pointer-events-none')) closeOrderDetailModal();
+        if (ovExpenseModal && !ovExpenseModal.classList.contains('pointer-events-none')) closeExpenseModal();
         if (ovFilterPanel && !ovFilterPanel.classList.contains('pointer-events-none')) closeOvFilterPanel();
     });
 
@@ -1233,8 +1575,11 @@
 
     // เรียกจาก switchView ตอนเข้าหน้า — โหลดตัวเลือกของตัวกรองให้พร้อมก่อนดึงรายการ
     async function initOrderVerification() {
-        // เข้าหน้าใหม่ทุกครั้งเริ่มที่แท็บออเดอร์เสมอ และล้างสถานะโหลดมัดจำเพื่อไม่ให้เห็นข้อมูลค้างจากรอบก่อน
+        // เข้าหน้าใหม่ทุกครั้งเริ่มที่แท็บออเดอร์เสมอ และล้างสถานะโหลดของอีกสองแท็บ
+        // เพื่อไม่ให้เห็นข้อมูลค้างจากรอบก่อน
         ovDepositsLoaded = false;
+        ovExpensesLoaded = false;
+        if (ovTabSelect) ovTabSelect.value = 'orders';
         switchOvTab('orders');
         await Promise.all([
             loadBranchesForOrderVerification(),

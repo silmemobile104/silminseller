@@ -73,6 +73,7 @@ Static assets are served with `maxAge: 1y` and cached again by a Service Worker 
 | `views/*.html` | `VIEW_FRAGMENT_VERSION` in `script.js` |
 | `style.css` / `tailwind.css` | their `?v=` in `index.html` |
 | icon set | `FONT_VERSION` in `tools/build-icons.js` **and** the matching `?v=` on `icons.css` + both font `<link rel="preload">` tags |
+| text fonts (`npm run build:fonts`) | `?v=` on `vendor/fonts/fonts.css` in **every** file that links it — `index.html` and all six print documents — plus the two `document.write` print windows in `js/page-deposits.js` / `js/page-accounting-settings.js` |
 | `receipt-rc.html` | `RECEIPT_RC_VERSION` in `script.js` (print windows are opened by URL, so they carry their own `?v=`) |
 | `receipt-template.html` | `RECEIPT_TEMPLATE_VERSION` in `script.js` (same reason) |
 | `sw.js` caching logic | `CACHE_NAME` in `sw.js` |
@@ -87,7 +88,9 @@ Images were ~85% of the cold-load weight, and unlike code they gain nothing from
 
 - **Never edit the served image files directly** (`icon_silminmobile.png`, `logo.png`, `icon/*.png`, …) — `npm run build:images` overwrites them from `_original/`. To change a logo, replace the file in `_original/` and re-run. Targets are declared in `tools/build-images.js` as 2× the size the HTML actually displays.
 - **Never use `.ico` in an `<img>` tag.** ICO stores an uncompressed bitmap: a 128×128 icon is exactly 66 KB (128·128·4 bytes), while the same image as PNG is ~1 KB. A past PNG→ICO conversion made three nav icons 10–94× *larger*.
-- **Fonts are self-hosted** in `vendor/fonts/` — there is no Google Fonts dependency, and the page loads zero external origins. `tools/build-fonts.js` fetches only the weights in use (400–900 + italic 400; weight 300 is deliberately excluded because nothing uses `font-light`) and only the `thai` + `latin` subsets. It needs network access, so it is kept out of the default `build` chain.
+- **Fonts are self-hosted** in `vendor/fonts/` — there is no Google Fonts dependency, and the page loads zero external origins (the print documents too: `receipt-rc.html`, `receipt-template.html`, `po-print.html`, `transfer-document.html`, `document_tranfer.html`, `barcode-print.html`, plus the print windows `page-deposits.js` / `page-accounting-settings.js` build with `document.write`). `tools/build-fonts.js` fetches three families into one `vendor/fonts/fonts.css` — **Sarabun** (primary), **Prompt** (fallback), **Outfit** (second fallback, latin only) — taking only the weights in use (400–900 + italic 400; weight 300 is deliberately excluded because nothing uses `font-light`) and only the `thai` + `latin` subsets. It needs network access, so it is kept out of the default `build` chain.
+  - The stack is declared **once**, as `--font-sans` in `src/tailwind-input.css` (`@theme`); `style.css` re-exports it as `--font-family` and applies it via `* { font-family }`. Setting the Tailwind token is not optional — the `.font-sans` utility outranks the `*` selector, so without it any element carrying that class silently falls back to the OS font.
+  - Two traps: **Sarabun has no weight 900**, so `font-black` renders Sarabun 800 — weight matching happens *inside* the first family that matches, so it does not fall through to Prompt's 900. And **Outfit is effectively unreachable** (Sarabun already covers thai + latin); it is kept self-hosted so every name in the stack has real files behind it, and it costs nothing at runtime because a `@font-face` file is only downloaded when some glyph actually needs it.
 - Before deleting an "unused" asset, match against URL-encoded forms too — many filenames contain spaces (`icons_img/box (1) 5.png` is referenced as `box%20(1)%205.png`).
 
 ## Accessibility

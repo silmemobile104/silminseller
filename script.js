@@ -171,7 +171,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // โหลดสคริปต์เฉพาะหน้า (js/page-<name>.js) แบบ dynamic ครั้งเดียว แล้ว cache ไว้
     // PAGE_SCRIPT_VERSION: บัมพ์เลขนี้ทุกครั้งที่แก้ไฟล์ใน js/ เพื่อไม่ให้เบราว์เซอร์ใช้ของเก่าที่ cache ไว้
-    const PAGE_SCRIPT_VERSION = 'apple_active_v47';
+    const PAGE_SCRIPT_VERSION = 'apple_active_v52';
     const __loadedPageScripts = {};
     function loadPageScript(name) {
         if (__loadedPageScripts[name]) return __loadedPageScripts[name];
@@ -224,7 +224,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // ไม่ได้รอ init function ถ้า HTML ยังไม่ถูกแทรกเข้า DOM ก่อน ตัวแปรที่ query ไว้จะเป็น null ถาวร
     // ชื่อ name ต้องตรงกับชื่อที่ใช้ใน loadPageScript — ไฟล์เดียวอาจมีหลาย <div id="view-XXX"> รวมกัน
     // ถ้าหน้านั้นถูก share โดยสคริปต์เดียวกันหลาย view (ดูตาราง mapping ในแผน)
-    const VIEW_FRAGMENT_VERSION = 'v90'; // บัมพ์เลขนี้ทุกครั้งที่แก้ไฟล์ใน views/
+    const VIEW_FRAGMENT_VERSION = 'v94'; // บัมพ์เลขนี้ทุกครั้งที่แก้ไฟล์ใน views/
     const __loadedPageViews = {};
     function loadPageView(name) {
         if (__loadedPageViews[name]) return __loadedPageViews[name];
@@ -7304,9 +7304,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // ⚠️ receipt-rc.html ถูกเสิร์ฟด้วย maxAge 1 ปี เหมือน static อื่น (ดู server.js) และไม่มี ?v= ห่อ
     //    จาก index.html เหมือนไฟล์อื่น จึงต้องแปะเวอร์ชันตอนเปิดหน้าต่างเอง
     //    บัมพ์เลขนี้ทุกครั้งที่แก้ receipt-rc.html ไม่งั้นผู้ใช้จะยังเห็นใบเสร็จแบบเดิม
-    const RECEIPT_RC_VERSION = 'v5';
+    const RECEIPT_RC_VERSION = 'v6';
     // เหตุผลเดียวกัน สำหรับใบเสร็จไฟล์แยก (receipt-template.html)
-    const RECEIPT_TEMPLATE_VERSION = 'v2';
+    const RECEIPT_TEMPLATE_VERSION = 'v3';
 
     const openReceiptRcWindow = (txnData) => {
         if (!txnData) return;

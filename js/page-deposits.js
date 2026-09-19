@@ -930,8 +930,9 @@
                 <html>
                 <head>
                     <title>ใบจองมัดจำสินค้า #${deposit.deposit_number}</title>
+                    <link rel="stylesheet" href="/vendor/fonts/fonts.css?v=2">
                     <style>
-                        body { font-family: 'Sarabun', sans-serif; color: #333; padding: 20px; line-height: 1.6; }
+                        body { font-family: 'Sarabun', 'Prompt', 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif; color: #333; padding: 20px; line-height: 1.6; }
                         .receipt-box { max-width: 600px; margin: 0 auto; border: 1px solid #ccc; padding: 20px; border-radius: 8px; }
                         .header { text-align: center; margin-bottom: 20px; }
                         .header h2 { margin: 0; color: #047857; }

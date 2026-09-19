@@ -97,8 +97,12 @@ const catalogue = [
         key: 'financecompany', model: 'FinanceCompany', title: 'บริษัทไฟแนนซ์', group: 'ข้อมูลพื้นฐาน', importance: 'high',
         purpose: 'บริษัทไฟแนนซ์ที่ร้านส่งเรื่องผ่อนให้ ใช้ตอนขายแบบผ่อนและใช้ตามยอดที่ไฟแนนซ์ต้องโอนคืนร้าน',
         pages: ['settings', 'transactions', 'accounting'],
-        keyFields: [{ name: 'name', note: 'ชื่อบริษัทไฟแนนซ์' }],
-        relations: [],
+        keyFields: [
+            { name: 'name', note: 'ชื่อบริษัทไฟแนนซ์' },
+            { name: 'commission_rate', note: '% ค่าคอมเริ่มต้นของเจ้านี้ ใช้กับประเภทสินค้าที่ไม่ได้ตั้งเรตเฉพาะไว้' },
+            { name: 'commission_rates[]', note: 'เรตเฉพาะรายประเภทสินค้า (เช่น SG: iPhone 10%, iPad 15%) ประเภทที่ไม่มีในนี้ใช้ commission_rate' }
+        ],
+        relations: ['producttype'],
         notes: 'อยู่ในแคช masterDataCache'
     },
 
@@ -293,6 +297,19 @@ const catalogue = [
         ],
         relations: ['branch', 'accountchart', 'employee'],
         notes: 'เป็นหลักฐานทางบัญชี ไม่ควรลบย้อนหลัง'
+    },
+    {
+        key: 'expense', model: 'Expense', title: 'ค่าใช้จ่าย', group: 'บัญชีและการเงิน', importance: 'high',
+        purpose: 'บันทึกค่าใช้จ่ายหน้างานของฝ่ายบัญชี แยกเป็นค่าใช้จ่ายอื่นๆ กับค่าทำใบสัญญาของไฟแนนซ์แต่ละเจ้า',
+        pages: ['order-verification'],
+        keyFields: [
+            { name: 'expense_number', note: 'เลขที่ค่าใช้จ่าย รูป EXP-YYYYMMDD-XXXX ต้องไม่ซ้ำ' },
+            { name: 'expense_date', note: 'วัน/เวลาที่เกิดค่าใช้จ่ายจริง ผู้ใช้เลือกย้อนหลังได้' },
+            { name: 'category', note: 'มีสองค่าเท่านั้น: "อื่นๆ" กับ "ทำใบสัญญา"' },
+            { name: 'finance_company_id', note: 'มีค่าเฉพาะประเภท "ทำใบสัญญา" ประเภทอื่นเป็น null เสมอ' }
+        ],
+        relations: ['branch', 'financecompany', 'employee'],
+        notes: 'คนละตัวกับใบสำคัญจ่าย (disbursementvoucher) — ตัวนี้ไม่ผูกผังบัญชี กรอกเร็วโดยไม่ต้องรู้เลขบัญชี'
     },
 
     // ---------- ผู้ใช้และระบบ ----------

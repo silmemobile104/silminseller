@@ -11,7 +11,7 @@
          ส่วน cdnjs ใช้แค่ตอนโหลด xlsx แบบ on-demand (ensureXlsxLoaded ใน script.js) ซึ่งเกิดขึ้นนานๆ ครั้งตอนเปิด modal นำเข้า Excel
          preconnect ล่วงหน้าทุกครั้งที่โหลดหน้าเว็บจึงเสียเวลา DNS/TLS handshake ไปฟรีๆ โดยแทบไม่มีใครได้ใช้
          หมายเหตุ: ไม่ต้อง preconnect ไป fonts.googleapis / fonts.gstatic แล้ว
-         เพราะฟอนต์ Prompt ย้ายมา self-host เองที่ vendor/fonts/ (ดู tools/build-fonts.js) -->
+         เพราะฟอนต์ทั้งหมด (Sarabun/Prompt/Outfit) ย้ายมา self-host เองที่ vendor/fonts/ (ดู tools/build-fonts.js) -->
 
     <!-- ตั้งธีมก่อนวาดเฟรมแรก — ต้องเป็นสคริปต์ inline ตรงนี้เท่านั้น
          ถ้ารอ script.js (โหลดแบบ defer) หน้าจะกะพริบธีมมืดก่อนทุกครั้งที่ผู้ใช้เลือกโหมดสว่าง
@@ -26,7 +26,7 @@
     </script>
 
     <link rel="icon" type="image/png" href="logo.png?v=2">
-    <link rel="stylesheet" href="tailwind.css?v=89">
+    <link rel="stylesheet" href="tailwind.css?v=91">
     <!-- xlsx ถูกย้ายไปโหลดแบบ on-demand ตอนเปิด modal นำเข้า Excel แล้ว (ดู ensureXlsxLoaded ใน script.js)
          เดิมโหลดตรงนี้แบบ render-blocking ทุกครั้งที่เข้าเว็บ ทั้งที่ใช้แค่ฟีเจอร์เดียว -->
     <!-- ไอคอน: self-host + ตัดเหลือเฉพาะที่ใช้จริง (Font Awesome 144 + Bootstrap Icons 28)
@@ -39,18 +39,20 @@
          ถ้าไม่ตรง เบราว์เซอร์จะมองเป็นคนละไฟล์แล้วโหลดฟอนต์ซ้ำสองรอบ -->
     <link rel="preload" as="font" type="font/woff2" crossorigin href="vendor/icons/webfonts/fa-solid-900.woff2?v=11">
     <link rel="preload" as="font" type="font/woff2" crossorigin href="vendor/icons/webfonts/bootstrap-icons.woff2?v=11">
-    <!-- Prompt: self-host เอง ตัด origin ภายนอก 2 เจ้าทิ้ง (googleapis + gstatic) พร้อม DNS/TLS handshake
+    <!-- ฟอนต์ระบบ: self-host เอง ตัด origin ภายนอก 2 เจ้าทิ้ง (googleapis + gstatic) พร้อม DNS/TLS handshake
          และตัด waterfall ที่ต้องรอ CSS จาก googleapis ก่อนถึงจะเริ่มโหลดไฟล์ฟอนต์จาก gstatic
+         ลำดับ: Sarabun (หลัก) > Prompt (สำรอง) > Outfit (สำรองชั้นสอง มีเฉพาะละติน) — ดู --font-sans ใน src/tailwind-input.css
          น้ำหนัก 400-900 + italic 400 (ตัด 300 ออกเพราะไม่มี font-light ใช้เลยในโปรเจกต์)
+         Sarabun ไม่มี 900 — font-black จึงได้ Sarabun 800 ซึ่งเป็นน้ำหนักที่ใกล้ที่สุดในตระกูลเดียวกัน
          ชุดตัวอักษร thai + latin (ตัด vietnamese, latin-ext ที่ไม่ได้ใช้)
-         หมายเหตุ: ฟอนต์ Inter ถูกลบออกแล้ว เพราะ style.css บังคับ Prompt กับทุก element (* selector) จึงไม่เคยถูกใช้
+         หมายเหตุ: ฟอนต์ Inter ถูกลบออกแล้ว เพราะ style.css บังคับฟอนต์ระบบกับทุก element (* selector) จึงไม่เคยถูกใช้
          ⚠️ แก้น้ำหนัก/ชุดตัวอักษร ต้องรัน `npm run build:fonts` แล้วบัมพ์ ?v= ด้านล่าง -->
-    <link rel="stylesheet" href="vendor/fonts/prompt.css?v=1">
+    <link rel="stylesheet" href="vendor/fonts/fonts.css?v=2">
     <!-- preload เฉพาะน้ำหนักที่ใช้เยอะสุดของภาษาไทย (400 เนื้อความ, 700 หัวข้อ/ตัวหนา)
          ที่เหลือปล่อยให้โหลดตามที่ CSS สั่ง เพื่อไม่ให้แย่ง bandwidth ตอนเปิดหน้าแรก -->
-    <link rel="preload" as="font" type="font/woff2" crossorigin href="vendor/fonts/prompt-thai-400.woff2">
-    <link rel="preload" as="font" type="font/woff2" crossorigin href="vendor/fonts/prompt-thai-700.woff2">
-    <link rel="stylesheet" href="style.css?v=11">
+    <link rel="preload" as="font" type="font/woff2" crossorigin href="vendor/fonts/sarabun-thai-400.woff2">
+    <link rel="preload" as="font" type="font/woff2" crossorigin href="vendor/fonts/sarabun-thai-700.woff2">
+    <link rel="stylesheet" href="style.css?v=12">
 
 </head>
 
@@ -5046,7 +5048,7 @@
     <!-- defer: ปล่อยให้ parse HTML จบก่อนค่อย execute
          ปลอดภัยเพราะทั้งไฟล์ห่ออยู่ใน DOMContentLoaded listener อยู่แล้ว
          และสคริปต์ defer จะ execute ก่อน event DOMContentLoaded ยิงเสมอ -->
-    <script defer src="script.js?v=apple_active_v58"></script>
+    <script defer src="script.js?v=apple_active_v63"></script>
     <script>
         // ลงทะเบียน Service Worker เพื่อแคช asset คงที่ (css/js/font/icon/รูป) ไว้ฝั่งเครื่อง
         // เข้าเว็บครั้งถัดไปเร็วขึ้นมาก โดยเฉพาะตอนเน็ตช้าหรือหลุดชั่วคราว — ดูรายละเอียดที่ sw.js
