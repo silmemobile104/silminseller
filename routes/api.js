@@ -4646,6 +4646,77 @@ router.get('/warranty/check', async (req, res) => {
 // Purchase Order APIs (ระบบสั่งซื้อ)
 // ==========================================
 
+// แปลงรายการสินค้าที่หน้าเว็บส่งมา ให้อยู่ในรูปที่บันทึกลง PurchaseOrder.items ได้
+// มีจุดเรียกสามที่ (POST /purchase-orders, POST /po/create, POST /purchase-orders/:id/update)
+// ซึ่งเคยเขียน map ซ้ำกันคนละชุด จนสองที่แรกลืมเก็บ `unit` — หน่วยนับเลยหายทุกครั้งที่สร้างใบใหม่
+// แล้วโผล่กลับมาเฉยๆ ตอนกดแก้ไข รวมไว้ที่เดียวเพื่อไม่ให้หลุดแบบนี้อีก
+const normalizePoItem = (item) => {
+    const kind = item.item_kind === 'accessory' ? 'accessory' : 'device';
+    return {
+        product_name: item.product_name,
+        product_code: item.product_code,
+        item_kind: kind,
+        // อุปกรณ์เสริมไม่มีหมวดหมู่/สี/ความจุ และไม่เคยผูก IMEI — บังคับที่เซิร์ฟเวอร์ด้วย
+        // ไม่ใช่เชื่อค่าที่หน้าเว็บส่งมาอย่างเดียว
+        category: kind === 'accessory' ? '' : item.category,
+        color: kind === 'accessory' ? '' : item.color,
+        capacity: kind === 'accessory' ? '' : item.capacity,
+        unit: item.unit,
+        track_imei: kind === 'accessory' ? false : !!item.track_imei,
+        ordered_qty: Number(item.ordered_qty),
+        cost_price: Number(item.cost_price),
+        selling_price: Number(item.selling_price),
+        imeis_scanned: []
+    };
+};
+
+// จดชื่อ+รหัสของอุปกรณ์เสริมที่เพิ่งตั้งใหม่ ลง master data (ProductName) ทันทีที่สร้างใบสั่งซื้อ
+//
+// ทำไมต้องมี: เอกสาร Product จะถูกสร้างตอน "นำเข้าสต็อก" (executeFinalizeImport) เท่านั้น
+// ระหว่างที่ยังรอของมาส่ง รหัสที่พนักงานเพิ่งตั้งจึงยังไม่มีอยู่ที่ไหนเลยนอกจากในใบสั่งซื้อใบนั้น
+// สั่งของรุ่นเดิมอีกใบก่อนของถึง จะหาไม่เจอแล้วตั้งรหัสใหม่ซ้ำ กลายเป็นสต็อกแตกสองตัว
+//
+// กติกาการเขียน — ไม่แตะของที่มีอยู่แล้วเด็ดขาด:
+//   ชื่อนี้ยังไม่มีใน master        -> เพิ่มใหม่พร้อมรหัส
+//   มีแล้วแต่ยังไม่มีรหัส           -> เติมรหัสให้
+//   มีแล้วและมีรหัสอื่นอยู่          -> ปล่อยไว้ ไม่ทับ (ถือว่า master data ที่คนตั้งไว้ถูกกว่า)
+const registerAccessoryProductNames = async (items) => {
+    const rows = (items || [])
+        .filter(i => i.item_kind === 'accessory')
+        .map(i => ({ name: String(i.product_name || '').trim(), code: String(i.product_code || '').trim() }))
+        .filter(i => i.name && i.code);
+    if (rows.length === 0) return;
+
+    // ชื่อซ้ำในใบเดียวกันให้เหลือตัวเดียว (ยึดตัวแรก)
+    const byName = new Map();
+    rows.forEach(r => { if (!byName.has(r.name)) byName.set(r.name, r.code); });
+
+    try {
+        // ดึงของเดิมรอบเดียวด้วย $in — ห้าม await ในลูป
+        const existing = await ProductName.find({ name: { $in: [...byName.keys()] } })
+            .select('name code').lean();
+        const existingMap = new Map(existing.map(e => [e.name, e]));
+
+        const ops = [];
+        byName.forEach((code, name) => {
+            const found = existingMap.get(name);
+            if (!found) {
+                ops.push({ updateOne: { filter: { name }, update: { $setOnInsert: { name, code } }, upsert: true } });
+            } else if (!found.code) {
+                ops.push({ updateOne: { filter: { _id: found._id }, update: { $set: { code } } } });
+            }
+        });
+
+        if (ops.length === 0) return;
+        await ProductName.bulkWrite(ops, { ordered: false });
+        mdCache.invalidate();
+        console.log(`[PO] จดรหัสอุปกรณ์เสริมลง master data ${ops.length} รายการ`);
+    } catch (err) {
+        // จดไม่สำเร็จไม่ควรทำให้สร้างใบสั่งซื้อไม่ได้ — ใบสั่งซื้อสำคัญกว่า master data
+        console.error('[PO] จดรหัสอุปกรณ์เสริมลง master data ไม่สำเร็จ:', err.message);
+    }
+};
+
 // POST /api/purchase-orders
 // หน้าที่: สร้าง PO ใหม่ (ดั้งเดิม)
 router.post('/purchase-orders', async (req, res) => {
@@ -4664,18 +4735,7 @@ router.post('/purchase-orders', async (req, res) => {
         const count = await PurchaseOrder.countDocuments({ po_number: new RegExp(`^PO-${dateStr}`) });
         const po_number = `PO-${dateStr}-${String(count + 1).padStart(4, '0')}`;
 
-        const poItems = items.map(item => ({
-            product_name: item.product_name,
-            product_code: item.product_code,
-            category: item.category,
-            color: item.color,
-            capacity: item.capacity,
-            track_imei: item.track_imei,
-            ordered_qty: Number(item.ordered_qty),
-            cost_price: Number(item.cost_price),
-            selling_price: Number(item.selling_price),
-            imeis_scanned: []
-        }));
+        const poItems = items.map(item => normalizePoItem(item));
 
         const newPO = new PurchaseOrder({
             po_number,
@@ -4687,6 +4747,7 @@ router.post('/purchase-orders', async (req, res) => {
         });
 
         await newPO.save();
+        await registerAccessoryProductNames(poItems);
 
         await logActivity(req, 'CREATE', 'PO', `สร้างใบสั่งซื้อใหม่ เลขที่ ${po_number} สำหรับซัพพลายเออร์ ${supplier_name}`, po_number, newPO._id);
 
@@ -4719,18 +4780,7 @@ router.post('/po/create', async (req, res) => {
         const count = await PurchaseOrder.countDocuments({ po_number: new RegExp(`^PO-${dateStr}`) });
         const po_number = `PO-${dateStr}-${String(count + 1).padStart(4, '0')}`;
 
-        const poItems = items.map(item => ({
-            product_name: item.product_name,
-            product_code: item.product_code,
-            category: item.category,
-            color: item.color,
-            capacity: item.capacity,
-            track_imei: item.track_imei,
-            ordered_qty: Number(item.ordered_qty),
-            cost_price: Number(item.cost_price),
-            selling_price: Number(item.selling_price),
-            imeis_scanned: []
-        }));
+        const poItems = items.map(item => normalizePoItem(item));
 
         const newPO = new PurchaseOrder({
             po_number,
@@ -4742,6 +4792,7 @@ router.post('/po/create', async (req, res) => {
         });
 
         await newPO.save();
+        await registerAccessoryProductNames(poItems);
 
         await logActivity(req, 'CREATE', 'PO', `สร้างใบสั่งซื้อใหม่ เลขที่ ${po_number} สำหรับซัพพลายเออร์ ${supplier_name}`, po_number, newPO._id);
 
@@ -4822,25 +4873,14 @@ router.post('/purchase-orders/:id/update', async (req, res) => {
             return res.status(400).json({ success: false, message: 'กรุณากรอกข้อมูลให้ครบถ้วน' });
         }
 
-        const poItems = items.map(item => ({
-            product_name: item.product_name,
-            product_code: item.product_code,
-            category: item.category,
-            color: item.color,
-            capacity: item.capacity,
-            unit: item.unit,
-            track_imei: !!item.track_imei,
-            ordered_qty: Number(item.ordered_qty),
-            cost_price: Number(item.cost_price),
-            selling_price: Number(item.selling_price),
-            imeis_scanned: []
-        }));
+        const poItems = items.map(item => normalizePoItem(item));
 
         po.supplier_name = supplier_name;
         po.branch_id = branch_id;
         po.items = poItems;
 
         await po.save();
+        await registerAccessoryProductNames(poItems);
 
         await logActivity(req, 'UPDATE', 'PO', `แก้ไขใบสั่งซื้อ เลขที่ ${po.po_number} ซัพพลายเออร์ ${supplier_name}`, po.po_number, po._id);
 

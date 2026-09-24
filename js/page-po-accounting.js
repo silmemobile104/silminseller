@@ -43,13 +43,507 @@
 
     // Note: window.initAccountingPO has been consolidated below to prevent duplicate declarations and overwriting issues.
 
-    const addPoItemRow = () => {
+    const poEsc = (s) => String(s == null ? '' : s)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+
+    // ==========================================
+    // แคตตาล็อกสินค้าสำหรับช่องรหัสของอุปกรณ์เสริม
+    // ==========================================
+    // อุปกรณ์เสริมรุ่นเดียวกันใช้ "รหัสเดียวกันทุกชิ้น" — รหัสคือตัวระบุรุ่น ไม่ใช่ตัวระบุชิ้น
+    // (ต่างจากมือถือที่แต่ละเครื่องมี IMEI ของตัวเอง)
+    //
+    // เรื่องนี้สำคัญมากเพราะตอนนำเข้าสต็อก executeFinalizeImport ใน routes/api.js ใช้
+    //     Product.findOne({ product_code: item.product_code })
+    // เป็นตัวตัดสินว่าจะ "บวกจำนวนเข้าสินค้าเดิม" หรือ "สร้างสินค้าใหม่"
+    // ถ้าสั่งหูฟังรุ่นเดิมรอบใหม่แล้วได้รหัสใหม่ สต็อกจะแตกเป็นคนละตัวสินค้า นับรวมไม่ได้อีกเลย
+    // จึงห้ามสุ่มรหัสให้อุปกรณ์เสริมเด็ดขาด ต้องให้ผู้ใช้เลือกรหัสเดิมหรือกำหนดเอง
+    let poProductCatalog = null;        // Map: product_code -> { code, name, unitName, isDevice }
+    let poCatalogPromise = null;
+
+    const poIsDeviceProduct = (p) => {
+        const unitName = (p.unit_id && p.unit_id.name) || '';
+        const hasImei = (p.stock_balances || []).some(b => (b.imeis || []).length > 0);
+        return unitName === 'เครื่อง' || hasImei;
+    };
+
+    // โหลดครั้งเดียวและเฉพาะตอนมีคนเพิ่มแถวอุปกรณ์เสริมจริงๆ
+    // หน้าที่ไม่เคยแตะอุปกรณ์เสริมจึงไม่ต้องจ่ายค่าโหลดรายการสินค้าทั้งระบบ
+    const loadPoProductCatalog = () => {
+        if (poProductCatalog) return Promise.resolve(poProductCatalog);
+        if (poCatalogPromise) return poCatalogPromise;
+
+        poCatalogPromise = (async () => {
+            let list = null;
+            // ถ้าหน้าอื่นโหลดรายการสินค้าไว้แล้ว ใช้ของเดิม ไม่ยิงซ้ำ
+            if (typeof allProductsCache !== 'undefined' && Array.isArray(allProductsCache) && allProductsCache.length > 0) {
+                list = allProductsCache;
+            } else {
+                try {
+                    const res = await authFetch(`${API_BASE_URL}/products`);
+                    const json = await res.json();
+                    list = (json.success && Array.isArray(json.data)) ? json.data : [];
+                } catch (err) {
+                    console.error('[PO] โหลดรายการสินค้าเพื่อค้นรหัสอุปกรณ์เสริมไม่สำเร็จ:', err);
+                    list = [];
+                    poCatalogPromise = null; // ให้ลองใหม่ได้ในครั้งถัดไป
+                    return null;            // null = ยังไม่รู้ข้อมูล (ต่างจาก Map ว่างที่แปลว่า "ไม่มีสินค้าเลย")
+                }
+            }
+
+            const map = new Map();
+            list.forEach(p => {
+                if (!p.product_code) return;
+                if (map.has(p.product_code)) return;
+                map.set(p.product_code, {
+                    code: p.product_code,
+                    name: p.name || '',
+                    unitName: (p.unit_id && p.unit_id.name) || '',
+                    isDevice: poIsDeviceProduct(p),
+                    inStock: true
+                });
+            });
+
+            // รวมรหัสที่เคยจดไว้ใน master data (ProductName) ด้วย — พวกที่สั่งไปแล้วแต่ของยังไม่ถึง
+            // จึงยังไม่มีเอกสาร Product ถ้าไม่เอามาแสดง คนจะหารหัสที่ตัวเองเพิ่งตั้งไม่เจอ
+            // แล้วตั้งรหัสใหม่ซ้ำ จนสต็อกแตกเป็นสองตัวตอนของถึง
+            (window.masterDataCache?.productNames || []).forEach(x => {
+                const code = (x.code || '').trim();
+                if (!code || map.has(code)) return;   // ของจริงในสต็อกมาก่อนเสมอ
+                map.set(code, {
+                    code,
+                    name: x.name || '',
+                    unitName: '',
+                    isDevice: false,
+                    inStock: false            // ยังไม่มีสต็อกจริง ใช้บอกผู้ใช้ให้ตรงความจริง
+                });
+            });
+
+            poProductCatalog = map;
+            refreshAccessoryDatalists();
+            return map;
+        })();
+
+        return poCatalogPromise;
+    };
+
+    // datalist ของ "ชื่อสินค้า" ใช้ร่วมกันทุกแถว แทนการโคลนต่อแถว
+    // (ช่องรหัสไม่ใช้ datalist แล้ว — เปลี่ยนไปใช้ combobox ที่กดดูรายการทั้งหมดได้ ดู buildAccessoryRow)
+    const ensureAccessoryDatalists = () => {
+        const form = document.getElementById('form-create-po');
+        if (!form || document.getElementById('dl-po-accessory-names')) return;
+        const holder = document.createElement('div');
+        holder.className = 'hidden';
+        holder.innerHTML = '<datalist id="dl-po-accessory-names"></datalist>';
+        form.appendChild(holder);
+        refreshAccessoryDatalists();
+    };
+
+    function refreshAccessoryDatalists() {
+        const dlNames = document.getElementById('dl-po-accessory-names');
+        if (!dlNames) return;
+
+        // เสนอเฉพาะสินค้าที่ไม่ใช่มือถือ — รหัสของมือถือคือ IMEI รายเครื่อง เอามาใช้ซ้ำไม่ได้
+        const accessories = poProductCatalog
+            ? [...poProductCatalog.values()].filter(p => !p.isDevice)
+            : [];
+
+        // ชื่อ: รวมของที่มีในสต็อกอยู่แล้ว กับชื่อใน master data
+        const names = new Set(accessories.map(p => p.name).filter(Boolean));
+        (window.masterDataCache?.productNames || []).forEach(x => names.add(x.name || x));
+        dlNames.innerHTML = [...names].map(n => `<option value="${poEsc(n)}"></option>`).join('');
+    }
+
+    // ไม่ใส่แถวตั้งต้นให้ตอนเปิดหน้าต่างแล้ว เพราะมีสินค้าสองชนิดให้เลือก
+    // การเดาว่าผู้ใช้จะสั่งมือถือเสมอ ทำให้คนที่จะสั่งอุปกรณ์เสริมต้องมาลบแถวทิ้งก่อนทุกครั้ง
+    // ตอนไม่มีแถวเลยจึงขึ้นข้อความบอกให้เลือกชนิดที่ต้องการแทน
+    const syncPoItemsEmptyState = () => {
+        const container = document.getElementById('po-items-container');
+        if (!container) return;
+
+        const hasRows = !!container.querySelector('.po-item-row');
+        const existing = container.querySelector('#po-items-empty');
+
+        if (hasRows) {
+            if (existing) existing.remove();
+            return;
+        }
+        if (existing) return;
+
+        const empty = document.createElement('div');
+        empty.id = 'po-items-empty';
+        // ห้ามมีคลาส po-item-row เด็ดขาด ไม่งั้นจะถูกนับเป็นรายการสินค้าตอนคิดยอดและตอนบันทึก
+        empty.className = 'elev-card bg-surface-tile-3 rounded-xl py-8 px-4 text-center';
+        empty.innerHTML = `
+            <i class="fa-solid fa-box-open text-body-muted text-xl"></i>
+            <p class="text-sm text-ink mt-2">ยังไม่มีรายการสินค้า</p>
+            <p class="text-xs text-body-muted mt-1">เลือกชนิดสินค้าที่ต้องการเพิ่มจากปุ่มด้านล่าง</p>
+        `;
+        container.appendChild(empty);
+    };
+
+    // หน่วยนับเริ่มต้นตามชนิดของแถว — มือถือ/แท็บเล็ต = "เครื่อง", อุปกรณ์เสริม = "ชิ้น"
+    // สั่งงานด้วย chip.click() ไม่ใช่เซ็ต value ตรงๆ เพื่อให้ไฮไลต์ปุ่มกับค่าที่เก็บไว้
+    // ถูกตั้งด้วยตรรกะเดียวกับตอนผู้ใช้กดเอง จะได้ไม่มีทางเพี้ยนจากกัน
+    // ถ้า master data ไม่มีหน่วยนั้นก็ไม่ตั้งอะไรเลย ดีกว่าเก็บชื่อหน่วยที่ระบบไม่รู้จัก
+    // (ตอนนำเข้าสต็อก executeFinalizeImport หา ProductUnit จากชื่อ ถ้าไม่เจอจะได้ unit_id เป็น null)
+    const applyDefaultUnit = (row, kind) => {
+        const wanted = kind === 'accessory' ? 'ชิ้น' : 'เครื่อง';
+        const group = row.querySelector('.po-chip-group[data-target="po_item_unit"]');
+        if (!group) return;
+        const chip = [...group.querySelectorAll('.po-chip')]
+            .find(c => c.getAttribute('data-value') === wanted);
+        if (chip) chip.click();
+    };
+
+    // ผูกพฤติกรรมที่แถวทุกชนิดมีเหมือนกัน: ปุ่มลบแถว และการคิดยอด (จำนวน × ราคาทุน)
+    const bindPoRowCommon = (row) => {
+        const deleteBtn = row.querySelector('.btn-delete-row');
+        if (deleteBtn) {
+            deleteBtn.addEventListener('click', () => {
+                row.remove();
+                syncPoItemsEmptyState();
+                calculatePOTotal();
+            });
+        }
+
+        const inputQty = row.querySelector('[name="po_item_qty"]');
+        const inputCost = row.querySelector('[name="po_item_cost"]');
+        const labelTotal = row.querySelector('.po-row-total');
+        if (!inputQty || !inputCost || !labelTotal) return;
+
+        const updateRowTotal = () => {
+            const q = Number(inputQty.value) || 0;
+            const c = Number(inputCost.value) || 0;
+            labelTotal.textContent = '฿' + (q * c).toLocaleString();
+            calculatePOTotal();
+        };
+
+        inputQty.addEventListener('input', updateRowTotal);
+        inputCost.addEventListener('input', updateRowTotal);
+    };
+
+    // แบบฟอร์มอุปกรณ์เสริม — รหัสสินค้า / ชื่อสินค้า / ราคาทุน / ราคาขาย / จำนวน / หน่วยนับ
+    // ต่างจากแบบฟอร์มมือถือตรงที่:
+    //   - ชื่อสินค้าเป็นช่องพิมพ์ + datalist ไม่ใช่ <select> เพราะชื่ออุปกรณ์เสริมมีหางยาว
+    //     และไม่ได้อยู่ใน master productNames ทั้งหมด ถ้าล็อกเป็น select จะกรอกของใหม่ไม่ได้เลย
+    //   - รหัสสินค้าเป็นช่องกรอกจริง (ของมือถือซ่อนไว้แล้วเดาจาก master) ปล่อยว่างได้ เดี๋ยวระบบสุ่ม SKU ให้
+    //   - ไม่มีหมวดหมู่ / สี / ความจุ และไม่มีตัวเลือก IMEI (บังคับ track_imei = false)
+    const buildAccessoryRow = (row, id) => {
+        const unitChips = (window.masterDataCache?.productUnits || []).map(u => u.name);
+
+        row.innerHTML = `
+            <button type="button" aria-label="ลบรายการนี้" class="btn-delete-row absolute top-2 right-2 w-6 h-6 rounded-md bg-surface-tile-2 text-red-500 hover:bg-red-500/20 flex items-center justify-center transition-all z-10"><i class="fa-solid fa-xmark text-[10px]"></i></button>
+
+            <div class="flex flex-col gap-4">
+                <!-- ช่องซ่อนที่โค้ดส่วนกลางยังอ่านอยู่ — อุปกรณ์เสริมไม่ใช้ค่าพวกนี้ แต่ต้องมีให้ querySelector เจอ -->
+                <input type="hidden" name="po_item_category" value="">
+                <input type="hidden" name="po_item_color" value="">
+                <input type="hidden" name="po_item_capacity" value="">
+                <input type="hidden" name="po_item_unit" value="">
+                <input type="checkbox" name="po_item_track_imei" class="hidden" id="track_imei_${id}">
+
+                <div class="flex items-center gap-2 pb-1">
+                    <span class="elev-chip px-2.5 py-1 rounded-full bg-field text-[11px] text-body-muted flex items-center gap-1.5">
+                        <i class="fa-solid fa-headphones text-[10px]"></i> อุปกรณ์เสริม
+                    </span>
+                </div>
+
+                <!-- รหัสสินค้า & ชื่อสินค้า -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <div class="space-y-2">
+                        <label for="po-acc-code-${id}" class="text-ink font-medium flex items-center gap-2 text-xs"><i class="fa-solid fa-barcode text-ink"></i> รหัสสินค้า <span class="text-red-500">*</span></label>
+                        <!-- combobox: กดดูรายการทั้งหมดได้ หรือพิมพ์ค้นหาก็ได้ (ค้นได้ทั้งรหัสและชื่อ)
+                             ไม่ใช้ <datalist> เพราะกดเปิดดูรายการทั้งหมดยาก และจัดสไตล์ไม่ได้เลย -->
+                        <div class="relative po-acc-combo">
+                            <input type="text" id="po-acc-code-${id}" name="po_item_code" autocomplete="off"
+                                role="combobox" aria-expanded="false" aria-autocomplete="list"
+                                aria-controls="po-acc-code-list-${id}"
+                                placeholder="เลือกรหัสเดิม หรือกำหนดรหัสใหม่"
+                                class="elev-field w-full pl-4 pr-10 py-2.5 rounded-xl bg-field text-ink focus:ring-2 focus:ring-accent-ink focus:outline-none transition-all placeholder-ink-muted-48 text-sm">
+                            <button type="button" tabindex="-1" aria-label="แสดงรายการรหัสสินค้าที่มีอยู่"
+                                class="po-acc-combo-toggle absolute inset-y-0 right-0 flex items-center px-3 text-body-muted hover:text-ink transition-colors">
+                                <i class="fa-solid fa-chevron-down text-xs"></i>
+                            </button>
+                            <ul id="po-acc-code-list-${id}" role="listbox" tabindex="-1"
+                                class="po-acc-combo-list hidden absolute z-50 left-0 right-0 mt-1 max-h-56 overflow-y-auto rounded-xl bg-elevated border border-line-strong shadow-[0_10px_40px_rgba(0,0,0,0.5)] p-1.5"></ul>
+                        </div>
+                        <p class="po-acc-code-hint text-[11px] text-body-muted">อุปกรณ์เสริมรุ่นเดียวกันต้องใช้รหัสเดียวกันทุกชิ้น เพื่อให้สต็อกรวมเป็นตัวเดียว</p>
+                    </div>
+                    <div class="space-y-2">
+                        <label for="po-acc-name-${id}" class="text-ink font-medium flex items-center gap-2 text-xs"><i class="fa-solid fa-box-open text-ink"></i> ชื่อสินค้า <span class="text-red-500">*</span></label>
+                        <input type="text" id="po-acc-name-${id}" name="po_item_name" list="dl-po-accessory-names" autocomplete="off"
+                            placeholder="เช่น หูฟัง AirPods Pro, ฟิล์มกระจก"
+                            class="elev-field w-full px-4 py-2.5 rounded-xl bg-field text-ink focus:ring-2 focus:ring-accent-ink focus:outline-none transition-all placeholder-ink-muted-48 text-sm">
+                    </div>
+                </div>
+
+                <!-- ราคาทุน & ราคาขาย -->
+                <div class="grid grid-cols-2 gap-5">
+                    <div class="space-y-2">
+                        <label for="po-acc-cost-${id}" class="text-ink font-medium flex items-center gap-2 text-xs"><i class="fa-solid fa-tag text-ink"></i> ราคาทุน <span class="text-red-500">*</span></label>
+                        <input type="number" id="po-acc-cost-${id}" name="po_item_cost" required min="0" placeholder="0"
+                            class="elev-field w-full px-4 py-2.5 rounded-xl bg-field text-ink focus:ring-2 focus:ring-accent-ink focus:outline-none transition-all placeholder-ink-muted-48 text-sm">
+                        <div class="flex gap-1.5 flex-wrap pt-1">
+                            ${[50, 100, 250, 500].map(p => `<button type="button" class="elev-chip px-2.5 py-1 bg-field text-body-muted rounded-full text-[11px] hover:text-accent-ink hover:ring-1 hover:ring-accent-ink transition-all" onclick="const i = this.parentElement.previousElementSibling; i.value='${p}'; i.dispatchEvent(new Event('input'))">${p.toLocaleString()}</button>`).join('')}
+                        </div>
+                    </div>
+                    <div class="space-y-2">
+                        <label for="po-acc-sell-${id}" class="text-ink font-medium flex items-center gap-2 text-xs"><i class="fa-solid fa-tags text-ink"></i> ราคาขาย <span class="text-red-500">*</span></label>
+                        <input type="number" id="po-acc-sell-${id}" name="po_item_sell" required min="0" placeholder="0"
+                            class="elev-field w-full px-4 py-2.5 rounded-xl bg-field text-ink focus:ring-2 focus:ring-accent-ink focus:outline-none transition-all placeholder-ink-muted-48 text-sm">
+                        <div class="flex gap-1.5 flex-wrap pt-1">
+                            ${[100, 200, 390, 790].map(p => `<button type="button" class="elev-chip px-2.5 py-1 bg-field text-body-muted rounded-full text-[11px] hover:text-accent-ink hover:ring-1 hover:ring-accent-ink transition-all" onclick="this.parentElement.previousElementSibling.value='${p}'">${p.toLocaleString()}</button>`).join('')}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- จำนวน & หน่วยนับ -->
+                <div class="grid grid-cols-2 gap-5 items-start border-t border-line pt-4 mt-2">
+                    <div class="space-y-2">
+                        <label for="po-acc-qty-${id}" class="text-ink font-medium flex items-center gap-2 text-xs"><i class="fa-solid fa-cubes text-ink"></i> จำนวน <span class="text-red-500">*</span></label>
+                        <input type="number" id="po-acc-qty-${id}" name="po_item_qty" required min="1" value="1"
+                            class="elev-field w-full px-4 py-2.5 rounded-xl bg-field text-ink focus:ring-2 focus:ring-accent-ink focus:outline-none transition-all text-sm">
+                    </div>
+                    <div class="space-y-2">
+                        <label class="text-ink font-medium flex items-center gap-2 text-xs"><i class="fa-solid fa-box text-ink"></i> หน่วยนับ <span class="text-red-500">*</span></label>
+                        <div class="flex flex-wrap gap-2 po-chip-group" data-target="po_item_unit">
+                            ${unitChips.map(u => `<button type="button" class="elev-field px-4 py-2.5 rounded-xl bg-field text-body-muted text-sm hover:ring-1 hover:ring-accent-ink hover:text-ink transition-colors po-chip" data-value="${poEsc(u)}">${poEsc(u)}</button>`).join('')}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="elev-card text-center text-xs text-body-muted mt-2 p-2.5 bg-surface-tile-3 rounded-xl">
+                     รวม: <span class="po-row-total text-ink font-bold font-mono">฿0</span>
+                </div>
+            </div>
+        `;
+
+        // ชิปหน่วยนับ — เขียนค่าลง input ที่ data-target ชี้ไป (ไวยากรณ์เดียวกับแถวมือถือ)
+        const unitGroup = row.querySelector('.po-chip-group[data-target="po_item_unit"]');
+        if (unitGroup) {
+            const hiddenUnit = row.querySelector('[name="po_item_unit"]');
+            const chips = unitGroup.querySelectorAll('.po-chip');
+            chips.forEach(chip => {
+                chip.addEventListener('click', () => {
+                    chips.forEach(c => {
+                        c.classList.remove('ring-2', 'ring-accent-ink', 'text-accent-ink', 'apple-active-neutral');
+                        c.classList.add('border-line', 'text-body-muted');
+                    });
+                    chip.classList.remove('border-line', 'text-body-muted');
+                    chip.classList.add('ring-2', 'ring-accent-ink', 'text-accent-ink', 'apple-active-neutral');
+                    if (hiddenUnit) {
+                        hiddenUnit.value = chip.getAttribute('data-value');
+                        hiddenUnit.dispatchEvent(new Event('change'));
+                    }
+                });
+            });
+        }
+
+        const accName = row.querySelector('[name="po_item_name"]');
+        const accCode = row.querySelector('[name="po_item_code"]');
+        const accHint = row.querySelector('.po-acc-code-hint');
+
+        const HINT_DEFAULT = 'อุปกรณ์เสริมรุ่นเดียวกันต้องใช้รหัสเดียวกันทุกชิ้น เพื่อให้สต็อกรวมเป็นตัวเดียว';
+
+        // บอกให้เห็นตั้งแต่ตอนกรอกว่า รหัสนี้จะ "บวกเข้าสินค้าเดิม" หรือ "สร้างสินค้าใหม่"
+        // เพราะพอบันทึกไปแล้วแก้ย้อนยาก — สต็อกที่แตกเป็นคนละตัวต้องมารวมเองทีหลัง
+        const syncCodeHint = () => {
+            if (!accHint || !accCode) return;
+            const code = accCode.value.trim();
+            const base = 'po-acc-code-hint text-[11px] ';
+
+            if (!code) {
+                accHint.textContent = HINT_DEFAULT;
+                accHint.className = base + 'text-body-muted';
+                return;
+            }
+            // ยังไม่รู้ข้อมูลสินค้า — ห้ามเดาว่าเป็นรหัสใหม่ เดี๋ยวจะบอกผู้ใช้ผิด
+            if (!poProductCatalog) {
+                accHint.textContent = HINT_DEFAULT;
+                accHint.className = base + 'text-body-muted';
+                return;
+            }
+
+            const found = poProductCatalog.get(code);
+            if (!found) {
+                accHint.textContent = 'รหัสใหม่ — ระบบจะจดรหัสนี้ไว้ให้ตอนบันทึกใบสั่งซื้อ';
+                accHint.className = base + 'text-body-muted';
+            } else if (found.isDevice) {
+                accHint.textContent = `⚠ รหัสนี้เป็นของมือถือ/แท็บเล็ต (${found.name}) ไม่ควรใช้กับอุปกรณ์เสริม`;
+                accHint.className = base + 'text-state-danger-soft';
+            } else if (!found.inStock) {
+                // เคยจดไว้ใน master แล้วแต่ของยังไม่เคยเข้าสต็อก — ห้ามบอกว่า "บวกเข้าสินค้าเดิม"
+                // เพราะยังไม่มีสินค้าให้บวก พูดให้ตรงว่ารหัสนี้ถูกจองชื่อไว้แล้ว
+                accHint.textContent = `รหัสที่เคยบันทึกไว้: ${found.name} (ยังไม่มีสต็อก)`;
+                accHint.className = base + 'text-body-muted';
+            } else {
+                accHint.textContent = `จะบวกจำนวนเข้าสินค้าเดิม: ${found.name}`;
+                accHint.className = base + 'text-state-ok';
+            }
+        };
+
+        if (accCode) {
+            accCode.addEventListener('input', syncCodeHint);
+            accCode.addEventListener('change', syncCodeHint);
+            // ลบรหัสทิ้ง = ล้างชื่อสินค้าตามไปด้วย เพราะชื่อที่ค้างอยู่มาจากรหัสที่เพิ่งลบไป
+            // ถ้าปล่อยไว้จะกลายเป็นชื่อของรหัสหนึ่ง คู่กับรหัสอีกอันที่พิมพ์ใหม่
+            accCode.addEventListener('input', () => {
+                if (!accCode.value.trim() && accName) accName.value = '';
+            });
+        }
+
+        // ==========================================
+        // combobox ของช่องรหัสสินค้า
+        // ==========================================
+        const combo = row.querySelector('.po-acc-combo');
+        const list = row.querySelector('.po-acc-combo-list');
+        const toggle = row.querySelector('.po-acc-combo-toggle');
+        let activeIndex = -1;
+        let shown = [];
+
+        const closeCombo = () => {
+            if (!list) return;
+            list.classList.add('hidden');
+            accCode.setAttribute('aria-expanded', 'false');
+            accCode.removeAttribute('aria-activedescendant');
+            activeIndex = -1;
+        };
+
+        const paintActive = () => {
+            [...list.querySelectorAll('[role="option"]')].forEach((li, i) => {
+                const on = i === activeIndex;
+                li.classList.toggle('bg-field', on);
+                li.setAttribute('aria-selected', String(on));
+                if (on) accCode.setAttribute('aria-activedescendant', li.id);
+            });
+        };
+
+        // เลือกจากรายการ = เติมทั้งรหัสและ "ชื่อสินค้า" ของตัวนั้นให้เลย
+        const pick = (p) => {
+            accCode.value = p.code;
+            if (accName) accName.value = p.name || '';
+            syncCodeHint();
+            closeCombo();
+            accCode.focus();
+        };
+
+        // term ว่าง = โชว์ทั้งหมด (กรณีกดปุ่มลูกศรเพื่อเปิดดูรายการ)
+        // ค้นได้ทั้งรหัสและชื่อ เพราะคนจำชื่อของได้บ่อยกว่าจำรหัส
+        const openCombo = (term = '') => {
+            if (!list) return;
+            const q = term.trim().toLowerCase();
+            const all = poProductCatalog
+                ? [...poProductCatalog.values()].filter(p => !p.isDevice)
+                : [];
+            shown = q
+                ? all.filter(p => p.code.toLowerCase().includes(q) || (p.name || '').toLowerCase().includes(q))
+                : all;
+
+            if (!poProductCatalog) {
+                list.innerHTML = '<li class="px-3 py-2 text-xs text-body-muted">กำลังโหลดรายการสินค้า...</li>';
+            } else if (shown.length === 0) {
+                list.innerHTML = `<li class="px-3 py-2 text-xs text-body-muted">ไม่พบรหัสที่ตรงกับที่ค้นหา — พิมพ์ต่อได้เลยเพื่อสร้างรหัสใหม่</li>`;
+            } else {
+                list.innerHTML = shown.slice(0, 50).map((p, i) => `
+                    <li role="option" id="po-acc-opt-${id}-${i}" aria-selected="false" data-code="${poEsc(p.code)}"
+                        class="px-3 py-2 rounded-lg text-sm text-ink hover:bg-field transition-colors cursor-pointer">
+                        <span class="font-mono text-accent-ink">${poEsc(p.code)}</span>
+                        <span class="block text-xs text-ink/70">${poEsc(p.name || '-')}</span>
+                    </li>
+                `).join('');
+            }
+
+            list.classList.remove('hidden');
+            accCode.setAttribute('aria-expanded', 'true');
+            activeIndex = -1;
+        };
+
+        if (list && accCode) {
+            list.addEventListener('mousedown', (e) => {
+                // mousedown ไม่ใช่ click — ไม่งั้น blur ของ input จะปิดรายการไปก่อนที่ click จะยิง
+                const li = e.target.closest('[role="option"]');
+                if (!li) return;
+                e.preventDefault();
+                const p = shown.find(x => x.code === li.dataset.code);
+                if (p) pick(p);
+            });
+
+            if (toggle) {
+                toggle.addEventListener('mousedown', (e) => {
+                    e.preventDefault();
+                    if (list.classList.contains('hidden')) {
+                        openCombo('');
+                        accCode.focus();
+                    } else {
+                        closeCombo();
+                    }
+                });
+            }
+
+            accCode.addEventListener('focus', () => openCombo(accCode.value));
+            accCode.addEventListener('input', () => openCombo(accCode.value));
+            accCode.addEventListener('blur', () => setTimeout(closeCombo, 0));
+
+            accCode.addEventListener('keydown', (e) => {
+                const open = !list.classList.contains('hidden');
+                if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    if (!open) return openCombo(accCode.value);
+                    activeIndex = Math.min(activeIndex + 1, shown.length - 1);
+                    paintActive();
+                    list.querySelector(`#po-acc-opt-${id}-${activeIndex}`)?.scrollIntoView({ block: 'nearest' });
+                } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    if (!open) return;
+                    activeIndex = Math.max(activeIndex - 1, 0);
+                    paintActive();
+                    list.querySelector(`#po-acc-opt-${id}-${activeIndex}`)?.scrollIntoView({ block: 'nearest' });
+                } else if (e.key === 'Enter') {
+                    // เลือกเฉพาะตอนไฮไลต์อยู่จริง ไม่งั้นปล่อยให้ Enter ทำงานตามปกติ
+                    if (open && activeIndex >= 0 && shown[activeIndex]) {
+                        e.preventDefault();
+                        pick(shown[activeIndex]);
+                    }
+                } else if (e.key === 'Escape') {
+                    if (open) { e.preventDefault(); closeCombo(); }
+                }
+            });
+        }
+
+        // โหลดแคตตาล็อกแบบ lazy แล้วอัปเดตคำใบ้เมื่อข้อมูลมาถึง
+        // ถ้ารายการเปิดค้างอยู่ตอนข้อมูลมา ให้วาดใหม่ทันที ไม่ต้องให้ผู้ใช้กดปิดเปิดเอง
+        ensureAccessoryDatalists();
+        loadPoProductCatalog().then(() => {
+            syncCodeHint();
+            if (list && !list.classList.contains('hidden')) openCombo(accCode.value);
+        });
+    };
+
+    // มือถือ/แท็บเล็ต กับ อุปกรณ์เสริม ใช้คนละแบบฟอร์ม:
+    //   device    = ชื่อ(เลือกจาก master) + หมวดหมู่ + สี + ความจุ + ราคา + จำนวน + หน่วย + เลือกบันทึก IMEI
+    //   accessory = รหัส + ชื่อ(พิมพ์เองได้) + ราคาทุน + ราคาขาย + จำนวน + หน่วยนับ เท่านั้น
+    // แถวถูกติด data-kind ไว้ ทั้งตอน validate ตอนประกอบ payload และตอนกางฟอร์มซ้ำตอนแก้ไขใบสั่งซื้อ
+    // ต่างอ่านค่านี้ตัวเดียวกัน จะได้ไม่มีทางหลุดจากกัน
+    const addPoItemRow = (kind = 'device') => {
+        const isAccessory = kind === 'accessory';
         poItemCount++;
         const id = poItemCount;
         const container = document.getElementById('po-items-container');
 
         const row = document.createElement('div');
+        row.dataset.kind = isAccessory ? 'accessory' : 'device';
         row.className = 'elev-chip p-4 rounded-xl relative po-item-row hover:ring-1 hover:ring-accent-ink/50 transition-colors';
+
+        if (isAccessory) {
+            buildAccessoryRow(row, id);
+            container.appendChild(row);
+            bindPoRowCommon(row);
+            syncPoItemsEmptyState();
+            applyDefaultUnit(row, 'accessory');
+            calculatePOTotal();
+            return;
+        }
 
         const typeChips = (window.masterDataCache?.productTypes || []).map(t => t.name);
         const colorData = window.masterDataCache?.productColors || [];
@@ -58,7 +552,7 @@
         const unitChips = (window.masterDataCache?.productUnits || []).map(u => u.name);
 
         row.innerHTML = `
-            <button type="button" class="btn-delete-row absolute top-2 right-2 w-6 h-6 rounded-md bg-surface-tile-2 text-red-500 hover:bg-red-500/20 flex items-center justify-center transition-all z-10"><i class="fa-solid fa-xmark text-[10px]"></i></button>
+            <button type="button" aria-label="ลบรายการนี้" class="btn-delete-row absolute top-2 right-2 w-6 h-6 rounded-md bg-surface-tile-2 text-red-500 hover:bg-red-500/20 flex items-center justify-center transition-all z-10"><i class="fa-solid fa-xmark text-[10px]"></i></button>
             
             <div class="flex flex-col gap-4">
                 <!-- Hidden inputs to keep original JS functional -->
@@ -67,13 +561,14 @@
                 <select name="po_item_color" class="hidden"><option value=""></option>${colorSwatches.map(c => `<option value="${c}">${c}</option>`).join('')}</select>
                 <select name="po_item_capacity" class="hidden"><option value=""></option>${capacityChips.map(c => `<option value="${c}">${c}</option>`).join('')}</select>
                 <select name="po_item_unit" class="hidden"><option value=""></option>${unitChips.map(u => `<option value="${u}">${u}</option>`).join('')}</select>
-                <input type="checkbox" name="po_item_track_imei" class="hidden" id="track_imei_${id}">
+                <!-- แถวมือถือ/แท็บเล็ตบันทึก IMEI เสมอ จึงติ๊กไว้ตายตัว ไม่มีตัวเลือกให้ผู้ใช้กดแล้ว -->
+                <input type="checkbox" name="po_item_track_imei" class="hidden" id="track_imei_${id}" checked>
 
                 <!-- ชื่อสินค้า -->
                 <div class="space-y-2">
-                    <label class="text-ink font-medium flex items-center gap-2 text-xs"><i class="fa-solid fa-mobile-screen text-ink"></i> ชื่อสินค้า <span class="text-red-500">*</span></label>
+                    <label for="po-dev-name-${id}" class="text-ink font-medium flex items-center gap-2 text-xs"><i class="fa-solid fa-mobile-screen text-ink"></i> ชื่อสินค้า <span class="text-red-500">*</span></label>
                     <div class="relative">
-                        <select name="po_item_name" class="elev-field w-full px-4 py-2.5 rounded-xl bg-field text-ink focus:ring-2 focus:ring-accent-ink focus:outline-none transition-all text-sm appearance-none pr-10">
+                        <select id="po-dev-name-${id}" name="po_item_name" class="elev-field w-full px-4 py-2.5 rounded-xl bg-field text-ink focus:ring-2 focus:ring-accent-ink focus:outline-none transition-all text-sm appearance-none pr-10">
                             <option value="" selected>-- เลือกชื่อสินค้า --</option>
                             ${(window.masterDataCache?.productNames || []).map(x => `<option value="${x.name || x}">${x.name || x}</option>`).join('')}
                         </select>
@@ -130,15 +625,15 @@
                 <!-- ราคาทุน & ราคาขาย -->
                 <div class="grid grid-cols-2 gap-5 pt-2">
                     <div class="space-y-2">
-                        <label class="text-ink font-medium flex items-center gap-2 text-xs"><i class="fa-solid fa-tag text-ink"></i> ราคาทุน <span class="text-red-500">*</span></label>
-                        <input type="number" name="po_item_cost" required min="0" placeholder="0" class="elev-field w-full px-4 py-2.5 rounded-xl bg-field text-ink focus:ring-2 focus:ring-accent-ink focus:outline-none transition-all placeholder-ink-muted-48 text-sm">
+                        <label for="po-dev-cost-${id}" class="text-ink font-medium flex items-center gap-2 text-xs"><i class="fa-solid fa-tag text-ink"></i> ราคาทุน <span class="text-red-500">*</span></label>
+                        <input type="number" id="po-dev-cost-${id}" name="po_item_cost" required min="0" placeholder="0" class="elev-field w-full px-4 py-2.5 rounded-xl bg-field text-ink focus:ring-2 focus:ring-accent-ink focus:outline-none transition-all placeholder-ink-muted-48 text-sm">
                         <div class="flex gap-1.5 flex-wrap pt-1">
                             ${[15000, 20000, 27000, 35000].map(p => `<button type="button" class="elev-chip px-2.5 py-1 bg-field text-body-muted rounded-full text-[11px] hover:text-accent-ink hover:ring-1 hover:ring-accent-ink transition-all" onclick="const i = this.parentElement.previousElementSibling; i.value='${p}'; i.dispatchEvent(new Event('input'))">${p.toLocaleString()}</button>`).join('')}
                         </div>
                     </div>
                     <div class="space-y-2">
-                        <label class="text-ink font-medium flex items-center gap-2 text-xs"><i class="fa-solid fa-tags text-ink"></i> ราคาขาย <span class="text-red-500">*</span></label>
-                        <input type="number" name="po_item_sell" required min="0" placeholder="0" class="elev-field w-full px-4 py-2.5 rounded-xl bg-field text-ink focus:ring-2 focus:ring-accent-ink focus:outline-none transition-all placeholder-ink-muted-48 text-sm">
+                        <label for="po-dev-sell-${id}" class="text-ink font-medium flex items-center gap-2 text-xs"><i class="fa-solid fa-tags text-ink"></i> ราคาขาย <span class="text-red-500">*</span></label>
+                        <input type="number" id="po-dev-sell-${id}" name="po_item_sell" required min="0" placeholder="0" class="elev-field w-full px-4 py-2.5 rounded-xl bg-field text-ink focus:ring-2 focus:ring-accent-ink focus:outline-none transition-all placeholder-ink-muted-48 text-sm">
                         <div class="flex gap-1.5 flex-wrap pt-1">
                             ${[15000, 20000, 27000, 35000].map(p => `<button type="button" class="elev-chip px-2.5 py-1 bg-field text-body-muted rounded-full text-[11px] hover:text-accent-ink hover:ring-1 hover:ring-accent-ink transition-all" onclick="this.parentElement.previousElementSibling.value='${p}'">${p.toLocaleString()}</button>`).join('')}
                         </div>
@@ -148,8 +643,8 @@
                 <!-- จำนวน & หน่วยนับ -->
                 <div class="grid grid-cols-2 gap-5 items-start border-t border-line pt-4 mt-2">
                     <div class="space-y-2">
-                        <label class="text-ink font-medium flex items-center gap-2 text-xs"><i class="fa-solid fa-cubes text-ink"></i> จำนวน <span class="text-red-500">*</span></label>
-                        <input type="number" name="po_item_qty" required min="1" value="1" class="elev-field w-full px-4 py-2.5 rounded-xl bg-field text-ink focus:ring-2 focus:ring-accent-ink focus:outline-none transition-all text-sm">
+                        <label for="po-dev-qty-${id}" class="text-ink font-medium flex items-center gap-2 text-xs"><i class="fa-solid fa-cubes text-ink"></i> จำนวน <span class="text-red-500">*</span></label>
+                        <input type="number" id="po-dev-qty-${id}" name="po_item_qty" required min="1" value="1" class="elev-field w-full px-4 py-2.5 rounded-xl bg-field text-ink focus:ring-2 focus:ring-accent-ink focus:outline-none transition-all text-sm">
                     </div>
                     <div class="space-y-2">
                         <label class="text-ink font-medium flex items-center gap-2 text-xs"><i class="fa-solid fa-box text-ink"></i> หน่วยนับ <span class="text-red-500">*</span></label>
@@ -159,27 +654,13 @@
                     </div>
                 </div>
 
-                <!-- IMEI Tracking -->
-                <div class="space-y-2">
-                    <label class="text-ink font-medium flex items-center gap-2 text-xs"><i class="fa-solid fa-barcode text-ink"></i> สินค้านี้ต้องบันทึก IMEI (เช่น โทรศัพท์/แท็บเล็ต) <span class="text-red-500">*</span></label>
-                    <div class="flex items-center gap-5 mt-2 po-radio-group" data-target="po_item_track_imei">
-                        <label class="flex items-center gap-2 cursor-pointer group">
-                            <div class="elev-chip w-4 h-4 rounded-full flex items-center justify-center group-hover:ring-1 group-hover:ring-accent-ink transition-colors po-radio" data-value="true">
-                                <div class="w-2 h-2 rounded-full bg-primary opacity-0 indicator transition-opacity"></div>
-                            </div>
-                            <span class="text-[10px] text-ink/60 group-hover:text-ink/90">บันทึกเลข IMEI</span>
-                        </label>
-                        <label class="flex items-center gap-2 cursor-pointer group">
-                            <div class="elev-chip w-4 h-4 rounded-full flex items-center justify-center group-hover:ring-1 group-hover:ring-accent-ink transition-colors po-radio" data-value="false">
-                                <div class="w-2 h-2 rounded-full bg-primary opacity-0 indicator transition-opacity"></div>
-                            </div>
-                            <span class="text-[10px] text-ink/60 group-hover:text-ink/90">ไม่บันทึกเลข IMEI</span>
-                        </label>
-                    </div>
-                </div>
-
-                <div class="elev-card text-center text-xs text-body-muted mt-2 p-2.5 bg-surface-tile-3 rounded-xl">
-                     รวม: <span class="po-row-total text-ink font-bold font-mono">฿0</span>
+                <!-- ไม่ต้องถามว่าบันทึก IMEI ไหมแล้ว — แถวชนิดนี้คือมือถือ/แท็บเล็ต ซึ่งบันทึก IMEI เสมอ
+                     (ของที่ไม่มี IMEI ให้ไปใช้ปุ่ม "เพิ่มอุปกรณ์เสริม" แทน) ค่าถูกตั้งไว้ที่ช่องซ่อนด้านบนแล้ว -->
+                <div class="elev-card text-xs text-body-muted mt-2 p-2.5 bg-surface-tile-3 rounded-xl flex items-center justify-between gap-3">
+                    <span class="flex items-center gap-1.5">
+                        <i class="fa-solid fa-barcode"></i> บันทึกเลข IMEI ตอนตรวจรับ
+                    </span>
+                    <span>รวม: <span class="po-row-total text-ink font-bold font-mono">฿0</span></span>
                 </div>
             </div>
         `;
@@ -236,63 +717,15 @@
             });
         }
 
-        // Radio Buttons (IMEI Tracking)
-        const radioGroup = row.querySelector('.po-radio-group');
-        if (radioGroup) {
-            const hiddenImeiCheck = row.querySelector('[name="po_item_track_imei"]');
-            const radios = radioGroup.querySelectorAll('.po-radio');
-            radios.forEach(radio => {
-                radio.parentElement.addEventListener('click', () => {
-                    radios.forEach(r => {
-                        r.classList.remove('ring-2', 'ring-accent-ink', 'active');
-                        r.classList.add('border-ink/30');
-                        r.querySelector('.indicator').classList.remove('opacity-100');
-                        r.querySelector('.indicator').classList.add('opacity-0');
-                        r.nextElementSibling.classList.remove('text-ink/90');
-                        r.nextElementSibling.classList.add('text-ink/60');
-                    });
-                    radio.classList.remove('border-ink/30');
-                    radio.classList.add('ring-2', 'ring-accent-ink', 'active');
-                    radio.querySelector('.indicator').classList.remove('opacity-0');
-                    radio.querySelector('.indicator').classList.add('opacity-100');
-                    radio.nextElementSibling.classList.remove('text-ink/60');
-                    radio.nextElementSibling.classList.add('text-ink/90');
-
-                    if (hiddenImeiCheck) {
-                        hiddenImeiCheck.checked = (radio.getAttribute('data-value') === 'true');
-                        hiddenImeiCheck.dispatchEvent(new Event('change'));
-                    }
-                });
-            });
-        }
-
         // --- End of inline logic ---
 
-        // Attach event listener for delete row
-        const deleteBtn = row.querySelector('.btn-delete-row');
-        if (deleteBtn) {
-            deleteBtn.addEventListener('click', () => {
-                row.remove();
-                calculatePOTotal();
-            });
-        }
+        // ปุ่มลบแถว + การคิดยอดรวม ใช้ร่วมกับแถวอุปกรณ์เสริม
+        bindPoRowCommon(row);
+        syncPoItemsEmptyState();
+        applyDefaultUnit(row, 'device');
 
-        // Attach events for calculation
-        const inputQty = row.querySelector('[name="po_item_qty"]');
-        const inputCost = row.querySelector('[name="po_item_cost"]');
-        const labelTotal = row.querySelector('.po-row-total');
         const inputCode = row.querySelector('[name="po_item_code"]');
         const inputName = row.querySelector('[name="po_item_name"]');
-
-        const updateRowTotal = () => {
-            const q = Number(inputQty.value) || 0;
-            const c = Number(inputCost.value) || 0;
-            labelTotal.textContent = '฿' + (q * c).toLocaleString();
-            calculatePOTotal();
-        };
-
-        inputQty.addEventListener('input', updateRowTotal);
-        inputCost.addEventListener('input', updateRowTotal);
 
         // Auto-fill logic when SKU changes
         inputCode.addEventListener('change', (e) => {
@@ -356,7 +789,10 @@
     };
 
     if (document.getElementById('btn-add-po-item')) {
-        document.getElementById('btn-add-po-item').addEventListener('click', addPoItemRow);
+        document.getElementById('btn-add-po-item').addEventListener('click', () => addPoItemRow('device'));
+    }
+    if (document.getElementById('btn-add-po-accessory')) {
+        document.getElementById('btn-add-po-accessory').addEventListener('click', () => addPoItemRow('accessory'));
     }
 
     // Highlight ช่องที่ไม่ผ่าน validation ด้วย inline error (แดง + ข้อความใต้ช่อง) — รูปแบบเดียวกับ Add Product
@@ -424,15 +860,21 @@
 
             const items = [];
             for (let row of rows) {
+                const isAccessory = row.dataset.kind === 'accessory';
+
                 const nameEl = row.querySelector('[name="po_item_name"]');
-                if (!nameEl.value) {
-                    return highlightPoInvalid(nameEl, nameEl, 'กรุณาเลือกชื่อสินค้า', true);
+                if (!nameEl.value.trim()) {
+                    return highlightPoInvalid(nameEl, nameEl,
+                        isAccessory ? 'กรุณากรอกชื่ออุปกรณ์เสริม' : 'กรุณาเลือกชื่อสินค้า', !isAccessory);
                 }
 
+                // สีมีเฉพาะแบบฟอร์มมือถือ/แท็บเล็ต — อุปกรณ์เสริมข้ามไป
                 const colorEl = row.querySelector('[name="po_item_color"]');
-                const colorContainer = row.querySelector('.po-chip-group[data-target="po_item_color"]');
-                if (!colorEl.value) {
-                    return highlightPoInvalid(colorContainer, colorEl, 'กรุณาเลือกสีสินค้า', true);
+                if (!isAccessory) {
+                    const colorContainer = row.querySelector('.po-chip-group[data-target="po_item_color"]');
+                    if (!colorEl.value) {
+                        return highlightPoInvalid(colorContainer, colorEl, 'กรุณาเลือกสีสินค้า', true);
+                    }
                 }
 
                 const costEl = row.querySelector('[name="po_item_cost"]');
@@ -456,28 +898,34 @@
                     return highlightPoInvalid(unitContainer, unitEl, 'กรุณาเลือกหน่วยนับ', true);
                 }
 
-                const imeiGroup = row.querySelector('.po-radio-group[data-target="po_item_track_imei"]');
-                const imeiCheck = row.querySelector('[name="po_item_track_imei"]');
-                if (imeiGroup && !imeiGroup.querySelector('.po-radio.active')) {
-                    return highlightPoInvalid(imeiGroup, imeiCheck, 'กรุณาเลือกว่าต้องบันทึก IMEI หรือไม่', true);
-                }
-
-                let product_code = row.querySelector('[name="po_item_code"]').value.trim();
+                const codeEl = row.querySelector('[name="po_item_code"]');
+                let product_code = codeEl.value.trim();
                 if (!product_code) {
-                    // หากไม่ได้กรอก SKU ระบบจะสุ่มรหัสให้อัตโนมัติ เพื่อนำไปใช้ติดตามสต็อกสินค้าอย่างถูกต้อง
+                    // อุปกรณ์เสริมสุ่มรหัสให้ไม่ได้ — รหัสคือตัวระบุ "รุ่น" ที่ใช้ร่วมกันทุกชิ้น
+                    // ถ้าสุ่มให้ สั่งรุ่นเดิมรอบหน้าจะได้รหัสใหม่ แล้วสต็อกจะแตกเป็นคนละตัวสินค้า
+                    // (executeFinalizeImport ฝั่งเซิร์ฟเวอร์ใช้ product_code ตัดสินว่าจะบวกเข้าตัวเดิมหรือสร้างใหม่)
+                    if (isAccessory) {
+                        return highlightPoInvalid(codeEl, codeEl,
+                            'กรุณาระบุรหัสสินค้าของอุปกรณ์เสริม — รุ่นเดียวกันต้องใช้รหัสเดิมเสมอ เพื่อให้สต็อกรวมเป็นตัวเดียว', false);
+                    }
+                    // มือถือ/แท็บเล็ต: รหัสจริงคือ IMEI รายเครื่องที่สแกนตอนตรวจรับ
+                    // ตรงนี้เป็นแค่รหัสอ้างอิงชั่วคราวของบรรทัดในใบสั่งซื้อ จึงสุ่มได้
                     product_code = 'SKU-' + Date.now().toString().slice(-6) + Math.floor(100 + Math.random() * 900);
                 }
                 items.push({
-                    product_name: nameEl.value,
+                    product_name: nameEl.value.trim(),
                     product_code: product_code,
-                    category: row.querySelector('[name="po_item_category"]').value,
-                    color: colorEl.value,
-                    capacity: row.querySelector('[name="po_item_capacity"]').value,
+                    item_kind: isAccessory ? 'accessory' : 'device',
+                    category: isAccessory ? '' : row.querySelector('[name="po_item_category"]').value,
+                    color: isAccessory ? '' : colorEl.value,
+                    capacity: isAccessory ? '' : row.querySelector('[name="po_item_capacity"]').value,
                     unit: unitEl.value,
                     ordered_qty: Number(qtyEl.value),
                     cost_price: Number(costEl.value),
                     selling_price: Number(sellEl.value),
-                    track_imei: imeiCheck.checked
+                    // ชนิดของแถวเป็นตัวตัดสินเลย ไม่ต้องถามผู้ใช้:
+                    // มือถือ/แท็บเล็ต = บันทึก IMEI เสมอ, อุปกรณ์เสริม = ไม่บันทึกเสมอ
+                    track_imei: !isAccessory
                 });
             }
 
@@ -494,6 +942,18 @@
                 const json = await res.json();
                 if (json.success) {
                     showToast(editingPOId ? 'แก้ไขใบสั่งซื้อสำเร็จ' : 'สร้างใบสั่งซื้อสำเร็จ');
+
+                    // เซิร์ฟเวอร์เพิ่งจดรหัสอุปกรณ์เสริมใหม่ลง master data — ล้างแคชฝั่งหน้าเว็บ
+                    // ไม่งั้นรหัสที่เพิ่งตั้งจะยังไม่โผล่ใน dropdown จนกว่าจะรีเฟรชหน้า
+                    // แล้วคนจะตั้งรหัสใหม่ซ้ำอีกใบ จนสต็อกแตกตอนของถึง
+                    if (items.some(i => i.item_kind === 'accessory')) {
+                        poProductCatalog = null;
+                        poCatalogPromise = null;
+                        if (typeof fetchMasterData === 'function') {
+                            fetchMasterData().catch(e => console.error('[PO] รีเฟรช master data ไม่สำเร็จ:', e));
+                        }
+                    }
+
                     stopEditingPO();
                     loadPOHistory(); // Refresh history cache
                     switchPoTab('history');
@@ -519,8 +979,8 @@
     const startEditingPO = (po) => {
         editingPOId = po._id;
 
-        // Switch to create tab
-        switchPoTab('create');
+        // keepEditing: บอก switchPoTab ว่าครั้งนี้ตั้งใจเข้าโหมดแก้ไข ห้ามล้าง editingPOId ทิ้ง
+        switchPoTab('create', { keepEditing: true });
 
         // Update Title/Submit Button text
         const btnCreate = document.getElementById('tab-btn-create-po');
@@ -541,11 +1001,22 @@
         // Clear items container
         const container = document.getElementById('po-items-container');
         container.innerHTML = '';
+        syncPoItemsEmptyState(); // ใบที่ไม่มีรายการเลยต้องเห็นสถานะว่าง ไม่ใช่ช่องโล่งๆ
 
         // Populate Items
         if (po.items && po.items.length > 0) {
             po.items.forEach(item => {
-                addPoItemRow();
+                // ใบเก่าที่สร้างก่อนมีฟิลด์ item_kind ต้องเดาชนิดจาก track_imei
+                //
+                // ⚠️ ห้ามเดาเป็น device ทั้งหมด: ตอนนี้แถว device บันทึก IMEI เสมอ ถ้าเอารายการเก่า
+                //    ที่เคยเลือก "ไม่บันทึกเลข IMEI" มากางเป็นแถว device แล้วกดบันทึก มันจะถูกพลิกเป็น
+                //    track_imei = true เงียบๆ ทั้งที่ผู้ใช้แค่เข้ามาแก้จำนวน — แล้วตอนตรวจรับจะกลายเป็น
+                //    บังคับสแกน IMEI ของสินค้าที่ไม่มี IMEI ทำให้รับของเข้าสต็อกไม่ได้เลย
+                //    รายการเก่าที่ track_imei = false ก็คืออุปกรณ์เสริมที่สั่งผ่านฟอร์มเดิมนั่นเอง
+                const kind = item.item_kind
+                    ? (item.item_kind === 'accessory' ? 'accessory' : 'device')
+                    : (item.track_imei ? 'device' : 'accessory');
+                addPoItemRow(kind);
                 const rows = container.querySelectorAll('.po-item-row');
                 const row = rows[rows.length - 1];
 
@@ -555,35 +1026,30 @@
                 setPoRowValue(row, 'po_item_category', item.category || '');
                 setPoRowValue(row, 'po_item_color', item.color || '');
                 setPoRowValue(row, 'po_item_capacity', item.capacity || '');
-                setPoRowValue(row, 'po_item_unit', item.unit || '');
+                // เขียนทับหน่วยนับเฉพาะตอนใบเดิมมีค่าจริง — ใบที่สร้างก่อนแก้บั๊ก "unit หายตอนสร้าง"
+                // จะไม่มีหน่วยเก็บไว้ ปล่อยให้ใช้ค่าเริ่มต้นตามชนิดของแถวแทนการโชว์ว่างเปล่า
+                if (item.unit) setPoRowValue(row, 'po_item_unit', item.unit);
                 setPoRowValue(row, 'po_item_qty', item.ordered_qty || 1);
                 setPoRowValue(row, 'po_item_cost', item.cost_price || 0);
                 setPoRowValue(row, 'po_item_sell', item.selling_price || 0);
-                const checkImei = row.querySelector('[name="po_item_track_imei"]');
-                if (checkImei) {
-                    checkImei.checked = !!item.track_imei;
-                    // ซิงค์ปุ่มเลือก IMEI ในหน้าจอให้ตรงกับค่าจริงของ PO เดิม (ไม่งั้นตอนแก้ไขจะดูเหมือนยังไม่ได้เลือก)
-                    const imeiGroup = row.querySelector('.po-radio-group[data-target="po_item_track_imei"]');
-                    if (imeiGroup) {
-                        const targetValue = String(!!item.track_imei);
-                        imeiGroup.querySelectorAll('.po-radio').forEach(r => {
-                            const isMatch = r.getAttribute('data-value') === targetValue;
-                            // toggle() รับแค่ (token, force) — ต้องแยกเรียกทีละคลาส ไม่งั้น 'ring-accent-ink' จะกลายเป็นค่า force แทน
-                            r.classList.toggle('ring-2', isMatch);
-                            r.classList.toggle('ring-accent-ink', isMatch);
-                            r.classList.toggle('active', isMatch);
-                            r.classList.toggle('border-ink/30', !isMatch);
-                            r.querySelector('.indicator').classList.toggle('opacity-100', isMatch);
-                            r.querySelector('.indicator').classList.toggle('opacity-0', !isMatch);
-                            r.nextElementSibling.classList.toggle('text-ink/90', isMatch);
-                            r.nextElementSibling.classList.toggle('text-ink/60', !isMatch);
-                        });
-                    }
-                }
 
-                // Trigger calculation
-                const event = new Event('input');
-                row.querySelector('[name="po_item_qty"]').dispatchEvent(event);
+                // ซิงก์ชิปที่เลือกไว้ให้ตรงกับค่าจริง — ทั้งสองแบบฟอร์มเก็บค่าไว้ใน input ที่ data-target ชี้ไป
+                // ถ้าไม่ทำ ตอนกดแก้ไขจะเห็นชิปไม่ถูกไฮไลต์ ทั้งที่ค่าข้างในมีอยู่
+                row.querySelectorAll('.po-chip-group[data-target]').forEach(group => {
+                    const holder = row.querySelector(`[name="${group.getAttribute('data-target')}"]`);
+                    if (!holder) return;
+                    group.querySelectorAll('.po-chip').forEach(chip => {
+                        const on = chip.getAttribute('data-value') === holder.value;
+                        chip.classList.toggle('ring-2', on);
+                        chip.classList.toggle('ring-accent-ink', on);
+                        chip.classList.toggle('text-accent-ink', on);
+                        chip.classList.toggle('apple-active-neutral', on);
+                        chip.classList.toggle('text-body-muted', !on);
+                    });
+                });
+
+                // คิดยอดของแถว — ต้องทำทั้งสองชนิด ไม่งั้นแถวจะโชว์ยอดรวม ฿0 ทั้งที่กรอกราคาและจำนวนมาแล้ว
+                row.querySelector('[name="po_item_qty"]').dispatchEvent(new Event('input'));
             });
         }
     };
@@ -604,7 +1070,7 @@
 
         document.getElementById('form-create-po').reset();
         document.getElementById('po-items-container').innerHTML = '';
-        addPoItemRow();
+        syncPoItemsEmptyState();
         calculatePOTotal();
     };
 
@@ -613,7 +1079,7 @@
     }
 
     // Switch between PO tabs
-    const switchPoTab = (tabName) => {
+    const switchPoTab = (tabName, { keepEditing = false } = {}) => {
         const btnCreate = document.getElementById('tab-btn-create-po');
         const btnHistory = document.getElementById('tab-btn-po-history');
         const contentCreate = document.getElementById('tab-content-create-po');
@@ -622,6 +1088,14 @@
         if (!btnCreate || !btnHistory || !contentCreate || !contentHistory) return;
 
         if (tabName === 'create') {
+            // ⚠️ กันข้อมูลหาย: editingPOId เคยถูกล้างแค่ตอนบันทึกสำเร็จกับตอนกดปุ่ม "ยกเลิก" เท่านั้น
+            //    ถ้าผู้ใช้เข้าโหมดแก้ไขแล้วปิดหน้าต่างด้วยกากบาท (ซึ่งแค่สลับไปแท็บประวัติ) ค่าจะค้างไว้
+            //    รอบถัดไปที่กด "สร้างใบสั่งซื้อ" แล้วบันทึก จะกลายเป็นยิง /update ทับใบเก่าใบนั้น
+            //    ทำให้ใบเดิมถูกแทนที่ด้วยรายการใหม่หายไปทั้งใบ
+            //    เปิดหน้าต่างสร้างเองเมื่อไหร่ = ต้องออกจากโหมดแก้ไขเสมอ
+            //    (เช็ก editingPOId ก่อน เพื่อไม่ไปล้างร่างของคนที่กำลังกรอกใบใหม่ค้างไว้)
+            if (!keepEditing && editingPOId) stopEditingPO();
+
             contentCreate.classList.remove('opacity-0', 'pointer-events-none');
             contentHistory.classList.add('hidden');
 
@@ -1077,11 +1551,15 @@
             }
         }
 
+        // เข้าหน้านี้ใหม่ทุกครั้งต้องไม่ค้างโหมดแก้ไขจากรอบก่อน — สคริปต์หน้าถูกโหลดครั้งเดียว
+        // ตัวแปรจึงอยู่ข้ามการสลับหน้าไปมา (ดูเหตุผลเต็มที่ switchPoTab)
+        editingPOId = null;
+
         const itemsContainer = document.getElementById('po-items-container');
         if (itemsContainer) {
             itemsContainer.innerHTML = '';
             poItemCount = 0;
-            addPoItemRow();
+            syncPoItemsEmptyState();
             calculatePOTotal();
         }
     };

@@ -407,6 +407,11 @@ const purchaseOrderSchema = new mongoose.Schema({
     items: [{
         product_name: { type: String, required: true },
         product_code: { type: String, required: true },
+        // ชนิดของรายการ — ตัวบอกว่าตอนแก้ไขใบสั่งซื้อต้องกางฟอร์มแบบไหน
+        //   device    = มือถือ/แท็บเล็ต (มีหมวดหมู่ สี ความจุ และเลือกได้ว่าบันทึก IMEI ไหม)
+        //   accessory = อุปกรณ์เสริม (มีแค่ รหัส ชื่อ ราคาทุน ราคาขาย จำนวน หน่วยนับ ไม่มี IMEI)
+        // เอกสารเก่าที่สร้างก่อนมีฟิลด์นี้ไม่มีค่า ให้ตีความเป็น device เสมอ (ตอนนั้นยังไม่มีอุปกรณ์เสริม)
+        item_kind: { type: String, enum: ['device', 'accessory'], default: 'device' },
         category: { type: String },
         color: { type: String },
         capacity: { type: String },

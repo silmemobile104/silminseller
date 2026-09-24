@@ -632,7 +632,7 @@
                     <!-- Dropdowns -->
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
                         <div class="space-y-2">
-                            <label class="text-ink font-medium flex items-center gap-2 text-xs">
+                            <label for="po-supplier" class="text-ink font-medium flex items-center gap-2 text-xs">
                                 <i class="fa-solid fa-building-user text-ink"></i> Supplier | แหล่งที่มา <span
                                     class="text-red-500">*</span>
                             </label>
@@ -648,7 +648,7 @@
                             </div>
                         </div>
                         <div class="space-y-2">
-                            <label class="text-ink font-medium flex items-center gap-2 text-xs">
+                            <label for="po-branch" class="text-ink font-medium flex items-center gap-2 text-xs">
                                 <i class="fa-solid fa-location-dot text-ink"></i> สาขาปลายทาง <span
                                     class="text-red-500">*</span>
                             </label>
@@ -673,10 +673,18 @@
                             <!-- Dynamic rows will be inserted here by JS -->
                         </div>
 
-                        <button type="button" id="btn-add-po-item"
-                            class="elev-field w-full mt-3 py-2.5 bg-field hover:bg-line text-body-muted hover:text-ink text-sm font-semibold rounded-xl transition-colors">
-                            + เพิ่มรายการ
-                        </button>
+                        <!-- มือถือ/แท็บเล็ต กับ อุปกรณ์เสริม ใช้คนละแบบฟอร์ม จึงแยกปุ่มเพิ่มเป็นสองตัว
+                             (อุปกรณ์เสริมไม่มีหมวดหมู่/สี/ความจุ และไม่ผูก IMEI) -->
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
+                            <button type="button" id="btn-add-po-item"
+                                class="elev-field w-full py-2.5 bg-field hover:bg-line text-body-muted hover:text-ink text-sm font-semibold rounded-xl transition-colors flex items-center justify-center gap-2">
+                                <i class="fa-solid fa-mobile-screen"></i> เพิ่มมือถือ / แท็บเล็ต
+                            </button>
+                            <button type="button" id="btn-add-po-accessory"
+                                class="elev-field w-full py-2.5 bg-field hover:bg-line text-body-muted hover:text-ink text-sm font-semibold rounded-xl transition-colors flex items-center justify-center gap-2">
+                                <i class="fa-solid fa-headphones"></i> เพิ่มอุปกรณ์เสริม
+                            </button>
+                        </div>
                     </div>
 
                     <!-- Hidden Summary for JS compatibility -->
