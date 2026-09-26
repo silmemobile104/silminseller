@@ -1565,7 +1565,7 @@
     };
 
     // State variables for tabbed PO receiving view
-    let currentReceiveTab = 'all';
+    let currentReceiveTab = 'ของถึงสาขาแล้ว'; // ค่าเริ่มต้น: แสดงเฉพาะใบที่ของถึงสาขาแล้ว (รอตรวจรับ)
     let receiveSearchQuery = '';
     let cachedPOsData = [];
 
@@ -3813,8 +3813,12 @@
                                 <label class="text-xs text-body-muted font-medium">ส่งมาเพิ่มรอบนี้:</label>
                                 <input type="number" 
                                        min="0" 
-                                       max="${remainingQty}" 
-                                       value="${remainingQty}" 
+                                       max="${remainingQty}"
+                                       step="1"
+                                       value="0"
+                                       required
+                                       aria-label="จำนวนที่ส่งมาเพิ่มรอบนี้ ${item.product_name}"
+                                       onfocus="this.select()"
                                        class="elev-chip po-arrival-accessory-qty w-24 bg-surface-chip text-ink focus:ring-2 focus:ring-primary-focus font-mono text-sm font-bold text-center py-2 rounded-xl focus:outline-none focus:ring-1 focus:ring-primary-focus/30 transition-colors">
                             </div>
                         ` : `
@@ -3880,7 +3884,19 @@
                     received_items[itemId] = { imeis };
                 } else {
                     const inputQty = row.querySelector('.po-arrival-accessory-qty');
+                    // บังคับกรอกจำนวน (ช่องว่าง = ยังไม่ได้กรอก)
+                    if (inputQty && inputQty.value.trim() === '') {
+                        showToast(`กรุณากรอกจำนวนที่ส่งมาเพิ่มรอบนี้ของ ${productName} (ถ้าไม่มีให้ใส่ 0)`, 'error');
+                        inputQty.focus();
+                        return;
+                    }
                     const qtyThisRound = inputQty ? Number(inputQty.value) : 0;
+
+                    if (!Number.isInteger(qtyThisRound)) {
+                        showToast(`จำนวนที่รับสำหรับ ${productName} ต้องเป็นจำนวนเต็ม`, 'error');
+                        inputQty.focus();
+                        return;
+                    }
 
                     if (qtyThisRound < 0) {
                         showToast(`จำนวนที่รับสำหรับ ${productName} ต้องไม่ต่ำกว่า 0`, 'error');

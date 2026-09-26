@@ -171,7 +171,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // โหลดสคริปต์เฉพาะหน้า (js/page-<name>.js) แบบ dynamic ครั้งเดียว แล้ว cache ไว้
     // PAGE_SCRIPT_VERSION: บัมพ์เลขนี้ทุกครั้งที่แก้ไฟล์ใน js/ เพื่อไม่ให้เบราว์เซอร์ใช้ของเก่าที่ cache ไว้
-    const PAGE_SCRIPT_VERSION = 'apple_active_v61';
+    const PAGE_SCRIPT_VERSION = 'apple_active_v71';
     const __loadedPageScripts = {};
     function loadPageScript(name) {
         if (__loadedPageScripts[name]) return __loadedPageScripts[name];
@@ -224,7 +224,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // ไม่ได้รอ init function ถ้า HTML ยังไม่ถูกแทรกเข้า DOM ก่อน ตัวแปรที่ query ไว้จะเป็น null ถาวร
     // ชื่อ name ต้องตรงกับชื่อที่ใช้ใน loadPageScript — ไฟล์เดียวอาจมีหลาย <div id="view-XXX"> รวมกัน
     // ถ้าหน้านั้นถูก share โดยสคริปต์เดียวกันหลาย view (ดูตาราง mapping ในแผน)
-    const VIEW_FRAGMENT_VERSION = 'v96'; // บัมพ์เลขนี้ทุกครั้งที่แก้ไฟล์ใน views/
+    const VIEW_FRAGMENT_VERSION = 'v100'; // บัมพ์เลขนี้ทุกครั้งที่แก้ไฟล์ใน views/
     const __loadedPageViews = {};
     function loadPageView(name) {
         if (__loadedPageViews[name]) return __loadedPageViews[name];
@@ -4541,6 +4541,39 @@ document.addEventListener('DOMContentLoaded', () => {
         return 'fa-box';
     };
 
+    // แท็บ "เครื่อง" / "อุปกรณ์เสริม" กรองตามชนิดของสินค้าจริง ไม่ใช่ตามชื่อ ProductType
+    // เพราะอุปกรณ์เสริมกระจายอยู่ได้หลายประเภท (หูฟัง เคส ฟิล์ม ฯลฯ) ถ้ากรองด้วยชื่อประเภท
+    // จะต้องไล่กดทีละแท็บ ไม่มีที่ไหนเห็นของทั้งหมดในทีเดียว
+    // ใช้ค่าพิเศษเก็บใน posActiveCategory ตัวเดิม เพื่อไม่ต้องเพิ่มสถานะตัวกรองอีกชั้น
+    const POS_KIND_DEVICE = '__kind_device__';
+    const POS_KIND_ACCESSORY = '__kind_accessory__';
+    const posIsKindTab = (v) => v === POS_KIND_DEVICE || v === POS_KIND_ACCESSORY;
+
+    // ตัดสินจาก "ข้อมูลของสินค้า" ก่อนเสมอ ไม่ใช่จากชื่อหมวดหมู่
+    //
+    // ทำไมไม่ใช้ checkIsDevice ตรงๆ: ตัวนั้นเดาจากคำในชื่อ ProductType เป็นหลัก ซึ่งเชื่อไม่ได้ที่นี่
+    //   - อุปกรณ์เสริมที่นำเข้าก่อนแก้บั๊ก ได้ type_id เป็น "IPhone" ติดมา -> ถูกนับเป็นเครื่อง
+    //   - ตั้งหมวดหมู่ชื่อ "เคสมือถือ" ก็โดนคำว่า "มือถือ" จับ -> ถูกนับเป็นเครื่องอีก
+    //   - อุปกรณ์เสริมอยู่หมวดหมู่ไหนก็ได้ แท็บนี้จึงต้องไม่ผูกกับชื่อหมวดหมู่เลย
+    // ลำดับการตัดสินไล่จากสัญญาณที่ชัดที่สุดลงไป
+    const posIsDeviceProduct = (p) => {
+        // 1) มี IMEI = เครื่องแน่นอน
+        if (Array.isArray(p.imeis) && p.imeis.length > 0) return true;
+
+        // 2) มีความจุ = เครื่อง (อุปกรณ์เสริมไม่มีความจุ)
+        const cap = p.capacity_id;
+        if (cap && (typeof cap !== 'object' ? String(cap).trim() !== '' : Object.keys(cap).length > 0)) return true;
+
+        // 3) หน่วยนับบอกได้ตรงที่สุดในระบบนี้ (มีสองหน่วย: เครื่อง กับ ชิ้น)
+        const unitName = (p.unit_id && p.unit_id.name) ? p.unit_id.name : '';
+        if (unitName) return unitName === 'เครื่อง';
+
+        // 4) ไม่มีสัญญาณจากข้อมูลเลย ค่อยถอยไปเดาจากชื่อหมวดหมู่แบบเดิมของระบบ
+        return (typeof checkIsDevice === 'function')
+            ? checkIsDevice(p.type_id ? p.type_id.name : '', p)
+            : false;
+    };
+
     const setPosCategory = (value) => {
         posActiveCategory = value || '';
         // sync ค่าไปที่ <select> ที่ซ่อนไว้เท่าที่ทำได้ เผื่อโค้ดส่วนอื่นยังอ่านจากมัน แต่ไม่ใช้เป็นแหล่งความจริง
@@ -4559,10 +4592,31 @@ document.addEventListener('DOMContentLoaded', () => {
         ).sort((a, b) => a.localeCompare(b, 'th'));
 
         // หมวดหมู่ที่เลือกค้างไว้อาจหายไปหลังโหลดข้อมูลรอบใหม่ ถ้าหายให้ตกกลับเป็น "ทั้งหมด"
-        if (posActiveCategory && !categories.includes(posActiveCategory)) posActiveCategory = '';
+        // ยกเว้นแท็บชนิด (เครื่อง/อุปกรณ์เสริม) ซึ่งไม่ได้อิงรายชื่อ ProductType จึงไม่มีวันหาย
+        if (posActiveCategory && !posIsKindTab(posActiveCategory) && !categories.includes(posActiveCategory)) {
+            posActiveCategory = '';
+        }
 
-        const tabs = [{ value: '', label: 'ทั้งหมด', icon: 'fa-table-cells-large' }]
-            .concat(categories.map(c => ({ value: c, label: c, icon: posCategoryIcon(c) })));
+        const kindTabs = [
+            { value: '', label: 'ทั้งหมด', icon: 'fa-table-cells-large' },
+            { value: POS_KIND_DEVICE, label: 'เครื่อง', icon: 'fa-mobile-screen' },
+            { value: POS_KIND_ACCESSORY, label: 'อุปกรณ์เสริม', icon: 'fa-plug' }
+        ];
+
+        // ProductType ที่ชื่อซ้ำกับแท็บชนิด (เช่นมีประเภทชื่อ "อุปกรณ์เสริม" อยู่จริงใน DB) จะได้ปุ่มชื่อเดียวกันสองปุ่ม
+        // ซ่อนปุ่มประเภทนั้นไป เพราะแท็บชนิดครอบคลุมสินค้าของประเภทนั้นอยู่แล้ว
+        const normLabel = (s) => String(s || '').replace(/\s+/g, '').toLowerCase();
+        const kindByLabel = new Map(kindTabs.map(t => [normLabel(t.label), t.value]));
+        // ถ้าเลือกประเภทชื่อซ้ำค้างไว้ (เช่นจาก <select> ที่ซ่อนอยู่) ให้ไฮไลต์แท็บชนิดแทน
+        if (posActiveCategory && !posIsKindTab(posActiveCategory) && kindByLabel.has(normLabel(posActiveCategory))) {
+            posActiveCategory = kindByLabel.get(normLabel(posActiveCategory));
+        }
+
+        const tabs = kindTabs.concat(
+            categories
+                .filter(c => !kindByLabel.has(normLabel(c)))
+                .map(c => ({ value: c, label: c, icon: posCategoryIcon(c) }))
+        );
 
         tabsEl.innerHTML = tabs.map(t => {
             const isActive = t.value === posActiveCategory;
@@ -4618,8 +4672,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 categorySelect.appendChild(opt);
             });
             // แหล่งความจริงคือ posActiveCategory เสมอ ที่นี่แค่ทำให้ select เดินตาม
-            if (posActiveCategory && !categories.has(posActiveCategory)) posActiveCategory = '';
-            categorySelect.value = posActiveCategory;
+            // แท็บชนิด (เครื่อง/อุปกรณ์เสริม) ไม่มีใน select นี้ จึงต้องข้ามการรีเซ็ต ไม่งั้นกดแท็บแล้วค่าหลุดทันที
+            if (posActiveCategory && !posIsKindTab(posActiveCategory) && !categories.has(posActiveCategory)) {
+                posActiveCategory = '';
+            }
+            categorySelect.value = posIsKindTab(posActiveCategory) ? '' : posActiveCategory;
         }
 
         if (brandSelect) {
@@ -4770,6 +4827,20 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     // โครงตารางเปล่า (หัวตาราง + tbody ว่าง) — แถวจริงถูกทยอยเติมเข้า tbody ทีละชุดตอนเลื่อนดู
+    // คอลัมน์นี้แสดง product_code ซึ่งความหมายต่างกันตามชนิดสินค้า:
+    //   เครื่อง        -> product_code คือเลข IMEI ของเครื่องนั้น (หนึ่งเครื่องหนึ่งเอกสารสินค้า)
+    //   อุปกรณ์เสริม   -> product_code คือรหัสรุ่น ใช้ร่วมกันทุกชิ้น ไม่ใช่ IMEI
+    // หัวคอลัมน์จึงต้องเดินตามของที่กำลังแสดงอยู่จริง ไม่ใช่เขียน "IMEI" ตายตัว
+    const posCodeColumnLabel = () => {
+        const rows = posFilteredData || [];
+        if (rows.length === 0) return 'IMEI / รหัสสินค้า';
+        const hasDevice = rows.some(p => posIsDeviceProduct(p));
+        const hasAccessory = rows.some(p => !posIsDeviceProduct(p));
+        if (hasDevice && !hasAccessory) return 'IMEI';
+        if (hasAccessory && !hasDevice) return 'รหัสสินค้า';
+        return 'IMEI / รหัสสินค้า';   // รายการคละกัน บอกตรงๆ ว่าเป็นได้ทั้งสองอย่าง
+    };
+
     const posTableShellMarkup = () => {
         const th = 'px-4 py-3 text-[11px] font-bold text-body-muted tracking-wide whitespace-nowrap';
         return `
@@ -4778,7 +4849,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <thead>
                         <tr class="bg-surface-tile-2 border-b border-hairline">
                             <th class="${th}">สินค้า</th>
-                            <th class="${th}">IMEI</th>
+                            <th class="${th}">${posCodeColumnLabel()}</th>
                             <th class="${th}">รายละเอียด</th>
                             <th class="${th}">สาขา</th>
                             <th class="${th}">สต็อกคงเหลือ</th>
@@ -4966,8 +5037,14 @@ document.addEventListener('DOMContentLoaded', () => {
             // แต่เปิดดูได้จากตัวกรอง เพื่อให้เช็คได้ว่าของรุ่นไหนหมดโดยไม่ต้องออกจากหน้าขาย
             if (!posShowOutOfStock && (p.quantity || 0) <= 0) return false;
 
-            // Category filter
-            if (selectedCategory && (!p.type_id || p.type_id.name !== selectedCategory)) return false;
+            // Category filter — แท็บชนิดกรองตามว่าเป็นเครื่องไหม ส่วนแท็บอื่นกรองตามชื่อ ProductType เหมือนเดิม
+            if (selectedCategory === POS_KIND_DEVICE) {
+                if (!posIsDeviceProduct(p)) return false;
+            } else if (selectedCategory === POS_KIND_ACCESSORY) {
+                if (posIsDeviceProduct(p)) return false;
+            } else if (selectedCategory && (!p.type_id || p.type_id.name !== selectedCategory)) {
+                return false;
+            }
 
             // Brand filter
             if (selectedBrand && getBrandFromProduct(p) !== selectedBrand) return false;
@@ -5062,9 +5139,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Actual Add to Cart Logic
     const processAddToCart = (product) => {
         const hasImeis = Array.isArray(product.imeis) && product.imeis.length > 0;
-        const typeName = product.type_id ? (product.type_id.name || '') : '';
-        const unitName = product.unit_id ? (product.unit_id.name || '') : '';
-        const isDeviceLike = unitName.includes('เครื่อง') || typeName.toLowerCase().includes('iphone') || typeName.toLowerCase().includes('ipad');
+        const isDeviceLike = posIsDeviceProduct(product);
         const shouldUseImeiFlow = hasImeis;
 
         if (shouldUseImeiFlow) {
@@ -5605,12 +5680,32 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // อุปกรณ์เสริม = รายการที่ไม่ใช่เครื่องและไม่ผูก IMEI (เงื่อนไขเดียวกับที่ใช้เลือกแสดงปุ่ม "กดขาย/ของแถม")
+    const isPosAccessoryItem = (item) => !(item._isDevice || item.imei_sold);
+
+    // ช่องราคาในหน้าชำระเงินแก้ได้เมื่อ: อุปกรณ์เสริมที่ "กดขาย" (ทุกวิธีชำระ) หรือ เครื่องที่จัดไฟแนนซ์
+    const canEditModalPrice = (item) => {
+        if (item.is_gift) return false;
+        if (isPosAccessoryItem(item)) return true;
+        return !!(paymentMethod && paymentMethod.value === 'จัดไฟแนนซ์' && item.unit_name === 'เครื่อง');
+    };
+
     const validateFinancePrices = () => {
         const isFinancing = (paymentMethod && paymentMethod.value === 'จัดไฟแนนซ์');
 
         cart.forEach((item, index) => {
             const badgeContainer = confirmPriceList ? confirmPriceList.querySelector(`.modal-item-price-badge[data-index="${index}"]`) : null;
             const input = confirmPriceList ? confirmPriceList.querySelector(`.modal-item-price-input[data-index="${index}"]`) : null;
+
+            // อุปกรณ์เสริมที่กดขาย: ปล่อยให้แก้ราคาเอง ไม่รีเซ็ตกลับเป็นราคาขายหน้าร้าน
+            if (!item.is_gift && isPosAccessoryItem(item)) {
+                if (input) {
+                    input.removeAttribute('disabled');
+                    input.classList.remove('opacity-60', 'bg-surface-tile-3/50');
+                }
+                if (badgeContainer) badgeContainer.innerHTML = '';
+                return;
+            }
 
             if (input) {
                 if (item.is_gift || item.unit_name !== 'เครื่อง') {
@@ -5880,9 +5975,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             } else {
                 // Fallback: check if it's a device-like product and matches product_code
-                const typeName = product.type_id ? (product.type_id.name || '') : '';
-                const unitName = product.unit_id ? (product.unit_id.name || '') : '';
-                const isDeviceLike = unitName.includes('เครื่อง') || typeName.toLowerCase().includes('iphone') || typeName.toLowerCase().includes('ipad');
+                const isDeviceLike = posIsDeviceProduct(product);
 
                 if (isDeviceLike && product.product_code && product.product_code.toString().trim() === trimmedImei) {
                     // Check if this product_code is already in cart
@@ -5911,9 +6004,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             } else {
                 // Fallback: check if it's a device-like product and matches product_code
-                const typeName = product.type_id ? (product.type_id.name || '') : '';
-                const unitName = product.unit_id ? (product.unit_id.name || '') : '';
-                const isDeviceLike = unitName.includes('เครื่อง') || typeName.toLowerCase().includes('iphone') || typeName.toLowerCase().includes('ipad');
+                const isDeviceLike = posIsDeviceProduct(product);
 
                 if (isDeviceLike && product.product_code && product.product_code.toString().trim() === trimmedImei) {
                     // Check if this product_code is already in cart
@@ -6297,9 +6388,17 @@ document.addEventListener('DOMContentLoaded', () => {
     const posPaymentToggleBtns = document.querySelectorAll('.pos-payment-toggle-btn');
     const syncPaymentToggleUI = () => {
         const currentVal = paymentMethod ? paymentMethod.value : '';
+        // ⚠️ ห้ามใส่ bg-surface-tile-2 ค้างไว้แล้วเติม bg-primary ทับตอน active
+        //    ลำดับคลาสใน class="" ไม่ได้ตัดสินอะไร ตัวที่ชนะคือตัวที่ประกาศทีหลังใน tailwind.css
+        //    ซึ่ง .bg-surface-tile-2 อยู่หลัง .bg-primary ปุ่มที่เลือกอยู่จึงไม่เคยเป็นสีเหลืองเลย
+        //    ต้องเลือกใส่พื้นหลังทีละตัวแทน
+        const base = 'elev-chip pos-payment-toggle-btn flex-1 py-2.5 rounded-sm text-sm font-bold transition-all flex items-center justify-center gap-2 cursor-pointer';
         posPaymentToggleBtns.forEach(btn => {
             const isActive = btn.dataset.value === currentVal;
-            btn.className = `elev-chip pos-payment-toggle-btn flex-1 py-2.5 rounded-sm text-sm font-bold transition-all flex items-center justify-center bg-surface-tile-2 gap-2 ${isActive ? 'bg-primary text-on-primary' : 'text-body-muted hover:text-ink'}`;
+            btn.className = `${base} ${isActive
+                ? 'bg-primary text-on-primary ring-1 ring-accent-ink'
+                : 'bg-surface-tile-2 text-body-muted hover:text-ink hover:ring-1 hover:ring-hairline'}`;
+            btn.setAttribute('aria-pressed', String(isActive));
         });
     };
     if (paymentMethod && posPaymentToggleBtns.length) {
@@ -6313,6 +6412,9 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         // ต่อคิวหลัง listener หลักด้านบน เพื่อให้ UI ปุ่มสะท้อนค่าที่อาจถูกบังคับรีเซ็ต (เช่น จัดไฟแนนซ์ไม่ได้เพราะไม่มีเครื่องในตะกร้า) เสมอ
         paymentMethod.addEventListener('change', syncPaymentToggleUI);
+        // วาดครั้งแรกด้วย — เดิมฟังก์ชันนี้ถูกเรียกจาก event 'change' เท่านั้น
+        // เปิดโมดัลมาครั้งแรกจึงค้างสไตล์ที่เขียนไว้ใน index.html จนกว่าผู้ใช้จะกดสลับปุ่ม
+        syncPaymentToggleUI();
     }
 
     const fetchCartLatestPrices = async () => {
@@ -6493,7 +6595,8 @@ document.addEventListener('DOMContentLoaded', () => {
                                 <span class="absolute left-0 top-1/2 -translate-y-1/2 text-accent-ink text-xl font-bold">฿</span>
                                 <input type="number" value="${item.price}" min="0" step="1" data-index="${index}"
                                     class="modal-item-price-input w-full pl-5 pr-2 py-1 rounded bg-transparent border-none text-accent-ink text-2xl font-bold focus:bg-surface-chip focus:outline-none transition-all"
-                                    ${(paymentMethod && paymentMethod.value === 'จัดไฟแนนซ์' && !item.is_gift && item.unit_name === 'เครื่อง') ? '' : 'disabled'}>
+                                    aria-label="ราคา ${escapeAttr(item.product_name || '')}"
+                                    ${canEditModalPrice(item) ? '' : 'disabled'}>
                             </div>
                             <div class="modal-item-price-badge w-full text-xs" data-index="${index}"></div>
                         </div>
@@ -6506,18 +6609,20 @@ document.addEventListener('DOMContentLoaded', () => {
                                     <option value="3 เดือน" ${(item.warranty_period === '3 เดือน') ? 'selected' : ''}>ประกัน 3 เดือน</option>
                                     <option value="1 ปี" ${(item.warranty_period === '1 ปี') ? 'selected' : ''}>ประกัน 1 ปี</option>
                                 </select>
-                            ` : (item.unit_name === 'ชิ้น') ? `
-                                <div class="elev-chip inline-flex rounded-full overflow-hidden" role="group">
-                                    <button type="button" data-index="${index}" data-type="normal"
+                            ` : `
+                                <!-- อุปกรณ์เสริมไม่มีประกันรายเครื่อง จึงใช้ปุ่มเลือกว่า "กดขาย" หรือ "ของแถม" แทน
+                                     เดิมจำกัดไว้เฉพาะ unit_name === 'ชิ้น' ทำให้ของที่นับเป็น อัน/กล่อง ไม่มีปุ่มให้กดเลย -->
+                                <div class="elev-chip inline-flex rounded-full overflow-hidden" role="group" aria-label="รูปแบบการขาย">
+                                    <button type="button" data-index="${index}" data-type="normal" aria-pressed="${!item.is_gift}"
                                         class="gift-toggle-btn px-4 py-2 text-sm font-semibold transition-all ${!item.is_gift ? 'bg-primary text-on-primary' : 'bg-surface-chip text-body-muted hover:text-ink'}">
-                                        ขายปกติ
+                                        กดขาย
                                     </button>
-                                    <button type="button" data-index="${index}" data-type="gift"
+                                    <button type="button" data-index="${index}" data-type="gift" aria-pressed="${!!item.is_gift}"
                                         class="gift-toggle-btn px-4 py-2 text-sm font-semibold transition-all ${item.is_gift ? 'bg-primary text-on-primary' : 'bg-surface-chip text-body-muted hover:text-ink'}">
                                         ของแถม
                                     </button>
                                 </div>
-                            ` : ``}
+                            `}
                         </div>
                     </div>
                 `;
@@ -6618,8 +6723,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     const priceInput = confirmPriceList.querySelector(`.modal-item-price-input[data-index="${idx}"]`);
                     if (priceInput) {
                         priceInput.value = cart[idx].price;
-                        const selectedPayment = paymentMethod ? paymentMethod.value : '';
-                        priceInput.disabled = isGift || (selectedPayment !== 'จัดไฟแนนซ์') || (cart[idx].unit_name !== 'เครื่อง');
+                        priceInput.disabled = !canEditModalPrice(cart[idx]);
                     }
 
                     const subtotalLabel = confirmPriceList.querySelector(`.modal-item-subtotal[data-index="${idx}"]`);
@@ -6627,15 +6731,15 @@ document.addEventListener('DOMContentLoaded', () => {
                         subtotalLabel.textContent = `฿${cart[idx].subtotal.toLocaleString()}`;
                     }
 
+                    // ต้องใช้คลาสชุดเดียวกับตอนวาดครั้งแรกเป๊ะๆ — ของเดิมเขียนเป็นสไตล์คนละชุด
+                    // (px-2.5 py-0.5 text-[10px] + พื้นจาง) ปุ่มเลยหดเล็กและเปลี่ยนสีทันทีที่กดครั้งแรก
                     const parentGroup = btn.parentElement;
-                    const buttons = parentGroup.querySelectorAll('.gift-toggle-btn');
-                    buttons.forEach(b => {
-                        const bType = b.dataset.type;
-                        if (bType === 'normal') {
-                            b.className = `gift-toggle-btn px-2.5 py-0.5 text-[10px] font-semibold transition-all ${!isGift ? 'bg-primary/20 text-accent-ink border-r border-hairline' : 'bg-surface-chip/40 text-body-muted hover:text-ink border-r border-hairline'}`;
-                        } else if (bType === 'gift') {
-                            b.className = `gift-toggle-btn px-2.5 py-0.5 text-[10px] font-semibold transition-all ${isGift ? 'bg-amber-500/20 text-amber-400' : 'bg-surface-chip/40 text-body-muted hover:text-ink'}`;
-                        }
+                    parentGroup.querySelectorAll('.gift-toggle-btn').forEach(b => {
+                        const on = (b.dataset.type === 'gift') === isGift;
+                        b.className = `gift-toggle-btn px-4 py-2 text-sm font-semibold transition-all ${on
+                            ? 'bg-primary text-on-primary'
+                            : 'bg-surface-chip text-body-muted hover:text-ink'}`;
+                        b.setAttribute('aria-pressed', String(on));
                     });
 
                     // Recalculate global modal summary totals
@@ -6696,6 +6800,8 @@ document.addEventListener('DOMContentLoaded', () => {
         let instMonths = 0;
         let downCash = 0;
         let downTrans = 0;
+        let feeCash = 0;
+        let feeTrans = 0;
 
         if (selectedPayment === 'ซื้อสด') {
             cashVal = parseFloat(modalCashAmount ? modalCashAmount.value : 0) || 0;
@@ -6767,6 +6873,12 @@ document.addEventListener('DOMContentLoaded', () => {
             // Split into down_payment cash vs transfer
             downCash = Math.min(downTotal, Math.max(0, netCash));
             downTrans = downTotal - downCash;
+
+            // ค่าใบสัญญา + ค่าระบบ: ใช้เงินสดที่เหลือจากดาวน์ก่อน ที่ขาดเป็นเงินโอน (หลักเดียวกับดาวน์)
+            // หน้าตรวจสอบออเดอร์ใช้คู่นี้แสดง "รูปแบบการชำระเงินของลูกค้า" ให้เท่ากับเงินรับรวม
+            const feeTotal = contractFeeChk + icloudFeeChk;
+            feeCash = Math.min(feeTotal, Math.max(0, netCash - downCash));
+            feeTrans = feeTotal - feeCash;
         }
 
         const discount = posDiscount ? (parseFloat(posDiscount.value) || 0) : 0;
@@ -6815,6 +6927,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 finance_months: instMonths,
                 finance_down_payment_cash: downCash,
                 finance_down_payment_transfer: downTrans,
+                finance_fee_cash: feeCash,
+                finance_fee_transfer: feeTrans,
                 contract_fee: contractFee,
                 icloud_fee: icloudFee,
                 branch_id
@@ -7308,7 +7422,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // เหตุผลเดียวกัน สำหรับใบเสร็จไฟล์แยก (receipt-template.html)
     const RECEIPT_TEMPLATE_VERSION = 'v3';
 
-    const openReceiptRcWindow = (txnData) => {
+    // opts.autoPrint === false: เปิดดูอย่างเดียว ไม่เด้ง print dialog (หน้าใบเสร็จมีปุ่มพิมพ์ของตัวเอง)
+    const openReceiptRcWindow = (txnData, opts = {}) => {
         if (!txnData) return;
 
         const rcWindow = window.open(`receipt-rc.html?v=${RECEIPT_RC_VERSION}`, '_blank');
@@ -7317,7 +7432,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        const payload = { type: 'PRINT_RECEIPT_RC', payload: txnData };
+        const payload = { type: 'PRINT_RECEIPT_RC', payload: txnData, autoPrint: opts.autoPrint !== false };
 
         rcWindow.onload = function () {
             rcWindow.postMessage(payload, '*');
@@ -7328,6 +7443,8 @@ document.addEventListener('DOMContentLoaded', () => {
             rcWindow.postMessage(payload, '*');
         }, 1200);
     };
+    // หน้าประวัติการขาย (js/page-sales-history.js) เรียกใช้จากปุ่ม "ใบเสร็จรับเงิน" ใน popup รายละเอียดบิล
+    window.openReceiptRcWindow = openReceiptRcWindow;
 
     if (btnPrintReceiptRc) {
         btnPrintReceiptRc.addEventListener('click', () => {

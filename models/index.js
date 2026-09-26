@@ -306,6 +306,10 @@ const transactionSchema = new mongoose.Schema({
     finance_months: { type: Number, default: 0 }, // ผ่อนชำระกี่เดือน
     finance_down_payment_cash: { type: Number, default: 0 }, // เงินดาวน์ที่เป็นเงินสด
     finance_down_payment_transfer: { type: Number, default: 0 }, // เงินดาวน์ที่เป็นเงินโอน
+    // ค่าใบสัญญา + ค่าระบบที่จ่ายเป็นเงินสด/เงินโอน (บิลจัดไฟแนนซ์) — ตั้งใจไม่ใส่ default
+    // บิลเก่าที่ไม่มีฟิลด์นี้จะได้แยกออกได้ว่า "ไม่ได้บันทึกไว้" แล้วใช้การประมาณแทน (ดู splitFinanceReceived)
+    finance_fee_cash: { type: Number },
+    finance_fee_transfer: { type: Number },
     contract_fee: { type: Number, default: 0 }, // ค่าใบสัญญา
     icloud_fee: { type: Number, default: 0 }, // ค่าบริการ iCloud
     applied_deposit_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Deposit', default: null }, // ลิงก์ใบมัดจำที่นำมาหัก

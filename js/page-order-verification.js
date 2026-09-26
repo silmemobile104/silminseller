@@ -7,7 +7,7 @@
 //    หน้านี้มีหน้าที่แค่จัดรูปแบบการแสดงผล ห้ามคำนวณสูตรเงินซ้ำที่ฝั่ง frontend
 //    ไม่งั้นสองที่จะเพี้ยนจากกันเงียบๆ เวลามีคนแก้สูตรข้างใดข้างหนึ่ง
 (function () {
-    const OV_COLS = 8;
+    const OV_COLS = 9;
 
     const ovSearch = document.getElementById('order-verification-search');
     const ovStatus = document.getElementById('order-verification-status');
@@ -113,6 +113,17 @@
         .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 
+    // ตัดหมายเหตุให้เหลือไม่เกิน max ตัวอักษรแล้วต่อ "..." — นับเป็นกลุ่มตัวอักษร (grapheme)
+    // เพราะสระบน/ล่างและวรรณยุกต์ไทยเป็นโค้ดพอยต์แยก ถ้าตัดตรงๆ อาจได้พยัญชนะที่วรรณยุกต์หลุดหาย
+    const OV_NOTE_MAX = 10;
+    const ovShortNote = (s, max = OV_NOTE_MAX) => {
+        const text = String(s == null ? '' : s).trim();
+        const chars = (typeof Intl !== 'undefined' && Intl.Segmenter)
+            ? Array.from(new Intl.Segmenter('th', { granularity: 'grapheme' }).segment(text), x => x.segment)
+            : Array.from(text);
+        return chars.length > max ? chars.slice(0, max).join('').trimEnd() + '...' : text;
+    };
+
     const ovBaht = (n) => `฿${(Number(n) || 0).toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     const ovBahtShort = (n) => `฿${Math.round(Number(n) || 0).toLocaleString('th-TH')}`;
     // เรตเฉลี่ยของบิลคละประเภทมีทศนิยมยาว แต่เรตที่ตั้งไว้ตรงๆ ไม่ควรกลายเป็น "10.00%"
@@ -160,6 +171,7 @@
                     <td class="px-6 py-4">${bar('w-24 h-6')}</td>
                     <td class="px-6 py-4">${bar('w-24 h-6')}</td>
                     <td class="px-6 py-4">${bar('w-20')}</td>
+                    <td class="px-6 py-4">${bar('w-28')}</td>
                     <td class="px-6 py-4"><div class="flex items-center justify-end gap-1">${bar('w-7 h-7')}${bar('w-7 h-7')}</div></td>
                 </tr>
             `;
@@ -244,6 +256,12 @@
             <td class="px-6 py-4">${ovStatusPill(row)}</td>
             <td class="px-6 py-4">${ovVerifyBadge(row)}</td>
             <td class="px-6 py-4 text-ink">${ovEsc(row.branch_name || '-')}</td>
+            <td class="px-6 py-4 text-ink">
+                ${row.verify_note
+                    // แสดงไม่เกิน 10 ตัวอักษรแล้วต่อ "..." — ข้อความเต็มดูได้จาก title หรือเปิดรายละเอียด
+                    ? `<span title="${ovEsc(row.verify_note)}">${ovEsc(ovShortNote(row.verify_note))}</span>`
+                    : '<span class="text-ink/50">-</span>'}
+            </td>
             <td class="px-6 py-4">
                 <div class="flex items-center justify-end gap-1">
                     <button type="button" data-print="${row._id}" title="พิมพ์ใบเสร็จ"
@@ -298,6 +316,12 @@
                 <p class="text-sm text-ink mt-1 truncate">${ovEsc(ovSaleTypeText(row))}</p>
                 <p class="text-xs text-ink/70">${ovEsc(row.branch_name || '-')}</p>
             </div>
+
+            ${row.verify_note ? `
+            <div class="mt-3">
+                <p class="text-[10px] text-ink/60 uppercase tracking-wide">หมายเหตุ</p>
+                <p class="text-sm text-ink mt-1 break-words" title="${ovEsc(row.verify_note)}">${ovEsc(ovShortNote(row.verify_note))}</p>
+            </div>` : ''}
 
             <div class="flex items-center justify-between mt-3.5 pt-3 border-t border-hairline gap-2">
                 ${ovStatusPill(row)}
@@ -1213,10 +1237,12 @@
         ovSetText('order-detail-sale-type', ovSaleTypeText(row));
 
         // รูปแบบการชำระเงินของลูกค้า — แสดงเฉพาะช่องทางที่มีเงินเข้าจริง
+        // บิลผ่อน: เซิร์ฟเวอร์แยกเงินสด/โอนให้รวมกันเท่ากับเงินรับรวม (ดาวน์ + ค่าใบสัญญา + ค่าระบบ) พอดี
+        // จึงไม่ต่อท้าย "หักมัดจำ" เพราะมัดจำไม่อยู่ในสูตรเงินรับรวม ใส่ไปแล้วยอดจะไม่ตรงกัน
         const payParts = [];
         if (row.cash_amount > 0) payParts.push(`เงินสด ${ovBahtShort(row.cash_amount)}`);
         if (row.transfer_amount > 0) payParts.push(`เงินโอน ${ovBahtShort(row.transfer_amount)}`);
-        if (row.applied_deposit_amount > 0) payParts.push(`หักมัดจำ ${ovBahtShort(row.applied_deposit_amount)}`);
+        if (!row.is_financing && row.applied_deposit_amount > 0) payParts.push(`หักมัดจำ ${ovBahtShort(row.applied_deposit_amount)}`);
         ovSetText('order-detail-customer-payment', payParts.length ? payParts.join(' · ') : '-');
 
         const itemsBox = document.getElementById('order-detail-items');
@@ -1289,8 +1315,10 @@
         ovSetText('order-detail-revenue', ovBaht(f.silmin_revenue));
 
         if (ovDetailNote) ovDetailNote.value = row.verify_note || '';
-        if (ovDetailPaymentStatus) ovDetailPaymentStatus.value = row.payment_status || 'ยังไม่ชำระ';
-        if (ovDetailVerifyStatus) ovDetailVerifyStatus.value = row.verify_status || 'รอตรวจสอบ';
+        // checkbox: ติ๊ก = ชำระแล้ว / ว่าง = ยังไม่ชำระ (บิลที่ยังไม่ชำระจึงเปิดมาเป็นช่องว่างเสมอ)
+        if (ovDetailPaymentStatus) ovDetailPaymentStatus.checked = row.payment_status === 'ชำระแล้ว';
+        // checkbox: ติ๊ก = สำเร็จ / ว่าง = รอตรวจสอบ (บิลที่ยังไม่ตรวจจึงเปิดมาเป็นช่องว่างเสมอ)
+        if (ovDetailVerifyStatus) ovDetailVerifyStatus.checked = row.verify_status === 'สำเร็จ';
 
         // บิลที่ถูกยกเลิกแล้วห้ามแก้อะไรทั้งนั้น (เซิร์ฟเวอร์ก็ปฏิเสธซ้ำอีกชั้น)
         const cancelled = row.status === 'ยกเลิกแล้ว';
@@ -1339,12 +1367,16 @@
         if (!ovCurrentOrder) return;
 
         const note = ovDetailNote ? ovDetailNote.value.trim() : '';
-        const paymentStatus = ovDetailPaymentStatus ? ovDetailPaymentStatus.value : '';
-        const verifyStatus = ovDetailVerifyStatus ? ovDetailVerifyStatus.value : '';
+        const paymentStatus = ovDetailPaymentStatus
+            ? (ovDetailPaymentStatus.checked ? 'ชำระแล้ว' : 'ยังไม่ชำระ')
+            : '';
+        const verifyStatus = ovDetailVerifyStatus
+            ? (ovDetailVerifyStatus.checked ? 'สำเร็จ' : 'รอตรวจสอบ')
+            : '';
 
         const payload = {};
         if (paymentStatus && paymentStatus !== ovCurrentOrder.payment_status) payload.payment_status = paymentStatus;
-        if (verifyStatus && verifyStatus !== ovCurrentOrder.verify_status) payload.verify_status = verifyStatus;
+        if (verifyStatus && verifyStatus !== (ovCurrentOrder.verify_status || 'รอตรวจสอบ')) payload.verify_status = verifyStatus;
         if (note !== (ovCurrentOrder.verify_note || '')) payload.verify_note = note;
 
         const f = ovCurrentOrder.finance || {};

@@ -1060,6 +1060,24 @@
         });
     }
 
+    // ปุ่มดูใบเสร็จรับเงิน (A4, receipt-rc.html) — เปิดตรงจาก popup ไม่ต้องผ่านขั้นพิมพ์ใบเสร็จไฟล์แยก
+    // currentTransaction มาจาก GET /transactions/:id ชุดเดียวกับที่ printReceipt() ใช้ จึงส่งต่อได้เลย
+    // ต้อง window.open() ในจังหวะคลิกนี้ (ห้าม await ก่อน) ไม่งั้น popup blocker จะบล็อก
+    const btnViewReceiptRc = document.getElementById('btn-view-receipt-rc');
+    if (btnViewReceiptRc) {
+        btnViewReceiptRc.addEventListener('click', () => {
+            if (!currentTransaction) {
+                showToast('ไม่พบข้อมูลรายการที่จะแสดง', 'error');
+                return;
+            }
+            if (typeof window.openReceiptRcWindow !== 'function') {
+                showToast('ไม่สามารถเปิดใบเสร็จรับเงินได้ กรุณารีเฟรชหน้า', 'error');
+                return;
+            }
+            window.openReceiptRcWindow(currentTransaction, { autoPrint: false });
+        });
+    }
+
     // Cancel transaction button
     if (btnCancelTransaction) {
         btnCancelTransaction.addEventListener('click', () => {

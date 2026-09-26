@@ -1109,10 +1109,10 @@
     <!-- [2] แท็บสถานะ — แทนการ์ดสรุปชุดเดิมที่มี cursor-pointer + data-status แต่ไม่เคยผูก handler
          (กดไม่ได้จริง) และมีบรรทัดเปรียบเทียบกับวันก่อนหน้าที่ฮาร์ดโค้ดตัวเลขไว้ ไม่ใช่ข้อมูลจริง -->
     <div id="receive-status-tabs" class="flex flex-wrap items-center gap-2">
-        <button type="button" data-status="all" aria-pressed="true"
-            class="border border-transparent receive-tab px-4 py-2.5 rounded-xl text-sm font-bold transition-colors flex items-center gap-2 cursor-pointer bg-primary text-on-primary ring-1 ring-accent-ink">
+        <button type="button" data-status="all" aria-pressed="false"
+            class="elev-field receive-tab px-4 py-2.5 rounded-xl text-sm font-bold transition-colors flex items-center gap-2 cursor-pointer bg-field text-body-muted hover:ring-1 hover:ring-accent-ink hover:text-ink">
             <i class="fa-solid fa-cube"></i> ทั้งหมด
-            <span id="badge-receive-all" class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-hairline/20">0</span>
+            <span id="badge-receive-all" class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-chip/60 text-ink">0</span>
         </button>
         <button type="button" data-status="รอจัดส่ง" aria-pressed="false"
             class="elev-field receive-tab px-4 py-2.5 rounded-xl text-sm font-bold transition-colors flex items-center gap-2 cursor-pointer bg-field text-body-muted hover:ring-1 hover:ring-accent-ink hover:text-ink">
@@ -1120,11 +1120,11 @@
             <span id="badge-receive-pending"
                 class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-orange-500/[0.12] text-orange-400">0</span>
         </button>
-        <button type="button" data-status="ของถึงสาขาแล้ว" aria-pressed="false"
-            class="elev-field receive-tab px-4 py-2.5 rounded-xl text-sm font-bold transition-colors flex items-center gap-2 cursor-pointer bg-field text-body-muted hover:ring-1 hover:ring-accent-ink hover:text-ink">
+        <button type="button" data-status="ของถึงสาขาแล้ว" aria-pressed="true"
+            class="border border-transparent receive-tab px-4 py-2.5 rounded-xl text-sm font-bold transition-colors flex items-center gap-2 cursor-pointer bg-primary text-on-primary ring-1 ring-accent-ink">
             <i class="fa-solid fa-location-dot"></i> ของถึงสาขาแล้ว
             <span id="badge-receive-arrived"
-                class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-orange-500/[0.12] text-orange-400">0</span>
+                class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-hairline/20">0</span>
         </button>
         <button type="button" data-status="กำลังตรวจรับ" aria-pressed="false"
             class="elev-field receive-tab px-4 py-2.5 rounded-xl text-sm font-bold transition-colors flex items-center gap-2 cursor-pointer bg-field text-body-muted hover:ring-1 hover:ring-accent-ink hover:text-ink">
@@ -1151,7 +1151,7 @@
         <!-- 2a แถบควบคุม (ข้อ 11.4) -->
         <div class="p-6 pb-0 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
             <h3 id="receive-panel-title" class="text-lg text-ink flex items-center gap-2">
-                <i class="fa-solid fa-boxes-packing text-accent-ink"></i> ใบสั่งซื้อทั้งหมด
+                <i class="fa-solid fa-boxes-packing text-accent-ink"></i> ใบสั่งซื้อที่ของถึงสาขาแล้ว
             </h3>
             <div class="flex flex-wrap items-center gap-2.5 relative w-full lg:w-auto">
                 <div class="relative group w-full sm:w-72">

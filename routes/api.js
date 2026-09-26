@@ -208,6 +208,22 @@ const resolveCommissionRate = (fcDoc, typeId) => {
     return hit && Number.isFinite(Number(hit.rate)) ? Number(hit.rate) : base;
 };
 
+// แยก "เงินรับรวม" ของบิลจัดไฟแนนซ์ (ดาวน์ + ค่าใบสัญญา + ค่าระบบ) เป็นเงินสด/เงินโอน
+// ผลรวมเท่ากับ receivedTotal เสมอ แม้ฝ่ายบัญชีจะแก้ราคาดาวน์ทีหลัง (ส่วนต่างตกไปที่เงินโอน)
+// บิลเก่าไม่ได้บันทึกว่าค่าธรรมเนียมจ่ายด้วยอะไร จึงประมาณตามวิธีจ่ายดาวน์:
+// ดาวน์โอนล้วน = ค่าธรรมเนียมโอนด้วย / อย่างอื่น = เงินสด (หน้าขายตัดเงินสดก่อนเสมอ)
+const splitFinanceReceived = (txn, receivedTotal) => {
+    const downCash = Number(txn.finance_down_payment_cash) || 0;
+    const downTrans = Number(txn.finance_down_payment_transfer) || 0;
+    const feeTotal = (Number(txn.contract_fee) || 0) + (Number(txn.icloud_fee) || 0);
+    const hasFeeSplit = txn.finance_fee_cash != null || txn.finance_fee_transfer != null;
+    const feeCash = hasFeeSplit
+        ? (Number(txn.finance_fee_cash) || 0)
+        : ((downCash === 0 && downTrans > 0) ? 0 : feeTotal);
+    const cash = Math.min(receivedTotal, Math.max(0, downCash + feeCash));
+    return { cash, transfer: Math.max(0, receivedTotal - cash) };
+};
+
 // deviceItems: รายการเครื่องในบิล ({ product_name, type_id, type_name, price, quantity })
 // ราคาเต็มและค่าคอมคิดจากอาร์เรย์นี้ตัวเดียว ผู้เรียกจึงไม่ต้องส่ง fullPrice มาซ้ำ
 const buildOrderFinanceSheet = (txn, deviceItems, fcDoc, receivable = null) => {
@@ -487,9 +503,20 @@ const executeFinalizeImport = async (poId, employeeId) => {
             let conditionId = null;
             let supplierId = null;
 
+            // แถวที่มาจากแบบฟอร์ม "อุปกรณ์เสริม" ไม่มีหมวดหมู่มาด้วย (normalizePoItem บังคับเป็นค่าว่าง)
+            // ถ้าปล่อยให้ตกไปใช้ ProductType ตัวแรกของ collection จะกลายเป็น "IPhone" ซึ่งพังสองต่อ:
+            //   1. ไปโผล่ใต้แท็บ IPhone ในหน้าขาย
+            //   2. checkIsDevice เห็นชื่อประเภทมีคำว่า iphone แล้วตัดสินว่าเป็น "เครื่อง"
+            //      อุปกรณ์เสริมจึงหายไปจากแท็บอุปกรณ์เสริม ทั้งที่มีของอยู่ในสต็อกจริง
+            const isAccessoryItem = item.item_kind === 'accessory';
+
             if (item.category) {
                 const type = await ProductType.findOne({ name: item.category });
                 typeId = type ? type._id : null;
+            }
+            if (!typeId && isAccessoryItem) {
+                const accType = await ProductType.findOne({ name: 'อุปกรณ์เสริม' });
+                typeId = accType ? accType._id : null;
             }
             if (!typeId) {
                 const firstType = await ProductType.findOne();
@@ -506,8 +533,12 @@ const executeFinalizeImport = async (poId, employeeId) => {
                 capacityId = cap ? cap._id : null;
             }
 
-            const cond = await ProductCondition.findOne({ name: 'มือ1' }) || await ProductCondition.findOne();
-            conditionId = cond ? cond._id : null;
+            // สภาพสินค้า (มือ1/มือ2) เป็นเรื่องของเครื่อง ไม่ใช่ของอุปกรณ์เสริม
+            // และ checkIsDevice ถือว่า "มี condition_id = เป็นเครื่อง" จึงต้องไม่ตั้งให้อุปกรณ์เสริม
+            if (!isAccessoryItem) {
+                const cond = await ProductCondition.findOne({ name: 'มือ1' }) || await ProductCondition.findOne();
+                conditionId = cond ? cond._id : null;
+            }
 
             if (po.supplier_name) {
                 const supp = await Supplier.findOne({ name: po.supplier_name });
@@ -2381,6 +2412,7 @@ router.post('/transactions', async (req, res) => {
             items, total_amount, payment_method, down_payment, branch_id, member_id,
             payment_type, cash_amount, transfer_amount, finance_company,
             finance_payment_day, finance_months, finance_down_payment_cash, finance_down_payment_transfer,
+            finance_fee_cash, finance_fee_transfer,
             contract_fee, icloud_fee, applied_deposit_id, applied_deposit_amount
         } = req.body;
 
@@ -2504,6 +2536,8 @@ router.post('/transactions', async (req, res) => {
             finance_months: Number(finance_months) || 0,
             finance_down_payment_cash: Number(finance_down_payment_cash) || 0,
             finance_down_payment_transfer: Number(finance_down_payment_transfer) || 0,
+            finance_fee_cash: Number(finance_fee_cash) || 0,
+            finance_fee_transfer: Number(finance_fee_transfer) || 0,
             contract_fee: Number(contract_fee) || 0,
             icloud_fee: Number(icloud_fee) || 0,
             member_id: member_id || null,
@@ -2911,6 +2945,11 @@ router.get('/order-verifications', async (req, res) => {
             const receivable = receivableMap.get(String(t._id)) || null;
             const branchDoc = t.branch_id ? maps.branches.get(String(t.branch_id)) : null;
             const paymentType = t.payment_type || t.payment_method;
+            const financeSheet = buildOrderFinanceSheet(t, deviceItems, fcDoc, receivable);
+            // บิลผ่อน: เงินสด + เงินโอน ต้องเท่ากับเงินรับรวม (ดาวน์ + ค่าใบสัญญา + ค่าระบบ) — ไม่ใช่แค่ดาวน์
+            const financeSplit = paymentType === 'จัดไฟแนนซ์'
+                ? splitFinanceReceived(t, financeSheet.received_total)
+                : null;
 
             return {
                 _id: t._id,
@@ -2926,9 +2965,9 @@ router.get('/order-verifications', async (req, res) => {
                 finance_company_name: fcDoc ? fcDoc.name : (t.finance_company || ''),
                 finance_months: Number(t.finance_months) || 0,
                 total_amount: Number(t.total_amount) || 0,
-                // รูปแบบการชำระเงินของลูกค้า — บิลผ่อนแยกเงินดาวน์เป็นสด/โอน ส่วนบิลซื้อสดใช้ยอดหลัก
-                cash_amount: Number(paymentType === 'จัดไฟแนนซ์' ? t.finance_down_payment_cash : t.cash_amount) || 0,
-                transfer_amount: Number(paymentType === 'จัดไฟแนนซ์' ? t.finance_down_payment_transfer : t.transfer_amount) || 0,
+                // รูปแบบการชำระเงินของลูกค้า — บิลผ่อนแยกเงินรับรวมเป็นสด/โอน ส่วนบิลซื้อสดใช้ยอดหลัก
+                cash_amount: financeSplit ? financeSplit.cash : (Number(t.cash_amount) || 0),
+                transfer_amount: financeSplit ? financeSplit.transfer : (Number(t.transfer_amount) || 0),
                 applied_deposit_amount: Number(t.applied_deposit_amount) || 0,
                 finance_paid_at: receivable ? (receivable.settled_at || null) : (t.finance_paid_at || null),
                 verify_note: t.verify_note || '',
@@ -2937,7 +2976,7 @@ router.get('/order-verifications', async (req, res) => {
                 device_item_count: deviceItems.length,
                 device_unit_price: deviceItems.length === 1 ? deviceItems[0].price : null,
                 items,
-                finance: buildOrderFinanceSheet(t, deviceItems, fcDoc, receivable)
+                finance: financeSheet
             };
         });
 
