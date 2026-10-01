@@ -94,6 +94,17 @@ const verifyToken = (req, res, next) => {
             if (decoded.permissions.do_stock_audit === undefined) {
                 decoded.permissions.do_stock_audit = (decoded.role === 'แอดมิน' || decoded.role === 'ผู้จัดการ' || decoded.permissions.do_pos || false);
             }
+            // token ที่ออกก่อนมีสิทธิ์ดูประวัติการขาย — ยึดตาม do_pos เหมือนเดิม
+            if (decoded.permissions.view_sales_history === undefined) {
+                decoded.permissions.view_sales_history = !!decoded.permissions.do_pos;
+            }
+            // token ที่ออกก่อนมีสิทธิ์การชำระเงินระบบสั่งซื้อ — ยึดตาม manage_finance เหมือนเดิม
+            if (decoded.permissions.pay_po === undefined) {
+                decoded.permissions.pay_po = !!decoded.permissions.manage_finance;
+            }
+            if (decoded.permissions.view_po_dashboard === undefined) {
+                decoded.permissions.view_po_dashboard = !!decoded.permissions.manage_po;
+            }
         }
         req.user = decoded; // { employee_id, role, branch_id }
         next();
@@ -1440,7 +1451,10 @@ router.post('/auth/login', async (req, res) => {
             view_daily_summary: dbPerms.view_daily_summary !== undefined ? dbPerms.view_daily_summary : true,
             manage_stock_audit: dbPerms.manage_stock_audit !== undefined ? dbPerms.manage_stock_audit : (employee.role === 'แอดมิน' || employee.role === 'ผู้จัดการ' || dbPerms.manage_settings || false),
             do_stock_audit: dbPerms.do_stock_audit !== undefined ? dbPerms.do_stock_audit : (employee.role === 'แอดมิน' || employee.role === 'ผู้จัดการ' || dbPerms.do_pos || false),
-            verify_orders: dbPerms.verify_orders !== undefined ? dbPerms.verify_orders : (dbPerms.manage_finance || false)
+            verify_orders: dbPerms.verify_orders !== undefined ? dbPerms.verify_orders : (dbPerms.manage_finance || false),
+            view_sales_history: dbPerms.view_sales_history !== undefined && dbPerms.view_sales_history !== null ? dbPerms.view_sales_history : (dbPerms.do_pos || false),
+            pay_po: dbPerms.pay_po !== undefined && dbPerms.pay_po !== null ? dbPerms.pay_po : (dbPerms.manage_finance || false),
+            view_po_dashboard: dbPerms.view_po_dashboard !== undefined && dbPerms.view_po_dashboard !== null ? dbPerms.view_po_dashboard : (dbPerms.manage_po || false)
         };
 
         // สร้าง JWT Token (รวม permissions)
@@ -1536,7 +1550,10 @@ router.get('/auth/me', async (req, res) => {
             view_daily_summary: dbPerms.view_daily_summary !== undefined ? dbPerms.view_daily_summary : true,
             manage_stock_audit: dbPerms.manage_stock_audit !== undefined ? dbPerms.manage_stock_audit : (employee.role === 'แอดมิน' || employee.role === 'ผู้จัดการ' || dbPerms.manage_settings || false),
             do_stock_audit: dbPerms.do_stock_audit !== undefined ? dbPerms.do_stock_audit : (employee.role === 'แอดมิน' || employee.role === 'ผู้จัดการ' || dbPerms.do_pos || false),
-            verify_orders: dbPerms.verify_orders !== undefined ? dbPerms.verify_orders : (dbPerms.manage_finance || false)
+            verify_orders: dbPerms.verify_orders !== undefined ? dbPerms.verify_orders : (dbPerms.manage_finance || false),
+            view_sales_history: dbPerms.view_sales_history !== undefined && dbPerms.view_sales_history !== null ? dbPerms.view_sales_history : (dbPerms.do_pos || false),
+            pay_po: dbPerms.pay_po !== undefined && dbPerms.pay_po !== null ? dbPerms.pay_po : (dbPerms.manage_finance || false),
+            view_po_dashboard: dbPerms.view_po_dashboard !== undefined && dbPerms.view_po_dashboard !== null ? dbPerms.view_po_dashboard : (dbPerms.manage_po || false)
         };
 
         // ออก token ใหม่ที่มีสิทธิ์ล่าสุดด้วย
@@ -2545,6 +2562,11 @@ router.post('/transactions', async (req, res) => {
             applied_deposit_amount: Number(applied_deposit_amount) || 0,
             // ซื้อสด = รับเงินครบหน้าร้านแล้ว / จัดไฟแนนซ์ = รอไฟแนนซ์โอนเงินเข้ามา (ฝ่ายบัญชีเป็นคนกดยืนยันทีหลัง)
             payment_status: resolveDefaultPaymentStatus(payment_type || payment_method),
+            // ซื้อสดรับเงินครบหน้าร้าน -> คนที่ขายคือคนบันทึกว่า "ชำระแล้ว" (แสดงในหน้าตรวจสอบออเดอร์)
+            // จัดไฟแนนซ์ยังไม่ชำระ จึงยังไม่มีผู้บันทึกจนกว่าฝ่ายบัญชีจะกดยืนยัน
+            ...(resolveDefaultPaymentStatus(payment_type || payment_method) === 'ชำระแล้ว'
+                ? { payment_status_updated_by: req.user.employee_id, payment_status_updated_at: now }
+                : {}),
             created_at: now
         });
 
@@ -2645,6 +2667,11 @@ router.post('/transactions', async (req, res) => {
 // หน้าที่: ดึงประวัติรายการขายทั้งหมด รองรับการกรองข้อมูล
 router.get('/transactions', async (req, res) => {
     try {
+        // รายการบิลขายทั้งหมดใช้เฉพาะหน้าประวัติการขาย (บิลเดี่ยว /transactions/:id ไม่ได้ผูกสิทธิ์นี้
+        // เพราะหน้าตรวจสอบออเดอร์และใบเสร็จหลังขายก็เรียกใช้)
+        if (!req.user.permissions.view_sales_history) {
+            return res.status(403).json({ success: false, message: 'ไม่มีสิทธิ์ดูประวัติการขาย' });
+        }
         const { date, branch_id, search, employee_id, payment_type, status, startDate, endDate } = req.query;
         let filter = {};
 
@@ -2885,22 +2912,43 @@ router.get('/order-verifications', async (req, res) => {
         // เก็บ id ให้ครบก่อนแล้วยิง $in รอบเดียว — ห้าม await ใน loop (กติกา performance ใน CLAUDE.md)
         const productIds = [];
         const txnIds = [];
+        const updaterIds = new Set(); // คนที่บันทึกสถานะการชำระเงิน/สถานะดำเนินการ
         transactions.forEach(t => {
             txnIds.push(t._id);
             (t.items || []).forEach(it => { if (it.product_id) productIds.push(it.product_id); });
+            if (t.payment_status_updated_by) updaterIds.add(String(t.payment_status_updated_by));
+            // บิลซื้อสดเก่า (ก่อนมีการบันทึกผู้ขายเป็นผู้บันทึก) ต้องใช้ข้อมูลพนักงานขายแทน
+            if (t.employee_id && t.employee_id._id) updaterIds.add(String(t.employee_id._id));
+            if (t.verify_status_updated_by) updaterIds.add(String(t.verify_status_updated_by));
         });
 
-        const [md, products, receivables] = await Promise.all([
+        const [md, products, receivables, updaters] = await Promise.all([
             mdCache.get(),
             productIds.length
                 ? Product.find({ _id: { $in: productIds } }).select('product_code type_id color_id unit_id').lean()
                 : Promise.resolve([]),
             txnIds.length
                 ? FinanceReceivable.find({ transaction_id: { $in: txnIds } }).lean()
+                : Promise.resolve([]),
+            updaterIds.size
+                ? Employee.find({ _id: { $in: [...updaterIds] } }).select('name role branch_id').lean()
                 : Promise.resolve([])
         ]);
 
         const { maps, lists } = md;
+        const updaterMap = new Map(updaters.map(e => [String(e._id), e]));
+        // ผู้บันทึกสถานะ: ชื่อ ตำแหน่ง สาขา (ข้อมูลพนักงานปัจจุบัน) + เวลาที่บันทึก — ยังไม่เคยมีใครบันทึก = null
+        const resolveUpdater = (empId, at) => {
+            if (!empId) return null;
+            const emp = updaterMap.get(String(empId));
+            const branchDoc = emp && emp.branch_id ? maps.branches.get(String(emp.branch_id)) : null;
+            return {
+                name: emp ? emp.name : 'ไม่พบข้อมูลพนักงาน',
+                role: emp ? (emp.role || '') : '',
+                branch_name: branchDoc ? branchDoc.name : '',
+                at: at || null
+            };
+        };
         const productMap = new Map(products.map(p => [String(p._id), p]));
         const receivableMap = new Map(receivables.map(r => [String(r.transaction_id), r]));
 
@@ -2971,6 +3019,12 @@ router.get('/order-verifications', async (req, res) => {
                 applied_deposit_amount: Number(t.applied_deposit_amount) || 0,
                 finance_paid_at: receivable ? (receivable.settled_at || null) : (t.finance_paid_at || null),
                 verify_note: t.verify_note || '',
+                // บิลซื้อสดที่ยังไม่มีใครแก้สถานะ: ผู้บันทึก "ชำระแล้ว" คือพนักงานที่ขาย ณ เวลาที่ขาย
+                payment_status_by: resolveUpdater(t.payment_status_updated_by, t.payment_status_updated_at)
+                    || (paymentType !== 'จัดไฟแนนซ์' && t.employee_id && t.employee_id._id
+                        ? resolveUpdater(t.employee_id._id, t.created_at)
+                        : null),
+                verify_status_by: resolveUpdater(t.verify_status_updated_by, t.verify_status_updated_at),
                 // ฝ่ายบัญชีแก้ราคาเครื่องได้เฉพาะบิลที่มีเครื่องรายการเดียว — บิลที่ขายหลายเครื่อง
                 // ระบบเดาไม่ได้ว่าจะลงราคาใหม่ให้เครื่องไหน จึงล็อกไว้แทนการเดา
                 device_item_count: deviceItems.length,
@@ -3115,7 +3169,12 @@ router.patch('/order-verifications/:id', async (req, res) => {
         }
 
         const verifyBefore = txn.verify_status || 'รอตรวจสอบ';
-        if (verify_status) txn.verify_status = verify_status;
+        if (verify_status && verify_status !== verifyBefore) {
+            txn.verify_status = verify_status;
+            // popup รายละเอียดออเดอร์แสดงว่าใครเป็นคนบันทึกสถานะนี้ล่าสุด
+            txn.verify_status_updated_by = req.user.employee_id;
+            txn.verify_status_updated_at = new Date();
+        }
 
         if (verify_note !== undefined) {
             txn.verify_note = String(verify_note).slice(0, 500);
@@ -4709,6 +4768,15 @@ const normalizePoItem = (item) => {
     };
 };
 
+// แปลง "กำหนดจ่ายวันที่" จาก <input type="date"> (YYYY-MM-DD) เป็น Date
+// ค่าว่าง = ไม่กำหนด (null) / รูปแบบไม่ถูกต้อง = undefined ให้ผู้เรียกตอบ 400
+const parsePoDueDate = (value) => {
+    if (value === undefined || value === null || value === '') return null;
+    if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return undefined;
+    const d = new Date(`${value}T00:00:00.000Z`);
+    return isNaN(d.getTime()) ? undefined : d;
+};
+
 // จดชื่อ+รหัสของอุปกรณ์เสริมที่เพิ่งตั้งใหม่ ลง master data (ProductName) ทันทีที่สร้างใบสั่งซื้อ
 //
 // ทำไมต้องมี: เอกสาร Product จะถูกสร้างตอน "นำเข้าสต็อก" (executeFinalizeImport) เท่านั้น
@@ -4768,6 +4836,10 @@ router.post('/purchase-orders', async (req, res) => {
         if (!supplier_name || !branch_id || !items || items.length === 0) {
             return res.status(400).json({ success: false, message: 'กรุณากรอกข้อมูลให้ครบถ้วน' });
         }
+        const payment_due_date = parsePoDueDate(req.body.payment_due_date);
+        if (payment_due_date === undefined) {
+            return res.status(400).json({ success: false, message: 'รูปแบบวันที่กำหนดจ่ายไม่ถูกต้อง' });
+        }
 
         // Auto-generate po_number: PO-YYYYMMDD-XXXX
         const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
@@ -4781,6 +4853,7 @@ router.post('/purchase-orders', async (req, res) => {
             supplier_name,
             branch_id,
             items: poItems,
+            payment_due_date,
             created_by: req.user.employee_id,
             status: 'รอจัดส่ง'
         });
@@ -4813,6 +4886,10 @@ router.post('/po/create', async (req, res) => {
         if (!supplier_name || !branch_id || !items || items.length === 0) {
             return res.status(400).json({ success: false, message: 'กรุณากรอกข้อมูลให้ครบถ้วน' });
         }
+        const payment_due_date = parsePoDueDate(req.body.payment_due_date);
+        if (payment_due_date === undefined) {
+            return res.status(400).json({ success: false, message: 'รูปแบบวันที่กำหนดจ่ายไม่ถูกต้อง' });
+        }
 
         // Auto-generate po_number: PO-YYYYMMDD-XXXX
         const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
@@ -4826,6 +4903,7 @@ router.post('/po/create', async (req, res) => {
             supplier_name,
             branch_id,
             items: poItems,
+            payment_due_date,
             created_by: req.user.employee_id,
             status: 'รอจัดส่ง'
         });
@@ -4911,12 +4989,17 @@ router.post('/purchase-orders/:id/update', async (req, res) => {
         if (!supplier_name || !branch_id || !items || items.length === 0) {
             return res.status(400).json({ success: false, message: 'กรุณากรอกข้อมูลให้ครบถ้วน' });
         }
+        const payment_due_date = parsePoDueDate(req.body.payment_due_date);
+        if (payment_due_date === undefined) {
+            return res.status(400).json({ success: false, message: 'รูปแบบวันที่กำหนดจ่ายไม่ถูกต้อง' });
+        }
 
         const poItems = items.map(item => normalizePoItem(item));
 
         po.supplier_name = supplier_name;
         po.branch_id = branch_id;
         po.items = poItems;
+        po.payment_due_date = payment_due_date;
 
         await po.save();
         await registerAccessoryProductNames(poItems);
@@ -5075,9 +5158,24 @@ router.post('/po/:id/scan-item', async (req, res) => {
             return res.status(400).json({ success: false, message: 'ใบสั่งซื้อนี้ไม่สามารถสแกนตรวจรับได้แล้ว' });
         }
 
-        const { received_items } = req.body; // { item_id: { qty: X, imeis: [] } }
+        const { received_items } = req.body; // { item_id: { qty: X, imeis: [], selling_price?: N } }
         if (!received_items) {
             return res.status(400).json({ success: false, message: 'ไม่พบข้อมูลตรวจรับสินค้า' });
+        }
+
+        // ราคาขายต่อชิ้นแก้ได้จากปุ่ม "แก้ไข" ใน popup ตรวจรับ — ตรวจครบทุกแถวก่อนแตะเอกสาร
+        // ราคานี้คือราคาที่จะถูกตั้งให้สินค้าตอนอนุมัตินำเข้าคลัง (executeFinalizeImport)
+        const priceChanges = [];
+        for (const item of po.items) {
+            const data = received_items[item._id.toString()];
+            if (!data || data.selling_price === undefined) continue;
+            const newPrice = Number(data.selling_price);
+            if (!Number.isFinite(newPrice) || newPrice < 0) {
+                return res.status(400).json({ success: false, message: `ราคาขายของ ${item.product_name} ต้องเป็นตัวเลขไม่ติดลบ` });
+            }
+            if (newPrice !== Number(item.selling_price)) {
+                priceChanges.push({ item, oldPrice: Number(item.selling_price) || 0, newPrice });
+            }
         }
 
         for (let item of po.items) {
@@ -5113,8 +5211,21 @@ router.post('/po/:id/scan-item', async (req, res) => {
             }
         }
 
+        priceChanges.forEach(c => { c.item.selling_price = c.newPrice; });
+
         po.status = 'กำลังตรวจรับ';
         await po.save();
+
+        if (priceChanges.length) {
+            const detailText = priceChanges
+                .map(c => `${c.item.product_name} ฿${c.oldPrice.toLocaleString()} → ฿${c.newPrice.toLocaleString()}`)
+                .join(', ');
+            await logActivity(req, 'UPDATE', 'PO', `แก้ไขราคาขายตอนตรวจรับ PO ${po.po_number}: ${detailText}`, po.po_number, po._id, {
+                price_changes: priceChanges.map(c => ({
+                    item_id: c.item._id, product_name: c.item.product_name, old_price: c.oldPrice, new_price: c.newPrice
+                }))
+            });
+        }
 
         console.log(`[PO] อัพเดทข้อมูลสแกน: PO ${po.po_number}`);
         res.status(200).json({
@@ -5459,7 +5570,8 @@ router.post('/accounting/expenses', async (req, res) => {
 // PUT /api/accounting/po-pay/:id
 router.put('/accounting/po-pay/:id', async (req, res) => {
     try {
-        if (!req.user.permissions.manage_finance) {
+        // จ่ายเงินใบสั่งซื้อได้จากทั้งแท็บบัญชีเจ้าหนี้และตารางประวัติการสั่งซื้อ — ใช้สิทธิ์ pay_po ตัวเดียว
+        if (!req.user.permissions.pay_po) {
             return res.status(403).json({ success: false, message: 'ไม่มีสิทธิ์ในการชำระเงินใบสั่งซื้อ' });
         }
 

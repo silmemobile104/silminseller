@@ -62,7 +62,7 @@
     };
 
     // แถวสถานะ (ว่าง / ผิดพลาด) — ตารางมี 3 คอลัมน์ colspan ต้องเป็น 3
-    const stateRow = (message, extraClass = 'text-ink/50 italic') =>
+    const stateRow = (message, extraClass = 'text-body-muted') =>
         `<tr><td colspan="3" class="px-6 py-8 text-center ${extraClass}">${message}</td></tr>`;
 
     const selectedText = (selectEl) => {
@@ -100,8 +100,9 @@
         const addChip = (label, onRemove) => {
             const chip = document.createElement('button');
             chip.type = 'button';
-            chip.className = 'elev-card px-4 py-2.5 rounded-xl bg-panel/40 text-ink text-sm font-medium transition-colors flex items-center gap-2';
-            chip.innerHTML = `<span>${label}</span><i class="fa-solid fa-xmark text-[10px] opacity-80"></i>`;
+            chip.className = 'pl-3.5 pr-2.5 py-1.5 rounded-xl bg-field text-ink text-sm transition-colors flex items-center gap-2';
+            chip.setAttribute('aria-label', `ลบตัวกรอง ${label}`);
+            chip.innerHTML = `<span>${label}</span><i class="fa-solid fa-xmark text-[10px] text-body-muted hover:text-ink cursor-pointer p-1"></i>`;
             chip.addEventListener('click', (e) => {
                 // ลบได้เฉพาะตอนคลิกที่กากบาท ตัวชิปเองไม่ตอบสนอง (ข้อ 11.5)
                 if (!e.target.closest('i.fa-xmark')) return;
@@ -129,7 +130,7 @@
         }
         if (condEl && condEl.value !== 'ALL') {
             activeCount++;
-            addChip(`สภาพ: ${selectedText(condEl)}`, () => {
+            addChip(`สภาพ: ${selectedText(condEl).replace(/^สภาพ:\s*/, '')}`, () => {
                 condEl.value = 'ALL';
                 t.reload();
             });
@@ -139,7 +140,7 @@
         if (activeCount > 1) {
             const clearBtn = document.createElement('button');
             clearBtn.type = 'button';
-            clearBtn.className = 'px-2.5 py-1 bg-red-500/10 hover:bg-red-500/15 text-red-300 rounded-full text-xs font-medium ring-1 ring-red-500/30 transition-colors';
+            clearBtn.className = 'px-2.5 py-1 bg-state-danger/10 hover:bg-state-danger/15 text-state-danger-soft rounded-full text-xs font-medium transition-colors cursor-pointer';
             clearBtn.textContent = 'ล้างทั้งหมด';
             clearBtn.addEventListener('click', () => {
                 if (searchEl) searchEl.value = '';
@@ -237,7 +238,7 @@
     const disclosureButton = (rowId, indentClass, iconExtraClass, labelHtml) => `
         <button type="button" id="btn-${rowId}" aria-expanded="false"
             class="flex items-center gap-2 w-full text-left cursor-pointer rounded-[0.375rem] ${indentClass}">
-            <i id="icon-${rowId}" class="fa-solid fa-chevron-right text-ink/70 w-4 text-center shrink-0 ${iconExtraClass}"></i>
+            <i id="icon-${rowId}" class="fa-solid fa-chevron-right text-body-muted w-4 text-center shrink-0 ${iconExtraClass}"></i>
             ${labelHtml}
         </button>
     `;
@@ -247,20 +248,18 @@
     const colorDot = (colorName, colorDoc) =>
         (window.productColorDot ? window.productColorDot(colorName, colorDoc) : '');
 
-    // ป้ายจำนวนรวมของกลุ่ม — ใช้ไวยากรณ์ชิปเดียวกับข้อ 11.5
+    // จำนวนรวมของกลุ่ม — สูตร "จำนวน + หน่วย" ของข้อ 11.6 (ตัวเลขหนา หน่วยเล็ก) ไม่ห่อกล่องให้รก
     const groupQtyBadge = (qty, unit) => `
-        <span class="elev-card inline-flex items-center gap-1 px-2.5 py-1 rounded-[0.375rem] bg-panel/40 text-ink text-xs font-medium">
-            ${qty} <span class="font-normal">${unit || 'ชิ้น'}</span>
-        </span>
+        <span class="font-semibold text-ink">${qty}</span> <span class="text-xs text-body-muted">${unit || 'ชิ้น'}</span>
     `;
 
-    // ป้ายสถานะ "กำลังโอน" — จุดสี + tint 12% ตามตารางสถานะในข้อ 11.6
+    // ป้ายสถานะ "กำลังโอน" — จุดสี + tint 12% ตามตารางสถานะในข้อ 11.6 (โทเคน state-pending)
     // ต้องมี <div> บล็อกครอบอีกชั้น ไม่งั้นป้าย inline-flex จะไปเบียดอยู่บรรทัดเดียวกับตัวเลขจำนวน
     const transferBadge = () => `
         <div class="mt-1.5">
-            <div class="inline-flex items-center gap-2 px-2.5 py-1 rounded-[0.375rem] bg-orange-500/[0.12]">
-                <div class="w-2 h-2 rounded-full bg-orange-500"></div>
-                <span class="text-orange-400 font-medium text-xs">กำลังโอน</span>
+            <div class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-pill bg-state-pending/[0.12]">
+                <span class="w-1.5 h-1.5 rounded-full bg-state-pending"></span>
+                <span class="text-state-pending font-semibold text-xs">กำลังโอน</span>
             </div>
         </div>
     `;
@@ -268,9 +267,9 @@
     const imeiList = (imeis) => {
         if (!imeis || !imeis.length) return '';
         const tags = imeis.map(i =>
-            `<span class="elev-field font-mono text-[10px] text-ink/70 bg-field px-1.5 py-0.5 rounded-[0.375rem]">${i}</span>`
+            `<span class="font-mono text-[11px] text-body-muted bg-field px-1.5 py-0.5 rounded-xs">${i}</span>`
         ).join('');
-        return `<div class="flex flex-wrap items-center gap-1 mt-1.5"><span class="text-[10px] text-ink/70">IMEI:</span>${tags}</div>`;
+        return `<div class="flex flex-wrap items-center gap-1 mt-1"><span class="text-[11px] text-ink-muted-48">IMEI</span>${tags}</div>`;
     };
 
     // ผูกพฤติกรรมกาง/ยุบให้แถวระดับ 1 (กางลูกระดับ 2 และยุบทั้งสาขาเมื่อปิด)
@@ -331,13 +330,13 @@
             const contentMyStock = document.getElementById('content-branch-mystock');
             const contentGlobalStock = document.getElementById('content-branch-globalstock');
 
-            // แท็บที่เลือกอยู่ = ปุ่มทึบเหลืองปุ่มเดียวของหน้า ที่เหลือเป็นพิลล์ขอบเทาตามข้อ 11.9
+            // ตัวสลับแบบ segmented (กรอบพื้น bg-field ใน HTML): ใบที่เลือก = พื้นยก + ขอบ/ตัวอักษรเหลือง
+            // ไม่ใช้เหลืองทึบ — ข้อ 11.9 "เลือกแล้วเปลี่ยนขอบ ไม่ใช่เปลี่ยนพื้น"
             // เขียนเป็น className เต็มแทนการ add/remove ทีละคลาส (แบบเดียวกับแท็บหน้าอื่นทั้งหมดในระบบ)
-            // เพราะ array แบบเดิมไม่ตรงกับ class ที่ประกาศไว้ในมาร์กอัปตั้งต้น (ring-1 vs ring-2,
-            // border-transparent/elev-field vs border-line) ทำให้คลาสตกค้างและปุ่มมีเส้นขอบหนาไม่เท่ากัน
-            const TAB_BASE = 'elev-chip tab-toggle-btn px-4 py-2.5 rounded-xl text-sm font-bold transition-colors flex items-center gap-2 cursor-pointer';
-            const TAB_ON = 'bg-primary text-on-primary ring-1 ring-accent-ink apple-active-accent';
-            const TAB_OFF = 'bg-field text-body-muted hover:ring-1 hover:ring-accent-ink hover:text-ink';
+            // ไม่งั้นคลาสจากมาร์กอัปตั้งต้นจะตกค้างและปุ่มมีเส้นขอบหนาไม่เท่ากัน
+            const TAB_BASE = 'tab-toggle-btn flex-1 sm:flex-none px-4 py-2 rounded-lg text-sm transition-colors flex items-center justify-center gap-2 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-focus';
+            const TAB_ON = 'bg-surface-chip text-accent-ink ring-1 ring-accent-ink';
+            const TAB_OFF = 'text-body-muted hover:text-ink';
 
             const activateTab = (activeTab, inactiveTab, activeContent, inactiveContent) => {
                 activeTab.className = `${TAB_BASE} ${TAB_ON}`;
@@ -374,7 +373,7 @@
             const populateTypeFilter = (filterId) => {
                 const filter = document.getElementById(filterId);
                 if (!filter || !md.productTypes) return;
-                filter.innerHTML = '<option value="ALL">ประเภททั้งหมด</option>'
+                filter.innerHTML = '<option value="ALL">ประเภท: ทั้งหมด</option>'
                     + md.productTypes.map(type => `<option value="${type.name}">${type.name}</option>`).join('');
             };
             populateTypeFilter('filter-branch-mystock-type');
@@ -397,6 +396,14 @@
     // แท็บ 1: สต็อกในสาขาของฉัน — จัดกลุ่ม ชื่อสินค้า > สี > รายการ
     // ==========================================
 
+    // มูลค่ารวมของสต็อกในสาขา (ราคาขาย) — null = ยังไม่มีตัวเลข (กำลังโหลด / โหลดไม่สำเร็จ)
+    const setMyStockValue = (value, pieces) => {
+        const el = document.getElementById('value-branch-mystock');
+        const sub = document.getElementById('value-branch-mystock-sub');
+        if (el) el.textContent = value == null ? '-' : `฿${Math.round(value).toLocaleString('th-TH')}`;
+        if (sub) sub.textContent = value == null ? '' : `จาก ${pieces.toLocaleString('th-TH')} ชิ้น`;
+    };
+
     window.loadBranchInventoryMyStock = async () => {
         const tbody = document.getElementById('table-body-branch-mystock');
         if (!tbody) return;
@@ -404,6 +411,7 @@
         totalGroups.mystock = 0;
         updateCount('mystock');
         renderChips('mystock');
+        setMyStockValue(null);
         renderSkeleton(tbody);
 
         try {
@@ -435,14 +443,19 @@
                 tbody.innerHTML = stateRow('ไม่พบสินค้าคงเหลือในสาขาของคุณ');
                 renderChips('mystock');
                 updateCount('mystock');
+                setMyStockValue(0, 0);
                 return;
             }
 
             const groupedData = {};
+            let totalValue = 0, totalPieces = 0;
             items.forEach(p => {
                 const imeiCount = (p.imeis && p.imeis.length) ? p.imeis.length : 0;
                 const qty = imeiCount > 0 ? imeiCount : (p.quantity || 0);
                 if (qty <= 0) return;
+                // จำนวนเดียวกับที่ตารางแสดง (IMEI ถ้ามี ไม่งั้น quantity) × ราคาขายต่อชิ้น
+                totalValue += qty * (Number(p.selling_price) || 0);
+                totalPieces += qty;
 
                 const name = p.name || 'ไม่ระบุชื่อ';
                 const color = (p.color_id && p.color_id.name) ? p.color_id.name : 'ไม่ระบุสี';
@@ -469,7 +482,7 @@
                 trName.className = `name-row ${nameRowId} ${ROW_BASE}`;
                 trName.innerHTML = `
                     <td class="px-6 py-4">
-                        ${disclosureButton(nameRowId, '', '', `<span class="font-semibold text-ink text-[15px]">${name}</span>`)}
+                        ${disclosureButton(nameRowId, '', '', `<span class="font-medium text-ink">${name}</span>`)}
                     </td>
                     <td class="px-6 py-4 text-center">${groupQtyBadge(nameGroup.total, nameGroup.unit)}</td>
                     <td class="px-6 py-4"></td>
@@ -491,10 +504,10 @@
                                 colorRowId,
                                 'ml-6',
                                 `text-xs level2-icon-of-${nameRowId}`,
-                                `${colorDot(color, colorGroup.colorDoc)}<span class="text-sm text-ink/70">สี: <span class="font-medium text-ink">${color}</span></span>`
+                                `${colorDot(color, colorGroup.colorDoc)}<span class="text-sm text-body-muted">สี: <span class="font-medium text-ink">${color}</span></span>`
                             )}
                         </td>
-                        <td class="px-6 py-4 text-center text-ink/70 font-medium">
+                        <td class="px-6 py-4 text-center text-body-muted font-medium">
                             ${colorGroup.total} <span class="text-xs font-normal">${colorGroup.unit || 'ชิ้น'}</span>
                         </td>
                         <td class="px-6 py-4"></td>
@@ -512,7 +525,7 @@
                         trItem.innerHTML = `
                             <td class="px-6 py-4">
                                 <div class="flex flex-col gap-1 ml-12">
-                                    <span class="text-sm text-ink/70">
+                                    <span class="text-sm text-body-muted">
                                         ความจุ: <span class="font-medium text-ink">${capacity}</span>${condition ? ` / <span class="font-medium text-ink">${condition}</span>` : ''}
                                     </span>
                                     <span class="font-mono text-xs font-semibold text-accent-ink">${p.product_code || '-'}</span>
@@ -529,12 +542,15 @@
                 }
             }
 
+            setMyStockValue(totalValue, totalPieces);
+
             // คำค้นที่ค้างอยู่ต้องถูกใช้ซ้ำกับแถวชุดใหม่ ไม่งั้นชิป "ค้นหา: ..." จะโชว์อยู่แต่ตารางไม่ได้กรอง
             applySearch('mystock');
         } catch (err) {
             console.error(err);
             totalGroups.mystock = 0;
-            tbody.innerHTML = stateRow('เกิดข้อผิดพลาดในการโหลดข้อมูล', 'text-red-400');
+            setMyStockValue(null);
+            tbody.innerHTML = stateRow('เกิดข้อผิดพลาดในการโหลดข้อมูล', 'text-state-danger-soft');
             updateCount('mystock');
         }
     };
@@ -622,7 +638,7 @@
                 trName.className = `name-row ${nameRowId} ${ROW_BASE}`;
                 trName.innerHTML = `
                     <td class="px-6 py-4">
-                        ${disclosureButton(nameRowId, '', '', `<span class="font-semibold text-ink text-[15px]">${name}</span>`)}
+                        ${disclosureButton(nameRowId, '', '', `<span class="font-medium text-ink">${name}</span>`)}
                     </td>
                     <td class="px-6 py-4 text-center">${groupQtyBadge(nameGroup.total, nameGroup.unit)}</td>
                     <td class="px-6 py-4"></td>
@@ -644,13 +660,13 @@
                                 branchRowId,
                                 'ml-6',
                                 `text-xs level2-icon-of-${nameRowId}`,
-                                `<span class="text-sm text-ink/70 flex items-center gap-1.5">
-                                    <i class="fa-solid fa-store text-ink/70"></i>
+                                `<span class="text-sm text-body-muted flex items-center gap-1.5">
+                                    <i class="fa-solid fa-store text-body-muted"></i>
                                     สาขา: <span class="font-medium text-ink">${branchName}</span>
                                  </span>`
                             )}
                         </td>
-                        <td class="px-6 py-4 text-center text-ink/70 font-medium">
+                        <td class="px-6 py-4 text-center text-body-muted font-medium">
                             ${branchGroup.total} <span class="text-xs font-normal">${branchGroup.unit || 'ชิ้น'}</span>
                         </td>
                         <td class="px-6 py-4"></td>
@@ -669,7 +685,7 @@
                         trItem.innerHTML = `
                             <td class="px-6 py-4">
                                 <div class="flex flex-col gap-1 ml-12">
-                                    <span class="text-sm text-ink/70 flex items-center gap-2">
+                                    <span class="text-sm text-body-muted flex items-center gap-2">
                                         ${colorDot(color, p.color_id)}
                                         <span>สี: <span class="font-medium text-ink">${color}</span>
                                         / ความจุ: <span class="font-medium text-ink">${capacity}</span>${condition ? ` / <span class="font-medium text-ink">${condition}</span>` : ''}</span>
@@ -692,7 +708,7 @@
         } catch (err) {
             console.error(err);
             totalGroups.globalstock = 0;
-            tbody.innerHTML = stateRow('เกิดข้อผิดพลาดในการโหลดข้อมูล', 'text-red-400');
+            tbody.innerHTML = stateRow('เกิดข้อผิดพลาดในการโหลดข้อมูล', 'text-state-danger-soft');
             updateCount('globalstock');
         }
     };

@@ -14,39 +14,28 @@
     let _auditSessionData = null;
     let _expectedImeiData = [];
     let _scannedImeiSet = new Set();
-    // สถานะรอบล่าสุดที่เคย render ไปแล้ว — ใช้กันไม่ให้ตัวกรองเริ่มต้น (ดู loadTodayAuditSession)
-    // ถูกตั้งทับตัวเลือกที่ผู้ใช้เพิ่งกดเองซ้ำทุกครั้งที่ฟังก์ชันนี้ถูกเรียกโดยสถานะไม่ได้เปลี่ยนจริง
+    // สถานะรอบล่าสุดที่เคย render ไปแล้ว — ใช้กันไม่ให้แท็บเริ่มต้น (ดู loadTodayAuditSession)
+    // ถูกตั้งทับแท็บที่ผู้ใช้เพิ่งกดเองซ้ำทุกครั้งที่ฟังก์ชันนี้ถูกเรียกโดยสถานะไม่ได้เปลี่ยนจริง
     let _lastAuditStatus = null;
-    // ผลกรอง "ผลการตรวจ" ล่าสุดของตาราง "รายการที่สแกนแล้ว" (all/ok/unexpected)
-    let _scanListFilterValue = 'all';
 
-    // เพจจิเนชันของตาราง "สินค้าที่ต้องตรวจนับวันนี้" — เหมือนหน้าจัดการสต็อก (script.js: stockLoadedCount/stockItemsPerPage)
-    // เก็บชุดแถวที่ผ่านการกรอง/เรียงล่าสุดไว้ต่างหาก ให้ loadMoreExpectedItems() สไลซ์ทีละหน้าได้โดยไม่ต้องกรองซ้ำ
-    let _expectedRenderRows = [];
+    // ตารางรวมของหน้า (แบบ Figma "Desktop - 51"): แถว = สินค้าที่ต้องนับทั้งหมด + รายการที่สแกนได้แต่ไม่อยู่ในคลัง
+    //   state: missing = ยังไม่พบ / match = ตรงกับระบบ / extra = เกินมา / sold = ขายไประหว่างรอบ (นับว่าเรียบร้อย)
+    //   แท็บ: all / missing / match / extra — วาดทีละ AUDIT_PAGE_SIZE แถว กด "แสดงเพิ่ม" เพื่อต่อท้าย
+    let _auditRows = [];
+    let _auditTab = 'all';
+    let _auditSearch = '';
+    const AUDIT_PAGE_SIZE = 20;
+    let _auditShown = AUDIT_PAGE_SIZE;
+    let _auditBound = false; // ผูก listener ของหน้าครั้งเดียว (initStockAudit ถูกเรียกซ้ำทุกครั้งที่เข้าหน้า)
 
-    // สลับ list-wrap/cards ให้ตรงมุมมองที่จำไว้ - ต้องเรียกตอนวาดโครงร่างด้วย ไม่ใช่แค่ตอน render ข้อมูลจริง
-    // ไม่งั้นถ้าจำโหมดการ์ดไว้ โครงร่างจะไปวาดใน wrap ที่ยังซ่อนอยู่ (ผู้ใช้เห็นพื้นที่ว่างจนกว่า fetch จะเสร็จ)
+    // สลับ list-wrap/cards ให้ตรงมุมมองที่จำไว้ — ใช้กับตารางของหน้า "ตรวจสอบผลการตรวจนับสต็อก"
     const syncViewWrapVisibility = (prefix, mode) => {
         const listWrap = document.getElementById(`${prefix}-view-list-wrap`);
         const cardsWrap = document.getElementById(`${prefix}-view-cards`);
         if (listWrap) listWrap.classList.toggle('hidden', mode !== 'list');
         if (cardsWrap) cardsWrap.classList.toggle('hidden', mode !== 'card');
     };
-    let _expectedLoadedCount = 0;
-    const EXPECTED_ITEMS_PER_PAGE = 10;
 
-    // สลับมุมมอง List/Card ของทั้งสองตารางในหน้านี้ — จำโหมดไว้ข้ามการเข้าหน้า
-    // (เดินตามรูปแบบเดียวกับหน้าการมัดจำ/ประวัติการขาย/สมาชิก/เช็คประกัน/จัดการสต็อก)
-    // ค่าเริ่มต้นบนจอเล็ก (ยังไม่เคยเลือกมุมมองเองมาก่อน) เป็น "การ์ด" แทน "รายการ" — หน้านี้ใช้งานระหว่าง
-    // เดินในคลังจริงบนมือถือ ตาราง 6 คอลัมน์เลื่อนซ้ายขวาไม่เหมาะเท่าการ์ดที่ปัดขึ้นลงด้วยนิ้วได้ตรงๆ (STEP 3.7)
-    // ถ้าผู้ใช้เคยกดเลือกมุมมองเองแล้วไม่ว่าจอขนาดไหน ให้ยึดตามที่เลือกไว้เสมอ ไม่ทับด้วยค่าเริ่มต้นนี้
-    const _auditIsNarrowViewport = typeof window !== 'undefined' && window.innerWidth < 640;
-    let _expectedViewMode = localStorage.getItem('audit_expected_view_mode')
-        ? (localStorage.getItem('audit_expected_view_mode') === 'card' ? 'card' : 'list')
-        : (_auditIsNarrowViewport ? 'card' : 'list');
-    let _scanListViewMode = localStorage.getItem('audit_scan_view_mode')
-        ? (localStorage.getItem('audit_scan_view_mode') === 'card' ? 'card' : 'list')
-        : (_auditIsNarrowViewport ? 'card' : 'list');
     // ตัวแปรเดียวกันของหน้า "ตรวจสอบผลการตรวจนับสต็อก" (#stock-audit-review) — ประกาศไว้ต้นไฟล์เพราะ
     // ปุ่มสลับมุมมองถูกผูก (และเรียก _syncViewToggleButtons ทันที) ที่ top-level ของไฟล์นี้ตอนโหลดสคริปต์
     // ก่อนจุดที่ตัวแปรเหล่านี้เคยประกาศไว้เดิม (ใกล้โค้ดส่วนตรวจสอบผล) — ต้องอยู่เหนือจุดใช้งานเสมอ (TDZ ของ let)
@@ -78,114 +67,32 @@
             + `<span class="${t.text} font-medium text-xs">${label}</span></div>`;
     };
 
-    // การ์ดสรุปผลต่าง (ตรง/ขาด/เกิน) — นับจากข้อมูลชุดเดียวกับตารางด้านล่าง ไม่มีมูลค่าเงิน
-    // เพราะโมดูลนี้เป็นการกระทบยอดระดับ IMEI ไม่มีฟิลด์ต้นทุน/ราคาอยู่ในระบบให้คำนวณ
-    const renderAuditVarianceSummary = (expectedImeis, scannedItems) => {
-        const matchEl = document.getElementById('audit-variance-match');
-        const missingEl = document.getElementById('audit-variance-missing');
-        const extraEl = document.getElementById('audit-variance-extra');
-        if (!matchEl || !missingEl || !extraEl) return;
-
-        const scannedSet = new Set((scannedItems || []).map(i => i.imei));
-        const expectedSet = new Set((expectedImeis || []).map(e => e.imei));
-
-        const match = (expectedImeis || []).filter(e => scannedSet.has(e.imei)).length;
-        const missing = (expectedImeis || []).filter(e => !scannedSet.has(e.imei) && !e.sold).length;
-        const extra = (scannedItems || []).filter(i => !expectedSet.has(i.imei)).length;
-
-        matchEl.innerHTML = `${match} <span class="text-xs font-normal text-ink/70">เครื่อง</span>`;
-        missingEl.innerHTML = `${missing} <span class="text-xs font-normal text-ink/70">เครื่อง</span>`;
-        extraEl.innerHTML = `${extra} <span class="text-xs font-normal text-ink/70">เครื่อง</span>`;
-    };
-
-    // ป้ายหมวดหมู่ในเซลล์ (สี / ความจุ) — ไม่มีค่าให้ใช้ "-" ไม่ปล่อยว่าง (ข้อ 11.6)
-    const tagCell = (value) => value
-        ? `<span class="px-2.5 py-1 rounded-[0.375rem] text-xs font-medium bg-panel/40 text-ink">${value}</span>`
-        : '<span class="text-ink/50">-</span>';
-
     const stateRow = (cols, message, extraClass = 'text-ink/50 italic') =>
         `<tr><td colspan="${cols}" class="px-6 py-8 text-center ${extraClass}">${message}</td></tr>`;
 
     const skelBar = (w) => `<div class="h-3.5 ${w} rounded-full bg-skeleton animate-pulse"></div>`;
 
-    // การ์ดโครงร่างของตาราง "สินค้าที่ต้องตรวจนับวันนี้" — สัดส่วนเดินตาม expectedCardHtml ด้านล่าง
-    const expectedCardSkeleton = () => `
-        <div class="elev-card bg-surface-tile-3 rounded-md p-3.5">
-            <div class="flex items-start justify-between gap-2">
-                <div class="flex items-center gap-2 flex-1 min-w-0">
-                    <div class="w-4 h-4 rounded-full bg-skeleton animate-pulse shrink-0"></div>
-                    ${skelBar('flex-1 h-3.5')}
-                </div>
-                ${skelBar('w-16 h-5')}
-            </div>
-            <div class="flex items-center gap-2 mt-2.5">${skelBar('w-14 h-5')}${skelBar('w-16 h-5')}</div>
-            <div class="flex items-center justify-between mt-3.5 pt-3 border-t border-hairline">
-                ${skelBar('w-32')}
-            </div>
-        </div>`;
-
-    // การ์ดโครงร่างของตาราง "รายการที่สแกนแล้ว" — สัดส่วนเดินตาม scanItemCardHtml ด้านล่าง
-    const scanItemCardSkeleton = () => `
-        <div class="elev-card bg-surface-tile-3 rounded-md p-3.5">
-            <div class="flex items-start gap-3">
-                <div class="w-14 h-14 rounded-[0.375rem] bg-skeleton animate-pulse shrink-0"></div>
-                <div class="min-w-0 flex-1">
-                    ${skelBar('w-32')}
-                    ${skelBar('w-40 mt-2')}
-                </div>
-            </div>
-            <div class="flex items-center justify-between mt-3.5 pt-3 border-t border-hairline">
-                ${skelBar('w-20 h-5')}
-                <div class="w-8 h-8 rounded-lg bg-skeleton animate-pulse"></div>
-            </div>
-        </div>`;
-
-    // แถวโครงร่างระหว่างรอข้อมูลรอบแรก (ข้อ 11.7)
-    // เรียกเฉพาะตอนตารางยังว่างจริงๆ — loadTodayAuditSession() ถูกเรียกซ้ำหลังสแกนทุกครั้ง
-    // ถ้าใส่โครงร่างทับของเดิมทุกรอบ ตารางจะกะพริบทั้งใบทุกครั้งที่ยิงบาร์โค้ด
+    // แถวโครงร่างระหว่างรอข้อมูลรอบแรก — วางเฉพาะตอนตารางยังว่างจริงๆ
+    // (loadTodayAuditSession() ถูกเรียกซ้ำหลังสแกนทุกครั้ง ถ้าวางทับทุกรอบ ตารางจะกะพริบทั้งใบ)
     const renderAuditSkeletons = (rowCount = 6) => {
-        syncViewWrapVisibility('expected', _expectedViewMode);
-        syncViewWrapVisibility('scan-list', _scanListViewMode);
-        const expected = document.getElementById('expected-items-tbody');
-        const expectedCards = document.getElementById('expected-view-cards');
-        const expectedEmpty = expected && !expected.children.length && (!expectedCards || !expectedCards.children.length);
-        if (expectedEmpty && _expectedViewMode === 'card' && expectedCards) {
-            expectedCards.innerHTML = Array.from({ length: rowCount }, expectedCardSkeleton).join('');
-        } else if (expectedEmpty && expected) {
-            let html = '';
-            for (let i = 0; i < rowCount; i++) {
-                html += `<tr>
-                    <td class="px-6 py-4">${skelBar('w-5')}</td>
-                    <td class="px-6 py-4"><div class="flex items-center gap-2">
-                        <div class="w-4 h-4 rounded-full bg-skeleton animate-pulse shrink-0"></div>
-                        ${skelBar('w-44')}</div></td>
-                    <td class="px-6 py-4">${skelBar('w-16')}</td>
-                    <td class="px-6 py-4">${skelBar('w-20')}</td>
-                    <td class="px-6 py-4">${skelBar('w-36')}</td>
-                    <td class="px-6 py-4">${skelBar('w-20')}</td>
-                </tr>`;
-            }
-            expected.innerHTML = html;
+        const tbody = document.getElementById('audit-items-tbody');
+        const cards = document.getElementById('audit-items-cards');
+        if (tbody && !tbody.children.length) {
+            tbody.innerHTML = Array.from({ length: rowCount }, () => `<tr>
+                <td class="px-6 py-4"><div class="flex items-center gap-2"><div class="w-4 h-4 rounded-full bg-skeleton animate-pulse shrink-0"></div>${skelBar('w-40')}</div>${skelBar('w-24 mt-2 ml-6')}</td>
+                <td class="px-6 py-4">${skelBar('w-36')}</td>
+                <td class="px-6 py-4">${skelBar('w-24 h-5')}</td>
+                <td class="px-6 py-4">${skelBar('w-14')}</td>
+                <td class="px-6 py-4">${skelBar('w-20')}</td>
+                <td class="px-6 py-4">${skelBar('w-9 h-9 ml-auto')}</td>
+            </tr>`).join('');
         }
-
-        const scanned = document.getElementById('audit-scan-list');
-        const scannedCards = document.getElementById('scan-list-view-cards');
-        const scannedEmpty = scanned && !scanned.children.length && (!scannedCards || !scannedCards.children.length);
-        if (scannedEmpty && _scanListViewMode === 'card' && scannedCards) {
-            scannedCards.innerHTML = Array.from({ length: 3 }, scanItemCardSkeleton).join('');
-        } else if (scannedEmpty && scanned) {
-            let html = '';
-            for (let i = 0; i < 3; i++) {
-                html += `<tr>
-                    <td class="px-6 py-4">${skelBar('w-5')}</td>
-                    <td class="px-6 py-4"><div class="w-10 h-10 rounded-[0.375rem] bg-skeleton animate-pulse"></div></td>
-                    <td class="px-6 py-4">${skelBar('w-36')}</td>
-                    <td class="px-6 py-4">${skelBar('w-48')}</td>
-                    <td class="px-6 py-4">${skelBar('w-24')}</td>
-                    <td class="px-6 py-4">${skelBar('w-8 ml-auto')}</td>
-                </tr>`;
-            }
-            scanned.innerHTML = html;
+        if (cards && !cards.children.length) {
+            cards.innerHTML = Array.from({ length: 4 }, () => `<div class="px-4 py-4 flex items-start gap-3">
+                <div class="w-4 h-4 rounded-full bg-skeleton animate-pulse shrink-0"></div>
+                <div class="flex-1">${skelBar('w-40')}${skelBar('w-32 mt-2')}</div>
+                ${skelBar('w-20 h-5')}
+            </div>`).join('');
         }
     };
 
@@ -195,75 +102,25 @@
         return opt ? opt.textContent.trim() : '';
     };
 
-    // ชิปตัวกรองที่ใช้อยู่ของตาราง "สินค้าที่ต้องตรวจนับวันนี้" (ข้อ 11.5)
-    function renderExpectedChips() {
-        const box = document.getElementById('expected-active-filters');
-        if (!box) return;
-        box.innerHTML = '';
-
-        const searchEl = document.getElementById('expected-list-search');
-        const filterEl = document.getElementById('expected-list-filter');
-
-        const addChip = (label, onRemove) => {
-            const chip = document.createElement('button');
-            chip.type = 'button';
-            chip.className = 'elev-card px-4 py-2.5 rounded-xl bg-panel/40 text-ink text-sm font-medium transition-colors flex items-center gap-2';
-            chip.innerHTML = `<span>${label}</span><i class="fa-solid fa-xmark text-[10px] opacity-80"></i>`;
-            chip.addEventListener('click', (e) => {
-                // ลบได้เฉพาะตอนคลิกที่กากบาท ตัวชิปเองไม่ตอบสนอง (ข้อ 11.5)
-                if (!e.target.closest('i.fa-xmark')) return;
-                onRemove();
-            });
-            box.appendChild(chip);
-        };
-
-        let activeCount = 0;
-
-        const term = (searchEl && searchEl.value || '').trim();
-        if (term) {
-            activeCount++;
-            addChip(`ค้นหา: ${term}`, () => { searchEl.value = ''; filterExpectedList(''); });
-        }
-        if (filterEl && filterEl.value !== 'all') {
-            activeCount++;
-            addChip(`สถานะ: ${selectedText(filterEl)}`, () => {
-                filterEl.value = 'all';
-                filterExpectedList(searchEl ? searchEl.value : '');
-            });
-        }
-
-        // ปุ่มล้างทั้งหมดโผล่เมื่อมีตัวกรองมากกว่า 1 ตัวเท่านั้น (ข้อ 11.5)
-        if (activeCount > 1) {
-            const clearBtn = document.createElement('button');
-            clearBtn.type = 'button';
-            clearBtn.className = 'px-2.5 py-1 bg-red-500/10 hover:bg-red-500/15 text-red-300 rounded-full text-xs font-medium ring-1 ring-red-500/30 transition-colors';
-            clearBtn.textContent = 'ล้างทั้งหมด';
-            clearBtn.addEventListener('click', () => {
-                if (searchEl) searchEl.value = '';
-                if (filterEl) filterEl.value = 'all';
-                filterExpectedList('');
-            });
-            box.appendChild(clearBtn);
-        }
-    }
     function initStockAudit() {
-        // วางแถวโครงร่างก่อนยิง API เสมอ ไม่ปล่อยตารางว่างระหว่างรอ (DESIGN.md ข้อ 11.7)
-        // panel ไม่ได้ถูกซ่อนด้วย class="hidden" ใน HTML แล้ว (เดิมซ่อนไว้จนกว่าจะมีข้อมูลจริง
-        // ผลคือแถวโครงร่างกระพริบอยู่ข้างในกล่องที่มองไม่เห็น) — แถวโครงร่างที่วางตรงนี้จึงเห็นผลทันที
+        // วางแถวโครงร่างก่อนยิง API เสมอ ไม่ปล่อยตารางว่างระหว่างรอ
         renderAuditSkeletons();
 
         // โหลดสถานะ session วันนี้
         loadTodayAuditSession();
 
-        // ปุ่ม "ลองใหม่" ในแบนเนอร์ข้อผิดพลาด — ทางลองใหม่ทางเดียวหลังปุ่ม "เปิดรอบตรวจนับวันนี้"
-        // ที่หัวหน้าถูกตัดออกไปแล้ว (ระบบเปิดรอบให้อัตโนมัติอยู่แล้ว ปุ่มเดิมมีไว้กรณีอัตโนมัติล้มเหลวเท่านั้น)
+        // ฟังก์ชันนี้ถูกเรียกซ้ำทุกครั้งที่เข้าหน้า — ผูก listener ครั้งเดียวพอ
+        // (เดิมผูกช่องสแกนซ้ำทุกครั้ง กด Enter ครั้งเดียวจึงเปิดป๊อปอัพยืนยันซ้อนหลายรอบ)
+        if (_auditBound) return;
+        _auditBound = true;
+
+        // ปุ่ม "ลองใหม่" ในแบนเนอร์ข้อผิดพลาด — ระบบเปิดรอบให้อัตโนมัติ ปุ่มนี้มีไว้กรณีอัตโนมัติล้มเหลว
         const btnRetry = document.getElementById('btn-audit-load-retry');
         if (btnRetry) btnRetry.onclick = () => loadTodayAuditSession();
 
         // การสแกน IMEI (Step 1)
         const imeiInput = document.getElementById('audit-imei-input');
         const btnImeiVerify = document.getElementById('btn-audit-imei-verify');
-
         if (imeiInput) {
             imeiInput.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter') {
@@ -273,6 +130,32 @@
             });
         }
         if (btnImeiVerify) btnImeiVerify.onclick = verifyAuditImei;
+
+        // แท็บ + ค้นหา + แสดงเพิ่ม ของตารางรวม
+        document.querySelectorAll('#audit-item-tabs .audit-item-tab').forEach(btn =>
+            btn.addEventListener('click', () => { _auditTab = btn.dataset.tab; renderAuditItems(); }));
+        const search = document.getElementById('audit-item-search');
+        if (search) {
+            let t = null;
+            search.addEventListener('input', () => {
+                clearTimeout(t);
+                t = setTimeout(() => { _auditSearch = search.value.trim().toLowerCase(); renderAuditItems(); }, 150);
+            });
+        }
+        const more = document.getElementById('btn-audit-items-more');
+        if (more) more.addEventListener('click', () => { _auditShown += AUDIT_PAGE_SIZE; renderAuditItems({ keepPage: true }); });
+
+        // ปุ่มในแถว (ลบการสแกน / ใส่ IMEI ลงช่องสแกน) — ผูกแบบ delegation ที่ตัวตารางและตัวการ์ด
+        const onRowAction = (e) => {
+            const btn = e.target.closest('[data-audit-action]');
+            if (!btn) return;
+            if (btn.dataset.auditAction === 'delete') deleteAuditItem(btn.dataset.imei);
+            else if (btn.dataset.auditAction === 'fill') fillImeiInput(btn.dataset.imei);
+        };
+        ['audit-items-tbody', 'audit-items-cards'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.addEventListener('click', onRowAction);
+        });
 
         // การถ่ายรูป/เลือกรูปในหน้าต่างเด้ง (Modal Photo Input)
         const modalPhotoInput = document.getElementById('audit-modal-photo-input');
@@ -314,7 +197,6 @@
                 reader.readAsDataURL(file);
             });
         }
-
     }
 
     function verifyAuditImei() {
@@ -519,15 +401,11 @@
             const d = await r.json();
             if (!d.success) return;
 
-            const panel = document.getElementById('audit-session-panel');
             const badge = document.getElementById('audit-session-status-badge');
 
             if (!d.data) {
                 if (_autoCreatingAudit) return;
                 _autoCreatingAudit = true;
-
-                // panel ไม่ถูกซ่อนแล้ว (เปลี่ยนจากเดิม) — แถวโครงร่างที่ renderAuditSkeletons() วางไว้ตอนเปิดหน้า
-                // ต้องโผล่ให้เห็นตั้งแต่ตอนนี้ ไม่ใช่แค่หลังได้ข้อมูลจริงแล้ว ไม่งั้น animate-pulse จะไม่มีใครเห็นเลย
                 if (badge) badge.classList.add('hidden');
 
                 const autoSuccess = await autoCreateAuditSession();
@@ -535,9 +413,7 @@
                 if (autoSuccess) {
                     await loadTodayAuditSession();
                 } else {
-                    // ไม่มีปุ่ม "เปิดรอบตรวจนับวันนี้" ที่หัวหน้าแล้ว (ถูกตัดออกตามที่แจ้ง) —
-                    // แบนเนอร์นี้คือทางลองใหม่ทางเดียวที่เหลืออยู่ ถ้าไม่แสดง ผู้ใช้จะติดอยู่กับ
-                    // แถวโครงร่างที่กระพริบค้างไปเรื่อยๆ โดยไม่รู้ว่าต้องทำอะไรต่อ
+                    // แบนเนอร์นี้คือทางลองใหม่ทางเดียว — ถ้าไม่แสดง ผู้ใช้จะติดอยู่กับแถวโครงร่างที่กระพริบค้างไปเรื่อยๆ
                     showToast('ไม่สามารถเปิดรอบตรวจนับอัตโนมัติได้', 'error');
                     if (errorBanner) errorBanner.classList.remove('hidden');
                 }
@@ -547,331 +423,309 @@
             const { session, items, expectedImeis } = d.data;
             _auditSessionId = session._id;
             _auditSessionData = d.data;
+            _expectedImeiData = expectedImeis || [];
+            _scannedImeiSet = new Set((items || []).map(i => i.imei));
 
-            if (panel) panel.classList.remove('hidden');
-
-            // อัพเดต badge — ป้ายจุดสีตาม DESIGN.md ข้อ 11.6
-            // "กำลังตรวจนับ" กับ "รอการอนุมัติ" ใช้โทนเดียวกัน (ระหว่างดำเนินการ) เพราะข้อ 11.6
-            // มีแค่ 3 โทน ตัวข้อความในป้ายเป็นตัวแยกความหมายของสองสถานะนี้เอง
+            // ---------- หัวหน้า ----------
             if (badge) {
-                const statusTones = {
-                    'กำลังตรวจนับ': 'working',
-                    'รอการอนุมัติ': 'working',
-                    'อนุมัติแล้ว': 'ok',
-                    'ปิดโดยอัตโนมัติ': 'muted'
-                };
                 badge.className = 'inline-flex';
-                badge.innerHTML = statusBadge(statusTones[session.status] || 'muted', session.status);
+                badge.innerHTML = auditChip(AUDIT_SESSION_TONE[session.status] || 'muted', session.status);
+            }
+            const meta = document.getElementById('audit-session-meta');
+            if (meta) {
+                const parts = [
+                    `รอบวันที่ ${new Date(session.session_date).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' })}`,
+                    `สาขา${session.branch_id?.name || ' —'}`,
+                    `เปิดรอบ ${auditTime(session.createdAt)}${session.created_by?.name ? ` โดย ${session.created_by.name}` : ' (อัตโนมัติ)'}`
+                ];
+                meta.textContent = parts.join('  ·  ');
             }
 
-            // อัพเดต progress
-            const scannedCount = document.getElementById('audit-scanned-count');
-            const expectedCount = document.getElementById('audit-expected-count');
-            const progressBar = document.getElementById('audit-progress-bar');
-            const progressPct = document.getElementById('audit-progress-pct');
-            const completeFlag = document.getElementById('audit-progress-complete-flag');
-            const branchName = document.getElementById('audit-branch-name');
-            const sessionDate = document.getElementById('audit-session-date');
-
-            const scannedImeiSet = new Set((items || []).map(i => i.imei));
-            const total = expectedImeis.length;
-            const resolved = expectedImeis.filter(e => scannedImeiSet.has(e.imei) || e.sold).length;
+            // ---------- แถว + ตัวเลข ----------
+            _auditRows = buildAuditRows(_expectedImeiData, items || []);
+            const n = countAuditRows(_auditRows);
+            const total = _expectedImeiData.length;
+            const resolved = n.match + n.sold; // ขายไประหว่างรอบ = ไม่ต้องหาแล้ว นับว่าเรียบร้อย (เหมือนเดิม)
             const pct = total > 0 ? Math.min(100, Math.round((resolved / total) * 100)) : 0;
 
-            if (scannedCount) scannedCount.textContent = resolved;
-            if (expectedCount) expectedCount.textContent = total;
-            if (progressBar) progressBar.style.width = `${pct}%`;
-            if (progressPct) progressPct.querySelector('span').textContent = `${pct}% สำเร็จ`;
-            // โมเมนต์ "เสร็จแล้ว พร้อมส่ง" ที่เดิมไม่มีเลยตอนสแกนครบ 100%
-            if (completeFlag) completeFlag.classList.toggle('hidden', !(pct === 100 && total > 0));
-            if (branchName) branchName.textContent = session.branch_id?.name || '—';
-            if (sessionDate) sessionDate.textContent = new Date(session.session_date).toLocaleDateString('th-TH', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-
-            // แสดง scan area หรือแสดงสถานะ — สี่สถานะต้องแยกกันจริง (เดิม "กำลังตรวจนับ" กับ "รอการอนุมัติ"
-            // ถูกจับรวมกัน ทำให้ปุ่มส่งผลไม่มีวันโผล่ และข้อความ "ส่งผลสำเร็จแล้ว" ก็ไม่มีวันแสดงเช่นกัน)
-            const scanArea = document.getElementById('audit-scan-area');
-            const submitArea = document.getElementById('audit-submit-area');
-            const submittedMsg = document.getElementById('audit-submitted-msg');
-            const approvedMsg = document.getElementById('audit-approved-msg');
-            const autoclosedMsg = document.getElementById('audit-autoclosed-msg');
-            const progressCard = document.getElementById('audit-progress-card');
-            const varianceSummary = document.getElementById('audit-variance-summary');
-
-            const isCounting = session.status === 'กำลังตรวจนับ';
-            // การ์ดสแกน+ความคืบหน้า vs การ์ดสรุปผลต่าง — สลับกันตามว่ายังนับอยู่หรือส่งไปแล้ว (STEP 3.2)
-            if (progressCard) progressCard.classList.toggle('hidden', !isCounting);
-            if (varianceSummary) {
-                varianceSummary.classList.toggle('hidden', isCounting);
-                if (!isCounting) renderAuditVarianceSummary(expectedImeis, items);
+            const setText = (id, text) => { const el = document.getElementById(id); if (el) el.textContent = text; };
+            setText('audit-scanned-count', resolved.toLocaleString('th-TH'));
+            setText('audit-expected-count', total.toLocaleString('th-TH'));
+            setText('audit-progress-pct', total === 0
+                ? 'ไม่มีสินค้าที่ต้องตรวจนับในสาขานี้'
+                : (n.missing === 0 ? `${pct}% · ครบแล้ว พร้อมส่ง` : `${pct}% · เหลืออีก ${n.missing.toLocaleString('th-TH')} เครื่อง`));
+            const bar = document.getElementById('audit-progress-bar');
+            if (bar) {
+                bar.style.width = `${pct}%`;
+                bar.classList.toggle('bg-state-ok', pct === 100 && total > 0);
+                bar.classList.toggle('bg-primary', !(pct === 100 && total > 0));
+            }
+            setText('audit-variance-match', n.match.toLocaleString('th-TH'));
+            setText('audit-variance-missing', n.missing.toLocaleString('th-TH'));
+            setText('audit-variance-extra', n.extra.toLocaleString('th-TH'));
+            const soldEl = document.getElementById('audit-variance-sold');
+            if (soldEl) {
+                soldEl.classList.toggle('hidden', !n.sold);
+                soldEl.textContent = `ขายไประหว่างรอบ ${n.sold.toLocaleString('th-TH')} เครื่อง — นับว่าเรียบร้อยแล้ว`;
             }
 
-            // ตั้งตัวกรองเริ่มต้นให้ตรงโหมดแค่ตอนสถานะ "เพิ่งเปลี่ยน" เท่านั้น — กันไม่ให้ทับตัวกรองที่ผู้ใช้
-            // เลือกเองซ้ำทุกครั้งที่ loadTodayAuditSession ถูกเรียก (เช่นหลังลบรายการระหว่างตรวจสอบ)
+            // ---------- สี่สถานะของรอบ ----------
+            const isCounting = session.status === 'กำลังตรวจนับ';
+            const show = (id, on) => { const el = document.getElementById(id); if (el) el.classList.toggle('hidden', !on); };
+            show('audit-scan-area', isCounting);
+            show('audit-submitted-msg', session.status === 'รอการอนุมัติ');
+            show('audit-approved-msg', session.status === 'อนุมัติแล้ว');
+            show('audit-autoclosed-msg', session.status === 'ปิดโดยอัตโนมัติ');
+            // ปุ่มส่งผลโผล่ทันทีที่มีรายการสแกนอย่างน้อย 1 ชิ้น — ตรงกับเงื่อนไขฝั่ง backend (ไม่บังคับครบ 100%)
+            show('audit-submit-area', isCounting && (items || []).length > 0);
+            setText('audit-submit-count', `${resolved.toLocaleString('th-TH')} / ${total.toLocaleString('th-TH')}`);
+            const submitVar = document.getElementById('audit-submit-variance');
+            if (submitVar) {
+                submitVar.classList.toggle('hidden', !(n.missing || n.extra));
+                submitVar.textContent = `ยังไม่พบ ${n.missing.toLocaleString('th-TH')} · เกินมา ${n.extra.toLocaleString('th-TH')}`;
+            }
+
+            // แท็บเริ่มต้นตั้งเฉพาะตอนสถานะ "เพิ่งเปลี่ยน" — ส่งผลแล้ว: เปิดแท็บที่ต้องตามต่อ (ยังไม่พบ > เกินมา)
             if (session.status !== _lastAuditStatus) {
-                if (!isCounting) {
-                    // เน้นสิ่งที่ยัง "ขาด" (รอสแกน) และ "เกิน" (นอกแผน) ทันทีที่ไม่มีอะไรให้สแกนต่อแล้ว
-                    const expFilter = document.getElementById('expected-list-filter');
-                    if (expFilter) { expFilter.value = 'pending'; filterExpectedList(document.getElementById('expected-list-search')?.value || ''); }
-                    const scanFilter = document.getElementById('scan-list-filter');
-                    if (scanFilter) { scanFilter.value = 'unexpected'; filterAuditScanList('unexpected'); }
-                    const expectedBody = document.getElementById('expected-list-body');
-                    if (expectedBody && expectedBody.classList.contains('hidden')) toggleExpectedList();
-                } else if (_lastAuditStatus !== null) {
-                    // ย้อนกลับมา "กำลังตรวจนับ" (เช่นถูกตีกลับให้ตรวจใหม่) — คืนตัวกรองเป็นค่าเริ่มต้นปกติ
-                    const expFilter = document.getElementById('expected-list-filter');
-                    if (expFilter) { expFilter.value = 'all'; filterExpectedList(document.getElementById('expected-list-search')?.value || ''); }
-                    const scanFilter = document.getElementById('scan-list-filter');
-                    if (scanFilter) { scanFilter.value = 'all'; filterAuditScanList('all'); }
-                }
+                if (!isCounting) _auditTab = n.missing ? 'missing' : (n.extra ? 'extra' : 'all');
+                else if (_lastAuditStatus !== null) _auditTab = 'all';
                 _lastAuditStatus = session.status;
             }
 
-            if (session.status === 'กำลังตรวจนับ') {
-                if (scanArea) scanArea.classList.remove('hidden');
-                // ปุ่มส่งผลโผล่ทันทีที่มีรายการสแกนอย่างน้อย 1 ชิ้น — ตรงกับเงื่อนไขฝั่ง backend
-                // (itemCount === 0 ถึงจะปฏิเสธ) ไม่บังคับสแกนครบ 100% ก่อนถึงจะส่งได้
-                if (submitArea) submitArea.classList.toggle('hidden', !(items || []).length);
-                if (submittedMsg) submittedMsg.classList.add('hidden');
-                if (approvedMsg) approvedMsg.classList.add('hidden');
-                if (autoclosedMsg) autoclosedMsg.classList.add('hidden');
-            } else if (session.status === 'รอการอนุมัติ') {
-                if (scanArea) scanArea.classList.add('hidden');
-                if (submitArea) submitArea.classList.add('hidden');
-                if (submittedMsg) submittedMsg.classList.remove('hidden');
-                if (approvedMsg) approvedMsg.classList.add('hidden');
-                if (autoclosedMsg) autoclosedMsg.classList.add('hidden');
-            } else if (session.status === 'อนุมัติแล้ว') {
-                if (scanArea) scanArea.classList.add('hidden');
-                if (submitArea) submitArea.classList.add('hidden');
-                if (submittedMsg) submittedMsg.classList.add('hidden');
-                if (approvedMsg) approvedMsg.classList.remove('hidden');
-                if (autoclosedMsg) autoclosedMsg.classList.add('hidden');
-            } else if (session.status === 'ปิดโดยอัตโนมัติ') {
-                if (scanArea) scanArea.classList.add('hidden');
-                if (submitArea) submitArea.classList.add('hidden');
-                if (submittedMsg) submittedMsg.classList.add('hidden');
-                if (approvedMsg) approvedMsg.classList.add('hidden');
-                if (autoclosedMsg) autoclosedMsg.classList.remove('hidden');
-            }
-
-            // render scan lists
-            renderAuditScanList(items);
-            renderExpectedList(expectedImeis, items);
+            renderRecentScans(items || []);
+            renderAuditItems({ keepPage: true });
 
         } catch (err) {
             console.error('[AUDIT] loadTodayAuditSession error:', err);
         }
     }
 
-    // -------------------------------------------------------------------
-    // ตารางสินค้าที่ต้องตรวจนับวันนี้
-    // -------------------------------------------------------------------
-    function renderExpectedList(expectedImeis, scannedItems) {
-        _expectedImeiData = expectedImeis || [];
-        _scannedImeiSet = new Set((scannedItems || []).map(i => i.imei));
+    // ------------------------------------------------------------------
+    // ตัวช่วยของหน้า "ตรวจนับสต็อกประจำวัน" (แบบ Figma "Desktop - 51")
+    // ------------------------------------------------------------------
+    const auditEsc = (s) => String(s == null ? '' : s)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 
-        const pill = document.getElementById('expected-list-pill');
-        const total = _expectedImeiData.length;
-        const resolved = _expectedImeiData.filter(e => _scannedImeiSet.has(e.imei) || e.sold).length;
-        const pending = total - resolved;
+    const auditTime = (d) => {
+        const dt = new Date(d);
+        return isNaN(dt) ? '—' : dt.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }) + ' น.';
+    };
 
-        if (pill) {
-            if (pending === 0 && total > 0) {
-                pill.className = 'px-2.5 py-1 rounded-[0.375rem] text-xs font-medium bg-state-ok-tint/[0.12] text-state-ok';
-                pill.textContent = `ครบ ${total} เครื่อง`;
-            } else {
-                pill.className = 'px-2.5 py-1 rounded-[0.375rem] text-xs font-medium bg-panel/40 text-ink';
-                pill.textContent = `${total} เครื่อง`;
-            }
-        }
+    // ป้ายสถานะแบบแคปซูล (กดไม่ได้ — DESIGN.md §12 อนุญาตสี state เฉพาะป้ายแบบนี้)
+    const AUDIT_CHIP_TONE = {
+        ok: { dot: 'bg-state-ok', bg: 'bg-state-ok-tint/[0.12]', text: 'text-state-ok' },
+        pending: { dot: 'bg-state-pending', bg: 'bg-state-pending/[0.12]', text: 'text-state-pending' },
+        muted: { dot: 'bg-body-muted', bg: 'bg-body-muted/[0.12]', text: 'text-body-muted' }
+    };
+    const AUDIT_SESSION_TONE = { 'กำลังตรวจนับ': 'pending', 'รอการอนุมัติ': 'pending', 'อนุมัติแล้ว': 'ok', 'ปิดโดยอัตโนมัติ': 'muted' };
+    const auditChip = (tone, label) => {
+        const t = AUDIT_CHIP_TONE[tone] || AUDIT_CHIP_TONE.muted;
+        return `<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-pill ${t.bg}">`
+            + `<span class="w-1.5 h-1.5 rounded-full ${t.dot}"></span>`
+            + `<span class="${t.text} font-semibold text-xs whitespace-nowrap">${auditEsc(label)}</span></span>`;
+    };
+    const AUDIT_STATE = {
+        missing: ['muted', 'ยังไม่พบ'],
+        match: ['ok', 'ตรงกับระบบ'],
+        extra: ['pending', 'เกินมา'],
+        sold: ['muted', 'ขายระหว่างรอบ']
+    };
 
-        // ถ้าผู้ใช้ตั้งตัวกรองไว้ ต้องเรนเดอร์ผ่านตัวกรองเดิม ไม่ใช่โยนรายการเต็มทับ
-        // ไม่งั้นชิป "สถานะ: รอสแกน" จะยังค้างอยู่ทั้งที่ตารางกลับไปแสดงทุกแถวแล้ว
-        const searchEl = document.getElementById('expected-list-search');
-        const filterEl = document.getElementById('expected-list-filter');
-        const hasFilter = (searchEl && searchEl.value.trim()) || (filterEl && filterEl.value !== 'all');
-        if (hasFilter) {
-            filterExpectedList(searchEl ? searchEl.value : '');
-            return;
-        }
-
-        // เรียง IMEI ตามชื่อสินค้า แล้วค่า (รอสแกนก่อน)
-        const sorted = [..._expectedImeiData].sort((a, b) => {
-            const aScanned = (_scannedImeiSet.has(a.imei) || a.sold) ? 1 : 0;
-            const bScanned = (_scannedImeiSet.has(b.imei) || b.sold) ? 1 : 0;
-            if (aScanned !== bScanned) return aScanned - bScanned;
-            return a.product_name.localeCompare(b.product_name, 'th');
+    // รวมสองแหล่ง (สินค้าที่ต้องนับ + รายการที่สแกน) เป็นแถวเดียวกัน — เรียง ยังไม่พบ > เกินมา > ตรงกับระบบ (สแกนล่าสุดก่อน) > ขายแล้ว
+    const buildAuditRows = (expected, items) => {
+        const itemByImei = new Map(items.map(i => [i.imei, i]));
+        const expectedSet = new Set(expected.map(e => e.imei));
+        const rows = expected.map(e => {
+            const item = itemByImei.get(e.imei) || null;
+            return {
+                imei: e.imei, name: e.product_name, color: e.color || '', capacity: e.capacity || '', item,
+                state: item ? 'match' : (e.sold ? 'sold' : 'missing')
+            };
         });
+        items.filter(i => !expectedSet.has(i.imei)).forEach(i => rows.push({
+            imei: i.imei, name: i.product_name, color: '', capacity: '', item: i, state: 'extra'
+        }));
+        const order = { missing: 0, extra: 1, match: 2, sold: 3 };
+        return rows.sort((a, b) => {
+            if (order[a.state] !== order[b.state]) return order[a.state] - order[b.state];
+            if (a.item && b.item) return new Date(b.item.scanned_at) - new Date(a.item.scanned_at);
+            return String(a.name).localeCompare(String(b.name), 'th');
+        });
+    };
 
-        _renderExpectedTable(sorted);
-        renderExpectedChips();
-    }
+    const countAuditRows = (rows) => rows.reduce((c, r) => { c[r.state]++; return c; },
+        { missing: 0, match: 0, extra: 0, sold: 0 });
 
-    // แถวเดียวของตาราง "สินค้าที่ต้องตรวจนับวันนี้" — แยกออกมาจาก _renderExpectedTable
-    // เพื่อให้ loadMoreExpectedItems() เรียกซ้ำได้ทีละชุดโดยไม่ต้องวน map ทั้งอาเรย์ใหม่ทุกครั้ง
-    const expectedRowHtml = (e, idx) => {
-        const isScanned = _scannedImeiSet.has(e.imei);
-        const isSold = !!e.sold;
-
-        // แถวที่จบงานแล้วถูกทอนด้วย "สีที่จางลง" ไม่ใช่ opacity ของทั้งแถว
-        // opacity-* ไปทับซ้อนกับสีที่จางอยู่แล้ว จนอัตราส่วนความต่างของ IMEI เหลือราว 2.4:1 (ต่ำกว่า WCAG AA)
-        const rowClass = 'hover:bg-divider';
-
-        let badgeHtml, imeiHtml;
-        if (isScanned) {
-            badgeHtml = statusBadge('ok', 'สแกนแล้ว');
-            imeiHtml = `<span class="font-mono font-semibold text-accent-ink line-through">${e.imei}</span>`;
-        } else if (isSold) {
-            badgeHtml = statusBadge('muted', 'ขายแล้ว');
-            imeiHtml = `<span class="font-mono font-semibold text-accent-ink line-through">${e.imei}</span>`;
-        } else {
-            badgeHtml = statusBadge('working', 'รอสแกน');
-            imeiHtml = `<span class="font-mono font-semibold text-accent-ink">${e.imei}</span>`
-                + `<button type="button" onclick="fillImeiInput('${e.imei}')" title="กรอก IMEI นี้ลงช่องสแกน"`
-                + ` aria-label="กรอก IMEI ${e.imei} ลงช่องสแกน"`
-                + ` class="text-ink hover:text-accent-ink transition-colors p-2"><i class="fa-solid fa-arrow-up-from-bracket text-xs"></i></button>`;
+    // จุดสี 16px หน้าชื่อสินค้า (DESIGN.md ข้อ 11.14) — วงแหวนบางกันสีดำกลืนพื้น
+    //   รายการเกินไม่ทราบสี (ไม่อยู่ในคลังสาขา) จึงใช้วงกลมเส้นประแทน
+    const auditColorDot = (row) => {
+        if (row.state === 'extra') {
+            return '<span class="w-4 h-4 rounded-full shrink-0 border border-dashed border-state-pending" title="ไม่ทราบสี (ไม่อยู่ในคลังสาขา)" aria-hidden="true"></span>';
         }
+        if (!row.color) return '<span class="w-4 h-4 shrink-0" aria-hidden="true"></span>';
+        const hex = typeof window.productColorHex === 'function' ? window.productColorHex(row.color) : '#8e8e93';
+        return `<span class="w-4 h-4 rounded-full shrink-0 ring-1 ring-line" style="background-color:${hex};" title="${auditEsc(row.color)}" aria-hidden="true"></span>`;
+    };
 
-        // distill: ตัดจุดสีหน้าชื่อสินค้าออก — ตารางนี้มีคอลัมน์ "สี" เป็นข้อความเต็มอยู่แล้ว
-        // (ต่างจากตารางอื่นที่ใช้จุดสีตามข้อ 11.14 เพราะตารางนั้นไม่มีคอลัมน์สีแยกต่างหาก)
-        // ข้อความเต็มยังอ่านง่ายกว่าจุดสีสำหรับคนตาบอดสี จึงเก็บไว้เป็นแหล่งความจริงเดียว
+    const auditSubLine = (row) => {
+        if (row.state === 'extra') return 'ไม่อยู่ในคลังสาขานี้';
+        return [row.capacity, row.color].filter(Boolean).join(' · ');
+    };
 
-        return {
-            row: `
-        <tr class="${rowClass} transition-colors" data-imei="${e.imei}" data-name="${e.product_name}" data-status="${isScanned ? 'scanned' : (isSold ? 'sold' : 'pending')}">
-            <td class="px-6 py-4 text-ink/70">${idx + 1}</td>
-            <td class="px-6 py-4">
-                <p class="font-medium ${isSold ? 'text-ink/70' : 'text-ink'}">${e.product_name}</p>
+    // รูปกล่อง (หลักฐานตอนสแกน) + ปุ่มจัดการของแถว — ใช้ร่วมกันทั้งตารางและการ์ด
+    //   ปุ่มไอคอนตามข้อ 11.6: ไม่มีพื้น มีแค่สีตอนชี้ และต้องมี title
+    const auditRowActions = (row, isCounting) => {
+        const parts = [];
+        if (row.item && row.item.box_photo_url) {
+            parts.push(`<a href="${auditEsc(row.item.box_photo_url)}" target="_blank" rel="noreferrer" title="เปิดรูปกล่องขนาดเต็ม"
+                class="block w-8 h-8 rounded-sm overflow-hidden ring-1 ring-line hover:ring-accent-ink transition-all shrink-0">
+                <img src="${auditEsc(row.item.box_photo_url)}" referrerpolicy="no-referrer" loading="lazy" width="32" height="32"
+                    class="w-full h-full object-cover" alt="รูปกล่องสินค้าของ IMEI ${auditEsc(row.imei)}"></a>`);
+        }
+        if (isCounting && row.item) {
+            parts.push(`<button type="button" data-audit-action="delete" data-imei="${auditEsc(row.imei)}" title="ลบการสแกน"
+                class="w-9 h-9 flex items-center justify-center rounded-full text-body-muted hover:text-state-danger-soft hover:bg-surface-chip transition-colors cursor-pointer"
+                aria-label="ลบการสแกน IMEI ${auditEsc(row.imei)}"><i class="fa-regular fa-trash-can"></i></button>`);
+        } else if (isCounting && row.state === 'missing') {
+            parts.push(`<button type="button" data-audit-action="fill" data-imei="${auditEsc(row.imei)}" title="ใส่ในช่องสแกน"
+                class="w-9 h-9 flex items-center justify-center rounded-full text-body-muted hover:text-accent-ink hover:bg-surface-chip transition-colors cursor-pointer"
+                aria-label="ใส่ IMEI ${auditEsc(row.imei)} ลงช่องสแกน"><i class="fa-solid fa-arrow-up-from-bracket"></i></button>`);
+        }
+        return parts.join('');
+    };
+
+    const AUDIT_TD = 'px-6 py-4 align-top';
+
+    const auditRowHtml = (row, isCounting) => {
+        const [tone, label] = AUDIT_STATE[row.state];
+        const item = row.item;
+        const nameCls = row.state === 'sold' ? 'text-body-muted' : 'text-ink';
+        const sub = auditSubLine(row);
+        return `
+        <tr class="hover:bg-divider transition-colors">
+            <td class="${AUDIT_TD}">
+                <p class="font-medium ${nameCls} flex items-center gap-2">${auditColorDot(row)}<span>${auditEsc(row.name)}</span></p>
+                ${sub ? `<p class="text-xs ${row.state === 'extra' ? 'text-state-pending' : 'text-body-muted'} mt-1 pl-6">${auditEsc(sub)}</p>` : ''}
+                ${item && item.scan_notes ? `<p class="text-xs text-body-muted mt-1 pl-6 whitespace-normal">หมายเหตุ: ${auditEsc(item.scan_notes)}</p>` : ''}
             </td>
-            <td class="px-6 py-4">${tagCell(e.color)}</td>
-            <td class="px-6 py-4">${tagCell(e.capacity)}</td>
-            <td class="px-6 py-4">${imeiHtml}</td>
-            <td class="px-6 py-4">${badgeHtml}</td>
-        </tr>`,
-            card: `
-        <div class="elev-card bg-surface-tile-3 rounded-md p-3.5" data-imei="${e.imei}" data-name="${e.product_name}" data-status="${isScanned ? 'scanned' : (isSold ? 'sold' : 'pending')}">
-            <div class="flex items-start justify-between gap-2">
-                <p class="font-medium ${isSold ? 'text-ink/70' : 'text-ink'} min-w-0 flex-1 truncate">${e.product_name}</p>
-                <div class="shrink-0">${badgeHtml}</div>
+            <td class="${AUDIT_TD} font-mono text-[13px] ${row.state === 'missing' ? 'text-body-muted' : 'text-ink'}">${auditEsc(row.imei)}</td>
+            <td class="${AUDIT_TD}">${auditChip(tone, label)}</td>
+            <td class="${AUDIT_TD} ${item ? 'text-ink' : 'text-ink-muted-48'}">${item ? auditTime(item.scanned_at) : '-'}</td>
+            <td class="${AUDIT_TD} ${item ? 'text-ink' : 'text-ink-muted-48'}">${item ? auditEsc(item.scanned_by?.name || '-') : '-'}</td>
+            <td class="px-6 py-2.5 align-top"><div class="flex items-center justify-end gap-1">${auditRowActions(row, isCounting)}</div></td>
+        </tr>`;
+    };
+
+    const auditCardHtml = (row, isCounting) => {
+        const [tone, label] = AUDIT_STATE[row.state];
+        const item = row.item;
+        const nameCls = row.state === 'sold' ? 'text-body-muted' : 'text-ink';
+        const actions = auditRowActions(row, isCounting);
+        const sub = auditSubLine(row);
+        return `
+        <div class="px-4 py-4">
+            <div class="flex items-start gap-3">
+                <div class="min-w-0 flex-1">
+                    <p class="font-medium ${nameCls} flex items-center gap-2">${auditColorDot(row)}<span class="truncate">${auditEsc(row.name)}</span></p>
+                    ${sub ? `<p class="text-xs ${row.state === 'extra' ? 'text-state-pending' : 'text-body-muted'} mt-1 pl-6 truncate">${auditEsc(sub)}</p>` : ''}
+                    <p class="font-mono text-[13px] ${row.state === 'missing' ? 'text-body-muted' : 'text-ink'} mt-1.5 pl-6">${auditEsc(row.imei)}</p>
+                    ${item ? `<p class="text-xs text-body-muted mt-1 pl-6">สแกน ${auditTime(item.scanned_at)} · ${auditEsc(item.scanned_by?.name || '-')}</p>` : ''}
+                    ${item && item.scan_notes ? `<p class="text-xs text-body-muted mt-1 pl-6">หมายเหตุ: ${auditEsc(item.scan_notes)}</p>` : ''}
+                </div>
+                <div class="shrink-0">${auditChip(tone, label)}</div>
             </div>
-            <div class="flex items-center gap-2 mt-2.5">${tagCell(e.color)}${tagCell(e.capacity)}</div>
-            <div class="flex items-center justify-between mt-3.5 pt-3 border-t border-hairline">${imeiHtml}</div>
-        </div>`
-        };
+            ${actions ? `<div class="flex items-center justify-end gap-1 mt-2">${actions}</div>` : ''}
+        </div>`;
     };
 
-    // เดินตามโหมด list/card ปัจจุบันแล้วคืน markup ที่ต้องใส่ + container เป้าหมาย
-    const expectedItemMarkup = (e, idx) => {
-        const { row, card } = expectedRowHtml(e, idx);
-        return _expectedViewMode === 'card' ? card : row;
-    };
+    // แท็บแบบ pill group (DESIGN.md ข้อ 11.9): เลือกแล้วเปลี่ยนขอบ/ตัวอักษรเป็นเหลือง พื้นไม่เปลี่ยน
+    //   (ไม่ใช้พื้นเหลืองทึบ — หน้านี้เก็บปุ่มทึบไว้ให้ "ส่งผลตรวจนับ" ปุ่มเดียว)
+    //   ตัวเลขในแท็บนับจากข้อมูลทั้งรอบ (ไม่ขึ้นกับช่องค้นหา)
+    const AUDIT_TAB_BASE = 'audit-item-tab shrink-0 inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-field text-sm cursor-pointer transition-colors';
+    const AUDIT_TAB_ON = `${AUDIT_TAB_BASE} ring-1 ring-accent-ink text-accent-ink`;
+    const AUDIT_TAB_OFF = `${AUDIT_TAB_BASE} text-body-muted hover:text-ink`;
+    const AUDIT_TAB_COUNT_ON = 'text-xs font-semibold text-accent-ink';
+    const AUDIT_TAB_COUNT_OFF = 'text-xs font-semibold text-ink-muted-48';
 
-    // โหลดแถวชุดถัดไป (EXPECTED_ITEMS_PER_PAGE แถว) มาต่อท้ายตารางที่มีอยู่ — เหมือน loadMoreStockProducts ใน script.js
-    function loadMoreExpectedItems() {
-        const target = _expectedViewMode === 'card'
-            ? document.getElementById('expected-view-cards')
-            : document.getElementById('expected-items-tbody');
-        if (!target) return;
-        const total = _expectedRenderRows.length;
-        if (_expectedLoadedCount >= total) return;
+    // opts.keepPage = true เฉพาะ "แสดงเพิ่ม" และการโหลดรอบซ้ำหลังสแกน — เปลี่ยนแท็บ/ค้นหาเริ่มหน้าแรกใหม่
+    function renderAuditItems(opts = {}) {
+        const tbody = document.getElementById('audit-items-tbody');
+        const cards = document.getElementById('audit-items-cards');
+        const more = document.getElementById('btn-audit-items-more');
+        if (!tbody) return;
+        if (!opts.keepPage) _auditShown = AUDIT_PAGE_SIZE;
 
-        const startIdx = _expectedLoadedCount;
-        const nextBatch = _expectedRenderRows.slice(startIdx, startIdx + EXPECTED_ITEMS_PER_PAGE);
-        target.insertAdjacentHTML('beforeend', nextBatch.map((e, i) => expectedItemMarkup(e, startIdx + i)).join(''));
-        _expectedLoadedCount += nextBatch.length;
+        const n = countAuditRows(_auditRows);
+        const tabCount = { all: _auditRows.length, missing: n.missing, match: n.match, extra: n.extra };
+        document.querySelectorAll('#audit-item-tabs .audit-item-tab').forEach(btn => {
+            const on = btn.dataset.tab === _auditTab;
+            btn.className = on ? AUDIT_TAB_ON : AUDIT_TAB_OFF;
+            btn.setAttribute('aria-pressed', String(on));
+            const c = btn.querySelector('[data-count]');
+            if (c) { c.className = on ? AUDIT_TAB_COUNT_ON : AUDIT_TAB_COUNT_OFF; c.textContent = (tabCount[btn.dataset.tab] || 0).toLocaleString('th-TH'); }
+        });
 
-        // ถ้าโหลดแล้วเนื้อหายังไม่ล้นพื้นที่ที่มองเห็น (#main-content ไม่มี scrollbar)
-        // scroll event จะไม่มีวันยิงและแถวที่เหลือจะเข้าถึงไม่ได้ตลอดไป โหลดเพิ่มต่อจนกว่าจะล้นหรือหมด
-        const container = document.getElementById('main-content');
-        if (container && _expectedLoadedCount < total && container.scrollHeight <= container.clientHeight) {
-            loadMoreExpectedItems();
+        const q = _auditSearch;
+        const filtered = _auditRows.filter(r =>
+            (_auditTab === 'all' || r.state === _auditTab) &&
+            (!q || r.imei.toLowerCase().includes(q) || String(r.name).toLowerCase().includes(q)));
+        const visible = filtered.slice(0, _auditShown);
+        const isCounting = _auditSessionData?.session?.status === 'กำลังตรวจนับ';
+
+        if (!visible.length) {
+            const msg = !_auditRows.length ? 'ยังไม่มีสินค้าที่ต้องตรวจนับในสาขานี้'
+                : (q ? 'ไม่พบรายการที่ตรงกับคำค้นหา'
+                    : ({ missing: 'สแกนครบทุกเครื่องแล้ว', match: 'ยังไม่มีเครื่องที่สแกนตรงกับระบบ', extra: 'ไม่มีรายการเกิน' }[_auditTab] || 'ไม่มีรายการ'));
+            tbody.innerHTML = stateRow(6, msg, 'text-body-muted');
+            if (cards) cards.innerHTML = `<div class="py-10 text-center text-body-muted">${msg}</div>`;
+        } else {
+            tbody.innerHTML = visible.map(r => auditRowHtml(r, isCounting)).join('');
+            if (cards) cards.innerHTML = visible.map(r => auditCardHtml(r, isCounting)).join('');
+        }
+
+        if (more) {
+            const rest = filtered.length - visible.length;
+            more.classList.toggle('hidden', rest <= 0);
+            more.textContent = `แสดงเพิ่มอีก ${Math.min(rest, AUDIT_PAGE_SIZE).toLocaleString('th-TH')} รายการ (1–${visible.length.toLocaleString('th-TH')} จาก ${filtered.length.toLocaleString('th-TH')})`;
         }
     }
 
-    function _renderExpectedTable(rows) {
-        const tbody = document.getElementById('expected-items-tbody');
-        const cardsWrap = document.getElementById('expected-view-cards');
-        if (!tbody) return;
-
-        const listWrap = document.getElementById('expected-view-list-wrap');
-        if (listWrap) listWrap.classList.toggle('hidden', _expectedViewMode !== 'list');
-        if (cardsWrap) cardsWrap.classList.toggle('hidden', _expectedViewMode !== 'card');
-
-        // ตัวนับผลลัพธ์ — ตัวหารคือจำนวนเครื่องทั้งหมดของรอบ ไม่ใช่จำนวนแถวที่โหลดมาแสดง (ข้อ 11.5)
-        // รวม "รอสแกน" ไว้ในบรรทัดเดียวกัน (distill: เดิมแยกเป็นอีกบรรทัด "expected-list-summary" ซ้ำซ้อน)
-        const countEl = document.getElementById('expected-result-count');
-        if (countEl) {
-            if (_expectedImeiData.length) {
-                const pending = _expectedImeiData.filter(e => !_scannedImeiSet.has(e.imei) && !e.sold).length;
-                countEl.textContent = `แสดง ${rows.length} จาก ${_expectedImeiData.length} รายการ · รอสแกน ${pending} เครื่อง`;
-            } else {
-                countEl.textContent = '';
-            }
-        }
-
-        _expectedRenderRows = rows;
-        _expectedLoadedCount = 0;
-        tbody.innerHTML = '';
-        if (cardsWrap) cardsWrap.innerHTML = '';
-
-        if (!rows.length) {
-            const msg = _expectedImeiData.length ? 'ไม่พบสินค้าที่ตรงกับตัวกรอง' : 'ไม่พบสินค้าที่ต้องตรวจนับในสาขานี้';
-            tbody.innerHTML = stateRow(EXPECTED_TABLE_COLS, msg);
-            if (cardsWrap) cardsWrap.innerHTML = `<div class="col-span-full py-12 text-center text-ink/50 italic">${msg}</div>`;
+    // ผลการสแกนล่าสุด 3 รายการใต้ช่องสแกน — รายการจากเซิร์ฟเวอร์เรียงสแกนล่าสุดก่อนอยู่แล้ว
+    function renderRecentScans(items) {
+        const box = document.getElementById('audit-recent-scans');
+        if (!box) return;
+        // ยังไม่มีการสแกน — ใช้พื้นที่อธิบายขั้นตอนแทน (ขั้นถ่ายรูปกล่องเป็นขั้นที่คนใหม่มักไม่รู้ว่าต้องทำ)
+        if (!items.length) {
+            const step = (n, title, desc) => `
+                <li class="flex items-start gap-3">
+                    <span class="w-6 h-6 rounded-full bg-surface-chip text-body-muted text-xs font-semibold flex items-center justify-center shrink-0">${n}</span>
+                    <div><p class="text-[13px] text-ink">${title}</p><p class="text-xs text-body-muted mt-0.5">${desc}</p></div>
+                </li>`;
+            box.innerHTML = '<ol class="grid grid-cols-1 md:grid-cols-3 gap-4 pt-1">'
+                + step(1, 'ยิงบาร์โค้ด IMEI', 'ที่กล่องหรือตัวเครื่อง แล้วกด Enter')
+                + step(2, 'ถ่ายรูปกล่อง', 'บังคับทุกเครื่อง ใช้เป็นหลักฐานตอนตรวจสอบ')
+                + step(3, 'กดยืนยัน', 'เครื่องจะย้ายไปอยู่ "ตรงกับระบบ" หรือ "เกินมา"')
+                + '</ol>';
             return;
         }
-
-        loadMoreExpectedItems();
+        const expectedByImei = new Map(_expectedImeiData.map(e => [e.imei, e]));
+        box.innerHTML = '<p class="text-xs text-ink-muted-48 mb-1.5">สแกนล่าสุด</p><ul class="space-y-1">' + items.slice(0, 3).map(i => {
+            const e = expectedByImei.get(i.imei);
+            const ok = !!i.is_expected;
+            const detail = ok
+                ? [i.product_name, e && e.capacity, e && e.color].filter(Boolean).join(' · ')
+                : 'ไม่พบในคลังสาขา — บันทึกเป็นรายการเกิน';
+            return `<li class="flex items-center gap-2.5 text-[13px] leading-6">
+                <i class="fa-solid ${ok ? 'fa-check text-state-ok' : 'fa-circle-exclamation text-state-pending'} text-[11px] w-3 text-center shrink-0"></i>
+                <span class="font-mono text-ink shrink-0">${auditEsc(i.imei)}</span>
+                <span class="${ok ? 'text-body-muted' : 'text-state-pending'} truncate flex-1 min-w-0">${auditEsc(detail)}</span>
+                <span class="text-xs text-ink-muted-48 shrink-0">${auditTime(i.scanned_at)}</span>
+            </li>`;
+        }).join('') + '</ul>';
     }
 
-    // Infinite scroll ของตาราง "สินค้าที่ต้องตรวจนับวันนี้" — ผูกกับ #main-content ครั้งเดียวตอนไฟล์นี้ถูกโหลด
-    // (ไม่ผูกใน initStockAudit() เพราะฟังก์ชันนั้นถูกเรียกซ้ำทุกครั้งที่เข้าหน้านี้ จะได้ listener ซ้อนกันเพิ่มเรื่อยๆ)
-    // เช็ก visibility ของ #view-stock-audit ในตัว handler เอง เหมือนที่ script.js ทำกับ #view-stock
-    const _mainContentForExpectedScroll = document.getElementById('main-content');
-    if (_mainContentForExpectedScroll) {
-        _mainContentForExpectedScroll.addEventListener('scroll', () => {
-            const viewEl = document.getElementById('view-stock-audit');
-            if (!viewEl || viewEl.classList.contains('hidden')) return;
-            const { scrollTop, scrollHeight, clientHeight } = _mainContentForExpectedScroll;
-            if (scrollHeight - scrollTop - clientHeight < 200) {
-                loadMoreExpectedItems();
-            }
-        });
-    }
-
-    // สลับมุมมอง List/Card ของทั้งสองตาราง — ผูกครั้งเดียวตอนไฟล์นี้ถูกโหลด (เหตุผลเดียวกับ infinite scroll ด้านบน)
     const _syncViewToggleButtons = (listBtn, cardBtn, mode) => window.syncViewToggleButtons(listBtn, cardBtn, mode);
-
-    const expectedViewListBtn = document.getElementById('expected-view-list');
-    const expectedViewCardBtn = document.getElementById('expected-view-card');
-    if (expectedViewListBtn && expectedViewCardBtn) {
-        const apply = (mode) => {
-            _expectedViewMode = mode;
-            localStorage.setItem('audit_expected_view_mode', mode);
-            _syncViewToggleButtons(expectedViewListBtn, expectedViewCardBtn, mode);
-            // re-render จากชุดที่กรอง/เรียงไว้ล่าสุด ไม่ต้องกรองซ้ำ
-            _renderExpectedTable(_expectedRenderRows);
-        };
-        expectedViewListBtn.addEventListener('click', () => apply('list'));
-        expectedViewCardBtn.addEventListener('click', () => apply('card'));
-        _syncViewToggleButtons(expectedViewListBtn, expectedViewCardBtn, _expectedViewMode);
-    }
-
-    const scanListViewListBtn = document.getElementById('scan-list-view-list');
-    const scanListViewCardBtn = document.getElementById('scan-list-view-card');
-    if (scanListViewListBtn && scanListViewCardBtn) {
-        const apply = (mode) => {
-            _scanListViewMode = mode;
-            localStorage.setItem('audit_scan_view_mode', mode);
-            _syncViewToggleButtons(scanListViewListBtn, scanListViewCardBtn, mode);
-            // renderAuditScanList ไม่มีตัวกรองของตัวเอง — โหลดเซสชันวันนี้ใหม่เพื่อ re-render ทั้งสองตาราง
-            // (ราคาถูก: ข้อมูลเดิมอยู่ใน _auditSessionData/_expectedImeiData แล้ว ไม่ต้องยิง API ซ้ำ)
-            if (_auditSessionData) renderAuditScanList(_auditSessionData.items || []);
-        };
-        scanListViewListBtn.addEventListener('click', () => apply('list'));
-        scanListViewCardBtn.addEventListener('click', () => apply('card'));
-        _syncViewToggleButtons(scanListViewListBtn, scanListViewCardBtn, _scanListViewMode);
-    }
 
     // สลับมุมมองของหน้า "ตรวจสอบผลการตรวจนับสต็อก" (#stock-audit-review) — ตาราง "รอบการตรวจนับ"
     const reviewSessionsViewListBtn = document.getElementById('audit-review-sessions-view-list');
@@ -939,175 +793,15 @@
         });
     }
 
-    function toggleExpectedList() {
-        const body = document.getElementById('expected-list-body');
-        const chevron = document.getElementById('expected-list-chevron');
-        const btn = document.getElementById('btn-toggle-expected-list');
-        if (!body) return;
-        const isHidden = body.classList.toggle('hidden');
-        if (chevron) {
-            chevron.style.transform = isHidden ? 'rotate(180deg)' : 'rotate(0deg)';
-        }
-        // ปุ่มนี้เป็นตัวย่อ/ขยายจริง จึงต้องบอกสถานะให้โปรแกรมอ่านหน้าจอรู้ด้วย
-        if (btn) btn.setAttribute('aria-expanded', String(!isHidden));
-    }
-
-    function filterExpectedList(searchVal) {
-        const tbody = document.getElementById('expected-items-tbody');
-        if (!tbody) return;
-        const q = (searchVal || '').toLowerCase().trim();
-        const statusFilter = document.getElementById('expected-list-filter')?.value || 'all';
-
-        let filtered = _expectedImeiData.filter(e => {
-            const matchText = !q || e.imei.toLowerCase().includes(q) || e.product_name.toLowerCase().includes(q);
-            const isScanned = _scannedImeiSet.has(e.imei);
-            const matchStatus = statusFilter === 'all'
-                || (statusFilter === 'scanned' && isScanned)
-                || (statusFilter === 'pending' && !isScanned);
-            return matchText && matchStatus;
-        });
-
-        // re-sort: รอสแกนก่อน
-        filtered.sort((a, b) => {
-            const aS = _scannedImeiSet.has(a.imei) ? 1 : 0;
-            const bS = _scannedImeiSet.has(b.imei) ? 1 : 0;
-            if (aS !== bS) return aS - bS;
-            return a.product_name.localeCompare(b.product_name, 'th');
-        });
-
-        _renderExpectedTable(filtered);
-        renderExpectedChips();
-    }
-
+    // ปุ่ม "ใส่ในช่องสแกน" ของแถวที่ยังไม่พบ — กรอก IMEI ให้แล้วเลื่อนขึ้นไปที่ช่องสแกน (ยังต้องกดตรวจนับ + ถ่ายรูปกล่องเอง)
     function fillImeiInput(imei) {
         const input = document.getElementById('audit-imei-input');
         if (input) {
             input.value = imei;
             input.focus();
-            // เลื่อนไปที่ scan area
             const scanArea = document.getElementById('audit-scan-area');
             if (scanArea) scanArea.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
-    }
-
-    let _scannedItemsCache = [];
-
-    // ตัวกรอง "ผลการตรวจ" ของตาราง "รายการที่สแกนแล้ว" (ข้อ 11.5) — เรียกใหม่ทุกครั้งจาก select onchange
-    function filterAuditScanList(value) {
-        _scanListFilterValue = value || 'all';
-        renderAuditScanList(_scannedItemsCache);
-    }
-
-    const renderScanListChips = () => {
-        const box = document.getElementById('audit-scan-list-filters');
-        if (!box) return;
-        if (_scanListFilterValue === 'all') { box.innerHTML = ''; return; }
-        const label = _scanListFilterValue === 'unexpected' ? 'ผลการตรวจ: ไม่พบในระบบ' : 'ผลการตรวจ: พบในระบบ';
-        box.innerHTML = `<span class="px-4 py-2.5 rounded-xl bg-panel/40 border border-hairline text-ink text-sm font-medium transition-colors inline-flex items-center gap-2">
-            <span>${label}</span><i class="fa-solid fa-xmark text-[10px] opacity-80 cursor-pointer" onclick="filterAuditScanList('all'); document.getElementById('scan-list-filter').value='all';"></i>
-        </span>`;
-    };
-
-    function renderAuditScanList(items) {
-        _scannedItemsCache = items || [];
-        const list = document.getElementById('audit-scan-list');
-        const cardsWrap = document.getElementById('scan-list-view-cards');
-        const countEl = document.getElementById('audit-scan-list-count');
-        if (!list) return;
-
-        const listWrap = document.getElementById('scan-list-view-list-wrap');
-        if (listWrap) listWrap.classList.toggle('hidden', _scanListViewMode !== 'list');
-        if (cardsWrap) cardsWrap.classList.toggle('hidden', _scanListViewMode !== 'card');
-
-        renderScanListChips();
-
-        const filtered = _scanListFilterValue === 'all'
-            ? _scannedItemsCache
-            : _scannedItemsCache.filter(i => _scanListFilterValue === 'unexpected' ? !i.is_expected : i.is_expected);
-
-        // มีตัวกรองแล้ว จึงใช้รูปแบบ "แสดง N จาก M" เหมือนตารางอื่นตามข้อ 11.5 เมื่อกรองอยู่
-        if (countEl) {
-            countEl.textContent = _scannedItemsCache.length
-                ? (_scanListFilterValue === 'all'
-                    ? `ทั้งหมด ${_scannedItemsCache.length} รายการ`
-                    : `แสดง ${filtered.length} จาก ${_scannedItemsCache.length} รายการ`)
-                : '';
-        }
-
-        if (filtered.length === 0) {
-            const msg = _scannedItemsCache.length ? 'ไม่พบรายการตามตัวกรองที่เลือก' : 'ยังไม่มีรายการ เริ่มสแกน IMEI เลย';
-            list.innerHTML = stateRow(SCAN_TABLE_COLS, msg);
-            if (cardsWrap) cardsWrap.innerHTML = `<div class="col-span-full py-12 text-center text-ink/50 italic">${msg}</div>`;
-            return;
-        }
-
-        const rowsHtml = [];
-        const cardsHtml = [];
-
-        filtered.forEach((item, idx) => {
-            const badgeHtml = item.is_expected
-                ? statusBadge('ok', 'พบในระบบ')
-                : statusBadge('fail', 'ไม่พบในระบบ');
-
-            const photoHtmlSmall = item.box_photo_url
-                ? `<a href="${item.box_photo_url}" target="_blank" rel="noreferrer" title="เปิดรูปกล่องขนาดเต็ม"
-                     class="elev-chip block w-10 h-10 rounded-[0.375rem] overflow-hidden hover:ring-1 hover:ring-accent-ink transition-colors">
-                     <img src="${item.box_photo_url}" referrerpolicy="no-referrer" class="w-full h-full object-cover" loading="lazy" width="40" height="40" alt="รูปกล่องสินค้าของ IMEI ${item.imei}" />
-                   </a>`
-                : `<div class="elev-card w-10 h-10 rounded-[0.375rem] bg-panel/40 flex items-center justify-center text-ink/50">
-                     <i class="fa-solid fa-image text-sm"></i>
-                   </div>`;
-
-            // การ์ดมีที่ทางมากกว่าแถวตาราง — รูปกล่องขยายเป็น 56px แทน 40px ให้เห็นรายละเอียดชัดขึ้น
-            const photoHtmlLarge = item.box_photo_url
-                ? `<a href="${item.box_photo_url}" target="_blank" rel="noreferrer" title="เปิดรูปกล่องขนาดเต็ม"
-                     class="elev-chip block w-14 h-14 rounded-[0.375rem] overflow-hidden hover:ring-1 hover:ring-accent-ink transition-colors shrink-0">
-                     <img src="${item.box_photo_url}" referrerpolicy="no-referrer" class="w-full h-full object-cover" loading="lazy" width="56" height="56" alt="รูปกล่องสินค้าของ IMEI ${item.imei}" />
-                   </a>`
-                : `<div class="elev-card w-14 h-14 rounded-[0.375rem] bg-panel/40 flex items-center justify-center text-ink/50 shrink-0">
-                     <i class="fa-solid fa-image text-lg"></i>
-                   </div>`;
-
-            // ลบได้เฉพาะรอบที่ยังตรวจนับอยู่ — ตรวจสิทธิ์ก่อนเรนเดอร์ปุ่ม และยังผ่าน showConfirm() อีกชั้น (ข้อ 11.6)
-            const canDelete = _auditSessionData?.session?.status === 'กำลังตรวจนับ';
-            const deleteBtn = canDelete
-                ? `<button type="button" onclick="deleteAuditItem('${item.imei}')" title="ลบรายการนี้ออกจากรอบตรวจนับ"
-                     aria-label="ลบ IMEI ${item.imei} ออกจากรอบตรวจนับ"
-                     class="text-ink hover:text-red-400 transition-colors p-2"><i class="fa-solid fa-trash"></i></button>`
-                : '<span class="text-ink/50">-</span>';
-
-            rowsHtml.push(`
-            <tr class="hover:bg-divider transition-colors">
-                <td class="px-6 py-4 text-ink/70">${idx + 1}</td>
-                <td class="px-6 py-4">${photoHtmlSmall}</td>
-                <td class="px-6 py-4"><span class="font-mono font-semibold text-accent-ink">${item.imei}</span></td>
-                <td class="px-6 py-4">
-                    <p class="font-medium text-ink">${item.product_name}</p>
-                    ${item.scan_notes ? `<p class="text-xs text-ink/70">${item.scan_notes}</p>` : ''}
-                </td>
-                <td class="px-6 py-4">${badgeHtml}</td>
-                <td class="px-6 py-4 text-right"><div class="flex items-center justify-end gap-1">${deleteBtn}</div></td>
-            </tr>`);
-
-            cardsHtml.push(`
-            <div class="elev-card bg-surface-tile-3 rounded-md p-3.5">
-                <div class="flex items-start gap-3">
-                    ${photoHtmlLarge}
-                    <div class="min-w-0 flex-1">
-                        <span class="font-mono font-semibold text-accent-ink text-xs">${item.imei}</span>
-                        <p class="font-medium text-ink mt-0.5 truncate">${item.product_name}</p>
-                        ${item.scan_notes ? `<p class="text-xs text-ink/70 mt-0.5 truncate">${item.scan_notes}</p>` : ''}
-                    </div>
-                </div>
-                <div class="flex items-center justify-between mt-3.5 pt-3 border-t border-hairline">
-                    ${badgeHtml}
-                    <div class="flex items-center gap-1">${deleteBtn}</div>
-                </div>
-            </div>`);
-        });
-
-        list.innerHTML = rowsHtml.join('');
-        if (cardsWrap) cardsWrap.innerHTML = cardsHtml.join('');
     }
 
     async function deleteAuditItem(imei) {
@@ -1756,9 +1450,6 @@
     window.submitModalAuditItem = submitModalAuditItem;
     window.fillImeiInput = fillImeiInput;
     window.deleteAuditItem = deleteAuditItem;
-    window.toggleExpectedList = toggleExpectedList;
-    window.filterExpectedList = filterExpectedList;
-    window.filterAuditScanList = filterAuditScanList;
     window.closeAuditSession = closeAuditSession;
     window.openAuditReviewDetail = openAuditReviewDetail;
     window.verifyAuditImei = verifyAuditImei;

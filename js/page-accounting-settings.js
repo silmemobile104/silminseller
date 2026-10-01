@@ -179,11 +179,17 @@
 
                 renderCOATable(_coaCache.accounts);
                 renderCOAGroupsTable(_coaCache.groups);
+                renderAcctCatPage();
+                renderAcctCodePage();
             } else {
                 document.getElementById('coa-table-body').innerHTML =
                     coaStateRow(COA_COLS, data.message || 'โหลดข้อมูลผังบัญชีไม่สำเร็จ', 'text-red-400');
                 document.getElementById('coa-groups-table-body').innerHTML =
                     coaStateRow(GRP_COLS, data.message || 'โหลดข้อมูลกลุ่มบัญชีไม่สำเร็จ', 'text-red-400');
+                const t3 = document.getElementById('acct-cat-table-body');
+                if (t3) t3.innerHTML = coaStateRow(ACCT_CAT_COLS, data.message || 'โหลดข้อมูลบัญชีไม่สำเร็จ', 'text-red-400');
+                const t4 = document.getElementById('acct-code-table-body');
+                if (t4) t4.innerHTML = coaStateRow(ACCT_CODE_COLS, data.message || 'โหลดข้อมูลรหัสบัญชีไม่สำเร็จ', 'text-red-400');
                 showToast(data.message || 'เกิดข้อผิดพลาดในการโหลดข้อมูลผังบัญชี', 'error');
             }
         } catch (error) {
@@ -192,6 +198,10 @@
             const t2 = document.getElementById('coa-groups-table-body');
             if (t1) t1.innerHTML = coaStateRow(COA_COLS, 'เชื่อมต่อเซิร์ฟเวอร์ผิดพลาด', 'text-red-400');
             if (t2) t2.innerHTML = coaStateRow(GRP_COLS, 'เชื่อมต่อเซิร์ฟเวอร์ผิดพลาด', 'text-red-400');
+            const t3 = document.getElementById('acct-cat-table-body');
+            if (t3) t3.innerHTML = coaStateRow(ACCT_CAT_COLS, 'เชื่อมต่อเซิร์ฟเวอร์ผิดพลาด', 'text-red-400');
+            const t4 = document.getElementById('acct-code-table-body');
+            if (t4) t4.innerHTML = coaStateRow(ACCT_CODE_COLS, 'เชื่อมต่อเซิร์ฟเวอร์ผิดพลาด', 'text-red-400');
             showToast('เชื่อมต่อเซิร์ฟเวอร์ผิดพลาด', 'error');
         }
     }
@@ -565,6 +575,543 @@
         }
     }
 
+    // ---------- หน้า "ประเภทบัญชี" (#account-categories) ----------
+    // (ชื่อ view ยังเป็น account-categories เพื่อไม่ให้ลิงก์/บุ๊กมาร์กเดิมเสีย)
+    // จัดการ "กลุ่มบัญชี" (AccountGroup) ใต้หมวดหลัก 5 หมวด — ฟอร์มกรอก รหัส / ชื่อกลุ่มบัญชี / หมวด
+    // ใช้ข้อมูลชุดเดียวกับผังบัญชี (_coaCache.groups) — กลุ่มของระบบ (is_system) แก้ได้แค่ชื่อ และลบไม่ได้
+    const ACCT_CAT_COLS = 5;
+    let acctCatActive = ''; // _id ของหมวดที่กำลังกรอง ('' = ทุกหมวด)
+
+    async function initAccountCategories() {
+        const search = document.getElementById('acct-cat-search');
+        if (search) search.value = '';
+        acctCatActive = '';
+        coaSkeleton('acct-cat-table-body', ACCT_CAT_COLS);
+        await loadCOAData();
+    }
+
+    function renderAcctCatTabs() {
+        const box = document.getElementById('acct-cat-tabs');
+        if (!box) return;
+        const tabs = [{ _id: '', category_code: '', category_name: 'ทุกหมวด' }].concat(_coaCache.categories);
+        box.innerHTML = tabs.map(c => {
+            const count = c._id
+                ? _coaCache.groups.filter(g => idOf(g.category_id) === c._id).length
+                : _coaCache.groups.length;
+            const active = c._id === acctCatActive;
+            const cls = active
+                ? 'border border-transparent bg-primary text-on-primary ring-1 ring-accent-ink'
+                : 'elev-field bg-field text-body-muted hover:ring-1 hover:ring-accent-ink hover:text-ink';
+            const badgeCls = active ? 'bg-hairline/20' : 'bg-chip/60 text-ink';
+            const code = c.category_code ? `<span class="font-mono">${escapeHtml(c.category_code)}</span>` : '';
+            return `<button type="button" data-cat="${escapeHtml(c._id)}" aria-pressed="${active}"
+                class="acct-cat-tab px-4 py-2.5 rounded-xl text-sm font-bold transition-colors flex items-center gap-2 cursor-pointer ${cls}">
+                ${code} ${escapeHtml(c.category_name)}
+                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${badgeCls}">${count}</span>
+            </button>`;
+        }).join('');
+        box.querySelectorAll('.acct-cat-tab').forEach(b => b.addEventListener('click', () => {
+            acctCatActive = b.dataset.cat;
+            renderAcctCatPage();
+        }));
+    }
+
+    function renderAcctCatPage() {
+        const tbody = document.getElementById('acct-cat-table-body');
+        if (!tbody) return;
+        renderAcctCatTabs();
+
+        const activeCat = _coaCache.categories.find(c => c._id === acctCatActive);
+        const heading = document.querySelector('#acct-cat-heading span');
+        if (heading) heading.textContent = activeCat ? `ประเภทบัญชีหมวด${activeCat.category_name}` : 'ประเภทบัญชีทุกหมวด';
+
+        const searchTxt = (document.getElementById('acct-cat-search')?.value || '').trim().toLowerCase();
+        const inCat = _coaCache.groups.filter(g => !acctCatActive || idOf(g.category_id) === acctCatActive);
+        const rows = inCat.filter(g => !searchTxt ||
+            (g.group_code || '').toLowerCase().includes(searchTxt) ||
+            (g.group_name || '').toLowerCase().includes(searchTxt));
+        coaSetText('acct-cat-result-count', inCat.length ? `แสดง ${rows.length} จาก ${inCat.length} รายการ` : '');
+
+        if (!rows.length) {
+            tbody.innerHTML = coaStateRow(ACCT_CAT_COLS, inCat.length ? 'ไม่พบประเภทบัญชีที่ตรงกับคำค้นหา' : 'ยังไม่มีประเภทบัญชีในหมวดนี้');
+            return;
+        }
+        tbody.innerHTML = rows.map(grp => {
+            const cat = _coaCache.categories.find(c => c._id === idOf(grp.category_id)) || {};
+            const accCount = _coaCache.accounts.filter(a => idOf(a.group_id) === grp._id).length;
+            const editBtn = `<button type="button" class="btn-grp-edit text-ink hover:text-amber-400 transition-colors p-2 cursor-pointer"
+                    data-id="${escapeHtml(grp._id)}" title="แก้ไขประเภทบัญชี"
+                    aria-label="แก้ไขประเภทบัญชี ${escapeHtml(grp.group_code)}">
+                    <i class="fa-solid fa-pen-to-square"></i>
+                </button>`;
+            // กลุ่มของระบบลบไม่ได้ จึงไม่เรนเดอร์ปุ่มลบตั้งแต่แรก (ข้อ 11.12 ข้อ 11)
+            const deleteBtn = grp.is_system ? '' : `<button type="button" class="btn-grp-delete text-ink hover:text-red-400 transition-colors p-2 cursor-pointer"
+                    data-id="${escapeHtml(grp._id)}" title="ลบประเภทบัญชี"
+                    aria-label="ลบประเภทบัญชี ${escapeHtml(grp.group_code)}">
+                    <i class="fa-solid fa-trash"></i>
+                </button>`;
+            const typeBadge = grp.is_system
+                ? '<span class="px-2.5 py-1 rounded-[0.375rem] text-xs font-medium bg-chip/60 text-ink">ระบบ</span>'
+                : '<span class="px-2.5 py-1 rounded-[0.375rem] text-xs font-medium bg-state-ok-tint/[0.12] text-state-ok">กำหนดเอง</span>';
+            return `
+            <tr class="hover:bg-divider transition-colors">
+                <td class="px-6 py-4"><span class="font-mono font-semibold text-accent-ink">${escapeHtml(grp.group_code)}</span></td>
+                <td class="px-6 py-4 text-ink">${escapeHtml(grp.group_name)}</td>
+                <td class="px-6 py-4">${cat.category_name ? coaChipLabel(cat.category_name) : '<span class="text-ink/50">-</span>'}</td>
+                <td class="px-6 py-4 text-ink">${accCount} รายการ</td>
+                <td class="px-6 py-4 text-right">
+                    <div class="flex items-center justify-end gap-2">${typeBadge}${editBtn}${deleteBtn}</div>
+                </td>
+            </tr>`;
+        }).join('');
+        tbody.querySelectorAll('.btn-grp-edit').forEach(b =>
+            b.addEventListener('click', () => openAcctCatModal(_coaCache.groups.find(g => g._id === b.dataset.id))));
+        tbody.querySelectorAll('.btn-grp-delete').forEach(b =>
+            b.addEventListener('click', () => deleteAcctGroup(_coaCache.groups.find(g => g._id === b.dataset.id))));
+    }
+
+    function openAcctCatModal(editData = null) {
+        const modal = document.getElementById('modal-acct-cat');
+        if (!modal) return;
+        const catSelect = document.getElementById('acct-cat-category');
+        populateCategorySelect(catSelect, '-- เลือกหมวด --');
+
+        document.getElementById('modal-acct-cat-title').textContent = editData ? 'แก้ไขประเภทบัญชี' : 'เพิ่มประเภทบัญชี';
+        document.getElementById('acct-cat-id').value = editData?._id || '';
+        const codeInput = document.getElementById('acct-cat-code');
+        codeInput.value = editData?.group_code || '';
+        // กลุ่มของระบบเปลี่ยนรหัสไม่ได้ (เซิร์ฟเวอร์ก็กันไว้อีกชั้น)
+        codeInput.readOnly = !!editData?.is_system;
+        document.getElementById('acct-cat-name').value = editData?.group_name || '';
+        // เพิ่มใหม่ขณะกรองหมวดอยู่ — เลือกหมวดนั้นไว้ให้ก่อน
+        if (catSelect) catSelect.value = editData ? (idOf(editData.category_id) || '') : acctCatActive;
+
+        modal.classList.remove('hidden');
+        (editData?.is_system ? document.getElementById('acct-cat-name') : codeInput)?.focus();
+    }
+
+    function closeAcctCatModal() {
+        const modal = document.getElementById('modal-acct-cat');
+        if (modal) modal.classList.add('hidden');
+    }
+
+    async function saveAcctCatAccount() {
+        const _id = document.getElementById('acct-cat-id')?.value;
+        const payload = {
+            group_code: (document.getElementById('acct-cat-code')?.value || '').trim(),
+            group_name: (document.getElementById('acct-cat-name')?.value || '').trim(),
+            category_id: document.getElementById('acct-cat-category')?.value
+        };
+        if (_id) payload._id = _id;
+
+        if (!payload.group_code || !payload.group_name || !payload.category_id) {
+            showToast('กรุณากรอกรหัส ชื่อกลุ่มบัญชี และเลือกหมวดให้ครบ', 'warning');
+            return;
+        }
+
+        const btn = document.getElementById('acct-cat-save');
+        if (btn) btn.disabled = true; // กันกดซ้ำ — POST ไม่ retry และไม่ควรยิงซ้ำ
+        try {
+            const res = await authFetch(`${API_BASE_URL}/acct/account-groups`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const data = await res.json();
+            if (data.success) {
+                showToast(_id ? 'แก้ไขประเภทบัญชีเรียบร้อย' : 'เพิ่มประเภทบัญชีเรียบร้อย', 'success');
+                closeAcctCatModal();
+                loadCOAData();
+            } else {
+                showToast('บันทึกประเภทบัญชีไม่สำเร็จ: ' + (data.message || 'ไม่ทราบสาเหตุ'), 'error');
+            }
+        } catch (error) {
+            console.error('Error saveAcctCatAccount:', error);
+            showToast('เชื่อมต่อเซิร์ฟเวอร์ผิดพลาด: ' + error.message, 'error');
+        } finally {
+            if (btn) btn.disabled = false;
+        }
+    }
+
+    function deleteAcctGroup(grp) {
+        if (!grp) return;
+        // การลบย้อนไม่ได้ ต้องผ่าน showConfirm() ของระบบ (ข้อ 11.12 ข้อ 11)
+        const label = `<strong class="font-mono text-accent-ink">${escapeHtml(grp.group_code)}</strong> ${escapeHtml(grp.group_name)}`;
+        showConfirm('ลบประเภทบัญชี', `ต้องการลบ ${label} หรือไม่<br><span class="text-xs text-ink/70">การลบนี้ย้อนกลับไม่ได้</span>`,
+            () => doDeleteAcctGroup(grp._id), 'ลบประเภทบัญชี', 'danger');
+    }
+
+    async function doDeleteAcctGroup(id) {
+        try {
+            const res = await authFetch(`${API_BASE_URL}/acct/account-groups/${id}`, { method: 'DELETE' });
+            const data = await res.json();
+            if (data.success) {
+                showToast('ลบประเภทบัญชีเรียบร้อย', 'success');
+                loadCOAData();
+            } else {
+                showToast('ลบประเภทบัญชีไม่สำเร็จ: ' + (data.message || 'ไม่ทราบสาเหตุ'), 'error');
+            }
+        } catch (error) {
+            console.error('Error doDeleteAcctGroup:', error);
+            showToast('เชื่อมต่อเซิร์ฟเวอร์ผิดพลาด: ' + error.message, 'error');
+        }
+    }
+
+    // ---------- หน้า "รหัสบัญชี" (#account-codes) ----------
+    // ใช้ข้อมูลผังบัญชี (_coaCache.accounts / POST /acct/chart-of-accounts)
+    // ฟอร์มกรอก รหัส / ชื่อบัญชี / หมวด / กลุ่ม — แก้ไขได้ทุกบัญชี และเปิด/ปิดการใช้งานได้ทุกบัญชี
+    // บัญชีของระบบ (is_system): เปลี่ยนรหัสไม่ได้และลบไม่ได้ (seed จะสร้างกลับ + สรุปยอดรายวันค้นด้วยรหัส) — ใช้ปิดการใช้งานแทน
+    const ACCT_CODE_COLS = 6;
+
+    async function initAccountCodes() {
+        const search = document.getElementById('acct-code-search');
+        if (search) search.value = '';
+        const filter = document.getElementById('acct-code-filter-category');
+        if (filter) filter.value = '';
+        coaSkeleton('acct-code-table-body', ACCT_CODE_COLS);
+        await loadCOAData();
+    }
+
+    function renderAcctCodePage() {
+        const tbody = document.getElementById('acct-code-table-body');
+        if (!tbody) return;
+
+        // เติมตัวเลือกหมวดในตัวกรอง โดยคงค่าที่เลือกไว้เดิม
+        const filter = document.getElementById('acct-code-filter-category');
+        const catFilter = filter?.value || '';
+        if (filter) {
+            populateCategorySelect(filter, 'ทุกหมวด');
+            filter.value = catFilter;
+        }
+
+        const searchTxt = (document.getElementById('acct-code-search')?.value || '').trim().toLowerCase();
+        const inCat = _coaCache.accounts.filter(a => !catFilter || idOf(a.category_id) === catFilter);
+        const rows = inCat.filter(a => !searchTxt ||
+            (a.account_code || '').toLowerCase().includes(searchTxt) ||
+            (a.account_name || '').toLowerCase().includes(searchTxt));
+        coaSetText('acct-code-result-count', inCat.length ? `แสดง ${rows.length} จาก ${inCat.length} รายการ` : '');
+
+        if (!rows.length) {
+            tbody.innerHTML = coaStateRow(ACCT_CODE_COLS, inCat.length ? 'ไม่พบรหัสบัญชีที่ตรงกับคำค้นหา' : 'ยังไม่มีรหัสบัญชี');
+            return;
+        }
+        tbody.innerHTML = rows.map(acc => {
+            const d = coaBuildRowData(acc);
+            const active = acc.is_active !== false; // บัญชีเก่าที่ไม่มีฟิลด์นี้ถือว่าใช้งานอยู่
+            const code = escapeHtml(acc.account_code);
+            const systemChip = acc.is_system
+                ? ' <span class="ml-1 px-2 py-0.5 rounded-[0.375rem] text-[10px] font-medium bg-chip/60 text-ink">ระบบ</span>' : '';
+            const statusBadge = active
+                ? '<span class="px-2.5 py-1 rounded-[0.375rem] text-xs font-medium bg-state-ok-tint/[0.12] text-state-ok">ใช้งาน</span>'
+                : '<span class="px-2.5 py-1 rounded-[0.375rem] text-xs font-medium bg-state-danger/[0.12] text-state-danger">ปิดใช้งาน</span>';
+            const toggleBtn = `<button type="button" class="btn-code-toggle text-ink ${active ? 'hover:text-orange-400' : 'hover:text-state-ok'} transition-colors p-2 cursor-pointer"
+                    data-id="${escapeHtml(acc._id)}" title="${active ? 'ปิดการใช้งาน' : 'เปิดการใช้งาน'}"
+                    aria-label="${active ? 'ปิดการใช้งาน' : 'เปิดการใช้งาน'}บัญชี ${code}">
+                    <i class="fa-solid ${active ? 'fa-ban' : 'fa-circle-check'}"></i>
+                </button>`;
+            // บัญชีระบบลบไม่ได้ (ใช้ปิดการใช้งานแทน) จึงไม่เรนเดอร์ปุ่มลบ
+            const deleteBtn = acc.is_system ? '' : `<button type="button" class="btn-code-delete text-ink hover:text-red-400 transition-colors p-2 cursor-pointer"
+                    data-id="${escapeHtml(acc._id)}" title="ลบบัญชี" aria-label="ลบบัญชี ${code}">
+                    <i class="fa-solid fa-trash"></i>
+                </button>`;
+            return `
+            <tr class="hover:bg-divider transition-colors ${active ? '' : 'opacity-60'}">
+                <td class="px-6 py-4"><span class="font-mono font-semibold text-accent-ink">${code}</span>${systemChip}</td>
+                <td class="px-6 py-4 text-ink">${escapeHtml(acc.account_name)}</td>
+                <td class="px-6 py-4">${d.cat.category_name ? coaChipLabel(d.cat.category_name) : '<span class="text-ink/50">-</span>'}</td>
+                <td class="px-6 py-4">${d.grp.group_name ? coaChipLabel(d.grp.group_name) : '<span class="text-ink/50">-</span>'}</td>
+                <td class="px-6 py-4">${statusBadge}</td>
+                <td class="px-6 py-4 text-right">
+                    <div class="flex items-center justify-end gap-1">
+                        <button type="button" class="btn-code-edit text-ink hover:text-amber-400 transition-colors p-2 cursor-pointer"
+                            data-id="${escapeHtml(acc._id)}" title="แก้ไขบัญชี" aria-label="แก้ไขบัญชี ${code}">
+                            <i class="fa-solid fa-pen-to-square"></i>
+                        </button>
+                        ${toggleBtn}${deleteBtn}
+                    </div>
+                </td>
+            </tr>`;
+        }).join('');
+        const findAcc = (id) => _coaCache.accounts.find(a => a._id === id);
+        tbody.querySelectorAll('.btn-code-edit').forEach(b =>
+            b.addEventListener('click', () => openAcctCodeModal(findAcc(b.dataset.id))));
+        tbody.querySelectorAll('.btn-code-toggle').forEach(b =>
+            b.addEventListener('click', () => toggleAcctCodeActive(findAcc(b.dataset.id))));
+        tbody.querySelectorAll('.btn-code-delete').forEach(b => {
+            const acc = findAcc(b.dataset.id);
+            b.addEventListener('click', () => deleteAccountChart(acc?._id, acc?.account_code, acc?.account_name));
+        });
+    }
+
+    function toggleAcctCodeActive(acc) {
+        if (!acc) return;
+        const activate = acc.is_active === false;
+        const label = `<strong class="font-mono text-accent-ink">${escapeHtml(acc.account_code)}</strong> ${escapeHtml(acc.account_name)}`;
+        const note = activate
+            ? 'บัญชีจะกลับมาให้เลือกใช้ในเอกสารใหม่ได้'
+            : 'บัญชีและเอกสารเก่ายังอยู่ครบ แต่จะเลือกใช้ในเอกสารใหม่ไม่ได้';
+        showConfirm(activate ? 'เปิดการใช้งานบัญชี' : 'ปิดการใช้งานบัญชี',
+            `ต้องการ${activate ? 'เปิด' : 'ปิด'}การใช้งาน ${label} หรือไม่<br><span class="text-xs text-ink/70">${note}</span>`,
+            () => doToggleAcctCodeActive(acc._id, activate),
+            activate ? 'เปิดการใช้งาน' : 'ปิดการใช้งาน', activate ? 'success' : 'warning');
+    }
+
+    async function doToggleAcctCodeActive(id, isActive) {
+        try {
+            const res = await authFetch(`${API_BASE_URL}/acct/chart-of-accounts/${id}/active`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ is_active: isActive })
+            });
+            const data = await res.json();
+            if (data.success) {
+                showToast(isActive ? 'เปิดการใช้งานบัญชีเรียบร้อย' : 'ปิดการใช้งานบัญชีเรียบร้อย', 'success');
+                loadCOAData();
+            } else {
+                showToast('เปลี่ยนสถานะบัญชีไม่สำเร็จ: ' + (data.message || 'ไม่ทราบสาเหตุ'), 'error');
+            }
+        } catch (error) {
+            console.error('Error doToggleAcctCodeActive:', error);
+            showToast('เชื่อมต่อเซิร์ฟเวอร์ผิดพลาด: ' + error.message, 'error');
+        }
+    }
+
+    function openAcctCodeModal(editData = null) {
+        const modal = document.getElementById('modal-acct-code');
+        if (!modal) return;
+        const catSelect = document.getElementById('acct-code-category');
+        populateCategorySelect(catSelect, '-- เลือกหมวด --');
+
+        document.getElementById('modal-acct-code-title').textContent = editData ? 'แก้ไขรหัสบัญชี' : 'เพิ่มรหัสบัญชี';
+        document.getElementById('acct-code-id').value = editData?._id || '';
+        const codeInput = document.getElementById('acct-code-code');
+        codeInput.value = editData?.account_code || '';
+        // บัญชีระบบเปลี่ยนรหัสไม่ได้ (เซิร์ฟเวอร์กันไว้อีกชั้น) — แก้ได้ทั้งชื่อ หมวด และกลุ่ม
+        codeInput.readOnly = !!editData?.is_system;
+        codeInput.title = editData?.is_system ? 'บัญชีระบบเปลี่ยนรหัสไม่ได้' : '';
+        document.getElementById('acct-code-name').value = editData?.account_name || '';
+        // เพิ่มใหม่ขณะกรองหมวดอยู่ — เลือกหมวดนั้นไว้ให้ก่อน
+        if (catSelect) catSelect.value = editData
+            ? (idOf(editData.category_id) || '')
+            : (document.getElementById('acct-code-filter-category')?.value || '');
+        onAcctCodeCategoryChange(editData ? idOf(editData.group_id) : '');
+
+        modal.classList.remove('hidden');
+        (editData?.is_system ? document.getElementById('acct-code-name') : codeInput)?.focus();
+    }
+
+    // เลือกหมวดแล้ว เติมตัวเลือก "ชื่อกลุ่มบัญชี" เฉพาะกลุ่มในหมวดนั้นอัตโนมัติ
+    // selectedGroupId ใช้ตอนเปิดแก้ไข — เลือกกลุ่มเดิมไว้ให้ (ถ้ายังอยู่ในหมวดเดียวกัน)
+    function onAcctCodeCategoryChange(selectedGroupId = '') {
+        const catId = document.getElementById('acct-code-category')?.value || '';
+        const grpSelect = document.getElementById('acct-code-group');
+        if (!grpSelect) return;
+
+        if (!catId) {
+            grpSelect.innerHTML = '<option value="">-- เลือกหมวดก่อน --</option>';
+            grpSelect.disabled = true;
+            return;
+        }
+        const groups = _coaCache.groups.filter(g => idOf(g.category_id) === catId);
+        grpSelect.innerHTML = (groups.length
+            ? '<option value="">-- เลือกกลุ่มบัญชี --</option>'
+            : '<option value="">ยังไม่มีกลุ่มบัญชีในหมวดนี้ (เพิ่มได้ที่หน้าประเภทบัญชี)</option>')
+            + groups.map(g => `<option value="${escapeHtml(g._id)}">${escapeHtml(g.group_code)} - ${escapeHtml(g.group_name)}</option>`).join('');
+        grpSelect.disabled = !groups.length;
+        // ถ้ามีกลุ่มเดียวในหมวด เลือกให้เลย
+        grpSelect.value = groups.some(g => g._id === selectedGroupId) ? selectedGroupId
+            : (groups.length === 1 ? groups[0]._id : '');
+    }
+
+    function closeAcctCodeModal() {
+        const modal = document.getElementById('modal-acct-code');
+        if (modal) modal.classList.add('hidden');
+    }
+
+    async function saveAcctCode() {
+        const _id = document.getElementById('acct-code-id')?.value;
+        const payload = {
+            account_code: (document.getElementById('acct-code-code')?.value || '').trim(),
+            account_name: (document.getElementById('acct-code-name')?.value || '').trim(),
+            category_id: document.getElementById('acct-code-category')?.value,
+            group_id: document.getElementById('acct-code-group')?.value
+        };
+        if (_id) payload._id = _id;
+
+        if (!payload.account_code || !payload.account_name || !payload.category_id || !payload.group_id) {
+            showToast('กรุณากรอกรหัส ชื่อบัญชี และเลือกหมวดกับกลุ่มบัญชีให้ครบ', 'warning');
+            return;
+        }
+
+        const btn = document.getElementById('acct-code-save');
+        if (btn) btn.disabled = true; // กันกดซ้ำ — POST ไม่ retry และไม่ควรยิงซ้ำ
+        try {
+            const res = await authFetch(`${API_BASE_URL}/acct/chart-of-accounts`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const data = await res.json();
+            if (data.success) {
+                showToast(_id ? 'แก้ไขรหัสบัญชีเรียบร้อย' : 'เพิ่มรหัสบัญชีเรียบร้อย', 'success');
+                closeAcctCodeModal();
+                loadCOAData();
+            } else {
+                showToast('บันทึกรหัสบัญชีไม่สำเร็จ: ' + (data.message || 'ไม่ทราบสาเหตุ'), 'error');
+            }
+        } catch (error) {
+            console.error('Error saveAcctCode:', error);
+            showToast('เชื่อมต่อเซิร์ฟเวอร์ผิดพลาด: ' + error.message, 'error');
+        } finally {
+            if (btn) btn.disabled = false;
+        }
+    }
+
+    // ---------- หน้า "สมุดบัญชี" (#account-books) ----------
+    // ข้อมูลแยกจากผังบัญชี (collection accountbook) — ฟอร์มกรอกแค่ รหัส / ชื่อสมุดบัญชี
+    const ACCT_BOOK_COLS = 3;
+    let _acctBooks = [];
+
+    async function initAccountBooks() {
+        const search = document.getElementById('acct-book-search');
+        if (search) search.value = '';
+        coaSkeleton('acct-book-table-body', ACCT_BOOK_COLS);
+        await loadAcctBooks();
+    }
+
+    async function loadAcctBooks() {
+        const tbody = document.getElementById('acct-book-table-body');
+        try {
+            const res = await authFetch(`${API_BASE_URL}/acct/account-books`);
+            const data = await res.json();
+            if (!data.success) {
+                if (tbody) tbody.innerHTML = coaStateRow(ACCT_BOOK_COLS, data.message || 'ดึงข้อมูลสมุดบัญชีไม่สำเร็จ', 'text-red-400');
+                return;
+            }
+            _acctBooks = data.books || [];
+            renderAcctBookPage();
+        } catch (error) {
+            console.error('Error loadAcctBooks:', error);
+            if (tbody) tbody.innerHTML = coaStateRow(ACCT_BOOK_COLS, 'เชื่อมต่อเซิร์ฟเวอร์ผิดพลาด', 'text-red-400');
+        }
+    }
+
+    function renderAcctBookPage() {
+        const tbody = document.getElementById('acct-book-table-body');
+        if (!tbody) return;
+
+        const searchTxt = (document.getElementById('acct-book-search')?.value || '').trim().toLowerCase();
+        const rows = _acctBooks.filter(b => !searchTxt ||
+            (b.book_code || '').toLowerCase().includes(searchTxt) ||
+            (b.book_name || '').toLowerCase().includes(searchTxt));
+        coaSetText('acct-book-result-count', _acctBooks.length ? `แสดง ${rows.length} จาก ${_acctBooks.length} รายการ` : '');
+
+        if (!rows.length) {
+            tbody.innerHTML = coaStateRow(ACCT_BOOK_COLS, _acctBooks.length ? 'ไม่พบสมุดบัญชีที่ตรงกับคำค้นหา' : 'ยังไม่มีสมุดบัญชี');
+            return;
+        }
+        tbody.innerHTML = rows.map(b => `
+            <tr class="hover:bg-divider transition-colors">
+                <td class="px-6 py-4"><span class="font-mono font-semibold text-accent-ink">${escapeHtml(b.book_code)}</span></td>
+                <td class="px-6 py-4 text-ink">${escapeHtml(b.book_name)}</td>
+                <td class="px-6 py-4 text-right">
+                    <div class="flex items-center justify-end gap-1">
+                        <button type="button" class="btn-book-edit text-ink hover:text-amber-400 transition-colors p-2 cursor-pointer"
+                            data-id="${escapeHtml(b._id)}" title="แก้ไขสมุดบัญชี"
+                            aria-label="แก้ไขสมุดบัญชี ${escapeHtml(b.book_code)}">
+                            <i class="fa-solid fa-pen-to-square"></i>
+                        </button>
+                        <button type="button" class="btn-book-delete text-ink hover:text-red-400 transition-colors p-2 cursor-pointer"
+                            data-id="${escapeHtml(b._id)}" title="ลบสมุดบัญชี"
+                            aria-label="ลบสมุดบัญชี ${escapeHtml(b.book_code)}">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                    </div>
+                </td>
+            </tr>`).join('');
+        tbody.querySelectorAll('.btn-book-edit').forEach(btn =>
+            btn.addEventListener('click', () => openAcctBookModal(_acctBooks.find(b => b._id === btn.dataset.id))));
+        tbody.querySelectorAll('.btn-book-delete').forEach(btn =>
+            btn.addEventListener('click', () => deleteAcctBook(_acctBooks.find(b => b._id === btn.dataset.id))));
+    }
+
+    function openAcctBookModal(editData = null) {
+        const modal = document.getElementById('modal-acct-book');
+        if (!modal) return;
+        document.getElementById('modal-acct-book-title').textContent = editData ? 'แก้ไขสมุดบัญชี' : 'เพิ่มสมุดบัญชี';
+        document.getElementById('acct-book-id').value = editData?._id || '';
+        document.getElementById('acct-book-code').value = editData?.book_code || '';
+        document.getElementById('acct-book-name').value = editData?.book_name || '';
+        modal.classList.remove('hidden');
+        document.getElementById('acct-book-code')?.focus();
+    }
+
+    function closeAcctBookModal() {
+        const modal = document.getElementById('modal-acct-book');
+        if (modal) modal.classList.add('hidden');
+    }
+
+    async function saveAcctBook() {
+        const _id = document.getElementById('acct-book-id')?.value;
+        const payload = {
+            book_code: (document.getElementById('acct-book-code')?.value || '').trim(),
+            book_name: (document.getElementById('acct-book-name')?.value || '').trim()
+        };
+        if (_id) payload._id = _id;
+
+        if (!payload.book_code || !payload.book_name) {
+            showToast('กรุณากรอกรหัสและชื่อสมุดบัญชีให้ครบ', 'warning');
+            return;
+        }
+
+        const btn = document.getElementById('acct-book-save');
+        if (btn) btn.disabled = true; // กันกดซ้ำ — POST ไม่ retry และไม่ควรยิงซ้ำ
+        try {
+            const res = await authFetch(`${API_BASE_URL}/acct/account-books`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const data = await res.json();
+            if (data.success) {
+                showToast(_id ? 'แก้ไขสมุดบัญชีเรียบร้อย' : 'เพิ่มสมุดบัญชีเรียบร้อย', 'success');
+                closeAcctBookModal();
+                loadAcctBooks();
+            } else {
+                showToast('บันทึกสมุดบัญชีไม่สำเร็จ: ' + (data.message || 'ไม่ทราบสาเหตุ'), 'error');
+            }
+        } catch (error) {
+            console.error('Error saveAcctBook:', error);
+            showToast('เชื่อมต่อเซิร์ฟเวอร์ผิดพลาด: ' + error.message, 'error');
+        } finally {
+            if (btn) btn.disabled = false;
+        }
+    }
+
+    function deleteAcctBook(book) {
+        if (!book) return;
+        // การลบย้อนไม่ได้ ต้องผ่าน showConfirm() ของระบบ (ข้อ 11.12 ข้อ 11)
+        const label = `<strong class="font-mono text-accent-ink">${escapeHtml(book.book_code)}</strong> ${escapeHtml(book.book_name)}`;
+        showConfirm('ลบสมุดบัญชี', `ต้องการลบ ${label} หรือไม่<br><span class="text-xs text-ink/70">การลบนี้ย้อนกลับไม่ได้</span>`,
+            () => doDeleteAcctBook(book._id), 'ลบสมุดบัญชี', 'danger');
+    }
+
+    async function doDeleteAcctBook(id) {
+        try {
+            const res = await authFetch(`${API_BASE_URL}/acct/account-books/${id}`, { method: 'DELETE' });
+            const data = await res.json();
+            if (data.success) {
+                showToast('ลบสมุดบัญชีเรียบร้อย', 'success');
+                loadAcctBooks();
+            } else {
+                showToast('ลบสมุดบัญชีไม่สำเร็จ: ' + (data.message || 'ไม่ทราบสาเหตุ'), 'error');
+            }
+        } catch (error) {
+            console.error('Error doDeleteAcctBook:', error);
+            showToast('เชื่อมต่อเซิร์ฟเวอร์ผิดพลาด: ' + error.message, 'error');
+        }
+    }
+
     function openAddGroupModal() {
         const modal = document.getElementById('modal-add-group');
         if (!modal) return;
@@ -691,6 +1238,8 @@
         let accOptions = '<option value="">เลือกบัญชี (ออโต้รวม)</option>';
         _coaCache.accounts.forEach(a => {
             const isSelected = conf.account_ids && conf.account_ids.some(acc => idOf(acc) === a._id);
+            // บัญชีที่ปิดการใช้งานไม่แสดงให้เลือกใหม่ แต่ถ้าบรรทัดนี้เลือกไว้อยู่แล้วต้องคงไว้ ไม่งั้นบันทึกแล้วจะหลุดหาย
+            if (a.is_active === false && !isSelected) return;
             accOptions += `<option value="${a._id}" ${isSelected ? 'selected' : ''}>${escapeHtml(a.account_code)} - ${escapeHtml(a.account_name)}</option>`;
         });
 
@@ -858,7 +1407,8 @@
         if (debitSelect) {
             let debitOpts = '<option value="">-- เลือกบัญชีเดบิต --</option>';
             // Debit: strictly Expense (5xxxxx) and Liabilities/AP (2xxxxx)
-            const debits = _coaCache.accounts.filter(a => (a.account_code.startsWith('2') || a.account_code.startsWith('5')) && a.level === 3);
+            // บัญชีที่ปิดการใช้งาน (is_active === false) ไม่ให้เลือกในใบสำคัญจ่ายใหม่
+            const debits = _coaCache.accounts.filter(a => (a.account_code.startsWith('2') || a.account_code.startsWith('5')) && a.level === 3 && a.is_active !== false);
             debits.forEach(a => {
                 debitOpts += `<option value="${a._id}">${a.account_code} - ${a.account_name}</option>`;
             });
@@ -868,7 +1418,7 @@
         if (creditSelect) {
             let creditOpts = '<option value="">-- เลือกบัญชีเครดิต --</option>';
             // Credit: strictly Liquid Assets (11xxxx)
-            const credits = _coaCache.accounts.filter(a => a.account_code.startsWith('11') && a.level === 3);
+            const credits = _coaCache.accounts.filter(a => a.account_code.startsWith('11') && a.level === 3 && a.is_active !== false);
             credits.forEach(a => {
                 creditOpts += `<option value="${a._id}">${a.account_code} - ${a.account_name}</option>`;
             });
@@ -1482,5 +2032,21 @@
     window.printDisbursementVoucher = printDisbursementVoucher;
     window.initAccountingSettings = initAccountingSettings;
     window.initDisbursement = initDisbursement;
+    window.initAccountCategories = initAccountCategories;
+    window.renderAcctCatPage = renderAcctCatPage;
+    window.openAcctCatModal = openAcctCatModal;
+    window.closeAcctCatModal = closeAcctCatModal;
+    window.saveAcctCatAccount = saveAcctCatAccount;
+    window.initAccountBooks = initAccountBooks;
+    window.initAccountCodes = initAccountCodes;
+    window.renderAcctCodePage = renderAcctCodePage;
+    window.openAcctCodeModal = openAcctCodeModal;
+    window.closeAcctCodeModal = closeAcctCodeModal;
+    window.saveAcctCode = saveAcctCode;
+    window.onAcctCodeCategoryChange = onAcctCodeCategoryChange;
+    window.renderAcctBookPage = renderAcctBookPage;
+    window.openAcctBookModal = openAcctBookModal;
+    window.closeAcctBookModal = closeAcctBookModal;
+    window.saveAcctBook = saveAcctBook;
 
 })();

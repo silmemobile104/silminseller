@@ -26,19 +26,19 @@
     </script>
 
     <link rel="icon" type="image/png" href="logo.png?v=2">
-    <link rel="stylesheet" href="tailwind.css?v=94">
+    <link rel="stylesheet" href="tailwind.css?v=114">
     <!-- xlsx ถูกย้ายไปโหลดแบบ on-demand ตอนเปิด modal นำเข้า Excel แล้ว (ดู ensureXlsxLoaded ใน script.js)
          เดิมโหลดตรงนี้แบบ render-blocking ทุกครั้งที่เข้าเว็บ ทั้งที่ใช้แค่ฟีเจอร์เดียว -->
     <!-- ไอคอน: self-host + ตัดเหลือเฉพาะที่ใช้จริง (Font Awesome 144 + Bootstrap Icons 28)
          จากเดิมโหลด CSS เต็มชุด 2 เจ้าจาก CDN (~200KB, ~2,000 ไอคอน) เหลือ ~24KB
          ⚠️ เพิ่มไอคอนใหม่ที่ไม่เคยใช้มาก่อน ต้องรัน `npm run build:icons` ก่อน deploy -->
-    <link rel="stylesheet" href="vendor/icons/icons.css?v=11">
+    <link rel="stylesheet" href="vendor/icons/icons.css?v=12">
     <!-- preload ฟอนต์ไอคอนที่ subset แล้ว (รวมกันเหลือ ~17KB) เพื่อตัด waterfall
          ปกติเบราว์เซอร์ต้องรอ parse CSS จบก่อนถึงจะรู้ว่าต้องโหลดฟอนต์ -->
     <!-- ⚠️ ?v= ต้องตรงกับ FONT_VERSION ใน tools/build-icons.js เป๊ะๆ
          ถ้าไม่ตรง เบราว์เซอร์จะมองเป็นคนละไฟล์แล้วโหลดฟอนต์ซ้ำสองรอบ -->
-    <link rel="preload" as="font" type="font/woff2" crossorigin href="vendor/icons/webfonts/fa-solid-900.woff2?v=11">
-    <link rel="preload" as="font" type="font/woff2" crossorigin href="vendor/icons/webfonts/bootstrap-icons.woff2?v=11">
+    <link rel="preload" as="font" type="font/woff2" crossorigin href="vendor/icons/webfonts/fa-solid-900.woff2?v=12">
+    <link rel="preload" as="font" type="font/woff2" crossorigin href="vendor/icons/webfonts/bootstrap-icons.woff2?v=12">
     <!-- ฟอนต์ระบบ: self-host เอง ตัด origin ภายนอก 2 เจ้าทิ้ง (googleapis + gstatic) พร้อม DNS/TLS handshake
          และตัด waterfall ที่ต้องรอ CSS จาก googleapis ก่อนถึงจะเริ่มโหลดไฟล์ฟอนต์จาก gstatic
          ลำดับ: Sarabun (หลัก) > Prompt (สำรอง) > Outfit (สำรองชั้นสอง มีเฉพาะละติน) — ดู --font-sans ใน src/tailwind-input.css
@@ -52,7 +52,7 @@
          ที่เหลือปล่อยให้โหลดตามที่ CSS สั่ง เพื่อไม่ให้แย่ง bandwidth ตอนเปิดหน้าแรก -->
     <link rel="preload" as="font" type="font/woff2" crossorigin href="vendor/fonts/sarabun-thai-400.woff2">
     <link rel="preload" as="font" type="font/woff2" crossorigin href="vendor/fonts/sarabun-thai-700.woff2">
-    <link rel="stylesheet" href="style.css?v=12">
+    <link rel="stylesheet" href="style.css?v=13">
 
 </head>
 
@@ -270,23 +270,36 @@
                     <span class="sidebar-text ml-3 font-medium">ตรวจสอบออเดอร์</span>
                 </a>
 
-                <a href="#" id="nav-accounting" data-tooltip="ระบบบัญชีและการเงิน"
-                    class="flex items-center px-3 py-3 rounded-xl text-body-muted hover:bg-field/50 hover:text-ink transition-all group nav-menu-item">
-                    <i class="bi bi-cash-stack text-body-muted w-5 text-center text-xl"></i>
-                    <span class="sidebar-text ml-3 font-medium">ระบบบัญชีและการเงิน</span>
-                </a>
+                <!-- เมนูกลุ่ม "ตั้งค่าบัญชี" (dropdown) — ปุ่มหัวกลุ่มแสดง/ซ่อนตามเมนูย่อยอัตโนมัติ (ดู applyPermissions ใน script.js)
+                     เพิ่มเมนูย่อยได้โดยใส่ <a class="nav-menu-item ..."> ลงใน #nav-account-settings-submenu -->
+                <button type="button" id="nav-account-settings-toggle" data-tooltip="ตั้งค่าบัญชี"
+                    data-nav-group-toggle="nav-account-settings-submenu"
+                    aria-expanded="false" aria-controls="nav-account-settings-submenu"
+                    class="w-full flex items-center px-3 py-3 rounded-xl text-body-muted hover:bg-field/50 hover:text-ink transition-all group nav-menu-item nav-group-toggle">
+                    <i class="bi bi-gear text-body-muted w-5 text-center text-xl"></i>
+                    <span class="sidebar-text ml-3 font-medium">ตั้งค่าบัญชี</span>
+                    <i class="fa-solid fa-chevron-down sidebar-text nav-group-chevron ml-auto text-xs" aria-hidden="true"></i>
+                </button>
 
-                <a href="#" id="nav-disbursement" data-tooltip="ใบสำคัญจ่าย"
-                    class="flex items-center px-3 py-3 rounded-xl text-body-muted hover:bg-field/50 hover:text-ink transition-all group nav-menu-item">
-                    <i class="bi bi-wallet text-body-muted w-5 text-center text-xl"></i>
-                    <span class="sidebar-text ml-3 font-medium">ใบสำคัญจ่าย</span>
-                </a>
+                <div id="nav-account-settings-submenu" class="nav-submenu" hidden>
+                    <a href="#" id="nav-account-books" data-tooltip="สมุดบัญชี"
+                        class="flex items-center px-3 py-3 rounded-xl text-body-muted hover:bg-field/50 hover:text-ink transition-all group nav-menu-item">
+                        <i class="bi bi-file-earmark-text text-body-muted w-5 text-center text-xl"></i>
+                        <span class="sidebar-text ml-3 font-medium">สมุดบัญชี</span>
+                    </a>
 
-                <a href="#" id="nav-accounting-settings" data-tooltip="ตั้งค่าผังบัญชี"
-                    class="flex items-center px-3 py-3 rounded-xl text-body-muted hover:bg-field/50 hover:text-ink transition-all group nav-menu-item">
-                    <i class="bi bi-diagram-3 text-body-muted w-5 text-center text-xl"></i>
-                    <span class="sidebar-text ml-3 font-medium">ตั้งค่าผังบัญชี</span>
-                </a>
+                    <a href="#" id="nav-account-categories" data-tooltip="ประเภทบัญชี"
+                        class="flex items-center px-3 py-3 rounded-xl text-body-muted hover:bg-field/50 hover:text-ink transition-all group nav-menu-item">
+                        <i class="fa-solid fa-tags text-body-muted w-5 text-center text-xl"></i>
+                        <span class="sidebar-text ml-3 font-medium">ประเภทบัญชี</span>
+                    </a>
+
+                    <a href="#" id="nav-account-codes" data-tooltip="รหัสบัญชี"
+                        class="flex items-center px-3 py-3 rounded-xl text-body-muted hover:bg-field/50 hover:text-ink transition-all group nav-menu-item">
+                        <i class="bi bi-diagram-3 text-body-muted w-5 text-center text-xl"></i>
+                        <span class="sidebar-text ml-3 font-medium">รหัสบัญชี</span>
+                    </a>
+                </div>
 
                 <div id="nav-settings-header"
                     class="sidebar-text nav-section-header pt-4 pb-2 px-3 text-md font-semibold text-ink uppercase tracking-wider">
@@ -973,6 +986,127 @@
                 <!-- VIEW: ใบสำคัญจ่าย (Disbursement Voucher) -->
                 <!-- เนื้อหาแยกไปที่ views/accounting-settings.html แล้ว โหลดแบบ dynamic ผ่าน loadPageView('accounting-settings') (ดู switchView case 'disbursement') -->
                 <div id="view-disbursement" class="hidden space-y-8 animate-fade-in">
+                </div>
+
+                <!-- VIEW: ประเภทบัญชี (กลุ่มบัญชี) — ชื่อ view เดิม account-categories -->
+                <!-- เนื้อหาแยกไปที่ views/accounting-settings.html แล้ว โหลดแบบ dynamic ผ่าน loadPageView('accounting-settings') (ดู switchView case 'account-categories') -->
+                <div id="view-account-categories" class="hidden space-y-8 animate-fade-in">
+                </div>
+
+                <!-- VIEW: สมุดบัญชี -->
+                <!-- เนื้อหาอยู่ที่ views/accounting-settings.html โหลดแบบ dynamic ผ่าน loadPageView('accounting-settings') (ดู switchView case 'account-books') -->
+                <div id="view-account-books" class="hidden space-y-8 animate-fade-in">
+                </div>
+
+                <!-- Modal: เพิ่ม/แก้ไขสมุดบัญชี (หน้า "สมุดบัญชี") -->
+                <div id="modal-acct-book" role="dialog" aria-modal="true" aria-labelledby="modal-acct-book-title"
+                    class="fixed inset-0 backdrop-blur-[20px] backdrop-saturate-[1.8] z-50 hidden flex items-center justify-center p-4">
+                    <div class="bg-canvas-elevated rounded-lg  w-full max-w-md p-6 space-y-4">
+                        <h3 class="text-lg font-bold text-ink flex items-center gap-2">
+                            <i class="fa-solid fa-pen text-body-muted"></i>
+                            <span id="modal-acct-book-title">เพิ่มสมุดบัญชี</span>
+                        </h3>
+                        <input type="hidden" id="acct-book-id">
+                        <div>
+                            <label for="acct-book-code" class="block text-body-muted text-xs mb-1">รหัส <span class="text-red-400">*</span></label>
+                            <input type="text" id="acct-book-code" placeholder="เช่น JV" autocomplete="off" maxlength="20"
+                                class="elev-chip w-full px-3 py-2.5 rounded-sm bg-surface-chip text-ink text-sm font-mono focus:ring-2 focus:ring-primary-focus outline-none">
+                        </div>
+                        <div>
+                            <label for="acct-book-name" class="block text-body-muted text-xs mb-1">ชื่อสมุดบัญชี <span class="text-red-400">*</span></label>
+                            <input type="text" id="acct-book-name" placeholder="เช่น สมุดรายวันทั่วไป" autocomplete="off" maxlength="120"
+                                class="elev-chip w-full px-3 py-2.5 rounded-sm bg-surface-chip text-ink text-sm focus:ring-2 focus:ring-primary-focus outline-none">
+                        </div>
+                        <div class="flex gap-3 pt-2">
+                            <button type="button" id="acct-book-save" onclick="if(typeof saveAcctBook==='function') saveAcctBook()"
+                                class="flex-1 py-2.5 bg-primary hover:bg-primary-pressed text-on-primary rounded-pill font-medium text-sm transition-all cursor-pointer">บันทึก</button>
+                            <button type="button" onclick="if(typeof closeAcctBookModal==='function') closeAcctBookModal()"
+                                class="flex-1 py-2.5 bg-surface-chip hover:bg-surface-tile-2 text-body-muted rounded-pill font-medium text-sm transition-all cursor-pointer">ยกเลิก</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- VIEW: รหัสบัญชี -->
+                <!-- เนื้อหาอยู่ที่ views/accounting-settings.html โหลดแบบ dynamic ผ่าน loadPageView('accounting-settings') (ดู switchView case 'account-codes') -->
+                <div id="view-account-codes" class="hidden space-y-8 animate-fade-in">
+                </div>
+
+                <!-- Modal: เพิ่ม/แก้ไขรหัสบัญชี (หน้า "รหัสบัญชี") — บันทึกลงผังบัญชี (AccountChart) -->
+                <div id="modal-acct-code" role="dialog" aria-modal="true" aria-labelledby="modal-acct-code-title"
+                    class="fixed inset-0 backdrop-blur-[20px] backdrop-saturate-[1.8] z-50 hidden flex items-center justify-center p-4">
+                    <div class="bg-canvas-elevated rounded-lg  w-full max-w-md p-6 space-y-4">
+                        <h3 class="text-lg font-bold text-ink flex items-center gap-2">
+                            <i class="fa-solid fa-pen text-body-muted"></i>
+                            <span id="modal-acct-code-title">เพิ่มรหัสบัญชี</span>
+                        </h3>
+                        <input type="hidden" id="acct-code-id">
+                        <div>
+                            <label for="acct-code-code" class="block text-body-muted text-xs mb-1">รหัส <span class="text-red-400">*</span></label>
+                            <input type="text" id="acct-code-code" placeholder="เช่น 110501" autocomplete="off" maxlength="20"
+                                class="elev-chip w-full px-3 py-2.5 rounded-sm bg-surface-chip text-ink text-sm font-mono focus:ring-2 focus:ring-primary-focus outline-none">
+                        </div>
+                        <div>
+                            <label for="acct-code-name" class="block text-body-muted text-xs mb-1">ชื่อบัญชี <span class="text-red-400">*</span></label>
+                            <input type="text" id="acct-code-name" placeholder="เช่น เงินฝากออมทรัพย์" autocomplete="off" maxlength="120"
+                                class="elev-chip w-full px-3 py-2.5 rounded-sm bg-surface-chip text-ink text-sm focus:ring-2 focus:ring-primary-focus outline-none">
+                        </div>
+                        <div>
+                            <label for="acct-code-category" class="block text-body-muted text-xs mb-1">หมวด <span class="text-red-400">*</span></label>
+                            <select id="acct-code-category" onchange="if(typeof onAcctCodeCategoryChange==='function') onAcctCodeCategoryChange()"
+                                class="elev-chip w-full px-3 py-2.5 rounded-sm bg-surface-chip text-ink text-sm focus:ring-2 focus:ring-primary-focus outline-none">
+                                <option value="">-- เลือกหมวด --</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="acct-code-group" class="block text-body-muted text-xs mb-1">ชื่อกลุ่มบัญชี <span class="text-red-400">*</span></label>
+                            <!-- ตัวเลือกเติมอัตโนมัติจากหมวดที่เลือก (ดู onAcctCodeCategoryChange ใน js/page-accounting-settings.js) -->
+                            <select id="acct-code-group" disabled
+                                class="elev-chip w-full px-3 py-2.5 rounded-sm bg-surface-chip text-ink text-sm focus:ring-2 focus:ring-primary-focus outline-none disabled:opacity-50 disabled:cursor-not-allowed">
+                                <option value="">-- เลือกหมวดก่อน --</option>
+                            </select>
+                        </div>
+                        <div class="flex gap-3 pt-2">
+                            <button type="button" id="acct-code-save" onclick="if(typeof saveAcctCode==='function') saveAcctCode()"
+                                class="flex-1 py-2.5 bg-primary hover:bg-primary-pressed text-on-primary rounded-pill font-medium text-sm transition-all cursor-pointer">บันทึก</button>
+                            <button type="button" onclick="if(typeof closeAcctCodeModal==='function') closeAcctCodeModal()"
+                                class="flex-1 py-2.5 bg-surface-chip hover:bg-surface-tile-2 text-body-muted rounded-pill font-medium text-sm transition-all cursor-pointer">ยกเลิก</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Modal: เพิ่ม/แก้ไขประเภทบัญชี (กลุ่มบัญชี) — หน้า "ประเภทบัญชี" -->
+                <div id="modal-acct-cat" role="dialog" aria-modal="true" aria-labelledby="modal-acct-cat-title"
+                    class="fixed inset-0 backdrop-blur-[20px] backdrop-saturate-[1.8] z-50 hidden flex items-center justify-center p-4">
+                    <div class="bg-canvas-elevated rounded-lg  w-full max-w-md p-6 space-y-4">
+                        <h3 class="text-lg font-bold text-ink flex items-center gap-2">
+                            <i class="fa-solid fa-pen text-body-muted"></i>
+                            <span id="modal-acct-cat-title">เพิ่มประเภทบัญชี</span>
+                        </h3>
+                        <input type="hidden" id="acct-cat-id">
+                        <div>
+                            <label for="acct-cat-code" class="block text-body-muted text-xs mb-1">รหัส <span class="text-red-400">*</span></label>
+                            <input type="text" id="acct-cat-code" placeholder="เช่น 13" autocomplete="off" maxlength="20"
+                                class="elev-chip w-full px-3 py-2.5 rounded-sm bg-surface-chip text-ink text-sm font-mono focus:ring-2 focus:ring-primary-focus outline-none">
+                        </div>
+                        <div>
+                            <label for="acct-cat-name" class="block text-body-muted text-xs mb-1">ชื่อกลุ่มบัญชี <span class="text-red-400">*</span></label>
+                            <input type="text" id="acct-cat-name" placeholder="เช่น เงินลงทุนระยะสั้น" autocomplete="off" maxlength="120"
+                                class="elev-chip w-full px-3 py-2.5 rounded-sm bg-surface-chip text-ink text-sm focus:ring-2 focus:ring-primary-focus outline-none">
+                        </div>
+                        <div>
+                            <label for="acct-cat-category" class="block text-body-muted text-xs mb-1">หมวด <span class="text-red-400">*</span></label>
+                            <select id="acct-cat-category"
+                                class="elev-chip w-full px-3 py-2.5 rounded-sm bg-surface-chip text-ink text-sm focus:ring-2 focus:ring-primary-focus outline-none">
+                                <option value="">-- เลือกหมวด --</option>
+                            </select>
+                        </div>
+                        <div class="flex gap-3 pt-2">
+                            <button type="button" id="acct-cat-save" onclick="if(typeof saveAcctCatAccount==='function') saveAcctCatAccount()"
+                                class="flex-1 py-2.5 bg-primary hover:bg-primary-pressed text-on-primary rounded-pill font-medium text-sm transition-all cursor-pointer">บันทึก</button>
+                            <button type="button" onclick="if(typeof closeAcctCatModal==='function') closeAcctCatModal()"
+                                class="flex-1 py-2.5 bg-surface-chip hover:bg-surface-tile-2 text-body-muted rounded-pill font-medium text-sm transition-all cursor-pointer">ยกเลิก</button>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Modal: เพิ่ม/แก้ไขรหัสบัญชี -->
@@ -2838,6 +2972,26 @@
                                 </div>
                             </label>
                         </div>
+                        <!-- Toggle: view_sales_history -->
+                        <div
+                            class="flex items-center justify-between p-3 bg-surface-tile-3 rounded-md  hover:bg-surface-chip transition-colors">
+                            <div class="flex items-center gap-3">
+                                <div class="w-8 h-8 rounded-lg bg-green-500/10 flex items-center justify-center">
+                                    <i class="fa-solid fa-receipt text-green-400 text-sm"></i>
+                                </div>
+                                <div>
+                                    <span class="text-sm font-medium text-ink">ประวัติการขาย</span>
+                                    <p class="text-[10px] text-ink-muted-48 mt-0.5">อนุญาตให้เข้าดูเมนูประวัติการขาย</p>
+                                </div>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" id="perm-view_sales_history" class="sr-only peer"
+                                    aria-label="ประวัติการขาย">
+                                <div
+                                    class="w-10 h-5 bg-surface-chip peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-ink-muted-48 after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary peer-checked:after:bg-on-primary">
+                                </div>
+                            </label>
+                        </div>
                         <!-- Toggle: manage_stock -->
                         <div
                             class="flex items-center justify-between p-3 bg-surface-tile-3 rounded-md  hover:bg-surface-chip transition-colors">
@@ -3172,6 +3326,46 @@
                             <label class="relative inline-flex items-center cursor-pointer">
                                 <input type="checkbox" id="perm-manage_po" class="sr-only peer"
                                     aria-label="จัดการระบบสั่งซื้อ (PO)">
+                                <div
+                                    class="w-10 h-5 bg-surface-chip peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-ink-muted-48 after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary peer-checked:after:bg-on-primary">
+                                </div>
+                            </label>
+                        </div>
+                        <!-- Toggle: view_po_dashboard -->
+                        <div
+                            class="flex items-center justify-between p-3 bg-surface-tile-3 rounded-md  hover:bg-surface-chip transition-colors">
+                            <div class="flex items-center gap-3">
+                                <div class="w-8 h-8 rounded-lg bg-sky-500/10 flex items-center justify-center">
+                                    <i class="fa-solid fa-chart-pie text-sky-400 text-sm"></i>
+                                </div>
+                                <div>
+                                    <span class="text-sm font-medium text-ink">แดชบอร์ดระบบสั่งซื้อ</span>
+                                    <p class="text-[10px] text-ink-muted-48 mt-0.5">ดูสรุปยอดค้างชำระและภาพรวมการสั่งซื้อ</p>
+                                </div>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" id="perm-view_po_dashboard" class="sr-only peer"
+                                    aria-label="แดชบอร์ดระบบสั่งซื้อ">
+                                <div
+                                    class="w-10 h-5 bg-surface-chip peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-ink-muted-48 after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary peer-checked:after:bg-on-primary">
+                                </div>
+                            </label>
+                        </div>
+                        <!-- Toggle: pay_po -->
+                        <div
+                            class="flex items-center justify-between p-3 bg-surface-tile-3 rounded-md  hover:bg-surface-chip transition-colors">
+                            <div class="flex items-center gap-3">
+                                <div class="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center">
+                                    <i class="fa-solid fa-money-bill-wave text-amber-400 text-sm"></i>
+                                </div>
+                                <div>
+                                    <span class="text-sm font-medium text-ink">การชำระเงินระบบสั่งซื้อ</span>
+                                    <p class="text-[10px] text-ink-muted-48 mt-0.5">เห็นคอลัมน์การชำระเงิน และกดจ่ายเงินใบสั่งซื้อ</p>
+                                </div>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" id="perm-pay_po" class="sr-only peer"
+                                    aria-label="การชำระเงินระบบสั่งซื้อ">
                                 <div
                                     class="w-10 h-5 bg-surface-chip peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-ink-muted-48 after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary peer-checked:after:bg-on-primary">
                                 </div>
@@ -3845,72 +4039,109 @@
             </form>
         </div>
     </div>
-    <!-- PO Receive Modal -->
-    <div id="modal-po-receive"
-        class="hidden fixed inset-0 z-50 flex items-center justify-center bg-canvas/70 backdrop-blur-sm opacity-0 pointer-events-none transition-all duration-300 p-4">
-        <div
-            class="modal-content relative w-full max-w-4xl max-h-[90vh] flex flex-col bg-canvas-elevated rounded-lg  transform scale-95 transition-transform duration-300">
-            <div class="p-6 border-b border-hairline flex justify-between items-center rounded-t-lg">
-                <h3 class="text-xl font-bold flex items-center gap-3">
-                    <div class="w-10 h-10 rounded-sm bg-surface-chip flex items-center justify-center">
-                        <i class="fa-solid fa-boxes-packing text-body-muted"></i>
-                    </div> ตรวจรับสินค้า PO: <span id="receive-po-number" class="text-ink font-mono"></span>
-                </h3>
-                <button aria-label="ปิด" id="btn-close-po-receive"
-                    class="text-body-muted transition-colors p-2 rounded-lg hover:bg-surface-chip">
-                    <i class="fa-solid fa-xmark text-xl"></i>
-                </button>
-            </div>
-            <div class="flex-1 overflow-y-auto p-6 space-y-6">
-                <div id="receive-po-items" class="space-y-4">
-                    <!-- Dynamic Items -->
-                </div>
-            </div>
-            <div class="p-6 border-t border-hairline rounded-b-lg">
-                <button id="btn-submit-po-receive"
-                    class="w-full py-4 bg-primary hover:bg-primary-pressed text-on-primary font-bold rounded-pill active:scale-[0.98] transition-all text-lg">
-                    ยืนยันการตรวจรับสินค้า </button>
-            </div>
-        </div>
-    </div>
-    <!-- PO Arrival Modal -->
+    <!-- PO Arrival Modal — "ยืนยันสินค้าถึงสาขาและบันทึก IMEI" ตามแนวแบบ Figma "Desktop - 48/49"
+         ช่องสแกนช่องเดียวจัด IMEI เข้าแถวรุ่นให้อัตโนมัติ / ตารางเครื่อง + ตารางอุปกรณ์เสริม สร้างจาก JS (openArrivalModal) -->
     <div id="modal-po-arrival"
-        class="hidden fixed inset-0 z-50 flex items-center justify-center bg-canvas/70 backdrop-blur-sm opacity-0 pointer-events-none transition-all duration-300 p-4">
+        class="hidden fixed inset-0 z-50 flex items-center justify-center bg-canvas/70 backdrop-blur-sm opacity-0 pointer-events-none transition-all duration-300 p-4"
+        role="dialog" aria-modal="true" aria-labelledby="arrival-modal-title">
         <div
-            class="modal-content relative w-full max-w-4xl max-h-[90vh] flex flex-col bg-canvas-elevated rounded-lg  transform scale-95 transition-transform duration-300">
-            <div class="p-6 border-b border-hairline flex justify-between items-center bg-canvas-elevated rounded-t-lg">
-                <h3 class="text-xl font-bold text-ink flex items-center gap-3">
+            class="elev-modal modal-content relative w-full max-w-5xl max-h-[92vh] flex flex-col bg-elevated rounded-xl overflow-hidden transform scale-95 transition-transform duration-300">
+            <!-- [1] หัวโมดัล -->
+            <div class="shrink-0 px-6 pt-5 pb-4 border-b border-hairline flex items-start justify-between gap-4">
+                <div class="flex items-start gap-3.5 min-w-0">
                     <div id="arrival-modal-icon-container"
-                        class="w-10 h-10 rounded-sm bg-surface-chip flex items-center justify-center">
-                        <i id="arrival-modal-icon" class="fa-solid fa-truck-ramp-box text-body-muted"></i>
+                        class="w-11 h-11 shrink-0 rounded-sm bg-primary/10 flex items-center justify-center">
+                        <i id="arrival-modal-icon" class="fa-solid fa-truck-ramp-box text-accent-ink"></i>
                     </div>
-                    <span id="arrival-title-prefix">ยืนยันสินค้าถึงสาขาและบันทึก IMEI:</span>
-                    <span id="arrival-po-number" class="text-ink font-mono"></span>
-                </h3>
-                <button aria-label="ปิด" id="btn-close-po-arrival"
-                    class="text-body-muted hover:text-ink transition-colors p-2 rounded-lg hover:bg-surface-chip">
+                    <div class="min-w-0">
+                        <h3 id="arrival-modal-title" class="text-xl font-bold text-ink flex flex-wrap items-baseline gap-x-2">
+                            <span id="arrival-title-prefix">ยืนยันสินค้าถึงสาขาและบันทึก IMEI</span>
+                            <span id="arrival-po-number" class="font-mono text-accent-ink"></span>
+                        </h3>
+                        <p id="arrival-po-meta" class="text-[13px] text-body-muted mt-1"></p>
+                    </div>
+                </div>
+                <button type="button" aria-label="ปิด" id="btn-close-po-arrival"
+                    class="shrink-0 w-10 h-10 flex items-center justify-center text-body-muted hover:text-ink rounded-full hover:bg-surface-chip transition-colors cursor-pointer">
                     <i class="fa-solid fa-xmark text-xl"></i>
                 </button>
             </div>
-            <div class="flex-1 overflow-y-auto p-6 space-y-6">
-                <div
-                    class="elev-chip bg-amber-500/10 border-amber-500/20 rounded-2xl p-4 text-amber-400 text-sm flex items-start gap-2.5">
-                    <i class="fa-solid fa-circle-info mt-0.5 text-lg"></i>
-                    <div>
-                        <span id="arrival-banner-title" class="font-bold block mb-1">คำแนะนำสำหรับพนักงานขาย</span>
-                        <span id="arrival-banner-desc">กรุณาตรวจสอบสินค้าที่จัดส่งมาถึงสาขา
-                            หากสินค้าประเภทใดต้องมีการบันทึก IMEI (เช่น โทรศัพท์มือถือ/แท็บเล็ต) กรุณาสแกนหรือระบุ IMEI
-                            ให้ครบตามจำนวนที่ส่งมาให้เรียบร้อยก่อนทำการบันทึก</span>
+
+            <div class="flex-1 min-h-0 overflow-y-auto px-6 py-5 space-y-5" tabindex="0">
+                <!-- [2] คำแนะนำ (โหมดแก้ไขเปลี่ยนข้อความ) -->
+                <div class="flex items-start gap-3 px-4 py-3 rounded-sm bg-primary/[0.08] text-[13px]">
+                    <i class="fa-solid fa-circle-info text-accent-ink mt-0.5"></i>
+                    <p class="text-body-muted">
+                        <span id="arrival-banner-title" class="font-semibold text-accent-ink">คำแนะนำสำหรับพนักงานขาย</span>
+                        <span class="mx-1 text-ink-muted-48">—</span>
+                        <span id="arrival-banner-desc">ตรวจสินค้าที่ส่งมาถึงสาขา สแกน IMEI ให้ครบทุกเครื่อง และระบุจำนวนอุปกรณ์เสริมที่ได้รับในรอบนี้</span>
+                    </p>
+                </div>
+
+                <!-- [3] ความคืบหน้า -->
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <div data-arr-dev class="bg-surface-tile-2 rounded-sm px-4 py-3">
+                        <p class="text-xs font-medium text-body-muted">เครื่องตาม PO</p>
+                        <p class="flex items-baseline gap-1.5 mt-0.5"><span id="arr-stat-target" class="text-2xl font-bold text-ink">0</span>
+                            <span id="arr-stat-models" class="text-xs text-body-muted">เครื่อง</span></p>
+                    </div>
+                    <div data-arr-dev class="bg-primary/[0.08] ring-1 ring-accent-ink rounded-sm px-4 py-3">
+                        <p class="text-xs font-medium text-accent-ink">สแกนแล้ว</p>
+                        <p class="flex items-baseline gap-1.5 mt-0.5"><span id="arr-stat-scanned" class="text-2xl font-bold text-accent-ink">0</span>
+                            <span id="arr-stat-scanned-of" class="text-xs text-body-muted">/ 0 เครื่อง</span></p>
+                    </div>
+                    <div data-arr-dev class="bg-surface-tile-2 rounded-sm px-4 py-3">
+                        <p class="text-xs font-medium text-body-muted">รอสแกน</p>
+                        <p class="flex items-baseline gap-1.5 mt-0.5"><span id="arr-stat-remaining" class="text-2xl font-bold text-ink">0</span>
+                            <span class="text-xs text-body-muted">เครื่อง</span></p>
+                    </div>
+                    <div data-arr-acc class="bg-surface-tile-2 rounded-sm px-4 py-3">
+                        <p class="text-xs font-medium text-body-muted">อุปกรณ์เสริมรอบนี้</p>
+                        <p class="flex items-baseline gap-1.5 mt-0.5"><span id="arr-stat-pieces" class="text-2xl font-bold text-ink">0</span>
+                            <span id="arr-stat-pieces-sub" class="text-xs text-body-muted">ชิ้น</span></p>
                     </div>
                 </div>
-                <div id="arrival-po-items" class="space-y-4">
-                    <!-- Dynamic PO Items will be injected here -->
+
+                <!-- [4] ช่องสแกน IMEI -->
+                <div id="arrival-scan-card" class="space-y-2.5">
+                    <div class="flex flex-wrap items-center justify-between gap-2">
+                        <label for="arrival-scan-input" class="text-[15px] font-bold text-ink">สแกน IMEI</label>
+                        <span class="text-xs text-body-muted">ยิงบาร์โค้ดทีละเครื่อง ระบบจะจัดเข้ารุ่นให้อัตโนมัติ · วางหลายบรรทัดได้</span>
+                    </div>
+                    <div class="flex flex-col sm:flex-row gap-2.5">
+                        <div class="relative flex-1 min-w-0">
+                            <i class="fa-solid fa-barcode absolute left-4 top-1/2 -translate-y-1/2 text-accent-ink pointer-events-none"></i>
+                            <input type="text" id="arrival-scan-input" autocomplete="off" inputmode="numeric"
+                                placeholder="ยิงบาร์โค้ด หรือพิมพ์ IMEI แล้วกด Enter..."
+                                class="w-full h-12 pl-11 pr-20 rounded-sm bg-surface-chip text-ink text-base placeholder:text-body-muted border-2 border-transparent focus:outline-none focus:border-accent-ink disabled:opacity-60 transition-all">
+                            <kbd class="absolute right-4 top-1/2 -translate-y-1/2 px-2 py-0.5 rounded-xs border border-hairline text-[11px] font-medium text-body-muted font-sans pointer-events-none">Enter</kbd>
+                        </div>
+                        <button type="button" id="btn-arrival-scan-add"
+                            class="h-12 px-6 bg-primary hover:bg-primary-pressed active:scale-95 text-on-primary text-[15px] font-bold rounded-pill transition-all cursor-pointer">
+                            เพิ่ม IMEI</button>
+                    </div>
+                    <div id="arrival-last-scan" class="hidden flex flex-wrap items-center gap-x-2.5 gap-y-1 px-3.5 py-2.5 rounded-sm bg-surface-tile-2 text-[13px]"
+                        role="status" aria-live="polite"></div>
                 </div>
+
+                <!-- [5] ตารางรายการเครื่อง / อุปกรณ์เสริม (สร้างจาก JS) -->
+                <div id="arrival-po-items" class="space-y-5"></div>
             </div>
-            <div class="p-6 border-t border-hairline bg-canvas-elevated rounded-b-lg">
-                <button id="btn-submit-po-arrival"
-                    class="w-full py-4 bg-primary hover:bg-primary-pressed text-on-primary font-bold rounded-pill active:scale-[0.98] transition-all">
-                    ยืนยันรายการและแจ้งของถึงสาขา </button>
+
+            <!-- [6] แถบยืนยัน -->
+            <div class="shrink-0 px-6 py-4 border-t border-hairline bg-surface-tile-2 flex flex-col md:flex-row md:items-center gap-3">
+                <div class="flex-1 min-w-0">
+                    <p id="arrival-sum-line" class="text-sm font-medium text-ink">แจ้งถึงสาขาในรอบนี้</p>
+                    <p id="arrival-remaining-warn" class="hidden text-xs font-medium text-accent-ink mt-0.5"></p>
+                </div>
+                <div class="flex items-center gap-2.5">
+                    <button type="button" id="btn-cancel-po-arrival"
+                        class="px-5 py-2.5 bg-surface-chip hover:ring-1 hover:ring-accent-ink text-ink text-[15px] font-medium rounded-pill transition-all cursor-pointer">
+                        ยกเลิก</button>
+                    <button type="button" id="btn-submit-po-arrival"
+                        class="px-6 py-2.5 bg-primary hover:bg-primary-pressed active:scale-95 text-on-primary text-[15px] font-bold rounded-pill transition-all cursor-pointer disabled:opacity-60 flex items-center gap-2">
+                        ยืนยันรายการและแจ้งของถึงสาขา</button>
+                </div>
             </div>
         </div>
     </div>
@@ -5052,7 +5283,7 @@
     <!-- defer: ปล่อยให้ parse HTML จบก่อนค่อย execute
          ปลอดภัยเพราะทั้งไฟล์ห่ออยู่ใน DOMContentLoaded listener อยู่แล้ว
          และสคริปต์ defer จะ execute ก่อน event DOMContentLoaded ยิงเสมอ -->
-    <script defer src="script.js?v=apple_active_v87"></script>
+    <script defer src="script.js?v=apple_active_v119"></script>
     <script>
         // ลงทะเบียน Service Worker เพื่อแคช asset คงที่ (css/js/font/icon/รูป) ไว้ฝั่งเครื่อง
         // เข้าเว็บครั้งถัดไปเร็วขึ้นมาก โดยเฉพาะตอนเน็ตช้าหรือหลุดชั่วคราว — ดูรายละเอียดที่ sw.js

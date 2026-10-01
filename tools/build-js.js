@@ -95,7 +95,7 @@ const entries = [
     const mustExport = [
         'authFetch', 'showToast', 'showConfirm', 'allProductsCache', 'masterDataCache',
         'closeAddAccountModal', 'closeAddGroupModal', 'closeAuditVerifyModal',
-        'closeAuditReviewItemModal', 'submitModalAuditItem', 'toggleExpectedList',
+        'closeAuditReviewItemModal', 'submitModalAuditItem',
         'ensureXlsxLoaded', 'openReceiptRcWindow',
     ];
     const lost = mustExport.filter(n => !new RegExp(`window\\.${n}\\s*=`).test(allDist));

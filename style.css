@@ -107,6 +107,33 @@
 
 
 /* ==========================================
+   SIDEBAR: เมนูกลุ่มแบบ dropdown (เช่น "ตั้งค่าบัญชี")
+   ปุ่มหัวกลุ่มเป็น .nav-menu-item เพื่อใช้สี/hover/tooltip ชุดเดียวกับเมนูอื่น
+   ========================================== */
+.nav-group-chevron {
+    transition: transform 0.2s ease;
+}
+
+.nav-group-toggle[aria-expanded="true"] .nav-group-chevron {
+    transform: rotate(180deg);
+}
+
+/* เมนูย่อยเยื้องเข้าไปพร้อมเส้นนำสายตาด้านซ้าย — ตอนย่อ sidebar ไม่เยื้อง (เหลือแค่ไอคอน) */
+.nav-submenu {
+    margin-left: 1.25rem;
+    padding-left: 0.5rem;
+    border-left: 1px solid var(--color-divider-soft);
+}
+
+@media (min-width: 768px) {
+    #sidebar.collapsed .nav-submenu {
+        margin-left: 0;
+        padding-left: 0;
+        border-left: 0;
+    }
+}
+
+/* ==========================================
    SIDEBAR MENU: ACTIVE & INACTIVE STYLES
    ========================================== */
 

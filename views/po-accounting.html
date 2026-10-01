@@ -598,6 +598,216 @@
         <button type="button" id="tab-btn-po-history">ประวัติใบสั่งซื้อ</button>
     </div>
 
+    <!-- สลับ 2 หน้า: แดชบอร์ด / ประวัติการสั่งซื้อ — ใช้สูตรแท็บเดียวกับหน้าบัญชี
+         ปุ่มแดชบอร์ดซ่อนไว้ก่อน แสดงเมื่อมีสิทธิ์ view_po_dashboard (page-po-accounting.js → initPoPages) -->
+    <div id="po-page-tabs" class="flex flex-wrap items-center gap-2 mb-6">
+        <button id="po-page-tab-dashboard" type="button" aria-pressed="false"
+            class="hidden elev-field px-4 py-2.5 rounded-xl text-sm font-bold transition-colors flex items-center gap-2 cursor-pointer bg-field text-body-muted hover:ring-1 hover:ring-accent-ink hover:text-ink">
+            <i class="fa-solid fa-chart-pie"></i> แดชบอร์ด
+        </button>
+        <button id="po-page-tab-history" type="button" aria-pressed="true"
+            class="border border-transparent px-4 py-2.5 rounded-xl text-sm font-bold transition-colors flex items-center gap-2 cursor-pointer bg-primary text-on-primary ring-1 ring-accent-ink">
+            <i class="fa-regular fa-clipboard"></i> ประวัติการสั่งซื้อ
+        </button>
+    </div>
+
+    <!-- ============================ หน้า 1: แดชบอร์ดระบบสั่งซื้อ ============================ -->
+    <div id="po-page-dashboard" class="hidden space-y-6">
+        <!-- ตัวกรองแดชบอร์ด — กรองตามวันที่สร้างใบสั่งซื้อ สาขาปลายทาง และซัพพลายเออร์ -->
+        <div class="bg-panel/40 rounded-2xl shadow-lg backdrop-blur-sm p-4 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+            <span class="text-body-muted font-bold text-xs uppercase tracking-wider px-1">ตัวกรองแดชบอร์ด</span>
+            <div class="flex flex-wrap items-center gap-2.5">
+                <label for="po-dash-range" class="sr-only">ช่วงเวลา</label>
+                <select id="po-dash-range"
+                    class="page-filter-control bg-panel/40 cursor-pointer text-sm rounded-[0.5rem] px-3 py-2 text-ink focus:outline-none focus:ring-1 focus:ring-accent-ink w-full sm:w-auto [&>option]:bg-panel">
+                    <option value="all">ช่วงเวลา: ทั้งหมด</option>
+                    <option value="month">ช่วงเวลา: เดือนนี้</option>
+                    <option value="30d">ช่วงเวลา: 30 วันล่าสุด</option>
+                    <option value="quarter">ช่วงเวลา: ไตรมาสนี้</option>
+                    <option value="year">ช่วงเวลา: ปีนี้</option>
+                    <option value="custom">ช่วงเวลา: กำหนดเอง</option>
+                </select>
+                <div class="flex items-center gap-1.5">
+                    <label for="po-dash-start" class="sr-only">วันที่เริ่มต้น</label>
+                    <input type="date" id="po-dash-start"
+                        class="page-filter-control elev-chip bg-transparent rounded-[10px] text-sm px-3 py-2 text-ink focus:outline-none focus:ring-1 focus:ring-accent-ink [color-scheme:dark]">
+                    <i class="fa-solid fa-arrow-right-long text-ink/40 text-xs" aria-hidden="true"></i>
+                    <label for="po-dash-end" class="sr-only">วันที่สิ้นสุด</label>
+                    <input type="date" id="po-dash-end"
+                        class="page-filter-control elev-chip bg-transparent rounded-[10px] text-sm px-3 py-2 text-ink focus:outline-none focus:ring-1 focus:ring-accent-ink [color-scheme:dark]">
+                </div>
+                <label for="po-dash-branch" class="sr-only">สาขาปลายทาง</label>
+                <select id="po-dash-branch"
+                    class="page-filter-control bg-panel/40 cursor-pointer text-sm rounded-[0.5rem] px-3 py-2 text-ink focus:outline-none focus:ring-1 focus:ring-accent-ink w-full sm:w-auto [&>option]:bg-panel">
+                    <option value="">ทุกสาขา</option>
+                </select>
+                <label for="po-dash-supplier" class="sr-only">ซัพพลายเออร์</label>
+                <select id="po-dash-supplier"
+                    class="page-filter-control bg-panel/40 cursor-pointer text-sm rounded-[0.5rem] px-3 py-2 text-ink focus:outline-none focus:ring-1 focus:ring-accent-ink w-full sm:w-auto [&>option]:bg-panel">
+                    <option value="">ทุกซัพพลายเออร์</option>
+                </select>
+                <button id="po-dash-reset" type="button"
+                    class="page-filter-control px-3 py-2 bg-panel/40 cursor-pointer text-ink flex items-center justify-center gap-1.5 rounded-[0.5rem] text-sm hover:bg-skeleton transition-colors">
+                    <i class="fa-solid fa-xmark"></i> ล้างตัวกรอง
+                </button>
+                <button id="po-dash-refresh" type="button"
+                    class="page-filter-control px-3 py-2 bg-panel/40 cursor-pointer text-ink flex items-center justify-center gap-1.5 rounded-[0.5rem] text-sm hover:bg-skeleton transition-colors">
+                    <i class="fa-solid fa-rotate"></i> รีเฟรช
+                </button>
+            </div>
+        </div>
+
+        <!-- แถว 1: หนี้ที่ต้องจ่าย — สิ่งที่การเงินต้องเห็นก่อน -->
+        <div class="space-y-3">
+            <span class="text-body-muted font-bold text-xs uppercase tracking-wider block px-1">ยอดค้างชำระซัพพลายเออร์</span>
+            <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+                <div class="bg-panel/40 rounded-2xl shadow-lg backdrop-blur-sm p-5 flex items-start gap-4">
+                    <div class="w-11 h-11 rounded-full flex items-center justify-center shrink-0"
+                        style="color:#FFE169;background-color:#FFE1691F;">
+                        <i class="fa-solid fa-hourglass-half text-lg"></i>
+                    </div>
+                    <div class="min-w-0 flex-1">
+                        <p class="text-xs text-ink/70 truncate">ใบสั่งซื้อที่ค้างชำระ</p>
+                        <p id="po-kpi-unpaid-count" class="text-2xl font-semibold text-ink font-mono mt-0.5 truncate">-</p>
+                        <p id="po-kpi-unpaid-count-sub" class="text-xs text-ink/50 mt-1">ยังไม่ชำระ / ชำระบางส่วน</p>
+                    </div>
+                </div>
+                <div class="bg-panel/40 rounded-2xl shadow-lg backdrop-blur-sm p-5 flex items-start gap-4">
+                    <div class="w-11 h-11 rounded-full flex items-center justify-center shrink-0"
+                        style="color:#FB923C;background-color:#FB923C1F;">
+                        <i class="fa-solid fa-file-invoice-dollar text-lg"></i>
+                    </div>
+                    <div class="min-w-0 flex-1">
+                        <p class="text-xs text-ink/70 truncate">ยอดค้างชำระทั้งหมด</p>
+                        <p id="po-kpi-unpaid-amount" class="text-2xl font-semibold text-ink font-mono mt-0.5 truncate">-</p>
+                        <p id="po-kpi-unpaid-amount-sub" class="text-xs text-ink/50 mt-1">หักยอดชำระแล้วและส่วนลด</p>
+                    </div>
+                </div>
+                <div class="bg-panel/40 rounded-2xl shadow-lg backdrop-blur-sm p-5 flex items-start gap-4">
+                    <div class="w-11 h-11 rounded-full flex items-center justify-center shrink-0"
+                        style="color:#FE0000;background-color:#FE00001F;">
+                        <i class="fa-solid fa-triangle-exclamation text-lg"></i>
+                    </div>
+                    <div class="min-w-0 flex-1">
+                        <p class="text-xs text-ink/70 truncate">เลยกำหนดชำระ</p>
+                        <p id="po-kpi-overdue-amount" class="text-2xl font-semibold text-ink font-mono mt-0.5 truncate">-</p>
+                        <p id="po-kpi-overdue-sub" class="text-xs text-ink/50 mt-1">-</p>
+                    </div>
+                </div>
+                <div class="bg-panel/40 rounded-2xl shadow-lg backdrop-blur-sm p-5 flex items-start gap-4">
+                    <div class="w-11 h-11 rounded-full flex items-center justify-center shrink-0"
+                        style="color:#22D3EE;background-color:#22D3EE1F;">
+                        <i class="fa-solid fa-calendar-day text-lg"></i>
+                    </div>
+                    <div class="min-w-0 flex-1">
+                        <p class="text-xs text-ink/70 truncate">ครบกำหนดภายใน 7 วัน</p>
+                        <p id="po-kpi-due7-amount" class="text-2xl font-semibold text-ink font-mono mt-0.5 truncate">-</p>
+                        <p id="po-kpi-due7-sub" class="text-xs text-ink/50 mt-1">-</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- แถว 2: ภาพรวมการสั่งซื้อในช่วงที่เลือก -->
+        <div class="space-y-3">
+            <span class="text-body-muted font-bold text-xs uppercase tracking-wider block px-1">ภาพรวมการสั่งซื้อตามตัวกรอง</span>
+            <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+                <div class="bg-panel/40 rounded-2xl shadow-lg backdrop-blur-sm p-5 flex items-start gap-4">
+                    <div class="w-11 h-11 rounded-full flex items-center justify-center shrink-0"
+                        style="color:#A78BFA;background-color:#A78BFA1F;">
+                        <i class="fa-regular fa-clipboard text-lg"></i>
+                    </div>
+                    <div class="min-w-0 flex-1">
+                        <p class="text-xs text-ink/70 truncate">มูลค่าสั่งซื้อรวม</p>
+                        <p id="po-kpi-total-amount" class="text-2xl font-semibold text-ink font-mono mt-0.5 truncate">-</p>
+                        <p id="po-kpi-total-sub" class="text-xs text-ink/50 mt-1">-</p>
+                    </div>
+                </div>
+                <div class="bg-panel/40 rounded-2xl shadow-lg backdrop-blur-sm p-5 flex items-start gap-4">
+                    <div class="w-11 h-11 rounded-full flex items-center justify-center shrink-0"
+                        style="color:#20D500;background-color:#20D5001F;">
+                        <i class="fa-solid fa-circle-check text-lg"></i>
+                    </div>
+                    <div class="min-w-0 flex-1">
+                        <p class="text-xs text-ink/70 truncate">ชำระแล้ว</p>
+                        <p id="po-kpi-paid-amount" class="text-2xl font-semibold text-ink font-mono mt-0.5 truncate">-</p>
+                        <p id="po-kpi-paid-sub" class="text-xs text-ink/50 mt-1">-</p>
+                    </div>
+                </div>
+                <div class="bg-panel/40 rounded-2xl shadow-lg backdrop-blur-sm p-5 flex items-start gap-4">
+                    <div class="w-11 h-11 rounded-full flex items-center justify-center shrink-0"
+                        style="color:#F472B6;background-color:#F472B61F;">
+                        <i class="fa-solid fa-tag text-lg"></i>
+                    </div>
+                    <div class="min-w-0 flex-1">
+                        <p class="text-xs text-ink/70 truncate">ส่วนลดที่ได้รับ</p>
+                        <p id="po-kpi-discount-amount" class="text-2xl font-semibold text-ink font-mono mt-0.5 truncate">-</p>
+                        <p class="text-xs text-ink/50 mt-1">ส่วนลดจากซัพพลายเออร์สะสม</p>
+                    </div>
+                </div>
+                <div class="bg-panel/40 rounded-2xl shadow-lg backdrop-blur-sm p-5 flex items-start gap-4">
+                    <div class="w-11 h-11 rounded-full flex items-center justify-center shrink-0"
+                        style="color:#38BDF8;background-color:#38BDF81F;">
+                        <i class="fa-solid fa-truck-ramp-box text-lg"></i>
+                    </div>
+                    <div class="min-w-0 flex-1">
+                        <p class="text-xs text-ink/70 truncate">รอรับสินค้าเข้าสต็อก</p>
+                        <p id="po-kpi-pending-count" class="text-2xl font-semibold text-ink font-mono mt-0.5 truncate">-</p>
+                        <p id="po-kpi-pending-sub" class="text-xs text-ink/50 mt-1">-</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- แถว 3: อายุหนี้ + ค้างชำระตามซัพพลายเออร์ -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div class="bg-panel/40 rounded-2xl shadow-lg overflow-hidden backdrop-blur-sm">
+                <div class="p-6 pb-0">
+                    <h3 class="text-lg text-ink flex items-center gap-2">
+                        <i class="fa-regular fa-clock text-accent-ink"></i> อายุหนี้ค้างชำระ
+                    </h3>
+                    <p class="text-xs text-ink/50 mt-1">แยกยอดค้างชำระตามจำนวนวันที่เลยกำหนดจ่าย</p>
+                </div>
+                <div id="po-dash-aging" class="p-6 space-y-4"></div>
+            </div>
+            <div class="bg-panel/40 rounded-2xl shadow-lg overflow-hidden backdrop-blur-sm">
+                <div class="p-6 pb-0">
+                    <h3 class="text-lg text-ink flex items-center gap-2">
+                        <i class="fa-solid fa-building-user text-accent-ink"></i> ค้างชำระตามซัพพลายเออร์
+                    </h3>
+                    <p class="text-xs text-ink/50 mt-1">5 อันดับที่ค้างชำระสูงสุด</p>
+                </div>
+                <div id="po-dash-suppliers" class="p-6 space-y-4"></div>
+            </div>
+        </div>
+
+        <!-- แถว 4: รายการที่ต้องจ่ายเร็วๆ นี้ -->
+        <div class="bg-panel/40 rounded-2xl shadow-lg overflow-hidden backdrop-blur-sm">
+            <div class="p-6 pb-0 flex flex-wrap items-center justify-between gap-3">
+                <h3 class="text-lg text-ink flex items-center gap-2">
+                    <i class="fa-solid fa-list-check text-accent-ink"></i> ใบสั่งซื้อที่ต้องจ่าย
+                </h3>
+                <span class="text-xs text-ink/50">เรียงตามกำหนดจ่าย — เลยกำหนดขึ้นก่อน</span>
+            </div>
+            <div class="overflow-x-auto mt-4" tabindex="0">
+                <table class="w-full text-left text-sm whitespace-nowrap border-collapse">
+                    <thead class="bg-panel/40 text-ink">
+                        <tr>
+                            <th class="px-6 py-4 font-semibold text-[15px]">กำหนดจ่าย</th>
+                            <th class="px-6 py-4 font-semibold text-[15px]">เลขที่ PO</th>
+                            <th class="px-6 py-4 font-semibold text-[15px]">Supplier</th>
+                            <th class="px-6 py-4 font-semibold text-[15px] text-right">ยอดรวม</th>
+                            <th class="px-6 py-4 font-semibold text-[15px] text-right">ค้างชำระ</th>
+                            <th class="px-6 py-4 font-semibold text-[15px] text-right">จัดการ</th>
+                        </tr>
+                    </thead>
+                    <tbody id="po-dash-due-body" class="divide-y divide-divider"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+
     <!-- TAB CONTENT 1: Create PO Form (Modal Overlay) -->
     <style>
         /* Keep history visible behind modal */
@@ -665,6 +875,17 @@
                         </div>
                     </div>
 
+                    <!-- กำหนดจ่าย — วันที่ต้องชำระเงินให้ซัพพลายเออร์ (ไม่บังคับ) -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                        <div class="space-y-2">
+                            <label for="po-payment-due-date" class="text-ink font-medium flex items-center gap-2 text-xs">
+                                <i class="fa-solid fa-calendar-day text-ink"></i> กำหนดจ่ายวันที่
+                            </label>
+                            <input type="date" id="po-payment-due-date"
+                                class="elev-field w-full px-4 py-2.5 rounded-xl bg-field text-ink focus:ring-2 focus:ring-accent-ink focus:outline-none transition-all text-sm [color-scheme:dark]">
+                        </div>
+                    </div>
+
                     <div class="space-y-2">
                         <label class="text-ink font-medium flex items-center gap-2 text-xs">
                             <i class="fa-solid fa-box-open text-ink"></i> รายการสินค้า
@@ -711,6 +932,10 @@
         </div>
     </div>
 
+    <!-- ============================ หน้า 2: ประวัติการสั่งซื้อ ============================
+         ห่อด้วย #po-page-history เพราะ #tab-content-po-history ถูกบังคับ display:block !important (สไตล์ด้านบน)
+         ส่วนโมดัลสร้างใบสั่งซื้อต้องอยู่นอกตัวห่อนี้ ไม่งั้นกดสร้างจากหน้าแดชบอร์ดแล้วโมดัลจะไม่โผล่ -->
+    <div id="po-page-history">
     <!-- TAB CONTENT 2: PO History & Printing -->
     <div id="tab-content-po-history" class="space-y-6 animate-fade-in">
 
@@ -804,6 +1029,8 @@
                             <th class="px-6 py-4 font-semibold text-[15px]">สาขาปลายทาง</th>
                             <th class="px-6 py-4 font-semibold text-[15px] text-right">ยอดรวม</th>
                             <th class="px-6 py-4 font-semibold text-[15px] text-center">สถานะ</th>
+                            <!-- ซ่อนเมื่อไม่มีสิทธิ์ pay_po (page-po-accounting.js → syncPoHistoryPaymentHeader) -->
+                            <th id="th-po-history-payment" class="hidden px-6 py-4 font-semibold text-[15px] text-center">การชำระเงิน</th>
                             <th class="px-6 py-4 font-semibold text-[15px] text-right">จัดการ</th>
                         </tr>
                     </thead>
@@ -818,6 +1045,7 @@
             </div>
         </div>
     </div>
+    </div><!-- /#po-page-history -->
 </div>
 
 <div id="view-accounting">
@@ -1094,126 +1322,228 @@
 </div>
 
 <div id="view-branch-receive">
-    <!-- [1] หัวหน้า — DESIGN.md ข้อ 11.2 -->
-    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div class="flex items-center gap-4">
-            <i class="hidden md:block bi bi-inbox text-ink w-5 text-2xl text-center"></i>
-            <h3 class="hidden md:block text-2xl text-ink">ตรวจรับของเข้า (PO)</h3>
-        </div>
-        <button id="btn-refresh-po-receive" type="button"
-            class="page-filter-control px-3 py-2 bg-panel/40 cursor-pointer text-ink flex items-center justify-center gap-1.5 rounded-[0.5rem] text-sm hover:bg-skeleton transition-colors w-fit">
-            <i class="fa-solid fa-rotate"></i> รีเฟรชรายการ
-        </button>
-    </div>
-
-    <!-- [2] แท็บสถานะ — แทนการ์ดสรุปชุดเดิมที่มี cursor-pointer + data-status แต่ไม่เคยผูก handler
-         (กดไม่ได้จริง) และมีบรรทัดเปรียบเทียบกับวันก่อนหน้าที่ฮาร์ดโค้ดตัวเลขไว้ ไม่ใช่ข้อมูลจริง -->
-    <div id="receive-status-tabs" class="flex flex-wrap items-center gap-2">
-        <button type="button" data-status="all" aria-pressed="false"
-            class="elev-field receive-tab px-4 py-2.5 rounded-xl text-sm font-bold transition-colors flex items-center gap-2 cursor-pointer bg-field text-body-muted hover:ring-1 hover:ring-accent-ink hover:text-ink">
-            <i class="fa-solid fa-cube"></i> ทั้งหมด
-            <span id="badge-receive-all" class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-chip/60 text-ink">0</span>
-        </button>
-        <button type="button" data-status="รอจัดส่ง" aria-pressed="false"
-            class="elev-field receive-tab px-4 py-2.5 rounded-xl text-sm font-bold transition-colors flex items-center gap-2 cursor-pointer bg-field text-body-muted hover:ring-1 hover:ring-accent-ink hover:text-ink">
-            <i class="fa-solid fa-truck"></i> รอจัดส่ง
-            <span id="badge-receive-pending"
-                class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-orange-500/[0.12] text-orange-400">0</span>
-        </button>
-        <button type="button" data-status="ของถึงสาขาแล้ว" aria-pressed="true"
-            class="border border-transparent receive-tab px-4 py-2.5 rounded-xl text-sm font-bold transition-colors flex items-center gap-2 cursor-pointer bg-primary text-on-primary ring-1 ring-accent-ink">
-            <i class="fa-solid fa-location-dot"></i> ของถึงสาขาแล้ว
-            <span id="badge-receive-arrived"
-                class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-hairline/20">0</span>
-        </button>
-        <button type="button" data-status="กำลังตรวจรับ" aria-pressed="false"
-            class="elev-field receive-tab px-4 py-2.5 rounded-xl text-sm font-bold transition-colors flex items-center gap-2 cursor-pointer bg-field text-body-muted hover:ring-1 hover:ring-accent-ink hover:text-ink">
-            <i class="fa-solid fa-clipboard-check"></i> กำลังตรวจรับ
-            <span id="badge-receive-checking"
-                class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-orange-500/[0.12] text-orange-400">0</span>
-        </button>
-        <button type="button" data-status="นำเข้าสำเร็จ" aria-pressed="false"
-            class="elev-field receive-tab px-4 py-2.5 rounded-xl text-sm font-bold transition-colors flex items-center gap-2 cursor-pointer bg-field text-body-muted hover:ring-1 hover:ring-accent-ink hover:text-ink">
-            <i class="fa-solid fa-circle-check"></i> นำเข้าสำเร็จ
-            <span id="badge-receive-imported"
-                class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-state-ok-tint/[0.12] text-state-ok">0</span>
-        </button>
-        <button type="button" data-status="ยกเลิก" aria-pressed="false"
-            class="elev-field receive-tab px-4 py-2.5 rounded-xl text-sm font-bold transition-colors flex items-center gap-2 cursor-pointer bg-field text-body-muted hover:ring-1 hover:ring-accent-ink hover:text-ink">
-            <i class="fa-solid fa-ban"></i> ยกเลิก
-            <span id="badge-receive-cancelled"
-                class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-state-danger/[0.12] text-state-danger">0</span>
-        </button>
-    </div>
-
-    <!-- [3] การ์ดพาเนล — แถบควบคุม + ชิป + ตาราง อยู่ในการ์ดใบเดียว (ข้อ 11.1, 11.3) -->
-    <div class="bg-panel/40 rounded-2xl shadow-lg overflow-hidden backdrop-blur-sm">
-        <!-- 2a แถบควบคุม (ข้อ 11.4) -->
-        <div class="p-6 pb-0 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-            <h3 id="receive-panel-title" class="text-lg text-ink flex items-center gap-2">
-                <i class="fa-solid fa-boxes-packing text-accent-ink"></i> ใบสั่งซื้อที่ของถึงสาขาแล้ว
-            </h3>
-            <div class="flex flex-wrap items-center gap-2.5 relative w-full lg:w-auto">
-                <div class="relative group w-full sm:w-72">
-                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <i class="fa-solid fa-search text-ink group-focus-within:text-accent-ink transition-colors"></i>
-                    </div>
-                    <label for="search-receive-po" class="sr-only">ค้นหาใบสั่งซื้อ</label>
-                    <input id="search-receive-po" type="text" autocomplete="off"
-                        placeholder="ค้นหาเลขที่ PO / ซัพพลายเออร์..."
-                        class="elev-card bg-panel/40 rounded-[0.5rem] text-sm pl-10 pr-4 py-2 w-full text-ink focus:outline-none focus:ring-2 focus:ring-accent-ink focus:ring-1 focus:ring-accent-ink transition-all placeholder-body-muted">
+    <!-- โครงตาม DESIGN.md ข้อ 11 (หน้ารายการ + ตัวกรอง + ตาราง แบบเดียวกับ #stock):
+         หัวหน้า -> การ์ดพาเนลใบเดียว [2a ค้นหา/ตัวกรอง (รวมสถานะ) · 2b ชิป + ตัวนับ · 2c ตาราง PO + โหลดเพิ่ม]
+         แถว/การ์ดสร้างจาก renderFilteredPOs() ใน js/page-po-accounting.js -->
+    <div id="receive-list-page" class="space-y-8">
+        <!-- [1] หัวหน้า (ข้อ 11.2) -->
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div class="min-w-0 space-y-1.5">
+                <div class="flex items-center gap-4">
+                    <i class="hidden md:block bi bi-inbox text-ink w-5 text-2xl text-center" aria-hidden="true"></i>
+                    <h3 class="text-2xl text-ink">ตรวจรับของเข้า (PO)</h3>
                 </div>
-                <label for="receive-filter-branch" class="sr-only">กรองตามสาขา</label>
-                <select id="receive-filter-branch"
-                    class="page-filter-control bg-panel/40 cursor-pointer text-sm rounded-[0.5rem] px-3 py-2 text-ink focus:outline-none focus:ring-1 focus:ring-accent-ink w-full sm:w-auto [&>option]:bg-panel [&>option:checked]:bg-primary [&>option:checked]:text-on-primary">
-                    <option value="">ทุกสาขา</option>
-                </select>
+                <p class="text-sm text-body-muted md:pl-9">ใบสั่งซื้อที่ส่งมายังสาขา — สแกน IMEI เพื่อรับเข้าสต็อก</p>
+            </div>
+            <div class="flex items-center gap-3 shrink-0">
+                <span id="receive-last-updated" class="text-[13px] text-ink-muted-48"></span>
+                <button id="btn-refresh-po-receive" type="button"
+                    class="px-4 py-2 bg-surface-chip hover:bg-field text-ink text-sm rounded-xl transition-colors flex items-center gap-2 cursor-pointer">
+                    <i class="fa-solid fa-rotate text-body-muted"></i> รีเฟรช
+                </button>
             </div>
         </div>
 
-        <!-- 2b ชิปตัวกรอง + ตัวนับผลลัพธ์ + สลับมุมมอง (ข้อ 11.5) -->
-        <div class="px-6 py-4">
-            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                <div id="receive-active-filters" class="flex flex-wrap gap-2"></div>
-                <div class="flex items-center gap-3">
-                    <div id="receive-po-total-count" class="text-xs text-ink font-medium"></div>
-                    <div class="flex items-center gap-1 shrink-0">
-                        <button type="button" id="receive-view-list" aria-label="มุมมองรายการ" aria-pressed="true"
-                            class="w-9 h-9 rounded-md flex items-center justify-center transition-colors bg-primary text-on-primary">
-                            <i class="fa-solid fa-list text-sm"></i>
-                        </button>
-                        <button type="button" id="receive-view-card" aria-label="มุมมองการ์ด" aria-pressed="false"
-                            class="w-9 h-9 rounded-md flex items-center justify-center transition-colors bg-surface-chip text-body-muted hover:text-ink">
-                            <i class="fa-solid fa-table-cells-large text-sm"></i>
-                        </button>
+        <!-- [2] การ์ดพาเนล (ข้อ 11.3) -->
+        <div class="bg-panel/40 rounded-2xl overflow-hidden">
+            <!-- 2a แถบควบคุม (ข้อ 11.4) -->
+            <div class="p-6 pb-0 flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4">
+                <h3 class="text-lg text-ink flex items-center gap-2 shrink-0">
+                    <i class="fa-regular fa-file-lines text-body-muted" aria-hidden="true"></i> ใบสั่งซื้อทั้งหมด
+                </h3>
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:flex lg:items-center gap-2.5 w-full xl:w-auto">
+                    <div class="relative group sm:col-span-2 lg:w-72">
+                        <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-body-muted group-focus-within:text-accent-ink transition-colors pointer-events-none"></i>
+                        <label for="search-receive-po" class="sr-only">ค้นหาใบสั่งซื้อ</label>
+                        <input id="search-receive-po" type="text" autocomplete="off"
+                            placeholder="ค้นหาเลขที่ PO, ผู้จำหน่าย หรือ IMEI..."
+                            class="w-full h-10 pl-10 pr-4 rounded-xl bg-field text-ink text-sm placeholder:text-ink-muted-48 focus:outline-none focus:ring-1 focus:ring-accent-ink transition-all">
+                    </div>
+                    <!-- สถานะใบสั่งซื้อ — ตัวเลขในวงเล็บนับจากข้อมูลทั้งชุด (loadPOs เขียนป้ายใหม่ทุกครั้งที่โหลด) -->
+                    <div class="relative">
+                        <label for="receive-filter-status" class="sr-only">กรองตามสถานะใบสั่งซื้อ</label>
+                        <select id="receive-filter-status"
+                            class="w-full h-10 px-3.5 rounded-xl bg-field text-ink text-sm cursor-pointer focus:outline-none focus:ring-1 focus:ring-accent-ink [&>option]:bg-canvas-elevated appearance-none pr-9">
+                            <option value="all">สถานะ: ทั้งหมด</option>
+                            <option value="รอจัดส่ง">สถานะ: รอจัดส่ง</option>
+                            <option value="ของถึงสาขาแล้ว" selected>สถานะ: ของถึงสาขาแล้ว</option>
+                            <option value="กำลังตรวจรับ">สถานะ: กำลังตรวจรับ</option>
+                            <option value="นำเข้าสำเร็จ">สถานะ: นำเข้าสำเร็จ</option>
+                            <option value="ยกเลิก">สถานะ: ยกเลิก</option>
+                        </select>
+                        <i class="fa-solid fa-chevron-down absolute right-3.5 top-1/2 -translate-y-1/2 text-[10px] text-body-muted pointer-events-none"></i>
+                    </div>
+                    <div class="relative">
+                        <label for="receive-filter-supplier" class="sr-only">กรองตามผู้จำหน่าย</label>
+                        <select id="receive-filter-supplier"
+                            class="w-full h-10 px-3.5 rounded-xl bg-field text-ink text-sm cursor-pointer focus:outline-none focus:ring-1 focus:ring-accent-ink [&>option]:bg-canvas-elevated appearance-none pr-9">
+                            <option value="">ผู้จำหน่าย: ทั้งหมด</option>
+                        </select>
+                        <i class="fa-solid fa-chevron-down absolute right-3.5 top-1/2 -translate-y-1/2 text-[10px] text-body-muted pointer-events-none"></i>
+                    </div>
+                    <div class="relative">
+                        <label for="receive-filter-branch" class="sr-only">กรองตามสาขา</label>
+                        <select id="receive-filter-branch"
+                            class="w-full h-10 px-3.5 rounded-xl bg-field text-ink text-sm cursor-pointer focus:outline-none focus:ring-1 focus:ring-accent-ink [&>option]:bg-canvas-elevated appearance-none pr-9">
+                            <option value="">ทุกสาขา</option>
+                        </select>
+                        <i class="fa-solid fa-chevron-down absolute right-3.5 top-1/2 -translate-y-1/2 text-[10px] text-body-muted pointer-events-none"></i>
+                    </div>
+                    <div class="relative">
+                        <label for="receive-filter-date" class="sr-only">กรองตามวันที่ของถึง</label>
+                        <select id="receive-filter-date"
+                            class="w-full h-10 px-3.5 rounded-xl bg-field text-ink text-sm cursor-pointer focus:outline-none focus:ring-1 focus:ring-accent-ink [&>option]:bg-canvas-elevated appearance-none pr-9">
+                            <option value="">วันที่ของถึง: ทั้งหมด</option>
+                            <option value="1">วันที่ของถึง: วันนี้</option>
+                            <option value="7">วันที่ของถึง: 7 วันล่าสุด</option>
+                            <option value="30">วันที่ของถึง: 30 วันล่าสุด</option>
+                        </select>
+                        <i class="fa-solid fa-chevron-down absolute right-3.5 top-1/2 -translate-y-1/2 text-[10px] text-body-muted pointer-events-none"></i>
                     </div>
                 </div>
             </div>
+
+            <!-- 2b ชิปตัวกรอง + ตัวนับ (ข้อ 11.5) -->
+            <div class="px-6 py-4">
+                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <div id="receive-active-filters" class="flex flex-wrap items-center gap-2"></div>
+                    <div class="flex items-center gap-4 sm:ml-auto">
+                        <span id="receive-po-total-count" class="text-xs text-ink font-medium whitespace-nowrap"></span>
+                        <label for="receive-sort" class="sr-only">เรียงลำดับ</label>
+                        <select id="receive-sort"
+                            class="bg-transparent text-body-muted hover:text-ink text-xs cursor-pointer focus:outline-none focus:ring-1 focus:ring-accent-ink rounded-xs [&>option]:bg-canvas-elevated [&>option]:text-ink">
+                            <option value="arrival">เรียงตาม: วันที่ของถึง (ใหม่สุด)</option>
+                            <option value="created">เรียงตาม: วันที่สร้าง PO (ใหม่สุด)</option>
+                        </select>
+                        <div class="flex items-center gap-1 shrink-0">
+                            <button type="button" id="receive-view-list" aria-label="มุมมองรายการ" aria-pressed="true"
+                                class="w-9 h-9 rounded-md flex items-center justify-center transition-colors bg-primary text-on-primary">
+                                <i class="fa-solid fa-list text-sm"></i>
+                            </button>
+                            <button type="button" id="receive-view-card" aria-label="มุมมองการ์ด" aria-pressed="false"
+                                class="w-9 h-9 rounded-md flex items-center justify-center transition-colors bg-surface-chip text-body-muted hover:text-ink">
+                                <i class="fa-solid fa-table-cells-large text-sm"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2c ตาราง PO (ข้อ 11.6) -->
+            <div id="receive-view-list-wrap" class="overflow-x-auto" tabindex="0">
+                <table class="w-full text-left text-sm whitespace-nowrap border-collapse">
+                    <thead class="bg-panel/40 text-ink">
+                        <tr>
+                            <th class="px-6 py-4 font-semibold text-[15px]">เลขที่ PO</th>
+                            <th class="px-6 py-4 font-semibold text-[15px]">ผู้จำหน่าย</th>
+                            <th class="px-6 py-4 font-semibold text-[15px]">วันที่ของถึง</th>
+                            <th class="px-6 py-4 font-semibold text-[15px]">จำนวน</th>
+                            <th class="px-6 py-4 font-semibold text-[15px]">ความคืบหน้าตรวจรับ</th>
+                            <th class="px-6 py-4 font-semibold text-[15px]">สถานะ</th>
+                            <th class="px-6 py-4 font-semibold text-[15px] text-right"><span class="sr-only">จัดการ</span></th>
+                        </tr>
+                    </thead>
+                    <tbody id="table-body-receive-po" class="divide-y divide-divider"></tbody>
+                </table>
+            </div>
+            <!-- มุมมองการ์ด (ทางเลือก — สลับผ่านปุ่มด้านบน) -->
+            <div id="receive-view-cards" class="hidden grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 px-6 pb-6"></div>
+            <!-- โหลดเพิ่มทีละ 10 ใบ (ข้อมูลมาครบจาก /purchase-orders แล้ว แค่ไม่วาดทีเดียวทั้งหมด) -->
+            <button type="button" id="btn-receive-load-more"
+                class="hidden w-full py-4 border-t border-divider text-accent-ink text-sm font-medium hover:bg-divider transition-colors cursor-pointer"></button>
+        </div>
+    </div>
+
+    <!-- หน้า "รับสินค้าตาม PO" (เดสก์ท็อป) — โครงตาม DESIGN.md ข้อ 11: หัวหน้า + การ์ดพาเนลใบเดียว (สแกน + ตาราง) + แถบยืนยันติดล่าง
+         เป็นหน้าย่อยของ #view-branch-receive: เปิดจากปุ่ม "เริ่มตรวจรับ/ตรวจรับต่อ" (openReceivePage ใน js/page-po-accounting.js)
+         ตารางใน #receive-po-items สร้างจาก JS — มือถือ (< lg) ยังใช้ #receive-mobile-flow ด้านล่างเหมือนเดิม -->
+    <div id="receive-po-page" class="hidden space-y-8">
+        <!-- [1] หัวหน้า -->
+        <div class="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4">
+            <div class="min-w-0 space-y-2">
+                <button type="button" id="btn-receive-page-back"
+                    class="inline-flex items-center gap-2 text-[13px] text-body-muted hover:text-accent-ink transition-colors cursor-pointer">
+                    <i class="fa-solid fa-arrow-left text-xs"></i> กลับไปรายการ PO
+                </button>
+                <div class="flex flex-wrap items-center gap-4">
+                    <h3 class="text-2xl text-ink">รับสินค้าตาม PO</h3>
+                    <span id="receive-po-status"></span>
+                </div>
+                <p id="receive-po-meta" class="text-sm text-body-muted"></p>
+            </div>
+            <button type="button" id="btn-receive-view-po"
+                class="shrink-0 px-4 py-2 bg-surface-chip hover:bg-field text-ink text-sm rounded-sm transition-colors flex items-center gap-2 cursor-pointer w-fit">
+                <i class="fa-regular fa-file-lines text-body-muted"></i> ดูใบสั่งซื้อ
+            </button>
         </div>
 
-        <!-- 2c ตาราง (ข้อ 11.6) -->
-        <div id="receive-view-list-wrap" class="overflow-x-auto" tabindex="0">
-            <table class="w-full text-left text-sm whitespace-nowrap border-collapse">
-                <thead class="bg-panel/40 text-ink">
-                    <tr>
-                        <th class="px-6 py-4 font-semibold text-[15px]">เลขที่ PO / วันที่</th>
-                        <th class="px-6 py-4 font-semibold text-[15px]">ซัพพลายเออร์</th>
-                        <th class="px-6 py-4 font-semibold text-[15px] w-full">สาขาปลายทาง</th>
-                        <th class="px-6 py-4 font-semibold text-[15px] text-center">ความคืบหน้า</th>
-                        <th class="px-6 py-4 font-semibold text-[15px]">สถานะ</th>
-                        <th class="px-6 py-4 font-semibold text-[15px] text-right">จัดการ</th>
-                    </tr>
-                </thead>
-                <tbody id="table-body-receive-po" class="divide-y divide-divider"></tbody>
-            </table>
+        <!-- [2] การ์ดพาเนล: สแกน IMEI + ตารางรายการ อยู่ในกล่องเดียวกัน -->
+        <div class="bg-panel/40 rounded-2xl overflow-hidden">
+            <!-- 2a ช่องสแกน -->
+            <div id="receive-scan-card" class="p-6 space-y-4">
+                <div class="flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
+                    <div>
+                        <label for="receive-scan-input" class="text-lg text-ink">สแกน IMEI</label>
+                        <p class="text-[13px] text-body-muted mt-0.5">ยิงบาร์โค้ดทีละเครื่อง ระบบจัดเข้ารุ่นให้อัตโนมัติ</p>
+                    </div>
+                    <!-- ความคืบหน้ารวม (นับเฉพาะรอบนี้ = ยอดสั่งลบส่วนที่นำเข้าคลังแล้ว) -->
+                    <div data-rc-dev class="w-full sm:w-64">
+                        <div class="flex items-baseline justify-between text-[13px]">
+                            <span class="text-body-muted">สแกนแล้ว</span>
+                            <span><span id="rc-stat-scanned" class="text-lg font-semibold text-ink">0</span>
+                                <span id="rc-stat-scanned-of" class="text-body-muted"></span></span>
+                        </div>
+                        <div class="mt-2 h-1 rounded-full bg-surface-chip overflow-hidden">
+                            <div id="rc-stat-bar" class="h-full rounded-full bg-primary transition-all duration-300" style="width:0%"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="flex flex-col sm:flex-row gap-2.5">
+                    <div class="relative group flex-1 min-w-0">
+                        <i class="fa-solid fa-barcode absolute left-4 top-1/2 -translate-y-1/2 text-body-muted group-focus-within:text-accent-ink transition-colors pointer-events-none"></i>
+                        <input type="text" id="receive-scan-input" autocomplete="off" inputmode="numeric"
+                            placeholder="ยิงบาร์โค้ด หรือพิมพ์ IMEI แล้วกด Enter"
+                            class="w-full h-12 pl-11 pr-20 rounded-xl bg-field text-ink text-base font-mono placeholder:font-sans placeholder:text-ink-muted-48 focus:outline-none focus:ring-1 focus:ring-accent-ink disabled:opacity-60 transition-all">
+                        <kbd class="absolute right-3 top-1/2 -translate-y-1/2 px-2 py-0.5 rounded-xs bg-surface-chip text-[11px] text-body-muted font-sans pointer-events-none">Enter</kbd>
+                    </div>
+                    <button type="button" id="btn-receive-scan-add"
+                        class="h-12 px-6 bg-surface-chip hover:bg-field text-ink text-sm font-medium rounded-xl transition-colors cursor-pointer flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-plus text-xs text-accent-ink"></i> เพิ่ม IMEI
+                    </button>
+                </div>
+                <div id="receive-last-scan" class="hidden flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[13px]"
+                    role="status" aria-live="polite"></div>
+            </div>
+
+            <!-- 2b + 2c ตารางรายการเครื่อง / อุปกรณ์เสริม (สร้างจาก JS) -->
+            <div id="receive-po-items"></div>
         </div>
-        <!-- 2c' การ์ด (มุมมองทางเลือก — ซ่อนไว้ก่อน สลับผ่านปุ่มด้านบน) -->
-        <div id="receive-view-cards" class="hidden grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 p-6"></div>
+
+        <!-- [3] แถบยืนยัน — ติดขอบล่างจอขณะเลื่อน (floating-sticky-bar) -->
+        <div id="receive-action-bar"
+            class="sticky bottom-4 z-10 flex flex-col lg:flex-row lg:items-center gap-4 px-6 py-4 bg-surface-tile-3/80 backdrop-blur-md border border-hairline rounded-2xl">
+            <div class="flex-1 min-w-0 flex flex-wrap items-baseline gap-x-6 gap-y-1">
+                <p class="flex items-baseline gap-2">
+                    <span class="text-sm text-body-muted">ราคาขายรวม</span>
+                    <span id="rc-grand-total" class="text-2xl font-semibold text-ink">฿0</span>
+                </p>
+                <p id="receive-sum-line" class="text-[13px] text-body-muted"></p>
+                <p id="receive-remaining-warn" class="hidden text-[13px] text-accent-ink"></p>
+            </div>
+            <div class="flex items-center gap-2.5">
+                <button type="button" id="btn-receive-cancel"
+                    class="px-5 py-2.5 text-body-muted hover:text-ink text-[15px] rounded-pill transition-colors cursor-pointer">
+                    ยกเลิก</button>
+                <button type="button" id="btn-submit-po-receive"
+                    class="px-6 py-2.5 bg-primary hover:bg-primary-pressed active:scale-95 text-on-primary text-[15px] font-semibold rounded-pill transition-all cursor-pointer disabled:opacity-60 flex items-center gap-2">
+                    ยืนยันการตรวจรับสินค้า</button>
+            </div>
+        </div>
     </div>
 
     <!-- ============================================================================
          Mobile step-flow สำหรับ "ตรวจรับของ" — ใช้เฉพาะจอ < lg (มือถือ/แท็บเล็ตแนวตั้ง)
-         เดสก์ท็อป (lg+) ยังคงเปิด #modal-po-receive เดิมเป๊ะ ไม่มีการเปลี่ยนแปลงใดๆ กับเดสก์ท็อป
+         เดสก์ท็อป (lg+) เปิดหน้า #receive-po-page ด้านบนแทน
          ทั้งสองโหมดใช้ po.items ชุดเดียวกัน และส่งไป endpoint POST /po/:id/scan-item ตัวเดียวกัน
          (js/page-po-accounting.js: openMobileReceiveFlow) — lg:hidden กันไว้สองชั้นกับ JS ที่เช็ค
          window.innerWidth ก่อนเปิดอยู่แล้ว เผื่อกรณี resize หน้าต่างขณะเปิดค้างอยู่

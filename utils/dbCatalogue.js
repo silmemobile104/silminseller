@@ -279,6 +279,17 @@ const catalogue = [
         notes: 'ถูกอ้างถึงจากใบสำคัญจ่าย ถ้าลบบัญชีที่เคยใช้แล้วเอกสารเก่าจะอ้างถึงของที่ไม่มี'
     },
     {
+        key: 'accountbook', model: 'AccountBook', title: 'สมุดบัญชี', group: 'บัญชีและการเงิน', importance: 'normal',
+        purpose: 'รายชื่อสมุดบัญชีที่ตั้งไว้จากเมนู ตั้งค่าบัญชี > สมุดบัญชี',
+        pages: ['account-books'],
+        keyFields: [
+            { name: 'book_code', note: 'รหัสสมุดบัญชี ต้องไม่ซ้ำ' },
+            { name: 'book_name', note: 'ชื่อสมุดบัญชี' }
+        ],
+        relations: [],
+        notes: 'ยังไม่มีเอกสารอื่นอ้างถึง ลบได้โดยไม่กระทบข้อมูลส่วนอื่น'
+    },
+    {
         key: 'pnlconfig', model: 'PnLConfig', title: 'ผังงบกำไรขาดทุน', group: 'บัญชีและการเงิน', importance: 'normal',
         purpose: 'กำหนดว่าบัญชีไหนไปอยู่บรรทัดไหนของงบกำไรขาดทุน ใช้ประกอบรายงาน P&L ในหน้าบัญชี',
         pages: ['accounting-settings', 'accounting'],

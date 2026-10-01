@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const jwt = require('jsonwebtoken');
 const {
-    AccountCategory, AccountGroup, AccountChart, PnLConfig, DisbursementVoucher,
+    AccountCategory, AccountGroup, AccountChart, AccountBook, PnLConfig, DisbursementVoucher,
     Employee, Branch, CashMovement, Transaction, PurchaseOrder, FinanceReceivable, AuditLog
 } = require('../models');
 const { uploadBufferToDriveInFolder } = require('../utils/googleDrive');
@@ -67,6 +67,11 @@ async function logActivity(req, action, module, description, targetId, refNo, de
     } catch (e) { console.error('Log error:', e.message); }
 }
 
+// กลุ่มบัญชีเริ่มต้นที่ seedDefaultCOA (models/index.js) สร้างให้ — ต้องตรงกับ defaultGroups ในนั้น
+// seed ค้นกลุ่มด้วย group_code แล้วสร้างใหม่ถ้าไม่เจอ จึงห้ามลบหรือเปลี่ยนรหัส ไม่งั้นรีสตาร์ทแล้วจะได้กลุ่มซ้ำกลับมา
+const SYSTEM_GROUP_CODES = new Set(['11', '12', '21', '31', '41', '42', '51', '52']);
+const isSystemGroup = (group) => SYSTEM_GROUP_CODES.has(group.group_code);
+
 // ============================================
 // 1. CHART OF ACCOUNTS APIs
 // ============================================
@@ -79,6 +84,8 @@ router.get('/chart-of-accounts', async (req, res) => {
             AccountGroup.find().populate('category_id').sort({ group_code: 1 }).lean(),
             AccountChart.find().populate('category_id').populate('group_id').sort({ account_code: 1 }).lean()
         ]);
+        // is_system ของกลุ่มคำนวณจากรหัส (schema ไม่มีฟิลด์นี้) — เพิ่มฟิลด์เฉยๆ ไม่เปลี่ยนรูปร่างเดิม
+        groups.forEach(g => { g.is_system = isSystemGroup(g); });
         res.json({ success: true, categories, groups, accounts });
     } catch (err) {
         res.status(500).json({ success: false, message: err.message });
@@ -86,12 +93,28 @@ router.get('/chart-of-accounts', async (req, res) => {
 });
 
 // POST /api/acct/chart-of-accounts - Add or Edit an account
+// group_id ไม่บังคับ: หน้า "รหัสบัญชี" ส่งมาแค่ รหัส/ชื่อ/หมวด ส่วนหน้า "ตั้งค่าผังบัญชี" (เดิม) ส่งกลุ่มมาด้วย
 router.post('/chart-of-accounts', async (req, res) => {
     try {
-        const { _id, account_code, account_name, category_id, group_id, level } = req.body;
-        if (!account_code || !account_name || !category_id || !group_id) {
+        const { _id, category_id, level } = req.body;
+        const account_code = String(req.body.account_code || '').trim();
+        const account_name = String(req.body.account_name || '').trim();
+        const hasGroup = Object.prototype.hasOwnProperty.call(req.body, 'group_id');
+        const group_id = req.body.group_id || null;
+        if (!account_code || !account_name || !category_id) {
             return res.status(400).json({ success: false, message: 'กรุณากรอกข้อมูลให้ครบถ้วน' });
         }
+        const [category, group, dup] = await Promise.all([
+            AccountCategory.findById(category_id).lean(),
+            group_id ? AccountGroup.findById(group_id).lean() : null,
+            AccountChart.findOne({ account_code, ...(_id ? { _id: { $ne: _id } } : {}) }).lean()
+        ]);
+        if (!category) return res.status(400).json({ success: false, message: 'ไม่พบหมวดบัญชีที่เลือก' });
+        if (group_id && (!group || String(group.category_id) !== String(category._id))) {
+            return res.status(400).json({ success: false, message: 'กลุ่มบัญชีไม่ตรงกับหมวดที่เลือก' });
+        }
+        if (dup) return res.status(400).json({ success: false, message: 'รหัสบัญชีนี้มีอยู่แล้ว' });
+
         let account;
         if (_id) {
             account = await AccountChart.findById(_id);
@@ -99,21 +122,25 @@ router.post('/chart-of-accounts', async (req, res) => {
             if (account.is_system && account.account_code !== account_code) {
                 return res.status(400).json({ success: false, message: 'ไม่สามารถเปลี่ยนรหัสบัญชีระบบได้' });
             }
+            const categoryChanged = String(account.category_id) !== String(category._id);
             account.account_code = account_code;
             account.account_name = account_name;
-            account.category_id = category_id;
-            account.group_id = group_id;
-            account.level = level || 3;
+            account.category_id = category._id;
+            // ไม่ได้ส่งกลุ่มมา = คงกลุ่มเดิมไว้ เว้นแต่ย้ายหมวด (กลุ่มเดิมไม่ตรงหมวดใหม่แล้ว จึงล้างทิ้ง)
+            if (hasGroup) account.group_id = group_id;
+            else if (categoryChanged) account.group_id = null;
+            if (level) account.level = level;
             await account.save();
             await logActivity(req, 'UPDATE', 'COA', `แก้ไขผังบัญชี ${account_code} ${account_name}`, account._id);
         } else {
-            const exists = await AccountChart.findOne({ account_code });
-            if (exists) return res.status(400).json({ success: false, message: 'รหัสบัญชีนี้มีอยู่แล้ว' });
-            account = await AccountChart.create({ account_code, account_name, category_id, group_id, level: level || 3 });
+            account = await AccountChart.create({ account_code, account_name, category_id: category._id, group_id, level: level || 3 });
             await logActivity(req, 'CREATE', 'COA', `เพิ่มผังบัญชี ${account_code} ${account_name}`, account._id);
         }
         res.json({ success: true, account });
     } catch (err) {
+        if (err && err.code === 11000) {
+            return res.status(400).json({ success: false, message: 'รหัสบัญชีนี้มีอยู่แล้ว' });
+        }
         res.status(500).json({ success: false, message: err.message });
     }
 });
@@ -123,7 +150,15 @@ router.delete('/chart-of-accounts/:id', async (req, res) => {
     try {
         const account = await AccountChart.findById(req.params.id);
         if (!account) return res.status(404).json({ success: false, message: 'ไม่พบบัญชีนี้' });
-        if (account.is_system) return res.status(400).json({ success: false, message: 'ไม่สามารถลบบัญชีระบบได้' });
+        if (account.is_system) return res.status(400).json({ success: false, message: 'ไม่สามารถลบบัญชีระบบได้ (ปิดการใช้งานแทนได้)' });
+        // บัญชีที่เอกสารอ้างถึงอยู่ ลบแล้วเอกสารเก่าจะชี้ไปที่ของที่ไม่มี — ให้ปิดการใช้งานแทน
+        const [dvCount, pnlCount] = await Promise.all([
+            DisbursementVoucher.countDocuments({ $or: [{ debit_account_id: account._id }, { credit_account_id: account._id }] }),
+            PnLConfig.countDocuments({ account_ids: account._id })
+        ]);
+        if (dvCount || pnlCount) {
+            return res.status(400).json({ success: false, message: 'ลบไม่ได้ เพราะบัญชีนี้ถูกใช้ในใบสำคัญจ่ายหรืองบกำไรขาดทุนแล้ว (ปิดการใช้งานแทนได้)' });
+        }
         await AccountChart.findByIdAndDelete(req.params.id);
         await logActivity(req, 'DELETE', 'COA', `ลบผังบัญชี ${account.account_code} ${account.account_name}`, account._id);
         res.json({ success: true });
@@ -132,17 +167,153 @@ router.delete('/chart-of-accounts/:id', async (req, res) => {
     }
 });
 
-// POST /api/acct/account-groups - Add group
+// PATCH /api/acct/chart-of-accounts/:id/active — เปิด/ปิดการใช้งานบัญชี (ใช้ได้กับบัญชีระบบด้วย)
+// ปิดแล้วบัญชียังอยู่ครบ เอกสารเก่า/รายงาน/สรุปยอดรายวันที่ค้นด้วยรหัสยังทำงานเหมือนเดิม
+// แค่ไม่ให้เลือกใช้ในเอกสารใหม่ (ใบสำคัญจ่าย) — seed ไม่ยุ่งกับบัญชีที่ปิด เพราะสร้างเฉพาะรหัสที่ไม่มี
+router.patch('/chart-of-accounts/:id/active', async (req, res) => {
+    try {
+        if (typeof req.body.is_active !== 'boolean') {
+            return res.status(400).json({ success: false, message: 'ข้อมูลไม่ถูกต้อง' });
+        }
+        const account = await AccountChart.findById(req.params.id);
+        if (!account) return res.status(404).json({ success: false, message: 'ไม่พบบัญชีนี้' });
+        account.is_active = req.body.is_active;
+        await account.save();
+        await logActivity(req, 'UPDATE', 'COA',
+            `${account.is_active ? 'เปิด' : 'ปิด'}การใช้งานบัญชี ${account.account_code} ${account.account_name}`, account._id, account.account_code);
+        res.json({ success: true, account });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+// POST /api/acct/account-groups - เพิ่ม (ไม่มี _id) หรือแก้ไข (มี _id) กลุ่มบัญชี
+// หน้า "ประเภทบัญชี" ใช้ทั้งเพิ่มและแก้ไข ส่วนโมดัลเพิ่มกลุ่มเดิมส่งมาแบบไม่มี _id (เพิ่มอย่างเดียว)
 router.post('/account-groups', async (req, res) => {
     try {
-        const { group_code, group_name, category_id } = req.body;
+        const { _id, category_id } = req.body;
+        const group_code = String(req.body.group_code || '').trim();
+        const group_name = String(req.body.group_name || '').trim();
         if (!group_code || !group_name || !category_id) {
             return res.status(400).json({ success: false, message: 'กรุณากรอกข้อมูลให้ครบถ้วน' });
         }
-        const exists = await AccountGroup.findOne({ group_code });
+        const [category, exists] = await Promise.all([
+            AccountCategory.findById(category_id).lean(),
+            AccountGroup.findOne({ group_code, ...(_id ? { _id: { $ne: _id } } : {}) }).lean()
+        ]);
+        if (!category) return res.status(400).json({ success: false, message: 'ไม่พบหมวดบัญชีที่เลือก' });
         if (exists) return res.status(400).json({ success: false, message: 'รหัสกลุ่มนี้มีอยู่แล้ว' });
-        const group = await AccountGroup.create({ group_code, group_name, category_id });
+
+        let group;
+        if (_id) {
+            group = await AccountGroup.findById(_id);
+            if (!group) return res.status(404).json({ success: false, message: 'ไม่พบกลุ่มบัญชีนี้' });
+            if (isSystemGroup(group) && group.group_code !== group_code) {
+                return res.status(400).json({ success: false, message: 'ไม่สามารถเปลี่ยนรหัสกลุ่มบัญชีระบบได้' });
+            }
+            // ย้ายหมวดได้เฉพาะกลุ่มที่ยังไม่มีใครใช้ — ไม่งั้นบัญชีในกลุ่มจะอยู่คนละหมวดกับกลุ่มของตัวเอง
+            if (String(group.category_id) !== String(category._id)) {
+                const [accCount, pnlCount] = await Promise.all([
+                    AccountChart.countDocuments({ group_id: group._id }),
+                    PnLConfig.countDocuments({ group_id: group._id })
+                ]);
+                if (accCount || pnlCount) {
+                    return res.status(400).json({ success: false, message: 'เปลี่ยนหมวดไม่ได้ เพราะกลุ่มนี้มีรหัสบัญชีหรืองบกำไรขาดทุนใช้งานอยู่' });
+                }
+            }
+            group.group_code = group_code;
+            group.group_name = group_name;
+            group.category_id = category._id;
+            await group.save();
+            await logActivity(req, 'UPDATE', 'COA', `แก้ไขกลุ่มบัญชี ${group_code} ${group_name}`, group._id, group_code);
+        } else {
+            group = await AccountGroup.create({ group_code, group_name, category_id: category._id });
+            await logActivity(req, 'CREATE', 'COA', `เพิ่มกลุ่มบัญชี ${group_code} ${group_name}`, group._id, group_code);
+        }
         res.json({ success: true, group });
+    } catch (err) {
+        if (err && err.code === 11000) {
+            return res.status(400).json({ success: false, message: 'รหัสกลุ่มนี้มีอยู่แล้ว' });
+        }
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+// DELETE /api/acct/account-groups/:id — ลบได้เฉพาะกลุ่มที่ไม่ใช่ของระบบและไม่มีใครอ้างถึง
+router.delete('/account-groups/:id', async (req, res) => {
+    try {
+        const group = await AccountGroup.findById(req.params.id).lean();
+        if (!group) return res.status(404).json({ success: false, message: 'ไม่พบกลุ่มบัญชีนี้' });
+        if (isSystemGroup(group)) return res.status(400).json({ success: false, message: 'ไม่สามารถลบกลุ่มบัญชีระบบได้' });
+        const [accCount, pnlCount] = await Promise.all([
+            AccountChart.countDocuments({ group_id: group._id }),
+            PnLConfig.countDocuments({ group_id: group._id })
+        ]);
+        if (accCount) return res.status(400).json({ success: false, message: `ลบไม่ได้ เพราะมีรหัสบัญชี ${accCount} รายการอยู่ในกลุ่มนี้` });
+        if (pnlCount) return res.status(400).json({ success: false, message: 'ลบไม่ได้ เพราะกลุ่มนี้ถูกใช้ในการตั้งค่างบกำไรขาดทุน' });
+        await AccountGroup.findByIdAndDelete(group._id);
+        await logActivity(req, 'DELETE', 'COA', `ลบกลุ่มบัญชี ${group.group_code} ${group.group_name}`, group._id, group.group_code);
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+// ============================================
+// 1.1 ACCOUNT BOOK APIs (สมุดบัญชี)
+// ============================================
+
+// GET /api/acct/account-books
+router.get('/account-books', async (req, res) => {
+    try {
+        const books = await AccountBook.find().sort({ book_code: 1 }).lean();
+        res.json({ success: true, books });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+// POST /api/acct/account-books - เพิ่ม (ไม่มี _id) หรือแก้ไข (มี _id)
+router.post('/account-books', async (req, res) => {
+    try {
+        const { _id } = req.body;
+        const book_code = String(req.body.book_code || '').trim();
+        const book_name = String(req.body.book_name || '').trim();
+        if (!book_code || !book_name) {
+            return res.status(400).json({ success: false, message: 'กรุณากรอกรหัสและชื่อสมุดบัญชีให้ครบถ้วน' });
+        }
+        const dup = await AccountBook.findOne({ book_code, ...(_id ? { _id: { $ne: _id } } : {}) }).lean();
+        if (dup) return res.status(400).json({ success: false, message: 'รหัสสมุดบัญชีนี้มีอยู่แล้ว' });
+
+        let book;
+        if (_id) {
+            book = await AccountBook.findById(_id);
+            if (!book) return res.status(404).json({ success: false, message: 'ไม่พบสมุดบัญชีนี้' });
+            book.book_code = book_code;
+            book.book_name = book_name;
+            await book.save();
+            await logActivity(req, 'UPDATE', 'ACCOUNT_BOOK', `แก้ไขสมุดบัญชี ${book_code} ${book_name}`, book._id, book_code);
+        } else {
+            book = await AccountBook.create({ book_code, book_name });
+            await logActivity(req, 'CREATE', 'ACCOUNT_BOOK', `เพิ่มสมุดบัญชี ${book_code} ${book_name}`, book._id, book_code);
+        }
+        res.json({ success: true, book });
+    } catch (err) {
+        if (err && err.code === 11000) {
+            return res.status(400).json({ success: false, message: 'รหัสสมุดบัญชีนี้มีอยู่แล้ว' });
+        }
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+// DELETE /api/acct/account-books/:id
+router.delete('/account-books/:id', async (req, res) => {
+    try {
+        const book = await AccountBook.findById(req.params.id).lean();
+        if (!book) return res.status(404).json({ success: false, message: 'ไม่พบสมุดบัญชีนี้' });
+        await AccountBook.findByIdAndDelete(req.params.id);
+        await logActivity(req, 'DELETE', 'ACCOUNT_BOOK', `ลบสมุดบัญชี ${book.book_code} ${book.book_name}`, book._id, book.book_code);
+        res.json({ success: true });
     } catch (err) {
         res.status(500).json({ success: false, message: err.message });
     }
@@ -264,6 +435,12 @@ router.post('/disbursements', async (req, res) => {
         const { payment_date, branch_id, debit_account_id, credit_account_id, amount, vat_type, payee_name, remark, proof_image_base64 } = req.body;
         if (!debit_account_id || !credit_account_id || !amount || amount <= 0) {
             return res.status(400).json({ success: false, message: 'กรุณากรอกข้อมูลให้ครบถ้วน' });
+        }
+        const inactiveCount = await AccountChart.countDocuments({
+            _id: { $in: [debit_account_id, credit_account_id] }, is_active: false
+        });
+        if (inactiveCount) {
+            return res.status(400).json({ success: false, message: 'บัญชีที่เลือกถูกปิดการใช้งานแล้ว' });
         }
 
         // Auto-generate voucher number: PV-YYYYMM-XXXX (Running count reset monthly).

@@ -171,7 +171,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // โหลดสคริปต์เฉพาะหน้า (js/page-<name>.js) แบบ dynamic ครั้งเดียว แล้ว cache ไว้
     // PAGE_SCRIPT_VERSION: บัมพ์เลขนี้ทุกครั้งที่แก้ไฟล์ใน js/ เพื่อไม่ให้เบราว์เซอร์ใช้ของเก่าที่ cache ไว้
-    const PAGE_SCRIPT_VERSION = 'apple_active_v71';
+    const PAGE_SCRIPT_VERSION = 'apple_active_v101';
     const __loadedPageScripts = {};
     function loadPageScript(name) {
         if (__loadedPageScripts[name]) return __loadedPageScripts[name];
@@ -224,7 +224,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // ไม่ได้รอ init function ถ้า HTML ยังไม่ถูกแทรกเข้า DOM ก่อน ตัวแปรที่ query ไว้จะเป็น null ถาวร
     // ชื่อ name ต้องตรงกับชื่อที่ใช้ใน loadPageScript — ไฟล์เดียวอาจมีหลาย <div id="view-XXX"> รวมกัน
     // ถ้าหน้านั้นถูก share โดยสคริปต์เดียวกันหลาย view (ดูตาราง mapping ในแผน)
-    const VIEW_FRAGMENT_VERSION = 'v100'; // บัมพ์เลขนี้ทุกครั้งที่แก้ไฟล์ใน views/
+    const VIEW_FRAGMENT_VERSION = 'v124'; // บัมพ์เลขนี้ทุกครั้งที่แก้ไฟล์ใน views/
     const __loadedPageViews = {};
     function loadPageView(name) {
         if (__loadedPageViews[name]) return __loadedPageViews[name];
@@ -431,6 +431,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const navStockAuditReview = document.getElementById('nav-stock-audit-review');
     const navAccountingSettings = document.getElementById('nav-accounting-settings');
     const navDisbursement = document.getElementById('nav-disbursement');
+    const navAccountCategories = document.getElementById('nav-account-categories');
+    const navAccountBooks = document.getElementById('nav-account-books');
+    const navAccountCodes = document.getElementById('nav-account-codes');
     const navOrderVerification = document.getElementById('nav-order-verification');
     const navFinanceCompanies = document.getElementById('nav-finance-companies');
 
@@ -460,6 +463,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const viewStockAuditReview = document.getElementById('view-stock-audit-review');
     const viewAccountingSettings = document.getElementById('view-accounting-settings');
     const viewDisbursement = document.getElementById('view-disbursement');
+    const viewAccountCategories = document.getElementById('view-account-categories');
+    const viewAccountBooks = document.getElementById('view-account-books');
+    const viewAccountCodes = document.getElementById('view-account-codes');
     const viewOrderVerification = document.getElementById('view-order-verification');
     const viewFinanceCompanies = document.getElementById('view-finance-companies');
 
@@ -1181,6 +1187,8 @@ document.addEventListener('DOMContentLoaded', () => {
         return `<span class="w-4 h-4 rounded-full shrink-0 border border-gray-400" style="background-color:${hex};"></span>`;
     };
     window.productColorDot = productColorDot;
+    // สีเครื่องแบบ hex ล้วน — สำหรับหน้าที่ต้องวาดจุดสีขนาดอื่นเอง (เช่น ตารางใน popup ตรวจรับสินค้า PO)
+    window.productColorHex = (colorName, colorDoc) => toSixDigitHex(resolveProductColorHex(colorName, colorDoc));
 
     const renderFilterSwatches = (containerId, targetId, dataArray) => {
         const container = document.getElementById(containerId);
@@ -2287,6 +2295,25 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // ==========================================
+    // เมนูกลุ่มแบบ dropdown ใน sidebar (เช่น "ตั้งค่าบัญชี")
+    // ปุ่มหัวกลุ่มมี data-nav-group-toggle="<id ของกล่องเมนูย่อย>"
+    // ==========================================
+    const setNavGroupOpen = (toggle, open) => {
+        const submenu = document.getElementById(toggle.dataset.navGroupToggle);
+        if (!submenu) return;
+        submenu.hidden = !open;
+        toggle.setAttribute('aria-expanded', String(open));
+    };
+
+    document.querySelectorAll('[data-nav-group-toggle]').forEach((toggle) => {
+        toggle.style.display = 'none'; // Will be managed by applyPermissions (แสดงเมื่อมีเมนูย่อยที่มองเห็นได้)
+        toggle.addEventListener('click', (e) => {
+            e.preventDefault();
+            setNavGroupOpen(toggle, toggle.getAttribute('aria-expanded') !== 'true');
+        });
+    });
+
+    // ==========================================
     // Dynamic Permissions (RBAC ตามสิทธิ์จาก Role)
     // ==========================================
     const applyPermissions = (permissions) => {
@@ -2308,7 +2335,7 @@ document.addEventListener('DOMContentLoaded', () => {
         setVisible(navDashboard, permissions.view_dashboard);
         setVisible(navStock, permissions.manage_stock);
         setVisible(navTransactions, permissions.do_pos);
-        setVisible(navSalesHistory, permissions.do_pos);
+        setVisible(navSalesHistory, permissions.view_sales_history);
         setVisible(navTransfers, permissions.manage_transfers);
         setVisible(navDeposits, permissions.manage_deposits);
         setVisible(navMovements, permissions.manage_stock);
@@ -2327,6 +2354,9 @@ document.addEventListener('DOMContentLoaded', () => {
         setVisible(navAccounting, permissions.manage_finance);
         setVisible(navAccountingSettings, permissions.manage_finance);
         setVisible(navDisbursement, permissions.manage_finance);
+        setVisible(navAccountCategories, permissions.manage_finance);
+        setVisible(navAccountBooks, permissions.manage_finance);
+        setVisible(navAccountCodes, permissions.manage_finance);
         setVisible(navOrderVerification, permissions.verify_orders);
         setVisible(navFinanceCompanies, permissions.verify_orders);
         setVisible(navBranchInventory, permissions.view_branch_inventory);
@@ -2347,6 +2377,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
         setVisible(navStockAudit, permissions.do_stock_audit);
         setVisible(navStockAuditReview, permissions.manage_stock_audit);
+
+        // ซ่อน/แสดงปุ่มหัวกลุ่ม dropdown ตามเมนูย่อย: ถ้าเมนูย่อยถูกซ่อนหมด ให้ซ่อนปุ่มหัวกลุ่มด้วย
+        // (ต้องทำก่อนเช็ค nav-section-header ด้านล่าง เพราะปุ่มหัวกลุ่มนับเป็น nav-menu-item ของหมวด)
+        document.querySelectorAll('#sidebar [data-nav-group-toggle]').forEach((toggle) => {
+            const submenu = document.getElementById(toggle.dataset.navGroupToggle);
+            const hasVisibleChild = !!submenu && [...submenu.querySelectorAll('.nav-menu-item')]
+                .some(item => !item.classList.contains('hidden') && item.style.display !== 'none');
+            setVisible(toggle, hasVisibleChild);
+        });
 
         // ซ่อน/แสดงหัวข้อกลุ่มเมนู (nav-section-header) อัตโนมัติ:
         // ถ้าเมนูทุกอันในหมวดหมู่นั้นถูกซ่อนหมด (ตาม permissions ด้านบน) ให้ซ่อนชื่อกลุ่มไปด้วย
@@ -3408,7 +3447,7 @@ document.addEventListener('DOMContentLoaded', () => {
         'sales-history', 'daily-summary', 'transfers', 'deposits', 'movements', 'members',
         'report-arrival', 'approve-import', 'warranty-check', 'branch-inventory', 'accounting-po',
         'branch-receive', 'accounting', 'audit-logs', 'stock-audit', 'stock-audit-review',
-        'accounting-settings', 'disbursement', 'database',
+        'accounting-settings', 'disbursement', 'account-categories', 'account-books', 'account-codes', 'database',
         'order-verification', 'finance-companies'
     ]);
     // อ่านชื่อ view จาก URL hash (เช่น #deposits) — คืนค่า null ถ้าไม่มีหรือไม่ใช่ view ที่รู้จัก
@@ -3433,7 +3472,7 @@ document.addEventListener('DOMContentLoaded', () => {
             'branches': 'manage_branches',
             'settings': 'manage_settings',
             'roles': 'manage_roles',
-            'sales-history': 'do_pos',
+            'sales-history': 'view_sales_history',
             'daily-summary': 'view_daily_summary',
             'transfers': 'manage_transfers',
             'movements': 'manage_stock',
@@ -3450,6 +3489,9 @@ document.addEventListener('DOMContentLoaded', () => {
             'stock-audit-review': 'manage_stock_audit',
             'accounting-settings': 'manage_finance',
             'disbursement': 'manage_finance',
+            'account-categories': 'manage_finance',
+            'account-books': 'manage_finance',
+            'account-codes': 'manage_finance',
             'order-verification': 'verify_orders',
             'finance-companies': 'verify_orders',
             'database': 'manage_database'
@@ -3479,7 +3521,7 @@ document.addEventListener('DOMContentLoaded', () => {
             'branches': 'manage_branches',
             'settings': 'manage_settings',
             'roles': 'manage_roles',
-            'sales-history': 'do_pos',
+            'sales-history': 'view_sales_history',
             'daily-summary': 'view_daily_summary',
             'transfers': 'manage_transfers',
             'movements': 'manage_stock',
@@ -3496,6 +3538,9 @@ document.addEventListener('DOMContentLoaded', () => {
             'stock-audit-review': 'manage_stock_audit',
             'accounting-settings': 'manage_finance',
             'disbursement': 'manage_finance',
+            'account-categories': 'manage_finance',
+            'account-books': 'manage_finance',
+            'account-codes': 'manage_finance',
             'order-verification': 'verify_orders',
             'finance-companies': 'verify_orders',
             'database': 'manage_database'
@@ -3571,7 +3616,7 @@ document.addEventListener('DOMContentLoaded', () => {
             viewBranchInventory, viewAccountingPO, viewBranchReceive,
             viewAuditLogs, viewAccounting, viewDailySummary,
             viewStockAudit, viewStockAuditReview, viewDeposits,
-            viewAccountingSettings, viewDisbursement, viewDatabase,
+            viewAccountingSettings, viewDisbursement, viewAccountCategories, viewAccountBooks, viewAccountCodes, viewDatabase,
             viewOrderVerification, viewFinanceCompanies
         ];
         views.forEach(view => {
@@ -3595,6 +3640,10 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             if (nav) {
                 nav.classList.add('active');
+                // เมนูที่อยู่ใน dropdown ของ sidebar — กางกลุ่มออกให้เห็นเมนูที่กำลัง active
+                const submenu = nav.closest('.nav-submenu');
+                const groupToggle = submenu && document.querySelector(`[data-nav-group-toggle="${submenu.id}"]`);
+                if (groupToggle) setNavGroupOpen(groupToggle, true);
             }
         };
 
@@ -3776,6 +3825,24 @@ document.addEventListener('DOMContentLoaded', () => {
                 await loadPageScript('accounting-settings');
                 if (typeof initDisbursement === 'function') initDisbursement();
             }
+            else if (viewName === 'account-categories') {
+                activateView(viewAccountCategories, navAccountCategories);
+                await loadPageView('accounting-settings');
+                await loadPageScript('accounting-settings');
+                if (typeof initAccountCategories === 'function') initAccountCategories();
+            }
+            else if (viewName === 'account-books') {
+                activateView(viewAccountBooks, navAccountBooks);
+                await loadPageView('accounting-settings');
+                await loadPageScript('accounting-settings');
+                if (typeof initAccountBooks === 'function') initAccountBooks();
+            }
+            else if (viewName === 'account-codes') {
+                activateView(viewAccountCodes, navAccountCodes);
+                await loadPageView('accounting-settings');
+                await loadPageScript('accounting-settings');
+                if (typeof initAccountCodes === 'function') initAccountCodes();
+            }
             else if (viewName === 'order-verification') {
                 activateView(viewOrderVerification, navOrderVerification);
                 await loadPageView('order-verification');
@@ -3823,6 +3890,12 @@ document.addEventListener('DOMContentLoaded', () => {
     if (navAccountingSettings) navAccountingSettings.addEventListener('click', (e) => { e.preventDefault(); switchView('accounting-settings'); });
     if (navDisbursement) navDisbursement.style.display = 'none'; // Will be managed by applyPermissions
     if (navDisbursement) navDisbursement.addEventListener('click', (e) => { e.preventDefault(); switchView('disbursement'); });
+    if (navAccountCategories) navAccountCategories.style.display = 'none'; // Will be managed by applyPermissions
+    if (navAccountCategories) navAccountCategories.addEventListener('click', (e) => { e.preventDefault(); switchView('account-categories'); });
+    if (navAccountBooks) navAccountBooks.style.display = 'none'; // Will be managed by applyPermissions
+    if (navAccountBooks) navAccountBooks.addEventListener('click', (e) => { e.preventDefault(); switchView('account-books'); });
+    if (navAccountCodes) navAccountCodes.style.display = 'none'; // Will be managed by applyPermissions
+    if (navAccountCodes) navAccountCodes.addEventListener('click', (e) => { e.preventDefault(); switchView('account-codes'); });
     if (navOrderVerification) navOrderVerification.style.display = 'none'; // Will be managed by applyPermissions
     if (navOrderVerification) navOrderVerification.addEventListener('click', (e) => { e.preventDefault(); switchView('order-verification'); });
     if (navFinanceCompanies) navFinanceCompanies.style.display = 'none'; // Will be managed by applyPermissions

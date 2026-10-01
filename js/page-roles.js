@@ -15,12 +15,13 @@
     const closeRoleModalBtn = document.getElementById('close-role-modal-btn');
     const cancelRoleModalBtn = document.getElementById('cancel-role-modal-btn');
 
-    const permKeys = ['view_dashboard', 'manage_stock', 'delete_stock', 'do_pos', 'manage_personnel', 'manage_branches', 'manage_settings', 'manage_roles', 'view_audit_logs', 'filter_stock_branch', 'cancel_sale', 'report_arrival', 'approve_import', 'manage_po', 'receive_po', 'manage_transfers', 'manage_finance', 'view_branch_inventory', 'view_daily_summary', 'do_stock_audit', 'manage_stock_audit', 'manage_deposits', 'manage_database', 'verify_orders'];
+    const permKeys = ['view_dashboard', 'manage_stock', 'delete_stock', 'do_pos', 'view_sales_history', 'manage_personnel', 'manage_branches', 'manage_settings', 'manage_roles', 'view_audit_logs', 'filter_stock_branch', 'cancel_sale', 'report_arrival', 'approve_import', 'manage_po', 'view_po_dashboard', 'pay_po', 'receive_po', 'manage_transfers', 'manage_finance', 'view_branch_inventory', 'view_daily_summary', 'do_stock_audit', 'manage_stock_audit', 'manage_deposits', 'manage_database', 'verify_orders'];
     const permLabels = {
         view_dashboard: 'ดูแดชบอร์ด',
         manage_stock: 'จัดการสต็อก',
         delete_stock: 'ลบสินค้า',
         do_pos: 'ขายสินค้า (POS)',
+        view_sales_history: 'ดูประวัติการขาย',
         manage_personnel: 'จัดการพนักงาน',
         manage_branches: 'จัดการสาขา',
         manage_settings: 'ตั้งค่าระบบ',
@@ -31,6 +32,8 @@
         report_arrival: 'แจ้งของถึงสาขา',
         approve_import: 'อนุมัตินำเข้าสต็อก',
         manage_po: 'จัดการระบบสั่งซื้อ (PO)',
+        pay_po: 'การชำระเงินระบบสั่งซื้อ',
+        view_po_dashboard: 'แดชบอร์ดระบบสั่งซื้อ',
         receive_po: 'ตรวจรับสินค้าเข้าสาขา',
         manage_transfers: 'โอนย้ายสินค้า',
         manage_finance: 'จัดการระบบบัญชีและการเงิน',
@@ -47,6 +50,7 @@
         manage_stock: 'fa-box-open',
         delete_stock: 'fa-trash',
         do_pos: 'fa-money-bill-transfer',
+        view_sales_history: 'fa-receipt',
         manage_personnel: 'fa-users',
         manage_branches: 'fa-store',
         manage_settings: 'fa-gear',
@@ -57,6 +61,8 @@
         report_arrival: 'fa-truck-ramp-box',
         approve_import: 'fa-clipboard-check',
         manage_po: 'fa-file-invoice-dollar',
+        pay_po: 'fa-money-bill-wave',
+        view_po_dashboard: 'fa-chart-pie',
         receive_po: 'fa-boxes-packing',
         manage_transfers: 'fa-right-left',
         manage_finance: 'fa-chart-line',

@@ -122,6 +122,7 @@
         DEPOSIT: { label: 'มัดจำ/จอง', icon: 'fa-wallet' },
         REQUISITION: { label: 'ใบเบิกสินค้า', icon: 'fa-clipboard-list' },
         COA: { label: 'ผังบัญชี', icon: 'fa-sitemap' },
+        ACCOUNT_BOOK: { label: 'สมุดบัญชี', icon: 'fa-list-ul' },
         STOCK_AUDIT: { label: 'ตรวจนับสต็อก', icon: 'fa-clipboard-check' },
         PNL_CONFIG: { label: 'ตั้งค่างบกำไรขาดทุน', icon: 'fa-chart-pie' },
         DISBURSEMENT: { label: 'ใบสำคัญจ่าย', icon: 'fa-file-invoice' }

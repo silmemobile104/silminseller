@@ -937,7 +937,11 @@
                 const res = await authFetch(url, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ supplier_name, branch_id, items })
+                    body: JSON.stringify({
+                        supplier_name, branch_id, items,
+                        // ว่าง = ไม่กำหนดวันจ่าย — ส่งไปเสมอ เพื่อให้ตอนแก้ไขลบวันที่ทิ้งได้ด้วย
+                        payment_due_date: document.getElementById('po-payment-due-date')?.value || ''
+                    })
                 });
                 const json = await res.json();
                 if (json.success) {
@@ -957,6 +961,7 @@
                     stopEditingPO();
                     loadPOHistory(); // Refresh history cache
                     switchPoTab('history');
+                    showPoPage('history'); // สร้างจากหน้าแดชบอร์ดก็ต้องเห็นใบที่เพิ่งบันทึกในประวัติ
                 } else {
                     showToast(json.message, 'error');
                 }
@@ -972,6 +977,17 @@
     // ==========================================
     let poHistoryCache = [];
     let editingPOId = null;
+
+    // สิทธิ์ "การชำระเงินระบบสั่งซื้อ" — อ่านสดจาก localStorage ทุกครั้ง เพราะ /auth/me ซิงก์สิทธิ์ใหม่ลงมาระหว่างใช้งานได้
+    // ไม่มีสิทธิ์ = ไม่เห็นทั้งคอลัมน์การชำระเงินและปุ่มจ่ายเงิน (เซิร์ฟเวอร์ตรวจซ้ำที่ /accounting/po-pay)
+    const canPayPO = () => {
+        try {
+            return !!(JSON.parse(localStorage.getItem('silmin_user') || '{}').permissions || {}).pay_po;
+        } catch (e) {
+            return false;
+        }
+    };
+    const poHistoryColCount = () => (canPayPO() ? 8 : 7);
     // สลับมุมมอง List/Card ของตารางประวัติการสั่งซื้อ — จำโหมดไว้ข้ามการเข้าหน้า
     // (เดินตามรูปแบบเดียวกับหน้าการมัดจำ/ประวัติการขาย/สมาชิก/เช็คประกัน/จัดการสต็อก/ตรวจนับสต็อก)
     let poHistoryViewMode = localStorage.getItem('po_history_view_mode') === 'card' ? 'card' : 'list';
@@ -997,6 +1013,9 @@
         // Populate Supplier and Branch
         document.getElementById('po-supplier').value = po.supplier_name;
         document.getElementById('po-branch').value = po.branch_id?._id || po.branch_id || '';
+        // เซิร์ฟเวอร์เก็บกำหนดจ่ายเป็นเที่ยงคืน UTC จึงตัด 10 ตัวแรกของ ISO ได้วันที่ตรงตามที่กรอกไว้
+        const dueEl = document.getElementById('po-payment-due-date');
+        if (dueEl) dueEl.value = po.payment_due_date ? String(po.payment_due_date).slice(0, 10) : '';
 
         // Clear items container
         const container = document.getElementById('po-items-container');
@@ -1160,9 +1179,15 @@
 
     // Skeleton loading แถวตารางประวัติการสั่งซื้อ — ใช้โทนเดียวกับ skeleton หน้าจัดการสต็อก
     // (bg-skeleton + animate-pulse) ให้จังหวะกระพริบของทั้งระบบเป็นแบบเดียวกัน
+    const syncPoHistoryPaymentHeader = () => {
+        const th = document.getElementById('th-po-history-payment');
+        if (th) th.classList.toggle('hidden', !canPayPO());
+    };
+
     const renderPOHistoryTableSkeleton = (rowCount = 6) => {
         const tbody = document.getElementById('table-body-po-history');
         if (!tbody) return;
+        syncPoHistoryPaymentHeader();
         const bar = (widthClass, extraClass = '') => `<div class="h-3.5 ${widthClass} rounded-full bg-skeleton animate-pulse ${extraClass}"></div>`;
         let rowsHtml = '';
         for (let i = 0; i < rowCount; i++) {
@@ -1173,6 +1198,12 @@
                     <td class="px-6 py-4">${bar('w-28')}</td>
                     <td class="px-6 py-4">${bar('w-24')}</td>
                     <td class="px-6 py-4 text-right">${bar('w-16 ml-auto')}</td>
+                    <td class="px-6 py-4 text-center">
+                        <div class="h-5 w-20 mx-auto rounded-[0.375rem] bg-skeleton animate-pulse"></div>
+                    </td>
+                    ${canPayPO() ? `<td class="px-6 py-4 text-center">
+                        <div class="h-5 w-20 mx-auto rounded-[0.375rem] bg-skeleton animate-pulse"></div>
+                    </td>` : ''}
                     <td class="px-6 py-4 text-center">
                         <div class="h-5 w-20 mx-auto rounded-[0.375rem] bg-skeleton animate-pulse"></div>
                     </td>
@@ -1255,12 +1286,14 @@
                 }
 
                 renderPOHistoryTable();
+                populatePoDashFilters();
+                renderPoDashboard();
             } else {
-                tbody.innerHTML = `<tr><td colspan="7" class="text-center py-6 text-red-400">ดึงข้อมูลไม่สำเร็จ: ${json.message}</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="${poHistoryColCount()}" class="text-center py-6 text-red-400">ดึงข้อมูลไม่สำเร็จ: ${json.message}</td></tr>`;
             }
         } catch (err) {
             console.error('Error loading PO history:', err);
-            tbody.innerHTML = '<tr><td colspan="7" class="text-center py-6 text-red-400">เกิดข้อผิดพลาดในการดึงข้อมูล</td></tr>';
+            tbody.innerHTML = `<tr><td colspan="${poHistoryColCount()}" class="text-center py-6 text-red-400">เกิดข้อผิดพลาดในการดึงข้อมูล</td></tr>`;
         }
     };
 
@@ -1320,8 +1353,56 @@
         };
         const st = statusStyles[po.status] || { dot: 'bg-body-muted', badge: 'bg-ink/5', text: 'text-body-muted' };
 
-        return { dateStr, branchName, totalAmount, totalQty, st };
+        // สถานะการชำระเงิน — สีชุดเดียวกับตารางในหน้าบัญชี (renderAccountingTable) ให้สองหน้าอ่านตรงกัน
+        const payStyles = {
+            'ชำระเงินแล้ว': { label: 'ชำระเงินแล้ว', dot: 'bg-state-ok', badge: 'bg-state-ok-tint/[0.12]', text: 'text-state-ok' },
+            'ชำระเงินบางส่วน': { label: 'ชำระบางส่วน', dot: 'bg-state-pending', badge: 'bg-state-pending/[0.12]', text: 'text-state-pending' },
+            'ยังไม่ได้ชำระ': { label: 'ยังไม่ได้ชำระ', dot: 'bg-state-danger', badge: 'bg-state-danger/[0.12]', text: 'text-state-danger' }
+        };
+        // ใบที่ยกเลิกแล้วไม่มีหนี้ค้าง — ห้ามโชว์ "ยังไม่ได้ชำระ" สีแดง ให้คนเข้าใจผิดว่าต้องจ่าย
+        const pay = po.status === 'ยกเลิก'
+            ? { label: '-', dot: 'bg-body-muted', badge: 'bg-ink/5', text: 'text-body-muted' }
+            : (payStyles[po.payment_status] || payStyles['ยังไม่ได้ชำระ']);
+
+        // กำหนดจ่าย — เก็บเป็นเที่ยงคืน UTC จึงตัด 10 ตัวแรกของ ISO ได้วันที่ตามที่กรอก (ไม่เพี้ยนตามเขตเวลา)
+        let dueStr = '';
+        let isOverdue = false;
+        if (po.payment_due_date) {
+            const iso = String(po.payment_due_date).slice(0, 10);
+            const [y, m, dd] = iso.split('-');
+            dueStr = `${dd}/${m}/${Number(y) + 543}`;
+            const now = new Date();
+            const todayIso = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+            isOverdue = iso < todayIso && po.status !== 'ยกเลิก' && po.payment_status !== 'ชำระเงินแล้ว';
+        }
+
+        const paidAmount = po.paid_amount || 0;
+        const discount = po.discount || 0;
+        const outstanding = Math.max(0, totalAmount - paidAmount - discount);
+        // จ่ายได้ = ไม่ยกเลิก + ยังจ่ายไม่ครบ (เกณฑ์เดียวกับแท็บบัญชีเจ้าหนี้)
+        const canPayNow = po.status !== 'ยกเลิก' && po.payment_status !== 'ชำระเงินแล้ว';
+
+        return { dateStr, branchName, totalAmount, totalQty, st, pay, dueStr, isOverdue, paidAmount, discount, outstanding, canPayNow };
     };
+
+    const poPaymentBadgeHtml = (d, po) => `
+        <div class="inline-flex items-center gap-2 px-2.5 py-1 rounded-[0.375rem] ${d.pay.badge}">
+            <div class="w-2 h-2 rounded-full ${d.pay.dot}"></div>
+            <span class="${d.pay.text} font-medium text-xs">${d.pay.label}</span>
+        </div>
+        ${d.dueStr ? `
+            <p class="mt-1 text-[11px] ${d.isOverdue ? 'text-state-danger font-semibold' : 'text-ink/60'}">
+                ${d.isOverdue ? 'เลยกำหนด ' : 'กำหนดจ่าย '}${d.dueStr}
+            </p>
+        ` : ''}
+        ${d.canPayNow ? `
+            <button type="button" class="btn-pay-po mt-1.5 px-3 py-1.5 bg-primary hover:bg-[#E2B93C] text-on-primary font-semibold rounded-[0.375rem] text-xs transition-colors inline-flex items-center gap-1.5 cursor-pointer"
+                data-id="${po._id}" data-no="${po.po_number || ''}" data-amount="${d.totalAmount}"
+                data-paid="${d.paidAmount}" data-discount="${d.discount}" data-outstanding="${d.outstanding}">
+                <i class="fa-solid fa-money-bill-wave"></i> จ่ายเงิน
+            </button>
+        ` : ''}
+    `;
 
     const bindPoHistoryActionHandlers = (el, po) => {
         el.querySelector('.btn-view-po').addEventListener('click', (e) => {
@@ -1334,6 +1415,14 @@
             const encodedData = encodeURIComponent(JSON.stringify(po));
             window.open(`po-print.html?data=${encodedData}`, '_blank');
         });
+
+        const payBtn = el.querySelector('.btn-pay-po');
+        if (payBtn) {
+            payBtn.addEventListener('click', (e) => {
+                e.stopPropagation(); // การ์ดทั้งใบคลิกแล้วเปิดรายละเอียด — กันไม่ให้เด้งซ้อน
+                openPoPaymentDialog(payBtn, () => loadPOHistory());
+            });
+        }
 
         const cancelBtn = el.querySelector('.btn-cancel-po');
         if (cancelBtn) {
@@ -1400,6 +1489,7 @@
                     <span class="${d.st.text} font-medium text-xs">${po.status || '-'}</span>
                 </div>
             </td>
+            ${canPayPO() ? `<td class="px-6 py-4 text-center whitespace-nowrap">${poPaymentBadgeHtml(d, po)}</td>` : ''}
             <td class="px-6 py-4 text-right whitespace-nowrap">
                 <div class="flex items-center justify-end gap-1">${poHistoryActionButtonsHtml(po)}</div>
             </td>
@@ -1432,6 +1522,11 @@
                     <p class="text-ink/60">ยอดรวม</p>
                     <p class="font-mono text-ink mt-0.5 truncate">฿${d.totalAmount.toLocaleString()}</p>
                 </div>
+                ${canPayPO() ? `
+                <div class="col-span-2 min-w-0">
+                    <p class="text-ink/60 mb-1">การชำระเงิน</p>
+                    ${poPaymentBadgeHtml(d, po)}
+                </div>` : ''}
             </div>
 
             <div class="flex items-center justify-between mt-3.5 pt-3 border-t border-hairline">
@@ -1454,6 +1549,7 @@
         if (cardsWrap) cardsWrap.classList.toggle('hidden', poHistoryViewMode !== 'card');
 
         updateActiveFilterChip();
+        syncPoHistoryPaymentHeader();
 
         const query = (document.getElementById('search-po-history')?.value || '').trim().toLowerCase();
         const statusFilter = document.getElementById('filter-po-status')?.value || '';
@@ -1477,7 +1573,7 @@
         if (countLabel) countLabel.textContent = filtered.length;
 
         if (filtered.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="7" class="px-6 py-8 text-center text-body-muted italic">ไม่มีรายการใบสั่งซื้อ</td></tr>';
+            tbody.innerHTML = `<tr><td colspan="${poHistoryColCount()}" class="px-6 py-8 text-center text-body-muted italic">ไม่มีรายการใบสั่งซื้อ</td></tr>`;
             if (cardsWrap) cardsWrap.innerHTML = '<div class="col-span-full py-12 text-center text-body-muted italic">ไม่มีรายการใบสั่งซื้อ</div>';
             return;
         }
@@ -1497,9 +1593,299 @@
         }
     };
 
+    // ==========================================
+    // แดชบอร์ดระบบสั่งซื้อ (หน้า 1 ของ #accounting-po)
+    // ใช้ poHistoryCache ชุดเดียวกับตารางประวัติ — ไม่ยิง API เพิ่ม ตัวเลขสองหน้าจึงตรงกันเสมอ
+    // ==========================================
+    const canViewPoDashboard = () => {
+        try {
+            return !!(JSON.parse(localStorage.getItem('silmin_user') || '{}').permissions || {}).view_po_dashboard;
+        } catch (e) {
+            return false;
+        }
+    };
+
+    const PO_PAGE_TAB_ON = 'border border-transparent px-4 py-2.5 rounded-xl text-sm font-bold transition-colors flex items-center gap-2 cursor-pointer bg-primary text-on-primary ring-1 ring-accent-ink';
+    const PO_PAGE_TAB_OFF = 'elev-field px-4 py-2.5 rounded-xl text-sm font-bold transition-colors flex items-center gap-2 cursor-pointer bg-field text-body-muted hover:ring-1 hover:ring-accent-ink hover:text-ink';
+    let poPageMode = 'history';
+    let poPagesBound = false;
+    // รายชื่อสาขาทั้งหมดจาก /branches (initAccountingPO เติมให้) — dropdown สาขาของแดชบอร์ดต้องเห็นครบทุกสาขา
+    // ไม่ใช่เฉพาะสาขาที่เคยมีใบสั่งซื้อ
+    let poAllBranchNames = [];
+
+    const showPoPage = (name) => {
+        // ไม่มีสิทธิ์แดชบอร์ด = อยู่หน้าประวัติเสมอ แม้ localStorage จะจำหน้าแดชบอร์ดไว้จากบัญชีอื่น
+        poPageMode = (name === 'dashboard' && canViewPoDashboard()) ? 'dashboard' : 'history';
+        try { localStorage.setItem('po_page_mode', poPageMode); } catch (e) { }
+
+        const dashTab = document.getElementById('po-page-tab-dashboard');
+        const histTab = document.getElementById('po-page-tab-history');
+        if (dashTab) {
+            dashTab.classList.toggle('hidden', !canViewPoDashboard());
+            if (canViewPoDashboard()) dashTab.className = poPageMode === 'dashboard' ? PO_PAGE_TAB_ON : PO_PAGE_TAB_OFF;
+            dashTab.setAttribute('aria-pressed', String(poPageMode === 'dashboard'));
+        }
+        if (histTab) {
+            histTab.className = poPageMode === 'history' ? PO_PAGE_TAB_ON : PO_PAGE_TAB_OFF;
+            histTab.setAttribute('aria-pressed', String(poPageMode === 'history'));
+        }
+        document.getElementById('po-page-dashboard')?.classList.toggle('hidden', poPageMode !== 'dashboard');
+        document.getElementById('po-page-history')?.classList.toggle('hidden', poPageMode !== 'history');
+
+        if (poPageMode === 'dashboard') renderPoDashboard();
+    };
+
+    const poDashEsc = (v) => String(v == null ? '' : v)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    const poDashBaht = (n) => '฿' + Number(n || 0).toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    // วันที่แบบ YYYY-MM-DD ตามเวลาเครื่อง — เทียบเป็นสตริงได้ตรงๆ
+    const poDashIso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    const poDashAddDays = (iso, n) => { const [y, m, d] = iso.split('-').map(Number); return poDashIso(new Date(y, m - 1, d + n)); };
+    const poDashDaysBetween = (fromIso, toIso) => {
+        const [a, b] = [fromIso, toIso].map(x => { const [y, m, d] = x.split('-').map(Number); return Date.UTC(y, m - 1, d); });
+        return Math.round((b - a) / 86400000);
+    };
+    const poDashThaiDate = (iso) => { const [y, m, d] = iso.split('-'); return `${d}/${m}/${Number(y) + 543}`; };
+    // กำหนดจ่ายเก็บเป็นเที่ยงคืน UTC — ตัด 10 ตัวแรกได้วันที่ตามที่กรอก
+    const poDueIso = (po) => (po.payment_due_date ? String(po.payment_due_date).slice(0, 10) : '');
+
+    // ช่วงเวลาสำเร็จรูป → เติมวันที่เริ่ม/สิ้นสุดให้ (เลือก "กำหนดเอง" = ใช้วันที่ที่ผู้ใช้กรอก)
+    const applyPoDashRange = () => {
+        const range = document.getElementById('po-dash-range')?.value || 'all';
+        const startEl = document.getElementById('po-dash-start');
+        const endEl = document.getElementById('po-dash-end');
+        if (!startEl || !endEl || range === 'custom') return;
+        const now = new Date();
+        const today = poDashIso(now);
+        let start = '';
+        if (range === 'month') start = poDashIso(new Date(now.getFullYear(), now.getMonth(), 1));
+        else if (range === '30d') start = poDashAddDays(today, -29);
+        else if (range === 'quarter') start = poDashIso(new Date(now.getFullYear(), Math.floor(now.getMonth() / 3) * 3, 1));
+        else if (range === 'year') start = poDashIso(new Date(now.getFullYear(), 0, 1));
+        startEl.value = start;
+        endEl.value = range === 'all' ? '' : today;
+    };
+
+    const populatePoDashFilters = () => {
+        const fill = (id, values, allLabel) => {
+            const el = document.getElementById(id);
+            if (!el) return;
+            const current = el.value;
+            el.innerHTML = `<option value="">${allLabel}</option>` +
+                values.map(v => `<option value="${poDashEsc(v)}">${poDashEsc(v)}</option>`).join('');
+            el.value = values.includes(current) ? current : '';
+        };
+        // เรียงตามลำดับจาก /branches แล้วต่อท้ายด้วยชื่อที่มีในใบสั่งซื้อแต่ไม่อยู่ในรายการ (เช่น สาขาที่ถูกลบไปแล้ว)
+        const branchNames = [...new Set([...poAllBranchNames, ...poHistoryCache.map(p => p.branch_id?.name).filter(Boolean)])];
+        fill('po-dash-branch', branchNames, 'ทุกสาขา');
+        fill('po-dash-supplier', [...new Set(poHistoryCache.map(p => p.supplier_name).filter(Boolean))].sort(), 'ทุกซัพพลายเออร์');
+    };
+
+    const poDashBarRow = (label, dotCls, amount, count, pct) => `
+        <div>
+            <div class="flex items-center justify-between gap-3 text-xs mb-1.5">
+                <span class="text-ink flex items-center gap-2 min-w-0">
+                    <span class="w-2.5 h-2.5 rounded-full shrink-0 ${dotCls}"></span>
+                    <span class="truncate">${label}</span>
+                </span>
+                <span class="font-mono text-ink shrink-0">${poDashBaht(amount)} <span class="text-ink/50">· ${count} ใบ</span></span>
+            </div>
+            <div class="h-1.5 rounded-full bg-ink/10 overflow-hidden">
+                <div class="h-full rounded-full ${dotCls}" style="width:${Math.max(0, Math.min(100, pct))}%"></div>
+            </div>
+        </div>`;
+
+    const renderPoDashboard = () => {
+        if (poPageMode !== 'dashboard' || !document.getElementById('po-page-dashboard')) return;
+
+        const start = document.getElementById('po-dash-start')?.value || '';
+        const end = document.getElementById('po-dash-end')?.value || '';
+        const branch = document.getElementById('po-dash-branch')?.value || '';
+        const supplier = document.getElementById('po-dash-supplier')?.value || '';
+        const today = poDashIso(new Date());
+        const in7 = poDashAddDays(today, 7);
+
+        const filtered = poHistoryCache.filter(po => {
+            const created = po.createdAt ? poDashIso(new Date(po.createdAt)) : '';
+            if (start && (!created || created < start)) return false;
+            if (end && (!created || created > end)) return false;
+            if (branch && po.branch_id?.name !== branch) return false;
+            if (supplier && po.supplier_name !== supplier) return false;
+            return true;
+        });
+
+        // ใบที่ยกเลิกไม่มีมูลค่าทางบัญชี — ไม่นับในตัวเลขเงินทุกตัว
+        const active = filtered.filter(po => po.status !== 'ยกเลิก');
+        const cancelledCount = filtered.length - active.length;
+        const rows = active.map(po => {
+            const total = (po.items || []).reduce((sum, i) => sum + (i.cost_price || 0) * (i.ordered_qty || 0), 0);
+            const paid = po.paid_amount || 0;
+            const discount = po.discount || 0;
+            return { po, total, paid, discount, outstanding: Math.max(0, total - paid - discount), due: poDueIso(po) };
+        });
+        // ค้างชำระ = ยังไม่ปิดสถานะ "ชำระเงินแล้ว" (เกณฑ์เดียวกับตัวนับในแท็บบัญชีเจ้าหนี้)
+        const unpaid = rows.filter(r => r.po.payment_status !== 'ชำระเงินแล้ว');
+        const sum = (list, key) => list.reduce((a, r) => a + r[key], 0);
+        const set = (id, text) => { const el = document.getElementById(id); if (el) el.textContent = text; };
+
+        // ---- แถว 1: หนี้ที่ต้องจ่าย ----
+        const partialCount = unpaid.filter(r => r.po.payment_status === 'ชำระเงินบางส่วน').length;
+        set('po-kpi-unpaid-count', `${unpaid.length.toLocaleString()} ใบ`);
+        set('po-kpi-unpaid-count-sub', partialCount ? `ในนี้ชำระบางส่วนแล้ว ${partialCount} ใบ` : 'ยังไม่ชำระ / ชำระบางส่วน');
+        set('po-kpi-unpaid-amount', poDashBaht(sum(unpaid, 'outstanding')));
+
+        const overdue = unpaid.filter(r => r.due && r.due < today);
+        const oldestOverdue = overdue.reduce((m, r) => Math.max(m, poDashDaysBetween(r.due, today)), 0);
+        set('po-kpi-overdue-amount', poDashBaht(sum(overdue, 'outstanding')));
+        set('po-kpi-overdue-sub', overdue.length ? `${overdue.length} ใบ · เก่าสุดเลยมา ${oldestOverdue} วัน` : 'ไม่มีใบที่เลยกำหนด');
+
+        const due7 = unpaid.filter(r => r.due && r.due >= today && r.due <= in7);
+        set('po-kpi-due7-amount', poDashBaht(sum(due7, 'outstanding')));
+        set('po-kpi-due7-sub', due7.length ? `${due7.length} ใบ ภายใน ${poDashThaiDate(in7)}` : 'ไม่มีใบที่ใกล้ครบกำหนด');
+
+        // ---- แถว 2: ภาพรวมการสั่งซื้อ ----
+        const totalAll = sum(rows, 'total');
+        const paidAll = sum(rows, 'paid');
+        set('po-kpi-total-amount', poDashBaht(totalAll));
+        set('po-kpi-total-sub', `${rows.length.toLocaleString()} ใบ` + (cancelledCount ? ` (ไม่นับที่ยกเลิก ${cancelledCount} ใบ)` : ''));
+        set('po-kpi-paid-amount', poDashBaht(paidAll));
+        set('po-kpi-paid-sub', totalAll > 0 ? `คิดเป็น ${((paidAll / totalAll) * 100).toFixed(1)}% ของมูลค่าสั่งซื้อ` : '-');
+        set('po-kpi-discount-amount', poDashBaht(sum(rows, 'discount')));
+        const pending = rows.filter(r => ['รอจัดส่ง', 'ของถึงสาขาแล้ว', 'กำลังตรวจรับ'].includes(r.po.status));
+        set('po-kpi-pending-count', `${pending.length.toLocaleString()} ใบ`);
+        set('po-kpi-pending-sub', pending.length ? `มูลค่า ${poDashBaht(sum(pending, 'total'))}` : 'ไม่มีใบที่รอรับสินค้า');
+
+        // ---- อายุหนี้ ----
+        const unpaidTotal = sum(unpaid, 'outstanding');
+        const buckets = [
+            { label: 'ยังไม่ถึงกำหนด', dot: 'bg-state-ok', test: r => r.due && r.due >= today },
+            { label: 'เลยกำหนด 1–30 วัน', dot: 'bg-state-pending', test: r => r.due && r.due < today && poDashDaysBetween(r.due, today) <= 30 },
+            { label: 'เลยกำหนด 31–60 วัน', dot: 'bg-orange-400', test: r => r.due && r.due < today && poDashDaysBetween(r.due, today) > 30 && poDashDaysBetween(r.due, today) <= 60 },
+            { label: 'เลยกำหนดเกิน 60 วัน', dot: 'bg-state-danger', test: r => r.due && r.due < today && poDashDaysBetween(r.due, today) > 60 },
+            { label: 'ไม่ได้กำหนดวันจ่าย', dot: 'bg-body-muted', test: r => !r.due }
+        ];
+        const agingEl = document.getElementById('po-dash-aging');
+        if (agingEl) {
+            agingEl.innerHTML = unpaid.length
+                ? buckets.map(b => {
+                    const list = unpaid.filter(b.test);
+                    const amt = sum(list, 'outstanding');
+                    return poDashBarRow(b.label, b.dot, amt, list.length, unpaidTotal > 0 ? (amt / unpaidTotal) * 100 : 0);
+                }).join('')
+                : '<p class="text-sm text-ink/50 italic text-center py-6">ไม่มียอดค้างชำระ</p>';
+        }
+
+        // ---- ค้างชำระตามซัพพลายเออร์ (5 อันดับ) ----
+        const bySupplier = new Map();
+        unpaid.forEach(r => {
+            const key = r.po.supplier_name || '-';
+            const cur = bySupplier.get(key) || { amount: 0, count: 0 };
+            cur.amount += r.outstanding; cur.count += 1;
+            bySupplier.set(key, cur);
+        });
+        const topSuppliers = [...bySupplier.entries()].sort((a, b) => b[1].amount - a[1].amount).slice(0, 5);
+        const supEl = document.getElementById('po-dash-suppliers');
+        if (supEl) {
+            supEl.innerHTML = topSuppliers.length
+                ? topSuppliers.map(([name, v]) => poDashBarRow(poDashEsc(name), 'bg-primary', v.amount, v.count,
+                    unpaidTotal > 0 ? (v.amount / unpaidTotal) * 100 : 0)).join('')
+                : '<p class="text-sm text-ink/50 italic text-center py-6">ไม่มียอดค้างชำระ</p>';
+        }
+
+        // ---- ใบสั่งซื้อที่ต้องจ่าย: มีกำหนดจ่ายเรียงก่อน (เลยกำหนดขึ้นบนสุด) แล้วตามด้วยใบที่ไม่ได้กำหนด ----
+        const dueBody = document.getElementById('po-dash-due-body');
+        if (dueBody) {
+            const list = [...unpaid].sort((a, b) => {
+                if (a.due && b.due) return a.due < b.due ? -1 : a.due > b.due ? 1 : 0;
+                if (a.due) return -1;
+                if (b.due) return 1;
+                return new Date(a.po.createdAt) - new Date(b.po.createdAt);
+            }).slice(0, 10);
+
+            if (!list.length) {
+                dueBody.innerHTML = '<tr><td colspan="6" class="px-6 py-8 text-center text-body-muted italic">ไม่มีใบสั่งซื้อที่ค้างชำระ</td></tr>';
+            } else {
+                const canPay = canPayPO();
+                dueBody.innerHTML = list.map(r => {
+                    let dueCell = '<span class="text-ink/50">ไม่ได้กำหนด</span>';
+                    if (r.due) {
+                        const diff = poDashDaysBetween(today, r.due);
+                        const note = diff < 0 ? `<span class="text-state-danger font-semibold">เลย ${-diff} วัน</span>`
+                            : diff === 0 ? '<span class="text-state-pending font-semibold">ครบกำหนดวันนี้</span>'
+                            : `<span class="text-ink/50">อีก ${diff} วัน</span>`;
+                        dueCell = `<span class="text-ink">${poDashThaiDate(r.due)}</span><span class="block text-[11px] mt-0.5">${note}</span>`;
+                    }
+                    const payBtn = canPay ? `
+                        <button type="button" class="btn-pay-po px-3 py-1.5 bg-primary hover:bg-[#E2B93C] text-on-primary font-semibold rounded-[0.375rem] text-xs transition-colors inline-flex items-center gap-1.5 cursor-pointer"
+                            data-id="${poDashEsc(r.po._id)}" data-no="${poDashEsc(r.po.po_number)}" data-amount="${r.total}"
+                            data-paid="${r.paid}" data-discount="${r.discount}" data-outstanding="${r.outstanding}">
+                            <i class="fa-solid fa-money-bill-wave"></i> จ่ายเงิน
+                        </button>` : '';
+                    return `
+                    <tr class="hover:bg-divider transition-colors">
+                        <td class="px-6 py-4 text-sm">${dueCell}</td>
+                        <td class="px-6 py-4 font-mono font-semibold text-accent-ink">${poDashEsc(r.po.po_number || '-')}</td>
+                        <td class="px-6 py-4 text-ink">${poDashEsc(r.po.supplier_name || '-')}</td>
+                        <td class="px-6 py-4 text-right font-mono text-ink">${poDashBaht(r.total)}</td>
+                        <td class="px-6 py-4 text-right font-mono font-semibold text-orange-400">${poDashBaht(r.outstanding)}</td>
+                        <td class="px-6 py-4 text-right">
+                            <div class="flex items-center justify-end gap-1">
+                                ${payBtn}
+                                <button type="button" class="btn-dash-view-po text-ink hover:text-indigo-400 transition-colors p-2 cursor-pointer"
+                                    data-id="${poDashEsc(r.po._id)}" title="ดูรายละเอียดใบสั่งซื้อ"
+                                    aria-label="ดูรายละเอียดใบสั่งซื้อ ${poDashEsc(r.po.po_number)}">
+                                    <i class="fa-solid fa-eye"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>`;
+                }).join('');
+
+                dueBody.querySelectorAll('.btn-pay-po').forEach(btn =>
+                    btn.addEventListener('click', () => openPoPaymentDialog(btn, () => loadPOHistory())));
+                dueBody.querySelectorAll('.btn-dash-view-po').forEach(btn => {
+                    const po = poHistoryCache.find(p => String(p._id) === btn.dataset.id);
+                    if (po) btn.addEventListener('click', () => openViewPOModal(po));
+                });
+            }
+        }
+    };
+
+    // ผูกปุ่ม/ตัวกรองครั้งเดียว (สคริปต์หน้าโหลดครั้งเดียว แต่ initAccountingPO ถูกเรียกทุกครั้งที่เข้าหน้า)
+    const initPoPages = () => {
+        if (!poPagesBound) {
+            poPagesBound = true;
+            document.getElementById('po-page-tab-dashboard')?.addEventListener('click', () => showPoPage('dashboard'));
+            document.getElementById('po-page-tab-history')?.addEventListener('click', () => showPoPage('history'));
+
+            const rangeEl = document.getElementById('po-dash-range');
+            rangeEl?.addEventListener('change', () => { applyPoDashRange(); renderPoDashboard(); });
+            ['po-dash-start', 'po-dash-end'].forEach(id => document.getElementById(id)?.addEventListener('change', () => {
+                // แก้วันที่เอง = ช่วงเวลากำหนดเอง
+                if (rangeEl) rangeEl.value = 'custom';
+                renderPoDashboard();
+            }));
+            ['po-dash-branch', 'po-dash-supplier'].forEach(id =>
+                document.getElementById(id)?.addEventListener('change', renderPoDashboard));
+            document.getElementById('po-dash-reset')?.addEventListener('click', () => {
+                if (rangeEl) rangeEl.value = 'all';
+                applyPoDashRange();
+                ['po-dash-branch', 'po-dash-supplier'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+                renderPoDashboard();
+            });
+            document.getElementById('po-dash-refresh')?.addEventListener('click', () => loadPOHistory());
+        }
+
+        let saved = 'dashboard';
+        try { saved = localStorage.getItem('po_page_mode') || 'dashboard'; } catch (e) { }
+        showPoPage(saved);
+    };
+
     window.initAccountingPO = async () => {
         // Default view to history
         switchPoTab('history');
+        initPoPages();
 
         // Populate branches list for selection in form (in case not loaded yet)
         const poBranchEl = document.getElementById('po-branch');
@@ -1509,6 +1895,8 @@
                 const json = await response.json();
                 if (json.success) {
                     setSelectOptions(poBranchEl, json.data.map(b => ({ value: String(b._id), label: b.name })), '-- เลือกสาขา --');
+                    poAllBranchNames = json.data.map(b => b.name).filter(Boolean);
+                    populatePoDashFilters();
                 }
             } catch (e) {
                 console.error('Error loading branches in PO initialization:', e);
@@ -1570,47 +1958,22 @@
     let cachedPOsData = [];
 
     let receiveSearchBranch = '';
+    let receiveSearchSupplier = '';
+    let receiveDateRange = ''; // '' = ทั้งหมด, หรือจำนวนวันย้อนหลังนับรวมวันนี้ (อิงวันที่แจ้งของถึงสาขา)
+    let receiveSort = 'arrival'; // 'arrival' = วันที่ของถึงใหม่สุด / 'created' = วันที่สร้าง PO ใหม่สุด
+    const RC_PAGE_SIZE = 10;
+    let receiveShown = RC_PAGE_SIZE; // วาดทีละ 10 ใบ กด "โหลดเพิ่ม" เพื่อต่อท้าย
     let isBranchReceiveBound = false; // loadPageView แทรก HTML ครั้งเดียว จึงผูก listener ครั้งเดียวพอ
     // มุมมองตาราง/การ์ด — จำค่าไว้ข้ามการเข้าหน้า (เหมือนหน้า po-history)
     let receiveViewMode = localStorage.getItem('receive_view_mode') === 'card' ? 'card' : 'list';
 
-    const RECEIVE_COLS = 6;
+    const RECEIVE_COLS = 7;
 
-    // แท็บสถานะ (ข้อ 11.5 - ป้ายนับต้องอ่านออกทั้งบนพื้นเหลืองและพื้นเข้ม จึงสลับสีตามสถานะแท็บ)
-    const RC_TAB_BASE = 'elev-chip receive-tab px-4 py-2.5 rounded-xl text-sm font-bold transition-colors flex items-center gap-2 cursor-pointer';
-    const RC_TAB_ON = 'bg-primary text-on-primary ring-1 ring-accent-ink apple-active-accent';
-    const RC_TAB_OFF = 'elev-field bg-field text-body-muted hover:ring-1 hover:ring-accent-ink hover:text-ink';
-    const RC_BADGE_ON = 'px-2 py-0.5 rounded-full text-[10px] font-bold bg-hairline/20';
-    const RC_BADGE_OFF = {
-        all: 'px-2 py-0.5 rounded-full text-[10px] font-bold bg-chip/60 text-ink',
-        'รอจัดส่ง': 'px-2 py-0.5 rounded-full text-[10px] font-bold bg-orange-500/[0.12] text-orange-400',
-        'ของถึงสาขาแล้ว': 'px-2 py-0.5 rounded-full text-[10px] font-bold bg-orange-500/[0.12] text-orange-400',
-        'กำลังตรวจรับ': 'px-2 py-0.5 rounded-full text-[10px] font-bold bg-orange-500/[0.12] text-orange-400',
-        'นำเข้าสำเร็จ': 'px-2 py-0.5 rounded-full text-[10px] font-bold bg-state-ok-tint/[0.12] text-state-ok',
-        'ยกเลิก': 'px-2 py-0.5 rounded-full text-[10px] font-bold bg-state-danger/[0.12] text-state-danger'
-    };
-    const RC_PANEL_TITLE = {
-        all: 'ใบสั่งซื้อทั้งหมด',
-        'รอจัดส่ง': 'ใบสั่งซื้อที่รอจัดส่ง',
-        'ของถึงสาขาแล้ว': 'ใบสั่งซื้อที่ของถึงสาขาแล้ว',
-        'กำลังตรวจรับ': 'ใบสั่งซื้อที่กำลังตรวจรับ',
-        'นำเข้าสำเร็จ': 'ใบสั่งซื้อที่นำเข้าสต็อกสำเร็จ',
-        'ยกเลิก': 'ใบสั่งซื้อที่ถูกยกเลิก'
-    };
-
+    // ตัวกรองสถานะเป็น dropdown ในแถบควบคุม (#receive-filter-status) — ค่า 'all' = ทุกสถานะ
     const setReceiveTab = (status) => {
         currentReceiveTab = status;
-        document.querySelectorAll('#receive-status-tabs .receive-tab').forEach(btn => {
-            const on = btn.dataset.status === status;
-            btn.className = `${RC_TAB_BASE} ${on ? RC_TAB_ON : RC_TAB_OFF}`;
-            btn.setAttribute('aria-pressed', String(on));
-            const badge = btn.querySelector('span');
-            if (badge) badge.className = on ? RC_BADGE_ON : (RC_BADGE_OFF[btn.dataset.status] || RC_BADGE_OFF.all);
-        });
-        const title = document.getElementById('receive-panel-title');
-        if (title) {
-            title.innerHTML = `<i class="fa-solid fa-boxes-packing text-accent-ink"></i> ${RC_PANEL_TITLE[status] || RC_PANEL_TITLE.all}`;
-        }
+        const sel = document.getElementById('receive-filter-status');
+        if (sel && sel.value !== status) sel.value = status;
         renderFilteredPOs();
     };
 
@@ -1622,16 +1985,13 @@
         if (filterBranch && window.masterDataCache && window.masterDataCache.branches) {
             const keep = filterBranch.value;
             filterBranch.innerHTML = '<option value="">ทุกสาขา</option>' +
-                window.masterDataCache.branches.map(b => `<option value="${b._id}">${b.name}</option>`).join('');
+                window.masterDataCache.branches.map(b => `<option value="${rcEsc(b._id)}">${rcEsc(b.name)}</option>`).join('');
             filterBranch.value = keep;
         }
 
         if (!isBranchReceiveBound) {
             isBranchReceiveBound = true;
 
-            // มาร์กอัปตั้งต้นของแท็บ "ทั้งหมด" ยังไม่มีคลาส apple-active-accent (ใส่เฉพาะตอน
-            // setReceiveTab สลับแท็บ) เรียกครั้งแรกให้ตรงกันตั้งแต่เปิดหน้า ไม่งั้นแท็บที่ active
-            // อยู่ตั้งแต่ต้นจะยังมีเส้นขอบเดิมค้างอยู่ในโหมดสว่าง
             setReceiveTab(currentReceiveTab);
 
             if (searchInput) {
@@ -1644,14 +2004,23 @@
                     }, 200);
                 });
             }
-            if (filterBranch) {
-                filterBranch.addEventListener('change', () => {
-                    receiveSearchBranch = filterBranch.value;
-                    renderFilteredPOs();
-                });
-            }
-            document.querySelectorAll('#receive-status-tabs .receive-tab').forEach(btn =>
-                btn.addEventListener('click', () => setReceiveTab(btn.dataset.status)));
+            const bindSelect = (id, apply) => {
+                const el = document.getElementById(id);
+                if (el) el.addEventListener('change', () => { apply(el.value); renderFilteredPOs(); });
+            };
+            bindSelect('receive-filter-branch', v => { receiveSearchBranch = v; });
+            bindSelect('receive-filter-supplier', v => { receiveSearchSupplier = v; });
+            bindSelect('receive-filter-date', v => { receiveDateRange = v; });
+            bindSelect('receive-sort', v => { receiveSort = v; });
+
+            const loadMore = document.getElementById('btn-receive-load-more');
+            if (loadMore) loadMore.addEventListener('click', () => {
+                receiveShown += RC_PAGE_SIZE;
+                renderFilteredPOs({ keepPage: true });
+            });
+
+            const statusSel = document.getElementById('receive-filter-status');
+            if (statusSel) statusSel.addEventListener('change', () => setReceiveTab(statusSel.value));
         }
 
         loadPOs();
@@ -1760,13 +2129,15 @@
                     <span class="text-state-danger font-medium text-xs">ยังไม่ได้ชำระ</span></div>`;
         }
 
-        const payAction = !isPaid
-            ? `<button type="button" class="btn-pay-po px-3 py-1.5 bg-primary hover:bg-[#E2B93C] text-on-primary font-semibold rounded-[0.375rem] text-xs transition-colors inline-flex items-center gap-1.5 cursor-pointer"
+        // ไม่มีสิทธิ์การชำระเงินระบบสั่งซื้อ = ไม่เห็นปุ่มจ่ายเงิน (เซิร์ฟเวอร์ก็ตรวจซ้ำที่ /accounting/po-pay)
+        const payAction = isPaid
+            ? `<span class="text-xs text-ink/70">จ่ายแล้ว ${accEsc(accDate(po.paid_at || po.updatedAt))}</span>`
+            : !canPayPO() ? ''
+            : `<button type="button" class="btn-pay-po px-3 py-1.5 bg-primary hover:bg-[#E2B93C] text-on-primary font-semibold rounded-[0.375rem] text-xs transition-colors inline-flex items-center gap-1.5 cursor-pointer"
                     data-id="${accEsc(po._id)}" data-no="${accEsc(po.po_number)}" data-amount="${totalCost}"
                     data-paid="${paidAmount}" data-discount="${discount}" data-outstanding="${outstanding}">
                     <i class="fa-solid fa-money-bill-wave"></i> จ่ายเงิน
-               </button>`
-            : `<span class="text-xs text-ink/70">จ่ายแล้ว ${accEsc(accDate(po.paid_at || po.updatedAt))}</span>`;
+               </button>`;
 
         return { totalCost, paidAmount, discount, outstanding, isPaid, statusBadge, payAction };
     };
@@ -1887,134 +2258,139 @@
         });
 
         container.querySelectorAll('.btn-pay-po').forEach(payBtn => {
-            payBtn.addEventListener('click', () => {
-                const poId = payBtn.dataset.id;
-                const poNo = payBtn.dataset.no;
-                const poAmount = Number(payBtn.dataset.amount);
-                const poPaid = Number(payBtn.dataset.paid);
-                const poDiscount = Number(payBtn.dataset.discount);
-                const poOutstanding = Number(payBtn.dataset.outstanding);
-                const todayStr = new Date().toLocaleDateString('en-CA');
-
-                const fieldCls = 'elev-field w-full px-4 py-2.5 rounded-xl bg-field text-ink focus:ring-2 focus:ring-accent-ink focus:outline-none transition-all text-sm';
-                const labelCls = 'text-ink font-medium flex items-center gap-2 text-xs mb-1.5';
-
-                showConfirm(
-                    `บันทึกจ่ายเงินใบสั่งซื้อ (${poNo})`,
-                    `<div class="text-left space-y-4">
-                        <div class="elev-field grid grid-cols-2 gap-2 bg-field p-4 rounded-xl text-xs text-ink/70">
-                            <div>ยอดรวม PO:</div>
-                            <div class="text-right font-mono text-ink">${accBaht(poAmount)}</div>
-                            <div>ชำระก่อนหน้า:</div>
-                            <div class="text-right font-mono text-state-ok">${accBaht(poPaid)}</div>
-                            <div>ส่วนลดสะสม:</div>
-                            <div class="text-right font-mono text-state-danger">${accBaht(poDiscount)}</div>
-                            <div class="font-semibold text-ink border-t border-line pt-2 mt-1">ยอดค้างชำระ:</div>
-                            <div class="text-right font-mono text-orange-400 font-semibold border-t border-line pt-2 mt-1">${accBaht(poOutstanding)}</div>
-                        </div>
-                        <div class="elev-field space-y-4 bg-field p-4 rounded-xl">
-                            <div>
-                                <label for="ap-pay-date-input" class="${labelCls}">
-                                    <i class="fa-solid fa-calendar text-ink"></i> วันที่ชำระเงิน</label>
-                                <input type="date" id="ap-pay-date-input" class="${fieldCls} [color-scheme:dark]" value="${todayStr}">
-                            </div>
-                            <div class="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label for="ap-pay-amount-input" class="${labelCls}">
-                                        <i class="fa-solid fa-money-bill-wave text-ink"></i> จ่ายรอบนี้</label>
-                                    <input type="number" inputmode="numeric" id="ap-pay-amount-input" step="any" min="0" max="${poOutstanding}"
-                                        class="${fieldCls} font-mono text-right" value="${poOutstanding.toFixed(2)}">
-                                </div>
-                                <div>
-                                    <label for="ap-pay-discount-input" class="${labelCls}">
-                                        <i class="fa-solid fa-tag text-ink"></i> ส่วนลดรอบนี้</label>
-                                    <input type="number" inputmode="numeric" id="ap-pay-discount-input" step="any" min="0" max="${poOutstanding}"
-                                        class="${fieldCls} font-mono text-right" value="0.00">
-                                </div>
-                            </div>
-                            <div>
-                                <label for="ap-pay-discount-remark-input" class="${labelCls}">
-                                    <i class="fa-solid fa-pen text-ink"></i> หมายเหตุส่วนลด (ระบุหากได้ส่วนลด)</label>
-                                <input type="text" id="ap-pay-discount-remark-input"
-                                    placeholder="เช่น ชำระก่อนครบกำหนดรับส่วนลด 2%" class="${fieldCls} placeholder-ink-muted-48">
-                            </div>
-                            <div id="ap-pay-calc-result" class="text-[11px] font-semibold text-ink/70 text-right">
-                                คงเหลือหลังชำระ: ฿0.00
-                            </div>
-                        </div>
-                     </div>`,
-                    async () => {
-                        try {
-                            const payDateVal = document.getElementById('ap-pay-date-input')?.value || todayStr;
-                            const payAmtVal = Number(document.getElementById('ap-pay-amount-input')?.value || 0);
-                            const discountVal = Number(document.getElementById('ap-pay-discount-input')?.value || 0);
-                            const remarkVal = document.getElementById('ap-pay-discount-remark-input')?.value || '';
-
-                            if (payAmtVal === 0 && discountVal === 0) {
-                                showToast('กรุณากรอกจำนวนเงินชำระหรือส่วนลดรอบนี้อย่างใดอย่างหนึ่ง', 'error');
-                                return;
-                            }
-                            if (discountVal > 0 && !remarkVal.trim()) {
-                                showToast('กรุณาระบุหมายเหตุของส่วนลดเพื่อใช้เป็นหลักฐานทางบัญชี', 'error');
-                                return;
-                            }
-                            if (payAmtVal + discountVal > poOutstanding + 0.01) {
-                                showToast('ยอดจ่ายรวมส่วนลด เกินยอดค้างชำระปัจจุบัน', 'error');
-                                return;
-                            }
-
-                            const payRes = await authFetch(`${API_BASE_URL}/accounting/po-pay/${poId}`, {
-                                method: 'PUT',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({
-                                    payment_date: payDateVal,
-                                    payment_amount: payAmtVal,
-                                    discount_amount: discountVal,
-                                    discount_remark: remarkVal
-                                })
-                            });
-                            const payJson = await payRes.json();
-                            if (payJson.success) {
-                                showToast('บันทึกการชำระเงินสำเร็จ!', 'success');
-                                loadAccountingData();
-                            } else {
-                                showToast(payJson.message || 'ไม่สามารถทำรายการได้', 'error');
-                            }
-                        } catch (err) {
-                            console.error(err);
-                            showToast('เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์', 'error');
-                        }
-                    },
-                    'ยืนยันชำระเงิน',
-                    'warning',
-                    'max-w-lg'
-                );
-
-                // ตัวคำนวณยอดคงเหลือสดๆ ในโมดัลยืนยัน
-                setTimeout(() => {
-                    const amtInp = document.getElementById('ap-pay-amount-input');
-                    const discInp = document.getElementById('ap-pay-discount-input');
-                    const calcRes = document.getElementById('ap-pay-calc-result');
-                    const updateCalc = () => {
-                        if (!amtInp || !discInp || !calcRes) return;
-                        const amt = Number(amtInp.value || 0);
-                        const disc = Number(discInp.value || 0);
-                        if (amt + disc > poOutstanding + 0.01) {
-                            calcRes.className = 'text-[11px] font-semibold text-state-danger text-right';
-                            calcRes.textContent = `เกินยอดค้างชำระ: ${accBaht(Math.abs(poOutstanding - amt - disc))}`;
-                        } else {
-                            calcRes.className = 'text-[11px] font-semibold text-state-ok text-right';
-                            calcRes.textContent = `คงเหลือหลังชำระ: ${accBaht(Math.max(0, poOutstanding - amt - disc))}`;
-                        }
-                    };
-                    if (amtInp && discInp) {
-                        amtInp.addEventListener('input', updateCalc);
-                        discInp.addEventListener('input', updateCalc);
-                        updateCalc();
-                    }
-                }, 100);
-            });
+            payBtn.addEventListener('click', () => openPoPaymentDialog(payBtn, () => loadAccountingData()));
         });
+    };
+
+    // โมดัลบันทึกจ่ายเงินใบสั่งซื้อ — ใช้ร่วมกันระหว่างแท็บบัญชีเจ้าหนี้ (AP) กับตารางประวัติการสั่งซื้อ
+    // payBtn ต้องมี data-id / data-no / data-amount / data-paid / data-discount / data-outstanding
+    // onPaid = ให้แต่ละหน้าโหลดตารางของตัวเองใหม่หลังจ่ายสำเร็จ
+    const openPoPaymentDialog = (payBtn, onPaid) => {
+        const poId = payBtn.dataset.id;
+        const poNo = payBtn.dataset.no;
+        const poAmount = Number(payBtn.dataset.amount);
+        const poPaid = Number(payBtn.dataset.paid);
+        const poDiscount = Number(payBtn.dataset.discount);
+        const poOutstanding = Number(payBtn.dataset.outstanding);
+        const todayStr = new Date().toLocaleDateString('en-CA');
+
+        const fieldCls = 'elev-field w-full px-4 py-2.5 rounded-xl bg-field text-ink focus:ring-2 focus:ring-accent-ink focus:outline-none transition-all text-sm';
+        const labelCls = 'text-ink font-medium flex items-center gap-2 text-xs mb-1.5';
+
+        showConfirm(
+            `บันทึกจ่ายเงินใบสั่งซื้อ (${poNo})`,
+            `<div class="text-left space-y-4">
+                <div class="elev-field grid grid-cols-2 gap-2 bg-field p-4 rounded-xl text-xs text-ink/70">
+                    <div>ยอดรวม PO:</div>
+                    <div class="text-right font-mono text-ink">${accBaht(poAmount)}</div>
+                    <div>ชำระก่อนหน้า:</div>
+                    <div class="text-right font-mono text-state-ok">${accBaht(poPaid)}</div>
+                    <div>ส่วนลดสะสม:</div>
+                    <div class="text-right font-mono text-state-danger">${accBaht(poDiscount)}</div>
+                    <div class="font-semibold text-ink border-t border-line pt-2 mt-1">ยอดค้างชำระ:</div>
+                    <div class="text-right font-mono text-orange-400 font-semibold border-t border-line pt-2 mt-1">${accBaht(poOutstanding)}</div>
+                </div>
+                <div class="elev-field space-y-4 bg-field p-4 rounded-xl">
+                    <div>
+                        <label for="ap-pay-date-input" class="${labelCls}">
+                            <i class="fa-solid fa-calendar text-ink"></i> วันที่ชำระเงิน</label>
+                        <input type="date" id="ap-pay-date-input" class="${fieldCls} [color-scheme:dark]" value="${todayStr}">
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label for="ap-pay-amount-input" class="${labelCls}">
+                                <i class="fa-solid fa-money-bill-wave text-ink"></i> จ่ายรอบนี้</label>
+                            <input type="number" inputmode="numeric" id="ap-pay-amount-input" step="any" min="0" max="${poOutstanding}"
+                                class="${fieldCls} font-mono text-right" value="${poOutstanding.toFixed(2)}">
+                        </div>
+                        <div>
+                            <label for="ap-pay-discount-input" class="${labelCls}">
+                                <i class="fa-solid fa-tag text-ink"></i> ส่วนลดรอบนี้</label>
+                            <input type="number" inputmode="numeric" id="ap-pay-discount-input" step="any" min="0" max="${poOutstanding}"
+                                class="${fieldCls} font-mono text-right" value="0.00">
+                        </div>
+                    </div>
+                    <div>
+                        <label for="ap-pay-discount-remark-input" class="${labelCls}">
+                            <i class="fa-solid fa-pen text-ink"></i> หมายเหตุส่วนลด (ระบุหากได้ส่วนลด)</label>
+                        <input type="text" id="ap-pay-discount-remark-input"
+                            placeholder="เช่น ชำระก่อนครบกำหนดรับส่วนลด 2%" class="${fieldCls} placeholder-ink-muted-48">
+                    </div>
+                    <div id="ap-pay-calc-result" class="text-[11px] font-semibold text-ink/70 text-right">
+                        คงเหลือหลังชำระ: ฿0.00
+                    </div>
+                </div>
+             </div>`,
+            async () => {
+                try {
+                    const payDateVal = document.getElementById('ap-pay-date-input')?.value || todayStr;
+                    const payAmtVal = Number(document.getElementById('ap-pay-amount-input')?.value || 0);
+                    const discountVal = Number(document.getElementById('ap-pay-discount-input')?.value || 0);
+                    const remarkVal = document.getElementById('ap-pay-discount-remark-input')?.value || '';
+
+                    if (payAmtVal === 0 && discountVal === 0) {
+                        showToast('กรุณากรอกจำนวนเงินชำระหรือส่วนลดรอบนี้อย่างใดอย่างหนึ่ง', 'error');
+                        return;
+                    }
+                    if (discountVal > 0 && !remarkVal.trim()) {
+                        showToast('กรุณาระบุหมายเหตุของส่วนลดเพื่อใช้เป็นหลักฐานทางบัญชี', 'error');
+                        return;
+                    }
+                    if (payAmtVal + discountVal > poOutstanding + 0.01) {
+                        showToast('ยอดจ่ายรวมส่วนลด เกินยอดค้างชำระปัจจุบัน', 'error');
+                        return;
+                    }
+
+                    const payRes = await authFetch(`${API_BASE_URL}/accounting/po-pay/${poId}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            payment_date: payDateVal,
+                            payment_amount: payAmtVal,
+                            discount_amount: discountVal,
+                            discount_remark: remarkVal
+                        })
+                    });
+                    const payJson = await payRes.json();
+                    if (payJson.success) {
+                        showToast('บันทึกการชำระเงินสำเร็จ!', 'success');
+                        if (typeof onPaid === 'function') onPaid();
+                    } else {
+                        showToast(payJson.message || 'ไม่สามารถทำรายการได้', 'error');
+                    }
+                } catch (err) {
+                    console.error(err);
+                    showToast('เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์', 'error');
+                }
+            },
+            'ยืนยันชำระเงิน',
+            'warning',
+            'max-w-lg'
+        );
+
+        // ตัวคำนวณยอดคงเหลือสดๆ ในโมดัลยืนยัน
+        setTimeout(() => {
+            const amtInp = document.getElementById('ap-pay-amount-input');
+            const discInp = document.getElementById('ap-pay-discount-input');
+            const calcRes = document.getElementById('ap-pay-calc-result');
+            const updateCalc = () => {
+                if (!amtInp || !discInp || !calcRes) return;
+                const amt = Number(amtInp.value || 0);
+                const disc = Number(discInp.value || 0);
+                if (amt + disc > poOutstanding + 0.01) {
+                    calcRes.className = 'text-[11px] font-semibold text-state-danger text-right';
+                    calcRes.textContent = `เกินยอดค้างชำระ: ${accBaht(Math.abs(poOutstanding - amt - disc))}`;
+                } else {
+                    calcRes.className = 'text-[11px] font-semibold text-state-ok text-right';
+                    calcRes.textContent = `คงเหลือหลังชำระ: ${accBaht(Math.max(0, poOutstanding - amt - disc))}`;
+                }
+            };
+            if (amtInp && discInp) {
+                amtInp.addEventListener('input', updateCalc);
+                discInp.addEventListener('input', updateCalc);
+                updateCalc();
+            }
+        }, 100);
     };
 
     const renderAPTable = (poList, filterVal) => {
@@ -3199,22 +3575,26 @@
         return dt.toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' });
     };
 
-    // สถานะของ PO ยุบเหลือ 3 โทนตามตารางข้อ 11.6 (ข้อความในป้ายยังแยกสถานะได้อยู่)
+    // ป้ายสถานะ (กดไม่ได้ — DESIGN.md §12 อนุญาตสี state เฉพาะป้ายแบบนี้)
+    //   รอจัดส่ง = เทา / ของถึงสาขาแล้ว + กำลังตรวจรับ = ส้ม (มีงานรอ) / นำเข้าสำเร็จ = เขียว / ยกเลิก = แดง
+    const rcIsImported = (status) => status === 'นำเข้าสำเร็จ' || status === 'รับของครบแล้ว';
     const rcStatusTone = (status) => {
-        if (status === 'นำเข้าสำเร็จ' || status === 'รับของครบแล้ว')
+        if (rcIsImported(status))
             return { dot: 'bg-state-ok', bg: 'bg-state-ok-tint/[0.12]', text: 'text-state-ok' };
         if (status === 'ยกเลิก')
-            return { dot: 'bg-state-danger', bg: 'bg-state-danger/[0.12]', text: 'text-state-danger' };
-        return { dot: 'bg-orange-500', bg: 'bg-orange-500/[0.12]', text: 'text-orange-400' };
+            return { dot: 'bg-state-danger-soft', bg: 'bg-state-danger/[0.12]', text: 'text-state-danger-soft' };
+        if (status === 'รอจัดส่ง')
+            return { dot: 'bg-body-muted', bg: 'bg-body-muted/[0.12]', text: 'text-body-muted' };
+        return { dot: 'bg-state-pending', bg: 'bg-state-pending/[0.12]', text: 'text-state-pending' };
     };
 
     const rcStatusBadge = (status) => {
         const t = rcStatusTone(status);
-        const label = (status === 'นำเข้าสำเร็จ' || status === 'รับของครบแล้ว') ? 'นำเข้าสำเร็จ' : status;
-        return `<div class="inline-flex items-center gap-2 px-2.5 py-1 rounded-[0.375rem] ${t.bg}">
-                    <div class="w-2 h-2 rounded-full ${t.dot}"></div>
-                    <span class="${t.text} font-medium text-xs">${rcEsc(label)}</span>
-                </div>`;
+        const label = rcIsImported(status) ? 'นำเข้าสำเร็จ' : status;
+        return `<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-pill ${t.bg}">
+                    <span class="w-1.5 h-1.5 rounded-full ${t.dot}"></span>
+                    <span class="${t.text} font-semibold text-xs">${rcEsc(label)}</span>
+                </span>`;
     };
 
     const rcTableSkeleton = (rows = 4) => {
@@ -3223,12 +3603,13 @@
         const bar = (w) => `<div class="h-3.5 ${w} rounded-full bg-skeleton animate-pulse"></div>`;
         tbody.innerHTML = Array.from({ length: rows }).map(() => `
             <tr>
-                <td class="px-6 py-4">${bar('w-36')}</td>
-                <td class="px-6 py-4">${bar('w-24')}</td>
-                <td class="px-6 py-4">${bar('w-full')}</td>
-                <td class="px-6 py-4">${bar('w-20')}</td>
-                <td class="px-6 py-4">${bar('w-24')}</td>
+                <td class="px-6 py-4">${bar('w-28')}${bar('w-20 mt-2')}</td>
+                <td class="px-6 py-4">${bar('w-32')}${bar('w-24 mt-2')}</td>
+                <td class="px-6 py-4">${bar('w-20')}${bar('w-12 mt-2')}</td>
                 <td class="px-6 py-4">${bar('w-16')}</td>
+                <td class="px-6 py-4">${bar('w-28')}</td>
+                <td class="px-6 py-4">${bar('w-24 h-5')}</td>
+                <td class="px-6 py-4"><div class="w-24 h-8 ml-auto rounded-pill bg-skeleton animate-pulse"></div></td>
             </tr>`).join('');
     };
 
@@ -3238,30 +3619,33 @@
         if (!cardsWrap) return;
         const bar = (w) => `<div class="h-3.5 ${w} rounded-full bg-skeleton animate-pulse"></div>`;
         cardsWrap.innerHTML = Array.from({ length: count }).map(() => `
-            <div class="elev-card bg-surface-tile-3 rounded-md p-3.5">
+            <div class="bg-field rounded-2xl p-5">
                 <div class="flex items-start justify-between gap-2">
                     ${bar('w-24')}
                     ${bar('w-20 h-5')}
                 </div>
-                ${bar('w-32 mt-2.5')}
-                <div class="mt-3.5 pt-3 border-t border-hairline">
+                ${bar('w-32 mt-3')}
+                <div class="mt-4 pt-4 border-t border-divider">
                     ${bar('w-16')}
-                    <div class="mt-1.5 h-1 w-full rounded-full bg-skeleton/50"></div>
+                    <div class="mt-2 h-1 w-full rounded-full bg-skeleton/50"></div>
                 </div>
-                <div class="flex items-center justify-between mt-3.5 pt-3 border-t border-hairline">
+                <div class="flex items-center justify-between mt-4 pt-4 border-t border-divider">
                     ${bar('w-16 h-5')}
-                    <div class="w-8 h-8 rounded-lg bg-skeleton animate-pulse"></div>
+                    <div class="w-24 h-8 rounded-pill bg-skeleton animate-pulse"></div>
                 </div>
             </div>`).join('');
     };
 
     const rcSkeleton = (rows = 4) => {
         syncViewWrapVisibility('receive', receiveViewMode);
+        const more = document.getElementById('btn-receive-load-more');
+        if (more) more.classList.add('hidden');
         if (receiveViewMode === 'card') rcCardSkeleton(rows);
         else rcTableSkeleton(rows);
     };
 
-    // ชิปตัวกรองที่ใช้อยู่ (ข้อ 11.5 — ลบได้เฉพาะตอนคลิกกากบาท)
+    // ชิปตัวกรองที่ใช้อยู่ (DESIGN.md ข้อ 11.5) — ป้าย "หมวด: ค่า" ลบได้เฉพาะตอนคลิกกากบาท
+    const RC_DATE_LABEL = { '1': 'วันนี้', '7': '7 วันล่าสุด', '30': '30 วันล่าสุด' };
     const renderReceiveChips = () => {
         const box = document.getElementById('receive-active-filters');
         if (!box) return;
@@ -3269,36 +3653,34 @@
 
         const chips = [];
         if (receiveSearchQuery) chips.push({ key: 'search', label: `ค้นหา: ${receiveSearchQuery}` });
+        if (receiveSearchSupplier) chips.push({ key: 'supplier', label: `ผู้จำหน่าย: ${receiveSearchSupplier}` });
         if (receiveSearchBranch) {
             const sel = document.getElementById('receive-filter-branch');
-            const opt = sel ? sel.querySelector(`option[value="${receiveSearchBranch}"]`) : null;
+            const opt = sel ? Array.from(sel.options).find(o => o.value === receiveSearchBranch) : null;
             chips.push({ key: 'branch', label: `สาขา: ${opt ? opt.textContent : receiveSearchBranch}` });
         }
+        if (receiveDateRange) chips.push({ key: 'date', label: `วันที่ของถึง: ${RC_DATE_LABEL[receiveDateRange] || receiveDateRange}` });
 
+        const FILTER_INPUT = {
+            search: ['search-receive-po', () => { receiveSearchQuery = ''; }],
+            supplier: ['receive-filter-supplier', () => { receiveSearchSupplier = ''; }],
+            branch: ['receive-filter-branch', () => { receiveSearchBranch = ''; }],
+            date: ['receive-filter-date', () => { receiveDateRange = ''; }]
+        };
         const clearOne = (key) => {
-            if (key === 'search') {
-                receiveSearchQuery = '';
-                const s = document.getElementById('search-receive-po');
-                if (s) s.value = '';
-            } else if (key === 'branch') {
-                receiveSearchBranch = '';
-                const b = document.getElementById('receive-filter-branch');
-                if (b) b.value = '';
-            }
-            renderFilteredPOs();
+            const [inputId, reset] = FILTER_INPUT[key];
+            reset();
+            const el = document.getElementById(inputId);
+            if (el) el.value = '';
         };
 
         chips.forEach(c => {
-            const chip = document.createElement('button');
-            chip.type = 'button';
-            chip.className = 'elev-card px-4 py-2.5 rounded-xl bg-panel/40 ' +
-                'text-ink text-sm font-medium transition-colors flex items-center gap-2 cursor-pointer';
-            chip.innerHTML = `<span>${rcEsc(c.label)}</span><i class="fa-solid fa-xmark text-[10px] opacity-80"></i>`;
-            chip.setAttribute('aria-label', `ลบตัวกรอง ${c.label}`);
-            chip.addEventListener('click', (e) => {
-                if (!e.target.closest('i.fa-xmark')) return;
-                clearOne(c.key);
-            });
+            const chip = document.createElement('span');
+            chip.className = 'inline-flex items-center gap-1.5 pl-3.5 pr-1.5 py-1.5 rounded-xl bg-field text-ink text-sm';
+            chip.innerHTML = `<span>${rcEsc(c.label)}</span>
+                <button type="button" class="w-6 h-6 rounded-full flex items-center justify-center text-body-muted hover:text-ink hover:bg-surface-chip transition-colors cursor-pointer"
+                    aria-label="ลบตัวกรอง ${rcEsc(c.label)}"><i class="fa-solid fa-xmark text-[10px]"></i></button>`;
+            chip.querySelector('button').addEventListener('click', () => { clearOne(c.key); renderFilteredPOs(); });
             box.appendChild(chip);
         });
 
@@ -3306,16 +3688,10 @@
         if (chips.length > 1) {
             const clearAll = document.createElement('button');
             clearAll.type = 'button';
-            clearAll.className = 'px-2.5 py-1 bg-red-500/10 hover:bg-red-500/15 text-red-300 ' +
-                'rounded-full text-xs font-medium ring-1 ring-red-500/30 transition-colors cursor-pointer';
+            clearAll.className = 'px-2.5 py-1 bg-state-danger/10 hover:bg-state-danger/15 text-state-danger-soft rounded-full text-xs font-medium transition-colors cursor-pointer';
             clearAll.textContent = 'ล้างทั้งหมด';
             clearAll.addEventListener('click', () => {
-                receiveSearchQuery = '';
-                receiveSearchBranch = '';
-                const s = document.getElementById('search-receive-po');
-                const b = document.getElementById('receive-filter-branch');
-                if (s) s.value = '';
-                if (b) b.value = '';
+                Object.keys(FILTER_INPUT).forEach(clearOne);
                 renderFilteredPOs();
             });
             box.appendChild(clearAll);
@@ -3325,86 +3701,124 @@
     const rcStateCard = (msg, cls = 'text-ink/50 italic') =>
         `<div class="col-span-full py-12 text-center ${cls}">${rcEsc(msg)}</div>`;
 
+    const rcTime = (d) => {
+        const dt = new Date(d);
+        if (isNaN(dt)) return '';
+        return dt.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }) + ' น.';
+    };
+
     // ข้อมูลที่คำนวณร่วมกันระหว่างแถวตารางกับการ์ด — แยกออกมาครั้งเดียวเพื่อไม่ให้สองมุมมองเพี้ยนจากกัน
+    //   เครื่อง = item_kind ไม่ใช่ 'accessory' (เอกสารเก่าไม่มีฟิลด์นี้ = เครื่อง ตามสคีมา)
+    //   ความคืบหน้านับเป็นเครื่อง ถ้าใบนี้ไม่มีเครื่องเลยจึงนับอุปกรณ์เสริมเป็นชิ้นแทน
     const buildReceiveRowData = (po) => {
         const branchName = (po.branch_id && po.branch_id.name) ? po.branch_id.name : '-';
         const items = po.items || [];
-        const totalOrdered = items.reduce((sum, i) => sum + (i.ordered_qty || 0), 0);
-        let totalReceived = items.reduce((sum, i) => sum + (i.received_qty || 0), 0);
-        if (po.status === 'นำเข้าสำเร็จ' || po.status === 'รับของครบแล้ว') totalReceived = totalOrdered;
+        const devices = items.filter(i => i.item_kind !== 'accessory');
+        const accessories = items.filter(i => i.item_kind === 'accessory');
+        const sum = (arr, k) => arr.reduce((s, i) => s + (i[k] || 0), 0);
+        const devOrdered = sum(devices, 'ordered_qty');
+        const accOrdered = sum(accessories, 'ordered_qty');
+
+        const base = devOrdered ? devices : accessories;
+        const unit = devOrdered ? 'เครื่อง' : 'ชิ้น';
+        const totalOrdered = sum(base, 'ordered_qty');
+        const totalReceived = rcIsImported(po.status) ? totalOrdered : Math.min(sum(base, 'received_qty'), totalOrdered);
         const pct = totalOrdered ? Math.round((totalReceived / totalOrdered) * 100) : 0;
-        const barColor = pct >= 100 ? 'bg-state-ok' : pct > 0 ? 'bg-primary' : 'bg-skeleton';
-        return { branchName, totalOrdered, totalReceived, pct, barColor };
+        const barColor = pct >= 100 ? 'bg-state-ok' : 'bg-primary';
+
+        let arrivalDate = '—', arrivalSub = '';
+        if (po.arrival_reported_at) {
+            arrivalDate = rcDate(po.arrival_reported_at);
+            arrivalSub = rcTime(po.arrival_reported_at);
+        } else if (po.status === 'รอจัดส่ง') {
+            arrivalSub = 'ยังไม่แจ้งของถึง';
+        } else if (po.status === 'ยกเลิก') {
+            arrivalSub = 'ยกเลิกแล้ว';
+        }
+        return { branchName, devOrdered, accOrdered, unit, totalOrdered, totalReceived, pct, barColor, arrivalDate, arrivalSub };
     };
 
-    // ปุ่มการกระทำขึ้นกับสถานะ: แจ้งของถึง -> ตรวจรับ -> ดูอย่างเดียว — ใช้ร่วมกันทั้งแถวตารางและการ์ด
+    const rcQtyHtml = (d) => {
+        const main = d.devOrdered ? `${d.devOrdered} เครื่อง` : `${d.accOrdered} ชิ้น`;
+        const sub = d.devOrdered ? (d.accOrdered ? `+ ${d.accOrdered} ชิ้น` : 'ไม่มีอุปกรณ์เสริม') : 'อุปกรณ์เสริมล้วน';
+        return `<p class="text-ink">${main}</p><p class="text-xs text-body-muted mt-1">${sub}</p>`;
+    };
+
+    const rcProgressHtml = (po, d, barW = 'w-32') => {
+        const numCls = po.status === 'กำลังตรวจรับ' ? 'text-accent-ink' : (d.pct >= 100 ? 'text-ink' : 'text-body-muted');
+        return `<p><span class="font-semibold ${numCls}">${d.totalReceived}</span>
+                    <span class="text-xs text-body-muted">/ ${d.totalOrdered} ${d.unit}</span></p>
+                <div class="mt-2 h-1 ${barW} rounded-full bg-surface-chip overflow-hidden">
+                    <div class="h-full ${d.barColor} rounded-full" style="width:${d.pct}%"></div>
+                </div>`;
+    };
+
+    // ปุ่มการกระทำขึ้นกับสถานะ — ใช้ร่วมกันทั้งแถวตารางและการ์ด
+    //   ของถึงแล้ว -> "เริ่มตรวจรับ" / กำลังตรวจรับ -> "ตรวจรับต่อ" (งานหลักของหน้านี้)
+    //   รอจัดส่ง -> "แจ้งของถึงสาขา" / ที่เหลือ -> "ดูรายละเอียด"
+    //   ปุ่มหลักเป็น button-secondary-pill (ขอบเหลือง 40% ตัวอักษรเหลือง — DESIGN.md ข้อ 6) ไม่ใช่เหลืองทึบ
+    //   ตารางหลายแถวที่มีปุ่มเหลืองทึบเรียงกันจะดังเกินไป — "หนึ่งไทล์ ปุ่มทึบได้ปุ่มเดียว"
+    const RC_BTN_PRIMARY = 'px-4 py-1.5 border border-primary-muted hover:border-accent-ink hover:bg-primary/10 active:scale-95 text-accent-ink font-medium rounded-pill text-[13px] transition-all inline-flex items-center gap-1.5 cursor-pointer';
+    const RC_BTN_GHOST = 'px-4 py-1.5 text-body-muted hover:text-ink hover:bg-surface-chip font-medium rounded-pill text-[13px] transition-colors inline-flex items-center gap-1.5 cursor-pointer';
     const rcActionHtml = (po) => {
-        if (po.status === 'รอจัดส่ง') {
-            return `<button type="button" class="btn-action-arrival px-3 py-1.5 bg-primary hover:bg-[#E2B93C] text-on-primary font-semibold rounded-[0.375rem] text-xs transition-colors inline-flex items-center gap-1.5 cursor-pointer"
-                    data-id="${rcEsc(po._id)}">
-                    <i class="fa-solid fa-truck-ramp-box"></i> แจ้งของถึงสาขา
-                </button>`;
-        }
-        if (po.status === 'ของถึงสาขาแล้ว' || po.status === 'กำลังตรวจรับ') {
-            return `<button type="button" class="btn-open-receive px-3 py-1.5 bg-primary hover:bg-[#E2B93C] text-on-primary font-semibold rounded-[0.375rem] text-xs transition-colors inline-flex items-center gap-1.5 cursor-pointer"
-                    data-id="${rcEsc(po._id)}">
-                    <i class="fa-solid fa-boxes-packing"></i> ตรวจรับของ
-                </button>`;
-        }
-        return `<button type="button" class="btn-view-po text-ink hover:text-indigo-400 transition-colors p-2 cursor-pointer"
-                data-id="${rcEsc(po._id)}" title="ดูข้อมูลใบสั่งซื้อ"
-                aria-label="ดูข้อมูลใบสั่งซื้อ ${rcEsc(po.po_number)}">
-                <i class="fa-solid fa-eye"></i>
-            </button>`;
+        const id = rcEsc(po._id);
+        if (po.status === 'รอจัดส่ง')
+            return `<button type="button" class="btn-action-arrival ${RC_BTN_GHOST}" data-id="${id}">แจ้งของถึงสาขา</button>`;
+        if (po.status === 'ของถึงสาขาแล้ว')
+            return `<button type="button" class="btn-open-receive ${RC_BTN_PRIMARY}" data-id="${id}">เริ่มตรวจรับ</button>`;
+        if (po.status === 'กำลังตรวจรับ')
+            return `<button type="button" class="btn-open-receive ${RC_BTN_PRIMARY}" data-id="${id}">ตรวจรับต่อ</button>`;
+        return `<button type="button" class="btn-view-po ${RC_BTN_GHOST}" data-id="${id}"
+                aria-label="ดูรายละเอียดใบสั่งซื้อ ${rcEsc(po.po_number)}">ดูรายละเอียด</button>`;
     };
 
     const rcRowMarkup = (po) => {
         const d = buildReceiveRowData(po);
+        const cancelled = po.status === 'ยกเลิก';
+        const strong = cancelled ? 'text-ink-muted-48' : 'text-ink';
+        // สูตรเซลล์ตาม DESIGN.md ข้อ 11.6 — รหัสเอกสารเป็นสีเหลืองเสมอ (จุดยึดสายตาของแถว)
         return `
         <tr class="hover:bg-divider transition-colors">
-            <td class="px-6 py-4">
-                <p class="font-mono font-semibold text-accent-ink">${rcEsc(po.po_number)}</p>
-                <p class="text-xs text-ink/70 mt-0.5">${rcEsc(rcDate(po.createdAt))}</p>
+            <td class="px-6 py-4 align-top">
+                <p class="font-mono font-semibold ${cancelled ? 'text-ink-muted-48 line-through' : 'text-accent-ink'}">${rcEsc(po.po_number)}</p>
+                <p class="text-xs text-body-muted mt-1">สร้าง ${rcEsc(rcDate(po.createdAt))}</p>
             </td>
-            <td class="px-6 py-4 text-ink">${rcEsc(po.supplier_name || '-')}</td>
-            <td class="px-6 py-4 text-ink">${rcEsc(d.branchName)}</td>
-            <td class="px-6 py-4 text-center">
-                <p class="text-ink font-medium">${d.totalReceived}/${d.totalOrdered}
-                    <span class="text-xs text-ink font-normal">ชิ้น</span></p>
-                <div class="mt-1.5 h-1 w-24 mx-auto rounded-full bg-skeleton/50 overflow-hidden">
-                    <div class="h-full ${d.barColor} rounded-full" style="width:${d.pct}%"></div>
-                </div>
+            <td class="px-6 py-4 align-top">
+                <p class="font-medium ${strong}">${rcEsc(po.supplier_name || '-')}</p>
+                <p class="text-xs text-body-muted mt-1">${rcEsc(d.branchName)}</p>
             </td>
-            <td class="px-6 py-4">${rcStatusBadge(po.status)}</td>
-            <td class="px-6 py-4 text-right">
-                <div class="flex items-center justify-end gap-1">${rcActionHtml(po)}</div>
+            <td class="px-6 py-4 align-top">
+                <p class="${po.arrival_reported_at ? 'text-ink' : 'text-ink-muted-48'}">${rcEsc(d.arrivalDate === '—' ? '-' : d.arrivalDate)}</p>
+                ${d.arrivalSub ? `<p class="text-xs text-body-muted mt-1">${rcEsc(d.arrivalSub)}</p>` : ''}
             </td>
+            <td class="px-6 py-4 align-top">${rcQtyHtml(d)}</td>
+            <td class="px-6 py-4 align-top">${rcProgressHtml(po, d)}</td>
+            <td class="px-6 py-4 align-top">${rcStatusBadge(po.status)}</td>
+            <td class="px-6 py-3 align-top text-right">${rcActionHtml(po)}</td>
         </tr>`;
     };
 
-    // การ์ด — โครง: หัว (เลขที่ PO / สถานะ) · Supplier · ความคืบหน้า · footer (วันที่สร้าง + ปุ่มจัดการ)
+    // การ์ด — โครง: หัว (เลขที่ PO / สถานะ) · ผู้จำหน่าย+สาขา · จำนวน+ความคืบหน้า · footer (วันที่ของถึง + ปุ่ม)
     const rcCardMarkup = (po) => {
         const d = buildReceiveRowData(po);
+        const cancelled = po.status === 'ยกเลิก';
         return `
-        <div class="elev-card pos-card bg-surface-tile-3 rounded-md p-3.5 transition-all hover:-translate-y-1 border-none">
+        <div class="bg-field rounded-2xl p-5 transition-colors hover:bg-surface-chip">
             <div class="flex items-start justify-between gap-2">
-                <span class="font-mono font-semibold text-accent-ink truncate">${rcEsc(po.po_number)}</span>
+                <span class="font-mono font-semibold ${cancelled ? 'text-ink-muted-48 line-through' : 'text-accent-ink'} truncate">${rcEsc(po.po_number)}</span>
                 <div class="shrink-0">${rcStatusBadge(po.status)}</div>
             </div>
-            <p class="text-ink font-medium mt-2.5 truncate">${rcEsc(po.supplier_name || '-')}</p>
-            <p class="text-xs text-ink/70 mt-0.5 truncate"><i class="fa-solid fa-location-dot mr-1"></i>${rcEsc(d.branchName)}</p>
+            <p class="text-ink font-medium mt-3 truncate">${rcEsc(po.supplier_name || '-')}</p>
+            <p class="text-xs text-body-muted mt-1 truncate">${rcEsc(d.branchName)}</p>
 
-            <div class="mt-3.5 pt-3 border-t border-hairline">
-                <p class="text-ink text-xs font-medium">${d.totalReceived}/${d.totalOrdered}
-                    <span class="text-ink/60 font-normal">ชิ้น</span></p>
-                <div class="mt-1.5 h-1 w-full rounded-full bg-skeleton/50 overflow-hidden">
-                    <div class="h-full ${d.barColor} rounded-full" style="width:${d.pct}%"></div>
-                </div>
+            <div class="mt-4 pt-4 border-t border-divider">
+                <div class="min-w-0">${rcProgressHtml(po, d, 'w-full')}</div>
             </div>
 
-            <div class="flex items-center justify-between mt-3.5 pt-3 border-t border-hairline">
-                <span class="text-xs text-ink/70"><i class="fa-regular fa-clock mr-1"></i>${rcEsc(rcDate(po.createdAt))}</span>
-                <div class="flex items-center gap-1">${rcActionHtml(po)}</div>
+            <div class="flex items-center justify-between gap-2 mt-4 pt-4 border-t border-divider">
+                <span class="text-xs text-body-muted truncate">${po.arrival_reported_at
+                    ? `ของถึง ${rcEsc(d.arrivalDate)}` : rcEsc(d.arrivalSub || `สร้าง ${rcDate(po.createdAt)}`)}</span>
+                <div class="shrink-0">${rcActionHtml(po)}</div>
             </div>
         </div>`;
     };
@@ -3419,54 +3833,83 @@
                 const po = byId(b.dataset.id);
                 if (!po) return;
                 // ต่ำกว่า lg (1024px): เปิด step-flow แบบแอปสำหรับมือถือ/แท็บเล็ตแนวตั้ง
-                // lg ขึ้นไป: เปิดโมดัลตรวจรับเดิมเป๊ะ ไม่เปลี่ยนพฤติกรรมเดสก์ท็อปเลย
+                // lg ขึ้นไป: เปิดหน้า "รับสินค้าตาม PO" (#receive-po-page)
                 if (window.innerWidth < 1024 && typeof openMobileReceiveFlow === 'function') {
                     openMobileReceiveFlow(po);
                 } else {
-                    openReceiveModal(po);
+                    openReceivePage(po);
                 }
             }));
         container.querySelectorAll('.btn-view-po').forEach(b =>
             b.addEventListener('click', () => { const po = byId(b.dataset.id); if (po) openViewPOModal(po); }));
     };
 
-    const renderFilteredPOs = () => {
+    // เวลาที่ใช้เรียง — "วันที่ของถึง": ใบที่ยังไม่แจ้งของถึงใช้วันที่สร้างแทน จะได้ไม่ตกไปท้ายสุดหมด
+    const rcSortTime = (po) => new Date(
+        (receiveSort === 'arrival' && po.arrival_reported_at) ? po.arrival_reported_at : po.createdAt).getTime() || 0;
+
+    // opts.keepPage = true เฉพาะปุ่ม "โหลดเพิ่ม" — การเปลี่ยนตัวกรอง/แท็บ/การเรียงทุกแบบเริ่มหน้าแรกใหม่
+    const renderFilteredPOs = (opts = {}) => {
         const tbody = document.getElementById('table-body-receive-po');
         if (!tbody) return;
+        if (!opts.keepPage) receiveShown = RC_PAGE_SIZE;
 
         const listWrap = document.getElementById('receive-view-list-wrap');
         const cardsWrap = document.getElementById('receive-view-cards');
+        const loadMore = document.getElementById('btn-receive-load-more');
         if (listWrap) listWrap.classList.toggle('hidden', receiveViewMode !== 'list');
         if (cardsWrap) cardsWrap.classList.toggle('hidden', receiveViewMode !== 'card');
 
-        // จำนวนของแท็บนับจากข้อมูลดิบเสมอ ไม่ขึ้นกับช่องค้นหา/สาขาที่เลือกอยู่
         const byTab = cachedPOsData.filter(po => {
             if (currentReceiveTab === 'all') return true;
-            if (currentReceiveTab === 'นำเข้าสำเร็จ')
-                return po.status === 'นำเข้าสำเร็จ' || po.status === 'รับของครบแล้ว';
+            if (currentReceiveTab === 'นำเข้าสำเร็จ') return rcIsImported(po.status);
             return po.status === currentReceiveTab;
         });
+
+        // ช่วงวันที่ของถึง: นับรวมวันนี้ ('1' = ตั้งแต่เที่ยงคืนวันนี้) — ใบที่ยังไม่แจ้งของถึงไม่ผ่านตัวกรองนี้
+        let since = null;
+        if (receiveDateRange) {
+            since = new Date();
+            since.setHours(0, 0, 0, 0);
+            since.setDate(since.getDate() - (Number(receiveDateRange) - 1));
+        }
 
         const q = receiveSearchQuery.toLowerCase();
         const filtered = byTab.filter(po => {
             if (q) {
                 const poNum = (po.po_number || '').toLowerCase();
                 const sup = (po.supplier_name || '').toLowerCase();
-                if (!poNum.includes(q) && !sup.includes(q)) return false;
+                const imeiHit = (po.items || []).some(i =>
+                    (i.imeis_scanned || []).some(x => String(x).toLowerCase().includes(q)) ||
+                    (i.imported_imeis || []).some(x => String(x).toLowerCase().includes(q)));
+                if (!poNum.includes(q) && !sup.includes(q) && !imeiHit) return false;
             }
+            if (receiveSearchSupplier && (po.supplier_name || '') !== receiveSearchSupplier) return false;
             // PO ที่ไม่มีสาขาต้องไม่ผ่านตัวกรองสาขาที่เจาะจง
             if (receiveSearchBranch) {
                 const bId = po.branch_id && typeof po.branch_id === 'object' ? po.branch_id._id : po.branch_id;
                 if (String(bId) !== String(receiveSearchBranch)) return false;
             }
+            if (since) {
+                if (!po.arrival_reported_at || new Date(po.arrival_reported_at) < since) return false;
+            }
             return true;
-        });
+        }).sort((a, b) => rcSortTime(b) - rcSortTime(a));
 
         renderReceiveChips();
 
+        const visible = filtered.slice(0, receiveShown);
         const countDisplay = document.getElementById('receive-po-total-count');
         if (countDisplay) {
-            countDisplay.textContent = byTab.length ? `แสดง ${filtered.length} จาก ${byTab.length} รายการ` : '';
+            countDisplay.textContent = filtered.length
+                ? `แสดง 1–${visible.length} จาก ${filtered.length} ใบ`
+                : (byTab.length ? 'ไม่พบใบที่ตรงกับตัวกรอง' : '');
+        }
+
+        if (loadMore) {
+            const rest = filtered.length - visible.length;
+            loadMore.classList.toggle('hidden', rest <= 0);
+            loadMore.textContent = `โหลดเพิ่มอีก ${Math.min(rest, RC_PAGE_SIZE)} ใบ`;
         }
 
         if (!filtered.length) {
@@ -3477,12 +3920,24 @@
         }
 
         if (receiveViewMode === 'card') {
-            cardsWrap.innerHTML = filtered.map(rcCardMarkup).join('');
-            rcBindResultHandlers(cardsWrap, filtered);
+            cardsWrap.innerHTML = visible.map(rcCardMarkup).join('');
+            rcBindResultHandlers(cardsWrap, visible);
         } else {
-            tbody.innerHTML = filtered.map(rcRowMarkup).join('');
-            rcBindResultHandlers(tbody, filtered);
+            tbody.innerHTML = visible.map(rcRowMarkup).join('');
+            rcBindResultHandlers(tbody, visible);
         }
+    };
+
+    // ตัวเลือกผู้จำหน่ายสร้างจากข้อมูล PO ที่โหลดมา (ไม่มี master ผู้จำหน่ายผูกกับ PO — เก็บเป็นชื่อ)
+    const rcFillSupplierOptions = () => {
+        const sel = document.getElementById('receive-filter-supplier');
+        if (!sel) return;
+        const names = [...new Set(cachedPOsData.map(po => po.supplier_name).filter(Boolean))]
+            .sort((a, b) => a.localeCompare(b, 'th'));
+        if (receiveSearchSupplier && !names.includes(receiveSearchSupplier)) receiveSearchSupplier = '';
+        sel.innerHTML = '<option value="">ผู้จำหน่าย: ทั้งหมด</option>' +
+            names.map(n => `<option value="${rcEsc(n)}">${rcEsc(n)}</option>`).join('');
+        sel.value = receiveSearchSupplier;
     };
 
     const loadPOs = async () => {
@@ -3490,353 +3945,417 @@
         if (!tbody) return;
         rcSkeleton();
 
+        const failed = (msg) => {
+            cachedPOsData = [];
+            tbody.innerHTML = rcStateRow(msg, 'text-state-danger-soft');
+            const cardsWrap = document.getElementById('receive-view-cards');
+            if (cardsWrap) cardsWrap.innerHTML = rcStateCard(msg, 'text-state-danger-soft');
+            const c = document.getElementById('receive-po-total-count');
+            if (c) c.textContent = '';
+        };
+
         try {
             const res = await authFetch(`${API_BASE_URL}/purchase-orders`);
             const json = await res.json();
             if (json.success) {
                 cachedPOsData = json.data || [];
 
-                // ป้ายนับบนแท็บ นับจากข้อมูลทั้งชุด
+                // ตัวเลขบนการ์ดสถานะ นับจากข้อมูลทั้งชุด ไม่ขึ้นกับช่องค้นหา/ตัวกรอง
                 const counts = {
-                    'badge-receive-all': cachedPOsData.length,
-                    'badge-receive-pending': cachedPOsData.filter(po => po.status === 'รอจัดส่ง').length,
-                    'badge-receive-arrived': cachedPOsData.filter(po => po.status === 'ของถึงสาขาแล้ว').length,
-                    'badge-receive-checking': cachedPOsData.filter(po => po.status === 'กำลังตรวจรับ').length,
-                    'badge-receive-imported': cachedPOsData.filter(po => po.status === 'นำเข้าสำเร็จ' || po.status === 'รับของครบแล้ว').length,
-                    'badge-receive-cancelled': cachedPOsData.filter(po => po.status === 'ยกเลิก').length
+                    'all': cachedPOsData.length,
+                    'รอจัดส่ง': cachedPOsData.filter(po => po.status === 'รอจัดส่ง').length,
+                    'ของถึงสาขาแล้ว': cachedPOsData.filter(po => po.status === 'ของถึงสาขาแล้ว').length,
+                    'กำลังตรวจรับ': cachedPOsData.filter(po => po.status === 'กำลังตรวจรับ').length,
+                    'นำเข้าสำเร็จ': cachedPOsData.filter(po => rcIsImported(po.status)).length,
+                    'ยกเลิก': cachedPOsData.filter(po => po.status === 'ยกเลิก').length
                 };
-                Object.entries(counts).forEach(([id, n]) => {
-                    const el = document.getElementById(id);
-                    if (el) el.textContent = n;
+                // เขียนจำนวนลงป้ายตัวเลือกของ dropdown สถานะ เช่น "สถานะ: ของถึงสาขาแล้ว (2)"
+                const statusSel = document.getElementById('receive-filter-status');
+                if (statusSel) Array.from(statusSel.options).forEach(opt => {
+                    const n = counts[opt.value] || 0;
+                    opt.textContent = `สถานะ: ${opt.value === 'all' ? 'ทั้งหมด' : opt.value} (${n.toLocaleString('th-TH')})`;
                 });
 
+                const upd = document.getElementById('receive-last-updated');
+                if (upd) upd.textContent = `อัปเดตล่าสุด ${rcTime(new Date())}`;
+
+                rcFillSupplierOptions();
                 renderFilteredPOs();
             } else {
-                cachedPOsData = [];
-                tbody.innerHTML = rcStateRow(json.message || 'ดึงข้อมูลใบสั่งซื้อไม่สำเร็จ', 'text-red-400');
-                const c = document.getElementById('receive-po-total-count');
-                if (c) c.textContent = '';
+                failed(json.message || 'ดึงข้อมูลใบสั่งซื้อไม่สำเร็จ');
             }
         } catch (e) {
             console.error(e);
-            cachedPOsData = [];
-            tbody.innerHTML = rcStateRow('เชื่อมต่อบริการล้มเหลว', 'text-red-400');
-            const c = document.getElementById('receive-po-total-count');
-            if (c) c.textContent = '';
+            failed('เชื่อมต่อบริการล้มเหลว');
         }
     };
 
+    // ==========================================
+    // โมดัล "ยืนยันสินค้าถึงสาขาและบันทึก IMEI" — ตามแนวแบบ Figma "Desktop - 48/49"
+    //   - ช่องสแกนช่องเดียว: IMEI ถูกจัดเข้าแถวรุ่นที่ยังไม่ครบให้อัตโนมัติ (หลายรุ่นยังไม่ครบ = ให้พนักงานเลือกเอง ผ่าน rcChooseRow)
+    //     วางหลายบรรทัดพร้อมกันได้ (เช่น ก็อปจากใบส่งของ)
+    //   - IMEI ที่นำเข้าสต็อกแล้วแสดงเป็นแถวล็อก ลบไม่ได้ (เซิร์ฟเวอร์ตรวจซ้ำอีกชั้น)
+    //   - อุปกรณ์เสริม: ระบุจำนวนที่ส่งมาเพิ่มรอบนี้ด้วยปุ่ม −/+ (0..ค้างส่ง)
+    //   - ส่ง POST /po/:id/report-arrival ด้วย received_items รูปแบบเดิมทุกประการ
+    // ==========================================
+    let arrDirty = false; // มีการสแกน/แก้ไขที่ยังไม่ได้กดยืนยัน — ถามก่อนปิดโมดัล
+
+    const ARR_TH = 'px-4 py-2.5 text-[13px] font-semibold text-body-muted whitespace-nowrap';
+    const ARR_TD = 'px-4 py-3.5 align-top text-sm text-ink';
+
+    const arrImeiLine = (val, locked) => locked ? `
+        <div class="imei-tag flex items-center gap-2 leading-[20px] text-body-muted" data-locked="true">
+            <span class="imei-tag-text font-mono text-[13px]">${rcEsc(val)}</span>
+            <i class="fa-solid fa-lock text-[10px]" title="นำเข้าสต็อกแล้ว แก้ไขไม่ได้" aria-label="นำเข้าสต็อกแล้ว"></i>
+        </div>` : `
+        <div class="imei-tag flex items-center gap-2 leading-[20px]">
+            <span class="imei-tag-text font-mono text-[13px]">${rcEsc(val)}</span>
+            <button type="button" class="btn-remove-imei text-state-danger-soft hover:opacity-70 transition-opacity leading-none cursor-pointer"
+                aria-label="ลบ IMEI ${rcEsc(val)}" title="ลบ IMEI">
+                <i class="fa-regular fa-trash-can text-[11px]"></i>
+            </button>
+        </div>`;
+
+    const arrRowCount = (row) => row.querySelectorAll('.imei-tag').length;
+    const arrRows = () => Array.from(document.querySelectorAll('#arrival-po-items .po-arrival-row'));
+
+    const arrRecalc = (row) => {
+        if (row.dataset.trackImei === 'true') {
+            const count = arrRowCount(row);
+            const target = Number(row.dataset.orderedQty);
+            const num = row.querySelector('.arr-count');
+            if (num) {
+                num.textContent = count;
+                num.classList.toggle('text-accent-ink', count < target);
+                num.classList.toggle('text-state-ok', count >= target);
+            }
+            const bar = row.querySelector('.arr-bar');
+            if (bar) {
+                bar.style.width = `${target ? Math.min(100, Math.round(count / target * 100)) : 0}%`;
+                bar.classList.toggle('bg-primary', count < target);
+                bar.classList.toggle('bg-state-ok', count >= target);
+            }
+            const slot = row.querySelector('.arr-imei-pending');
+            if (slot) {
+                slot.textContent = count === 0 ? `รอสแกน ${target} เครื่อง` : `รอสแกนอีก ${target - count} เครื่อง`;
+                slot.style.display = count >= target ? 'none' : ''; // inline-block ชนะ .hidden ใน tailwind.css จึงสลับที่ style ตรงๆ
+            }
+            // แถวที่ยังไม่ครบ พื้นเหลืองจาง — ให้เห็นว่าเหลือรุ่นไหนต้องสแกน
+            row.classList.toggle('bg-primary/[0.04]', count < target);
+        } else {
+            const input = row.querySelector('.po-arrival-accessory-qty');
+            if (input) {
+                const q = Number(input.value) || 0;
+                const max = Number(input.max) || 0;
+                const minus = row.querySelector('.arr-qty-minus');
+                const plus = row.querySelector('.arr-qty-plus');
+                if (minus) minus.disabled = q <= 0;
+                if (plus) plus.disabled = q >= max;
+            }
+        }
+        arrUpdateSummary();
+    };
+
+    const arrUpdateSummary = () => {
+        let target = 0, scanned = 0, fresh = 0, pieces = 0, pieceRows = 0;
+        arrRows().forEach(row => {
+            if (row.dataset.trackImei === 'true') {
+                target += Number(row.dataset.orderedQty);
+                scanned += arrRowCount(row);
+                fresh += row.querySelectorAll('.imei-tag[data-new="true"]').length;
+            } else {
+                const input = row.querySelector('.po-arrival-accessory-qty');
+                const q = input ? (Number(input.value) || 0) : 0;
+                pieces += q;
+                if (q > 0) pieceRows++;
+            }
+        });
+        const remaining = Math.max(0, target - scanned);
+        const set = (id, text) => { const el = document.getElementById(id); if (el) el.textContent = text; };
+        set('arr-stat-target', target.toLocaleString('th-TH'));
+        set('arr-stat-scanned', scanned.toLocaleString('th-TH'));
+        set('arr-stat-scanned-of', `/ ${target.toLocaleString('th-TH')} เครื่อง`);
+        set('arr-stat-remaining', remaining.toLocaleString('th-TH'));
+        set('arr-stat-pieces', pieces.toLocaleString('th-TH'));
+        set('arr-stat-pieces-sub', `ชิ้น · ${pieceRows} รายการ`);
+
+        const parts = [];
+        if (target) parts.push(`สแกนใหม่ ${fresh.toLocaleString('th-TH')} เครื่อง`);
+        if (document.querySelector('#arrival-po-items .po-arrival-row[data-track-imei="false"]')) parts.push(`อุปกรณ์เสริม ${pieces.toLocaleString('th-TH')} ชิ้น`);
+        set('arrival-sum-line', `แจ้งถึงสาขาในรอบนี้ · ${parts.join(' · ') || '-'}`);
+
+        const warn = document.getElementById('arrival-remaining-warn');
+        if (warn) {
+            warn.classList.toggle('hidden', remaining === 0 || scanned === 0);
+            warn.textContent = `ยังไม่ได้สแกนอีก ${remaining} เครื่อง — ยืนยันได้ ส่วนที่เหลือแจ้งรอบถัดไป`;
+        }
+    };
+
+    const arrShowLastScan = (row, val) => {
+        const box = document.getElementById('arrival-last-scan');
+        if (!box) return;
+        const detail = [row.dataset.productName, row.dataset.capacity, row.dataset.color].filter(Boolean).map(rcEsc).join(' · ');
+        box.innerHTML = `
+            <span class="w-2 h-2 rounded-full bg-primary"></span>
+            <span class="font-semibold text-accent-ink">สแกนล่าสุด</span>
+            <span class="font-mono font-semibold text-ink">${rcEsc(val)}</span>
+            <span class="text-body-muted">→ ${detail} (${arrRowCount(row)}/${row.dataset.orderedQty})</span>`;
+        box.classList.remove('hidden');
+    };
+
+    // ตรวจว่า IMEI มีในคลังแล้วหรือยัง — ใช้แคชร่วมของ script.js (duplicateImeisDb/checkedImeis)
+    // ยิงพร้อมกันทุกตัว ไม่รอทีละตัว (วาง 20 บรรทัด = 1 รอบ ไม่ใช่ 20 รอบ)
+    const arrCheckExisting = async (vals) => {
+        const exists = new Set(vals.filter(v => duplicateImeisDb.has(v)));
+        const toCheck = vals.filter(v => !exists.has(v) && !checkedImeis.has(v));
+        await Promise.all(toCheck.map(async (val) => {
+            try {
+                const res = await authFetch(`${API_BASE_URL}/products/check-existence?code=${encodeURIComponent(val)}`);
+                const data = await res.json();
+                if (data.success && data.exists) { duplicateImeisDb.add(val); exists.add(val); }
+                else if (data.success) checkedImeis.add(val);
+            } catch (err) {
+                console.error('Error checking code existence:', err); // เซิร์ฟเวอร์ตรวจซ้ำอีกชั้นตอนบันทึก
+            }
+        }));
+        return exists;
+    };
+
+    const arrHandleScan = async (scanInput) => {
+        const vals = [...new Set(scanInput.value.split(/[\s,]+/).map(x => x.trim().toUpperCase()).filter(Boolean))];
+        if (!vals.length) { scanInput.focus(); return; }
+        scanInput.value = '';
+
+        const rows = arrRows().filter(r => r.dataset.trackImei === 'true');
+        if (!rows.length) {
+            showToast('ใบสั่งซื้อนี้ไม่มีรายการที่ต้องบันทึก IMEI', 'warning');
+            return;
+        }
+        const inList = new Set(rows.flatMap(r => Array.from(r.querySelectorAll('.imei-tag-text')).map(t => t.textContent.trim())));
+        const fresh = vals.filter(v => {
+            if (inList.has(v)) { showToast(`IMEI ${v} อยู่ในรายการแล้ว`, 'warning'); return false; }
+            return true;
+        });
+        if (!fresh.length) return;
+
+        scanInput.disabled = true;
+        const exists = await arrCheckExisting(fresh);
+        scanInput.disabled = false;
+
+        for (const val of fresh) {
+            if (exists.has(val)) {
+                showToast(`⚠️ หมายเลข IMEI (${val}) มีอยู่ในคลังสินค้าแล้ว`, 'error');
+                continue;
+            }
+            const candidates = rows.filter(r => arrRowCount(r) < Number(r.dataset.orderedQty));
+            if (!candidates.length) {
+                showToast('สแกน IMEI ครบตามจำนวนสั่งซื้อทุกรายการแล้ว', 'warning');
+                break;
+            }
+            // เลือกแถวต้องรอพนักงานตอบ จึงต้องทำทีละตัวตามลำดับ
+            const target = candidates.length === 1 ? candidates[0] : await rcChooseRow(candidates, val);
+            if (!target) continue;
+            target.querySelector('.arr-imei-list').insertAdjacentHTML('beforeend', arrImeiLine(val, false));
+            target.querySelector('.arr-imei-list .imei-tag:last-child').dataset.new = 'true';
+            arrDirty = true;
+            arrRecalc(target);
+            arrShowLastScan(target, val);
+        }
+        scanInput.focus();
+    };
+
+    const arrTableCard = (title, sub, cols, bodyId) => `
+        <div class="bg-surface-tile-2 rounded-sm overflow-hidden">
+            <div class="flex flex-wrap items-baseline gap-x-2.5 gap-y-1 px-5 pt-4 pb-3">
+                <h4 class="text-base font-bold text-ink">${title}</h4>
+                <span class="text-[13px] text-body-muted">${sub}</span>
+            </div>
+            <div class="overflow-x-auto" tabindex="0">
+                <table class="w-full min-w-[720px] text-left border-collapse">
+                    <thead class="bg-surface-chip">
+                        <tr>${cols.map(([label, cls]) => `<th class="${ARR_TH} ${cls || ''}">${label}</th>`).join('')}</tr>
+                    </thead>
+                    <tbody id="${bodyId}" class="divide-y divide-hairline"></tbody>
+                </table>
+            </div>
+        </div>`;
+
+    const closeArrivalModal = (force = false) => {
+        const close = () => {
+            arrDirty = false;
+            const modal = document.getElementById('modal-po-arrival');
+            modal.classList.add('opacity-0', 'pointer-events-none');
+            setTimeout(() => modal.classList.add('hidden'), 300);
+        };
+        if (force || !arrDirty) { close(); return; }
+        showConfirm('ปิดหน้าต่างนี้?', 'IMEI ที่สแกนและจำนวนที่ระบุไว้ ซึ่งยังไม่ได้กดยืนยัน จะหายไป', close, 'ปิดหน้าต่าง');
+    };
+
     const openArrivalModal = (po) => {
-        // ตั้งค่าหัวข้อ PO Number ใน Modal
+        arrDirty = false;
         document.getElementById('arrival-po-number').textContent = po.po_number;
 
         const isEditMode = po.status === 'ของถึงสาขาแล้ว' || po.status === 'กำลังตรวจรับ';
         const titlePrefix = document.getElementById('arrival-title-prefix');
-        const modalIconContainer = document.getElementById('arrival-modal-icon-container');
         const modalIcon = document.getElementById('arrival-modal-icon');
         const bannerTitle = document.getElementById('arrival-banner-title');
         const bannerDesc = document.getElementById('arrival-banner-desc');
         const btnSubmit = document.getElementById('btn-submit-po-arrival');
+        const submitLabel = isEditMode ? 'บันทึกการแก้ไขข้อมูล' : 'ยืนยันรายการและแจ้งของถึงสาขา';
 
-        if (isEditMode) {
-            if (titlePrefix) titlePrefix.textContent = 'แก้ไขข้อมูลสินค้าถึงสาขาและ IMEI:';
-            if (modalIconContainer) {
-                modalIconContainer.className = "elev-chip w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center border-amber-500/20";
-            }
-            if (modalIcon) {
-                modalIcon.className = "fa-solid fa-pen-to-square text-amber-400";
-            }
-            if (bannerTitle) bannerTitle.textContent = 'โหมดแก้ไขข้อมูลการรับสินค้า';
-            if (bannerDesc) bannerDesc.textContent = 'คุณกำลังแก้ไขข้อมูลหมายเลข IMEI และรายการสินค้าที่ได้รับสำหรับใบสั่งซื้อนี้ กรุณาแก้ไขข้อมูลให้ถูกต้องก่อนบันทึก';
-            if (btnSubmit) {
-                btnSubmit.textContent = 'บันทึกการแก้ไขข้อมูล';
-                btnSubmit.className = "w-full py-4 bg-primary hover:bg-primary-pressed text-on-primary font-bold rounded-pill active:scale-[0.98] transition-all";
-            }
-        } else {
-            if (titlePrefix) titlePrefix.textContent = 'ยืนยันสินค้าถึงสาขาและบันทึก IMEI:';
-            if (modalIconContainer) {
-                modalIconContainer.className = "elev-chip w-10 h-10 rounded-xl bg-green-500/10 flex items-center justify-center border-green-500/20";
-            }
-            if (modalIcon) {
-                modalIcon.className = "fa-solid fa-truck-ramp-box text-green-400";
-            }
-            if (bannerTitle) bannerTitle.textContent = 'คำแนะนำสำหรับพนักงานขาย';
-            if (bannerDesc) bannerDesc.textContent = 'กรุณาตรวจสอบสินค้าที่จัดส่งมาถึงสาขา หากสินค้าประเภทใดต้องมีการบันทึก IMEI (เช่น โทรศัพท์มือถือ/แท็บเล็ต) กรุณาสแกนหรือระบุ IMEI ให้ครบตามจำนวนที่ส่งมาให้เรียบร้อยก่อนทำการบันทึก';
-            if (btnSubmit) {
-                btnSubmit.textContent = 'ยืนยันรายการและแจ้งของถึงสาขา';
-                btnSubmit.className = "w-full py-4 bg-primary hover:bg-primary-pressed text-on-primary font-bold rounded-pill active:scale-[0.98] transition-all";
-            }
+        if (titlePrefix) titlePrefix.textContent = isEditMode ? 'แก้ไขข้อมูลสินค้าถึงสาขาและ IMEI' : 'ยืนยันสินค้าถึงสาขาและบันทึก IMEI';
+        if (modalIcon) modalIcon.className = `fa-solid ${isEditMode ? 'fa-pen-to-square' : 'fa-truck-ramp-box'} text-accent-ink`;
+        if (bannerTitle) bannerTitle.textContent = isEditMode ? 'โหมดแก้ไขข้อมูลการรับสินค้า' : 'คำแนะนำสำหรับพนักงานขาย';
+        if (bannerDesc) bannerDesc.textContent = isEditMode
+            ? 'แก้ไข IMEI และจำนวนที่ได้รับของใบสั่งซื้อนี้ได้ ยกเว้นเครื่องที่นำเข้าสต็อกแล้ว (มีไอคอนกุญแจ)'
+            : 'ตรวจสินค้าที่ส่งมาถึงสาขา สแกน IMEI ให้ครบทุกเครื่อง และระบุจำนวนอุปกรณ์เสริมที่ได้รับในรอบนี้';
+        if (btnSubmit) { btnSubmit.disabled = false; btnSubmit.textContent = submitLabel; }
+
+        const meta = document.getElementById('arrival-po-meta');
+        if (meta) {
+            const branchName = po.branch_id && typeof po.branch_id === 'object' ? po.branch_id.name : '-';
+            const parts = [`ผู้จำหน่าย ${rcEsc(po.supplier_name || '-')}`, `ปลายทาง ${rcEsc(branchName || '-')}`];
+            if (po.createdAt) parts.push(`สั่งซื้อ ${rcEsc(rcDate(po.createdAt))}`);
+            meta.innerHTML = parts.join('<span class="mx-2 text-ink-muted-48">·</span>');
         }
 
-        // เคลียร์และสร้างรายการสินค้าใน Modal
+        const scanInput = document.getElementById('arrival-scan-input');
+        const lastScan = document.getElementById('arrival-last-scan');
+        if (scanInput) scanInput.value = '';
+        if (lastScan) { lastScan.classList.add('hidden'); lastScan.innerHTML = ''; }
+
         const container = document.getElementById('arrival-po-items');
         container.innerHTML = '';
 
-        po.items.forEach(item => {
-            const card = document.createElement('div');
-            card.className = 'elev-card bg-surface-tile-2 rounded-2xl p-4 space-y-3 po-arrival-row';
-            card.dataset.itemId = item._id;
-            card.dataset.trackImei = item.track_imei ? 'true' : 'false';
-            card.dataset.productName = item.product_name;
-            card.dataset.orderedQty = item.ordered_qty;
+        const items = po.items || [];
+        const imeiItems = items.filter(item => item.track_imei);
+        const qtyItems = items.filter(item => !item.track_imei);
 
-            if (item.track_imei) {
-                const scannedList = Array.isArray(item.imeis_scanned) ? item.imeis_scanned : [];
+        // ไม่มีเครื่องที่ต้องบันทึก IMEI -> ซ่อนช่องสแกนและการ์ดนับเครื่อง / ไม่มีอุปกรณ์เสริม -> ซ่อนการ์ดอุปกรณ์เสริม
+        document.getElementById('arrival-scan-card').classList.toggle('hidden', !imeiItems.length);
+        document.querySelectorAll('#modal-po-arrival [data-arr-dev]').forEach(el => el.classList.toggle('hidden', !imeiItems.length));
+        document.querySelectorAll('#modal-po-arrival [data-arr-acc]').forEach(el => el.classList.toggle('hidden', !qtyItems.length));
+        const models = document.getElementById('arr-stat-models');
+        if (models) models.textContent = `เครื่อง · ${imeiItems.length} รุ่น`;
+
+        const baseRow = (item) => {
+            const row = document.createElement('tr');
+            row.className = 'po-arrival-row transition-colors';
+            row.dataset.itemId = item._id;
+            row.dataset.trackImei = item.track_imei ? 'true' : 'false';
+            row.dataset.productName = item.product_name || '';
+            row.dataset.orderedQty = item.ordered_qty;
+            row.dataset.pendingQty = item.ordered_qty; // ให้ rcChooseRow แสดง "x / ยอดสั่ง"
+            row.dataset.color = item.color || '';
+            row.dataset.capacity = item.capacity || '';
+            return row;
+        };
+
+        // ---------- ตารางรายการเครื่อง (บันทึก IMEI) ----------
+        if (imeiItems.length) {
+            container.insertAdjacentHTML('beforeend', arrTableCard('รายการเครื่อง',
+                `${imeiItems.length} รุ่น · สแกน IMEI ทีละเครื่อง`,
+                [['สี', 'w-14'], ['ชื่อสินค้า'], ['ความจุ'], ['IMEI ที่สแกน'], ['สแกนแล้ว / สั่ง']],
+                'arr-imei-body'));
+            const tbody = container.querySelector('#arr-imei-body');
+
+            imeiItems.forEach(item => {
+                const row = baseRow(item);
                 const importedList = Array.isArray(item.imported_imeis) ? item.imported_imeis : [];
+                const scannedList = (Array.isArray(item.imeis_scanned) ? item.imeis_scanned : []).filter(Boolean);
+                // IMEI ที่นำเข้าแล้วอาจไม่อยู่ใน imeis_scanned (ข้อมูลเก่า) — รวมไว้หน้าสุดเสมอ ไม่งั้นส่งไปแล้วจะถูกมองว่าลบทิ้ง
+                const lockedList = importedList.filter(Boolean);
+                const editableList = scannedList.filter(v => !lockedList.includes(v));
 
-                card.innerHTML = `
-                    <div class="flex justify-between items-center border-b border-hairline pb-2">
-                        <span class="font-bold text-ink text-base flex items-center gap-2">
-                            <i class="fa-solid fa-mobile-screen text-ink"></i> ${item.product_name}
-                        </span>
-                        <span id="badge-count-${item._id}" class="elev-chip text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border-amber-500/20">
-                            สแกนแล้ว 0 / ${item.ordered_qty} เครื่อง
-                        </span>
-                    </div>
-                    <div class="space-y-2.5">
-                        <div class="flex justify-between items-center text-xs">
-                            <label class="font-medium text-body-muted flex items-center gap-1">
-                                <i class="fa-solid fa-barcode text-green-400"></i> ระบุหมายเลข IMEI สำหรับแต่ละเครื่อง (แสดงลำดับเลขด้านหน้า)
-                            </label>
-                            ${importedList.length > 0 ? `<span class="text-body-muted font-bold text-emerald-400">(นำเข้าสต็อกแล้ว ${importedList.length} เครื่อง)</span>` : ''}
-                        </div>
-                        <div class="grid grid-cols-1 gap-2 max-h-[220px] overflow-y-auto pr-1">
-                            ${Array.from({ length: item.ordered_qty }).map((_, idx) => {
-                    const savedImei = scannedList[idx] || '';
-                    const isImported = importedList.includes(savedImei) && savedImei !== '';
-                    return `
-                                    <div class="elev-card flex items-center gap-3 bg-surface-tile-3 px-3 py-2.5 rounded-xl focus-within:ring-2 focus-within:ring-primary/50 transition-all ${isImported ? 'opacity-60 bg-surface-tile-3' : ''}">
-                                        <span class="text-xs font-bold text-body-muted font-mono w-5 text-right">${idx + 1}.</span>
-                                        <input type="text" 
-                                               data-index="${idx}"
-                                               value="${savedImei}"
-                                               ${isImported ? 'readonly disabled' : ''}
-                                               placeholder="${isImported ? 'นำเข้าสต็อกแล้ว' : `สแกนหรือพิมพ์หมายเลข IMEI เครื่องที่ ${idx + 1}`}"
-                                               class="imei-indiv-input w-full bg-transparent ${isImported ? 'text-body-muted cursor-not-allowed font-mono text-sm uppercase focus:outline-none' : 'text-ink focus:outline-none placeholder-ink-muted-48 font-mono text-sm uppercase'}">
-                                    </div>
-                                `;
-                }).join('')}
-                        </div>
-                        <textarea id="textarea-imei-${item._id}" class="hidden"></textarea>
-                    </div>
-                `;
+                row.innerHTML = `
+                    <td class="${ARR_TD}">${rcColorDot(item.color)}</td>
+                    <td class="${ARR_TD}">
+                        <p class="font-semibold">${rcEsc(item.product_name)}</p>
+                        ${item.color ? `<p class="text-xs text-body-muted mt-0.5">${rcEsc(item.color)}</p>` : ''}
+                    </td>
+                    <td class="${ARR_TD} font-medium">${rcEsc(item.capacity || '-')}</td>
+                    <td class="${ARR_TD}">
+                        <div class="arr-imei-list space-y-0.5">${lockedList.map(v => arrImeiLine(v, true)).join('')}${editableList.map(v => arrImeiLine(v, false)).join('')}</div>
+                        <span class="arr-imei-pending inline-block mt-1.5 px-2.5 py-0.5 rounded-xs border border-dashed border-ink-muted-48 text-xs font-medium text-body-muted"></span>
+                        ${lockedList.length ? `<p class="text-xs text-body-muted mt-1.5"><i class="fa-solid fa-lock text-[10px] mr-1"></i>นำเข้าสต็อกแล้ว ${lockedList.length} เครื่อง</p>` : ''}
+                    </td>
+                    <td class="${ARR_TD}">
+                        <p><span class="arr-count font-bold text-[15px]"></span>
+                            <span class="text-xs text-body-muted">/ ${Number(item.ordered_qty)} เครื่อง</span></p>
+                        <div class="mt-1.5 h-1 w-24 rounded-full bg-surface-chip overflow-hidden"><div class="arr-bar h-full rounded-full" style="width:0%"></div></div>
+                    </td>`;
+                tbody.appendChild(row);
 
-                const textarea = card.querySelector(`textarea`);
-                const badge = card.querySelector(`#badge-count-${item._id}`);
-                const inputs = card.querySelectorAll(`.imei-indiv-input`);
-
-                const syncInputsToTextarea = () => {
-                    const vals = Array.from(inputs).map(inp => inp.value.trim().toUpperCase()).filter(Boolean);
-                    textarea.value = vals.join('\n');
-
-                    // Update badge count
-                    const count = vals.length;
-                    if (badge) {
-                        badge.textContent = `สแกนแล้ว ${count} / ${item.ordered_qty} เครื่อง`;
-                        if (count === item.ordered_qty) {
-                            badge.className = 'elev-chip text-xs font-semibold px-2 py-0.5 rounded-full bg-green-500/10 text-green-400 border-green-500/20';
-                        } else {
-                            badge.className = 'elev-chip text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border-amber-500/20';
-                        }
-                    }
-                };
-
-                const validateAllRowInputs = () => {
-                    let seen = new Set();
-                    inputs.forEach((input) => {
-                        const val = input.value.trim().toUpperCase();
-                        if (!val) return;
-
-                        // Check internal duplicate
-                        if (seen.has(val)) {
-                            showToast(`หมายเลข IMEI ซ้ำ: ${val}`, 'warning');
-                            input.value = '';
-                            return;
-                        }
-                        seen.add(val);
-
-                        // Check DB cache
-                        if (duplicateImeisDb.has(val)) {
-                            showToast(`⚠️ หมายเลข IMEI (${val}) มีอยู่ในคลังสินค้าแล้ว`, 'error');
-                            input.value = '';
-                            return;
-                        }
-
-                        // Check DB
-                        if (val.length >= 5 && !checkedImeis.has(val) && !pendingChecks.has(val)) {
-                            pendingChecks.add(val);
-                            authFetch(`${API_BASE_URL}/products/check-existence?code=${encodeURIComponent(val)}`)
-                                .then(res => res.json())
-                                .then(data => {
-                                    pendingChecks.delete(val);
-                                    if (data.success && data.exists) {
-                                        duplicateImeisDb.add(val);
-                                        showToast(`⚠️ หมายเลข IMEI (${val}) มีอยู่ในคลังสินค้าแล้ว`, 'error');
-                                        input.value = '';
-                                        syncInputsToTextarea();
-                                    } else if (data.success) {
-                                        checkedImeis.add(val);
-                                    }
-                                })
-                                .catch(err => {
-                                    console.error(err);
-                                    pendingChecks.delete(val);
-                                });
-                        }
-                    });
-
-                    syncInputsToTextarea();
-                };
-
-                inputs.forEach((input, idx) => {
-                    // keydown for Enter to jump focus
-                    input.addEventListener('keydown', (e) => {
-                        if (e.key === 'Enter') {
-                            e.preventDefault();
-                            let nextInp = inputs[idx + 1];
-                            while (nextInp && (nextInp.disabled || nextInp.readOnly)) {
-                                nextInp = inputs[nextInp.dataset.index + 1];
-                            }
-                            if (nextInp) {
-                                nextInp.focus();
-                            } else {
-                                input.blur(); // Remove cursor focus on last item to save/commit immediately
-                            }
-                        }
-                    });
-
-                    // paste listener to distribute lines across inputs
-                    input.addEventListener('paste', (e) => {
-                        e.preventDefault();
-                        const text = (e.clipboardData || window.clipboardData).getData('text');
-                        const pastedLines = text.split('\n').map(x => x.trim().toUpperCase()).filter(Boolean);
-
-                        let pastedCount = 0;
-                        for (let i = 0; i < inputs.length; i++) {
-                            const targetIdx = idx + i;
-                            const targetInput = inputs[targetIdx];
-                            if (targetInput && !targetInput.disabled && !targetInput.readOnly) {
-                                if (pastedLines[pastedCount]) {
-                                    targetInput.value = pastedLines[pastedCount];
-                                    pastedCount++;
-                                }
-                            }
-                        }
-
-                        validateAllRowInputs();
-                    });
-
-                    // change listener for individual validation
-                    input.addEventListener('change', () => {
-                        const val = input.value.trim().toUpperCase();
-                        if (!val) {
-                            syncInputsToTextarea();
-                            return;
-                        }
-
-                        // 1. Check internal duplicates
-                        const isDuplicate = Array.from(inputs).some((inp, i) => i !== idx && inp.value.trim().toUpperCase() === val);
-                        if (isDuplicate) {
-                            showToast(`หมายเลข IMEI ซ้ำ: ${val}`, 'warning');
-                            input.value = '';
-                            input.focus();
-                            syncInputsToTextarea();
-                            return;
-                        }
-
-                        // 2. Check DB cached duplicates
-                        if (duplicateImeisDb.has(val)) {
-                            showToast(`⚠️ หมายเลข IMEI (${val}) มีอยู่ในคลังสินค้าแล้ว`, 'error');
-                            input.value = '';
-                            input.focus();
-                            syncInputsToTextarea();
-                            return;
-                        }
-
-                        // 3. Check DB existence
-                        if (val.length >= 5 && !checkedImeis.has(val) && !pendingChecks.has(val)) {
-                            pendingChecks.add(val);
-                            authFetch(`${API_BASE_URL}/products/check-existence?code=${encodeURIComponent(val)}`)
-                                .then(res => res.json())
-                                .then(data => {
-                                    pendingChecks.delete(val);
-                                    if (data.success && data.exists) {
-                                        duplicateImeisDb.add(val);
-                                        showToast(`⚠️ หมายเลข IMEI (${val}) มีอยู่ในคลังสินค้าแล้ว`, 'error');
-                                        input.value = '';
-                                        input.focus();
-                                        syncInputsToTextarea();
-                                    } else if (data.success) {
-                                        checkedImeis.add(val);
-                                    }
-                                })
-                                .catch(err => {
-                                    console.error(err);
-                                    pendingChecks.delete(val);
-                                });
-                        }
-
-                        syncInputsToTextarea();
-                    });
-
-                    input.addEventListener('blur', () => {
-                        syncInputsToTextarea();
-                    });
+                row.querySelector('.arr-imei-list').addEventListener('click', (e) => {
+                    const btn = e.target.closest('.btn-remove-imei');
+                    if (!btn) return;
+                    btn.closest('.imei-tag').remove();
+                    arrDirty = true;
+                    arrRecalc(row);
                 });
+            });
+        }
 
-                // Sync initial value
-                syncInputsToTextarea();
-            } else {
+        // ---------- ตารางรายการอุปกรณ์เสริม (นับจำนวน) ----------
+        if (qtyItems.length) {
+            container.insertAdjacentHTML('beforeend', arrTableCard('รายการอุปกรณ์เสริม',
+                'นับจำนวน ไม่ต้องสแกน IMEI',
+                [['รหัสสินค้า'], ['ชื่อสินค้า'], ['รับแล้ว / สั่ง'], ['ส่งมาเพิ่มรอบนี้']],
+                'arr-qty-body'));
+            const tbody = container.querySelector('#arr-qty-body');
+
+            qtyItems.forEach(item => {
+                const row = baseRow(item);
                 const importedQty = item.imported_qty || 0;
                 const remainingQty = item.ordered_qty - importedQty;
+                const unit = rcEsc(item.unit || 'ชิ้น');
 
-                card.innerHTML = `
-                    <div class="flex justify-between items-center border-b border-hairline pb-2.5">
-                        <span class="font-bold text-ink text-base flex items-center gap-2">
-                            <i class="fa-solid fa-plug text-ink"></i> ${item.product_name}
-                        </span>
-                        <div class="text-xs space-x-2">
-                            <span class="font-semibold px-2 py-0.5 rounded-full bg-surface-chip text-body-muted">
-                                สั่งซื้อ: ${item.ordered_qty} ชิ้น
-                            </span>
-                            <span class="elev-chip font-semibold px-2 py-0.5 rounded-full bg-green-500/10 text-green-400 border-green-500/20">
-                                นำเข้าแล้ว: ${importedQty} / ${item.ordered_qty} ชิ้น
-                            </span>
-                        </div>
-                    </div>
-                    <div class="flex justify-between items-center pt-1">
-                        <span class="text-xs text-body-muted">
-                            อุปกรณ์ทั่วไป (ไม่มี IMEI) ค้างส่ง: <strong class="text-amber-400 font-mono text-sm">${remainingQty}</strong> ชิ้น
-                        </span>
+                row.innerHTML = `
+                    <td class="${ARR_TD}"><span class="font-mono font-semibold text-[13px] text-accent-ink">${rcEsc(item.product_code || '-')}</span></td>
+                    <td class="${ARR_TD} font-medium">${rcEsc(item.product_name)}</td>
+                    <td class="${ARR_TD}"><span class="font-bold">${importedQty}</span> <span class="text-xs text-body-muted">/ ${item.ordered_qty} ${unit}</span></td>
+                    <td class="${ARR_TD}">
                         ${remainingQty > 0 ? `
-                            <div class="flex items-center gap-2">
-                                <label class="text-xs text-body-muted font-medium">ส่งมาเพิ่มรอบนี้:</label>
-                                <input type="number" 
-                                       min="0" 
-                                       max="${remainingQty}"
-                                       step="1"
-                                       value="0"
-                                       required
-                                       aria-label="จำนวนที่ส่งมาเพิ่มรอบนี้ ${item.product_name}"
-                                       onfocus="this.select()"
-                                       class="elev-chip po-arrival-accessory-qty w-24 bg-surface-chip text-ink focus:ring-2 focus:ring-primary-focus font-mono text-sm font-bold text-center py-2 rounded-xl focus:outline-none focus:ring-1 focus:ring-primary-focus/30 transition-colors">
+                        <div class="flex items-center gap-2">
+                            <div class="inline-flex items-center rounded-sm bg-surface-chip">
+                                <button type="button" class="arr-qty-minus w-8 h-8 text-accent-ink font-bold disabled:text-ink-muted-48 disabled:cursor-not-allowed cursor-pointer"
+                                    aria-label="ลดจำนวน ${rcEsc(item.product_name)}"><i class="fa-solid fa-minus text-xs"></i></button>
+                                <input type="number" min="0" max="${remainingQty}" step="1" value="0" inputmode="numeric" onfocus="this.select()"
+                                    class="po-arrival-accessory-qty w-12 h-8 bg-transparent text-center text-ink text-[13px] font-semibold focus:outline-none focus:ring-2 focus:ring-accent-ink rounded-xs [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                                    aria-label="จำนวนที่ส่งมาเพิ่มรอบนี้ ${rcEsc(item.product_name)}">
+                                <button type="button" class="arr-qty-plus w-8 h-8 text-accent-ink font-bold disabled:text-ink-muted-48 disabled:cursor-not-allowed cursor-pointer"
+                                    aria-label="เพิ่มจำนวน ${rcEsc(item.product_name)}"><i class="fa-solid fa-plus text-xs"></i></button>
                             </div>
-                        ` : `
-                            <span class="text-xs text-emerald-400 font-bold flex items-center gap-1">
-                                <i class="fa-solid fa-circle-check"></i> ได้รับครบแล้ว
-                            </span>
-                        `}
-                    </div>
-                `;
-            }
-            container.appendChild(card);
-        });
+                            <span class="text-xs text-body-muted">ค้างส่ง ${remainingQty} ${unit}</span>
+                        </div>` : `
+                        <span class="inline-flex items-center gap-1.5 text-xs font-semibold text-state-ok">
+                            <i class="fa-solid fa-circle-check"></i> ได้รับครบแล้ว</span>`}
+                    </td>`;
+                tbody.appendChild(row);
+
+                const qtyInput = row.querySelector('.po-arrival-accessory-qty');
+                if (!qtyInput) return;
+                const setQty = (n) => {
+                    const q = Math.max(0, Math.min(remainingQty, Math.floor(Number(n) || 0)));
+                    if (q !== Number(qtyInput.value)) arrDirty = true;
+                    qtyInput.value = q;
+                    arrRecalc(row);
+                };
+                row.querySelector('.arr-qty-minus').addEventListener('click', () => setQty(Number(qtyInput.value) - 1));
+                row.querySelector('.arr-qty-plus').addEventListener('click', () => setQty(Number(qtyInput.value) + 1));
+                qtyInput.addEventListener('change', () => { arrDirty = true; setQty(qtyInput.value); });
+            });
+        }
+
+        arrRows().forEach(arrRecalc);
+        arrUpdateSummary();
 
         // เปิดใช้งาน Modal
         const modal = document.getElementById('modal-po-arrival');
         modal.classList.remove('hidden');
         void modal.offsetWidth; // Force reflow
         modal.classList.remove('opacity-0', 'pointer-events-none');
+        if (scanInput && imeiItems.length) setTimeout(() => scanInput.focus(), 50);
 
         // ตั้งค่าปุ่มตกลงแจ้งของถึงร้าน
         btnSubmit.onclick = async () => {
@@ -3855,8 +4374,7 @@
                 const importedQty = dbItem ? (dbItem.imported_qty || 0) : 0;
 
                 if (trackImei) {
-                    const textarea = row.querySelector('textarea');
-                    const imeis = textarea.value.split('\n').map(x => x.trim().toUpperCase()).filter(Boolean);
+                    const imeis = Array.from(row.querySelectorAll('.imei-tag-text')).map(t => t.textContent.trim().toUpperCase()).filter(Boolean);
 
                     if (imeis.length > orderedQty) {
                         showToast(`จำนวน IMEI สำหรับ ${productName} เกินจำนวนสั่งซื้อ (${orderedQty})`, 'error');
@@ -4015,7 +4533,7 @@
                         const json = await res.json();
                         if (json.success) {
                             showToast(isEditMode ? 'แก้ไขข้อมูลการรับสินค้าสำเร็จเรียบร้อยแล้ว!' : 'แจ้งสถานะสินค้าถึงสาขาและบันทึก IMEI สำเร็จเรียบร้อยแล้ว!', 'success');
-                            document.getElementById('btn-close-po-arrival').click();
+                            closeArrivalModal(true);
                             if (typeof loadArrivalPOs === 'function') loadArrivalPOs();
                             if (typeof loadPOs === 'function') loadPOs();
                         } else {
@@ -4036,267 +4554,621 @@
         };
     };
 
-    const openReceiveModal = (po) => {
-        const modal = document.getElementById('modal-po-receive');
-        document.getElementById('receive-po-number').textContent = po.po_number;
-        const container = document.getElementById('receive-po-items');
-        container.innerHTML = '';
+    // ==========================================
+    // หน้า "รับสินค้าตาม PO" (เดสก์ท็อป) — เลย์เอาต์ตามแบบ Figma "Desktop - 49"
+    //   เป็นหน้าย่อยของ #view-branch-receive: ปุ่ม "เริ่มตรวจรับ/ตรวจรับต่อ" ซ่อนรายการ PO แล้วแสดงหน้านี้
+    //   (สิทธิ์ receive_po ชุดเดิม ไม่ต้องมี view/route ใหม่)
+    //   - ช่องสแกนช่องเดียว: IMEI ที่ยิงเข้ามาถูกจัดเข้าแถวเครื่องให้อัตโนมัติ
+    //     ถ้ามีหลายรุ่นที่ยังรับไม่ครบ ต้องให้พนักงานเลือกเอง — เดาผิด = IMEI ไปผูกกับรุ่น/สีผิด สต็อกเพี้ยน
+    //   - ตาราง "รายการเครื่อง" (track_imei) / "รายการอุปกรณ์เสริม" (นับจำนวน ปรับด้วยปุ่ม −/+)
+    //   - ราคาขายต่อชิ้นแก้ได้ด้วยปุ่ม "แก้ไข"
+    //   - กดยืนยันครั้งเดียวส่ง POST /po/:id/scan-item (สถานะ -> กำลังตรวจรับ รอผู้จัดการอนุมัตินำเข้าคลัง)
+    //     รับไม่ครบได้ — ส่วนที่ยังไม่รับค้างไว้รับรอบถัดไป (ค้างรับ = ยอดสั่ง − ที่นำเข้าคลังแล้ว)
+    // ==========================================
+    const rcBaht = (n) => '฿' + Number(n || 0).toLocaleString('th-TH', { maximumFractionDigits: 2 });
 
-        window.__currentReceivePO = po._id;
+    // เซลล์ตามสูตร DESIGN.md ข้อ 11.6 — px-6 py-4 ค่าเดียวทั้งตาราง
+    const RC_TH = 'px-6 py-4 text-[15px] font-semibold text-ink whitespace-nowrap';
+    const RC_TD = 'px-6 py-4 align-top text-sm text-ink';
 
-        po.items.forEach(item => {
-            const importedQty = item.imported_qty || 0;
-            const pendingQty = item.ordered_qty - importedQty;
-            if (pendingQty <= 0) return; // Full received already
+    let rcCurrentPO = null;
+    let rcDirty = false; // มีการสแกน/แก้ไขที่ยังไม่ได้กดยืนยัน — ถามก่อนออกจากหน้า
 
-            const el = document.createElement('div');
-            el.className = 'elev-chip p-5 rounded-xl po-receive-row';
-            el.dataset.itemId = item._id;
-            el.dataset.trackImei = item.track_imei;
-            el.dataset.importedImeis = JSON.stringify(item.imported_imeis || []);
-            el.dataset.importedQty = importedQty;
+    // จำนวนชิ้นของแถว: เครื่อง = จำนวน IMEI ที่อยู่ในรายการ / อุปกรณ์เสริม = ยอดที่ตั้งไว้ (data-qty)
+    const rcRowCount = (row) => row.dataset.trackImei === 'true'
+        ? row.querySelectorAll('.imei-tag').length
+        : Number(row.dataset.qty || 0);
 
-            let inputHtml = '';
-            if (item.track_imei) {
-                inputHtml = `
-                    <div class="mt-4 space-y-3">
-                        <div class="flex items-center justify-between">
-                            <label class="text-xs font-bold text-body-muted block flex items-center gap-1.5">
-                                <i class="fa-solid fa-barcode text-ink text-sm"></i>
-                                สแกนหรือพิมพ์ IMEI (ยิงบาร์โค้ดแล้วกด Enter)
-                            </label>
-                            <span class="text-xs bg-surface-chip text-body-muted px-2.5 py-1 rounded-full font-bold">
-                                สแกนแล้ว <span class="scanned-count font-mono text-ink font-black">0</span> / <span class="pending-count font-mono">${pendingQty}</span> เครื่อง
-                            </span>
-                        </div>
-                        <input type="text" 
-                            class="elev-chip scan-imei-input w-full bg-surface-chip focus:ring-2 focus:ring-primary-focus text-lg rounded-xl px-4 py-3.5 text-ink focus:outline-none focus:ring-2 focus:ring-primary-focus/20 transition-all font-mono placeholder-ink-muted-48"
-                            placeholder="ยิงบาร์โค้ด หรือพิมพ์ IMEI ที่นี่..." 
-                            autocomplete="off">
-                        
-                        <div class="elev-chip scanned-imeis-container flex flex-wrap gap-2 min-h-[50px] p-3 rounded-xl">
-                            <div class="no-imeis-placeholder text-xs text-body-muted flex items-center justify-center w-full py-2">
-                                <i class="fa-solid fa-info-circle mr-1"></i> ยังไม่มีการสแกน IMEI
-                            </div>
-                        </div>
-                    </div>
-                `;
-            } else {
-                const defaultQty = Math.max(0, (item.received_qty || 0) - importedQty);
-                inputHtml = `
-                    <div class="mt-4 max-w-[200px]">
-                        <label class="text-xs font-bold text-body-muted mb-1.5 block">จำนวนที่รับเข้า (รอรับ ${pendingQty} ชิ้น)</label>
-                        <input type="number" class="elev-chip receive-qty w-full px-3 py-2.5 text-sm bg-surface-chip text-ink rounded-lg focus:ring-2 focus:ring-primary-focus focus:ring-1 focus:ring-primary-focus focus:outline-none font-bold text-center" min="0" max="${pendingQty}" value="${defaultQty}">
-                    </div>
-                `;
+    const rcRecalc = (row) => {
+        const count = rcRowCount(row);
+        const pending = Number(row.dataset.pendingQty || 0);
+        const totalEl = row.querySelector('.rc-total');
+        if (totalEl) totalEl.textContent = rcBaht(count * Number(row.dataset.price || 0));
+
+        if (row.dataset.trackImei === 'true') {
+            const num = row.querySelector('.rc-count');
+            if (num) {
+                num.textContent = count;
+                num.classList.toggle('text-accent-ink', count < pending);
+                num.classList.toggle('text-ink', count >= pending);
             }
-
-            el.innerHTML = `
-                <div class="flex justify-between items-start gap-4">
-                    <div>
-                        <h5 class=" font-bold text-base flex items-center gap-2">
-                            <span>${item.product_name}</span>
-                            <span class="text-xs text-body-muted font-mono font-normal">(${item.product_code})</span>
-                        </h5>
-                        <p class="text-xs text-body-muted mt-1">สั่ง: <span class="text-ink font-bold">${item.ordered_qty}</span> | นำเข้าคลังแล้ว: <span class="text-emerald-400 font-bold">${importedQty}</span> | <span class="text-amber-400 font-bold">ค้างรับ: ${pendingQty}</span></p>
-                    </div>
-                    ${item.track_imei ?
-                    `<span class="elev-chip text-xs font-semibold px-2.5 py-1 bg-surface-chip text-ink rounded-lg flex items-center gap-1"><i class="fa-solid fa-barcode text-xs"></i> เก็บ IMEI</span>` :
-                    `<span class="elev-chip text-xs font-semibold px-2.5 py-1 bg-surface-chip text-ink rounded-lg flex items-center gap-1"><i class="fa-solid fa-calculator text-xs"></i> นับจำนวน</span>`
-                }
-                </div>
-                ${inputHtml}
-            `;
-            container.appendChild(el);
-
-            if (item.track_imei) {
-                const input = el.querySelector('.scan-imei-input');
-                const tagsContainer = el.querySelector('.scanned-imeis-container');
-                const scannedCountEl = el.querySelector('.scanned-count');
-                const placeholder = el.querySelector('.no-imeis-placeholder');
-
-                const updateScannedCount = () => {
-                    const tags = tagsContainer.querySelectorAll('.imei-tag');
-                    scannedCountEl.textContent = tags.length;
-                    if (tags.length === 0) {
-                        if (placeholder) placeholder.style.display = 'flex';
-                    } else {
-                        if (placeholder) placeholder.style.display = 'none';
-                    }
-                };
-
-                const importedImeis = Array.isArray(item.imported_imeis) ? item.imported_imeis : [];
-
-                const handleRemoveImei = (tagEl, imeiVal) => {
-                    showConfirm('ยืนยันการลบ IMEI', `คุณต้องการลบ IMEI: ${imeiVal} ใช่หรือไม่?`, async () => {
-                        tagEl.remove();
-                        updateScannedCount();
-
-                        // Get all remaining IMEIs in the UI container for this row and merge with imported ones to save cumulative set
-                        const uiImeis = Array.from(tagsContainer.querySelectorAll('.imei-tag-text')).map(t => t.textContent.trim());
-                        const remainingImeis = [...importedImeis, ...uiImeis];
-
-                        try {
-                            const received_items = {};
-                            received_items[item._id] = { imeis: remainingImeis };
-
-                            const res = await authFetch(`${API_BASE_URL}/po/${window.__currentReceivePO}/scan-item`, {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ received_items })
-                            });
-                            const json = await res.json();
-                            if (json.success) {
-                                showToast(`ลบ IMEI ${imeiVal} สำเร็จ`, 'success');
-                                if (typeof loadPOs === 'function') loadPOs();
-                            } else {
-                                showToast(json.message || 'ไม่สามารถลบ IMEI ในฐานข้อมูลได้', 'error');
-                            }
-                        } catch (err) {
-                            console.error('Error auto-saving IMEI deletion:', err);
-                            showToast('เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์เพื่อบันทึกการลบ IMEI', 'error');
-                        }
-                    }, 'ยืนยันการลบ');
-                };
-
-                // ถ้ามี IMEI ที่สแกนไว้จากหน้าร้าน ให้แสดงขึ้นมาเฉพาะ IMEI ใหม่ที่ยังไม่ได้นำเข้าสต็อก
-                const newImeis = (Array.isArray(item.imeis_scanned) ? item.imeis_scanned : []).filter(val => !importedImeis.includes(val));
-                if (newImeis.length > 0) {
-                    newImeis.forEach(val => {
-                        const tag = document.createElement('div');
-                        tag.className = 'elev-chip imei-tag inline-flex items-center gap-1.5 bg-surface-chip text-ink px-3 py-1.5 rounded-lg text-sm transition-all hover:bg-surface-tile-2 animate-fade-in font-mono';
-                        tag.innerHTML = `
-                            <span class="imei-tag-text font-bold tracking-wide">${val}</span>
-                            <button type="button" class="btn-remove-imei text-accent-ink hover:text-red-400 font-bold ml-0.5 focus:outline-none transition-colors text-base leading-none">&times;</button>
-                        `;
-
-                        tag.querySelector('.btn-remove-imei').addEventListener('click', () => {
-                            handleRemoveImei(tag, val);
-                        });
-
-                        tagsContainer.appendChild(tag);
-                    });
-                    updateScannedCount();
-                }
-
-                input.addEventListener('keydown', async (e) => {
-                    if (e.key === 'Enter') {
-                        e.preventDefault();
-                        const val = input.value.trim();
-                        if (!val) return;
-
-                        // Check duplicate in current scanned list
-                        const existingTags = Array.from(tagsContainer.querySelectorAll('.imei-tag-text')).map(t => t.textContent.trim());
-                        if (existingTags.includes(val)) {
-                            showToast('IMEI นี้ถูกสแกนในรายการนี้แล้ว', 'warning');
-                            input.value = '';
-                            return;
-                        }
-
-                        // Check limit
-                        if (existingTags.length >= pendingQty) {
-                            showToast(`สแกนครบตามจำนวนค้างรับ (${pendingQty} เครื่อง) แล้ว`, 'warning');
-                            input.value = '';
-                            return;
-                        }
-
-                        // Check global database existence
-                        try {
-                            input.disabled = true;
-                            const res = await authFetch(`${API_BASE_URL}/products/check-existence?code=${encodeURIComponent(val)}`);
-                            const data = await res.json();
-                            input.disabled = false;
-                            input.focus();
-
-                            if (data.success && data.exists) {
-                                showToast(`⚠️ รหัสสินค้า/IMEI (${val}) มีอยู่ในระบบแล้ว ไม่สามารถนำเข้าซ้ำได้`, 'error');
-                                input.value = '';
-                                return;
-                            }
-                        } catch (err) {
-                            console.error('Error checking code existence:', err);
-                            input.disabled = false;
-                            input.focus();
-                        }
-
-                        // Add tag
-                        const tag = document.createElement('div');
-                        tag.className = 'elev-chip imei-tag inline-flex items-center gap-1.5 bg-surface-chip text-ink px-3 py-1.5 rounded-lg text-sm transition-all hover:bg-surface-tile-2 animate-fade-in font-mono';
-                        tag.innerHTML = `
-                            <span class="imei-tag-text font-bold tracking-wide">${val}</span>
-                            <button type="button" class="btn-remove-imei text-accent-ink hover:text-red-400 font-bold ml-0.5 focus:outline-none transition-colors text-base leading-none">&times;</button>
-                        `;
-
-                        tag.querySelector('.btn-remove-imei').addEventListener('click', () => {
-                            handleRemoveImei(tag, val);
-                        });
-
-                        tagsContainer.appendChild(tag);
-                        input.value = '';
-                        updateScannedCount();
-                    }
-                });
+            const bar = row.querySelector('.rc-bar');
+            if (bar) {
+                bar.style.width = `${pending ? Math.min(100, Math.round(count / pending * 100)) : 0}%`;
+                bar.classList.toggle('bg-primary', count < pending);
+                bar.classList.toggle('bg-body-muted', count >= pending);
             }
-        });
-
-        if (container.children.length === 0) {
-            container.innerHTML = '<div class="text-center text-body-muted py-6">รับสินค้าครบทุกรายการแล้ว</div>';
-            document.getElementById('btn-submit-po-receive').style.display = 'none';
+            const slot = row.querySelector('.rc-imei-pending');
+            if (slot) {
+                slot.textContent = count === 0 ? `รอสแกน ${pending} เครื่อง` : `รอสแกนอีก ${pending - count} เครื่อง`;
+                slot.style.display = count >= pending ? 'none' : ''; // inline-block ชนะ .hidden ใน tailwind.css จึงสลับที่ style ตรงๆ
+            }
         } else {
-            document.getElementById('btn-submit-po-receive').style.display = 'block';
+            const input = row.querySelector('.rc-qty-input');
+            if (input && document.activeElement !== input) input.value = count;
+            const minus = row.querySelector('.rc-qty-minus');
+            const plus = row.querySelector('.rc-qty-plus');
+            if (minus) minus.disabled = count <= 0;
+            if (plus) plus.disabled = count >= pending;
+            row.classList.toggle('opacity-50', count === 0);
         }
-
-        modal.classList.remove('hidden');
-        void modal.offsetWidth;
-        modal.classList.remove('opacity-0', 'pointer-events-none');
+        rcUpdateSummary();
     };
 
-    if (document.getElementById('btn-close-po-receive')) {
-        document.getElementById('btn-close-po-receive').addEventListener('click', () => {
-            const modal = document.getElementById('modal-po-receive');
-            modal.classList.add('opacity-0', 'pointer-events-none');
-            setTimeout(() => modal.classList.add('hidden'), 300);
+    // การ์ดความคืบหน้า + แถบยืนยันด้านล่าง — คิดใหม่ทุกครั้งที่แถวเปลี่ยน
+    const rcUpdateSummary = () => {
+        let target = 0, scanned = 0, pieces = 0, pieceRows = 0, sum = 0;
+        document.querySelectorAll('#receive-po-items .po-receive-row').forEach(row => {
+            const count = rcRowCount(row);
+            if (row.dataset.trackImei === 'true') {
+                target += Number(row.dataset.pendingQty || 0);
+                scanned += count;
+            } else {
+                pieces += count;
+                if (count > 0) pieceRows++;
+            }
+            sum += count * Number(row.dataset.price || 0);
+        });
+        const remaining = Math.max(0, target - scanned);
+        const set = (id, text) => { const el = document.getElementById(id); if (el) el.textContent = text; };
+        set('rc-stat-scanned', scanned.toLocaleString('th-TH'));
+        set('rc-stat-scanned-of', `/ ${target.toLocaleString('th-TH')} เครื่อง`);
+        set('rc-grand-total', rcBaht(sum));
+        const bar = document.getElementById('rc-stat-bar');
+        if (bar) bar.style.width = `${target ? Math.min(100, Math.round(scanned / target * 100)) : 0}%`;
+
+        // ตัวนับท้ายหัวตารางแต่ละส่วน (ข้อ 11.5 — ข้อความสั้น ชิดขวา)
+        set('rc-sec-dev-count', remaining ? `รอสแกน ${remaining.toLocaleString('th-TH')} เครื่อง` : 'สแกนครบแล้ว');
+        set('rc-sec-acc-count', `รับรอบนี้ ${pieces.toLocaleString('th-TH')} ชิ้น · ${pieceRows} รายการ`);
+
+        const parts = [];
+        if (target) parts.push(`${scanned.toLocaleString('th-TH')} เครื่อง`);
+        if (document.querySelector('#receive-po-items .po-receive-row[data-track-imei="false"]')) parts.push(`${pieces.toLocaleString('th-TH')} ชิ้น`);
+        set('receive-sum-line', `รับในรอบนี้ ${parts.join(' · ')}`);
+
+        const warn = document.getElementById('receive-remaining-warn');
+        if (warn) {
+            warn.classList.toggle('hidden', remaining === 0 || scanned === 0);
+            warn.textContent = `ยังรอสแกน ${remaining} เครื่อง — ส่วนที่เหลือรับรอบถัดไปได้`;
+        }
+    };
+
+    // ราคาแสดงเป็นตัวเลขเฉยๆ + ปุ่มดินสอเงียบ (ไม่ใช่ปุ่มเหลืองทึบทุกแถว — หนึ่งไทล์ปุ่มทึบได้ปุ่มเดียว ข้อ 6)
+    const rcPriceCell = () => `
+        <div class="-my-1.5 inline-flex items-center justify-end gap-1">
+            <input type="text" inputmode="decimal" readonly aria-label="ราคาขายต่อชิ้น"
+                class="rc-price-input h-8 px-2 rounded-sm bg-field text-ink text-sm font-mono text-right focus:outline-none focus:ring-1 focus:ring-accent-ink read-only:bg-transparent read-only:cursor-default read-only:focus:ring-0">
+            <button type="button" aria-label="แก้ไขราคาขาย" title="แก้ไขราคาขาย"
+                class="rc-price-edit w-8 h-8 flex items-center justify-center rounded-full text-body-muted hover:text-accent-ink hover:bg-surface-chip transition-colors cursor-pointer"><i class="fa-solid fa-pen text-[11px]"></i></button>
+        </div>`;
+
+    // ปุ่ม "แก้ไข" สลับช่องราคาเป็นโหมดพิมพ์ (ปุ่มกลายเป็น "ตกลง") — Enter = ตกลง, Esc = ยกเลิก
+    const rcBindPriceEditor = (row) => {
+        const input = row.querySelector('.rc-price-input');
+        const btn = row.querySelector('.rc-price-edit');
+        if (!input || !btn) return;
+
+        const fit = () => { input.style.width = `${Math.max(72, input.value.length * 8 + 18)}px`; };
+        const show = () => {
+            input.readOnly = true;
+            input.value = rcBaht(row.dataset.price);
+            btn.innerHTML = '<i class="fa-solid fa-pen text-[11px]"></i>'; btn.setAttribute('aria-label', 'แก้ไขราคาขาย');
+            fit();
+            rcRecalc(row);
+        };
+        const commit = () => {
+            const raw = String(input.value).replace(/[฿,\s]/g, '');
+            const n = Number(raw);
+            if (raw === '' || !Number.isFinite(n) || n < 0) {
+                showToast(`ราคาขายของ ${row.dataset.productName} ต้องเป็นตัวเลขไม่ติดลบ`, 'error');
+                input.focus();
+                return false;
+            }
+            if (n !== Number(row.dataset.price)) rcDirty = true;
+            row.dataset.price = String(n);
+            show();
+            return true;
+        };
+        // ให้ปุ่มยืนยันด้านล่างสั่งปิดโหมดแก้ไขที่ค้างอยู่ก่อนส่งได้
+        row._rcCommitPrice = () => (input.readOnly ? true : commit());
+
+        btn.addEventListener('click', () => {
+            if (!input.readOnly) { commit(); return; }
+            input.readOnly = false;
+            input.value = row.dataset.price;
+            btn.innerHTML = '<i class="fa-solid fa-check text-xs"></i>'; btn.setAttribute('aria-label', 'บันทึกราคาขาย');
+            fit();
+            input.focus();
+            input.select();
+        });
+        input.addEventListener('keydown', (e) => {
+            if (input.readOnly) return;
+            if (e.key === 'Enter') { e.preventDefault(); commit(); }
+            else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); show(); }
+        });
+        input.addEventListener('input', fit);
+        show();
+    };
+
+    // ปุ่มลบโผล่ตอนชี้แถว IMEI (หรือตอนโฟกัสด้วยคีย์บอร์ด) — รายการยาวๆ จึงไม่มีถังขยะแดงเรียงเต็มคอลัมน์
+    const rcImeiLine = (val) => `
+        <div class="imei-tag group flex items-center gap-2 leading-[22px]">
+            <span class="imei-tag-text font-mono text-[13px]">${rcEsc(val)}</span>
+            <button type="button" class="btn-remove-imei w-6 h-6 -my-0.5 flex items-center justify-center rounded-full text-ink-muted-48 hover:text-state-danger-soft hover:bg-surface-chip opacity-0 group-hover:opacity-100 focus:opacity-100 transition-all cursor-pointer"
+                aria-label="ลบ IMEI ${rcEsc(val)}" title="ลบ IMEI">
+                <i class="fa-solid fa-xmark text-[11px]"></i>
+            </button>
+        </div>`;
+
+    const rcColorHex = (colorName) => typeof window.productColorHex === 'function' ? window.productColorHex(colorName) : '#8e8e93';
+    const rcColorDot = (colorName) => {
+        if (!colorName) return '<span class="text-body-muted">-</span>';
+        return `<span class="inline-block w-[22px] h-[22px] rounded-full border border-ink" style="background-color:${rcColorHex(colorName)};"
+            title="${rcEsc(colorName)}" aria-label="สี ${rcEsc(colorName)}" role="img"></span>`;
+    };
+    // จุดสี 16px หน้าชื่อสินค้า (DESIGN.md ข้อ 11.14) — วงแหวนบางกันสีดำกลืนพื้น
+    const rcDot16 = (colorName) => colorName
+        ? `<span class="w-4 h-4 rounded-full shrink-0 ring-1 ring-line" style="background-color:${rcColorHex(colorName)};" title="${rcEsc(colorName)}" aria-hidden="true"></span>`
+        : '';
+
+    // ลบ IMEI ออกจากแถว
+    //   - IMEI ที่เพิ่งสแกนในหน้านี้ (ยังไม่เคยส่ง) -> เอาออกจากรายการเฉยๆ
+    //   - IMEI ที่บันทึกไว้ในระบบแล้ว (data-saved-imeis) -> บันทึกการลบเข้าเซิร์ฟเวอร์ทันทีเหมือนเดิม
+    //     ส่งเฉพาะชุดที่บันทึกไว้แล้วลบตัวนี้ออก ไม่พ่วง IMEI ที่เพิ่งสแกนซึ่งพนักงานยังไม่ได้กดยืนยัน
+    const rcRemoveImei = (row, line) => {
+        const imeiVal = line.querySelector('.imei-tag-text').textContent.trim();
+        const saved = JSON.parse(row.dataset.savedImeis || '[]');
+        const isSaved = saved.includes(imeiVal);
+
+        showConfirm('ยืนยันการลบ IMEI', `คุณต้องการลบ IMEI: ${imeiVal} ใช่หรือไม่?`, async () => {
+            if (!isSaved) {
+                line.remove();
+                rcRecalc(row);
+                return;
+            }
+            const importedImeis = JSON.parse(row.dataset.importedImeis || '[]');
+            const nextSaved = saved.filter(v => v !== imeiVal);
+            try {
+                const received_items = { [row.dataset.itemId]: { imeis: [...importedImeis, ...nextSaved] } };
+                const res = await authFetch(`${API_BASE_URL}/po/${rcCurrentPO._id}/scan-item`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ received_items })
+                });
+                const json = await res.json();
+                if (json.success) {
+                    row.dataset.savedImeis = JSON.stringify(nextSaved);
+                    line.remove();
+                    rcRecalc(row);
+                    showToast(`ลบ IMEI ${imeiVal} สำเร็จ`, 'success');
+                } else {
+                    showToast(json.message || 'ไม่สามารถลบ IMEI ในฐานข้อมูลได้', 'error');
+                }
+            } catch (err) {
+                console.error('Error auto-saving IMEI deletion:', err);
+                showToast('เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์เพื่อบันทึกการลบ IMEI', 'error');
+            }
+        }, 'ยืนยันการลบ');
+    };
+
+    // หลายรุ่นยังรับ IMEI ไม่ครบ -> ให้พนักงานเลือกเองว่า IMEI นี้เป็นของแถวไหน
+    const rcChooseRow = (rows, imeiVal) => new Promise((resolve) => {
+        const overlay = document.createElement('div');
+        overlay.className = 'fixed inset-0 z-[60] flex items-center justify-center bg-canvas/70 backdrop-blur-sm p-6';
+        overlay.innerHTML = `
+            <div class="w-full max-w-md bg-canvas-elevated border border-hairline rounded-xl p-5"
+                role="dialog" aria-modal="true" aria-labelledby="rc-choose-title">
+                <h4 id="rc-choose-title" class="text-base font-bold text-ink">IMEI นี้เป็นของรายการไหน?</h4>
+                <p class="text-[13px] text-body-muted mt-1">IMEI : <span class="text-ink font-semibold font-mono">${rcEsc(imeiVal)}</span></p>
+                <div class="mt-4 space-y-2">
+                    ${rows.map((r, i) => `
+                        <button type="button" data-i="${i}"
+                            class="rc-choose-opt w-full flex items-center gap-3 px-4 py-3 rounded-sm bg-surface-chip hover:ring-1 hover:ring-accent-ink focus:outline-none focus:ring-2 focus:ring-primary-focus text-left text-[13px] font-semibold text-ink transition-all cursor-pointer">
+                            ${rcColorDot(r.dataset.color)}
+                            <span class="flex-1">${rcEsc(r.dataset.productName)}${r.dataset.capacity ? ` · ${rcEsc(r.dataset.capacity)}` : ''}${r.dataset.color ? ` · ${rcEsc(r.dataset.color)}` : ''}</span>
+                            <span class="text-body-muted font-normal">${rcRowCount(r)} / ${r.dataset.pendingQty} เครื่อง</span>
+                        </button>`).join('')}
+                </div>
+                <div class="mt-4 flex justify-end">
+                    <button type="button" class="rc-choose-cancel px-4 py-2 text-[13px] text-body-muted hover:text-ink transition-colors cursor-pointer">ยกเลิก</button>
+                </div>
+            </div>`;
+
+        const done = (row) => {
+            overlay.remove();
+            document.removeEventListener('keydown', onKey, true);
+            resolve(row);
+        };
+        const onKey = (e) => { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); done(null); } };
+        overlay.addEventListener('click', (e) => {
+            const opt = e.target.closest('.rc-choose-opt');
+            if (opt) done(rows[Number(opt.dataset.i)]);
+            else if (e.target.closest('.rc-choose-cancel') || e.target === overlay) done(null);
+        });
+        document.addEventListener('keydown', onKey, true);
+        document.body.appendChild(overlay);
+        const first = overlay.querySelector('.rc-choose-opt');
+        if (first) first.focus();
+    });
+
+    // บรรทัด "สแกนล่าสุด" ใต้ช่องสแกน — บอกว่า IMEI เพิ่งถูกจัดเข้ารุ่น/สีไหน
+    const rcShowLastScan = (row, val) => {
+        const box = document.getElementById('receive-last-scan');
+        if (!box) return;
+        const detail = [row.dataset.productName, row.dataset.capacity, row.dataset.color].filter(Boolean).map(rcEsc).join(' · ');
+        box.innerHTML = `
+            <i class="fa-solid fa-check text-[11px] text-accent-ink"></i>
+            <span class="font-mono text-ink">${rcEsc(val)}</span>
+            <span class="text-body-muted">→ ${detail}</span>
+            <span class="text-ink-muted-48">${rcRowCount(row)}/${row.dataset.pendingQty}</span>`;
+        box.classList.remove('hidden');
+        // ไฮไลต์แถวที่เพิ่งรับ IMEI ชั่วครู่ — ให้ตาตามไปเจอว่าเข้ารุ่นไหน
+        row.classList.add('bg-divider');
+        setTimeout(() => row.classList.remove('bg-divider'), 900);
+    };
+
+    const rcHandleScan = async (scanInput) => {
+        const val = scanInput.value.trim();
+        if (!val) { scanInput.focus(); return; }
+        scanInput.value = '';
+
+        const container = document.getElementById('receive-po-items');
+        const rows = Array.from(container.querySelectorAll('tr.po-receive-row[data-track-imei="true"]'));
+        if (rows.length === 0) {
+            showToast('ใบสั่งซื้อนี้ไม่มีรายการที่ต้องบันทึก IMEI', 'warning');
+            return;
+        }
+
+        const inList = rows.some(r => Array.from(r.querySelectorAll('.imei-tag-text')).some(t => t.textContent.trim() === val));
+        if (inList) {
+            showToast(`IMEI ${val} อยู่ในรายการแล้ว`, 'warning');
+            return;
+        }
+
+        const candidates = rows.filter(r => rcRowCount(r) < Number(r.dataset.pendingQty));
+        if (candidates.length === 0) {
+            showToast('สแกน IMEI ครบตามจำนวนค้างรับทุกรายการแล้ว', 'warning');
+            return;
+        }
+
+        // กันนำเข้าซ้ำกับสินค้าที่มีอยู่ในระบบแล้ว (เซิร์ฟเวอร์ตรวจซ้ำอีกชั้นตอนบันทึก)
+        try {
+            scanInput.disabled = true;
+            const res = await authFetch(`${API_BASE_URL}/products/check-existence?code=${encodeURIComponent(val)}`);
+            const data = await res.json();
+            if (data.success && data.exists) {
+                showToast(`⚠️ รหัสสินค้า/IMEI (${val}) มีอยู่ในระบบแล้ว ไม่สามารถนำเข้าซ้ำได้`, 'error');
+                return;
+            }
+        } catch (err) {
+            console.error('Error checking code existence:', err);
+        } finally {
+            scanInput.disabled = false;
+        }
+
+        const target = candidates.length === 1 ? candidates[0] : await rcChooseRow(candidates, val);
+        scanInput.focus();
+        if (!target) return;
+
+        target.querySelector('.rc-imei-list').insertAdjacentHTML('beforeend', rcImeiLine(val));
+        rcDirty = true;
+        rcRecalc(target);
+        rcShowLastScan(target, val);
+    };
+
+    const rcBaseDataset = (row, item) => {
+        const importedQty = item.imported_qty || 0;
+        row.className = 'po-receive-row transition-colors';
+        row.dataset.itemId = item._id;
+        row.dataset.trackImei = String(!!item.track_imei);
+        row.dataset.importedImeis = JSON.stringify(item.imported_imeis || []);
+        row.dataset.importedQty = importedQty;
+        row.dataset.pendingQty = item.ordered_qty - importedQty;
+        row.dataset.price = Number(item.selling_price) || 0;
+        row.dataset.origPrice = Number(item.selling_price) || 0;
+        row.dataset.productName = item.product_name || '';
+        row.dataset.color = item.color || '';
+        row.dataset.capacity = item.capacity || '';
+    };
+
+    // ส่วนตารางในการ์ดพาเนลเดียวกับช่องสแกน (ไม่แยกการ์ด — DESIGN.md ข้อ 11.1)
+    //   หัวส่วน = ชื่อ + คำอธิบาย (ซ้าย) · ตัวนับ (ขวา) แล้วต่อด้วยตาราง thead bg-panel/40
+    const rcTableCard = (title, sub, countId, cols, bodyId) => `
+        <section class="border-t border-divider">
+            <div class="px-6 py-4 flex flex-col sm:flex-row sm:items-baseline sm:justify-between gap-1">
+                <h4 class="text-lg text-ink">${title} <span class="ml-2 text-[13px] text-body-muted">${sub}</span></h4>
+                <p id="${countId}" class="text-xs text-ink font-medium"></p>
+            </div>
+            <div class="overflow-x-auto" tabindex="0">
+                <table class="w-full min-w-[860px] text-left text-sm whitespace-nowrap border-collapse">
+                    <thead class="bg-panel/40">
+                        <tr>${cols.map(([label, cls]) => `<th class="${RC_TH} ${cls || ''}">${label}</th>`).join('')}</tr>
+                    </thead>
+                    <tbody id="${bodyId}" class="divide-y divide-divider"></tbody>
+                </table>
+            </div>
+        </section>`;
+
+    const openReceivePage = (po) => {
+        rcCurrentPO = po;
+        rcDirty = false;
+
+        const container = document.getElementById('receive-po-items');
+        const scanInput = document.getElementById('receive-scan-input');
+        const actionBar = document.getElementById('receive-action-bar');
+        const lastScan = document.getElementById('receive-last-scan');
+        container.innerHTML = '';
+        if (scanInput) scanInput.value = '';
+        if (lastScan) { lastScan.classList.add('hidden'); lastScan.innerHTML = ''; }
+
+        // ---------- หัวหน้า ----------
+        const statusEl = document.getElementById('receive-po-status');
+        if (statusEl) statusEl.innerHTML = rcStatusBadge(po.status);
+        const meta = document.getElementById('receive-po-meta');
+        if (meta) {
+            const branchName = po.branch_id && po.branch_id.name ? po.branch_id.name : '-';
+            const parts = [
+                `<span class="font-mono font-semibold text-accent-ink">${rcEsc(po.po_number)}</span>`,
+                `ผู้จำหน่าย ${rcEsc(po.supplier_name || '-')}`,
+                `ปลายทาง ${rcEsc(branchName)}`
+            ];
+            if (po.arrival_reported_at) parts.push(`แจ้งของถึงสาขา ${rcEsc(rcDate(po.arrival_reported_at))} ${rcEsc(rcTime(po.arrival_reported_at))}`);
+            meta.innerHTML = parts.join('<span class="mx-2 text-ink-muted-48">·</span>');
+        }
+
+        const pendingItems = (po.items || []).filter(item => (item.ordered_qty - (item.imported_qty || 0)) > 0);
+        const imeiItems = pendingItems.filter(item => item.track_imei);
+        const qtyItems = pendingItems.filter(item => !item.track_imei);
+
+        // ไม่มีรายการที่ต้องสแกน IMEI -> ซ่อนช่องสแกน
+        document.getElementById('receive-scan-card').classList.toggle('hidden', !imeiItems.length);
+        document.querySelectorAll('#receive-po-page [data-rc-dev]').forEach(el => el.classList.toggle('hidden', !imeiItems.length));
+
+        // ---------- ตารางรายการเครื่อง (บันทึก IMEI) ----------
+        if (imeiItems.length) {
+            container.insertAdjacentHTML('beforeend', rcTableCard('รายการเครื่อง',
+                `${imeiItems.length} รุ่น`, 'rc-sec-dev-count',
+                [['ชื่อสินค้า'], ['ความจุ'], ['IMEI ที่สแกน'], ['สแกนแล้ว', 'text-center'],
+                    ['ราคาขายต่อชิ้น', 'text-right'], ['ราคาขายรวม', 'text-right']],
+                'rc-imei-body'));
+            const tbody = container.querySelector('#rc-imei-body');
+
+            imeiItems.forEach(item => {
+                const row = document.createElement('tr');
+                rcBaseDataset(row, item);
+
+                // IMEI ที่สแกนและบันทึกไว้แล้ว (ตอนแจ้งของถึงสาขาหรือรอบก่อน) — แสดงเฉพาะตัวที่ยังไม่ได้นำเข้าสต็อก
+                const importedImeis = Array.isArray(item.imported_imeis) ? item.imported_imeis : [];
+                const savedImeis = (Array.isArray(item.imeis_scanned) ? item.imeis_scanned : [])
+                    .filter(val => !importedImeis.includes(val));
+                row.dataset.savedImeis = JSON.stringify(savedImeis);
+
+                row.innerHTML = `
+                    <td class="${RC_TD}">
+                        <p class="font-medium flex items-center gap-2">${rcDot16(item.color)}<span>${rcEsc(item.product_name)}</span></p>
+                        ${item.color ? `<p class="text-xs text-body-muted mt-1 pl-6">${rcEsc(item.color)}</p>` : ''}
+                    </td>
+                    <td class="${RC_TD}">${rcEsc(item.capacity || '-')}</td>
+                    <td class="${RC_TD}">
+                        <div class="rc-imei-list">${savedImeis.map(rcImeiLine).join('')}</div>
+                        <span class="rc-imei-pending inline-block mt-1 text-xs text-ink-muted-48"></span>
+                    </td>
+                    <td class="${RC_TD} text-center">
+                        <p><span class="rc-count font-semibold"></span>
+                            <span class="text-xs text-body-muted">/ ${Number(row.dataset.pendingQty)}</span></p>
+                        <div class="mt-2 mx-auto h-1 w-16 rounded-full bg-surface-chip overflow-hidden"><div class="rc-bar h-full rounded-full transition-all duration-300" style="width:0%"></div></div>
+                    </td>
+                    <td class="${RC_TD} text-right">${rcPriceCell()}</td>
+                    <td class="${RC_TD} text-right font-mono"><span class="rc-total"></span></td>`;
+                tbody.appendChild(row);
+
+                row.querySelector('.rc-imei-list').addEventListener('click', (e) => {
+                    const btn = e.target.closest('.btn-remove-imei');
+                    if (btn) rcRemoveImei(row, btn.closest('.imei-tag'));
+                });
+                rcBindPriceEditor(row);
+            });
+        }
+
+        // ---------- ตารางรายการอุปกรณ์เสริม (นับจำนวน) ----------
+        if (qtyItems.length) {
+            container.insertAdjacentHTML('beforeend', rcTableCard('รายการอุปกรณ์เสริม',
+                'นับจำนวน ไม่ต้องสแกน', 'rc-sec-acc-count',
+                [['รหัสสินค้า'], ['ชื่อสินค้า'], ['จำนวนที่รับ', 'text-center'], ['ราคาขายต่อชิ้น', 'text-right'], ['ราคาขายรวม', 'text-right']],
+                'rc-qty-body'));
+            const tbody = container.querySelector('#rc-qty-body');
+
+            qtyItems.forEach(item => {
+                const row = document.createElement('tr');
+                rcBaseDataset(row, item);
+                const unit = item.unit || 'ชิ้น';
+                // ค่าตั้งต้น = ยอดที่หน้าร้านแจ้งไว้ตอนของถึงสาขา ลบส่วนที่นำเข้าคลังไปแล้ว — ปรับด้วย −/+ ได้ 0..ค้างรับ
+                const pendingQty = Number(row.dataset.pendingQty);
+                row.dataset.qty = Math.min(pendingQty, Math.max(0, (item.received_qty || 0) - (item.imported_qty || 0)));
+
+                row.innerHTML = `
+                    <td class="${RC_TD}"><span class="font-mono font-semibold text-accent-ink">${rcEsc(item.product_code || '-')}</span></td>
+                    <td class="${RC_TD} font-medium">${rcEsc(item.product_name)}</td>
+                    <td class="${RC_TD} text-center">
+                        <div class="-my-1.5 inline-flex items-center gap-2">
+                            <div class="inline-flex items-center rounded-pill bg-field">
+                                <button type="button" class="rc-qty-minus w-8 h-8 rounded-full text-ink hover:text-accent-ink disabled:text-ink-muted-48 disabled:cursor-not-allowed cursor-pointer transition-colors"
+                                    aria-label="ลดจำนวน ${rcEsc(item.product_name)}"><i class="fa-solid fa-minus text-[10px]"></i></button>
+                                <input type="number" min="0" max="${pendingQty}" step="1" inputmode="numeric"
+                                    class="rc-qty-input w-10 h-8 bg-transparent text-center text-ink text-sm font-semibold focus:outline-none focus:ring-1 focus:ring-accent-ink rounded-xs [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                                    aria-label="จำนวนที่รับ ${rcEsc(item.product_name)}">
+                                <button type="button" class="rc-qty-plus w-8 h-8 rounded-full text-ink hover:text-accent-ink disabled:text-ink-muted-48 disabled:cursor-not-allowed cursor-pointer transition-colors"
+                                    aria-label="เพิ่มจำนวน ${rcEsc(item.product_name)}"><i class="fa-solid fa-plus text-[10px]"></i></button>
+                            </div>
+                            <span class="text-xs text-body-muted">/ ${pendingQty} ${rcEsc(unit)}</span>
+                        </div>
+                    </td>
+                    <td class="${RC_TD} text-right">${rcPriceCell()}</td>
+                    <td class="${RC_TD} text-right font-mono"><span class="rc-total"></span></td>`;
+                tbody.appendChild(row);
+
+                const setQty = (n) => {
+                    const q = Math.max(0, Math.min(pendingQty, Math.floor(Number(n) || 0)));
+                    if (q !== Number(row.dataset.qty)) rcDirty = true;
+                    row.dataset.qty = String(q);
+                    rcRecalc(row);
+                };
+                const qtyInput = row.querySelector('.rc-qty-input');
+                row.querySelector('.rc-qty-minus').addEventListener('click', () => setQty(Number(row.dataset.qty) - 1));
+                row.querySelector('.rc-qty-plus').addEventListener('click', () => setQty(Number(row.dataset.qty) + 1));
+                qtyInput.addEventListener('change', () => { setQty(qtyInput.value); qtyInput.value = row.dataset.qty; });
+                rcBindPriceEditor(row);
+            });
+        }
+
+        // ไม่มีช่องสแกน -> ส่วนแรกของการ์ดไม่ต้องมีเส้นคั่นด้านบน
+        const firstSec = container.querySelector('section');
+        if (firstSec && !imeiItems.length) firstSec.classList.remove('border-t');
+
+        if (!pendingItems.length) {
+            container.innerHTML = '<div class="py-16 text-center text-sm text-body-muted"><i class="fa-solid fa-circle-check text-2xl text-ink-muted-48 block mb-3"></i>รับสินค้าครบทุกรายการแล้ว</div>';
+            actionBar.classList.add('hidden');
+        } else {
+            actionBar.classList.remove('hidden');
+        }
+        document.querySelectorAll('#receive-po-items .po-receive-row').forEach(rcRecalc);
+        rcUpdateSummary();
+
+        document.getElementById('receive-list-page').classList.add('hidden');
+        document.getElementById('receive-po-page').classList.remove('hidden');
+        window.scrollTo({ top: 0 });
+        const main = document.querySelector('main');
+        if (main) main.scrollTop = 0;
+        if (scanInput && imeiItems.length) setTimeout(() => scanInput.focus(), 50);
+    };
+
+    // กลับไปหน้ารายการ PO — ถ้ามีสแกน/แก้ไขที่ยังไม่ได้ยืนยัน ให้ยืนยันก่อน (ไม่งั้นหายเงียบ)
+    const closeReceivePage = (force = false) => {
+        const close = () => {
+            rcDirty = false;
+            rcCurrentPO = null;
+            document.getElementById('receive-po-page').classList.add('hidden');
+            document.getElementById('receive-list-page').classList.remove('hidden');
+            document.getElementById('receive-po-items').innerHTML = '';
+        };
+        if (force || !rcDirty) { close(); return; }
+        showConfirm('ออกจากหน้านี้?', 'IMEI ที่สแกนและการแก้ไขที่ยังไม่ได้กด "ยืนยันการตรวจรับสินค้า" จะหายไป', close, 'ออกจากหน้า');
+    };
+
+    {
+        const scanInput = document.getElementById('receive-scan-input');
+        if (scanInput) {
+            scanInput.addEventListener('keydown', (e) => {
+                if (e.key !== 'Enter') return;
+                e.preventDefault();
+                rcHandleScan(scanInput);
+            });
+            const addBtn = document.getElementById('btn-receive-scan-add');
+            if (addBtn) addBtn.addEventListener('click', () => rcHandleScan(scanInput));
+        }
+        const back = document.getElementById('btn-receive-page-back');
+        if (back) back.addEventListener('click', () => closeReceivePage());
+        const cancel = document.getElementById('btn-receive-cancel');
+        if (cancel) cancel.addEventListener('click', () => closeReceivePage());
+        const viewPo = document.getElementById('btn-receive-view-po');
+        if (viewPo) viewPo.addEventListener('click', () => { if (rcCurrentPO) openViewPOModal(rcCurrentPO); });
+
+        // ปิดแท็บ/รีเฟรชระหว่างตรวจรับ — ให้เบราว์เซอร์เตือนก่อน
+        window.addEventListener('beforeunload', (e) => {
+            if (!rcDirty) return;
+            e.preventDefault();
+            e.returnValue = '';
         });
     }
 
-    if (document.getElementById('btn-close-po-arrival')) {
-        document.getElementById('btn-close-po-arrival').addEventListener('click', () => {
-            const modal = document.getElementById('modal-po-arrival');
-            modal.classList.add('opacity-0', 'pointer-events-none');
-            setTimeout(() => modal.classList.add('hidden'), 300);
+    {
+        ['btn-close-po-arrival', 'btn-cancel-po-arrival'].forEach(id => {
+            const btn = document.getElementById(id);
+            if (btn) btn.addEventListener('click', () => closeArrivalModal());
+        });
+        const arrScan = document.getElementById('arrival-scan-input');
+        if (arrScan) {
+            arrScan.addEventListener('keydown', (e) => {
+                if (e.key !== 'Enter') return;
+                e.preventDefault();
+                arrHandleScan(arrScan);
+            });
+            // วางหลายบรรทัด (ก็อปจากใบส่งของ) — จัดเข้ารุ่นทีเดียวทั้งชุด
+            arrScan.addEventListener('paste', (e) => {
+                const text = (e.clipboardData || window.clipboardData).getData('text');
+                if (!/[\r\n]/.test(text.trim())) return;
+                e.preventDefault();
+                arrScan.value = text;
+                arrHandleScan(arrScan);
+            });
+            const addBtn = document.getElementById('btn-arrival-scan-add');
+            if (addBtn) addBtn.addEventListener('click', () => arrHandleScan(arrScan));
+        }
+        const arrModal = document.getElementById('modal-po-arrival');
+        if (arrModal) arrModal.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && !arrModal.classList.contains('hidden')) { e.preventDefault(); closeArrivalModal(); }
         });
     }
 
     if (document.getElementById('btn-submit-po-receive')) {
         document.getElementById('btn-submit-po-receive').addEventListener('click', async () => {
             const btn = document.getElementById('btn-submit-po-receive');
+            if (!rcCurrentPO || btn.disabled) return;
             const originalText = btn.innerHTML;
 
-            const rows = document.querySelectorAll('.po-receive-row');
+            const rows = Array.from(document.querySelectorAll('#receive-po-items .po-receive-row'));
+
+            // ช่องราคาที่ยังค้างโหมดแก้ไขอยู่ ต้องปิดให้เรียบร้อยก่อน (ถ้าค่าไม่ถูกต้องจะหยุดตรงนี้)
+            for (const row of rows) {
+                if (typeof row._rcCommitPrice === 'function' && !row._rcCommitPrice()) return;
+            }
+
             const received_items = {};
             let hasInput = false;
 
             rows.forEach(row => {
                 const itemId = row.dataset.itemId;
-                const trackImei = row.dataset.trackImei === 'true';
-                const importedImeis = JSON.parse(row.dataset.importedImeis || '[]');
                 const importedQty = Number(row.dataset.importedQty || 0);
+                let entry;
 
-                if (trackImei) {
+                if (row.dataset.trackImei === 'true') {
+                    const importedImeis = JSON.parse(row.dataset.importedImeis || '[]');
                     const uiImeis = Array.from(row.querySelectorAll('.imei-tag-text')).map(t => t.textContent.trim());
-                    const imeis = [...importedImeis, ...uiImeis];
-                    received_items[itemId] = { imeis };
-                    if (uiImeis.length > 0) {
-                        hasInput = true;
-                    }
+                    entry = { imeis: [...importedImeis, ...uiImeis] };
+                    if (uiImeis.length > 0) hasInput = true;
                 } else {
-                    const qtyInput = row.querySelector('.receive-qty');
-                    const qtyNewRound = qtyInput ? Number(qtyInput.value) : 0;
-                    received_items[itemId] = { qty: importedQty + qtyNewRound };
-                    if (qtyNewRound > 0) {
-                        hasInput = true;
-                    }
+                    const qtyNewRound = Number(row.dataset.qty || 0);
+                    entry = { qty: importedQty + qtyNewRound };
+                    if (qtyNewRound > 0) hasInput = true;
                 }
+
+                // ส่งราคาขายไปเฉพาะแถวที่แก้จริง
+                const price = Number(row.dataset.price);
+                if (price !== Number(row.dataset.origPrice)) {
+                    entry.selling_price = price;
+                    hasInput = true;
+                }
+                received_items[itemId] = entry;
             });
 
             if (!hasInput) {
@@ -4307,9 +5179,8 @@
                 btn.disabled = true;
                 btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> กำลังบันทึก...';
 
-                // In the linked PO workflow, Stock staff scans items and temporarily saves it to scan-item API,
-                // which transitions the PO status to 'กำลังตรวจรับ' (Awaiting Import Approval).
-                const res = await authFetch(`${API_BASE_URL}/po/${window.__currentReceivePO}/scan-item`, {
+                // บันทึกผลตรวจรับ -> สถานะ 'กำลังตรวจรับ' รอผู้จัดการอนุมัตินำเข้าคลัง (หน้า approve-import)
+                const res = await authFetch(`${API_BASE_URL}/po/${rcCurrentPO._id}/scan-item`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ received_items })
@@ -4317,8 +5188,8 @@
                 const json = await res.json();
 
                 if (json.success) {
-                    showToast('บันทึกความคืบหน้าการตรวจรับเรียบร้อยแล้ว (รอผู้จัดการอนุมัติเพื่อนำเข้าคลังสินค้า)', 'success');
-                    document.getElementById('btn-close-po-receive').click();
+                    showToast('บันทึกผลการตรวจรับเรียบร้อยแล้ว (รอผู้จัดการอนุมัติเพื่อนำเข้าคลังสินค้า)', 'success');
+                    closeReceivePage(true);
                     if (typeof loadPOs === 'function') loadPOs();
                 } else {
                     showToast(json.message, 'error');
@@ -4335,14 +5206,14 @@
 
     // ==========================================
     // Mobile step-flow สำหรับ "ตรวจรับของ" — ใช้เฉพาะจอ < lg (มือถือ/แท็บเล็ตแนวตั้ง)
-    // เดสก์ท็อปยังใช้ openReceiveModal()/#modal-po-receive เดิมเป๊ะ ไม่แตะ
+    // เดสก์ท็อปใช้หน้า openReceivePage()/#receive-po-page
     // ทั้งสองโหมดอ่าน/เขียนข้อมูลชุดเดียวกัน (po.items) และยิง endpoint เดิมตัวเดียวกัน
     // (POST /po/:id/scan-item) — ไม่มี API ใหม่ ไม่มีจังหวะเรียก API เพิ่มจากเดิม (ยังส่งครั้งเดียว
     // ตอนกด "ยืนยันและส่ง" เท่านั้น เหมือนปุ่ม "ยืนยันการตรวจรับสินค้า" ของเดสก์ท็อป) — กันข้อมูลหาย
     // ระหว่างคีย์ด้วย localStorage draft ต่อ PO ล้วนๆ (client-side เท่านั้น ไม่กระทบสถานะเอกสารฝั่งระบบ)
     // ==========================================
     let _mobReceivePO = null;
-    let _mobReceiveItems = [];   // รายการที่ยังค้างรับ (กรองเงื่อนไขเดียวกับ openReceiveModal)
+    let _mobReceiveItems = [];   // รายการที่ยังค้างรับ (กรองเงื่อนไขเดียวกับ openReceivePage)
     let _mobReceiveIndex = 0;
     let _mobReceiveData = {};    // { [itemId]: { qty } | { imeis: [...] } } — สะสมจนกว่าจะกด "ยืนยันและส่ง"
 

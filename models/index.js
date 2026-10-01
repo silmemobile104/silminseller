@@ -17,6 +17,10 @@ const roleSchema = new mongoose.Schema({
         manage_stock: { type: Boolean, default: false },     // อนุญาตให้จัดการสต็อก
         delete_stock: { type: Boolean, default: false },     // อนุญาตให้ลบสินค้า
         do_pos: { type: Boolean, default: false },           // อนุญาตให้ขายสินค้า (POS)
+        // อนุญาตดูประวัติการขาย — เดิมผูกกับ do_pos จึงจงใจไม่ใส่ default:
+        // ถ้าใส่ default:false บทบาทเก่าที่ยังไม่มีฟิลด์นี้จะถูกอ่านเป็น false ทันที แล้วพนักงานขายจะหาประวัติการขายไม่เจอ
+        // ค่าเริ่มต้นของบทบาทเก่ายกมาจาก do_pos ใน seedDefaultRoles และ fallback ตอน login อีกชั้น
+        view_sales_history: { type: Boolean },
         manage_personnel: { type: Boolean, default: false }, // อนุญาตให้จัดการพนักงาน
         manage_branches: { type: Boolean, default: false },  // อนุญาตให้จัดการสาขา
         manage_settings: { type: Boolean, default: false },  // อนุญาตให้ตั้งค่าระบบ
@@ -26,6 +30,13 @@ const roleSchema = new mongoose.Schema({
         report_arrival: { type: Boolean, default: false },   // แจ้งของถึงสาขา
         approve_import: { type: Boolean, default: false },   // อนุมัตินำเข้าสต็อก
         manage_po: { type: Boolean, default: false },        // จัดการ PO (สร้าง/ดูทั้งหมด)
+        // การชำระเงินระบบสั่งซื้อ (เห็นคอลัมน์การชำระเงิน + ปุ่มจ่ายเงิน และบันทึกจ่ายเงินใบสั่งซื้อได้)
+        // เดิมการจ่ายเงิน PO ผูกกับ manage_finance — จงใจไม่ใส่ default ด้วยเหตุผลเดียวกับ view_sales_history
+        // ค่าของบทบาทเก่ายกมาจาก manage_finance ใน seedDefaultRoles และ fallback ตอน login อีกชั้น
+        pay_po: { type: Boolean },
+        // ดูแดชบอร์ดระบบสั่งซื้อ (หน้าแรกของเมนู #accounting-po) — จงใจไม่ใส่ default เหมือน pay_po
+        // ค่าของบทบาทเก่ายกมาจาก manage_po (ใครเข้าเมนูระบบสั่งซื้อได้อยู่แล้วก็เห็นแดชบอร์ด)
+        view_po_dashboard: { type: Boolean },
         receive_po: { type: Boolean, default: false },       // ตรวจรับ PO (ที่สาขา)
         manage_transfers: { type: Boolean, default: false }, // โอนย้ายสินค้า
         manage_finance: { type: Boolean, default: false },   // อนุญาตให้จัดการระบบบัญชีและการเงิน
@@ -48,9 +59,9 @@ const seedDefaultRoles = async () => {
             name: 'แอดมิน',
             permissions: {
                 view_dashboard: true, manage_stock: true, delete_stock: true,
-                do_pos: true, manage_personnel: true, manage_branches: true,
+                do_pos: true, view_sales_history: true, manage_personnel: true, manage_branches: true,
                 manage_settings: true, manage_roles: true, filter_stock_branch: true, cancel_sale: true,
-                report_arrival: true, approve_import: true, manage_po: true, receive_po: true,
+                report_arrival: true, approve_import: true, manage_po: true, pay_po: true, view_po_dashboard: true, receive_po: true,
                 manage_transfers: true, manage_finance: true, view_audit_logs: true, view_branch_inventory: true,
                 view_daily_summary: true, manage_stock_audit: true, do_stock_audit: true, manage_deposits: true,
                 manage_database: true, verify_orders: true
@@ -60,9 +71,9 @@ const seedDefaultRoles = async () => {
             name: 'ผู้จัดการ',
             permissions: {
                 view_dashboard: true, manage_stock: true, delete_stock: true,
-                do_pos: true, manage_personnel: true, manage_branches: true,
+                do_pos: true, view_sales_history: true, manage_personnel: true, manage_branches: true,
                 manage_settings: true, manage_roles: false, filter_stock_branch: true, cancel_sale: true,
-                report_arrival: true, approve_import: false, manage_po: true, receive_po: true,
+                report_arrival: true, approve_import: false, manage_po: true, pay_po: true, view_po_dashboard: true, receive_po: true,
                 manage_transfers: true, manage_finance: true, view_audit_logs: true, view_branch_inventory: true,
                 view_daily_summary: true, manage_stock_audit: true, do_stock_audit: true, manage_deposits: true,
                 manage_database: false, verify_orders: true
@@ -72,9 +83,9 @@ const seedDefaultRoles = async () => {
             name: 'พนักงานขาย',
             permissions: {
                 view_dashboard: false, manage_stock: true, delete_stock: false,
-                do_pos: true, manage_personnel: false, manage_branches: false,
+                do_pos: true, view_sales_history: true, manage_personnel: false, manage_branches: false,
                 manage_settings: false, manage_roles: false, filter_stock_branch: false, cancel_sale: false,
-                report_arrival: true, approve_import: false, manage_po: false, receive_po: true,
+                report_arrival: true, approve_import: false, manage_po: false, pay_po: false, view_po_dashboard: false, receive_po: true,
                 manage_transfers: false, manage_finance: false, view_audit_logs: false, view_branch_inventory: false,
                 view_daily_summary: true, manage_stock_audit: false, do_stock_audit: true, manage_deposits: true,
                 manage_database: false, verify_orders: false
@@ -112,6 +123,9 @@ const seedDefaultRoles = async () => {
                 existing.permissions.manage_deposits = true;
                 existing.permissions.manage_database = true;
                 existing.permissions.verify_orders = true;
+                existing.permissions.view_sales_history = true;
+                existing.permissions.pay_po = true;
+                existing.permissions.view_po_dashboard = true;
                 changed = true;
             }
             // Ensure ผู้จัดการ gets manage_stock_audit & do_stock_audit
@@ -143,6 +157,51 @@ const seedDefaultRoles = async () => {
             }
         }
     }
+    // บทบาทที่สร้างเองก่อนมีสิทธิ์ "ดูประวัติการขาย" — ยกค่าจาก do_pos มาให้ (เดิมเมนูนี้ผูกกับ do_pos)
+    // ใครเคยเห็นประวัติการขายก็ยังเห็นเหมือนเดิม ไม่มีใครเสียสิทธิ์ไปเงียบๆ ตอนอัปเดต
+    // แยกเป็นสองคำสั่งธรรมดา ไม่ใช้ update pipeline — Mongoose 9 ปฏิเสธ pipeline ถ้าไม่ตั้ง updatePipeline
+    // ลำดับสำคัญ: ตั้ง true ให้คนที่มี do_pos ก่อน แล้วที่เหลือ (ยังไม่มีฟิลด์) ค่อยเป็น false
+    const salesHistoryOn = await Role.updateMany(
+        { 'permissions.view_sales_history': { $exists: false }, 'permissions.do_pos': true },
+        { $set: { 'permissions.view_sales_history': true } }
+    );
+    const salesHistoryOff = await Role.updateMany(
+        { 'permissions.view_sales_history': { $exists: false } },
+        { $set: { 'permissions.view_sales_history': false } }
+    );
+    const salesHistoryMigrated = salesHistoryOn.modifiedCount + salesHistoryOff.modifiedCount;
+    if (salesHistoryMigrated > 0) {
+        console.log(`[SEED] เพิ่มสิทธิ์ดูประวัติการขายให้บทบาทเดิม ${salesHistoryMigrated} บทบาท (ยกค่าจาก do_pos)`);
+    }
+
+    // บทบาทที่สร้างก่อนมีสิทธิ์ "การชำระเงินระบบสั่งซื้อ" — ยกค่าจาก manage_finance (เดิมการจ่ายเงิน PO ผูกกับสิทธิ์นี้)
+    const payPoOn = await Role.updateMany(
+        { 'permissions.pay_po': { $exists: false }, 'permissions.manage_finance': true },
+        { $set: { 'permissions.pay_po': true } }
+    );
+    const payPoOff = await Role.updateMany(
+        { 'permissions.pay_po': { $exists: false } },
+        { $set: { 'permissions.pay_po': false } }
+    );
+    const payPoMigrated = payPoOn.modifiedCount + payPoOff.modifiedCount;
+    if (payPoMigrated > 0) {
+        console.log(`[SEED] เพิ่มสิทธิ์การชำระเงินระบบสั่งซื้อให้บทบาทเดิม ${payPoMigrated} บทบาท (ยกค่าจาก manage_finance)`);
+    }
+
+    // บทบาทที่สร้างก่อนมีสิทธิ์ "แดชบอร์ดระบบสั่งซื้อ" — ยกค่าจาก manage_po
+    const poDashOn = await Role.updateMany(
+        { 'permissions.view_po_dashboard': { $exists: false }, 'permissions.manage_po': true },
+        { $set: { 'permissions.view_po_dashboard': true } }
+    );
+    const poDashOff = await Role.updateMany(
+        { 'permissions.view_po_dashboard': { $exists: false } },
+        { $set: { 'permissions.view_po_dashboard': false } }
+    );
+    const poDashMigrated = poDashOn.modifiedCount + poDashOff.modifiedCount;
+    if (poDashMigrated > 0) {
+        console.log(`[SEED] เพิ่มสิทธิ์แดชบอร์ดระบบสั่งซื้อให้บทบาทเดิม ${poDashMigrated} บทบาท (ยกค่าจาก manage_po)`);
+    }
+
     if (inserted > 0 || updated > 0) {
         console.log(`[SEED] จัดการข้อมูลระดับสิทธิ์เริ่มต้นสำเร็จ (เพิ่ม: ${inserted}, อัพเดท: ${updated})`);
     }
@@ -323,6 +382,8 @@ const transactionSchema = new mongoose.Schema({
     verify_status: { type: String, enum: ['รอตรวจสอบ', 'สำเร็จ'], default: 'รอตรวจสอบ' },
     payment_status_updated_by: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee' }, // บัญชีคนที่กดเปลี่ยนสถานะ
     payment_status_updated_at: { type: Date }, // เวลาที่เปลี่ยนสถานะล่าสุด
+    verify_status_updated_by: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee' }, // คนที่เปลี่ยนสถานะดำเนินการล่าสุด
+    verify_status_updated_at: { type: Date }, // เวลาที่เปลี่ยนสถานะดำเนินการล่าสุด
     // วันที่ไฟแนนซ์โอนเงินเข้ามาจริง — ใช้เฉพาะบิลผ่อนเก่าที่ไม่มีเอกสาร FinanceReceivable คู่กัน
     // บิลผ่อนปกติยึด FinanceReceivable.settled_at เป็นความจริงแหล่งเดียว (หน้า #accounting เขียนที่นั่น)
     finance_paid_at: { type: Date },
@@ -434,6 +495,8 @@ const purchaseOrderSchema = new mongoose.Schema({
     created_by: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee', required: true },
     received_by: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee' },
     payment_status: { type: String, default: 'ยังไม่ได้ชำระ', enum: ['ยังไม่ได้ชำระ', 'ชำระเงินบางส่วน', 'ชำระเงินแล้ว'] },
+    // กำหนดจ่าย — วันที่ต้องชำระเงินให้ซัพพลายเออร์ (ไม่บังคับ) เก็บเป็นเที่ยงคืน UTC ของวันนั้น
+    payment_due_date: { type: Date, default: null },
     paid_at: { type: Date },
     paid_amount: { type: Number, default: 0 },
     discount: { type: Number, default: 0 },
@@ -592,12 +655,20 @@ const accountChartSchema = new mongoose.Schema({
     account_code: { type: String, required: true, unique: true },
     account_name: { type: String, required: true },
     category_id: { type: mongoose.Schema.Types.ObjectId, ref: 'AccountCategory', required: true },
-    group_id: { type: mongoose.Schema.Types.ObjectId, ref: 'AccountGroup', required: true },
+    // ไม่บังคับ — บัญชีที่สร้างจากหน้า "รหัสบัญชี" ผูกแค่หมวด (category_id) ไม่มีกลุ่ม
+    group_id: { type: mongoose.Schema.Types.ObjectId, ref: 'AccountGroup', default: null },
     level: { type: Number, default: 1, min: 1, max: 3 },
     is_system: { type: Boolean, default: false },
     is_active: { type: Boolean, default: true }
 }, { timestamps: true });
 const AccountChart = mongoose.model('AccountChart', accountChartSchema, 'accountchart');
+
+// AccountBook (สมุดบัญชี) — ข้อมูลตั้งค่าจากเมนู "ตั้งค่าบัญชี > สมุดบัญชี" กรอกแค่ รหัส / ชื่อ
+const accountBookSchema = new mongoose.Schema({
+    book_code: { type: String, required: true, unique: true, trim: true },
+    book_name: { type: String, required: true, trim: true }
+}, { timestamps: true });
+const AccountBook = mongoose.model('AccountBook', accountBookSchema, 'accountbook');
 
 // PnLConfig (ตั้งค่างบกำไรขาดทุน)
 const pnlConfigSchema = new mongoose.Schema({
@@ -656,16 +727,20 @@ const Expense = mongoose.model('Expense', expenseSchema, 'expense');
 // Seed default COA data
 async function seedDefaultCOA() {
     try {
+        // หมวดหลัก 5 หมวดต้องมีครบเสมอ — สร้างเฉพาะหมวดที่ยังขาด (ไม่ใช่เฉพาะตอน collection ว่าง)
+        const defaultCategories = [
+            { category_code: '1', category_name: 'สินทรัพย์' },
+            { category_code: '2', category_name: 'หนี้สิน' },
+            { category_code: '3', category_name: 'ทุน' },
+            { category_code: '4', category_name: 'รายได้' },
+            { category_code: '5', category_name: 'ค่าใช้จ่าย' }
+        ];
         let categories = await AccountCategory.find();
-        if (categories.length === 0) {
-            console.log('กำลังสร้างหมวดหมู่บัญชีเริ่มต้น (Account Categories)...');
-            categories = await AccountCategory.insertMany([
-                { category_code: '1', category_name: 'สินทรัพย์' },
-                { category_code: '2', category_name: 'หนี้สิน' },
-                { category_code: '3', category_name: 'ทุน' },
-                { category_code: '4', category_name: 'รายได้' },
-                { category_code: '5', category_name: 'ค่าใช้จ่าย' }
-            ]);
+        const haveCodes = new Set(categories.map(c => c.category_code));
+        const missingCategories = defaultCategories.filter(c => !haveCodes.has(c.category_code));
+        if (missingCategories.length) {
+            console.log('กำลังสร้างหมวดหมู่บัญชีเริ่มต้น:', missingCategories.map(c => c.category_name).join(', '));
+            categories = categories.concat(await AccountCategory.insertMany(missingCategories));
         }
 
         const catMap = {};
@@ -773,6 +848,7 @@ module.exports = {
     AccountCategory,
     AccountGroup,
     AccountChart,
+    AccountBook,
     PnLConfig,
     DisbursementVoucher,
     Expense,
