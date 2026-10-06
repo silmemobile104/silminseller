@@ -171,7 +171,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // โหลดสคริปต์เฉพาะหน้า (js/page-<name>.js) แบบ dynamic ครั้งเดียว แล้ว cache ไว้
     // PAGE_SCRIPT_VERSION: บัมพ์เลขนี้ทุกครั้งที่แก้ไฟล์ใน js/ เพื่อไม่ให้เบราว์เซอร์ใช้ของเก่าที่ cache ไว้
-    const PAGE_SCRIPT_VERSION = 'apple_active_v101';
+    const PAGE_SCRIPT_VERSION = 'apple_active_v112';
     const __loadedPageScripts = {};
     function loadPageScript(name) {
         if (__loadedPageScripts[name]) return __loadedPageScripts[name];
@@ -224,7 +224,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // ไม่ได้รอ init function ถ้า HTML ยังไม่ถูกแทรกเข้า DOM ก่อน ตัวแปรที่ query ไว้จะเป็น null ถาวร
     // ชื่อ name ต้องตรงกับชื่อที่ใช้ใน loadPageScript — ไฟล์เดียวอาจมีหลาย <div id="view-XXX"> รวมกัน
     // ถ้าหน้านั้นถูก share โดยสคริปต์เดียวกันหลาย view (ดูตาราง mapping ในแผน)
-    const VIEW_FRAGMENT_VERSION = 'v124'; // บัมพ์เลขนี้ทุกครั้งที่แก้ไฟล์ใน views/
+    const VIEW_FRAGMENT_VERSION = 'v134'; // บัมพ์เลขนี้ทุกครั้งที่แก้ไฟล์ใน views/
     const __loadedPageViews = {};
     function loadPageView(name) {
         if (__loadedPageViews[name]) return __loadedPageViews[name];
@@ -431,9 +431,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const navStockAuditReview = document.getElementById('nav-stock-audit-review');
     const navAccountingSettings = document.getElementById('nav-accounting-settings');
     const navDisbursement = document.getElementById('nav-disbursement');
-    const navAccountCategories = document.getElementById('nav-account-categories');
-    const navAccountBooks = document.getElementById('nav-account-books');
-    const navAccountCodes = document.getElementById('nav-account-codes');
+    const navPnlConfig = document.getElementById('nav-pnl-config');
+    const navBalanceSheetConfig = document.getElementById('nav-balance-sheet-config');
+    const navAccountDocLinks = document.getElementById('nav-account-doc-links');
+    const navAccountTree = document.getElementById('nav-account-tree');
     const navOrderVerification = document.getElementById('nav-order-verification');
     const navFinanceCompanies = document.getElementById('nav-finance-companies');
 
@@ -463,9 +464,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const viewStockAuditReview = document.getElementById('view-stock-audit-review');
     const viewAccountingSettings = document.getElementById('view-accounting-settings');
     const viewDisbursement = document.getElementById('view-disbursement');
-    const viewAccountCategories = document.getElementById('view-account-categories');
-    const viewAccountBooks = document.getElementById('view-account-books');
-    const viewAccountCodes = document.getElementById('view-account-codes');
+    const viewPnlConfig = document.getElementById('view-pnl-config');
+    const viewBalanceSheetConfig = document.getElementById('view-balance-sheet-config');
+    const viewAccountDocLinks = document.getElementById('view-account-doc-links');
+    const viewAccountTree = document.getElementById('view-account-tree');
     const viewOrderVerification = document.getElementById('view-order-verification');
     const viewFinanceCompanies = document.getElementById('view-finance-companies');
 
@@ -2354,9 +2356,10 @@ document.addEventListener('DOMContentLoaded', () => {
         setVisible(navAccounting, permissions.manage_finance);
         setVisible(navAccountingSettings, permissions.manage_finance);
         setVisible(navDisbursement, permissions.manage_finance);
-        setVisible(navAccountCategories, permissions.manage_finance);
-        setVisible(navAccountBooks, permissions.manage_finance);
-        setVisible(navAccountCodes, permissions.manage_finance);
+        setVisible(navPnlConfig, permissions.manage_finance);
+        setVisible(navBalanceSheetConfig, permissions.manage_finance);
+        setVisible(navAccountDocLinks, permissions.manage_finance);
+        setVisible(navAccountTree, permissions.manage_finance);
         setVisible(navOrderVerification, permissions.verify_orders);
         setVisible(navFinanceCompanies, permissions.verify_orders);
         setVisible(navBranchInventory, permissions.view_branch_inventory);
@@ -3447,7 +3450,7 @@ document.addEventListener('DOMContentLoaded', () => {
         'sales-history', 'daily-summary', 'transfers', 'deposits', 'movements', 'members',
         'report-arrival', 'approve-import', 'warranty-check', 'branch-inventory', 'accounting-po',
         'branch-receive', 'accounting', 'audit-logs', 'stock-audit', 'stock-audit-review',
-        'accounting-settings', 'disbursement', 'account-categories', 'account-books', 'account-codes', 'database',
+        'accounting-settings', 'disbursement', 'pnl-config', 'balance-sheet-config', 'account-doc-links', 'account-tree', 'database',
         'order-verification', 'finance-companies'
     ]);
     // อ่านชื่อ view จาก URL hash (เช่น #deposits) — คืนค่า null ถ้าไม่มีหรือไม่ใช่ view ที่รู้จัก
@@ -3489,9 +3492,10 @@ document.addEventListener('DOMContentLoaded', () => {
             'stock-audit-review': 'manage_stock_audit',
             'accounting-settings': 'manage_finance',
             'disbursement': 'manage_finance',
-            'account-categories': 'manage_finance',
-            'account-books': 'manage_finance',
-            'account-codes': 'manage_finance',
+            'pnl-config': 'manage_finance',
+            'balance-sheet-config': 'manage_finance',
+            'account-doc-links': 'manage_finance',
+            'account-tree': 'manage_finance',
             'order-verification': 'verify_orders',
             'finance-companies': 'verify_orders',
             'database': 'manage_database'
@@ -3538,9 +3542,10 @@ document.addEventListener('DOMContentLoaded', () => {
             'stock-audit-review': 'manage_stock_audit',
             'accounting-settings': 'manage_finance',
             'disbursement': 'manage_finance',
-            'account-categories': 'manage_finance',
-            'account-books': 'manage_finance',
-            'account-codes': 'manage_finance',
+            'pnl-config': 'manage_finance',
+            'balance-sheet-config': 'manage_finance',
+            'account-doc-links': 'manage_finance',
+            'account-tree': 'manage_finance',
             'order-verification': 'verify_orders',
             'finance-companies': 'verify_orders',
             'database': 'manage_database'
@@ -3616,7 +3621,7 @@ document.addEventListener('DOMContentLoaded', () => {
             viewBranchInventory, viewAccountingPO, viewBranchReceive,
             viewAuditLogs, viewAccounting, viewDailySummary,
             viewStockAudit, viewStockAuditReview, viewDeposits,
-            viewAccountingSettings, viewDisbursement, viewAccountCategories, viewAccountBooks, viewAccountCodes, viewDatabase,
+            viewAccountingSettings, viewDisbursement, viewPnlConfig, viewBalanceSheetConfig, viewAccountDocLinks, viewAccountTree, viewDatabase,
             viewOrderVerification, viewFinanceCompanies
         ];
         views.forEach(view => {
@@ -3825,23 +3830,29 @@ document.addEventListener('DOMContentLoaded', () => {
                 await loadPageScript('accounting-settings');
                 if (typeof initDisbursement === 'function') initDisbursement();
             }
-            else if (viewName === 'account-categories') {
-                activateView(viewAccountCategories, navAccountCategories);
+            else if (viewName === 'pnl-config') {
+                activateView(viewPnlConfig, navPnlConfig);
                 await loadPageView('accounting-settings');
                 await loadPageScript('accounting-settings');
-                if (typeof initAccountCategories === 'function') initAccountCategories();
+                if (typeof initPnlConfigPage === 'function') initPnlConfigPage();
             }
-            else if (viewName === 'account-books') {
-                activateView(viewAccountBooks, navAccountBooks);
+            else if (viewName === 'balance-sheet-config') {
+                activateView(viewBalanceSheetConfig, navBalanceSheetConfig);
                 await loadPageView('accounting-settings');
                 await loadPageScript('accounting-settings');
-                if (typeof initAccountBooks === 'function') initAccountBooks();
+                if (typeof initBalanceSheetConfig === 'function') initBalanceSheetConfig();
             }
-            else if (viewName === 'account-codes') {
-                activateView(viewAccountCodes, navAccountCodes);
+            else if (viewName === 'account-tree') {
+                activateView(viewAccountTree, navAccountTree);
                 await loadPageView('accounting-settings');
                 await loadPageScript('accounting-settings');
-                if (typeof initAccountCodes === 'function') initAccountCodes();
+                if (typeof initAccountTree === 'function') initAccountTree();
+            }
+            else if (viewName === 'account-doc-links') {
+                activateView(viewAccountDocLinks, navAccountDocLinks);
+                await loadPageView('accounting-settings');
+                await loadPageScript('accounting-settings');
+                if (typeof initAccountDocLinks === 'function') initAccountDocLinks();
             }
             else if (viewName === 'order-verification') {
                 activateView(viewOrderVerification, navOrderVerification);
@@ -3890,12 +3901,14 @@ document.addEventListener('DOMContentLoaded', () => {
     if (navAccountingSettings) navAccountingSettings.addEventListener('click', (e) => { e.preventDefault(); switchView('accounting-settings'); });
     if (navDisbursement) navDisbursement.style.display = 'none'; // Will be managed by applyPermissions
     if (navDisbursement) navDisbursement.addEventListener('click', (e) => { e.preventDefault(); switchView('disbursement'); });
-    if (navAccountCategories) navAccountCategories.style.display = 'none'; // Will be managed by applyPermissions
-    if (navAccountCategories) navAccountCategories.addEventListener('click', (e) => { e.preventDefault(); switchView('account-categories'); });
-    if (navAccountBooks) navAccountBooks.style.display = 'none'; // Will be managed by applyPermissions
-    if (navAccountBooks) navAccountBooks.addEventListener('click', (e) => { e.preventDefault(); switchView('account-books'); });
-    if (navAccountCodes) navAccountCodes.style.display = 'none'; // Will be managed by applyPermissions
-    if (navAccountCodes) navAccountCodes.addEventListener('click', (e) => { e.preventDefault(); switchView('account-codes'); });
+    if (navPnlConfig) navPnlConfig.style.display = 'none'; // Will be managed by applyPermissions
+    if (navPnlConfig) navPnlConfig.addEventListener('click', (e) => { e.preventDefault(); switchView('pnl-config'); });
+    if (navBalanceSheetConfig) navBalanceSheetConfig.style.display = 'none'; // Will be managed by applyPermissions
+    if (navBalanceSheetConfig) navBalanceSheetConfig.addEventListener('click', (e) => { e.preventDefault(); switchView('balance-sheet-config'); });
+    if (navAccountDocLinks) navAccountDocLinks.style.display = 'none'; // Will be managed by applyPermissions
+    if (navAccountTree) navAccountTree.style.display = 'none'; // Will be managed by applyPermissions
+    if (navAccountTree) navAccountTree.addEventListener('click', (e) => { e.preventDefault(); switchView('account-tree'); });
+    if (navAccountDocLinks) navAccountDocLinks.addEventListener('click', (e) => { e.preventDefault(); switchView('account-doc-links'); });
     if (navOrderVerification) navOrderVerification.style.display = 'none'; // Will be managed by applyPermissions
     if (navOrderVerification) navOrderVerification.addEventListener('click', (e) => { e.preventDefault(); switchView('order-verification'); });
     if (navFinanceCompanies) navFinanceCompanies.style.display = 'none'; // Will be managed by applyPermissions

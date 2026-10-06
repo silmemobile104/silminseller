@@ -34,7 +34,7 @@
     };
 
     // Render action badges with beautiful styling and icons
-    const AUDIT_COLS = 7;
+    const AUDIT_COLS = 8;
 
     // คำบรรยายกิจกรรมมาจากทั่วทั้งระบบ (ชื่อสินค้า/พนักงาน/สาขา ที่ผู้ใช้พิมพ์เอง)
     // แล้วถูกยัดเข้า innerHTML — ของเดิมใส่ดิบๆ ทั้ง description, user_name และ reference_no
@@ -60,6 +60,7 @@
                         <div class="w-7 h-7 rounded-full bg-skeleton animate-pulse shrink-0"></div>${bar('w-24')}
                     </div>
                 </td>
+                <td class="px-6 py-4">${bar('w-20')}</td>
                 <td class="px-6 py-4">${bar('w-20')}</td>
                 <td class="px-6 py-4">${bar('w-24')}</td>
                 <td class="px-6 py-4">${bar('w-full')}</td>
@@ -123,6 +124,8 @@
         REQUISITION: { label: 'ใบเบิกสินค้า', icon: 'fa-clipboard-list' },
         COA: { label: 'ผังบัญชี', icon: 'fa-sitemap' },
         ACCOUNT_BOOK: { label: 'สมุดบัญชี', icon: 'fa-list-ul' },
+        ACCOUNT_DOCUMENT: { label: 'เอกสารบัญชี', icon: 'fa-file-lines' },
+        ACCOUNT_BOOK_LINK: { label: 'เชื่อมสมุดบัญชีกับเอกสาร', icon: 'fa-sitemap' },
         STOCK_AUDIT: { label: 'ตรวจนับสต็อก', icon: 'fa-clipboard-check' },
         PNL_CONFIG: { label: 'ตั้งค่างบกำไรขาดทุน', icon: 'fa-chart-pie' },
         DISBURSEMENT: { label: 'ใบสำคัญจ่าย', icon: 'fa-file-invoice' }
@@ -142,6 +145,45 @@
         return `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[0.375rem] text-xs font-medium bg-chip/60 text-ink">
                     <i class="fa-solid ${adEsc(conf.icon)} text-[10px]"></i>${adEsc(conf.label)}
                 </span>`;
+    };
+
+    // ชื่อพนักงาน + บรรทัดรอง (รหัสพนักงาน · ตำแหน่ง) — เซิร์ฟเวอร์แนบ emp_code/emp_role มาให้
+    // ชื่อในระบบหลายคนเป็นชื่อกลางๆ เช่น "พนักงานขาย" รหัสพนักงานจึงเป็นตัวบอกว่าใครทำรายการจริง
+    const getEmployeeMetaHtml = (log) => {
+        const meta = [log.emp_code, log.emp_role].filter(Boolean).map(adEsc).join(' · ');
+        return meta ? `<span class="block text-[11px] text-ink/60 font-normal mt-0.5 truncate">${meta}</span>` : '';
+    };
+
+    // ชื่อสาขาของ log — เซิร์ฟเวอร์แนบ branch_name มาให้
+    // branch_inferred = log เก่าที่บันทึกก่อนเก็บสาขา จึงแสดงสาขาปัจจุบันของพนักงานแทน (ทำตัวจางกว่า + บอกใน title)
+    const getBranchHtml = (log) => {
+        if (!log.branch_name) return '<span class="text-ink/50">-</span>';
+        if (log.branch_inferred) {
+            return `<span class="text-ink/60" title="บันทึกก่อนระบบเก็บสาขา — แสดงสาขาปัจจุบันของพนักงาน">
+                        <i class="fa-solid fa-location-dot text-[10px] mr-1"></i>${adEsc(log.branch_name)}</span>`;
+        }
+        return `<span class="text-ink"><i class="fa-solid fa-location-dot text-ink/70 text-[10px] mr-1"></i>${adEsc(log.branch_name)}</span>`;
+    };
+
+    // รายชื่อสาขาทั้งหมด — ดึงครั้งเดียวต่อการโหลดสคริปต์ (ดรอปดาวน์ต้องเห็นครบทุกสาขา ไม่ใช่เฉพาะที่มีใน log หน้านี้)
+    let adBranchesLoaded = false;
+    const adLoadBranchOptions = async () => {
+        if (adBranchesLoaded) return;
+        const sel = document.getElementById('audit-filter-branch');
+        if (!sel) return;
+        try {
+            const res = await authFetch(`${API_BASE_URL}/branches`);
+            const json = await res.json();
+            if (!json.success) return;
+            const current = sel.value;
+            sel.innerHTML = '<option value="ALL">ทุกสาขา</option>' +
+                (json.data || []).map(b => `<option value="${adEsc(b._id)}">${adEsc(b.name)}</option>`).join('');
+            sel.value = current && [...sel.options].some(o => o.value === current) ? current : 'ALL';
+            adBranchesLoaded = true;
+            adRenderChips(); // ชิปต้องได้ชื่อสาขาจริง ไม่ใช่รหัส
+        } catch (e) {
+            console.error('[AUDIT] โหลดรายชื่อสาขาไม่สำเร็จ:', e);
+        }
     };
 
     // เติมตัวเลือกดรอปดาวน์จากตารางกลาง — จะได้ไม่มีโมดูลไหนตกหล่นอีก
@@ -170,6 +212,7 @@
         const user = document.getElementById('audit-filter-user');
         const mod = document.getElementById('audit-filter-module');
         const act = document.getElementById('audit-filter-action');
+        const branch = document.getElementById('audit-filter-branch');
 
         const chips = [];
         if (search && search.value.trim()) chips.push({ key: 'search', label: `ค้นหา: ${search.value.trim()}` });
@@ -180,12 +223,16 @@
         if (act && act.value && act.value !== 'ALL') {
             chips.push({ key: 'action', label: `ประเภท: ${(AUDIT_ACTIONS[act.value] || {}).label || act.value}` });
         }
+        if (branch && branch.value && branch.value !== 'ALL') {
+            chips.push({ key: 'branch', label: `สาขา: ${branch.options[branch.selectedIndex]?.text || branch.value}` });
+        }
 
         const clearOne = (key) => {
             if (key === 'search' && search) search.value = '';
             if (key === 'user' && user) user.value = '';
             if (key === 'module' && mod) mod.value = 'ALL';
             if (key === 'action' && act) act.value = 'ALL';
+            if (key === 'branch' && branch) branch.value = 'ALL';
             fetchAuditLogs(1);
         };
 
@@ -215,6 +262,7 @@
                 if (user) user.value = '';
                 if (mod) mod.value = 'ALL';
                 if (act) act.value = 'ALL';
+                if (branch) branch.value = 'ALL';
                 fetchAuditLogs(1);
             });
             box.appendChild(clearAll);
@@ -233,9 +281,13 @@
                 <div class="flex items-center gap-2">
                     <div class="w-7 h-7 rounded-full flex items-center justify-center shrink-0 text-xs font-semibold bg-primary/[0.12] text-accent-ink"
                          aria-hidden="true">${initial}</div>
-                    <span class="text-ink font-medium">${adEsc(log.user_name || 'ระบบ')}</span>
+                    <div class="min-w-0">
+                        <span class="text-ink font-medium">${adEsc(log.user_name || 'ระบบ')}</span>
+                        ${getEmployeeMetaHtml(log)}
+                    </div>
                 </div>
             </td>
+            <td class="px-6 py-4 text-sm whitespace-nowrap">${getBranchHtml(log)}</td>
             <td class="px-6 py-4">${getActionBadgeHtml(log.action)}</td>
             <td class="px-6 py-4">${getModuleBadgeHtml(log.module)}</td>
             <td class="px-6 py-4">
@@ -271,7 +323,11 @@
                 <div class="w-7 h-7 rounded-full flex items-center justify-center shrink-0 text-xs font-semibold"
                      style="color:#FFE169;background-color:#FFE1691F;"
                      aria-hidden="true">${initial}</div>
-                <span class="text-ink font-medium truncate">${adEsc(log.user_name || 'ระบบ')}</span>
+                <div class="min-w-0">
+                    <span class="text-ink font-medium truncate block">${adEsc(log.user_name || 'ระบบ')}</span>
+                    ${getEmployeeMetaHtml(log)}
+                </div>
+                <span class="ml-auto shrink-0 text-xs">${getBranchHtml(log)}</span>
             </div>
 
             <p class="text-ink text-sm mt-3 truncate" title="${adEsc(log.description || '')}">${adEsc(log.description || '-')}</p>
@@ -331,6 +387,7 @@
         if (!tableBody) return;
 
         adFillFilterOptions();
+        adLoadBranchOptions();
         adRenderChips();
         adSkeleton();
         if (prevBtn) prevBtn.disabled = true;
@@ -341,8 +398,9 @@
             const module = document.getElementById('audit-filter-module')?.value || 'ALL';
             const action = document.getElementById('audit-filter-action')?.value || 'ALL';
             const user_name = document.getElementById('audit-filter-user')?.value || '';
+            const branch_id = document.getElementById('audit-filter-branch')?.value || 'ALL';
 
-            const params = new URLSearchParams({ page, limit: 50, search, module, action, user_name });
+            const params = new URLSearchParams({ page, limit: 50, search, module, action, user_name, branch_id });
             const res = await authFetch(`${API_BASE_URL}/audit-logs?${params.toString()}`);
             const result = await res.json();
 
@@ -463,6 +521,7 @@
     const auditSearch = document.getElementById('audit-filter-search');
     const auditModule = document.getElementById('audit-filter-module');
     const auditAction = document.getElementById('audit-filter-action');
+    const auditBranch = document.getElementById('audit-filter-branch');
     const auditUser = document.getElementById('audit-filter-user');
     const auditClearBtn = document.getElementById('btn-clear-audit-filters');
     const auditPrevBtn = document.getElementById('btn-audit-prev');
@@ -481,12 +540,14 @@
     if (auditUser) auditUser.addEventListener('input', triggerAuditFilterRefresh);
     if (auditModule) auditModule.addEventListener('change', () => fetchAuditLogs(1));
     if (auditAction) auditAction.addEventListener('change', () => fetchAuditLogs(1));
+    if (auditBranch) auditBranch.addEventListener('change', () => fetchAuditLogs(1));
 
     if (auditClearBtn) {
         auditClearBtn.addEventListener('click', () => {
             if (auditSearch) auditSearch.value = '';
             if (auditModule) auditModule.value = 'ALL';
             if (auditAction) auditAction.value = 'ALL';
+            if (auditBranch) auditBranch.value = 'ALL';
             if (auditUser) auditUser.value = '';
             fetchAuditLogs(1);
             showToast('ล้างค่าการกรองประวัติกิจกรรมเรียบร้อย', 'success');

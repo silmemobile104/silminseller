@@ -520,6 +520,50 @@
         });
     };
 
+    // หมวดที่เป็นของฟอร์มอุปกรณ์เสริม — เซิร์ฟเวอร์ใช้ชื่อนี้หา ProductType ตอนนำเข้าสต็อก (routes/api.js) จึงห้ามเปลี่ยนชื่อ/ลบ
+    const PO_ACCESSORY_TYPE_NAME = 'อุปกรณ์เสริม';
+
+    // ชื่อสินค้าของแถวมือถือ/แท็บเล็ต: เลือกหมวดหมู่ก่อน แล้วค่อยแสดงเฉพาะชื่อที่อยู่ในหมวดนั้น
+    // ชื่อใน master data ผูกหมวดด้วย type_id — ชื่อที่ยังไม่ผูก (ไม่มี type_id) แสดงให้ทุกหมวด
+    // ไม่งั้นชื่อที่เพิ่งเพิ่มใน master data จะเลือกไม่ได้เลยจนกว่าจะถูกผูกหมวด (ผูกให้เองตอนสร้างใบสั่งซื้อ)
+    // event 'change' ของหมวดที่ส่ง detail.keepName = true ใช้ตอนกางฟอร์มแก้ไข เพื่อคงชื่อเดิมไว้ไม่ให้ถูกล้าง
+    function bindPoDeviceNameByCategory(row) {
+        const catEl = row.querySelector('[name="po_item_category"]');
+        const nameEl = row.querySelector('select[name="po_item_name"]');
+        if (!catEl || !nameEl) return;
+
+        const refill = (keepName) => {
+            const catName = catEl.value;
+            const type = (window.masterDataCache?.productTypes || []).find(t => t.name === catName);
+            const current = nameEl.value;
+            if (!catName) {
+                nameEl.disabled = true;
+                nameEl.innerHTML = '<option value="">-- เลือกหมวดหมู่สินค้าก่อน --</option>';
+                return;
+            }
+            const names = (window.masterDataCache?.productNames || [])
+                .filter(n => !n.type_id || (type && String(n.type_id) === String(type._id)))
+                .map(n => n.name)
+                .filter(Boolean)
+                .sort((a, b) => a.localeCompare(b, 'th', { numeric: true }));
+            const stillValid = current && names.includes(current);
+            // กางฟอร์มแก้ไข: ชื่อเดิมอาจไม่อยู่ในรายการของหมวดนี้ (ข้อมูลเก่า) ยังต้องเก็บไว้ ไม่เงียบๆ เปลี่ยนใบเดิม
+            const keep = current && (stillValid || keepName);
+            nameEl.innerHTML = '<option value="">-- เลือกชื่อสินค้า --</option>'
+                + (keep && !stillValid ? `<option value="${poEsc(current)}">${poEsc(current)}</option>` : '')
+                + names.map(n => `<option value="${poEsc(n)}">${poEsc(n)}</option>`).join('');
+            nameEl.disabled = false;
+            nameEl.value = keep ? current : '';
+            if (current && !keep) {
+                // ย้ายหมวดแล้วชื่อเดิมไม่อยู่ในหมวดใหม่ -> ล้างชื่อและรหัสที่ผูกกับชื่อนั้น
+                const codeEl = row.querySelector('[name="po_item_code"]');
+                if (codeEl) codeEl.value = '';
+            }
+        };
+
+        catEl.addEventListener('change', (e) => refill(!!(e.detail && e.detail.keepName)));
+    }
+
     // มือถือ/แท็บเล็ต กับ อุปกรณ์เสริม ใช้คนละแบบฟอร์ม:
     //   device    = ชื่อ(เลือกจาก master) + หมวดหมู่ + สี + ความจุ + ราคา + จำนวน + หน่วย + เลือกบันทึก IMEI
     //   accessory = รหัส + ชื่อ(พิมพ์เองได้) + ราคาทุน + ราคาขาย + จำนวน + หน่วยนับ เท่านั้น
@@ -545,7 +589,8 @@
             return;
         }
 
-        const typeChips = (window.masterDataCache?.productTypes || []).map(t => t.name);
+        // ฟอร์มนี้เป็นของมือถือ/แท็บเล็ตเท่านั้น — หมวด "อุปกรณ์เสริม" ใช้ปุ่ม "เพิ่มอุปกรณ์เสริม" แทน จึงไม่ให้เลือกที่นี่
+        const typeChips = (window.masterDataCache?.productTypes || []).map(t => t.name).filter(n => n !== PO_ACCESSORY_TYPE_NAME);
         const colorData = window.masterDataCache?.productColors || [];
         const colorSwatches = colorData.map(c => c.name || c);
         const capacityChips = (window.masterDataCache?.productCapacities || []).map(c => c.name || c);
@@ -564,25 +609,24 @@
                 <!-- แถวมือถือ/แท็บเล็ตบันทึก IMEI เสมอ จึงติ๊กไว้ตายตัว ไม่มีตัวเลือกให้ผู้ใช้กดแล้ว -->
                 <input type="checkbox" name="po_item_track_imei" class="hidden" id="track_imei_${id}" checked>
 
-                <!-- ชื่อสินค้า -->
+                <!-- หมวดหมู่สินค้า — เลือกก่อน แล้วรายการชื่อสินค้าด้านล่างจะแสดงเฉพาะของหมวดนั้น -->
+                <div class="space-y-2">
+                    <label class="text-ink font-medium flex items-center gap-2 text-xs"><i class="fa-solid fa-layer-group text-ink"></i> หมวดหมู่สินค้า <span class="text-red-500">*</span></label>
+                    <div class="flex flex-wrap gap-2 po-chip-group" data-target="po_item_category">
+                        ${typeChips.map(t => `<button type="button" class="elev-field px-4 py-2.5 rounded-xl bg-field text-body-muted text-sm hover:ring-1 hover:ring-accent-ink hover:text-ink transition-colors po-chip" data-value="${t}">${t}</button>`).join('')}
+                    </div>
+                </div>
+
+                <!-- ชื่อสินค้า — เลือกได้หลังเลือกหมวดหมู่ (เติมรายการใน bindPoDeviceNameByCategory) -->
                 <div class="space-y-2">
                     <label for="po-dev-name-${id}" class="text-ink font-medium flex items-center gap-2 text-xs"><i class="fa-solid fa-mobile-screen text-ink"></i> ชื่อสินค้า <span class="text-red-500">*</span></label>
                     <div class="relative">
-                        <select id="po-dev-name-${id}" name="po_item_name" class="elev-field w-full px-4 py-2.5 rounded-xl bg-field text-ink focus:ring-2 focus:ring-accent-ink focus:outline-none transition-all text-sm appearance-none pr-10">
-                            <option value="" selected>-- เลือกชื่อสินค้า --</option>
-                            ${(window.masterDataCache?.productNames || []).map(x => `<option value="${x.name || x}">${x.name || x}</option>`).join('')}
+                        <select id="po-dev-name-${id}" name="po_item_name" disabled class="elev-field w-full px-4 py-2.5 rounded-xl bg-field text-ink focus:ring-2 focus:ring-accent-ink focus:outline-none transition-all text-sm appearance-none pr-10 disabled:opacity-60 disabled:cursor-not-allowed">
+                            <option value="" selected>-- เลือกหมวดหมู่สินค้าก่อน --</option>
                         </select>
                         <div class="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none text-body-muted">
                             <i class="fa-solid fa-chevron-down text-xs"></i>
                         </div>
-                    </div>
-                </div>
-
-                <!-- หมวดหมู่สินค้า -->
-                <div class="space-y-2">
-                    <label class="text-ink font-medium flex items-center gap-2 text-xs"><i class="fa-solid fa-layer-group text-ink"></i> หมวดหมู่สินค้า</label>
-                    <div class="flex flex-wrap gap-2 po-chip-group" data-target="po_item_category">
-                        ${typeChips.map(t => `<button type="button" class="elev-field px-4 py-2.5 rounded-xl bg-field text-body-muted text-sm hover:ring-1 hover:ring-accent-ink hover:text-ink transition-colors po-chip" data-value="${t}">${t}</button>`).join('')}
                     </div>
                 </div>
 
@@ -723,6 +767,7 @@
         bindPoRowCommon(row);
         syncPoItemsEmptyState();
         applyDefaultUnit(row, 'device');
+        bindPoDeviceNameByCategory(row);
 
         const inputCode = row.querySelector('[name="po_item_code"]');
         const inputName = row.querySelector('[name="po_item_name"]');
@@ -861,6 +906,14 @@
             const items = [];
             for (let row of rows) {
                 const isAccessory = row.dataset.kind === 'accessory';
+
+                // มือถือ/แท็บเล็ตต้องเลือกหมวดหมู่ก่อน (อุปกรณ์เสริมไม่มีหมวดหมู่)
+                if (!isAccessory) {
+                    const catEl = row.querySelector('[name="po_item_category"]');
+                    if (!catEl.value) {
+                        return highlightPoInvalid(row.querySelector('.po-chip-group[data-target="po_item_category"]'), catEl, 'กรุณาเลือกหมวดหมู่สินค้า', true);
+                    }
+                }
 
                 const nameEl = row.querySelector('[name="po_item_name"]');
                 if (!nameEl.value.trim()) {
@@ -1043,6 +1096,7 @@
                 setPoRowValue(row, 'po_item_name', item.product_name || '');
                 setPoRowValue(row, 'po_item_code', item.product_code || '');
                 setPoRowValue(row, 'po_item_category', item.category || '');
+                row.querySelector('[name="po_item_category"]')?.dispatchEvent(new CustomEvent('change', { detail: { keepName: true } }));
                 setPoRowValue(row, 'po_item_color', item.color || '');
                 setPoRowValue(row, 'po_item_capacity', item.capacity || '');
                 // เขียนทับหน่วยนับเฉพาะตอนใบเดิมมีค่าจริง — ใบที่สร้างก่อนแก้บั๊ก "unit หายตอนสร้าง"
@@ -1748,7 +1802,12 @@
         const totalAll = sum(rows, 'total');
         const paidAll = sum(rows, 'paid');
         set('po-kpi-total-amount', poDashBaht(totalAll));
-        set('po-kpi-total-sub', `${rows.length.toLocaleString()} ใบ` + (cancelledCount ? ` (ไม่นับที่ยกเลิก ${cancelledCount} ใบ)` : ''));
+        set('po-kpi-total-count', `${rows.length.toLocaleString()} ใบ`);
+        set('po-kpi-total-count-sub', cancelledCount ? `ไม่นับที่ยกเลิก ${cancelledCount} ใบ` : 'ไม่รวมใบที่ยกเลิก');
+        set('po-kpi-total-sub', rows.length ? `เฉลี่ย ${poDashBaht(totalAll / rows.length)} ต่อใบ` : '-');
+        const paidRows = rows.filter(r => r.po.payment_status === 'ชำระเงินแล้ว');
+        set('po-kpi-paid-count', `${paidRows.length.toLocaleString()} ใบ`);
+        set('po-kpi-paid-count-sub', rows.length ? `คิดเป็น ${((paidRows.length / rows.length) * 100).toFixed(1)}% ของใบสั่งซื้อทั้งหมด` : '-');
         set('po-kpi-paid-amount', poDashBaht(paidAll));
         set('po-kpi-paid-sub', totalAll > 0 ? `คิดเป็น ${((paidAll / totalAll) * 100).toFixed(1)}% ของมูลค่าสั่งซื้อ` : '-');
         set('po-kpi-discount-amount', poDashBaht(sum(rows, 'discount')));
@@ -1804,10 +1863,11 @@
             }).slice(0, 10);
 
             if (!list.length) {
-                dueBody.innerHTML = '<tr><td colspan="6" class="px-6 py-8 text-center text-body-muted italic">ไม่มีใบสั่งซื้อที่ค้างชำระ</td></tr>';
+                dueBody.innerHTML = '<tr><td colspan="7" class="px-6 py-8 text-center text-body-muted italic">ไม่มีใบสั่งซื้อที่ค้างชำระ</td></tr>';
             } else {
                 const canPay = canPayPO();
                 dueBody.innerHTML = list.map(r => {
+                    const { st } = buildPoHistoryCardData(r.po); // สีป้ายสถานะชุดเดียวกับตารางประวัติ
                     let dueCell = '<span class="text-ink/50">ไม่ได้กำหนด</span>';
                     if (r.due) {
                         const diff = poDashDaysBetween(today, r.due);
@@ -1827,6 +1887,12 @@
                         <td class="px-6 py-4 text-sm">${dueCell}</td>
                         <td class="px-6 py-4 font-mono font-semibold text-accent-ink">${poDashEsc(r.po.po_number || '-')}</td>
                         <td class="px-6 py-4 text-ink">${poDashEsc(r.po.supplier_name || '-')}</td>
+                        <td class="px-6 py-4 text-center">
+                            <div class="inline-flex items-center gap-2 px-2.5 py-1 rounded-[0.375rem] ${st.badge}">
+                                <div class="w-2 h-2 rounded-full ${st.dot}"></div>
+                                <span class="${st.text} font-medium text-xs">${poDashEsc(r.po.status || '-')}</span>
+                            </div>
+                        </td>
                         <td class="px-6 py-4 text-right font-mono text-ink">${poDashBaht(r.total)}</td>
                         <td class="px-6 py-4 text-right font-mono font-semibold text-orange-400">${poDashBaht(r.outstanding)}</td>
                         <td class="px-6 py-4 text-right">
@@ -2051,7 +2117,7 @@
     // ระบบบัญชีและการเงิน — ดีไซน์แนวเดียวกับหน้า #dashboard
     // การ์ด KPI / การ์ดพาเนล / ตาราง ใช้สูตรเดียวกับ DESIGN.md ข้อ 11.3, 11.6, 11.7
     // ==========================================
-    const AP_COLS = 8, PL_COLS = 5, AR_COLS = 5;
+    const AP_COLS = 8, PL_COLS = 6, AR_COLS = 5;
     // มุมมองตาราง/การ์ดของ 3 ตารางในหน้าบัญชี — จำค่าแยกกันต่อตาราง (เหมือนหน้า #approve-import)
     let apViewMode = localStorage.getItem('acc_ap_view_mode') === 'card' ? 'card' : 'list';
     let plViewMode = localStorage.getItem('acc_pl_view_mode') === 'card' ? 'card' : 'list';
@@ -2423,6 +2489,15 @@
     };
 
     // ---------- แท็บ 2: รายการเดินบัญชี (Ledger) ----------
+    // เอกสาร + สมุดบัญชี ที่ตั้งไว้ในเมนู "เชื่อมสมุดบัญชีกับเอกสาร" — ว่างถ้ายังไม่ได้เชื่อม
+    const plBookText = (item) => item.book_code
+        ? `${item.book_code} ${item.book_name || ''}`.trim()
+        : '';
+    const plBookCell = (item) => item.book_code
+        ? `<p class="text-ink">${accEsc(item.doc_name || '-')}</p>
+           <p class="text-xs text-ink/70 mt-0.5"><span class="font-mono font-semibold text-accent-ink">${accEsc(item.book_code)}</span> ${accEsc(item.book_name || '')}</p>`
+        : '<span class="text-ink/50 italic">ยังไม่ได้เชื่อมสมุดบัญชี</span>';
+
     const plRowMarkup = (item) => {
         const isIncome = item.type === 'รายรับ';
         const badge = isIncome
@@ -2443,6 +2518,7 @@
             </td>
             <td class="px-6 py-4">${badge}</td>
             <td class="px-6 py-4 text-ink">${accEsc(item.category || '-')}</td>
+            <td class="px-6 py-4">${plBookCell(item)}</td>
             <td class="px-6 py-4 text-right">${amount}</td>
             <td class="px-6 py-4 text-ink">${accEsc(item.recorded_by || '-')}</td>
         </tr>`;
@@ -2468,6 +2544,7 @@
                 <div class="shrink-0">${badge}</div>
             </div>
             <p class="text-ink font-medium mt-2.5 truncate">${accEsc(item.category || '-')}</p>
+            <p class="text-xs text-ink/70 mt-0.5 truncate">${accEsc(plBookText(item) ? (item.doc_name || '') + ' · ' + plBookText(item) : 'ยังไม่ได้เชื่อมสมุดบัญชี')}</p>
             <p class="text-xs text-ink/70 mt-0.5">${accEsc(accDate(item.created_at))}</p>
             <div class="flex items-center justify-between mt-3.5 pt-3 border-t border-hairline">
                 <span class="text-xs text-ink/70">${accEsc(item.recorded_by || '-')}</span>

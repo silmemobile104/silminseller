@@ -375,41 +375,38 @@
     </div>
 </div>
 
-<div id="view-account-categories">
+<div id="view-pnl-config">
     <!-- [1] หัวหน้า — DESIGN.md ข้อ 11.2 -->
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div class="flex items-center gap-4">
-            <i class="hidden md:block fa-solid fa-tags text-ink w-5 text-2xl text-center"></i>
-            <h3 class="hidden md:block text-2xl text-ink">ประเภทบัญชี</h3>
+            <i class="hidden md:block bi bi-bar-chart text-ink w-5 text-2xl text-center"></i>
+            <h3 class="hidden md:block text-2xl text-ink">ตั้งค่างบกำไรขาดทุน</h3>
         </div>
-        <button type="button" onclick="if(typeof openAcctCatModal==='function') openAcctCatModal()"
+        <button type="button" onclick="if(typeof openPlItemModal==='function') openPlItemModal()"
             class="px-4 py-2 bg-primary hover:bg-[#E2B93C] text-on-primary font-medium rounded-xl transition-all flex items-center gap-2 w-fit cursor-pointer">
             <i class="fa-solid fa-plus"></i>
-            <p>เพิ่มประเภทบัญชี</p>
+            <p>เพิ่มรายการงบกำไรขาดทุน</p>
         </button>
     </div>
 
-    <!-- [2] หมวดหลัก 5 หมวด (ระบบสร้างให้อัตโนมัติ) — คลิกเพื่อกรองเฉพาะหมวด -->
-    <div id="acct-cat-tabs" class="flex flex-wrap items-center gap-2"></div>
-
-    <!-- [3] ตารางประเภทบัญชี (กลุ่มบัญชี) -->
+    <!-- [2] ตารางรายการงบกำไรขาดทุน -->
     <div class="bg-panel/40 rounded-2xl shadow-lg overflow-hidden backdrop-blur-sm">
         <div class="p-6 pb-4 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-            <h3 id="acct-cat-heading" class="text-lg text-ink flex items-center gap-2">
-                <i class="fa-solid fa-list-ul text-accent-ink"></i> <span>ประเภทบัญชีทุกหมวด</span>
+            <h3 class="text-lg text-ink flex items-center gap-2">
+                <i class="fa-solid fa-list-ul text-accent-ink"></i> <span>รายการงบกำไรขาดทุน</span>
             </h3>
             <div class="flex flex-wrap items-center gap-3 w-full lg:w-auto">
                 <div class="relative group w-full sm:w-64">
                     <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                         <i class="fa-solid fa-search text-ink group-focus-within:text-accent-ink transition-colors"></i>
                     </div>
-                    <label for="acct-cat-search" class="sr-only">ค้นหารหัสหรือชื่อกลุ่มบัญชี</label>
-                    <input type="text" id="acct-cat-search" autocomplete="off"
-                        oninput="if(typeof renderAcctCatPage==='function') renderAcctCatPage()"
-                        placeholder="ค้นหารหัส / ชื่อกลุ่มบัญชี..."
+                    <label for="pl-item-search" class="sr-only">ค้นหารายการงบกำไรขาดทุน</label>
+                    <input type="text" id="pl-item-search" autocomplete="off"
+                        oninput="if(typeof renderPlPage==='function') renderPlPage()"
+                        placeholder="ค้นหาชื่อรายการ / กลุ่ม / รหัสบัญชี..."
                         class="elev-card bg-panel/40 rounded-[0.5rem] text-sm pl-10 pr-4 py-2 w-full text-ink focus:outline-none focus:ring-1 focus:ring-accent-ink transition-all placeholder-body-muted">
                 </div>
-                <div id="acct-cat-result-count" class="text-xs text-ink font-medium"></div>
+                <div id="pl-item-result-count" class="text-xs text-ink font-medium"></div>
             </div>
         </div>
 
@@ -417,124 +414,219 @@
             <table class="w-full text-left text-sm whitespace-nowrap border-collapse">
                 <thead class="bg-panel/40 text-ink">
                     <tr>
-                        <th class="px-6 py-4 font-semibold text-[15px]">รหัส</th>
-                        <th class="px-6 py-4 font-semibold text-[15px] w-full">ชื่อกลุ่มบัญชี</th>
-                        <th class="px-6 py-4 font-semibold text-[15px]">หมวด</th>
-                        <th class="px-6 py-4 font-semibold text-[15px]">รหัสบัญชีในกลุ่ม</th>
-                        <th class="px-6 py-4 font-semibold text-[15px] text-right">จัดการ</th>
+                        <th rowspan="2" class="px-6 py-4 font-semibold text-[15px]">หมวด</th>
+                        <th rowspan="2" class="px-6 py-4 font-semibold text-[15px]">กลุ่ม</th>
+                        <th rowspan="2" class="px-6 py-4 font-semibold text-[15px]">ลำดับ</th>
+                        <th rowspan="2" class="px-6 py-4 font-semibold text-[15px] w-full">ชื่อรายการ</th>
+                        <th colspan="2" class="px-6 pt-4 pb-1 font-semibold text-[15px]">ประกอบด้วย</th>
+                        <th rowspan="2" class="px-6 py-4 font-semibold text-[15px] text-right">จัดการ</th>
+                    </tr>
+                    <tr>
+                        <th class="px-6 pb-4 font-semibold text-[13px] text-ink/80">รหัสบัญชี</th>
+                        <th class="px-6 pb-4 font-semibold text-[13px] text-ink/80">ชื่อบัญชี</th>
                     </tr>
                 </thead>
-                <tbody id="acct-cat-table-body" class="divide-y divide-divider"></tbody>
+                <tbody id="pl-item-table-body" class="divide-y divide-divider"></tbody>
             </table>
         </div>
     </div>
 </div>
 
-<div id="view-account-codes">
+<div id="view-balance-sheet-config">
     <!-- [1] หัวหน้า — DESIGN.md ข้อ 11.2 -->
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div class="flex items-center gap-4">
-            <i class="hidden md:block bi bi-diagram-3 text-ink w-5 text-2xl text-center"></i>
-            <h3 class="hidden md:block text-2xl text-ink">รหัสบัญชี</h3>
+            <i class="hidden md:block fa-solid fa-scale-balanced text-ink w-5 text-2xl text-center"></i>
+            <h3 class="hidden md:block text-2xl text-ink">ตั้งค่างบดุล</h3>
         </div>
-        <button type="button" onclick="if(typeof openAcctCodeModal==='function') openAcctCodeModal()"
+        <button type="button" onclick="if(typeof openBsItemModal==='function') openBsItemModal()"
             class="px-4 py-2 bg-primary hover:bg-[#E2B93C] text-on-primary font-medium rounded-xl transition-all flex items-center gap-2 w-fit cursor-pointer">
             <i class="fa-solid fa-plus"></i>
-            <p>เพิ่มรหัสบัญชี</p>
+            <p>เพิ่มบัญชีงบดุล</p>
         </button>
     </div>
 
-    <!-- [2] ตารางรหัสบัญชี (ข้อมูลผังบัญชี AccountChart) -->
+    <!-- [2] ตารางรายการงบดุล -->
     <div class="bg-panel/40 rounded-2xl shadow-lg overflow-hidden backdrop-blur-sm">
         <div class="p-6 pb-4 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
             <h3 class="text-lg text-ink flex items-center gap-2">
-                <i class="fa-solid fa-list-ul text-accent-ink"></i> <span>รายการรหัสบัญชี</span>
+                <i class="fa-solid fa-list-ul text-accent-ink"></i> <span>รายการบัญชีงบดุล</span>
             </h3>
             <div class="flex flex-wrap items-center gap-3 w-full lg:w-auto">
-                <label for="acct-code-filter-category" class="sr-only">กรองตามหมวด</label>
-                <select id="acct-code-filter-category"
-                    onchange="if(typeof renderAcctCodePage==='function') renderAcctCodePage()"
-                    class="elev-card bg-panel/40 rounded-[0.5rem] text-sm px-3 py-2 w-full sm:w-auto text-ink focus:outline-none focus:ring-1 focus:ring-accent-ink transition-all cursor-pointer">
-                    <option value="">ทุกหมวด</option>
+                <div class="relative group w-full sm:w-64">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <i class="fa-solid fa-search text-ink group-focus-within:text-accent-ink transition-colors"></i>
+                    </div>
+                    <label for="bs-item-search" class="sr-only">ค้นหารายการงบดุล</label>
+                    <input type="text" id="bs-item-search" autocomplete="off"
+                        oninput="if(typeof renderBsPage==='function') renderBsPage()"
+                        placeholder="ค้นหาชื่อรายการ / กลุ่ม / รหัสบัญชี..."
+                        class="elev-card bg-panel/40 rounded-[0.5rem] text-sm pl-10 pr-4 py-2 w-full text-ink focus:outline-none focus:ring-1 focus:ring-accent-ink transition-all placeholder-body-muted">
+                </div>
+                <div id="bs-item-result-count" class="text-xs text-ink font-medium"></div>
+            </div>
+        </div>
+
+        <div class="overflow-x-auto" tabindex="0">
+            <table class="w-full text-left text-sm whitespace-nowrap border-collapse">
+                <thead class="bg-panel/40 text-ink">
+                    <tr>
+                        <th rowspan="2" class="px-6 py-4 font-semibold text-[15px]">หมวด</th>
+                        <th rowspan="2" class="px-6 py-4 font-semibold text-[15px]">กลุ่ม</th>
+                        <th rowspan="2" class="px-6 py-4 font-semibold text-[15px]">ลำดับ</th>
+                        <th rowspan="2" class="px-6 py-4 font-semibold text-[15px] w-full">ชื่อรายการ</th>
+                        <th colspan="2" class="px-6 pt-4 pb-1 font-semibold text-[15px]">ประกอบด้วย</th>
+                        <th rowspan="2" class="px-6 py-4 font-semibold text-[15px] text-right">จัดการ</th>
+                    </tr>
+                    <tr>
+                        <th class="px-6 pb-4 font-semibold text-[13px] text-ink/80">รหัสบัญชี</th>
+                        <th class="px-6 pb-4 font-semibold text-[13px] text-ink/80">ชื่อบัญชี</th>
+                    </tr>
+                </thead>
+                <tbody id="bs-item-table-body" class="divide-y divide-divider"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div id="view-account-doc-links">
+    <!-- [1] หัวหน้า — DESIGN.md ข้อ 11.2
+         2 ปุ่ม: ปุ่มของแท็บที่เปิดอยู่เป็นปุ่มทึบ (หลัก) อีกปุ่มเป็น ghost — สลับคลาสใน setDocLinkTab (page-accounting-settings.js) -->
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div class="flex items-center gap-4">
+            <i class="hidden md:block bi bi-arrow-left-right text-ink w-5 text-2xl text-center"></i>
+            <h3 class="hidden md:block text-2xl text-ink">เชื่อมสมุดบัญชีกับเอกสาร</h3>
+        </div>
+        <div class="flex flex-wrap items-center gap-3">
+            <button type="button" id="btn-add-acct-doc" onclick="if(typeof openAcctDocModal==='function') openAcctDocModal()"
+                class="elev-field px-4 py-2 bg-field text-ink hover:ring-1 hover:ring-accent-ink font-medium rounded-xl transition-all flex items-center gap-2 w-fit cursor-pointer">
+                <i class="fa-solid fa-plus"></i>
+                <p>เพิ่มเอกสาร</p>
+            </button>
+            <button type="button" id="btn-add-acct-doclink" onclick="if(typeof openAcctDocLinkModal==='function') openAcctDocLinkModal()"
+                class="px-4 py-2 bg-primary hover:bg-[#E2B93C] text-on-primary font-medium rounded-xl transition-all flex items-center gap-2 w-fit cursor-pointer">
+                <i class="fa-solid fa-plus"></i>
+                <p>เพิ่มการเชื่อม</p>
+            </button>
+        </div>
+    </div>
+
+    <!-- [2] สลับ 2 หน้า: เชื่อมบัญชี / รายการเอกสาร -->
+    <div class="flex flex-wrap items-center gap-2" role="group" aria-label="เลือกหน้า">
+        <button id="tab-acct-doclinks" type="button" aria-pressed="true"
+            class="border border-transparent px-4 py-2.5 rounded-xl text-sm font-bold transition-colors flex items-center gap-2 cursor-pointer bg-primary text-on-primary ring-1 ring-accent-ink">
+            <i class="fa-solid fa-sitemap"></i> เชื่อมบัญชี
+            <span id="badge-acct-doclinks" class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-hairline/20">0</span>
+        </button>
+        <button id="tab-acct-docs" type="button" aria-pressed="false"
+            class="elev-field px-4 py-2.5 rounded-xl text-sm font-bold transition-colors flex items-center gap-2 cursor-pointer bg-field text-body-muted hover:ring-1 hover:ring-accent-ink hover:text-ink">
+            <i class="fa-solid fa-file-lines"></i> รายการเอกสาร
+            <span id="badge-acct-docs" class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-chip/60 text-ink">0</span>
+        </button>
+    </div>
+
+    <!-- [3] ตาราง — ใช้ตัวกรองชุดเดียวกันทั้งสองหน้า -->
+    <div class="bg-panel/40 rounded-2xl shadow-lg overflow-hidden backdrop-blur-sm">
+        <div class="p-6 pb-4 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+            <h3 class="text-lg text-ink flex items-center gap-2">
+                <i id="acct-doclink-title-icon" class="fa-solid fa-sitemap text-accent-ink"></i>
+                <span id="acct-doclink-title">รายการเชื่อมสมุดบัญชีกับเอกสาร</span>
+            </h3>
+            <div class="flex flex-wrap items-center gap-3 w-full lg:w-auto">
+                <div class="relative group w-full sm:w-64">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <i class="fa-solid fa-search text-ink group-focus-within:text-accent-ink transition-colors"></i>
+                    </div>
+                    <label for="acct-doclink-search" class="sr-only">ค้นหารหัส ชื่อเอกสาร หรือสมุดบัญชี</label>
+                    <input type="text" id="acct-doclink-search" autocomplete="off"
+                        placeholder="ค้นหารหัส / ชื่อเอกสาร / สมุดบัญชี..."
+                        class="elev-card bg-panel/40 rounded-[0.5rem] text-sm pl-10 pr-4 py-2 w-full text-ink focus:outline-none focus:ring-1 focus:ring-accent-ink transition-all placeholder-body-muted">
+                </div>
+                <label for="acct-doclink-status" class="sr-only">กรองตามสถานะ</label>
+                <select id="acct-doclink-status"
+                    class="page-filter-control bg-panel/40 cursor-pointer text-sm rounded-[0.5rem] px-3 py-2 text-ink focus:outline-none focus:ring-1 focus:ring-accent-ink w-full sm:w-auto [&>option]:bg-panel [&>option:checked]:bg-primary [&>option:checked]:text-on-primary">
+                    <option value="">สถานะ: ทั้งหมด</option>
+                    <option value="active">สถานะ: ใช้งาน</option>
+                    <option value="off">สถานะ: ปิดใช้งาน</option>
                 </select>
-                <div class="relative group w-full sm:w-64">
-                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <i class="fa-solid fa-search text-ink group-focus-within:text-accent-ink transition-colors"></i>
-                    </div>
-                    <label for="acct-code-search" class="sr-only">ค้นหารหัสหรือชื่อบัญชี</label>
-                    <input type="text" id="acct-code-search" autocomplete="off"
-                        oninput="if(typeof renderAcctCodePage==='function') renderAcctCodePage()"
-                        placeholder="ค้นหารหัส / ชื่อบัญชี..."
-                        class="elev-card bg-panel/40 rounded-[0.5rem] text-sm pl-10 pr-4 py-2 w-full text-ink focus:outline-none focus:ring-1 focus:ring-accent-ink transition-all placeholder-body-muted">
-                </div>
-                <div id="acct-code-result-count" class="text-xs text-ink font-medium"></div>
+                <div id="acct-doclink-result-count" class="text-xs text-ink font-medium"></div>
             </div>
         </div>
 
-        <div class="overflow-x-auto" tabindex="0">
+        <!-- หน้า 1: เชื่อมบัญชี -->
+        <div id="acct-doclink-panel-links" class="overflow-x-auto" tabindex="0">
             <table class="w-full text-left text-sm whitespace-nowrap border-collapse">
                 <thead class="bg-panel/40 text-ink">
                     <tr>
-                        <th class="px-6 py-4 font-semibold text-[15px]">รหัส</th>
-                        <th class="px-6 py-4 font-semibold text-[15px] w-full">ชื่อบัญชี</th>
-                        <th class="px-6 py-4 font-semibold text-[15px]">หมวด</th>
-                        <th class="px-6 py-4 font-semibold text-[15px]">กลุ่มบัญชี</th>
-                        <th class="px-6 py-4 font-semibold text-[15px]">สถานะ</th>
+                        <th class="px-6 py-4 font-semibold text-[15px] w-1/2">ชื่อเอกสาร</th>
+                        <th class="px-6 py-4 font-semibold text-[15px] w-1/2">สมุดบัญชี</th>
+                        <th class="px-6 py-4 font-semibold text-[15px] text-center">สถานะ</th>
                         <th class="px-6 py-4 font-semibold text-[15px] text-right">จัดการ</th>
                     </tr>
                 </thead>
-                <tbody id="acct-code-table-body" class="divide-y divide-divider"></tbody>
+                <tbody id="acct-doclink-table-body" class="divide-y divide-divider"></tbody>
+            </table>
+        </div>
+
+        <!-- หน้า 2: รายการเอกสาร -->
+        <div id="acct-doclink-panel-docs" class="hidden overflow-x-auto" tabindex="0">
+            <table class="w-full text-left text-sm whitespace-nowrap border-collapse">
+                <thead class="bg-panel/40 text-ink">
+                    <tr>
+                        <th class="px-6 py-4 font-semibold text-[15px]">รหัสเอกสาร</th>
+                        <th class="px-6 py-4 font-semibold text-[15px] w-full">ชื่อเอกสาร</th>
+                        <th class="px-6 py-4 font-semibold text-[15px] text-center">สถานะ</th>
+                        <th class="px-6 py-4 font-semibold text-[15px] text-right">จัดการ</th>
+                    </tr>
+                </thead>
+                <tbody id="acct-doc-table-body" class="divide-y divide-divider"></tbody>
             </table>
         </div>
     </div>
 </div>
 
-<div id="view-account-books">
-    <!-- [1] หัวหน้า — DESIGN.md ข้อ 11.2 -->
+<div id="view-account-tree">
+    <!-- หน้า "หมวดหมู่บัญชี" — โฟลเดอร์ 3 ชั้น: หมวด (5 หมวดคงที่) > กลุ่มบัญชี > รหัสบัญชี
+         เพิ่ม/แก้ไข/ปิดใช้งาน/ลบ ได้ที่ระดับกลุ่มและรหัสบัญชี — โครงสร้างวาดใน renderAcctTree (page-accounting-settings.js) -->
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div class="flex items-center gap-4">
-            <i class="hidden md:block bi bi-file-earmark-text text-ink w-5 text-2xl text-center"></i>
-            <h3 class="hidden md:block text-2xl text-ink">สมุดบัญชี</h3>
+            <i class="hidden md:block fa-solid fa-folder-tree text-ink w-5 text-2xl text-center"></i>
+            <h3 class="hidden md:block text-2xl text-ink">หมวดหมู่บัญชี</h3>
         </div>
-        <button type="button" onclick="if(typeof openAcctBookModal==='function') openAcctBookModal()"
-            class="px-4 py-2 bg-primary hover:bg-[#E2B93C] text-on-primary font-medium rounded-xl transition-all flex items-center gap-2 w-fit cursor-pointer">
-            <i class="fa-solid fa-plus"></i>
-            <p>เพิ่มสมุดบัญชี</p>
-        </button>
+        <div class="flex flex-wrap items-center gap-3">
+            <button type="button" id="btn-acct-tree-toggle-all"
+                class="elev-field px-4 py-2 bg-field text-ink hover:ring-1 hover:ring-accent-ink font-medium rounded-xl transition-all flex items-center gap-2 w-fit cursor-pointer">
+                <i class="fa-solid fa-chevron-down"></i>
+                <p>ขยายทั้งหมด</p>
+            </button>
+        </div>
     </div>
 
-    <!-- [2] ตารางสมุดบัญชี -->
     <div class="bg-panel/40 rounded-2xl shadow-lg overflow-hidden backdrop-blur-sm">
         <div class="p-6 pb-4 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
             <h3 class="text-lg text-ink flex items-center gap-2">
-                <i class="fa-solid fa-list-ul text-accent-ink"></i> <span>รายการสมุดบัญชี</span>
+                <i class="fa-solid fa-folder-tree text-accent-ink"></i>
+                <span>โครงสร้างบัญชี</span>
             </h3>
             <div class="flex flex-wrap items-center gap-3 w-full lg:w-auto">
                 <div class="relative group w-full sm:w-64">
                     <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                         <i class="fa-solid fa-search text-ink group-focus-within:text-accent-ink transition-colors"></i>
                     </div>
-                    <label for="acct-book-search" class="sr-only">ค้นหารหัสหรือชื่อสมุดบัญชี</label>
-                    <input type="text" id="acct-book-search" autocomplete="off"
-                        oninput="if(typeof renderAcctBookPage==='function') renderAcctBookPage()"
-                        placeholder="ค้นหารหัส / ชื่อสมุดบัญชี..."
+                    <label for="acct-tree-search" class="sr-only">ค้นหากลุ่มบัญชี รหัสบัญชี หรือชื่อบัญชี</label>
+                    <input type="text" id="acct-tree-search" autocomplete="off"
+                        placeholder="ค้นหากลุ่ม / รหัส / ชื่อบัญชี..."
                         class="elev-card bg-panel/40 rounded-[0.5rem] text-sm pl-10 pr-4 py-2 w-full text-ink focus:outline-none focus:ring-1 focus:ring-accent-ink transition-all placeholder-body-muted">
                 </div>
-                <div id="acct-book-result-count" class="text-xs text-ink font-medium"></div>
+                <label for="acct-tree-status" class="sr-only">กรองตามสถานะ</label>
+                <select id="acct-tree-status"
+                    class="page-filter-control bg-panel/40 cursor-pointer text-sm rounded-[0.5rem] px-3 py-2 text-ink focus:outline-none focus:ring-1 focus:ring-accent-ink w-full sm:w-auto [&>option]:bg-panel [&>option:checked]:bg-primary [&>option:checked]:text-on-primary">
+                    <option value="">สถานะ: ทั้งหมด</option>
+                    <option value="active">สถานะ: ใช้งาน</option>
+                    <option value="off">สถานะ: ปิดใช้งาน</option>
+                </select>
             </div>
         </div>
-
-        <div class="overflow-x-auto" tabindex="0">
-            <table class="w-full text-left text-sm whitespace-nowrap border-collapse">
-                <thead class="bg-panel/40 text-ink">
-                    <tr>
-                        <th class="px-6 py-4 font-semibold text-[15px]">รหัส</th>
-                        <th class="px-6 py-4 font-semibold text-[15px] w-full">ชื่อสมุดบัญชี</th>
-                        <th class="px-6 py-4 font-semibold text-[15px] text-right">จัดการ</th>
-                    </tr>
-                </thead>
-                <tbody id="acct-book-table-body" class="divide-y divide-divider"></tbody>
-            </table>
-        </div>
+        <div id="acct-tree-root" class="px-6 pb-6 space-y-3"></div>
     </div>
 </div>

@@ -32,13 +32,13 @@
     <!-- ไอคอน: self-host + ตัดเหลือเฉพาะที่ใช้จริง (Font Awesome 144 + Bootstrap Icons 28)
          จากเดิมโหลด CSS เต็มชุด 2 เจ้าจาก CDN (~200KB, ~2,000 ไอคอน) เหลือ ~24KB
          ⚠️ เพิ่มไอคอนใหม่ที่ไม่เคยใช้มาก่อน ต้องรัน `npm run build:icons` ก่อน deploy -->
-    <link rel="stylesheet" href="vendor/icons/icons.css?v=12">
+    <link rel="stylesheet" href="vendor/icons/icons.css?v=13">
     <!-- preload ฟอนต์ไอคอนที่ subset แล้ว (รวมกันเหลือ ~17KB) เพื่อตัด waterfall
          ปกติเบราว์เซอร์ต้องรอ parse CSS จบก่อนถึงจะรู้ว่าต้องโหลดฟอนต์ -->
     <!-- ⚠️ ?v= ต้องตรงกับ FONT_VERSION ใน tools/build-icons.js เป๊ะๆ
          ถ้าไม่ตรง เบราว์เซอร์จะมองเป็นคนละไฟล์แล้วโหลดฟอนต์ซ้ำสองรอบ -->
-    <link rel="preload" as="font" type="font/woff2" crossorigin href="vendor/icons/webfonts/fa-solid-900.woff2?v=12">
-    <link rel="preload" as="font" type="font/woff2" crossorigin href="vendor/icons/webfonts/bootstrap-icons.woff2?v=12">
+    <link rel="preload" as="font" type="font/woff2" crossorigin href="vendor/icons/webfonts/fa-solid-900.woff2?v=13">
+    <link rel="preload" as="font" type="font/woff2" crossorigin href="vendor/icons/webfonts/bootstrap-icons.woff2?v=13">
     <!-- ฟอนต์ระบบ: self-host เอง ตัด origin ภายนอก 2 เจ้าทิ้ง (googleapis + gstatic) พร้อม DNS/TLS handshake
          และตัด waterfall ที่ต้องรอ CSS จาก googleapis ก่อนถึงจะเริ่มโหลดไฟล์ฟอนต์จาก gstatic
          ลำดับ: Sarabun (หลัก) > Prompt (สำรอง) > Outfit (สำรองชั้นสอง มีเฉพาะละติน) — ดู --font-sans ใน src/tailwind-input.css
@@ -282,22 +282,28 @@
                 </button>
 
                 <div id="nav-account-settings-submenu" class="nav-submenu" hidden>
-                    <a href="#" id="nav-account-books" data-tooltip="สมุดบัญชี"
+                    <a href="#" id="nav-account-tree" data-tooltip="หมวดหมู่บัญชี"
                         class="flex items-center px-3 py-3 rounded-xl text-body-muted hover:bg-field/50 hover:text-ink transition-all group nav-menu-item">
-                        <i class="bi bi-file-earmark-text text-body-muted w-5 text-center text-xl"></i>
-                        <span class="sidebar-text ml-3 font-medium">สมุดบัญชี</span>
+                        <i class="fa-solid fa-folder-tree text-body-muted w-5 text-center text-xl"></i>
+                        <span class="sidebar-text ml-3 font-medium">หมวดหมู่บัญชี</span>
                     </a>
 
-                    <a href="#" id="nav-account-categories" data-tooltip="ประเภทบัญชี"
+                    <a href="#" id="nav-pnl-config" data-tooltip="ตั้งค่างบกำไรขาดทุน"
                         class="flex items-center px-3 py-3 rounded-xl text-body-muted hover:bg-field/50 hover:text-ink transition-all group nav-menu-item">
-                        <i class="fa-solid fa-tags text-body-muted w-5 text-center text-xl"></i>
-                        <span class="sidebar-text ml-3 font-medium">ประเภทบัญชี</span>
+                        <i class="bi bi-bar-chart text-body-muted w-5 text-center text-xl"></i>
+                        <span class="sidebar-text ml-3 font-medium">ตั้งค่างบกำไรขาดทุน</span>
                     </a>
 
-                    <a href="#" id="nav-account-codes" data-tooltip="รหัสบัญชี"
+                    <a href="#" id="nav-balance-sheet-config" data-tooltip="ตั้งค่างบดุล"
                         class="flex items-center px-3 py-3 rounded-xl text-body-muted hover:bg-field/50 hover:text-ink transition-all group nav-menu-item">
-                        <i class="bi bi-diagram-3 text-body-muted w-5 text-center text-xl"></i>
-                        <span class="sidebar-text ml-3 font-medium">รหัสบัญชี</span>
+                        <i class="fa-solid fa-scale-balanced text-body-muted w-5 text-center text-xl"></i>
+                        <span class="sidebar-text ml-3 font-medium">ตั้งค่างบดุล</span>
+                    </a>
+
+                    <a href="#" id="nav-account-doc-links" data-tooltip="เชื่อมสมุดบัญชีกับเอกสาร"
+                        class="flex items-center px-3 py-3 rounded-xl text-body-muted hover:bg-field/50 hover:text-ink transition-all group nav-menu-item">
+                        <i class="bi bi-arrow-left-right text-body-muted w-5 text-center text-xl"></i>
+                        <span class="sidebar-text ml-3 font-medium">เชื่อมสมุดบัญชีกับเอกสาร</span>
                     </a>
                 </div>
 
@@ -988,122 +994,222 @@
                 <div id="view-disbursement" class="hidden space-y-8 animate-fade-in">
                 </div>
 
-                <!-- VIEW: ประเภทบัญชี (กลุ่มบัญชี) — ชื่อ view เดิม account-categories -->
-                <!-- เนื้อหาแยกไปที่ views/accounting-settings.html แล้ว โหลดแบบ dynamic ผ่าน loadPageView('accounting-settings') (ดู switchView case 'account-categories') -->
-                <div id="view-account-categories" class="hidden space-y-8 animate-fade-in">
+                <!-- VIEW: หมวดหมู่บัญชี (โฟลเดอร์ หมวด > กลุ่ม > รหัสบัญชี) -->
+                <!-- เนื้อหาอยู่ที่ views/accounting-settings.html โหลดแบบ dynamic ผ่าน loadPageView('accounting-settings') (ดู switchView case 'account-tree') -->
+                <div id="view-account-tree" class="hidden space-y-8 animate-fade-in">
                 </div>
 
-                <!-- VIEW: สมุดบัญชี -->
-                <!-- เนื้อหาอยู่ที่ views/accounting-settings.html โหลดแบบ dynamic ผ่าน loadPageView('accounting-settings') (ดู switchView case 'account-books') -->
-                <div id="view-account-books" class="hidden space-y-8 animate-fade-in">
-                </div>
-
-                <!-- Modal: เพิ่ม/แก้ไขสมุดบัญชี (หน้า "สมุดบัญชี") -->
-                <div id="modal-acct-book" role="dialog" aria-modal="true" aria-labelledby="modal-acct-book-title"
+                <div id="modal-acct-group" role="dialog" aria-modal="true" aria-labelledby="modal-acct-group-title"
                     class="fixed inset-0 backdrop-blur-[20px] backdrop-saturate-[1.8] z-50 hidden flex items-center justify-center p-4">
                     <div class="bg-canvas-elevated rounded-lg  w-full max-w-md p-6 space-y-4">
                         <h3 class="text-lg font-bold text-ink flex items-center gap-2">
                             <i class="fa-solid fa-pen text-body-muted"></i>
-                            <span id="modal-acct-book-title">เพิ่มสมุดบัญชี</span>
+                            <span id="modal-acct-group-title">เพิ่มกลุ่มบัญชี</span>
                         </h3>
-                        <input type="hidden" id="acct-book-id">
+                        <input type="hidden" id="acct-group-id">
+                        <input type="hidden" id="acct-group-parent">
+                        <p id="acct-group-context" class="text-xs text-body-muted"></p>
                         <div>
-                            <label for="acct-book-code" class="block text-body-muted text-xs mb-1">รหัส <span class="text-red-400">*</span></label>
-                            <input type="text" id="acct-book-code" placeholder="เช่น JV" autocomplete="off" maxlength="20"
+                            <label for="acct-group-code" class="block text-body-muted text-xs mb-1">รหัสกลุ่ม <span class="text-red-400">*</span></label>
+                            <input type="text" id="acct-group-code" placeholder="เช่น 11" autocomplete="off" maxlength="20"
                                 class="elev-chip w-full px-3 py-2.5 rounded-sm bg-surface-chip text-ink text-sm font-mono focus:ring-2 focus:ring-primary-focus outline-none">
                         </div>
                         <div>
-                            <label for="acct-book-name" class="block text-body-muted text-xs mb-1">ชื่อสมุดบัญชี <span class="text-red-400">*</span></label>
-                            <input type="text" id="acct-book-name" placeholder="เช่น สมุดรายวันทั่วไป" autocomplete="off" maxlength="120"
+                            <label for="acct-group-name" class="block text-body-muted text-xs mb-1">ชื่อกลุ่ม <span class="text-red-400">*</span></label>
+                            <input type="text" id="acct-group-name" placeholder="เช่น สินทรัพย์หมุนเวียน" autocomplete="off" maxlength="120"
                                 class="elev-chip w-full px-3 py-2.5 rounded-sm bg-surface-chip text-ink text-sm focus:ring-2 focus:ring-primary-focus outline-none">
                         </div>
                         <div class="flex gap-3 pt-2">
-                            <button type="button" id="acct-book-save" onclick="if(typeof saveAcctBook==='function') saveAcctBook()"
+                            <button type="button" id="acct-group-save" onclick="if(typeof saveAcctGroup==='function') saveAcctGroup()"
                                 class="flex-1 py-2.5 bg-primary hover:bg-primary-pressed text-on-primary rounded-pill font-medium text-sm transition-all cursor-pointer">บันทึก</button>
-                            <button type="button" onclick="if(typeof closeAcctBookModal==='function') closeAcctBookModal()"
+                            <button type="button" onclick="if(typeof closeAcctGroupModal==='function') closeAcctGroupModal()"
                                 class="flex-1 py-2.5 bg-surface-chip hover:bg-surface-tile-2 text-body-muted rounded-pill font-medium text-sm transition-all cursor-pointer">ยกเลิก</button>
                         </div>
                     </div>
                 </div>
 
-                <!-- VIEW: รหัสบัญชี -->
-                <!-- เนื้อหาอยู่ที่ views/accounting-settings.html โหลดแบบ dynamic ผ่าน loadPageView('accounting-settings') (ดู switchView case 'account-codes') -->
-                <div id="view-account-codes" class="hidden space-y-8 animate-fade-in">
-                </div>
-
-                <!-- Modal: เพิ่ม/แก้ไขรหัสบัญชี (หน้า "รหัสบัญชี") — บันทึกลงผังบัญชี (AccountChart) -->
-                <div id="modal-acct-code" role="dialog" aria-modal="true" aria-labelledby="modal-acct-code-title"
+                <div id="modal-acct-account" role="dialog" aria-modal="true" aria-labelledby="modal-acct-account-title"
                     class="fixed inset-0 backdrop-blur-[20px] backdrop-saturate-[1.8] z-50 hidden flex items-center justify-center p-4">
                     <div class="bg-canvas-elevated rounded-lg  w-full max-w-md p-6 space-y-4">
                         <h3 class="text-lg font-bold text-ink flex items-center gap-2">
                             <i class="fa-solid fa-pen text-body-muted"></i>
-                            <span id="modal-acct-code-title">เพิ่มรหัสบัญชี</span>
+                            <span id="modal-acct-account-title">เพิ่มรหัสบัญชี</span>
                         </h3>
-                        <input type="hidden" id="acct-code-id">
+                        <input type="hidden" id="acct-account-id">
+                        <input type="hidden" id="acct-account-parent">
+                        <p id="acct-account-context" class="text-xs text-body-muted"></p>
                         <div>
-                            <label for="acct-code-code" class="block text-body-muted text-xs mb-1">รหัส <span class="text-red-400">*</span></label>
-                            <input type="text" id="acct-code-code" placeholder="เช่น 110501" autocomplete="off" maxlength="20"
+                            <label for="acct-account-code" class="block text-body-muted text-xs mb-1">รหัสบัญชี <span class="text-red-400">*</span></label>
+                            <input type="text" id="acct-account-code" placeholder="เช่น 111101" autocomplete="off" maxlength="20"
                                 class="elev-chip w-full px-3 py-2.5 rounded-sm bg-surface-chip text-ink text-sm font-mono focus:ring-2 focus:ring-primary-focus outline-none">
                         </div>
                         <div>
-                            <label for="acct-code-name" class="block text-body-muted text-xs mb-1">ชื่อบัญชี <span class="text-red-400">*</span></label>
-                            <input type="text" id="acct-code-name" placeholder="เช่น เงินฝากออมทรัพย์" autocomplete="off" maxlength="120"
+                            <label for="acct-account-name" class="block text-body-muted text-xs mb-1">ชื่อบัญชี <span class="text-red-400">*</span></label>
+                            <input type="text" id="acct-account-name" placeholder="เช่น เงินสด" autocomplete="off" maxlength="120"
                                 class="elev-chip w-full px-3 py-2.5 rounded-sm bg-surface-chip text-ink text-sm focus:ring-2 focus:ring-primary-focus outline-none">
-                        </div>
-                        <div>
-                            <label for="acct-code-category" class="block text-body-muted text-xs mb-1">หมวด <span class="text-red-400">*</span></label>
-                            <select id="acct-code-category" onchange="if(typeof onAcctCodeCategoryChange==='function') onAcctCodeCategoryChange()"
-                                class="elev-chip w-full px-3 py-2.5 rounded-sm bg-surface-chip text-ink text-sm focus:ring-2 focus:ring-primary-focus outline-none">
-                                <option value="">-- เลือกหมวด --</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label for="acct-code-group" class="block text-body-muted text-xs mb-1">ชื่อกลุ่มบัญชี <span class="text-red-400">*</span></label>
-                            <!-- ตัวเลือกเติมอัตโนมัติจากหมวดที่เลือก (ดู onAcctCodeCategoryChange ใน js/page-accounting-settings.js) -->
-                            <select id="acct-code-group" disabled
-                                class="elev-chip w-full px-3 py-2.5 rounded-sm bg-surface-chip text-ink text-sm focus:ring-2 focus:ring-primary-focus outline-none disabled:opacity-50 disabled:cursor-not-allowed">
-                                <option value="">-- เลือกหมวดก่อน --</option>
-                            </select>
                         </div>
                         <div class="flex gap-3 pt-2">
-                            <button type="button" id="acct-code-save" onclick="if(typeof saveAcctCode==='function') saveAcctCode()"
+                            <button type="button" id="acct-account-save" onclick="if(typeof saveAcctAccount==='function') saveAcctAccount()"
                                 class="flex-1 py-2.5 bg-primary hover:bg-primary-pressed text-on-primary rounded-pill font-medium text-sm transition-all cursor-pointer">บันทึก</button>
-                            <button type="button" onclick="if(typeof closeAcctCodeModal==='function') closeAcctCodeModal()"
+                            <button type="button" onclick="if(typeof closeAcctAccountModal==='function') closeAcctAccountModal()"
                                 class="flex-1 py-2.5 bg-surface-chip hover:bg-surface-tile-2 text-body-muted rounded-pill font-medium text-sm transition-all cursor-pointer">ยกเลิก</button>
                         </div>
                     </div>
                 </div>
 
-                <!-- Modal: เพิ่ม/แก้ไขประเภทบัญชี (กลุ่มบัญชี) — หน้า "ประเภทบัญชี" -->
-                <div id="modal-acct-cat" role="dialog" aria-modal="true" aria-labelledby="modal-acct-cat-title"
+                <!-- VIEW: เชื่อมสมุดบัญชีกับเอกสาร -->
+                <!-- เนื้อหาอยู่ที่ views/accounting-settings.html โหลดแบบ dynamic ผ่าน loadPageView('accounting-settings') (ดู switchView case 'account-doc-links') -->
+                <div id="view-account-doc-links" class="hidden space-y-8 animate-fade-in">
+                </div>
+
+                <!-- Modal: เพิ่ม/แก้ไขเอกสาร (หน้า "เชื่อมสมุดบัญชีกับเอกสาร" แท็บ รายการเอกสาร) -->
+                <div id="modal-acct-doc" role="dialog" aria-modal="true" aria-labelledby="modal-acct-doc-title"
                     class="fixed inset-0 backdrop-blur-[20px] backdrop-saturate-[1.8] z-50 hidden flex items-center justify-center p-4">
                     <div class="bg-canvas-elevated rounded-lg  w-full max-w-md p-6 space-y-4">
                         <h3 class="text-lg font-bold text-ink flex items-center gap-2">
                             <i class="fa-solid fa-pen text-body-muted"></i>
-                            <span id="modal-acct-cat-title">เพิ่มประเภทบัญชี</span>
+                            <span id="modal-acct-doc-title">เพิ่มเอกสาร</span>
                         </h3>
-                        <input type="hidden" id="acct-cat-id">
+                        <input type="hidden" id="acct-doc-id">
                         <div>
-                            <label for="acct-cat-code" class="block text-body-muted text-xs mb-1">รหัส <span class="text-red-400">*</span></label>
-                            <input type="text" id="acct-cat-code" placeholder="เช่น 13" autocomplete="off" maxlength="20"
+                            <label for="acct-doc-code" class="block text-body-muted text-xs mb-1">รหัสเอกสาร <span class="text-red-400">*</span></label>
+                            <input type="text" id="acct-doc-code" placeholder="เช่น PV" autocomplete="off" maxlength="20"
                                 class="elev-chip w-full px-3 py-2.5 rounded-sm bg-surface-chip text-ink text-sm font-mono focus:ring-2 focus:ring-primary-focus outline-none">
                         </div>
                         <div>
-                            <label for="acct-cat-name" class="block text-body-muted text-xs mb-1">ชื่อกลุ่มบัญชี <span class="text-red-400">*</span></label>
-                            <input type="text" id="acct-cat-name" placeholder="เช่น เงินลงทุนระยะสั้น" autocomplete="off" maxlength="120"
+                            <label for="acct-doc-name" class="block text-body-muted text-xs mb-1">ชื่อเอกสาร <span class="text-red-400">*</span></label>
+                            <input type="text" id="acct-doc-name" placeholder="เช่น ใบสำคัญจ่าย" autocomplete="off" maxlength="120"
                                 class="elev-chip w-full px-3 py-2.5 rounded-sm bg-surface-chip text-ink text-sm focus:ring-2 focus:ring-primary-focus outline-none">
                         </div>
+                        <div class="flex gap-3 pt-2">
+                            <button type="button" id="acct-doc-save" onclick="if(typeof saveAcctDoc==='function') saveAcctDoc()"
+                                class="flex-1 py-2.5 bg-primary hover:bg-primary-pressed text-on-primary rounded-pill font-medium text-sm transition-all cursor-pointer">บันทึก</button>
+                            <button type="button" onclick="if(typeof closeAcctDocModal==='function') closeAcctDocModal()"
+                                class="flex-1 py-2.5 bg-surface-chip hover:bg-surface-tile-2 text-body-muted rounded-pill font-medium text-sm transition-all cursor-pointer">ยกเลิก</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Modal: เพิ่ม/แก้ไขการเชื่อมสมุดบัญชีกับเอกสาร (หน้า "เชื่อมสมุดบัญชีกับเอกสาร" แท็บ เชื่อมบัญชี) -->
+                <div id="modal-acct-doclink" role="dialog" aria-modal="true" aria-labelledby="modal-acct-doclink-title"
+                    class="fixed inset-0 backdrop-blur-[20px] backdrop-saturate-[1.8] z-50 hidden flex items-center justify-center p-4">
+                    <div class="bg-canvas-elevated rounded-lg  w-full max-w-md p-6 space-y-4">
+                        <h3 class="text-lg font-bold text-ink flex items-center gap-2">
+                            <i class="fa-solid fa-pen text-body-muted"></i>
+                            <span id="modal-acct-doclink-title">เพิ่มการเชื่อม</span>
+                        </h3>
+                        <input type="hidden" id="acct-doclink-id">
                         <div>
-                            <label for="acct-cat-category" class="block text-body-muted text-xs mb-1">หมวด <span class="text-red-400">*</span></label>
-                            <select id="acct-cat-category"
+                            <label for="acct-doclink-document" class="block text-body-muted text-xs mb-1">ชื่อเอกสาร <span class="text-red-400">*</span></label>
+                            <select id="acct-doclink-document"
                                 class="elev-chip w-full px-3 py-2.5 rounded-sm bg-surface-chip text-ink text-sm focus:ring-2 focus:ring-primary-focus outline-none">
-                                <option value="">-- เลือกหมวด --</option>
+                                <option value="">-- เลือกเอกสาร --</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="acct-doclink-book" class="block text-body-muted text-xs mb-1">สมุดบัญชี <span class="text-red-400">*</span></label>
+                            <select id="acct-doclink-book"
+                                class="elev-chip w-full px-3 py-2.5 rounded-sm bg-surface-chip text-ink text-sm focus:ring-2 focus:ring-primary-focus outline-none">
+                                <option value="">-- เลือกสมุดบัญชี --</option>
                             </select>
                         </div>
                         <div class="flex gap-3 pt-2">
-                            <button type="button" id="acct-cat-save" onclick="if(typeof saveAcctCatAccount==='function') saveAcctCatAccount()"
+                            <button type="button" id="acct-doclink-save" onclick="if(typeof saveAcctDocLink==='function') saveAcctDocLink()"
                                 class="flex-1 py-2.5 bg-primary hover:bg-primary-pressed text-on-primary rounded-pill font-medium text-sm transition-all cursor-pointer">บันทึก</button>
-                            <button type="button" onclick="if(typeof closeAcctCatModal==='function') closeAcctCatModal()"
+                            <button type="button" onclick="if(typeof closeAcctDocLinkModal==='function') closeAcctDocLinkModal()"
+                                class="flex-1 py-2.5 bg-surface-chip hover:bg-surface-tile-2 text-body-muted rounded-pill font-medium text-sm transition-all cursor-pointer">ยกเลิก</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- VIEW: ตั้งค่างบกำไรขาดทุน -->
+                <!-- เนื้อหาอยู่ที่ views/accounting-settings.html โหลดแบบ dynamic ผ่าน loadPageView('accounting-settings') (ดู switchView case 'pnl-config') -->
+                <div id="view-pnl-config" class="hidden space-y-8 animate-fade-in">
+                </div>
+
+                <!-- Modal: เพิ่ม/แก้ไขรายการงบกำไรขาดทุน (หน้า "ตั้งค่างบกำไรขาดทุน") -->
+                <div id="modal-pl-item" role="dialog" aria-modal="true" aria-labelledby="modal-pl-item-title"
+                    class="fixed inset-0 backdrop-blur-[20px] backdrop-saturate-[1.8] z-50 hidden flex items-center justify-center p-4">
+                    <div class="bg-canvas-elevated rounded-lg w-full max-w-md p-6 space-y-4">
+                        <h3 class="text-lg font-bold text-ink flex items-center gap-2">
+                            <i class="fa-solid fa-pen text-body-muted"></i>
+                            <span id="modal-pl-item-title">เพิ่มรายการงบกำไรขาดทุน</span>
+                        </h3>
+                        <input type="hidden" id="pl-item-id">
+                        <div>
+                            <label for="pl-item-group" class="block text-body-muted text-xs mb-1">กลุ่มบัญชี <span class="text-red-400">*</span></label>
+                            <select id="pl-item-group"
+                                class="elev-chip w-full px-3 py-2.5 rounded-sm bg-surface-chip text-ink text-sm focus:ring-2 focus:ring-primary-focus outline-none">
+                                <option value="">-- เลือกกลุ่มบัญชี --</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="pl-item-order" class="block text-body-muted text-xs mb-1">ลำดับ <span class="text-red-400">*</span></label>
+                            <input type="number" id="pl-item-order" min="1" step="1" placeholder="เช่น 1" autocomplete="off"
+                                class="elev-chip w-full px-3 py-2.5 rounded-sm bg-surface-chip text-ink text-sm font-mono focus:ring-2 focus:ring-primary-focus outline-none">
+                        </div>
+                        <div>
+                            <label for="pl-item-name" class="block text-body-muted text-xs mb-1">ชื่อรายการ <span class="text-red-400">*</span></label>
+                            <input type="text" id="pl-item-name" placeholder="เช่น รายได้จากการขายสินค้า-Iphone" autocomplete="off" maxlength="120"
+                                class="elev-chip w-full px-3 py-2.5 rounded-sm bg-surface-chip text-ink text-sm focus:ring-2 focus:ring-primary-focus outline-none">
+                        </div>
+                        <div>
+                            <span id="pl-item-accounts-label" class="block text-body-muted text-xs mb-1">ประกอบด้วยรหัสบัญชี</span>
+                            <div id="pl-item-accounts" role="group" aria-labelledby="pl-item-accounts-label" tabindex="0"
+                                class="elev-chip max-h-48 overflow-y-auto rounded-sm bg-surface-chip p-2 space-y-1 text-sm text-ink"></div>
+                        </div>
+                        <div class="flex gap-3 pt-2">
+                            <button type="button" id="pl-item-save" onclick="if(typeof savePlItem==='function') savePlItem()"
+                                class="flex-1 py-2.5 bg-primary hover:bg-primary-pressed text-on-primary rounded-pill font-medium text-sm transition-all cursor-pointer">บันทึก</button>
+                            <button type="button" onclick="if(typeof closePlItemModal==='function') closePlItemModal()"
+                                class="flex-1 py-2.5 bg-surface-chip hover:bg-surface-tile-2 text-body-muted rounded-pill font-medium text-sm transition-all cursor-pointer">ยกเลิก</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- VIEW: ตั้งค่างบดุล -->
+                <!-- เนื้อหาอยู่ที่ views/accounting-settings.html โหลดแบบ dynamic ผ่าน loadPageView('accounting-settings') (ดู switchView case 'balance-sheet-config') -->
+                <div id="view-balance-sheet-config" class="hidden space-y-8 animate-fade-in">
+                </div>
+
+                <!-- Modal: เพิ่ม/แก้ไขบัญชีงบดุล (หน้า "ตั้งค่างบดุล") -->
+                <div id="modal-bs-item" role="dialog" aria-modal="true" aria-labelledby="modal-bs-item-title"
+                    class="fixed inset-0 backdrop-blur-[20px] backdrop-saturate-[1.8] z-50 hidden flex items-center justify-center p-4">
+                    <div class="bg-canvas-elevated rounded-lg w-full max-w-md p-6 space-y-4">
+                        <h3 class="text-lg font-bold text-ink flex items-center gap-2">
+                            <i class="fa-solid fa-pen text-body-muted"></i>
+                            <span id="modal-bs-item-title">เพิ่มบัญชีงบดุล</span>
+                        </h3>
+                        <input type="hidden" id="bs-item-id">
+                        <div>
+                            <label for="bs-item-group" class="block text-body-muted text-xs mb-1">กลุ่มบัญชี <span class="text-red-400">*</span></label>
+                            <select id="bs-item-group" onchange="if(typeof onBsGroupChange==='function') onBsGroupChange()"
+                                class="elev-chip w-full px-3 py-2.5 rounded-sm bg-surface-chip text-ink text-sm focus:ring-2 focus:ring-primary-focus outline-none">
+                                <option value="">-- เลือกกลุ่มบัญชี --</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="bs-item-order" class="block text-body-muted text-xs mb-1">ลำดับ <span class="text-red-400">*</span></label>
+                            <input type="number" id="bs-item-order" min="1" step="1" placeholder="เช่น 1" autocomplete="off"
+                                class="elev-chip w-full px-3 py-2.5 rounded-sm bg-surface-chip text-ink text-sm font-mono focus:ring-2 focus:ring-primary-focus outline-none">
+                        </div>
+                        <div>
+                            <label for="bs-item-name" class="block text-body-muted text-xs mb-1">ชื่อรายการ <span class="text-red-400">*</span></label>
+                            <input type="text" id="bs-item-name" placeholder="เช่น เงินสด" autocomplete="off" maxlength="120"
+                                class="elev-chip w-full px-3 py-2.5 rounded-sm bg-surface-chip text-ink text-sm focus:ring-2 focus:ring-primary-focus outline-none">
+                        </div>
+                        <div>
+                            <span id="bs-item-accounts-label" class="block text-body-muted text-xs mb-1">ประกอบด้วยรหัสบัญชี</span>
+                            <!-- รายการบัญชีเติมจาก JS ตามหมวดของกลุ่มที่เลือก (ดู onBsGroupChange) -->
+                            <div id="bs-item-accounts" role="group" aria-labelledby="bs-item-accounts-label" tabindex="0"
+                                class="elev-chip max-h-48 overflow-y-auto rounded-sm bg-surface-chip p-2 space-y-1 text-sm text-ink">
+                                <p class="px-2 py-1 text-body-muted text-xs">เลือกกลุ่มบัญชีก่อน</p>
+                            </div>
+                        </div>
+                        <div class="flex gap-3 pt-2">
+                            <button type="button" id="bs-item-save" onclick="if(typeof saveBsItem==='function') saveBsItem()"
+                                class="flex-1 py-2.5 bg-primary hover:bg-primary-pressed text-on-primary rounded-pill font-medium text-sm transition-all cursor-pointer">บันทึก</button>
+                            <button type="button" onclick="if(typeof closeBsItemModal==='function') closeBsItemModal()"
                                 class="flex-1 py-2.5 bg-surface-chip hover:bg-surface-tile-2 text-body-muted rounded-pill font-medium text-sm transition-all cursor-pointer">ยกเลิก</button>
                         </div>
                     </div>
@@ -5283,7 +5389,7 @@
     <!-- defer: ปล่อยให้ parse HTML จบก่อนค่อย execute
          ปลอดภัยเพราะทั้งไฟล์ห่ออยู่ใน DOMContentLoaded listener อยู่แล้ว
          และสคริปต์ defer จะ execute ก่อน event DOMContentLoaded ยิงเสมอ -->
-    <script defer src="script.js?v=apple_active_v119"></script>
+    <script defer src="script.js?v=apple_active_v132"></script>
     <script>
         // ลงทะเบียน Service Worker เพื่อแคช asset คงที่ (css/js/font/icon/รูป) ไว้ฝั่งเครื่อง
         // เข้าเว็บครั้งถัดไปเร็วขึ้นมาก โดยเฉพาะตอนเน็ตช้าหรือหลุดชั่วคราว — ดูรายละเอียดที่ sw.js

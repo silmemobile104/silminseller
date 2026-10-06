@@ -34,8 +34,41 @@ const {
     Deposit,
     AccountChart,
     DisbursementVoucher,
-    Expense
+    Expense,
+    AccountDocument,
+    AccountBookLink
 } = require('../models');
+
+// รายการเดินบัญชี → รหัสเอกสาร (ตั้งค่าที่ #account-doc-links) — ระบบหาสมุดบัญชีจากการเชื่อมที่เปิดใช้งานอยู่
+const LEDGER_DOC_CODE = {
+    SALE_CASH: '2A',        // ขายสด
+    SALE_CREDIT: '2S',      // ขายเชื่อ (ไฟแนนซ์ชำระครบในงวด)
+    RECEIPT: '3S',          // รับชำระ (รับเงินไฟแนนซ์ย้อนหลัง)
+    PO_CASH: '2B',          // ซื้อสด
+    EXPENSE: '2E',          // ค่าใช้จ่าย
+    OTHER_INCOME: '2I'      // รายได้อื่น
+};
+
+// ใส่ doc_code/doc_name/book_code/book_name ให้ทุกแถว ledger — 3 query ครั้งเดียว ไม่ query ในลูป
+async function attachLedgerBooks(ledger) {
+    const [docs, links] = await Promise.all([
+        AccountDocument.find({ is_active: true }).lean(),
+        AccountBookLink.find({ is_active: true }).populate('book_id', 'book_code book_name').lean()
+    ]);
+    const docByCode = new Map(docs.map(d => [d.doc_code, d]));
+    const bookByDoc = new Map();
+    links.forEach(l => {
+        const key = String(l.document_id);
+        if (l.book_id && !bookByDoc.has(key)) bookByDoc.set(key, l.book_id);
+    });
+    ledger.forEach(item => {
+        const doc = docByCode.get(item.doc_code);
+        const book = doc ? bookByDoc.get(String(doc._id)) : null;
+        item.doc_name = doc ? doc.doc_name : '';
+        item.book_code = book ? book.book_code : '';
+        item.book_name = book ? book.book_name : '';
+    });
+}
 
 const { uploadBufferToDriveInFolder } = require('../utils/googleDrive');
 const mdCache = require('../utils/masterDataCache');
@@ -143,7 +176,8 @@ async function logActivity(req, action, module, description, referenceNo = null,
             details,
             ip_address: ip,
             user_id: userId,
-            user_name: userName
+            user_name: userName,
+            branch_id: (emp && emp.branch_id) || req.user.branch_id || null
         });
         console.log(`[AUDIT] Action logged: ${description}`);
     } catch (err) {
@@ -635,7 +669,8 @@ const executeFinalizeImport = async (poId, employeeId) => {
             target_id: po._id.toString(),
             reference_no: po.po_number,
             user_id: employeeId,
-            user_name: userName
+            user_name: userName,
+            branch_id: (emp && emp.branch_id) || null
         });
     } catch (auditErr) {
         console.error('[AUDIT] Failed to log finalize po import:', auditErr);
@@ -1480,7 +1515,8 @@ router.post('/auth/login', async (req, res) => {
             target_id: employee._id.toString(),
             ip_address: ip,
             user_id: employee._id,
-            user_name: employee.name
+            user_name: employee.name,
+            branch_id: employee.branch_id ? (employee.branch_id._id || employee.branch_id) : null
         }).catch(err => console.error('[AUDIT] Failed to log login activity:', err));
 
         res.status(200).json({
@@ -3594,7 +3630,7 @@ router.get('/sales/daily-summary', async (req, res) => {
             devicesSold += txnDevices;
         }
 
-        const cashAccount = await AccountChart.findOne({ account_code: '110101' }).lean();
+        const cashAccount = await AccountChart.findOne({ account_code: '111101' }).lean();
         let cashDisbursed = 0;
         if (cashAccount) {
             const dvQuery = {
@@ -4045,12 +4081,52 @@ router.get('/audit-logs', async (req, res) => {
             filter.user_name = new RegExp(req.query.user_name.trim(), 'i');
         }
 
-        const total = await AuditLog.countDocuments(filter);
-        const logs = await AuditLog.find(filter)
-            .sort({ createdAt: -1 })
-            .skip(skip)
-            .limit(limit)
-            .lean();
+        // กรองตามสาขา — log ใหม่มี branch_id ในตัว ส่วน log เก่าที่บันทึกก่อนมีฟิลด์นี้
+        // ยึดตามสาขาปัจจุบันของพนักงานคนนั้นแทน (ใช้ $and เพราะ filter.$or ถูกใช้กับการค้นหาไปแล้ว)
+        const branchQuery = String(req.query.branch_id || '').trim();
+        if (branchQuery && branchQuery !== 'ALL') {
+            if (!mongoose.Types.ObjectId.isValid(branchQuery)) {
+                return res.status(400).json({ success: false, message: 'รหัสสาขาไม่ถูกต้อง' });
+            }
+            const branchEmployees = await Employee.find({ branch_id: branchQuery }).select('_id').lean();
+            filter.$and = [{
+                $or: [
+                    { branch_id: branchQuery },
+                    { branch_id: null, user_id: { $in: branchEmployees.map(e => e._id) } }
+                ]
+            }];
+        }
+
+        const [total, logs, md] = await Promise.all([
+            AuditLog.countDocuments(filter),
+            AuditLog.find(filter)
+                .sort({ createdAt: -1 })
+                .skip(skip)
+                .limit(limit)
+                .lean(),
+            mdCache.get()
+        ]);
+
+        // ข้อมูลพนักงานของทุก log ในหน้านี้ — ดึงครั้งเดียวด้วย $in (ไม่ใช่ทีละแถว)
+        //   emp_code / emp_role : รหัสพนักงาน + ตำแหน่ง ให้รู้ว่า "พนักงานขาย" แถวนี้คือใครกันแน่
+        //   branch_id           : สาขาปัจจุบัน ใช้กับ log เก่าที่บันทึกก่อนเก็บสาขาในตัว log
+        const pageUserIds = [...new Set(logs.filter(l => l.user_id).map(l => String(l.user_id)))];
+        const empById = new Map();
+        if (pageUserIds.length) {
+            const emps = await Employee.find({ _id: { $in: pageUserIds } }).select('emp_id role branch_id').lean();
+            emps.forEach(e => empById.set(String(e._id), e));
+        }
+        logs.forEach(log => {
+            const emp = empById.get(String(log.user_id)) || null;
+            log.emp_code = emp ? emp.emp_id : null;
+            log.emp_role = emp ? emp.role : null;
+
+            const inferred = !log.branch_id;
+            const branchId = log.branch_id ? String(log.branch_id) : (emp && emp.branch_id ? String(emp.branch_id) : null);
+            const branch = branchId ? md.maps.branches.get(branchId) : null;
+            log.branch_name = branch ? branch.name : null;
+            log.branch_inferred = inferred && !!branch;
+        });
 
         res.status(200).json({
             success: true,
@@ -4787,6 +4863,34 @@ const parsePoDueDate = (value) => {
 //   ชื่อนี้ยังไม่มีใน master        -> เพิ่มใหม่พร้อมรหัส
 //   มีแล้วแต่ยังไม่มีรหัส           -> เติมรหัสให้
 //   มีแล้วและมีรหัสอื่นอยู่          -> ปล่อยไว้ ไม่ทับ (ถือว่า master data ที่คนตั้งไว้ถูกกว่า)
+// ผูกหมวดหมู่ให้ชื่อสินค้า (มือถือ/แท็บเล็ต) ตอนสร้าง/แก้ใบสั่งซื้อ — เติมเฉพาะชื่อที่ยังไม่มี type_id
+// ไม่ทับของที่ผูกไว้แล้ว เพราะ master data ที่คนตั้งไว้ถูกกว่า (เหมือนกติกาของรหัสอุปกรณ์เสริมด้านล่าง)
+const linkDeviceNameTypes = async (items) => {
+    const rows = (items || [])
+        .filter(i => i.item_kind !== 'accessory' && i.category && i.product_name)
+        .map(i => ({ name: String(i.product_name).trim(), category: String(i.category).trim() }))
+        .filter(i => i.name && i.category);
+    if (rows.length === 0) return;
+    try {
+        const types = await ProductType.find({ name: { $in: [...new Set(rows.map(r => r.category))] } }).select('name').lean();
+        const typeByName = new Map(types.map(t => [t.name, t._id]));
+        const ops = [];
+        const seen = new Set();
+        rows.forEach(r => {
+            const typeId = typeByName.get(r.category);
+            if (!typeId || seen.has(r.name)) return;
+            seen.add(r.name);
+            ops.push({ updateOne: { filter: { name: r.name, $or: [{ type_id: null }, { type_id: { $exists: false } }] }, update: { $set: { type_id: typeId } } } });
+        });
+        if (ops.length === 0) return;
+        await ProductName.bulkWrite(ops, { ordered: false });
+        mdCache.invalidate();
+    } catch (err) {
+        // ผูกหมวดไม่สำเร็จไม่ควรทำให้สร้างใบสั่งซื้อไม่ได้
+        console.error('[PO] ผูกหมวดหมู่ให้ชื่อสินค้าไม่สำเร็จ:', err.message);
+    }
+};
+
 const registerAccessoryProductNames = async (items) => {
     const rows = (items || [])
         .filter(i => i.item_kind === 'accessory')
@@ -4860,6 +4964,7 @@ router.post('/purchase-orders', async (req, res) => {
 
         await newPO.save();
         await registerAccessoryProductNames(poItems);
+        await linkDeviceNameTypes(poItems);
 
         await logActivity(req, 'CREATE', 'PO', `สร้างใบสั่งซื้อใหม่ เลขที่ ${po_number} สำหรับซัพพลายเออร์ ${supplier_name}`, po_number, newPO._id);
 
@@ -4910,6 +5015,7 @@ router.post('/po/create', async (req, res) => {
 
         await newPO.save();
         await registerAccessoryProductNames(poItems);
+        await linkDeviceNameTypes(poItems);
 
         await logActivity(req, 'CREATE', 'PO', `สร้างใบสั่งซื้อใหม่ เลขที่ ${po_number} สำหรับซัพพลายเออร์ ${supplier_name}`, po_number, newPO._id);
 
@@ -5003,6 +5109,7 @@ router.post('/purchase-orders/:id/update', async (req, res) => {
 
         await po.save();
         await registerAccessoryProductNames(poItems);
+        await linkDeviceNameTypes(poItems);
 
         await logActivity(req, 'UPDATE', 'PO', `แก้ไขใบสั่งซื้อ เลขที่ ${po.po_number} ซัพพลายเออร์ ${supplier_name}`, po.po_number, po._id);
 
@@ -5358,6 +5465,7 @@ router.get('/accounting/profit-loss', async (req, res) => {
                         created_at: t.created_at || t.createdAt,
                         type: 'รายรับ',
                         category: 'ขายสินค้า (จัดไฟแนนซ์ - ชำระเงินครบ)',
+                        doc_code: LEDGER_DOC_CODE.SALE_CREDIT,
                         amount: t.total_amount,
                         recorded_by: t.employee_id ? t.employee_id.name : 'พนักงานขาย'
                     });
@@ -5369,6 +5477,7 @@ router.get('/accounting/profit-loss', async (req, res) => {
                         created_at: t.created_at || t.createdAt,
                         type: 'รายรับ',
                         category: 'ขายสินค้า (จัดไฟแนนซ์ - รับเงินดาวน์และค่าธรรมเนียม)',
+                        doc_code: LEDGER_DOC_CODE.SALE_CASH,
                         amount: immediateCash,
                         recorded_by: t.employee_id ? t.employee_id.name : 'พนักงานขาย'
                     });
@@ -5381,6 +5490,7 @@ router.get('/accounting/profit-loss', async (req, res) => {
                     created_at: t.created_at || t.createdAt,
                     type: 'รายรับ',
                     category: 'ขายสินค้า',
+                    doc_code: LEDGER_DOC_CODE.SALE_CASH,
                     amount: t.total_amount,
                     recorded_by: t.employee_id ? t.employee_id.name : 'พนักงานขาย'
                 });
@@ -5405,6 +5515,7 @@ router.get('/accounting/profit-loss', async (req, res) => {
                     created_at: r.settled_at,
                     type: 'รายรับ',
                     category: 'ขายสินค้า (รับชำระยอดค้างโอนไฟแนนซ์)',
+                    doc_code: LEDGER_DOC_CODE.RECEIPT,
                     amount: r.financed_amount,
                     recorded_by: r.recorded_by ? r.recorded_by.name : 'ผู้ผ่านรายการ'
                 });
@@ -5456,6 +5567,7 @@ router.get('/accounting/profit-loss', async (req, res) => {
                 created_at: c.created_at || c.createdAt,
                 type: c.type,
                 category: c.category,
+                doc_code: LEDGER_DOC_CODE.OTHER_INCOME,
                 amount: c.amount,
                 recorded_by: c.recorded_by ? c.recorded_by.name : 'ผู้บันทึก'
             });
@@ -5468,6 +5580,7 @@ router.get('/accounting/profit-loss', async (req, res) => {
                 created_at: c.created_at || c.createdAt,
                 type: c.type,
                 category: c.category,
+                doc_code: LEDGER_DOC_CODE.EXPENSE,
                 amount: c.amount,
                 recorded_by: c.recorded_by ? c.recorded_by.name : 'ผู้บันทึก'
             });
@@ -5486,10 +5599,13 @@ router.get('/accounting/profit-loss', async (req, res) => {
                 created_at: c.created_at || c.createdAt,
                 type: c.type,
                 category: c.category,
+                doc_code: LEDGER_DOC_CODE.PO_CASH,
                 amount: c.amount,
                 recorded_by: c.recorded_by ? c.recorded_by.name : 'ผู้บันทึก'
             });
         });
+
+        await attachLedgerBooks(ledger);
 
         // Sort by date descending
         ledger.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));

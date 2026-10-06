@@ -280,14 +280,38 @@ const catalogue = [
     },
     {
         key: 'accountbook', model: 'AccountBook', title: 'สมุดบัญชี', group: 'บัญชีและการเงิน', importance: 'normal',
-        purpose: 'รายชื่อสมุดบัญชีที่ตั้งไว้จากเมนู ตั้งค่าบัญชี > สมุดบัญชี',
-        pages: ['account-books'],
+        purpose: 'รายชื่อสมุดบัญชีที่ใช้เชื่อมกับเอกสาร (เมนูจัดการสมุดบัญชีถูกถอดออกแล้ว ข้อมูลเดิมยังใช้งานได้)',
+        pages: ['account-doc-links'],
         keyFields: [
             { name: 'book_code', note: 'รหัสสมุดบัญชี ต้องไม่ซ้ำ' },
             { name: 'book_name', note: 'ชื่อสมุดบัญชี' }
         ],
-        relations: [],
-        notes: 'ยังไม่มีเอกสารอื่นอ้างถึง ลบได้โดยไม่กระทบข้อมูลส่วนอื่น'
+        relations: ['accountbooklink'],
+        notes: 'ถูกอ้างถึงจากการเชื่อมสมุดบัญชีกับเอกสาร (accountbooklink) — สมุดที่ถูกเชื่อมอยู่ระบบไม่ให้ลบ'
+    },
+    {
+        key: 'accountdocument', model: 'AccountDocument', title: 'เอกสารบัญชี', group: 'บัญชีและการเงิน', importance: 'normal',
+        purpose: 'รายชื่อเอกสารที่ใช้ในงานบัญชี ตั้งจากเมนู ตั้งค่าบัญชี > เชื่อมสมุดบัญชีกับเอกสาร (แท็บ รายการเอกสาร)',
+        pages: ['account-doc-links'],
+        keyFields: [
+            { name: 'doc_code', note: 'รหัสเอกสาร ต้องไม่ซ้ำ' },
+            { name: 'doc_name', note: 'ชื่อเอกสาร ต้องไม่ซ้ำ' },
+            { name: 'is_active', note: 'ปิดการใช้งานแทนการลบ' }
+        ],
+        relations: ['accountbooklink'],
+        notes: 'ไม่มีการลบ ใช้ปิดการใช้งานแทน เพราะการเชื่อมสมุดบัญชีเดิมยังอ้างถึงอยู่'
+    },
+    {
+        key: 'accountbooklink', model: 'AccountBookLink', title: 'การเชื่อมสมุดบัญชีกับเอกสาร', group: 'บัญชีและการเงิน', importance: 'normal',
+        purpose: 'บอกว่าเอกสารแต่ละชนิดผูกกับสมุดบัญชีเล่มไหน ตั้งจากเมนู ตั้งค่าบัญชี > เชื่อมสมุดบัญชีกับเอกสาร (แท็บ เชื่อมบัญชี)',
+        pages: ['account-doc-links'],
+        keyFields: [
+            { name: 'document_id', note: 'เอกสารที่เชื่อม (accountdocument)' },
+            { name: 'book_id', note: 'สมุดบัญชีที่เชื่อม (accountbook) — คู่เอกสาร+สมุดซ้ำกันไม่ได้' },
+            { name: 'is_active', note: 'เปิด/ปิดเฉพาะการเชื่อมนี้' }
+        ],
+        relations: ['accountdocument', 'accountbook'],
+        notes: 'เอกสาร 1 ชนิดเชื่อมได้หลายสมุด ยังไม่มีส่วนอื่นของระบบนำไปใช้ลงบัญชีอัตโนมัติ'
     },
     {
         key: 'pnlconfig', model: 'PnLConfig', title: 'ผังงบกำไรขาดทุน', group: 'บัญชีและการเงิน', importance: 'normal',
@@ -296,6 +320,19 @@ const catalogue = [
         keyFields: [{ name: 'ลำดับและการจับคู่บัญชี', note: 'กำหนดโครงสร้างรายงาน P&L' }],
         relations: ['accountcategory', 'accountgroup', 'accountchart'],
         notes: 'ตั้งค่าผิดจะทำให้งบกำไรขาดทุนแสดงตัวเลขผิด แต่ไม่กระทบข้อมูลต้นทาง'
+    },
+    {
+        key: 'balancesheetitem', model: 'BalanceSheetItem', title: 'ตั้งค่างบดุล', group: 'บัญชีและการเงิน', importance: 'normal',
+        purpose: 'กำหนดบรรทัดของงบดุลว่าอยู่กลุ่มบัญชีไหน ลำดับที่เท่าไร และประกอบด้วยรหัสบัญชีตัวไหน ตั้งจากเมนู ตั้งค่าบัญชี > ตั้งค่างบดุล',
+        pages: ['balance-sheet-config'],
+        keyFields: [
+            { name: 'group_id', note: 'กลุ่มบัญชี (accountgroup) — หมวดดูจากกลุ่ม' },
+            { name: 'sort_order', note: 'ลำดับแสดงในงบดุล' },
+            { name: 'item_name', note: 'ชื่อรายการที่แสดงในงบดุล' },
+            { name: 'account_ids', note: 'รหัสบัญชีที่ประกอบเป็นรายการนี้ (accountchart) ต้องอยู่หมวดเดียวกับกลุ่ม' }
+        ],
+        relations: ['accountgroup', 'accountchart'],
+        notes: 'กลุ่มบัญชีและรหัสบัญชีที่ถูกอ้างถึงอยู่จะลบไม่ได้'
     },
     {
         key: 'disbursementvoucher', model: 'DisbursementVoucher', title: 'ใบสำคัญจ่าย', group: 'บัญชีและการเงิน', importance: 'high',

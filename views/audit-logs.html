@@ -41,6 +41,11 @@
                     class="page-filter-control bg-panel/40 cursor-pointer text-sm rounded-[0.5rem] px-3 py-2 text-ink focus:outline-none focus:ring-1 focus:ring-accent-ink w-full sm:w-auto [&>option]:bg-panel [&>option:checked]:bg-primary [&>option:checked]:text-on-primary">
                     <option value="ALL">ทุกโมดูล</option>
                 </select>
+                <label for="audit-filter-branch" class="sr-only">กรองตามสาขา</label>
+                <select id="audit-filter-branch"
+                    class="page-filter-control bg-panel/40 cursor-pointer text-sm rounded-[0.5rem] px-3 py-2 text-ink focus:outline-none focus:ring-1 focus:ring-accent-ink w-full sm:w-auto [&>option]:bg-panel [&>option:checked]:bg-primary [&>option:checked]:text-on-primary">
+                    <option value="ALL">ทุกสาขา</option>
+                </select>
                 <label for="audit-filter-action" class="sr-only">กรองตามประเภทกิจกรรม</label>
                 <select id="audit-filter-action"
                     class="page-filter-control hidden md:block bg-panel/40 cursor-pointer text-sm rounded-[0.5rem] px-3 py-2 text-ink focus:outline-none focus:ring-1 focus:ring-accent-ink [&>option]:bg-panel [&>option:checked]:bg-primary [&>option:checked]:text-on-primary">
@@ -76,6 +81,7 @@
                     <tr>
                         <th class="px-6 py-4 font-semibold text-[15px]">วัน-เวลา</th>
                         <th class="px-6 py-4 font-semibold text-[15px]">ผู้ทำรายการ</th>
+                        <th class="px-6 py-4 font-semibold text-[15px]">สาขา</th>
                         <th class="px-6 py-4 font-semibold text-[15px]">ประเภท</th>
                         <th class="px-6 py-4 font-semibold text-[15px]">โมดูล</th>
                         <th class="px-6 py-4 font-semibold text-[15px] w-full">รายละเอียดกิจกรรม</th>

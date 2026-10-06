@@ -251,7 +251,9 @@ const ProductCondition = mongoose.model('ProductCondition', productConditionSche
 // 9. ProductName (ชื่อสินค้า)
 const productNameSchema = new mongoose.Schema({
     name: { type: String, required: true, unique: true },
-    code: { type: String }
+    code: { type: String },
+    // หมวดหมู่ของชื่อสินค้า — ใบสั่งซื้อใช้กรองชื่อตามหมวดที่เลือก (ไม่บังคับ: ชื่อที่ยังไม่ผูกแสดงให้ทุกหมวด)
+    type_id: { type: mongoose.Schema.Types.ObjectId, ref: 'ProductType', default: null }
 });
 const ProductName = mongoose.model('ProductName', productNameSchema, 'productname');
 
@@ -516,9 +518,13 @@ const auditLogSchema = new mongoose.Schema({
     details: { type: mongoose.Schema.Types.Mixed, default: null }, // รายละเอียดเพิ่มเติมหรือ Change Snapshot
     ip_address: { type: String, default: null }, // IP Address ผู้ทำรายการ
     user_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee', required: true }, // รหัสพนักงานผู้ทำรายการ
-    user_name: { type: String, required: true } // ชื่อพนักงานผู้ทำรายการ
+    user_name: { type: String, required: true }, // ชื่อพนักงานผู้ทำรายการ
+    // สาขาของพนักงาน ณ ตอนที่ทำรายการ — เก็บไว้ในตัว log เพราะพนักงานย้ายสาขาได้ภายหลัง
+    // log ที่บันทึกก่อนมีฟิลด์นี้ไม่มีค่า: GET /audit-logs จะ fallback ไปใช้สาขาปัจจุบันของพนักงานแทน
+    branch_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Branch', default: null }
 }, { timestamps: true });
 auditLogSchema.index({ createdAt: -1 });
+auditLogSchema.index({ branch_id: 1, createdAt: -1 });
 auditLogSchema.index({ module: 1 });
 auditLogSchema.index({ user_id: 1 });
 const AuditLog = mongoose.model('AuditLog', auditLogSchema, 'auditlog');
@@ -646,7 +652,8 @@ const AccountCategory = mongoose.model('AccountCategory', accountCategorySchema,
 const accountGroupSchema = new mongoose.Schema({
     group_code: { type: String, required: true, unique: true },
     group_name: { type: String, required: true },
-    category_id: { type: mongoose.Schema.Types.ObjectId, ref: 'AccountCategory', required: true }
+    category_id: { type: mongoose.Schema.Types.ObjectId, ref: 'AccountCategory', required: true },
+    is_active: { type: Boolean, default: true } // ปิดการใช้งานแทนการลบ — กลุ่มเดิมที่ไม่มีฟิลด์นี้ถือว่าเปิดอยู่
 }, { timestamps: true });
 const AccountGroup = mongoose.model('AccountGroup', accountGroupSchema, 'accountgroup');
 
@@ -670,6 +677,30 @@ const accountBookSchema = new mongoose.Schema({
 }, { timestamps: true });
 const AccountBook = mongoose.model('AccountBook', accountBookSchema, 'accountbook');
 
+// AccountDocument (เอกสารบัญชี) — รายชื่อเอกสารที่ใช้ในงานบัญชี ตั้งจากเมนู "ตั้งค่าบัญชี > เชื่อมสมุดบัญชีกับเอกสาร" (แท็บ รายการเอกสาร)
+// ปิดการใช้งานแทนการลบ (is_active) เพราะการเชื่อมสมุดบัญชีเดิมยังอ้างถึงเอกสารนี้อยู่
+const accountDocumentSchema = new mongoose.Schema({
+    doc_code: { type: String, required: true, trim: true }, // รหัสเอกสาร เช่น PV (กรอกเองเหมือนรหัสสมุดบัญชี) — ความไม่ซ้ำดูที่ index ด้านล่าง
+    doc_name: { type: String, required: true, unique: true, trim: true },
+    is_active: { type: Boolean, default: true }
+}, { timestamps: true });
+// ⚠️ ห้ามใช้ unique: true ธรรมดากับ doc_code: เอกสารที่สร้างก่อนมีรหัสไม่มีฟิลด์นี้เลย (นับเป็น null ซ้ำกัน)
+//    ทำให้ Mongo สร้าง unique index ไม่สำเร็จและเงียบหายไป จึงใช้ partial index — บังคับไม่ซ้ำเฉพาะเอกสารที่มีรหัสแล้ว
+//    (เอกสารเก่าถูกบังคับให้กรอกรหัสตอนกดแก้ไขโดย required ข้างบน)
+accountDocumentSchema.index({ doc_code: 1 }, { unique: true, partialFilterExpression: { doc_code: { $type: 'string' } } });
+const AccountDocument = mongoose.model('AccountDocument', accountDocumentSchema, 'accountdocument');
+
+// AccountBookLink (การเชื่อมสมุดบัญชีกับเอกสาร) — เอกสาร 1 ชนิดเชื่อมได้หลายสมุด แต่คู่ (เอกสาร, สมุด) ซ้ำกันไม่ได้
+// is_active = เปิด/ปิดเฉพาะการเชื่อมนี้ (ไม่แตะตัวเอกสารหรือตัวสมุดบัญชี)
+const accountBookLinkSchema = new mongoose.Schema({
+    document_id: { type: mongoose.Schema.Types.ObjectId, ref: 'AccountDocument', required: true },
+    book_id: { type: mongoose.Schema.Types.ObjectId, ref: 'AccountBook', required: true },
+    is_active: { type: Boolean, default: true }
+}, { timestamps: true });
+accountBookLinkSchema.index({ document_id: 1, book_id: 1 }, { unique: true });
+accountBookLinkSchema.index({ book_id: 1 }); // ใช้ตอนเช็กว่าสมุดบัญชีถูกเชื่อมอยู่ไหมก่อนลบ
+const AccountBookLink = mongoose.model('AccountBookLink', accountBookLinkSchema, 'accountbooklink');
+
 // PnLConfig (ตั้งค่างบกำไรขาดทุน)
 const pnlConfigSchema = new mongoose.Schema({
     sort_order: { type: Number, required: true },
@@ -682,6 +713,16 @@ const pnlConfigSchema = new mongoose.Schema({
     is_total_line: { type: Boolean, default: false }
 }, { timestamps: true });
 const PnLConfig = mongoose.model('PnLConfig', pnlConfigSchema, 'pnlconfig');
+
+// BalanceSheetItem (ตั้งค่างบดุล) — 1 แถว = 1 บรรทัดของงบดุล: อยู่ใต้กลุ่มบัญชี (หมวดดูจากกลุ่ม) ประกอบด้วยรหัสบัญชีหลายตัว
+const balanceSheetItemSchema = new mongoose.Schema({
+    group_id: { type: mongoose.Schema.Types.ObjectId, ref: 'AccountGroup', required: true },
+    sort_order: { type: Number, required: true },
+    item_name: { type: String, required: true, trim: true },
+    account_ids: [{ type: mongoose.Schema.Types.ObjectId, ref: 'AccountChart' }]
+}, { timestamps: true });
+balanceSheetItemSchema.index({ group_id: 1 }); // ใช้ตอนเช็กว่ากลุ่มบัญชีถูกใช้ในงบดุลก่อนลบ
+const BalanceSheetItem = mongoose.model('BalanceSheetItem', balanceSheetItemSchema, 'balancesheetitem');
 
 // DisbursementVoucher (ใบสำคัญจ่าย)
 const disbursementVoucherSchema = new mongoose.Schema({
@@ -743,78 +784,10 @@ async function seedDefaultCOA() {
             categories = categories.concat(await AccountCategory.insertMany(missingCategories));
         }
 
-        const catMap = {};
-        categories.forEach(c => { catMap[c.category_code] = c._id; });
+        // ไม่ seed กลุ่มบัญชี/รหัสบัญชีเริ่มต้นอีกแล้ว — เพิ่มเองจากหน้า "ประเภทบัญชี" / "รหัสบัญชี"
+        // (ถ้า seed ต่อ ข้อมูลที่ลบไปจะกลับมาทุกครั้งที่สตาร์ทเซิร์ฟเวอร์)
 
-        const defaultGroups = [
-            { group_code: '11', group_name: 'สินทรัพย์หมุนเวียน', category_code: '1' },
-            { group_code: '12', group_name: 'สินทรัพย์ไม่หมุนเวียน', category_code: '1' },
-            { group_code: '21', group_name: 'หนี้สินหมุนเวียน', category_code: '2' },
-            { group_code: '31', group_name: 'ทุนเจ้าของ', category_code: '3' },
-            { group_code: '41', group_name: 'รายได้จากการขาย', category_code: '4' },
-            { group_code: '42', group_name: 'รายได้อื่น', category_code: '4' },
-            { group_code: '51', group_name: 'ค่าใช้จ่ายในการดำเนินงาน', category_code: '5' },
-            { group_code: '52', group_name: 'ต้นทุนสินค้าที่ขาย', category_code: '5' }
-        ];
-
-        for (const dg of defaultGroups) {
-            let g = await AccountGroup.findOne({ group_code: dg.group_code });
-            if (!g) {
-                console.log(`กำลังสร้างกลุ่มบัญชีเริ่มต้น: ${dg.group_code} - ${dg.group_name}`);
-                await AccountGroup.create({
-                    group_code: dg.group_code,
-                    group_name: dg.group_name,
-                    category_id: catMap[dg.category_code]
-                });
-            }
-        }
-
-        const allGroups = await AccountGroup.find();
-        const grpMap = {};
-        allGroups.forEach(g => { grpMap[g.group_code] = g._id; });
-
-        const defaultAccounts = [
-            // สินทรัพย์
-            { account_code: '110101', account_name: 'เงินสดหน้าร้าน', category_code: '1', group_code: '11', level: 3, is_system: true },
-            { account_code: '110201', account_name: 'ธนาคาร (เงินโอน)', category_code: '1', group_code: '11', level: 3, is_system: true },
-            { account_code: '110301', account_name: 'ลูกหนี้การค้า/ไฟแนนซ์', category_code: '1', group_code: '11', level: 3, is_system: true },
-            { account_code: '110401', account_name: 'สินค้าคงเหลือ', category_code: '1', group_code: '11', level: 3, is_system: true },
-            // หนี้สิน
-            { account_code: '210101', account_name: 'เจ้าหนี้การค้า (PO)', category_code: '2', group_code: '21', level: 3, is_system: true },
-            { account_code: '210201', account_name: 'ภาษีมูลค่าเพิ่มค้างจ่าย', category_code: '2', group_code: '21', level: 3, is_system: true },
-            // ทุน
-            { account_code: '310101', account_name: 'ทุนเจ้าของกิจการ', category_code: '3', group_code: '31', level: 3, is_system: true },
-            // รายได้
-            { account_code: '410101', account_name: 'รายได้จากการขายสินค้า', category_code: '4', group_code: '41', level: 3, is_system: true },
-            { account_code: '410102', account_name: 'รายได้ค่าธรรมเนียมสัญญา', category_code: '4', group_code: '41', level: 3, is_system: true },
-            { account_code: '410103', account_name: 'รายได้ค่าปลด iCloud', category_code: '4', group_code: '41', level: 3, is_system: true },
-            { account_code: '420101', account_name: 'รายได้อื่นๆ', category_code: '4', group_code: '42', level: 3, is_system: true },
-            // ค่าใช้จ่าย
-            { account_code: '510101', account_name: 'ค่าเช่าพื้นที่สาขา', category_code: '5', group_code: '51', level: 3, is_system: true },
-            { account_code: '510102', account_name: 'เงินเดือนและค่าตอบแทน', category_code: '5', group_code: '51', level: 3, is_system: true },
-            { account_code: '510201', account_name: 'ค่าสาธารณูปโภค (น้ำ/ไฟ/เน็ต)', category_code: '5', group_code: '51', level: 3, is_system: true },
-            { account_code: '510301', account_name: 'ค่าส่งสินค้า/ไปรษณีย์', category_code: '5', group_code: '51', level: 3, is_system: true },
-            { account_code: '510401', account_name: 'ค่าโฆษณาและการตลาด', category_code: '5', group_code: '51', level: 3, is_system: true },
-            { account_code: '510501', account_name: 'ค่าใช้จ่ายเบ็ดเตล็ด', category_code: '5', group_code: '51', level: 3, is_system: true },
-            { account_code: '520101', account_name: 'ต้นทุนสินค้าที่ขาย', category_code: '5', group_code: '52', level: 3, is_system: true }
-        ];
-
-        for (const da of defaultAccounts) {
-            let a = await AccountChart.findOne({ account_code: da.account_code });
-            if (!a) {
-                console.log(`กำลังสร้างผังบัญชีเริ่มต้น: ${da.account_code} - ${da.account_name}`);
-                await AccountChart.create({
-                    account_code: da.account_code,
-                    account_name: da.account_name,
-                    category_id: catMap[da.category_code],
-                    group_id: grpMap[da.group_code],
-                    level: da.level,
-                    is_system: da.is_system
-                });
-            }
-        }
-
-        console.log('✅ ตรวจสอบและสร้างผังบัญชีเริ่มต้นเรียบร้อย');
+        console.log('✅ ตรวจสอบหมวดบัญชีหลักเรียบร้อย');
     } catch (err) {
         console.error('❌ เกิดข้อผิดพลาดในการสร้างผังบัญชี:', err.message);
     }
@@ -849,7 +822,10 @@ module.exports = {
     AccountGroup,
     AccountChart,
     AccountBook,
+    AccountDocument,
+    AccountBookLink,
     PnLConfig,
+    BalanceSheetItem,
     DisbursementVoucher,
     Expense,
     seedDefaultRoles,

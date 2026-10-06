@@ -1,8 +1,9 @@
 const express = require('express');
 const router = express.Router();
 const jwt = require('jsonwebtoken');
+const mongoose = require('mongoose');
 const {
-    AccountCategory, AccountGroup, AccountChart, AccountBook, PnLConfig, DisbursementVoucher,
+    AccountCategory, AccountGroup, AccountChart, AccountBook, AccountDocument, AccountBookLink, PnLConfig, BalanceSheetItem, DisbursementVoucher,
     Employee, Branch, CashMovement, Transaction, PurchaseOrder, FinanceReceivable, AuditLog
 } = require('../models');
 const { uploadBufferToDriveInFolder } = require('../utils/googleDrive');
@@ -62,7 +63,8 @@ async function logActivity(req, action, module, description, targetId, refNo, de
             details: details || null,
             ip_address: req.ip,
             user_id: req.user.employee_id,
-            user_name: emp ? emp.name : 'ไม่ทราบ'
+            user_name: emp ? emp.name : 'ไม่ทราบ',
+            branch_id: (emp && emp.branch_id) || req.user.branch_id || null
         });
     } catch (e) { console.error('Log error:', e.message); }
 }
@@ -114,6 +116,10 @@ router.post('/chart-of-accounts', async (req, res) => {
             return res.status(400).json({ success: false, message: 'กลุ่มบัญชีไม่ตรงกับหมวดที่เลือก' });
         }
         if (dup) return res.status(400).json({ success: false, message: 'รหัสบัญชีนี้มีอยู่แล้ว' });
+        // เพิ่มรหัสบัญชีใหม่เข้ากลุ่มที่ปิดใช้งานไม่ได้ (แก้บัญชีเดิมที่อยู่ในกลุ่มนั้นยังทำได้)
+        if (!_id && group && group.is_active === false) {
+            return res.status(400).json({ success: false, message: 'กลุ่มบัญชีนี้ปิดการใช้งานอยู่ เปิดการใช้งานกลุ่มก่อนจึงจะเพิ่มรหัสบัญชีได้' });
+        }
 
         let account;
         if (_id) {
@@ -152,12 +158,13 @@ router.delete('/chart-of-accounts/:id', async (req, res) => {
         if (!account) return res.status(404).json({ success: false, message: 'ไม่พบบัญชีนี้' });
         if (account.is_system) return res.status(400).json({ success: false, message: 'ไม่สามารถลบบัญชีระบบได้ (ปิดการใช้งานแทนได้)' });
         // บัญชีที่เอกสารอ้างถึงอยู่ ลบแล้วเอกสารเก่าจะชี้ไปที่ของที่ไม่มี — ให้ปิดการใช้งานแทน
-        const [dvCount, pnlCount] = await Promise.all([
+        const [dvCount, pnlCount, bsCount] = await Promise.all([
             DisbursementVoucher.countDocuments({ $or: [{ debit_account_id: account._id }, { credit_account_id: account._id }] }),
-            PnLConfig.countDocuments({ account_ids: account._id })
+            PnLConfig.countDocuments({ account_ids: account._id }),
+            BalanceSheetItem.countDocuments({ account_ids: account._id })
         ]);
-        if (dvCount || pnlCount) {
-            return res.status(400).json({ success: false, message: 'ลบไม่ได้ เพราะบัญชีนี้ถูกใช้ในใบสำคัญจ่ายหรืองบกำไรขาดทุนแล้ว (ปิดการใช้งานแทนได้)' });
+        if (dvCount || pnlCount || bsCount) {
+            return res.status(400).json({ success: false, message: 'ลบไม่ได้ เพราะบัญชีนี้ถูกใช้ในใบสำคัญจ่าย งบกำไรขาดทุน หรืองบดุลแล้ว (ปิดการใช้งานแทนได้)' });
         }
         await AccountChart.findByIdAndDelete(req.params.id);
         await logActivity(req, 'DELETE', 'COA', `ลบผังบัญชี ${account.account_code} ${account.account_name}`, account._id);
@@ -239,18 +246,39 @@ router.post('/account-groups', async (req, res) => {
     }
 });
 
+// PATCH /api/acct/account-groups/:id/active — เปิด/ปิดการใช้งานกลุ่ม (ใช้ได้กับกลุ่มระบบด้วย)
+// ปิดแล้วกลุ่มและรหัสบัญชีในกลุ่มยังอยู่ครบ รายงานเดิมไม่กระทบ แค่ไม่ให้เพิ่มรหัสบัญชีใหม่เข้ากลุ่มนี้
+router.patch('/account-groups/:id/active', async (req, res) => {
+    try {
+        if (typeof req.body.is_active !== 'boolean') {
+            return res.status(400).json({ success: false, message: 'ข้อมูลไม่ถูกต้อง' });
+        }
+        const group = await AccountGroup.findById(req.params.id);
+        if (!group) return res.status(404).json({ success: false, message: 'ไม่พบกลุ่มบัญชีนี้' });
+        group.is_active = req.body.is_active;
+        await group.save();
+        await logActivity(req, 'UPDATE', 'COA',
+            `${group.is_active ? 'เปิด' : 'ปิด'}การใช้งานกลุ่มบัญชี ${group.group_code} ${group.group_name}`, group._id, group.group_code);
+        res.json({ success: true, group });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
 // DELETE /api/acct/account-groups/:id — ลบได้เฉพาะกลุ่มที่ไม่ใช่ของระบบและไม่มีใครอ้างถึง
 router.delete('/account-groups/:id', async (req, res) => {
     try {
         const group = await AccountGroup.findById(req.params.id).lean();
         if (!group) return res.status(404).json({ success: false, message: 'ไม่พบกลุ่มบัญชีนี้' });
         if (isSystemGroup(group)) return res.status(400).json({ success: false, message: 'ไม่สามารถลบกลุ่มบัญชีระบบได้' });
-        const [accCount, pnlCount] = await Promise.all([
+        const [accCount, pnlCount, bsCount] = await Promise.all([
             AccountChart.countDocuments({ group_id: group._id }),
-            PnLConfig.countDocuments({ group_id: group._id })
+            PnLConfig.countDocuments({ group_id: group._id }),
+            BalanceSheetItem.countDocuments({ group_id: group._id })
         ]);
         if (accCount) return res.status(400).json({ success: false, message: `ลบไม่ได้ เพราะมีรหัสบัญชี ${accCount} รายการอยู่ในกลุ่มนี้` });
         if (pnlCount) return res.status(400).json({ success: false, message: 'ลบไม่ได้ เพราะกลุ่มนี้ถูกใช้ในการตั้งค่างบกำไรขาดทุน' });
+        if (bsCount) return res.status(400).json({ success: false, message: 'ลบไม่ได้ เพราะกลุ่มนี้ถูกใช้ในการตั้งค่างบดุล' });
         await AccountGroup.findByIdAndDelete(group._id);
         await logActivity(req, 'DELETE', 'COA', `ลบกลุ่มบัญชี ${group.group_code} ${group.group_name}`, group._id, group.group_code);
         res.json({ success: true });
@@ -311,9 +339,252 @@ router.delete('/account-books/:id', async (req, res) => {
     try {
         const book = await AccountBook.findById(req.params.id).lean();
         if (!book) return res.status(404).json({ success: false, message: 'ไม่พบสมุดบัญชีนี้' });
+        // สมุดที่ถูกเชื่อมกับเอกสารอยู่ (ไม่ว่าการเชื่อมจะเปิดหรือปิด) ห้ามลบ ไม่งั้นการเชื่อมจะชี้ไปที่สมุดที่ไม่มีแล้ว
+        const linkCount = await AccountBookLink.countDocuments({ book_id: book._id });
+        if (linkCount > 0) {
+            return res.status(400).json({
+                success: false,
+                message: `สมุดบัญชีนี้ถูกเชื่อมกับเอกสารอยู่ ${linkCount} รายการ — ไปที่เมนู "เชื่อมสมุดบัญชีกับเอกสาร" เปลี่ยนการเชื่อมไปสมุดอื่นก่อนจึงจะลบได้`
+            });
+        }
         await AccountBook.findByIdAndDelete(req.params.id);
         await logActivity(req, 'DELETE', 'ACCOUNT_BOOK', `ลบสมุดบัญชี ${book.book_code} ${book.book_name}`, book._id, book.book_code);
         res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+// ============================================
+// 1.15 BALANCE SHEET ITEM APIs (ตั้งค่างบดุล)
+// ============================================
+
+// GET /api/acct/balance-sheet-items — คืนเรียงตามลำดับ พร้อมกลุ่ม/หมวด/บัญชีที่ประกอบ (populate แบบ lean)
+router.get('/balance-sheet-items', async (req, res) => {
+    try {
+        const items = await BalanceSheetItem.find()
+            .populate({ path: 'group_id', populate: { path: 'category_id' } })
+            .populate('account_ids', 'account_code account_name')
+            .sort({ sort_order: 1, createdAt: 1 }).lean();
+        res.json({ success: true, items });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+// POST /api/acct/balance-sheet-items — เพิ่ม (ไม่มี _id) หรือแก้ไข (มี _id)
+router.post('/balance-sheet-items', async (req, res) => {
+    try {
+        const { _id, group_id } = req.body;
+        const item_name = String(req.body.item_name || '').trim();
+        const sort_order = Number(req.body.sort_order);
+        const rawIds = Array.isArray(req.body.account_ids) ? req.body.account_ids : [];
+        const account_ids = [...new Set(rawIds.map(String))];
+
+        if (!group_id || !item_name || !Number.isInteger(sort_order) || sort_order < 1) {
+            return res.status(400).json({ success: false, message: 'กรุณาเลือกกลุ่มบัญชี กรอกลำดับ (จำนวนเต็มตั้งแต่ 1) และชื่อรายการให้ครบถ้วน' });
+        }
+        if (!mongoose.isValidObjectId(group_id) || account_ids.some(id => !mongoose.isValidObjectId(id))) {
+            return res.status(400).json({ success: false, message: 'ข้อมูลกลุ่มบัญชีหรือบัญชีไม่ถูกต้อง' });
+        }
+        const [group, accounts] = await Promise.all([
+            AccountGroup.findById(group_id).lean(),
+            AccountChart.find({ _id: { $in: account_ids } }, 'category_id').lean()
+        ]);
+        if (!group) return res.status(400).json({ success: false, message: 'ไม่พบกลุ่มบัญชีนี้' });
+        if (accounts.length !== account_ids.length) {
+            return res.status(400).json({ success: false, message: 'พบบัญชีที่ไม่มีในระบบ' });
+        }
+        // บัญชีที่ประกอบต้องอยู่หมวดเดียวกับกลุ่ม ไม่งั้นงบดุลจะรวมยอดผิดหมวด
+        if (accounts.some(a => String(a.category_id) !== String(group.category_id))) {
+            return res.status(400).json({ success: false, message: 'บัญชีที่เลือกต้องอยู่ในหมวดเดียวกับกลุ่มบัญชี' });
+        }
+
+        let item;
+        if (_id) {
+            item = await BalanceSheetItem.findById(_id);
+            if (!item) return res.status(404).json({ success: false, message: 'ไม่พบรายการงบดุลนี้' });
+            Object.assign(item, { group_id, sort_order, item_name, account_ids });
+            await item.save();
+            await logActivity(req, 'UPDATE', 'BALANCE_SHEET', `แก้ไขรายการงบดุล ${sort_order}. ${item_name}`, item._id, String(sort_order));
+        } else {
+            item = await BalanceSheetItem.create({ group_id, sort_order, item_name, account_ids });
+            await logActivity(req, 'CREATE', 'BALANCE_SHEET', `เพิ่มรายการงบดุล ${sort_order}. ${item_name}`, item._id, String(sort_order));
+        }
+        res.json({ success: true, item });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+// DELETE /api/acct/balance-sheet-items/:id
+router.delete('/balance-sheet-items/:id', async (req, res) => {
+    try {
+        const item = await BalanceSheetItem.findById(req.params.id).lean();
+        if (!item) return res.status(404).json({ success: false, message: 'ไม่พบรายการงบดุลนี้' });
+        await BalanceSheetItem.findByIdAndDelete(item._id);
+        await logActivity(req, 'DELETE', 'BALANCE_SHEET', `ลบรายการงบดุล ${item.sort_order}. ${item.item_name}`, item._id, String(item.sort_order));
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+// ============================================
+// 1.2 ACCOUNT DOCUMENT APIs (รายการเอกสาร) + ACCOUNT BOOK LINK APIs (เชื่อมสมุดบัญชีกับเอกสาร)
+// ทุก endpoint ผ่าน requireFinancePermission (manage_finance) ของ router นี้อยู่แล้ว
+// ปิดการใช้งานแทนการลบ — ไม่มี DELETE
+// ============================================
+
+// GET /api/acct/account-documents
+router.get('/account-documents', async (req, res) => {
+    try {
+        const documents = await AccountDocument.find().sort({ doc_name: 1 }).lean();
+        res.json({ success: true, documents });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+// POST /api/acct/account-documents - เพิ่ม (ไม่มี _id) หรือแก้ชื่อ (มี _id)
+router.post('/account-documents', async (req, res) => {
+    try {
+        const { _id } = req.body;
+        const doc_code = String(req.body.doc_code || '').trim();
+        const doc_name = String(req.body.doc_name || '').trim();
+        if (!doc_code || !doc_name) {
+            return res.status(400).json({ success: false, message: 'กรุณากรอกรหัสและชื่อเอกสารให้ครบถ้วน' });
+        }
+        if (_id && !mongoose.Types.ObjectId.isValid(_id)) {
+            return res.status(400).json({ success: false, message: 'ข้อมูลอ้างอิงเอกสารไม่ถูกต้อง' });
+        }
+        // รหัสและชื่อต้องไม่ซ้ำ — ดึงทีเดียวแล้วแยกข้อความตามที่ซ้ำ
+        const dups = await AccountDocument.find({
+            $or: [{ doc_code }, { doc_name }],
+            ...(_id ? { _id: { $ne: _id } } : {})
+        }).lean();
+        if (dups.some(d => d.doc_code === doc_code)) return res.status(400).json({ success: false, message: 'รหัสเอกสารนี้มีอยู่แล้ว' });
+        if (dups.some(d => d.doc_name === doc_name)) return res.status(400).json({ success: false, message: 'ชื่อเอกสารนี้มีอยู่แล้ว' });
+
+        let doc;
+        if (_id) {
+            doc = await AccountDocument.findById(_id);
+            if (!doc) return res.status(404).json({ success: false, message: 'ไม่พบเอกสารนี้' });
+            const oldLabel = `${doc.doc_code || '-'} ${doc.doc_name}`;
+            doc.doc_code = doc_code;
+            doc.doc_name = doc_name;
+            await doc.save();
+            await logActivity(req, 'UPDATE', 'ACCOUNT_DOCUMENT', `แก้ไขเอกสาร "${oldLabel}" เป็น "${doc_code} ${doc_name}"`, doc._id, doc_code);
+        } else {
+            doc = await AccountDocument.create({ doc_code, doc_name });
+            await logActivity(req, 'CREATE', 'ACCOUNT_DOCUMENT', `เพิ่มเอกสาร ${doc_code} "${doc_name}"`, doc._id, doc_code);
+        }
+        res.json({ success: true, document: doc });
+    } catch (err) {
+        if (err && err.code === 11000) {
+            const byCode = err.keyPattern && err.keyPattern.doc_code;
+            return res.status(400).json({ success: false, message: byCode ? 'รหัสเอกสารนี้มีอยู่แล้ว' : 'ชื่อเอกสารนี้มีอยู่แล้ว' });
+        }
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+// PUT /api/acct/account-documents/:id/active - เปิด/ปิดการใช้งานเอกสาร  body: { is_active: boolean }
+router.put('/account-documents/:id/active', async (req, res) => {
+    try {
+        if (typeof req.body.is_active !== 'boolean') {
+            return res.status(400).json({ success: false, message: 'กรุณาระบุสถานะ is_active เป็น true/false' });
+        }
+        const doc = await AccountDocument.findById(req.params.id);
+        if (!doc) return res.status(404).json({ success: false, message: 'ไม่พบเอกสารนี้' });
+        doc.is_active = req.body.is_active;
+        await doc.save();
+        await logActivity(req, 'UPDATE', 'ACCOUNT_DOCUMENT',
+            `${doc.is_active ? 'เปิด' : 'ปิด'}การใช้งานเอกสาร ${doc.doc_code || '-'} "${doc.doc_name}"`, doc._id, doc.doc_code || doc.doc_name);
+        res.json({ success: true, document: doc });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+// GET /api/acct/account-book-links
+// คืนเฉพาะรหัสอ้างอิง — หน้าเว็บโหลดรายการเอกสาร/สมุดบัญชีมาอยู่แล้วเพื่อใช้ในดรอปดาวน์ จึงจับคู่ชื่อฝั่งหน้าเว็บ
+router.get('/account-book-links', async (req, res) => {
+    try {
+        const links = await AccountBookLink.find().sort({ createdAt: -1 }).lean();
+        res.json({ success: true, links });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+// POST /api/acct/account-book-links - เพิ่มการเชื่อม (ไม่มี _id) หรือแก้ (มี _id)  body: { _id?, document_id, book_id }
+router.post('/account-book-links', async (req, res) => {
+    try {
+        const { _id, document_id, book_id } = req.body;
+        if (!document_id || !book_id) {
+            return res.status(400).json({ success: false, message: 'กรุณาเลือกเอกสารและสมุดบัญชีให้ครบ' });
+        }
+        if (![document_id, book_id, ...(_id ? [_id] : [])].every(v => mongoose.Types.ObjectId.isValid(v))) {
+            return res.status(400).json({ success: false, message: 'รหัสอ้างอิงไม่ถูกต้อง' });
+        }
+
+        const [doc, book, dup, existing] = await Promise.all([
+            AccountDocument.findById(document_id).lean(),
+            AccountBook.findById(book_id).lean(),
+            AccountBookLink.findOne({ document_id, book_id, ...(_id ? { _id: { $ne: _id } } : {}) }).lean(),
+            _id ? AccountBookLink.findById(_id) : null
+        ]);
+        if (!doc) return res.status(400).json({ success: false, message: 'ไม่พบเอกสารที่เลือก' });
+        if (!book) return res.status(400).json({ success: false, message: 'ไม่พบสมุดบัญชีที่เลือก' });
+        if (dup) return res.status(400).json({ success: false, message: 'เอกสารนี้เชื่อมกับสมุดบัญชีนี้อยู่แล้ว' });
+        if (_id && !existing) return res.status(404).json({ success: false, message: 'ไม่พบการเชื่อมนี้' });
+
+        // เชื่อมเอกสารที่ปิดอยู่ไม่ได้ — ยกเว้นตอนแก้การเชื่อมเดิมโดยไม่เปลี่ยนเอกสาร
+        const documentChanged = !existing || String(existing.document_id) !== String(doc._id);
+        if (!doc.is_active && documentChanged) {
+            return res.status(400).json({ success: false, message: 'เอกสารนี้ปิดการใช้งานอยู่ — เปิดการใช้งานก่อนจึงจะเชื่อมได้' });
+        }
+
+        const label = `${doc.doc_code || '-'} "${doc.doc_name}" ↔ ${book.book_code} ${book.book_name}`;
+        let link;
+        if (existing) {
+            existing.document_id = doc._id;
+            existing.book_id = book._id;
+            await existing.save();
+            link = existing;
+            await logActivity(req, 'UPDATE', 'ACCOUNT_BOOK_LINK', `แก้ไขการเชื่อมสมุดบัญชี ${label}`, link._id, book.book_code);
+        } else {
+            link = await AccountBookLink.create({ document_id: doc._id, book_id: book._id });
+            await logActivity(req, 'CREATE', 'ACCOUNT_BOOK_LINK', `เพิ่มการเชื่อมสมุดบัญชี ${label}`, link._id, book.book_code);
+        }
+        res.json({ success: true, link });
+    } catch (err) {
+        if (err && err.code === 11000) {
+            return res.status(400).json({ success: false, message: 'เอกสารนี้เชื่อมกับสมุดบัญชีนี้อยู่แล้ว' });
+        }
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+// PUT /api/acct/account-book-links/:id/active - เปิด/ปิดการเชื่อม  body: { is_active: boolean }
+router.put('/account-book-links/:id/active', async (req, res) => {
+    try {
+        if (typeof req.body.is_active !== 'boolean') {
+            return res.status(400).json({ success: false, message: 'กรุณาระบุสถานะ is_active เป็น true/false' });
+        }
+        const link = await AccountBookLink.findById(req.params.id);
+        if (!link) return res.status(404).json({ success: false, message: 'ไม่พบการเชื่อมนี้' });
+        link.is_active = req.body.is_active;
+        await link.save();
+        const [doc, book] = await Promise.all([
+            AccountDocument.findById(link.document_id).lean(),
+            AccountBook.findById(link.book_id).lean()
+        ]);
+        await logActivity(req, 'UPDATE', 'ACCOUNT_BOOK_LINK',
+            `${link.is_active ? 'เปิด' : 'ปิด'}การเชื่อมสมุดบัญชี ${doc ? (doc.doc_code || '-') + ' "' + doc.doc_name + '"' : '-'} ↔ ${book ? book.book_code + ' ' + book.book_name : '-'}`,
+            link._id, book ? book.book_code : '');
+        res.json({ success: true, link });
     } catch (err) {
         res.status(500).json({ success: false, message: err.message });
     }
@@ -333,6 +604,72 @@ router.get('/pnl-config', async (req, res) => {
             .sort({ sort_order: 1 })
             .lean();
         res.json({ success: true, configs });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+// POST /api/acct/pnl-items — เพิ่ม (ไม่มี _id) หรือแก้ไข (มี _id) ทีละบรรทัด สำหรับเมนู "ตั้งค่างบกำไรขาดทุน"
+// (POST /pnl-config ด้านล่างเป็นแบบแทนที่ทั้งชุด ใช้โดยแท็บ P&L ในหน้าผังบัญชีเดิม — ข้อมูลชุดเดียวกัน)
+// หมวดไม่รับจากฟอร์ม — ดูจากกลุ่มบัญชี; section: หมวดรายได้ = revenue, หมวดค่าใช้จ่าย = expense
+// ไม่บังคับให้บัญชีอยู่หมวดเดียวกับกลุ่ม เพราะผู้ใช้อาจจัดบัญชีรายได้ไปไว้ใต้กลุ่มค่าใช้จ่ายโดยตั้งใจ
+router.post('/pnl-items', async (req, res) => {
+    try {
+        const { _id, group_id } = req.body;
+        const display_name = String(req.body.display_name || '').trim();
+        const sort_order = Number(req.body.sort_order);
+        const rawIds = Array.isArray(req.body.account_ids) ? req.body.account_ids : [];
+        const account_ids = [...new Set(rawIds.map(String))];
+
+        if (!group_id || !display_name || !Number.isInteger(sort_order) || sort_order < 1) {
+            return res.status(400).json({ success: false, message: 'กรุณาเลือกกลุ่มบัญชี กรอกลำดับ (จำนวนเต็มตั้งแต่ 1) และชื่อรายการให้ครบถ้วน' });
+        }
+        if (!mongoose.isValidObjectId(group_id) || account_ids.some(id => !mongoose.isValidObjectId(id))) {
+            return res.status(400).json({ success: false, message: 'ข้อมูลกลุ่มบัญชีหรือบัญชีไม่ถูกต้อง' });
+        }
+        const [group, accCount] = await Promise.all([
+            AccountGroup.findById(group_id).populate('category_id').lean(),
+            AccountChart.countDocuments({ _id: { $in: account_ids } })
+        ]);
+        if (!group) return res.status(400).json({ success: false, message: 'ไม่พบกลุ่มบัญชีนี้' });
+        const catName = group.category_id && group.category_id.category_name;
+        if (catName !== 'รายได้' && catName !== 'ค่าใช้จ่าย') {
+            return res.status(400).json({ success: false, message: 'งบกำไรขาดทุนเลือกได้เฉพาะกลุ่มบัญชีในหมวดรายได้หรือค่าใช้จ่าย' });
+        }
+        if (accCount !== account_ids.length) {
+            return res.status(400).json({ success: false, message: 'พบบัญชีที่ไม่มีในระบบ' });
+        }
+
+        const fields = {
+            sort_order, display_name, account_ids, group_id,
+            category_id: group.category_id._id,
+            section: catName === 'รายได้' ? 'revenue' : 'expense'
+        };
+        let item;
+        if (_id) {
+            item = await PnLConfig.findById(_id);
+            if (!item) return res.status(404).json({ success: false, message: 'ไม่พบรายการงบกำไรขาดทุนนี้' });
+            Object.assign(item, fields);
+            await item.save();
+            await logActivity(req, 'UPDATE', 'PNL_CONFIG', `แก้ไขรายการงบกำไรขาดทุน ${sort_order}. ${display_name}`, item._id, String(sort_order));
+        } else {
+            item = await PnLConfig.create(fields);
+            await logActivity(req, 'CREATE', 'PNL_CONFIG', `เพิ่มรายการงบกำไรขาดทุน ${sort_order}. ${display_name}`, item._id, String(sort_order));
+        }
+        res.json({ success: true, item });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+// DELETE /api/acct/pnl-items/:id
+router.delete('/pnl-items/:id', async (req, res) => {
+    try {
+        const item = await PnLConfig.findById(req.params.id).lean();
+        if (!item) return res.status(404).json({ success: false, message: 'ไม่พบรายการงบกำไรขาดทุนนี้' });
+        await PnLConfig.findByIdAndDelete(item._id);
+        await logActivity(req, 'DELETE', 'PNL_CONFIG', `ลบรายการงบกำไรขาดทุน ${item.sort_order}. ${item.display_name}`, item._id, String(item.sort_order));
+        res.json({ success: true });
     } catch (err) {
         res.status(500).json({ success: false, message: err.message });
     }

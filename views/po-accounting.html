@@ -709,13 +709,25 @@
         </div>
 
         <!-- แถว 2: ภาพรวมการสั่งซื้อในช่วงที่เลือก -->
+        <!-- 3 คอลัมน์ 2 แถว: แถวบน = ทั้งหมด (จำนวน · มูลค่า · รอรับของ) / แถวล่าง = ที่ชำระแล้ว (จำนวน · ยอดเงิน · ส่วนลด) -->
         <div class="space-y-3">
             <span class="text-body-muted font-bold text-xs uppercase tracking-wider block px-1">ภาพรวมการสั่งซื้อตามตัวกรอง</span>
-            <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
                 <div class="bg-panel/40 rounded-2xl shadow-lg backdrop-blur-sm p-5 flex items-start gap-4">
                     <div class="w-11 h-11 rounded-full flex items-center justify-center shrink-0"
                         style="color:#A78BFA;background-color:#A78BFA1F;">
                         <i class="fa-regular fa-clipboard text-lg"></i>
+                    </div>
+                    <div class="min-w-0 flex-1">
+                        <p class="text-xs text-ink/70 truncate">ใบสั่งซื้อทั้งหมด</p>
+                        <p id="po-kpi-total-count" class="text-2xl font-semibold text-ink font-mono mt-0.5 truncate">-</p>
+                        <p id="po-kpi-total-count-sub" class="text-xs text-ink/50 mt-1">-</p>
+                    </div>
+                </div>
+                <div class="bg-panel/40 rounded-2xl shadow-lg backdrop-blur-sm p-5 flex items-start gap-4">
+                    <div class="w-11 h-11 rounded-full flex items-center justify-center shrink-0"
+                        style="color:#FFE169;background-color:#FFE1691F;">
+                        <i class="fa-solid fa-file-invoice text-lg"></i>
                     </div>
                     <div class="min-w-0 flex-1">
                         <p class="text-xs text-ink/70 truncate">มูลค่าสั่งซื้อรวม</p>
@@ -725,11 +737,33 @@
                 </div>
                 <div class="bg-panel/40 rounded-2xl shadow-lg backdrop-blur-sm p-5 flex items-start gap-4">
                     <div class="w-11 h-11 rounded-full flex items-center justify-center shrink-0"
+                        style="color:#38BDF8;background-color:#38BDF81F;">
+                        <i class="fa-solid fa-truck-ramp-box text-lg"></i>
+                    </div>
+                    <div class="min-w-0 flex-1">
+                        <p class="text-xs text-ink/70 truncate">รอรับสินค้าเข้าสต็อก</p>
+                        <p id="po-kpi-pending-count" class="text-2xl font-semibold text-ink font-mono mt-0.5 truncate">-</p>
+                        <p id="po-kpi-pending-sub" class="text-xs text-ink/50 mt-1">-</p>
+                    </div>
+                </div>
+                <div class="bg-panel/40 rounded-2xl shadow-lg backdrop-blur-sm p-5 flex items-start gap-4">
+                    <div class="w-11 h-11 rounded-full flex items-center justify-center shrink-0"
                         style="color:#20D500;background-color:#20D5001F;">
                         <i class="fa-solid fa-circle-check text-lg"></i>
                     </div>
                     <div class="min-w-0 flex-1">
-                        <p class="text-xs text-ink/70 truncate">ชำระแล้ว</p>
+                        <p class="text-xs text-ink/70 truncate">ใบสั่งซื้อที่ชำระแล้ว</p>
+                        <p id="po-kpi-paid-count" class="text-2xl font-semibold text-ink font-mono mt-0.5 truncate">-</p>
+                        <p id="po-kpi-paid-count-sub" class="text-xs text-ink/50 mt-1">-</p>
+                    </div>
+                </div>
+                <div class="bg-panel/40 rounded-2xl shadow-lg backdrop-blur-sm p-5 flex items-start gap-4">
+                    <div class="w-11 h-11 rounded-full flex items-center justify-center shrink-0"
+                        style="color:#20D500;background-color:#20D5001F;">
+                        <i class="fa-solid fa-money-bill-wave text-lg"></i>
+                    </div>
+                    <div class="min-w-0 flex-1">
+                        <p class="text-xs text-ink/70 truncate">ยอดชำระแล้ว</p>
                         <p id="po-kpi-paid-amount" class="text-2xl font-semibold text-ink font-mono mt-0.5 truncate">-</p>
                         <p id="po-kpi-paid-sub" class="text-xs text-ink/50 mt-1">-</p>
                     </div>
@@ -743,17 +777,6 @@
                         <p class="text-xs text-ink/70 truncate">ส่วนลดที่ได้รับ</p>
                         <p id="po-kpi-discount-amount" class="text-2xl font-semibold text-ink font-mono mt-0.5 truncate">-</p>
                         <p class="text-xs text-ink/50 mt-1">ส่วนลดจากซัพพลายเออร์สะสม</p>
-                    </div>
-                </div>
-                <div class="bg-panel/40 rounded-2xl shadow-lg backdrop-blur-sm p-5 flex items-start gap-4">
-                    <div class="w-11 h-11 rounded-full flex items-center justify-center shrink-0"
-                        style="color:#38BDF8;background-color:#38BDF81F;">
-                        <i class="fa-solid fa-truck-ramp-box text-lg"></i>
-                    </div>
-                    <div class="min-w-0 flex-1">
-                        <p class="text-xs text-ink/70 truncate">รอรับสินค้าเข้าสต็อก</p>
-                        <p id="po-kpi-pending-count" class="text-2xl font-semibold text-ink font-mono mt-0.5 truncate">-</p>
-                        <p id="po-kpi-pending-sub" class="text-xs text-ink/50 mt-1">-</p>
                     </div>
                 </div>
             </div>
@@ -796,6 +819,7 @@
                             <th class="px-6 py-4 font-semibold text-[15px]">กำหนดจ่าย</th>
                             <th class="px-6 py-4 font-semibold text-[15px]">เลขที่ PO</th>
                             <th class="px-6 py-4 font-semibold text-[15px]">Supplier</th>
+                            <th class="px-6 py-4 font-semibold text-[15px] text-center">สถานะนำเข้าสต็อก</th>
                             <th class="px-6 py-4 font-semibold text-[15px] text-right">ยอดรวม</th>
                             <th class="px-6 py-4 font-semibold text-[15px] text-right">ค้างชำระ</th>
                             <th class="px-6 py-4 font-semibold text-[15px] text-right">จัดการ</th>
@@ -1028,7 +1052,7 @@
                             <th class="px-6 py-4 font-semibold text-[15px]">Supplier</th>
                             <th class="px-6 py-4 font-semibold text-[15px]">สาขาปลายทาง</th>
                             <th class="px-6 py-4 font-semibold text-[15px] text-right">ยอดรวม</th>
-                            <th class="px-6 py-4 font-semibold text-[15px] text-center">สถานะ</th>
+                            <th class="px-6 py-4 font-semibold text-[15px] text-center">สถานะนำเข้าสต็อก</th>
                             <!-- ซ่อนเมื่อไม่มีสิทธิ์ pay_po (page-po-accounting.js → syncPoHistoryPaymentHeader) -->
                             <th id="th-po-history-payment" class="hidden px-6 py-4 font-semibold text-[15px] text-center">การชำระเงิน</th>
                             <th class="px-6 py-4 font-semibold text-[15px] text-right">จัดการ</th>
@@ -1267,6 +1291,7 @@
                             <th class="px-6 py-4 font-semibold text-[15px]">เลขที่ธุรกรรม / วันที่</th>
                             <th class="px-6 py-4 font-semibold text-[15px]">ประเภท</th>
                             <th class="px-6 py-4 font-semibold text-[15px] w-full">หมวดหมู่</th>
+                            <th class="px-6 py-4 font-semibold text-[15px]">เอกสาร / สมุดบัญชี</th>
                             <th class="px-6 py-4 font-semibold text-[15px] text-right">จำนวนเงิน</th>
                             <th class="px-6 py-4 font-semibold text-[15px]">ผู้บันทึก</th>
                         </tr>
