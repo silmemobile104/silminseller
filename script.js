@@ -171,7 +171,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // โหลดสคริปต์เฉพาะหน้า (js/page-<name>.js) แบบ dynamic ครั้งเดียว แล้ว cache ไว้
     // PAGE_SCRIPT_VERSION: บัมพ์เลขนี้ทุกครั้งที่แก้ไฟล์ใน js/ เพื่อไม่ให้เบราว์เซอร์ใช้ของเก่าที่ cache ไว้
-    const PAGE_SCRIPT_VERSION = 'apple_active_v112';
+    const PAGE_SCRIPT_VERSION = 'apple_active_v141';
     const __loadedPageScripts = {};
     function loadPageScript(name) {
         if (__loadedPageScripts[name]) return __loadedPageScripts[name];
@@ -224,7 +224,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // ไม่ได้รอ init function ถ้า HTML ยังไม่ถูกแทรกเข้า DOM ก่อน ตัวแปรที่ query ไว้จะเป็น null ถาวร
     // ชื่อ name ต้องตรงกับชื่อที่ใช้ใน loadPageScript — ไฟล์เดียวอาจมีหลาย <div id="view-XXX"> รวมกัน
     // ถ้าหน้านั้นถูก share โดยสคริปต์เดียวกันหลาย view (ดูตาราง mapping ในแผน)
-    const VIEW_FRAGMENT_VERSION = 'v134'; // บัมพ์เลขนี้ทุกครั้งที่แก้ไฟล์ใน views/
+    const VIEW_FRAGMENT_VERSION = 'v148'; // บัมพ์เลขนี้ทุกครั้งที่แก้ไฟล์ใน views/
     const __loadedPageViews = {};
     function loadPageView(name) {
         if (__loadedPageViews[name]) return __loadedPageViews[name];
@@ -421,6 +421,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const navApproveImport = document.getElementById('nav-approve-import');
     const navWarrantyCheck = document.getElementById('nav-warranty-check');
     const navBranchInventory = document.getElementById('nav-branch-inventory');
+    const navStockIssue = document.getElementById('nav-stock-issue');
     const navAccountingPO = document.getElementById('nav-accounting-po');
     const navBranchReceive = document.getElementById('nav-branch-receive');
     const navAuditLogs = document.getElementById('nav-audit-logs');
@@ -442,6 +443,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const viewStock = document.getElementById('view-stock');
     const viewTransactions = document.getElementById('view-transactions');
     const viewBranchInventory = document.getElementById('view-branch-inventory');
+    const viewStockIssue = document.getElementById('view-stock-issue');
     const viewPersonnel = document.getElementById('view-personnel');
     const viewBranches = document.getElementById('view-branches');
     const viewSettings = document.getElementById('view-settings');
@@ -2363,6 +2365,7 @@ document.addEventListener('DOMContentLoaded', () => {
         setVisible(navOrderVerification, permissions.verify_orders);
         setVisible(navFinanceCompanies, permissions.verify_orders);
         setVisible(navBranchInventory, permissions.view_branch_inventory);
+        setVisible(navStockIssue, permissions.manage_stock);
 
         // Toggle Audit Logs Sidebar view
         setVisible(navAuditLogs, permissions.view_audit_logs);
@@ -3449,7 +3452,7 @@ document.addEventListener('DOMContentLoaded', () => {
         'dashboard', 'stock', 'transactions', 'personnel', 'branches', 'settings', 'roles',
         'sales-history', 'daily-summary', 'transfers', 'deposits', 'movements', 'members',
         'report-arrival', 'approve-import', 'warranty-check', 'branch-inventory', 'accounting-po',
-        'branch-receive', 'accounting', 'audit-logs', 'stock-audit', 'stock-audit-review',
+        'branch-receive', 'accounting', 'audit-logs', 'stock-audit', 'stock-audit-review', 'stock-issue',
         'accounting-settings', 'disbursement', 'pnl-config', 'balance-sheet-config', 'account-doc-links', 'account-tree', 'database',
         'order-verification', 'finance-companies'
     ]);
@@ -3490,6 +3493,7 @@ document.addEventListener('DOMContentLoaded', () => {
             'audit-logs': 'view_audit_logs',
             'stock-audit': 'do_stock_audit',
             'stock-audit-review': 'manage_stock_audit',
+            'stock-issue': 'manage_stock',
             'accounting-settings': 'manage_finance',
             'disbursement': 'manage_finance',
             'pnl-config': 'manage_finance',
@@ -3540,6 +3544,7 @@ document.addEventListener('DOMContentLoaded', () => {
             'audit-logs': 'view_audit_logs',
             'stock-audit': 'do_stock_audit',
             'stock-audit-review': 'manage_stock_audit',
+            'stock-issue': 'manage_stock',
             'accounting-settings': 'manage_finance',
             'disbursement': 'manage_finance',
             'pnl-config': 'manage_finance',
@@ -3618,7 +3623,7 @@ document.addEventListener('DOMContentLoaded', () => {
             viewBranches, viewSettings, viewRoles, viewSalesHistory,
             viewTransfers, viewMovements, viewMembers,
             viewReportArrival, viewApproveImport, viewWarrantyCheck,
-            viewBranchInventory, viewAccountingPO, viewBranchReceive,
+            viewBranchInventory, viewStockIssue, viewAccountingPO, viewBranchReceive,
             viewAuditLogs, viewAccounting, viewDailySummary,
             viewStockAudit, viewStockAuditReview, viewDeposits,
             viewAccountingSettings, viewDisbursement, viewPnlConfig, viewBalanceSheetConfig, viewAccountDocLinks, viewAccountTree, viewDatabase,
@@ -3776,6 +3781,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 await loadPageScript('branch-inventory');
                 if (typeof initBranchInventory === 'function') initBranchInventory();
             }
+            else if (viewName === 'stock-issue') {
+                activateView(viewStockIssue, navStockIssue);
+                await loadPageView('stock-issue');
+                await loadPageScript('stock-issue');
+                if (typeof initStockIssue === 'function') initStockIssue();
+            }
             else if (viewName === 'accounting-po') {
                 activateView(viewAccountingPO, navAccountingPO);
                 await loadPageView('po-accounting');
@@ -3876,6 +3887,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (navDashboard) navDashboard.addEventListener('click', (e) => { e.preventDefault(); switchView('dashboard'); });
     if (navBranchInventory) navBranchInventory.addEventListener('click', (e) => { e.preventDefault(); switchView('branch-inventory'); });
+    if (navStockIssue) navStockIssue.addEventListener('click', (e) => { e.preventDefault(); switchView('stock-issue'); });
     if (navStock) navStock.addEventListener('click', (e) => { e.preventDefault(); switchView('stock'); });
     if (navTransactions) navTransactions.addEventListener('click', (e) => { e.preventDefault(); switchView('transactions'); });
     if (navPersonnel) navPersonnel.addEventListener('click', (e) => { e.preventDefault(); switchView('personnel'); });

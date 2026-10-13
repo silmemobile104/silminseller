@@ -41,6 +41,57 @@
         if (elGrandTotal) elGrandTotal.textContent = '฿' + grandTotal.toLocaleString();
     };
 
+    // วงเงินคงเหลือของ Supplier ที่เลือกในฟอร์มสร้างใบสั่งซื้อ
+    // ใช้ไป = ยอดชำระจริงสะสม (endpoint เดียวกับหน้าตั้งค่า) — Supplier ที่ยังไม่ตั้งวงเงินจะไม่แสดงอะไร
+    let poCreditReqId = 0;
+    const refreshPoSupplierCredit = async (supplierName) => {
+        const box = document.getElementById('po-supplier-credit');
+        if (!box) return;
+        const reqId = ++poCreditReqId; // กันผลของ request เก่ามาทับเมื่อผู้ใช้เปลี่ยน Supplier เร็วๆ
+        const sup = ((window.masterDataCache && window.masterDataCache.suppliers) || []).find(x => x.name === supplierName);
+        const limit = sup ? Number(sup.credit_limit) : NaN;
+        if (!supplierName || !(limit > 0)) {
+            box.classList.toggle('hidden', !supplierName);
+            box.innerHTML = supplierName
+                ? '<p class="text-xs text-body-muted mt-1">ยังไม่ได้ตั้งวงเงินของ Supplier นี้ (ตั้งได้ที่ ตั้งค่าข้อมูลพื้นฐาน → ผู้จัดจำหน่าย)</p>'
+                : '';
+            return;
+        }
+        let used = 0;
+        try {
+            const res = await authFetch(`${API_BASE_URL}/suppliers/credit-usage`);
+            const json = await res.json();
+            if (json.success && json.data[supplierName]) used = json.data[supplierName].used || 0;
+        } catch (err) {
+            console.error('Error loading supplier credit usage:', err);
+        }
+        if (reqId !== poCreditReqId) return;
+
+        const fmt = (n) => '฿' + (Number(n) || 0).toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        const pct = (used / limit) * 100;
+        const remaining = limit - used;
+        const tone = pct >= 100 ? 'text-state-danger' : pct >= 80 ? 'text-state-pending' : 'text-state-ok';
+        const bar = pct >= 100 ? 'bg-state-danger' : pct >= 80 ? 'bg-state-pending' : 'bg-state-ok';
+        box.classList.remove('hidden');
+        box.innerHTML = `
+            <div class="elev-field bg-field rounded-xl px-4 py-3 mt-2 space-y-2">
+                <div class="flex items-center justify-between gap-3 text-xs">
+                    <span class="text-ink/70">วงเงินคงเหลือ</span>
+                    <span class="font-mono font-semibold text-sm ${remaining < 0 ? 'text-state-danger' : 'text-ink'}">${fmt(remaining)}</span>
+                </div>
+                <div class="h-1.5 rounded-full bg-chip/60 overflow-hidden" role="progressbar" aria-label="วงเงินที่ใช้ไปของ ${poEsc(supplierName)}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.min(100, Math.round(pct))}">
+                    <div class="h-full rounded-full ${bar}" style="width:${Math.min(100, pct)}%"></div>
+                </div>
+                <div class="flex items-center justify-between gap-3 text-[11px] text-ink/70">
+                    <span>ใช้ไป <span class="font-mono font-semibold ${tone}">${pct.toFixed(1)}%</span> (${fmt(used)})</span>
+                    <span>จากวงเงิน <span class="font-mono text-ink">${fmt(limit)}</span></span>
+                </div>
+            </div>`;
+    };
+    document.addEventListener('change', (e) => {
+        if (e.target && e.target.id === 'po-supplier') refreshPoSupplierCredit(e.target.value);
+    });
+
     // Note: window.initAccountingPO has been consolidated below to prevent duplicate declarations and overwriting issues.
 
     const poEsc = (s) => String(s == null ? '' : s)
@@ -162,6 +213,14 @@
         if (!container) return;
 
         const hasRows = !!container.querySelector('.po-item-row');
+
+        // เครื่องกับอุปกรณ์เสริมสั่งรวมใบเดียวกันไม่ได้ — เลือกชนิดไหนแล้วซ่อนปุ่มของอีกชนิด
+        // ลบแถวหมดเมื่อไหร่ปุ่มกลับมาให้เลือกใหม่
+        const hasDevice = !!container.querySelector('.po-item-row[data-kind="device"]');
+        const hasAccessory = !!container.querySelector('.po-item-row[data-kind="accessory"]');
+        document.getElementById('btn-add-po-item')?.classList.toggle('hidden', hasAccessory && !hasDevice);
+        document.getElementById('btn-add-po-accessory')?.classList.toggle('hidden', hasDevice && !hasAccessory);
+
         const existing = container.querySelector('#po-items-empty');
 
         if (hasRows) {
@@ -278,22 +337,14 @@
                     </div>
                 </div>
 
-                <!-- ราคาทุน & ราคาขาย -->
-                <div class="grid grid-cols-2 gap-5">
+                <!-- ราคาทุน (ราคาขายกำหนดตอนตรวจรับ/อนุมัตินำเข้า ไม่กรอกในใบสั่งซื้อ) -->
+                <div class="grid grid-cols-1 gap-5">
                     <div class="space-y-2">
                         <label for="po-acc-cost-${id}" class="text-ink font-medium flex items-center gap-2 text-xs"><i class="fa-solid fa-tag text-ink"></i> ราคาทุน <span class="text-red-500">*</span></label>
                         <input type="number" id="po-acc-cost-${id}" name="po_item_cost" required min="0" placeholder="0"
                             class="elev-field w-full px-4 py-2.5 rounded-xl bg-field text-ink focus:ring-2 focus:ring-accent-ink focus:outline-none transition-all placeholder-ink-muted-48 text-sm">
                         <div class="flex gap-1.5 flex-wrap pt-1">
                             ${[50, 100, 250, 500].map(p => `<button type="button" class="elev-chip px-2.5 py-1 bg-field text-body-muted rounded-full text-[11px] hover:text-accent-ink hover:ring-1 hover:ring-accent-ink transition-all" onclick="const i = this.parentElement.previousElementSibling; i.value='${p}'; i.dispatchEvent(new Event('input'))">${p.toLocaleString()}</button>`).join('')}
-                        </div>
-                    </div>
-                    <div class="space-y-2">
-                        <label for="po-acc-sell-${id}" class="text-ink font-medium flex items-center gap-2 text-xs"><i class="fa-solid fa-tags text-ink"></i> ราคาขาย <span class="text-red-500">*</span></label>
-                        <input type="number" id="po-acc-sell-${id}" name="po_item_sell" required min="0" placeholder="0"
-                            class="elev-field w-full px-4 py-2.5 rounded-xl bg-field text-ink focus:ring-2 focus:ring-accent-ink focus:outline-none transition-all placeholder-ink-muted-48 text-sm">
-                        <div class="flex gap-1.5 flex-wrap pt-1">
-                            ${[100, 200, 390, 790].map(p => `<button type="button" class="elev-chip px-2.5 py-1 bg-field text-body-muted rounded-full text-[11px] hover:text-accent-ink hover:ring-1 hover:ring-accent-ink transition-all" onclick="this.parentElement.previousElementSibling.value='${p}'">${p.toLocaleString()}</button>`).join('')}
                         </div>
                     </div>
                 </div>
@@ -666,20 +717,13 @@
                     </div>
                 </div>
 
-                <!-- ราคาทุน & ราคาขาย -->
-                <div class="grid grid-cols-2 gap-5 pt-2">
+                <!-- ราคาทุน (ราคาขายกำหนดตอนตรวจรับ/อนุมัตินำเข้า ไม่กรอกในใบสั่งซื้อ) -->
+                <div class="grid grid-cols-1 gap-5 pt-2">
                     <div class="space-y-2">
                         <label for="po-dev-cost-${id}" class="text-ink font-medium flex items-center gap-2 text-xs"><i class="fa-solid fa-tag text-ink"></i> ราคาทุน <span class="text-red-500">*</span></label>
                         <input type="number" id="po-dev-cost-${id}" name="po_item_cost" required min="0" placeholder="0" class="elev-field w-full px-4 py-2.5 rounded-xl bg-field text-ink focus:ring-2 focus:ring-accent-ink focus:outline-none transition-all placeholder-ink-muted-48 text-sm">
                         <div class="flex gap-1.5 flex-wrap pt-1">
                             ${[15000, 20000, 27000, 35000].map(p => `<button type="button" class="elev-chip px-2.5 py-1 bg-field text-body-muted rounded-full text-[11px] hover:text-accent-ink hover:ring-1 hover:ring-accent-ink transition-all" onclick="const i = this.parentElement.previousElementSibling; i.value='${p}'; i.dispatchEvent(new Event('input'))">${p.toLocaleString()}</button>`).join('')}
-                        </div>
-                    </div>
-                    <div class="space-y-2">
-                        <label for="po-dev-sell-${id}" class="text-ink font-medium flex items-center gap-2 text-xs"><i class="fa-solid fa-tags text-ink"></i> ราคาขาย <span class="text-red-500">*</span></label>
-                        <input type="number" id="po-dev-sell-${id}" name="po_item_sell" required min="0" placeholder="0" class="elev-field w-full px-4 py-2.5 rounded-xl bg-field text-ink focus:ring-2 focus:ring-accent-ink focus:outline-none transition-all placeholder-ink-muted-48 text-sm">
-                        <div class="flex gap-1.5 flex-wrap pt-1">
-                            ${[15000, 20000, 27000, 35000].map(p => `<button type="button" class="elev-chip px-2.5 py-1 bg-field text-body-muted rounded-full text-[11px] hover:text-accent-ink hover:ring-1 hover:ring-accent-ink transition-all" onclick="this.parentElement.previousElementSibling.value='${p}'">${p.toLocaleString()}</button>`).join('')}
                         </div>
                     </div>
                 </div>
@@ -935,11 +979,6 @@
                     return highlightPoInvalid(costEl, costEl, 'กรุณากรอกราคาทุน', false);
                 }
 
-                const sellEl = row.querySelector('[name="po_item_sell"]');
-                if (!sellEl.value.trim()) {
-                    return highlightPoInvalid(sellEl, sellEl, 'กรุณากรอกราคาขาย', false);
-                }
-
                 const qtyEl = row.querySelector('[name="po_item_qty"]');
                 if (!qtyEl.value.trim()) {
                     return highlightPoInvalid(qtyEl, qtyEl, 'กรุณากรอกจำนวน', false);
@@ -975,7 +1014,6 @@
                     unit: unitEl.value,
                     ordered_qty: Number(qtyEl.value),
                     cost_price: Number(costEl.value),
-                    selling_price: Number(sellEl.value),
                     // ชนิดของแถวเป็นตัวตัดสินเลย ไม่ต้องถามผู้ใช้:
                     // มือถือ/แท็บเล็ต = บันทึก IMEI เสมอ, อุปกรณ์เสริม = ไม่บันทึกเสมอ
                     track_imei: !isAccessory
@@ -1065,6 +1103,7 @@
 
         // Populate Supplier and Branch
         document.getElementById('po-supplier').value = po.supplier_name;
+        refreshPoSupplierCredit(po.supplier_name);
         document.getElementById('po-branch').value = po.branch_id?._id || po.branch_id || '';
         // เซิร์ฟเวอร์เก็บกำหนดจ่ายเป็นเที่ยงคืน UTC จึงตัด 10 ตัวแรกของ ISO ได้วันที่ตรงตามที่กรอกไว้
         const dueEl = document.getElementById('po-payment-due-date');
@@ -1104,7 +1143,6 @@
                 if (item.unit) setPoRowValue(row, 'po_item_unit', item.unit);
                 setPoRowValue(row, 'po_item_qty', item.ordered_qty || 1);
                 setPoRowValue(row, 'po_item_cost', item.cost_price || 0);
-                setPoRowValue(row, 'po_item_sell', item.selling_price || 0);
 
                 // ซิงก์ชิปที่เลือกไว้ให้ตรงกับค่าจริง — ทั้งสองแบบฟอร์มเก็บค่าไว้ใน input ที่ data-target ชี้ไป
                 // ถ้าไม่ทำ ตอนกดแก้ไขจะเห็นชิปไม่ถูกไฮไลต์ ทั้งที่ค่าข้างในมีอยู่
@@ -1979,6 +2017,7 @@
         if (poSupplier && md.suppliers) {
             poSupplier.innerHTML = '<option value="" disabled selected>-- เลือกผู้จัดจำหน่าย --</option>' +
                 md.suppliers.map(x => `<option value="${x.name}">${x.name}</option>`).join('');
+            refreshPoSupplierCredit('');
         }
 
         // Populate Datalists
@@ -2365,9 +2404,9 @@
                     <div class="grid grid-cols-2 gap-4">
                         <div>
                             <label for="ap-pay-amount-input" class="${labelCls}">
-                                <i class="fa-solid fa-money-bill-wave text-ink"></i> จ่ายรอบนี้</label>
-                            <input type="number" inputmode="numeric" id="ap-pay-amount-input" step="any" min="0" max="${poOutstanding}"
-                                class="${fieldCls} font-mono text-right" value="${poOutstanding.toFixed(2)}">
+                                <i class="fa-solid fa-money-bill-wave text-ink"></i> ราคาสั่งซื้อ</label>
+                            <input type="number" id="ap-pay-amount-input" readonly tabindex="-1"
+                                class="${fieldCls} font-mono text-right opacity-80" value="${poOutstanding.toFixed(2)}">
                         </div>
                         <div>
                             <label for="ap-pay-discount-input" class="${labelCls}">
@@ -2390,20 +2429,17 @@
             async () => {
                 try {
                     const payDateVal = document.getElementById('ap-pay-date-input')?.value || todayStr;
-                    const payAmtVal = Number(document.getElementById('ap-pay-amount-input')?.value || 0);
+                    // จ่ายเต็มจำนวนเท่านั้น: ราคาสั่งซื้อ = ยอดค้างชำระ - ส่วนลด (เซิร์ฟเวอร์คำนวณซ้ำอีกรอบ)
                     const discountVal = Number(document.getElementById('ap-pay-discount-input')?.value || 0);
                     const remarkVal = document.getElementById('ap-pay-discount-remark-input')?.value || '';
+                    const payAmtVal = Math.max(0, poOutstanding - discountVal);
 
-                    if (payAmtVal === 0 && discountVal === 0) {
-                        showToast('กรุณากรอกจำนวนเงินชำระหรือส่วนลดรอบนี้อย่างใดอย่างหนึ่ง', 'error');
-                        return;
-                    }
                     if (discountVal > 0 && !remarkVal.trim()) {
                         showToast('กรุณาระบุหมายเหตุของส่วนลดเพื่อใช้เป็นหลักฐานทางบัญชี', 'error');
                         return;
                     }
-                    if (payAmtVal + discountVal > poOutstanding + 0.01) {
-                        showToast('ยอดจ่ายรวมส่วนลด เกินยอดค้างชำระปัจจุบัน', 'error');
+                    if (discountVal > poOutstanding + 0.01) {
+                        showToast('ส่วนลดเกินยอดค้างชำระปัจจุบัน', 'error');
                         return;
                     }
 
@@ -2419,7 +2455,10 @@
                     });
                     const payJson = await payRes.json();
                     if (payJson.success) {
-                        showToast('บันทึกการชำระเงินสำเร็จ!', 'success');
+                        const sc = payJson.supplier_credit;
+                        showToast(sc
+                            ? `บันทึกการชำระเงินสำเร็จ! วงเงิน ${sc.supplier_name} คงเหลือ ${accBaht(sc.remaining)} (ใช้ไป ${accBaht(sc.used)} จาก ${accBaht(sc.limit)})`
+                            : 'บันทึกการชำระเงินสำเร็จ!', 'success');
                         if (typeof onPaid === 'function') onPaid();
                     } else {
                         showToast(payJson.message || 'ไม่สามารถทำรายการได้', 'error');
@@ -2439,20 +2478,22 @@
             const amtInp = document.getElementById('ap-pay-amount-input');
             const discInp = document.getElementById('ap-pay-discount-input');
             const calcRes = document.getElementById('ap-pay-calc-result');
+            // ราคาสั่งซื้อ (ช่องอ่านอย่างเดียว) คำนวณสดตามส่วนลดที่กรอก
             const updateCalc = () => {
                 if (!amtInp || !discInp || !calcRes) return;
-                const amt = Number(amtInp.value || 0);
                 const disc = Number(discInp.value || 0);
-                if (amt + disc > poOutstanding + 0.01) {
+                if (disc > poOutstanding + 0.01) {
+                    amtInp.value = '0.00';
                     calcRes.className = 'text-[11px] font-semibold text-state-danger text-right';
-                    calcRes.textContent = `เกินยอดค้างชำระ: ${accBaht(Math.abs(poOutstanding - amt - disc))}`;
+                    calcRes.textContent = `ส่วนลดเกินยอดค้างชำระ: ${accBaht(disc - poOutstanding)}`;
                 } else {
+                    const net = Math.max(0, poOutstanding - disc);
+                    amtInp.value = net.toFixed(2);
                     calcRes.className = 'text-[11px] font-semibold text-state-ok text-right';
-                    calcRes.textContent = `คงเหลือหลังชำระ: ${accBaht(Math.max(0, poOutstanding - amt - disc))}`;
+                    calcRes.textContent = `จ่ายจริงครั้งเดียว: ${accBaht(net)} (ชำระครบทั้งใบ)`;
                 }
             };
             if (amtInp && discInp) {
-                amtInp.addEventListener('input', updateCalc);
                 discInp.addEventListener('input', updateCalc);
                 updateCalc();
             }
@@ -3445,19 +3486,8 @@
         const branchName = po.branch_id ? po.branch_id.name : '-';
         document.getElementById('view-po-branch').innerHTML = `<i class="fa-solid fa-location-dot text-ink/70 text-xs"></i> ${branchName}`;
 
-        // สีสถานะต้องตรงกับ enum จริงใน models/index.js (ชุดเดียวกับตารางประวัติการสั่งซื้อ)
-        const statusColors = {
-            'รอจัดส่ง': 'bg-sky-500/10 text-sky-400 border-sky-500/20',
-            'ของถึงสาขาแล้ว': 'bg-blue-500/10 text-blue-400 border-blue-500/20',
-            'กำลังตรวจรับ': 'bg-amber-500/10 text-amber-400 border-amber-500/20',
-            'นำเข้าสำเร็จ': 'bg-state-ok-tint/[0.12] text-state-ok ring-1 ring-state-ok/20',
-            'ยกเลิก': 'bg-state-danger/[0.12] text-state-danger ring-1 ring-state-danger/20'
-        };
-        const statusClass = statusColors[po.status] || 'elev-chip bg-ink/5 text-body-muted';
-
-        const statusBadge = document.getElementById('view-po-status');
-        statusBadge.className = `elev-chip inline-flex px-3 py-1 rounded-full text-xs font-bold ${statusClass}`;
-        statusBadge.textContent = po.status;
+        // ป้ายสถานะแบบจุดสี ชุดเดียวกับตารางประวัติ/หน้าตรวจรับ (rcStatusBadge)
+        document.getElementById('view-po-status').innerHTML = rcStatusBadge(po.status);
 
         // คำนวณรายละเอียดการชำระเงิน
         const totalCost = po.items ? po.items.reduce((sum, item) => sum + (item.cost_price * item.ordered_qty), 0) : 0;
@@ -3502,65 +3532,74 @@
         if (!po.items || po.items.length === 0) {
             itemsContainer.innerHTML = '<div class="text-center py-6 text-body-muted text-xs">ไม่มีรายการสินค้าในใบสั่งซื้อนี้</div>';
         } else {
-            po.items.forEach(item => {
-                const el = document.createElement('div');
-                el.className = 'elev-field p-5 bg-field rounded-xl space-y-4';
+            const fmtCost = (n) => '฿' + (Number(n) || 0).toLocaleString(undefined, { minimumFractionDigits: 2 });
+            const vEsc = (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+            const isAcc = (i) => i.item_kind === 'accessory';
+            const devices = po.items.filter(i => !isAcc(i));
+            const accessories = po.items.filter(isAcc);
 
-                const received = item.received_qty || 0;
-                const ordered = item.ordered_qty || 0;
-                let itemPercent = 0;
-                if (ordered > 0) {
-                    itemPercent = Math.round((received / ordered) * 100);
-                }
+            // ต้นทุน: cost_price เป็นราคาเดิมก่อนลดเสมอ (ยอดค้างจ่ายคำนวณจากราคานี้) → ต้นทุนสุทธิ = cost_price - discount_per_unit
+            const costCell = (i) => {
+                const d = i.discount_per_unit || 0;
+                return `<span class="font-mono font-semibold text-ink">${fmtCost(i.cost_price - d)}</span>` +
+                    (d > 0 ? `<span class="block text-[10px] text-body-muted mt-0.5"><span class="line-through font-mono">${fmtCost(i.cost_price)}</span> <span class="text-state-danger font-mono">-${fmtCost(d)}</span></span>` : '');
+            };
+            const rcvCell = (i) => {
+                const rc = i.received_qty || 0, od = i.ordered_qty || 0;
+                const full = od > 0 && rc >= od;
+                return `<span class="font-mono font-semibold ${full ? 'text-state-ok' : rc > 0 ? 'text-state-pending' : 'text-body-muted'}">${rc}/${od}</span>`;
+            };
+            // จุดสีตามเฟรมออกแบบ (ชื่อสีเป็น tooltip + ข้อความสำหรับโปรแกรมอ่านจอ)
+            const colorDot = (name) => {
+                if (!name) return '<span class="text-body-muted">-</span>';
+                const hex = window.resolveProductColorHex ? window.resolveProductColorHex(name, { name }) : '#6b7280';
+                return `<span class="inline-block w-5 h-5 rounded-full border border-line" style="background-color:${hex}" title="${vEsc(name)}"></span><span class="sr-only">${vEsc(name)}</span>`;
+            };
+            const thCls = 'px-5 py-3 font-semibold text-white text-[15px]';
+            const tdCls = 'px-5 py-4 align-top text-sm text-white';
+            const sectionTitle = (t, n) => `<h4 class="text-white font-semibold text-base mb-3">${t} <span class="text-white/70 font-normal text-xs">(${n})</span></h4>`;
 
-                let imeisHtml = '';
-                if (item.track_imei && item.imeis_scanned && item.imeis_scanned.length > 0) {
-                    const chips = item.imeis_scanned.map(imei => `
-                        <span class="elev-card px-2.5 py-1 bg-surface-tile-3 text-ink font-mono text-[10px] rounded-lg flex items-center gap-1">
-                            <i class="fa-solid fa-barcode text-[8px] text-ink/50"></i> ${imei}
-                        </span>
-                    `).join('');
-                    imeisHtml = `
-                        <div class="pt-3 border-t border-line space-y-2">
-                            <span class="text-xs text-body-muted font-bold flex items-center gap-1"><i class="fa-solid fa-qrcode text-[10px]"></i> หมายเลข IMEI ที่สแกนนำเข้าคลังแล้ว (${item.imeis_scanned.length}):</span>
-                            <div class="elev-card flex flex-wrap gap-1.5 max-h-[120px] overflow-y-auto p-1 bg-surface-tile-3 rounded-lg modal-scrollable-content">${chips}</div>
-                        </div>
-                    `;
-                }
-
-                el.innerHTML = `
-                    <div class="flex justify-between items-start gap-4">
-                        <div>
-                            <span class="text-ink font-bold text-sm md:text-base flex items-center gap-2">
-                                ${item.product_name}
-                                <span class="text-xs text-body-muted font-mono font-normal">(${item.product_code})</span>
-                            </span>
-                            <p class="text-xs text-body-muted mt-1">
-                                ยอดสั่งซื้อ: <span class="text-ink font-bold">${ordered}</span> |
-                                ยอดรับจริง: <span class="text-emerald-400 font-bold">${received}</span> ชิ้น
-                            </p>
-                        </div>
-                        <div class="text-right shrink-0">
-                            <span class="elev-card text-[10px] font-semibold px-2 py-0.5 rounded-lg bg-surface-tile-3 text-ink">
-                                ${item.track_imei ? 'เก็บซีเรียล IMEI' : 'นับจำนวนชิ้น'}
-                            </span>
-                        </div>
-                    </div>
-
-                    <div class="space-y-1">
-                        <div class="elev-card w-full bg-surface-tile-3 rounded-full h-2 overflow-hidden">
-                            <div class="bg-emerald-500 h-full rounded-full transition-all duration-500" style="width: ${itemPercent}%"></div>
-                        </div>
-                        <div class="flex justify-between text-[10px] font-bold text-body-muted">
-                            <span>สถานะตรวจรับเข้า</span>
-                            <span class="font-mono text-emerald-400">${itemPercent}%</span>
-                        </div>
-                    </div>
-
-                    ${imeisHtml}
-                `;
-                itemsContainer.appendChild(el);
-            });
+            let html = '';
+            if (devices.length) {
+                const rows = devices.map(i => {
+                    const imeis = (i.track_imei && i.imeis_scanned && i.imeis_scanned.length)
+                        ? i.imeis_scanned.map(m => `<span class="block font-mono text-xs text-ink">${vEsc(m)}</span>`).join('')
+                        : `<span class="text-body-muted text-xs">${i.track_imei ? 'ยังไม่ได้สแกน' : 'ไม่เก็บ IMEI'}</span>`;
+                    return `<tr class="border-b border-line last:border-b-0">
+                        <td class="${tdCls}">${colorDot(i.color)}</td>
+                        <td class="${tdCls}">${imeis}</td>
+                        <td class="${tdCls}">${vEsc(i.product_name)}<span class="block text-[10px] text-body-muted font-mono">${vEsc(i.product_code)}</span></td>
+                        <td class="${tdCls}">${vEsc(i.capacity || '-')}</td>
+                        <td class="${tdCls} text-center">${i.ordered_qty || 0} ${vEsc(i.unit || 'เครื่อง')}</td>
+                        <td class="${tdCls} text-center">${rcvCell(i)}</td>
+                        <td class="${tdCls} text-right">${costCell(i)}</td>
+                        <td class="${tdCls} text-right font-mono font-semibold">${fmtCost((i.cost_price || 0) * (i.ordered_qty || 0))}</td>
+                    </tr>`;
+                }).join('');
+                html += `<section>${sectionTitle('รายการเครื่อง', devices.length)}
+                    <div class="overflow-x-auto" tabindex="0"><table class="w-full text-left border-collapse min-w-[760px]">
+                        <thead><tr class="bg-[#4D4D4D]/40">
+                            <th class="${thCls} rounded-l-lg">สี</th><th class="${thCls}">IMEI</th><th class="${thCls}">ชื่อสินค้า</th><th class="${thCls}">ความจุ</th>
+                            <th class="${thCls} text-center">จำนวน</th><th class="${thCls} text-center">ตรวจรับ</th><th class="${thCls} text-right">ต้นทุนสุทธิ/ชิ้น</th><th class="${thCls} text-right rounded-r-lg">ต้นทุนรวม</th>
+                        </tr></thead><tbody>${rows}</tbody></table></div></section>`;
+            }
+            if (accessories.length) {
+                const rows = accessories.map(i => `<tr class="border-b border-line last:border-b-0">
+                        <td class="${tdCls} font-mono">${vEsc(i.product_code)}</td>
+                        <td class="${tdCls}">${vEsc(i.product_name)}</td>
+                        <td class="${tdCls} text-center">${i.ordered_qty || 0} ${vEsc(i.unit || 'ชิ้น')}</td>
+                        <td class="${tdCls} text-center">${rcvCell(i)}</td>
+                        <td class="${tdCls} text-right">${costCell(i)}</td>
+                        <td class="${tdCls} text-right font-mono font-semibold">${fmtCost((i.cost_price || 0) * (i.ordered_qty || 0))}</td>
+                    </tr>`).join('');
+                html += `<section>${sectionTitle('รายการอุปกรณ์เสริม', accessories.length)}
+                    <div class="overflow-x-auto" tabindex="0"><table class="w-full text-left border-collapse min-w-[560px]">
+                        <thead><tr class="bg-[#4D4D4D]/40">
+                            <th class="${thCls} rounded-l-lg">รหัสสินค้า</th><th class="${thCls}">ชื่อสินค้า</th><th class="${thCls} text-center">จำนวน</th>
+                            <th class="${thCls} text-center">ตรวจรับ</th><th class="${thCls} text-right">ต้นทุนสุทธิ/ชิ้น</th><th class="${thCls} text-right rounded-r-lg">ต้นทุนรวม</th>
+                        </tr></thead><tbody>${rows}</tbody></table></div></section>`;
+            }
+            itemsContainer.innerHTML = html;
         }
 
         // ดึงประวัติการชำระเงินของ PO
@@ -4077,8 +4116,8 @@
     // ==========================================
     let arrDirty = false; // มีการสแกน/แก้ไขที่ยังไม่ได้กดยืนยัน — ถามก่อนปิดโมดัล
 
-    const ARR_TH = 'px-4 py-2.5 text-[13px] font-semibold text-body-muted whitespace-nowrap';
-    const ARR_TD = 'px-4 py-3.5 align-top text-sm text-ink';
+    const ARR_TH = 'px-5 py-3 text-[15px] font-semibold text-white whitespace-nowrap';
+    const ARR_TD = 'px-5 py-4 align-top text-sm text-white';
 
     const arrImeiLine = (val, locked) => locked ? `
         <div class="imei-tag flex items-center gap-2 leading-[20px] text-body-muted" data-locked="true">
@@ -4242,17 +4281,17 @@
     };
 
     const arrTableCard = (title, sub, cols, bodyId) => `
-        <div class="bg-surface-tile-2 rounded-sm overflow-hidden">
+        <div class="bg-[#1F1F22] border border-[#3F3F46] rounded-xl overflow-hidden">
             <div class="flex flex-wrap items-baseline gap-x-2.5 gap-y-1 px-5 pt-4 pb-3">
-                <h4 class="text-base font-bold text-ink">${title}</h4>
-                <span class="text-[13px] text-body-muted">${sub}</span>
+                <h4 class="text-base font-semibold text-white">${title}</h4>
+                <span class="text-[13px] text-white/70">${sub}</span>
             </div>
             <div class="overflow-x-auto" tabindex="0">
                 <table class="w-full min-w-[720px] text-left border-collapse">
-                    <thead class="bg-surface-chip">
+                    <thead class="bg-[#4D4D4D]/40">
                         <tr>${cols.map(([label, cls]) => `<th class="${ARR_TH} ${cls || ''}">${label}</th>`).join('')}</tr>
                     </thead>
-                    <tbody id="${bodyId}" class="divide-y divide-hairline"></tbody>
+                    <tbody id="${bodyId}" class="divide-y divide-[#464646]"></tbody>
                 </table>
             </div>
         </div>`;

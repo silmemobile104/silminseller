@@ -26,6 +26,7 @@
     let _auditSearch = '';
     const AUDIT_PAGE_SIZE = 20;
     let _auditShown = AUDIT_PAGE_SIZE;
+    let _auditMoreObserver = null; // เฝ้าปุ่ม/ตัวบอกท้ายรายการ เพื่อโหลดเพิ่มตอนเลื่อนถึง
     let _auditBound = false; // ผูก listener ของหน้าครั้งเดียว (initStockAudit ถูกเรียกซ้ำทุกครั้งที่เข้าหน้า)
 
     // สลับ list-wrap/cards ให้ตรงมุมมองที่จำไว้ — ใช้กับตารางของหน้า "ตรวจสอบผลการตรวจนับสต็อก"
@@ -143,7 +144,17 @@
             });
         }
         const more = document.getElementById('btn-audit-items-more');
-        if (more) more.addEventListener('click', () => { _auditShown += AUDIT_PAGE_SIZE; renderAuditItems({ keepPage: true }); });
+        const loadMore = () => { _auditShown += AUDIT_PAGE_SIZE; renderAuditItems({ keepPage: true }); };
+        if (more) {
+            more.addEventListener('click', loadMore);
+            if ('IntersectionObserver' in window) {
+                // rootMargin ดึงรอบถัดไปมาก่อนถึงขอบล่าง 200px จะได้ไม่เห็นรายการขาดช่วง
+                _auditMoreObserver = new IntersectionObserver((entries) => {
+                    if (entries.some(en => en.isIntersecting) && !more.classList.contains('hidden')) loadMore();
+                }, { rootMargin: '0px 0px 200px 0px' });
+                _auditMoreObserver.observe(more);
+            }
+        }
 
         // ปุ่มในแถว (ลบการสแกน / ใส่ IMEI ลงช่องสแกน) — ผูกแบบ delegation ที่ตัวตารางและตัวการ์ด
         const onRowAction = (e) => {
@@ -521,9 +532,9 @@
     const AUDIT_SESSION_TONE = { 'กำลังตรวจนับ': 'pending', 'รอการอนุมัติ': 'pending', 'อนุมัติแล้ว': 'ok', 'ปิดโดยอัตโนมัติ': 'muted' };
     const auditChip = (tone, label) => {
         const t = AUDIT_CHIP_TONE[tone] || AUDIT_CHIP_TONE.muted;
-        return `<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-pill ${t.bg}">`
-            + `<span class="w-1.5 h-1.5 rounded-full ${t.dot}"></span>`
-            + `<span class="${t.text} font-semibold text-xs whitespace-nowrap">${auditEsc(label)}</span></span>`;
+        return `<span class="inline-flex items-center gap-2 px-2.5 py-1 rounded-[0.375rem] ${t.bg}">`
+            + `<span class="w-2 h-2 rounded-full ${t.dot}"></span>`
+            + `<span class="${t.text} font-medium text-xs whitespace-nowrap">${auditEsc(label)}</span></span>`;
     };
     const AUDIT_STATE = {
         missing: ['muted', 'ยังไม่พบ'],
@@ -585,11 +596,11 @@
         }
         if (isCounting && row.item) {
             parts.push(`<button type="button" data-audit-action="delete" data-imei="${auditEsc(row.imei)}" title="ลบการสแกน"
-                class="w-9 h-9 flex items-center justify-center rounded-full text-body-muted hover:text-state-danger-soft hover:bg-surface-chip transition-colors cursor-pointer"
+                class="text-ink hover:text-red-400 transition-colors p-2 cursor-pointer"
                 aria-label="ลบการสแกน IMEI ${auditEsc(row.imei)}"><i class="fa-regular fa-trash-can"></i></button>`);
         } else if (isCounting && row.state === 'missing') {
             parts.push(`<button type="button" data-audit-action="fill" data-imei="${auditEsc(row.imei)}" title="ใส่ในช่องสแกน"
-                class="w-9 h-9 flex items-center justify-center rounded-full text-body-muted hover:text-accent-ink hover:bg-surface-chip transition-colors cursor-pointer"
+                class="text-ink hover:text-amber-400 transition-colors p-2 cursor-pointer"
                 aria-label="ใส่ IMEI ${auditEsc(row.imei)} ลงช่องสแกน"><i class="fa-solid fa-arrow-up-from-bracket"></i></button>`);
         }
         return parts.join('');
@@ -609,11 +620,11 @@
                 ${sub ? `<p class="text-xs ${row.state === 'extra' ? 'text-state-pending' : 'text-body-muted'} mt-1 pl-6">${auditEsc(sub)}</p>` : ''}
                 ${item && item.scan_notes ? `<p class="text-xs text-body-muted mt-1 pl-6 whitespace-normal">หมายเหตุ: ${auditEsc(item.scan_notes)}</p>` : ''}
             </td>
-            <td class="${AUDIT_TD} font-mono text-[13px] ${row.state === 'missing' ? 'text-body-muted' : 'text-ink'}">${auditEsc(row.imei)}</td>
+            <td class="${AUDIT_TD} font-mono font-semibold ${row.state === 'missing' ? 'text-body-muted' : 'text-accent-ink'}">${auditEsc(row.imei)}</td>
             <td class="${AUDIT_TD}">${auditChip(tone, label)}</td>
             <td class="${AUDIT_TD} ${item ? 'text-ink' : 'text-ink-muted-48'}">${item ? auditTime(item.scanned_at) : '-'}</td>
             <td class="${AUDIT_TD} ${item ? 'text-ink' : 'text-ink-muted-48'}">${item ? auditEsc(item.scanned_by?.name || '-') : '-'}</td>
-            <td class="px-6 py-2.5 align-top"><div class="flex items-center justify-end gap-1">${auditRowActions(row, isCounting)}</div></td>
+            <td class="${AUDIT_TD}"><div class="flex items-center justify-end gap-1">${auditRowActions(row, isCounting)}</div></td>
         </tr>`;
     };
 
@@ -639,14 +650,13 @@
         </div>`;
     };
 
-    // แท็บแบบ pill group (DESIGN.md ข้อ 11.9): เลือกแล้วเปลี่ยนขอบ/ตัวอักษรเป็นเหลือง พื้นไม่เปลี่ยน
-    //   (ไม่ใช้พื้นเหลืองทึบ — หน้านี้เก็บปุ่มทึบไว้ให้ "ส่งผลตรวจนับ" ปุ่มเดียว)
+    // แท็บกรองผล: ตัวที่เลือกอยู่เป็นปุ่มทึบสีเหลือง (สูตรเดียวกับแท็บของ #account-doc-links) ตัวอื่นเป็น ghost
     //   ตัวเลขในแท็บนับจากข้อมูลทั้งรอบ (ไม่ขึ้นกับช่องค้นหา)
-    const AUDIT_TAB_BASE = 'audit-item-tab shrink-0 inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-field text-sm cursor-pointer transition-colors';
-    const AUDIT_TAB_ON = `${AUDIT_TAB_BASE} ring-1 ring-accent-ink text-accent-ink`;
-    const AUDIT_TAB_OFF = `${AUDIT_TAB_BASE} text-body-muted hover:text-ink`;
-    const AUDIT_TAB_COUNT_ON = 'text-xs font-semibold text-accent-ink';
-    const AUDIT_TAB_COUNT_OFF = 'text-xs font-semibold text-ink-muted-48';
+    const AUDIT_TAB_BASE = 'audit-item-tab elev-field shrink-0 inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-field text-sm font-medium cursor-pointer transition-colors';
+    const AUDIT_TAB_ON = `audit-item-tab shrink-0 inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold cursor-pointer transition-colors bg-primary text-on-primary ring-1 ring-accent-ink`;
+    const AUDIT_TAB_OFF = `${AUDIT_TAB_BASE} text-body-muted hover:bg-surface-chip hover:text-ink`;
+    const AUDIT_TAB_COUNT_ON = 'px-2 py-0.5 rounded-full text-[10px] font-bold bg-hairline/20';
+    const AUDIT_TAB_COUNT_OFF = 'px-2 py-0.5 rounded-full text-[10px] font-bold bg-chip/60 text-ink';
 
     // opts.keepPage = true เฉพาะ "แสดงเพิ่ม" และการโหลดรอบซ้ำหลังสแกน — เปลี่ยนแท็บ/ค้นหาเริ่มหน้าแรกใหม่
     function renderAuditItems(opts = {}) {
@@ -671,6 +681,8 @@
             (_auditTab === 'all' || r.state === _auditTab) &&
             (!q || r.imei.toLowerCase().includes(q) || String(r.name).toLowerCase().includes(q)));
         const visible = filtered.slice(0, _auditShown);
+        const countEl = document.getElementById('audit-result-count');
+        if (countEl) countEl.textContent = _auditRows.length ? `แสดง ${filtered.length.toLocaleString('th-TH')} จาก ${_auditRows.length.toLocaleString('th-TH')} รายการ` : '';
         const isCounting = _auditSessionData?.session?.status === 'กำลังตรวจนับ';
 
         if (!visible.length) {
@@ -687,7 +699,8 @@
         if (more) {
             const rest = filtered.length - visible.length;
             more.classList.toggle('hidden', rest <= 0);
-            more.textContent = `แสดงเพิ่มอีก ${Math.min(rest, AUDIT_PAGE_SIZE).toLocaleString('th-TH')} รายการ (1–${visible.length.toLocaleString('th-TH')} จาก ${filtered.length.toLocaleString('th-TH')})`;
+            more.textContent = `เลื่อนลงเพื่อโหลดเพิ่มอีก ${Math.min(rest, AUDIT_PAGE_SIZE).toLocaleString('th-TH')} รายการ (แสดง ${visible.length.toLocaleString('th-TH')} จาก ${filtered.length.toLocaleString('th-TH')})`;
+            if (_auditMoreObserver && rest > 0) { _auditMoreObserver.unobserve(more); _auditMoreObserver.observe(more); }
         }
     }
 

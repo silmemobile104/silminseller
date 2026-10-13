@@ -29,13 +29,6 @@
             <span id="badge-coa-groups"
                 class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-chip/60 text-ink">0</span>
         </button>
-        <button id="coa-tab-pnl" type="button" aria-pressed="false"
-            onclick="if(typeof switchCOATab==='function') switchCOATab('pnl')"
-            class="elev-field px-4 py-2.5 rounded-xl text-sm font-bold transition-colors flex items-center gap-2 cursor-pointer bg-field text-body-muted hover:ring-1 hover:ring-accent-ink hover:text-ink">
-            <i class="fa-solid fa-chart-pie"></i> ตั้งค่างบกำไรขาดทุน
-            <span id="badge-coa-pnl"
-                class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-chip/60 text-ink">0</span>
-        </button>
     </div>
 
     <!-- ============ แท็บ 1: ผังบัญชีทั้งหมด ============ -->
@@ -128,45 +121,6 @@
                         </tr>
                     </thead>
                     <tbody id="coa-groups-table-body" class="divide-y divide-divider"></tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-
-    <!-- ============ แท็บ 3: ตั้งค่างบกำไรขาดทุน ============ -->
-    <div id="coa-content-pnl" class="hidden">
-        <div class="bg-panel/40 rounded-2xl shadow-lg overflow-hidden backdrop-blur-sm">
-            <div class="p-6 pb-0 flex flex-wrap items-center justify-between gap-3">
-                <h3 class="text-lg text-ink flex items-center gap-2">
-                    <i class="fa-solid fa-chart-pie text-accent-ink"></i> จัดลำดับรายการงบกำไรขาดทุน
-                </h3>
-                <div class="flex flex-wrap items-center gap-2.5">
-                    <button type="button" onclick="if(typeof addPnLLine==='function') addPnLLine()"
-                        class="page-filter-control px-3 py-2 bg-panel/40 cursor-pointer text-ink flex items-center gap-1.5 rounded-[0.5rem] text-sm hover:bg-skeleton transition-colors">
-                        <i class="fa-solid fa-plus"></i> เพิ่มรายการ
-                    </button>
-                    <button type="button" onclick="if(typeof savePnLConfig==='function') savePnLConfig()"
-                        class="px-4 py-2 bg-primary cursor-pointer text-on-primary flex items-center gap-1.5 font-semibold rounded-[0.5rem] text-sm hover:bg-[#E2B93C] transition-colors">
-                        <i class="fa-solid fa-floppy-disk"></i> บันทึก
-                    </button>
-                </div>
-            </div>
-            <p class="px-6 pt-3 text-xs text-ink/70">
-                ลำดับน้อยแสดงก่อน · เว้นช่อง "บัญชีที่เชื่อมโยง" ไว้เพื่อให้ระบบรวมยอดอัตโนมัติ
-            </p>
-            <div class="mt-4 overflow-x-auto" tabindex="0">
-                <table class="w-full text-left text-sm border-collapse">
-                    <thead class="bg-panel/40 text-ink">
-                        <tr>
-                            <th class="px-6 py-4 font-semibold text-[15px] text-center w-20">ลำดับ</th>
-                            <th class="px-6 py-4 font-semibold text-[15px]">ชื่อรายการ</th>
-                            <th class="px-6 py-4 font-semibold text-[15px]">ส่วน</th>
-                            <th class="px-6 py-4 font-semibold text-[15px] w-full">บัญชีที่เชื่อมโยง</th>
-                            <th class="px-6 py-4 font-semibold text-[15px] text-center">ตัวหนา</th>
-                            <th class="px-6 py-4 font-semibold text-[15px] text-right">จัดการ</th>
-                        </tr>
-                    </thead>
-                    <tbody id="pnl-config-table-body" class="divide-y divide-divider"></tbody>
                 </table>
             </div>
         </div>
@@ -382,28 +336,29 @@
             <i class="hidden md:block bi bi-bar-chart text-ink w-5 text-2xl text-center"></i>
             <h3 class="hidden md:block text-2xl text-ink">ตั้งค่างบกำไรขาดทุน</h3>
         </div>
-        <button type="button" onclick="if(typeof openPlItemModal==='function') openPlItemModal()"
+        <button type="button" onclick="if(typeof openPlAccountModal==='function') openPlAccountModal()"
             class="px-4 py-2 bg-primary hover:bg-[#E2B93C] text-on-primary font-medium rounded-xl transition-all flex items-center gap-2 w-fit cursor-pointer">
             <i class="fa-solid fa-plus"></i>
-            <p>เพิ่มรายการงบกำไรขาดทุน</p>
+            <p>เพิ่มบัญชีงบกำไรขาดทุน</p>
         </button>
     </div>
 
-    <!-- [2] ตารางรายการงบกำไรขาดทุน -->
+    <!-- [2] ตารางบัญชีในงบกำไรขาดทุน (บัญชีหมวดรายได้/ค่าใช้จ่ายตามกลุ่ม — เพิ่ม/แก้ไขได้ที่นี่) -->
     <div class="bg-panel/40 rounded-2xl shadow-lg overflow-hidden backdrop-blur-sm">
+        <p class="px-6 pt-5 text-xs text-ink/70"><i class="fa-solid fa-folder-tree text-accent-ink"></i> เพิ่ม แก้ไข ย้ายกลุ่ม เปิด-ปิดใช้งาน หรือลบบัญชีงบกำไรขาดทุนได้ที่หน้านี้ — ข้อมูลชุดเดียวกับหน้าหมวดหมู่บัญชี (เพิ่ม/แก้ไขกลุ่มบัญชีทำที่หน้าหมวดหมู่บัญชี)</p>
         <div class="p-6 pb-4 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
             <h3 class="text-lg text-ink flex items-center gap-2">
-                <i class="fa-solid fa-list-ul text-accent-ink"></i> <span>รายการงบกำไรขาดทุน</span>
+                <i class="fa-solid fa-list-ul text-accent-ink"></i> <span>บัญชีในงบกำไรขาดทุน</span>
             </h3>
             <div class="flex flex-wrap items-center gap-3 w-full lg:w-auto">
                 <div class="relative group w-full sm:w-64">
                     <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                         <i class="fa-solid fa-search text-ink group-focus-within:text-accent-ink transition-colors"></i>
                     </div>
-                    <label for="pl-item-search" class="sr-only">ค้นหารายการงบกำไรขาดทุน</label>
+                    <label for="pl-item-search" class="sr-only">ค้นหาบัญชีในงบกำไรขาดทุน</label>
                     <input type="text" id="pl-item-search" autocomplete="off"
                         oninput="if(typeof renderPlPage==='function') renderPlPage()"
-                        placeholder="ค้นหาชื่อรายการ / กลุ่ม / รหัสบัญชี..."
+                        placeholder="ค้นหากลุ่ม / รหัสบัญชี / ชื่อบัญชี..."
                         class="elev-card bg-panel/40 rounded-[0.5rem] text-sm pl-10 pr-4 py-2 w-full text-ink focus:outline-none focus:ring-1 focus:ring-accent-ink transition-all placeholder-body-muted">
                 </div>
                 <div id="pl-item-result-count" class="text-xs text-ink font-medium"></div>
@@ -414,16 +369,11 @@
             <table class="w-full text-left text-sm whitespace-nowrap border-collapse">
                 <thead class="bg-panel/40 text-ink">
                     <tr>
-                        <th rowspan="2" class="px-6 py-4 font-semibold text-[15px]">หมวด</th>
-                        <th rowspan="2" class="px-6 py-4 font-semibold text-[15px]">กลุ่ม</th>
-                        <th rowspan="2" class="px-6 py-4 font-semibold text-[15px]">ลำดับ</th>
-                        <th rowspan="2" class="px-6 py-4 font-semibold text-[15px] w-full">ชื่อรายการ</th>
-                        <th colspan="2" class="px-6 pt-4 pb-1 font-semibold text-[15px]">ประกอบด้วย</th>
-                        <th rowspan="2" class="px-6 py-4 font-semibold text-[15px] text-right">จัดการ</th>
-                    </tr>
-                    <tr>
-                        <th class="px-6 pb-4 font-semibold text-[13px] text-ink/80">รหัสบัญชี</th>
-                        <th class="px-6 pb-4 font-semibold text-[13px] text-ink/80">ชื่อบัญชี</th>
+                        <th class="px-6 py-4 font-semibold text-[15px]">หมวด</th>
+                        <th class="px-6 py-4 font-semibold text-[15px]">กลุ่ม</th>
+                        <th class="px-6 py-4 font-semibold text-[15px]">รหัสบัญชี</th>
+                        <th class="px-6 py-4 font-semibold text-[15px] w-full">ชื่อบัญชี</th>
+                        <th class="px-6 py-4 font-semibold text-[15px] text-right">จัดการ</th>
                     </tr>
                 </thead>
                 <tbody id="pl-item-table-body" class="divide-y divide-divider"></tbody>
@@ -439,28 +389,29 @@
             <i class="hidden md:block fa-solid fa-scale-balanced text-ink w-5 text-2xl text-center"></i>
             <h3 class="hidden md:block text-2xl text-ink">ตั้งค่างบดุล</h3>
         </div>
-        <button type="button" onclick="if(typeof openBsItemModal==='function') openBsItemModal()"
+        <button type="button" onclick="if(typeof openBsAccountModal==='function') openBsAccountModal()"
             class="px-4 py-2 bg-primary hover:bg-[#E2B93C] text-on-primary font-medium rounded-xl transition-all flex items-center gap-2 w-fit cursor-pointer">
             <i class="fa-solid fa-plus"></i>
             <p>เพิ่มบัญชีงบดุล</p>
         </button>
     </div>
 
-    <!-- [2] ตารางรายการงบดุล -->
+    <!-- [2] ตารางบัญชีในงบดุล (ดูอย่างเดียว — บัญชีหมวดสินทรัพย์/หนี้สิน/ทุนตามกลุ่ม) -->
     <div class="bg-panel/40 rounded-2xl shadow-lg overflow-hidden backdrop-blur-sm">
+        <p class="px-6 pt-5 text-xs text-ink/70"><i class="fa-solid fa-folder-tree text-accent-ink"></i> เพิ่ม แก้ไข ย้ายกลุ่ม เปิด-ปิดใช้งาน หรือลบบัญชีงบดุลได้ที่หน้านี้ — ข้อมูลชุดเดียวกับหน้าหมวดหมู่บัญชี (เพิ่ม/แก้ไขกลุ่มบัญชีทำที่หน้าหมวดหมู่บัญชี)</p>
         <div class="p-6 pb-4 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
             <h3 class="text-lg text-ink flex items-center gap-2">
-                <i class="fa-solid fa-list-ul text-accent-ink"></i> <span>รายการบัญชีงบดุล</span>
+                <i class="fa-solid fa-list-ul text-accent-ink"></i> <span>บัญชีในงบดุล</span>
             </h3>
             <div class="flex flex-wrap items-center gap-3 w-full lg:w-auto">
                 <div class="relative group w-full sm:w-64">
                     <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                         <i class="fa-solid fa-search text-ink group-focus-within:text-accent-ink transition-colors"></i>
                     </div>
-                    <label for="bs-item-search" class="sr-only">ค้นหารายการงบดุล</label>
+                    <label for="bs-item-search" class="sr-only">ค้นหาบัญชีในงบดุล</label>
                     <input type="text" id="bs-item-search" autocomplete="off"
                         oninput="if(typeof renderBsPage==='function') renderBsPage()"
-                        placeholder="ค้นหาชื่อรายการ / กลุ่ม / รหัสบัญชี..."
+                        placeholder="ค้นหากลุ่ม / รหัสบัญชี / ชื่อบัญชี..."
                         class="elev-card bg-panel/40 rounded-[0.5rem] text-sm pl-10 pr-4 py-2 w-full text-ink focus:outline-none focus:ring-1 focus:ring-accent-ink transition-all placeholder-body-muted">
                 </div>
                 <div id="bs-item-result-count" class="text-xs text-ink font-medium"></div>
@@ -471,16 +422,11 @@
             <table class="w-full text-left text-sm whitespace-nowrap border-collapse">
                 <thead class="bg-panel/40 text-ink">
                     <tr>
-                        <th rowspan="2" class="px-6 py-4 font-semibold text-[15px]">หมวด</th>
-                        <th rowspan="2" class="px-6 py-4 font-semibold text-[15px]">กลุ่ม</th>
-                        <th rowspan="2" class="px-6 py-4 font-semibold text-[15px]">ลำดับ</th>
-                        <th rowspan="2" class="px-6 py-4 font-semibold text-[15px] w-full">ชื่อรายการ</th>
-                        <th colspan="2" class="px-6 pt-4 pb-1 font-semibold text-[15px]">ประกอบด้วย</th>
-                        <th rowspan="2" class="px-6 py-4 font-semibold text-[15px] text-right">จัดการ</th>
-                    </tr>
-                    <tr>
-                        <th class="px-6 pb-4 font-semibold text-[13px] text-ink/80">รหัสบัญชี</th>
-                        <th class="px-6 pb-4 font-semibold text-[13px] text-ink/80">ชื่อบัญชี</th>
+                        <th class="px-6 py-4 font-semibold text-[15px]">หมวด</th>
+                        <th class="px-6 py-4 font-semibold text-[15px]">กลุ่ม</th>
+                        <th class="px-6 py-4 font-semibold text-[15px]">รหัสบัญชี</th>
+                        <th class="px-6 py-4 font-semibold text-[15px] w-full">ชื่อบัญชี</th>
+                        <th class="px-6 py-4 font-semibold text-[15px] text-right">จัดการ</th>
                     </tr>
                 </thead>
                 <tbody id="bs-item-table-body" class="divide-y divide-divider"></tbody>

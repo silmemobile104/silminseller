@@ -4,7 +4,7 @@
     <div id="audit-session-panel" class="space-y-8">
         <!-- [1] หัวหน้า (ข้อ 11.2) -->
         <div class="min-w-0 space-y-2">
-            <div class="flex flex-wrap items-center gap-4">
+            <div class="flex flex-col sm:flex-row sm:items-center gap-x-4 gap-y-2">
                 <i class="hidden md:block bi bi-check-square text-ink w-5 text-2xl text-center" aria-hidden="true"></i>
                 <h3 class="text-2xl text-ink">ตรวจนับสต็อกประจำวัน</h3>
                 <!-- ป้ายสถานะรอบ — เขียนจาก loadTodayAuditSession -->
@@ -21,13 +21,14 @@
                 <span id="audit-load-error-text">ไม่สามารถเปิดรอบตรวจนับอัตโนมัติได้</span>
             </p>
             <button id="btn-audit-load-retry" type="button"
-                class="shrink-0 px-4 py-2 rounded-xl bg-state-danger/20 hover:bg-state-danger/30 text-state-danger-soft text-sm font-medium transition-colors cursor-pointer">
-                <i class="fa-solid fa-rotate-right"></i> ลองใหม่
+                class="shrink-0 px-4 py-2 rounded-xl bg-state-danger/20 hover:bg-state-danger/30 text-state-danger-soft font-medium transition-colors cursor-pointer flex items-center gap-2">
+                <i class="fa-solid fa-rotate-right"></i>
+                <p>ลองใหม่</p>
             </button>
         </div>
 
         <!-- [2] การ์ดพาเนลใบเดียว (ข้อ 11.1 / 11.3) -->
-        <div class="bg-panel/40 rounded-2xl overflow-hidden">
+        <div class="bg-panel/40 rounded-2xl shadow-lg overflow-hidden backdrop-blur-sm">
             <!-- 2a สแกน (ซ้าย) + ความคืบหน้า (ขวา) -->
             <div class="p-6 grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_300px] gap-x-10 gap-y-6">
                 <div class="min-w-0">
@@ -42,12 +43,13 @@
                                 <i class="fa-solid fa-barcode absolute left-4 top-1/2 -translate-y-1/2 text-body-muted group-focus-within:text-accent-ink transition-colors pointer-events-none"></i>
                                 <input id="audit-imei-input" type="text" inputmode="numeric" autocomplete="off"
                                     placeholder="สแกนหรือพิมพ์ IMEI แล้วกด Enter"
-                                    class="w-full h-12 pl-11 pr-20 rounded-xl bg-field text-ink font-mono text-base placeholder:font-sans placeholder:text-ink-muted-48 focus:outline-none focus:ring-1 focus:ring-accent-ink transition-all">
+                                    class="elev-field w-full h-12 pl-11 pr-20 rounded-xl bg-field text-ink font-mono text-base placeholder:font-sans placeholder:text-ink-muted-48 focus:outline-none focus:ring-1 focus:ring-accent-ink transition-all">
                                 <kbd class="absolute right-3 top-1/2 -translate-y-1/2 px-2 py-0.5 rounded-xs bg-surface-chip text-[11px] text-body-muted font-sans pointer-events-none">Enter</kbd>
                             </div>
                             <button id="btn-audit-imei-verify" type="button"
-                                class="h-12 px-6 bg-surface-chip hover:bg-field text-ink text-sm font-medium rounded-xl transition-colors cursor-pointer flex items-center justify-center gap-2">
-                                <i class="fa-solid fa-check text-xs text-accent-ink"></i> ตรวจนับ
+                                class="elev-field h-12 px-4 py-2 bg-field text-ink hover:bg-surface-chip font-medium rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2">
+                                <i class="fa-solid fa-check text-accent-ink"></i>
+                                <p>ตรวจนับ</p>
                             </button>
                         </div>
                         <!-- ผลการสแกนล่าสุด 3 รายการ / ขั้นตอนตอนยังไม่มีการสแกน — เขียนจาก renderRecentScans() -->
@@ -119,11 +121,16 @@
                     <button type="button" data-tab="match" aria-pressed="false" class="audit-item-tab">ตรงกับระบบ <span data-count>0</span></button>
                     <button type="button" data-tab="extra" aria-pressed="false" class="audit-item-tab">เกินมา <span data-count>0</span></button>
                 </div>
-                <div class="relative group lg:ml-auto w-full lg:w-72">
-                    <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-body-muted group-focus-within:text-accent-ink transition-colors pointer-events-none"></i>
-                    <label for="audit-item-search" class="sr-only">ค้นหา IMEI หรือชื่อสินค้า</label>
-                    <input id="audit-item-search" type="text" autocomplete="off" placeholder="ค้นหา IMEI หรือชื่อสินค้า..."
-                        class="w-full h-10 pl-10 pr-4 rounded-xl bg-field text-ink text-sm placeholder:text-ink-muted-48 focus:outline-none focus:ring-1 focus:ring-accent-ink transition-all">
+                <div class="flex flex-wrap items-center gap-3 lg:ml-auto w-full lg:w-auto">
+                    <div id="audit-result-count" class="text-xs text-ink font-medium"></div>
+                    <div class="relative group w-full sm:w-64">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <i class="fa-solid fa-search text-ink group-focus-within:text-accent-ink transition-colors"></i>
+                        </div>
+                        <label for="audit-item-search" class="sr-only">ค้นหา IMEI หรือชื่อสินค้า</label>
+                        <input id="audit-item-search" type="text" autocomplete="off" placeholder="ค้นหา IMEI หรือชื่อสินค้า..."
+                            class="elev-card bg-panel/40 rounded-[0.5rem] text-sm pl-10 pr-4 py-2 w-full text-ink focus:outline-none focus:ring-1 focus:ring-accent-ink transition-all placeholder-body-muted">
+                    </div>
                 </div>
             </div>
 
@@ -147,7 +154,7 @@
             <div id="audit-items-cards" class="md:hidden divide-y divide-divider border-t border-divider"></div>
 
             <button type="button" id="btn-audit-items-more"
-                class="hidden w-full py-4 border-t border-divider text-accent-ink text-sm font-medium hover:bg-divider transition-colors cursor-pointer"></button>
+                class="hidden w-full px-6 py-4 border-t border-divider text-accent-ink text-sm font-medium hover:bg-divider transition-colors cursor-pointer"></button>
         </div>
 
         <!-- [3] แถบส่งผล — ติดขอบล่างจอขณะเลื่อน (แสดงเมื่อ "กำลังตรวจนับ" และสแกนแล้วอย่างน้อย 1 รายการ
@@ -164,7 +171,7 @@
                 <p class="w-full text-xs text-ink-muted-48">ส่งได้แม้ยังนับไม่ครบ — รายการที่ยังไม่พบและรายการเกินจะส่งให้พนักงานสต็อกตรวจสอบ</p>
             </div>
             <button id="btn-audit-submit" type="button"
-                class="px-6 py-2.5 bg-primary hover:bg-primary-pressed active:scale-95 text-on-primary text-[15px] font-semibold rounded-pill transition-all cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2">
+                class="px-6 py-2.5 bg-primary hover:bg-[#E2B93C] active:scale-95 text-on-primary font-medium rounded-pill transition-all cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2">
                 ส่งผลตรวจนับให้ตรวจสอบ
             </button>
         </div>

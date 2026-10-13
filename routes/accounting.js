@@ -3,7 +3,7 @@ const router = express.Router();
 const jwt = require('jsonwebtoken');
 const mongoose = require('mongoose');
 const {
-    AccountCategory, AccountGroup, AccountChart, AccountBook, AccountDocument, AccountBookLink, PnLConfig, BalanceSheetItem, DisbursementVoucher,
+    AccountCategory, AccountGroup, AccountChart, AccountBook, AccountDocument, AccountBookLink, DisbursementVoucher,
     Employee, Branch, CashMovement, Transaction, PurchaseOrder, FinanceReceivable, AuditLog
 } = require('../models');
 const { uploadBufferToDriveInFolder } = require('../utils/googleDrive');
@@ -74,6 +74,13 @@ async function logActivity(req, action, module, description, targetId, refNo, de
 const SYSTEM_GROUP_CODES = new Set(['11', '12', '21', '31', '41', '42', '51', '52']);
 const isSystemGroup = (group) => SYSTEM_GROUP_CODES.has(group.group_code);
 
+// ความยาวสูงสุดของรหัส/ชื่อ ต้องตรงกับ maxlength ในฟอร์ม (index.html) — กันคนยิง API ตรงข้ามฟอร์ม
+const MAX_CODE_LEN = 20;
+const MAX_NAME_LEN = 120;
+const lengthError = (code, name) =>
+    code.length > MAX_CODE_LEN ? `รหัสต้องไม่เกิน ${MAX_CODE_LEN} ตัวอักษร`
+        : name.length > MAX_NAME_LEN ? `ชื่อต้องไม่เกิน ${MAX_NAME_LEN} ตัวอักษร` : null;
+
 // ============================================
 // 1. CHART OF ACCOUNTS APIs
 // ============================================
@@ -106,6 +113,8 @@ router.post('/chart-of-accounts', async (req, res) => {
         if (!account_code || !account_name || !category_id) {
             return res.status(400).json({ success: false, message: 'กรุณากรอกข้อมูลให้ครบถ้วน' });
         }
+        const accLenErr = lengthError(account_code, account_name);
+        if (accLenErr) return res.status(400).json({ success: false, message: accLenErr });
         const [category, group, dup] = await Promise.all([
             AccountCategory.findById(category_id).lean(),
             group_id ? AccountGroup.findById(group_id).lean() : null,
@@ -125,6 +134,10 @@ router.post('/chart-of-accounts', async (req, res) => {
         if (_id) {
             account = await AccountChart.findById(_id);
             if (!account) return res.status(404).json({ success: false, message: 'ไม่พบบัญชีนี้' });
+            // ย้ายบัญชีเดิมเข้ากลุ่มที่ปิดใช้งานไม่ได้ (บัญชีที่อยู่ในกลุ่มนั้นอยู่แล้วแก้ไขอย่างอื่นได้ตามปกติ)
+            if (hasGroup && group && group.is_active === false && String(account.group_id || '') !== String(group._id)) {
+                return res.status(400).json({ success: false, message: 'กลุ่มบัญชีนี้ปิดการใช้งานอยู่ ย้ายบัญชีเข้ากลุ่มนี้ไม่ได้' });
+            }
             if (account.is_system && account.account_code !== account_code) {
                 return res.status(400).json({ success: false, message: 'ไม่สามารถเปลี่ยนรหัสบัญชีระบบได้' });
             }
@@ -158,13 +171,9 @@ router.delete('/chart-of-accounts/:id', async (req, res) => {
         if (!account) return res.status(404).json({ success: false, message: 'ไม่พบบัญชีนี้' });
         if (account.is_system) return res.status(400).json({ success: false, message: 'ไม่สามารถลบบัญชีระบบได้ (ปิดการใช้งานแทนได้)' });
         // บัญชีที่เอกสารอ้างถึงอยู่ ลบแล้วเอกสารเก่าจะชี้ไปที่ของที่ไม่มี — ให้ปิดการใช้งานแทน
-        const [dvCount, pnlCount, bsCount] = await Promise.all([
-            DisbursementVoucher.countDocuments({ $or: [{ debit_account_id: account._id }, { credit_account_id: account._id }] }),
-            PnLConfig.countDocuments({ account_ids: account._id }),
-            BalanceSheetItem.countDocuments({ account_ids: account._id })
-        ]);
-        if (dvCount || pnlCount || bsCount) {
-            return res.status(400).json({ success: false, message: 'ลบไม่ได้ เพราะบัญชีนี้ถูกใช้ในใบสำคัญจ่าย งบกำไรขาดทุน หรืองบดุลแล้ว (ปิดการใช้งานแทนได้)' });
+        const dvCount = await DisbursementVoucher.countDocuments({ $or: [{ debit_account_id: account._id }, { credit_account_id: account._id }] });
+        if (dvCount) {
+            return res.status(400).json({ success: false, message: 'ลบไม่ได้ เพราะบัญชีนี้ถูกใช้ในใบสำคัญจ่ายแล้ว (ปิดการใช้งานแทนได้)' });
         }
         await AccountChart.findByIdAndDelete(req.params.id);
         await logActivity(req, 'DELETE', 'COA', `ลบผังบัญชี ${account.account_code} ${account.account_name}`, account._id);
@@ -204,6 +213,8 @@ router.post('/account-groups', async (req, res) => {
         if (!group_code || !group_name || !category_id) {
             return res.status(400).json({ success: false, message: 'กรุณากรอกข้อมูลให้ครบถ้วน' });
         }
+        const grpLenErr = lengthError(group_code, group_name);
+        if (grpLenErr) return res.status(400).json({ success: false, message: grpLenErr });
         const [category, exists] = await Promise.all([
             AccountCategory.findById(category_id).lean(),
             AccountGroup.findOne({ group_code, ...(_id ? { _id: { $ne: _id } } : {}) }).lean()
@@ -220,12 +231,9 @@ router.post('/account-groups', async (req, res) => {
             }
             // ย้ายหมวดได้เฉพาะกลุ่มที่ยังไม่มีใครใช้ — ไม่งั้นบัญชีในกลุ่มจะอยู่คนละหมวดกับกลุ่มของตัวเอง
             if (String(group.category_id) !== String(category._id)) {
-                const [accCount, pnlCount] = await Promise.all([
-                    AccountChart.countDocuments({ group_id: group._id }),
-                    PnLConfig.countDocuments({ group_id: group._id })
-                ]);
-                if (accCount || pnlCount) {
-                    return res.status(400).json({ success: false, message: 'เปลี่ยนหมวดไม่ได้ เพราะกลุ่มนี้มีรหัสบัญชีหรืองบกำไรขาดทุนใช้งานอยู่' });
+                const accCount = await AccountChart.countDocuments({ group_id: group._id });
+                if (accCount) {
+                    return res.status(400).json({ success: false, message: 'เปลี่ยนหมวดไม่ได้ เพราะกลุ่มนี้มีรหัสบัญชีอยู่' });
                 }
             }
             group.group_code = group_code;
@@ -271,14 +279,8 @@ router.delete('/account-groups/:id', async (req, res) => {
         const group = await AccountGroup.findById(req.params.id).lean();
         if (!group) return res.status(404).json({ success: false, message: 'ไม่พบกลุ่มบัญชีนี้' });
         if (isSystemGroup(group)) return res.status(400).json({ success: false, message: 'ไม่สามารถลบกลุ่มบัญชีระบบได้' });
-        const [accCount, pnlCount, bsCount] = await Promise.all([
-            AccountChart.countDocuments({ group_id: group._id }),
-            PnLConfig.countDocuments({ group_id: group._id }),
-            BalanceSheetItem.countDocuments({ group_id: group._id })
-        ]);
+        const accCount = await AccountChart.countDocuments({ group_id: group._id });
         if (accCount) return res.status(400).json({ success: false, message: `ลบไม่ได้ เพราะมีรหัสบัญชี ${accCount} รายการอยู่ในกลุ่มนี้` });
-        if (pnlCount) return res.status(400).json({ success: false, message: 'ลบไม่ได้ เพราะกลุ่มนี้ถูกใช้ในการตั้งค่างบกำไรขาดทุน' });
-        if (bsCount) return res.status(400).json({ success: false, message: 'ลบไม่ได้ เพราะกลุ่มนี้ถูกใช้ในการตั้งค่างบดุล' });
         await AccountGroup.findByIdAndDelete(group._id);
         await logActivity(req, 'DELETE', 'COA', `ลบกลุ่มบัญชี ${group.group_code} ${group.group_name}`, group._id, group.group_code);
         res.json({ success: true });
@@ -349,81 +351,6 @@ router.delete('/account-books/:id', async (req, res) => {
         }
         await AccountBook.findByIdAndDelete(req.params.id);
         await logActivity(req, 'DELETE', 'ACCOUNT_BOOK', `ลบสมุดบัญชี ${book.book_code} ${book.book_name}`, book._id, book.book_code);
-        res.json({ success: true });
-    } catch (err) {
-        res.status(500).json({ success: false, message: err.message });
-    }
-});
-
-// ============================================
-// 1.15 BALANCE SHEET ITEM APIs (ตั้งค่างบดุล)
-// ============================================
-
-// GET /api/acct/balance-sheet-items — คืนเรียงตามลำดับ พร้อมกลุ่ม/หมวด/บัญชีที่ประกอบ (populate แบบ lean)
-router.get('/balance-sheet-items', async (req, res) => {
-    try {
-        const items = await BalanceSheetItem.find()
-            .populate({ path: 'group_id', populate: { path: 'category_id' } })
-            .populate('account_ids', 'account_code account_name')
-            .sort({ sort_order: 1, createdAt: 1 }).lean();
-        res.json({ success: true, items });
-    } catch (err) {
-        res.status(500).json({ success: false, message: err.message });
-    }
-});
-
-// POST /api/acct/balance-sheet-items — เพิ่ม (ไม่มี _id) หรือแก้ไข (มี _id)
-router.post('/balance-sheet-items', async (req, res) => {
-    try {
-        const { _id, group_id } = req.body;
-        const item_name = String(req.body.item_name || '').trim();
-        const sort_order = Number(req.body.sort_order);
-        const rawIds = Array.isArray(req.body.account_ids) ? req.body.account_ids : [];
-        const account_ids = [...new Set(rawIds.map(String))];
-
-        if (!group_id || !item_name || !Number.isInteger(sort_order) || sort_order < 1) {
-            return res.status(400).json({ success: false, message: 'กรุณาเลือกกลุ่มบัญชี กรอกลำดับ (จำนวนเต็มตั้งแต่ 1) และชื่อรายการให้ครบถ้วน' });
-        }
-        if (!mongoose.isValidObjectId(group_id) || account_ids.some(id => !mongoose.isValidObjectId(id))) {
-            return res.status(400).json({ success: false, message: 'ข้อมูลกลุ่มบัญชีหรือบัญชีไม่ถูกต้อง' });
-        }
-        const [group, accounts] = await Promise.all([
-            AccountGroup.findById(group_id).lean(),
-            AccountChart.find({ _id: { $in: account_ids } }, 'category_id').lean()
-        ]);
-        if (!group) return res.status(400).json({ success: false, message: 'ไม่พบกลุ่มบัญชีนี้' });
-        if (accounts.length !== account_ids.length) {
-            return res.status(400).json({ success: false, message: 'พบบัญชีที่ไม่มีในระบบ' });
-        }
-        // บัญชีที่ประกอบต้องอยู่หมวดเดียวกับกลุ่ม ไม่งั้นงบดุลจะรวมยอดผิดหมวด
-        if (accounts.some(a => String(a.category_id) !== String(group.category_id))) {
-            return res.status(400).json({ success: false, message: 'บัญชีที่เลือกต้องอยู่ในหมวดเดียวกับกลุ่มบัญชี' });
-        }
-
-        let item;
-        if (_id) {
-            item = await BalanceSheetItem.findById(_id);
-            if (!item) return res.status(404).json({ success: false, message: 'ไม่พบรายการงบดุลนี้' });
-            Object.assign(item, { group_id, sort_order, item_name, account_ids });
-            await item.save();
-            await logActivity(req, 'UPDATE', 'BALANCE_SHEET', `แก้ไขรายการงบดุล ${sort_order}. ${item_name}`, item._id, String(sort_order));
-        } else {
-            item = await BalanceSheetItem.create({ group_id, sort_order, item_name, account_ids });
-            await logActivity(req, 'CREATE', 'BALANCE_SHEET', `เพิ่มรายการงบดุล ${sort_order}. ${item_name}`, item._id, String(sort_order));
-        }
-        res.json({ success: true, item });
-    } catch (err) {
-        res.status(500).json({ success: false, message: err.message });
-    }
-});
-
-// DELETE /api/acct/balance-sheet-items/:id
-router.delete('/balance-sheet-items/:id', async (req, res) => {
-    try {
-        const item = await BalanceSheetItem.findById(req.params.id).lean();
-        if (!item) return res.status(404).json({ success: false, message: 'ไม่พบรายการงบดุลนี้' });
-        await BalanceSheetItem.findByIdAndDelete(item._id);
-        await logActivity(req, 'DELETE', 'BALANCE_SHEET', `ลบรายการงบดุล ${item.sort_order}. ${item.item_name}`, item._id, String(item.sort_order));
         res.json({ success: true });
     } catch (err) {
         res.status(500).json({ success: false, message: err.message });
@@ -585,149 +512,6 @@ router.put('/account-book-links/:id/active', async (req, res) => {
             `${link.is_active ? 'เปิด' : 'ปิด'}การเชื่อมสมุดบัญชี ${doc ? (doc.doc_code || '-') + ' "' + doc.doc_name + '"' : '-'} ↔ ${book ? book.book_code + ' ' + book.book_name : '-'}`,
             link._id, book ? book.book_code : '');
         res.json({ success: true, link });
-    } catch (err) {
-        res.status(500).json({ success: false, message: err.message });
-    }
-});
-
-// ============================================
-// 2. P&L CONFIG APIs
-// ============================================
-
-// GET /api/acct/pnl-config
-router.get('/pnl-config', async (req, res) => {
-    try {
-        const configs = await PnLConfig.find()
-            .populate('category_id')
-            .populate('group_id')
-            .populate('account_ids')
-            .sort({ sort_order: 1 })
-            .lean();
-        res.json({ success: true, configs });
-    } catch (err) {
-        res.status(500).json({ success: false, message: err.message });
-    }
-});
-
-// POST /api/acct/pnl-items — เพิ่ม (ไม่มี _id) หรือแก้ไข (มี _id) ทีละบรรทัด สำหรับเมนู "ตั้งค่างบกำไรขาดทุน"
-// (POST /pnl-config ด้านล่างเป็นแบบแทนที่ทั้งชุด ใช้โดยแท็บ P&L ในหน้าผังบัญชีเดิม — ข้อมูลชุดเดียวกัน)
-// หมวดไม่รับจากฟอร์ม — ดูจากกลุ่มบัญชี; section: หมวดรายได้ = revenue, หมวดค่าใช้จ่าย = expense
-// ไม่บังคับให้บัญชีอยู่หมวดเดียวกับกลุ่ม เพราะผู้ใช้อาจจัดบัญชีรายได้ไปไว้ใต้กลุ่มค่าใช้จ่ายโดยตั้งใจ
-router.post('/pnl-items', async (req, res) => {
-    try {
-        const { _id, group_id } = req.body;
-        const display_name = String(req.body.display_name || '').trim();
-        const sort_order = Number(req.body.sort_order);
-        const rawIds = Array.isArray(req.body.account_ids) ? req.body.account_ids : [];
-        const account_ids = [...new Set(rawIds.map(String))];
-
-        if (!group_id || !display_name || !Number.isInteger(sort_order) || sort_order < 1) {
-            return res.status(400).json({ success: false, message: 'กรุณาเลือกกลุ่มบัญชี กรอกลำดับ (จำนวนเต็มตั้งแต่ 1) และชื่อรายการให้ครบถ้วน' });
-        }
-        if (!mongoose.isValidObjectId(group_id) || account_ids.some(id => !mongoose.isValidObjectId(id))) {
-            return res.status(400).json({ success: false, message: 'ข้อมูลกลุ่มบัญชีหรือบัญชีไม่ถูกต้อง' });
-        }
-        const [group, accCount] = await Promise.all([
-            AccountGroup.findById(group_id).populate('category_id').lean(),
-            AccountChart.countDocuments({ _id: { $in: account_ids } })
-        ]);
-        if (!group) return res.status(400).json({ success: false, message: 'ไม่พบกลุ่มบัญชีนี้' });
-        const catName = group.category_id && group.category_id.category_name;
-        if (catName !== 'รายได้' && catName !== 'ค่าใช้จ่าย') {
-            return res.status(400).json({ success: false, message: 'งบกำไรขาดทุนเลือกได้เฉพาะกลุ่มบัญชีในหมวดรายได้หรือค่าใช้จ่าย' });
-        }
-        if (accCount !== account_ids.length) {
-            return res.status(400).json({ success: false, message: 'พบบัญชีที่ไม่มีในระบบ' });
-        }
-
-        const fields = {
-            sort_order, display_name, account_ids, group_id,
-            category_id: group.category_id._id,
-            section: catName === 'รายได้' ? 'revenue' : 'expense'
-        };
-        let item;
-        if (_id) {
-            item = await PnLConfig.findById(_id);
-            if (!item) return res.status(404).json({ success: false, message: 'ไม่พบรายการงบกำไรขาดทุนนี้' });
-            Object.assign(item, fields);
-            await item.save();
-            await logActivity(req, 'UPDATE', 'PNL_CONFIG', `แก้ไขรายการงบกำไรขาดทุน ${sort_order}. ${display_name}`, item._id, String(sort_order));
-        } else {
-            item = await PnLConfig.create(fields);
-            await logActivity(req, 'CREATE', 'PNL_CONFIG', `เพิ่มรายการงบกำไรขาดทุน ${sort_order}. ${display_name}`, item._id, String(sort_order));
-        }
-        res.json({ success: true, item });
-    } catch (err) {
-        res.status(500).json({ success: false, message: err.message });
-    }
-});
-
-// DELETE /api/acct/pnl-items/:id
-router.delete('/pnl-items/:id', async (req, res) => {
-    try {
-        const item = await PnLConfig.findById(req.params.id).lean();
-        if (!item) return res.status(404).json({ success: false, message: 'ไม่พบรายการงบกำไรขาดทุนนี้' });
-        await PnLConfig.findByIdAndDelete(item._id);
-        await logActivity(req, 'DELETE', 'PNL_CONFIG', `ลบรายการงบกำไรขาดทุน ${item.sort_order}. ${item.display_name}`, item._id, String(item.sort_order));
-        res.json({ success: true });
-    } catch (err) {
-        res.status(500).json({ success: false, message: err.message });
-    }
-});
-
-// POST /api/acct/pnl-config - Save/Update P&L lines
-router.post('/pnl-config', async (req, res) => {
-    try {
-        const { lines } = req.body;
-        if (!Array.isArray(lines)) return res.status(400).json({ success: false, message: 'ข้อมูลไม่ถูกต้อง' });
-
-        // Reject rows with a blank display_name instead of silently dropping them —
-        // a silent drop returns success:true while the line vanishes from the config,
-        // and would also shift every auto-assigned sort_order after it.
-        const invalidRowNumbers = lines
-            .map((line, idx) => (!line || typeof line.display_name !== 'string' || line.display_name.trim() === '') ? idx + 1 : null)
-            .filter(n => n !== null);
-        if (invalidRowNumbers.length > 0) {
-            return res.status(400).json({
-                success: false,
-                message: `กรุณากรอกชื่อรายการให้ครบ (แถวที่ ${invalidRowNumbers.join(', ')} ไม่มีชื่อ)`
-            });
-        }
-
-        // Build docs BEFORE touching existing data, so a bad row never leaves
-        // the collection wiped out with nothing successfully re-inserted.
-        const docs = lines
-            .map((line, idx) => {
-            let sec = (line.section || '').toLowerCase();
-            if (sec === 'cogs' || sec === 'tax' || sec === 'other_expense') sec = 'expense';
-            if (sec === 'other_income') sec = 'revenue';
-            if (sec !== 'revenue' && sec !== 'expense') sec = 'expense'; // fallback to expense
-
-            let accs = [];
-            if (line.account_id) {
-                accs.push(line.account_id);
-            } else if (line.account_ids && Array.isArray(line.account_ids)) {
-                accs = line.account_ids;
-            }
-
-            return {
-                sort_order: line.sort_order || (idx + 1) * 10,
-                display_name: line.display_name.trim(),
-                section: sec,
-                category_id: line.category_id || null,
-                group_id: line.group_id || null,
-                account_ids: accs,
-                is_bold: line.is_bold || false,
-                is_total_line: line.is_total_line || false
-            };
-        });
-        // Only clear existing config once the new set has been validated/built successfully.
-        await PnLConfig.deleteMany({});
-        if (docs.length > 0) {
-            await PnLConfig.insertMany(docs);
-        }
-        await logActivity(req, 'UPDATE', 'PNL_CONFIG', 'อัปเดตการตั้งค่างบกำไรขาดทุน');
-        res.json({ success: true });
     } catch (err) {
         res.status(500).json({ success: false, message: err.message });
     }
@@ -901,79 +685,72 @@ router.get('/disbursements/:id', async (req, res) => {
 // ============================================
 
 // GET /api/acct/pnl-report
+// คิดจากผังบัญชีโดยตรง: หมวดรายได้ = รายได้, หมวดค่าใช้จ่าย = ค่าใช้จ่าย; ยอดของบัญชี = ผลรวมใบสำคัญจ่ายที่ลงเดบิตบัญชีนั้น
+// รายงานเรียงตามกลุ่ม (รหัสกลุ่ม) แล้วตามรหัสบัญชี — ไม่มีการตั้งค่า "รายการงบ" แยกอีกแล้ว
 router.get('/pnl-report', async (req, res) => {
     try {
         const startDate = req.query.startDate ? new Date(req.query.startDate + 'T00:00:00') : new Date(new Date().setDate(new Date().getDate() - 30));
         const endDate = req.query.endDate ? new Date(req.query.endDate + 'T23:59:59') : new Date();
 
-        // Get P&L config lines, disbursement vouchers, and sales transactions in parallel — independent queries
-        const [pnlConfigs, vouchers, transactions] = await Promise.all([
-            PnLConfig.find().populate('account_ids').sort({ sort_order: 1 }).lean(),
-            DisbursementVoucher.find({
-                payment_date: { $gte: startDate, $lte: endDate }
-            }).populate('debit_account_id').lean(),
+        const [categories, groups, accounts, vouchers, transactions] = await Promise.all([
+            AccountCategory.find().lean(),
+            AccountGroup.find().sort({ group_code: 1 }).lean(),
+            AccountChart.find().sort({ account_code: 1 }).lean(),
+            DisbursementVoucher.find({ payment_date: { $gte: startDate, $lte: endDate } }, 'debit_account_id amount').lean(),
             Transaction.find({
                 created_at: { $gte: startDate, $lte: endDate },
                 status: { $ne: 'ยกเลิกแล้ว' }
             }).lean()
         ]);
 
-        // Aggregate by account_id from vouchers
         const voucherByAccount = {};
         vouchers.forEach(v => {
-            const accId = v.debit_account_id?._id?.toString();
-            if (accId) {
-                voucherByAccount[accId] = (voucherByAccount[accId] || 0) + v.amount;
-            }
+            const accId = v.debit_account_id && v.debit_account_id.toString();
+            if (accId) voucherByAccount[accId] = (voucherByAccount[accId] || 0) + (v.amount || 0);
         });
 
-        // Build report lines
+        const sectionOfCat = {};
+        categories.forEach(c => {
+            if (c.category_name === 'รายได้') sectionOfCat[String(c._id)] = 'revenue';
+            else if (c.category_name === 'ค่าใช้จ่าย') sectionOfCat[String(c._id)] = 'expense';
+        });
+
         const reportLines = [];
         let totalRevenue = 0;
         let totalExpense = 0;
-
-        // Calculate sales revenue from transactions
+        let order = 0;
         const salesRevenue = transactions.reduce((sum, t) => sum + (t.total_amount || 0), 0);
 
-        for (const config of pnlConfigs) {
-            let lineAmount = 0;
-            if (config.account_ids && config.account_ids.length > 0) {
-                config.account_ids.forEach(acc => {
-                    const accId = acc._id.toString();
-                    lineAmount += voucherByAccount[accId] || 0;
+        for (const section of ['revenue', 'expense']) {
+            for (const group of groups) {
+                if (sectionOfCat[String(group.category_id)] !== section) continue;
+                const accs = accounts.filter(a => String(a.group_id) === String(group._id));
+                const lines = accs
+                    .map(a => ({ acc: a, amount: voucherByAccount[String(a._id)] || 0 }))
+                    .filter(x => x.amount !== 0);
+                const groupTotal = lines.reduce((n, x) => n + x.amount, 0);
+                if (!lines.length) continue;
+                reportLines.push({
+                    sort_order: ++order, display_name: group.group_name, section, amount: groupTotal,
+                    is_bold: true, is_total_line: false, group_code: group.group_code
                 });
+                lines.forEach(x => reportLines.push({
+                    sort_order: ++order, display_name: x.acc.account_name, section, amount: x.amount,
+                    is_bold: false, is_total_line: false, group_code: group.group_code, account_code: x.acc.account_code
+                }));
+                if (section === 'revenue') totalRevenue += groupTotal; else totalExpense += groupTotal;
             }
-
-            reportLines.push({
-                sort_order: config.sort_order,
-                display_name: config.display_name,
-                section: config.section,
-                amount: lineAmount,
-                is_bold: config.is_bold,
-                is_total_line: config.is_total_line
-            });
-
-            if (config.section === 'revenue') totalRevenue += lineAmount;
-            if (config.section === 'expense') totalExpense += lineAmount;
-        }
-
-        // If no P&L config yet, fallback to basic summary
-        if (pnlConfigs.length === 0) {
-            // Note: do NOT assign totalRevenue = salesRevenue here — salesRevenue is
-            // already added separately below (summary.totalRevenue = totalRevenue + salesRevenue).
-            // Assigning it here would double-count sales revenue in the summary and netProfit.
-
-            // Get expenses from CashMovement
-            const expenses = await CashMovement.find({
-                type: 'รายจ่าย',
-                created_at: { $gte: startDate, $lte: endDate }
-            }).lean();
-            totalExpense = expenses.reduce((sum, e) => sum + (e.amount || 0), 0);
-
-            reportLines.push(
-                { sort_order: 1, display_name: 'รายได้จากการขายสินค้า', section: 'revenue', amount: salesRevenue, is_bold: true },
-                { sort_order: 2, display_name: 'ค่าใช้จ่ายรวม', section: 'expense', amount: totalExpense, is_bold: true }
-            );
+            // บัญชีของหมวดนี้ที่ยังไม่มีกลุ่ม — ยอดต้องไม่หาย จึงรวมไว้ในกลุ่มสมมติ
+            const loose = accounts
+                .filter(a => !a.group_id && sectionOfCat[String(a.category_id)] === section)
+                .map(a => ({ acc: a, amount: voucherByAccount[String(a._id)] || 0 }))
+                .filter(x => x.amount !== 0);
+            if (loose.length) {
+                const looseTotal = loose.reduce((n, x) => n + x.amount, 0);
+                reportLines.push({ sort_order: ++order, display_name: 'ยังไม่จัดกลุ่ม', section, amount: looseTotal, is_bold: true, is_total_line: false, group_code: '' });
+                loose.forEach(x => reportLines.push({ sort_order: ++order, display_name: x.acc.account_name, section, amount: x.amount, is_bold: false, is_total_line: false, group_code: '', account_code: x.acc.account_code }));
+                if (section === 'revenue') totalRevenue += looseTotal; else totalExpense += looseTotal;
+            }
         }
 
         const salesVat = Math.round((salesRevenue * 7 / 107) * 100) / 100;

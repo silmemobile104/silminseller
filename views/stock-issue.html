@@ -1,0 +1,179 @@
+<!-- VIEW: Stock Issue — จ่ายออกสินค้า (ตัดสต็อกระดับ IMEI + ประวัติการจ่ายออก) -->
+<!-- โครงหน้าตาม DESIGN.md ข้อ 11 (อ้างอิง #stock) — สคริปต์: js/page-stock-issue.js -->
+<div id="view-stock-issue" class="hidden space-y-8 animate-fade-in">
+
+    <!-- [1] หัวหน้า -->
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div class="flex items-center gap-4">
+            <i class="fa-solid fa-arrow-up-from-bracket text-white w-5 text-2xl text-center"></i>
+            <h3 class="text-2xl text-white">จ่ายออกสินค้า</h3>
+        </div>
+        <div class="flex items-center gap-3">
+            <button id="btn-open-stock-issue" type="button"
+                class="px-4 py-2 bg-[#FFE169] hover:bg-[#E2B93C] text-[#333333] font-medium rounded-xl transition-all flex items-center gap-2 w-fit cursor-pointer relative">
+                <i class="fa-solid fa-plus"></i>
+                <p>จ่ายออกสินค้า</p>
+            </button>
+        </div>
+    </div>
+
+    <!-- [2] การ์ดพาเนล: แถบควบคุม + ชิป + ตาราง ประวัติการจ่ายออก -->
+    <div class="bg-[#4D4D4D]/40 rounded-2xl shadow-lg overflow-hidden backdrop-blur-sm">
+
+        <!-- 2a แถบควบคุม -->
+        <div class="p-6 pb-0 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+            <h3 class="text-lg text-white flex items-center gap-2">
+                <i class="fa-solid fa-clock-rotate-left text-[#FFE169]"></i> ประวัติการจ่ายออกสินค้า
+            </h3>
+            <div class="flex flex-wrap items-center gap-2.5 relative w-full lg:w-auto">
+                <div class="relative group w-full sm:w-64 cursor-pointer rounded-[0.5rem] overflow-hidden">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <i class="fa-solid fa-search text-white group-focus-within:text-[#FFE169] transition-colors"></i>
+                    </div>
+                    <input id="stock-issue-search-input" type="text" aria-label="ค้นหาประวัติการจ่ายออก"
+                        placeholder="ค้นหาเลขที่ / IMEI / หมายเหตุ..."
+                        class="bg-transparent text-sm pl-10 pr-4 py-2 w-full text-white focus:outline-none focus:ring-1 focus:ring-[#FFE169] transition-all placeholder-white">
+                </div>
+                <select id="stock-issue-filter-mode" aria-label="กรองตามประเภทการจ่ายออก"
+                    class="bg-[#4D4D4D]/40 cursor-pointer text-sm rounded-[0.5rem] px-3 py-2 text-white focus:outline-none focus:ring-1 focus:ring-[#FFE169] w-full sm:w-auto [&>option]:bg-[#4D4D4D] [&>option:checked]:bg-[#FFE169] [&>option:checked]:text-[#333333]">
+                    <option value="">ทุกประเภท</option>
+                    <option value="single">ทีละชิ้น</option>
+                    <option value="multi">หลายชิ้น</option>
+                </select>
+                <select id="stock-issue-filter-branch" aria-label="กรองตามสาขา"
+                    class="hidden md:block bg-[#4D4D4D]/40 cursor-pointer text-sm rounded-[0.5rem] px-3 py-2 text-white focus:outline-none focus:ring-1 focus:ring-[#FFE169] w-full sm:w-auto [&>option]:bg-[#4D4D4D] [&>option:checked]:bg-[#FFE169] [&>option:checked]:text-[#333333]">
+                    <option value="">ทุกสาขา</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- 2b ชิปตัวกรอง + ตัวนับ -->
+        <div class="px-6 py-4">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div id="stock-issue-active-filters" class="flex flex-wrap gap-2"></div>
+                <div id="stock-issue-result-count" class="text-xs text-white font-medium"></div>
+            </div>
+        </div>
+
+        <!-- 2c ตาราง -->
+        <div class="overflow-x-auto" tabindex="0">
+            <table class="w-full text-left text-sm whitespace-nowrap border-collapse">
+                <thead class="bg-[#4D4D4D]/40 text-white">
+                    <tr>
+                        <th class="px-6 py-4 font-semibold text-[15px]">เลขที่ใบจ่ายออก</th>
+                        <th class="px-6 py-4 font-semibold text-[15px]">วันที่ / เวลา</th>
+                        <th class="px-6 py-4 font-semibold text-[15px]">สาขา</th>
+                        <th class="px-6 py-4 font-semibold text-[15px]">ประเภท</th>
+                        <th class="px-6 py-4 font-semibold text-[15px] text-center">จำนวน</th>
+                        <th class="px-6 py-4 font-semibold text-[15px] text-right">มูลค่าต้นทุนรวม</th>
+                        <th class="px-6 py-4 font-semibold text-[15px]">หมายเหตุ</th>
+                        <th class="px-6 py-4 font-semibold text-[15px]">ผู้ทำรายการ</th>
+                        <th class="px-6 py-4 font-semibold text-[15px] text-right">จัดการ</th>
+                    </tr>
+                </thead>
+                <tbody id="stock-issue-table-body" class="divide-y divide-[#464646]"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- โมดัลฟอร์ม: จ่ายออกสินค้า (DESIGN.md 11.10) -->
+    <div id="stock-issue-modal"
+        class="hidden fixed inset-0 z-50 items-center justify-center backdrop-blur-sm opacity-0 transition-opacity duration-300 p-4"
+        role="dialog" aria-modal="true" aria-labelledby="stock-issue-modal-title">
+        <div
+            class="modal-content relative w-[95%] md:w-[650px] max-h-[90vh] overflow-y-auto p-8 bg-[#18181B] rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.5)] border border-[#4D4D4D]"
+            tabindex="0">
+            <div class="flex items-center justify-between mb-6 pb-2 border-b border-[#333333]">
+                <h3 id="stock-issue-modal-title" class="text-lg font-medium text-white flex items-center gap-2">
+                    <i class="fa-solid fa-arrow-up-from-bracket text-[#FFE169]"></i> จ่ายออกสินค้า
+                </h3>
+                <button id="stock-issue-modal-close" type="button" aria-label="ปิด"
+                    class="text-red-500 hover:text-red-400 transition-colors">
+                    <i class="fa-solid fa-xmark text-xl"></i>
+                </button>
+            </div>
+
+            <form id="stock-issue-form" class="space-y-5 text-sm" novalidate>
+                <input type="hidden" id="stock-issue-mode" value="multi">
+
+                <!-- สาขา: โชว์เฉพาะผู้ที่เลือกสาขาได้ (filter_stock_branch) -->
+                <div id="stock-issue-branch-wrap" class="space-y-2 hidden">
+                    <label for="stock-issue-branch" class="text-slate-200 font-medium flex items-center gap-2 text-xs">
+                        <i class="fa-solid fa-boxes-stacked text-white"></i> สาขาที่จ่ายออก <span class="text-red-500">*</span>
+                    </label>
+                    <div class="relative">
+                        <select id="stock-issue-branch"
+                            class="w-full px-4 py-2.5 rounded-xl bg-[#27272A] border border-[#3F3F46] text-white focus:border-[#FFE169] focus:outline-none transition-all text-sm appearance-none cursor-pointer"></select>
+                        <div class="absolute right-4 top-[14px] pointer-events-none text-slate-400">
+                            <i class="fa-solid fa-chevron-down text-xs"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- สแกน IMEI -->
+                <div class="space-y-2">
+                    <label for="stock-issue-imei" class="text-slate-200 font-medium flex items-center gap-2 text-xs">
+                        <i class="fa-solid fa-barcode text-white"></i> สแกนเลข IMEI <span class="text-red-500">*</span>
+                    </label>
+                    <div class="flex items-center gap-2">
+                        <input id="stock-issue-imei" type="text" inputmode="numeric" autocomplete="off"
+                            placeholder="สแกนบาร์โค้ดหรือพิมพ์ IMEI แล้วกด Enter"
+                            class="w-full px-4 py-2.5 rounded-xl bg-[#27272A] border border-[#3F3F46] text-white focus:border-[#FFE169] focus:outline-none transition-all placeholder-slate-500 text-sm font-mono">
+                        <button id="stock-issue-add-btn" type="button"
+                            class="px-4 py-2.5 rounded-xl bg-[#E4E4E7] text-[#18181B] text-sm font-bold hover:bg-white transition-colors flex-shrink-0">เพิ่ม</button>
+                    </div>
+                    <p id="stock-issue-imei-hint" class="text-xs text-white/70">สแกนต่อเนื่องได้หลายเครื่องในใบเดียว</p>
+                </div>
+
+                <!-- รายการที่สแกนแล้ว -->
+                <div class="space-y-2">
+                    <div class="flex items-center justify-between">
+                        <span class="text-slate-200 font-medium flex items-center gap-2 text-xs">
+                            <i class="fa-solid fa-list-ul text-white"></i> รายการที่จะจ่ายออก
+                        </span>
+                        <span id="stock-issue-scan-count" class="text-xs text-white font-medium">0 รายการ</span>
+                    </div>
+                    <div class="rounded-xl border border-[#3F3F46] overflow-hidden">
+                        <div class="max-h-60 overflow-y-auto" tabindex="0">
+                            <table class="w-full text-left text-sm border-collapse">
+                                <thead class="bg-[#4D4D4D]/40 text-white">
+                                    <tr>
+                                        <th class="px-4 py-3 font-semibold text-xs">สินค้า</th>
+                                        <th class="px-4 py-3 font-semibold text-xs">IMEI</th>
+                                        <th class="px-4 py-3 font-semibold text-xs text-right">ราคาต้นทุน</th>
+                                        <th class="px-4 py-3 font-semibold text-xs text-right"><span class="sr-only">นำออก</span></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="stock-issue-scan-body" class="divide-y divide-[#464646]"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- หมายเหตุการจ่ายออก -->
+                <div class="space-y-2">
+                    <label for="stock-issue-reason" class="text-slate-200 font-medium flex items-center gap-2 text-xs">
+                        <i class="fa-solid fa-file-lines text-white"></i> หมายเหตุการจ่ายออก <span class="text-red-500">*</span>
+                    </label>
+                    <textarea id="stock-issue-reason" rows="3" placeholder="เช่น ส่งซ่อม, ชำรุด, สูญหาย, ใช้ภายในร้าน"
+                        class="w-full px-4 py-2.5 rounded-xl bg-[#27272A] border border-[#3F3F46] text-white focus:border-[#FFE169] focus:outline-none transition-all placeholder-slate-500 text-sm resize-none"></textarea>
+                    <div class="flex flex-wrap gap-2">
+                        <button type="button" data-reason="ส่งซ่อม" class="stock-issue-reason-chip px-2 py-0.5 bg-[#3F3F46] rounded text-[10px] text-slate-300 hover:text-white hover:bg-[#5C5C5C]">ส่งซ่อม</button>
+                        <button type="button" data-reason="ชำรุด" class="stock-issue-reason-chip px-2 py-0.5 bg-[#3F3F46] rounded text-[10px] text-slate-300 hover:text-white hover:bg-[#5C5C5C]">ชำรุด</button>
+                        <button type="button" data-reason="สูญหาย" class="stock-issue-reason-chip px-2 py-0.5 bg-[#3F3F46] rounded text-[10px] text-slate-300 hover:text-white hover:bg-[#5C5C5C]">สูญหาย</button>
+                        <button type="button" data-reason="ใช้ภายในร้าน" class="stock-issue-reason-chip px-2 py-0.5 bg-[#3F3F46] rounded text-[10px] text-slate-300 hover:text-white hover:bg-[#5C5C5C]">ใช้ภายในร้าน</button>
+                    </div>
+                </div>
+
+                <div class="flex items-center justify-end gap-4 pt-4 border-t border-[#333333]">
+                    <button id="stock-issue-cancel-btn" type="button"
+                        class="px-10 py-2.5 rounded-xl bg-[#E4E4E7] text-[#18181B] text-[15px] font-bold hover:bg-white transition-colors">ยกเลิก</button>
+                    <button id="stock-issue-submit-btn" type="submit"
+                        class="px-12 py-2.5 rounded-xl bg-[#FFE169] text-[#333333] text-[15px] font-bold hover:bg-[#E2B93C] transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
+                        <i class="fa-solid fa-check"></i> ยืนยันจ่ายออก
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

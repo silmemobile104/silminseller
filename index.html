@@ -26,7 +26,7 @@
     </script>
 
     <link rel="icon" type="image/png" href="logo.png?v=2">
-    <link rel="stylesheet" href="tailwind.css?v=114">
+    <link rel="stylesheet" href="tailwind.css?v=120">
     <!-- xlsx ถูกย้ายไปโหลดแบบ on-demand ตอนเปิด modal นำเข้า Excel แล้ว (ดู ensureXlsxLoaded ใน script.js)
          เดิมโหลดตรงนี้แบบ render-blocking ทุกครั้งที่เข้าเว็บ ทั้งที่ใช้แค่ฟีเจอร์เดียว -->
     <!-- ไอคอน: self-host + ตัดเหลือเฉพาะที่ใช้จริง (Font Awesome 144 + Bootstrap Icons 28)
@@ -190,6 +190,14 @@
                     <i class="bi bi-box-seam text-body-muted w-5 text-center text-xl"></i>
                     <span class="sidebar-text ml-3 font-medium">จัดการสต็อก</span>
 
+                </a>
+
+                <!-- จ่ายออกสินค้า (ตัดสต็อกระดับ IMEI + ประวัติการจ่ายออก) -->
+                <a href="#" id="nav-stock-issue" data-tooltip="จ่ายออกสินค้า"
+                    class="flex items-center px-3 py-3 rounded-xl text-body-muted hover:bg-field/50 hover:text-ink transition-all group nav-menu-item"
+                    style="display: none;">
+                    <i class="fa-solid fa-arrow-up-from-bracket text-body-muted w-5 text-center text-xl"></i>
+                    <span class="sidebar-text ml-3 font-medium">จ่ายออกสินค้า</span>
                 </a>
 
                 <!-- [NEW] ตรวจนับสต็อกประจำวัน (พนักงานขาย) -->
@@ -529,6 +537,11 @@
                 <!-- ============================================================ -->
                 <!-- เนื้อหาแยกไปที่ views/stock-audit.html แล้ว โหลดแบบ dynamic ผ่าน loadPageView('stock-audit') (ดู switchView case 'stock-audit-review') -->
                 <div id="view-stock-audit-review" class="hidden space-y-5 animate-fade-in">
+                </div>
+
+                <!-- VIEW: Stock Issue — จ่ายออกสินค้า -->
+                <!-- เนื้อหาแยกไปที่ views/stock-issue.html แล้ว โหลดแบบ dynamic ผ่าน loadPageView('stock-issue') (ดู switchView case 'stock-issue') -->
+                <div id="view-stock-issue" class="hidden space-y-8 animate-fade-in">
                 </div>
 
                 <!-- VIEW: Branch Inventory -->
@@ -1036,8 +1049,21 @@
                             <span id="modal-acct-account-title">เพิ่มรหัสบัญชี</span>
                         </h3>
                         <input type="hidden" id="acct-account-id">
-                        <input type="hidden" id="acct-account-parent">
                         <p id="acct-account-context" class="text-xs text-body-muted"></p>
+                        <div id="acct-account-cat-wrap" class="hidden">
+                            <label for="acct-account-category" class="block text-body-muted text-xs mb-1">หมวดบัญชี <span class="text-red-400">*</span></label>
+                            <select id="acct-account-category" onchange="if(typeof onAcctAccountCategoryChange==='function') onAcctAccountCategoryChange()"
+                                class="elev-chip w-full px-3 py-2.5 rounded-sm bg-surface-chip text-ink text-sm focus:ring-2 focus:ring-primary-focus outline-none">
+                                <option value="">-- เลือกหมวด --</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="acct-account-parent" class="block text-body-muted text-xs mb-1">กลุ่มบัญชี</label>
+                            <select id="acct-account-parent"
+                                class="elev-chip w-full px-3 py-2.5 rounded-sm bg-surface-chip text-ink text-sm focus:ring-2 focus:ring-primary-focus outline-none">
+                                <option value="">-- ยังไม่จัดกลุ่ม --</option>
+                            </select>
+                        </div>
                         <div>
                             <label for="acct-account-code" class="block text-body-muted text-xs mb-1">รหัสบัญชี <span class="text-red-400">*</span></label>
                             <input type="text" id="acct-account-code" placeholder="เช่น 111101" autocomplete="off" maxlength="20"
@@ -1127,92 +1153,9 @@
                 <div id="view-pnl-config" class="hidden space-y-8 animate-fade-in">
                 </div>
 
-                <!-- Modal: เพิ่ม/แก้ไขรายการงบกำไรขาดทุน (หน้า "ตั้งค่างบกำไรขาดทุน") -->
-                <div id="modal-pl-item" role="dialog" aria-modal="true" aria-labelledby="modal-pl-item-title"
-                    class="fixed inset-0 backdrop-blur-[20px] backdrop-saturate-[1.8] z-50 hidden flex items-center justify-center p-4">
-                    <div class="bg-canvas-elevated rounded-lg w-full max-w-md p-6 space-y-4">
-                        <h3 class="text-lg font-bold text-ink flex items-center gap-2">
-                            <i class="fa-solid fa-pen text-body-muted"></i>
-                            <span id="modal-pl-item-title">เพิ่มรายการงบกำไรขาดทุน</span>
-                        </h3>
-                        <input type="hidden" id="pl-item-id">
-                        <div>
-                            <label for="pl-item-group" class="block text-body-muted text-xs mb-1">กลุ่มบัญชี <span class="text-red-400">*</span></label>
-                            <select id="pl-item-group"
-                                class="elev-chip w-full px-3 py-2.5 rounded-sm bg-surface-chip text-ink text-sm focus:ring-2 focus:ring-primary-focus outline-none">
-                                <option value="">-- เลือกกลุ่มบัญชี --</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label for="pl-item-order" class="block text-body-muted text-xs mb-1">ลำดับ <span class="text-red-400">*</span></label>
-                            <input type="number" id="pl-item-order" min="1" step="1" placeholder="เช่น 1" autocomplete="off"
-                                class="elev-chip w-full px-3 py-2.5 rounded-sm bg-surface-chip text-ink text-sm font-mono focus:ring-2 focus:ring-primary-focus outline-none">
-                        </div>
-                        <div>
-                            <label for="pl-item-name" class="block text-body-muted text-xs mb-1">ชื่อรายการ <span class="text-red-400">*</span></label>
-                            <input type="text" id="pl-item-name" placeholder="เช่น รายได้จากการขายสินค้า-Iphone" autocomplete="off" maxlength="120"
-                                class="elev-chip w-full px-3 py-2.5 rounded-sm bg-surface-chip text-ink text-sm focus:ring-2 focus:ring-primary-focus outline-none">
-                        </div>
-                        <div>
-                            <span id="pl-item-accounts-label" class="block text-body-muted text-xs mb-1">ประกอบด้วยรหัสบัญชี</span>
-                            <div id="pl-item-accounts" role="group" aria-labelledby="pl-item-accounts-label" tabindex="0"
-                                class="elev-chip max-h-48 overflow-y-auto rounded-sm bg-surface-chip p-2 space-y-1 text-sm text-ink"></div>
-                        </div>
-                        <div class="flex gap-3 pt-2">
-                            <button type="button" id="pl-item-save" onclick="if(typeof savePlItem==='function') savePlItem()"
-                                class="flex-1 py-2.5 bg-primary hover:bg-primary-pressed text-on-primary rounded-pill font-medium text-sm transition-all cursor-pointer">บันทึก</button>
-                            <button type="button" onclick="if(typeof closePlItemModal==='function') closePlItemModal()"
-                                class="flex-1 py-2.5 bg-surface-chip hover:bg-surface-tile-2 text-body-muted rounded-pill font-medium text-sm transition-all cursor-pointer">ยกเลิก</button>
-                        </div>
-                    </div>
-                </div>
-
                 <!-- VIEW: ตั้งค่างบดุล -->
                 <!-- เนื้อหาอยู่ที่ views/accounting-settings.html โหลดแบบ dynamic ผ่าน loadPageView('accounting-settings') (ดู switchView case 'balance-sheet-config') -->
                 <div id="view-balance-sheet-config" class="hidden space-y-8 animate-fade-in">
-                </div>
-
-                <!-- Modal: เพิ่ม/แก้ไขบัญชีงบดุล (หน้า "ตั้งค่างบดุล") -->
-                <div id="modal-bs-item" role="dialog" aria-modal="true" aria-labelledby="modal-bs-item-title"
-                    class="fixed inset-0 backdrop-blur-[20px] backdrop-saturate-[1.8] z-50 hidden flex items-center justify-center p-4">
-                    <div class="bg-canvas-elevated rounded-lg w-full max-w-md p-6 space-y-4">
-                        <h3 class="text-lg font-bold text-ink flex items-center gap-2">
-                            <i class="fa-solid fa-pen text-body-muted"></i>
-                            <span id="modal-bs-item-title">เพิ่มบัญชีงบดุล</span>
-                        </h3>
-                        <input type="hidden" id="bs-item-id">
-                        <div>
-                            <label for="bs-item-group" class="block text-body-muted text-xs mb-1">กลุ่มบัญชี <span class="text-red-400">*</span></label>
-                            <select id="bs-item-group" onchange="if(typeof onBsGroupChange==='function') onBsGroupChange()"
-                                class="elev-chip w-full px-3 py-2.5 rounded-sm bg-surface-chip text-ink text-sm focus:ring-2 focus:ring-primary-focus outline-none">
-                                <option value="">-- เลือกกลุ่มบัญชี --</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label for="bs-item-order" class="block text-body-muted text-xs mb-1">ลำดับ <span class="text-red-400">*</span></label>
-                            <input type="number" id="bs-item-order" min="1" step="1" placeholder="เช่น 1" autocomplete="off"
-                                class="elev-chip w-full px-3 py-2.5 rounded-sm bg-surface-chip text-ink text-sm font-mono focus:ring-2 focus:ring-primary-focus outline-none">
-                        </div>
-                        <div>
-                            <label for="bs-item-name" class="block text-body-muted text-xs mb-1">ชื่อรายการ <span class="text-red-400">*</span></label>
-                            <input type="text" id="bs-item-name" placeholder="เช่น เงินสด" autocomplete="off" maxlength="120"
-                                class="elev-chip w-full px-3 py-2.5 rounded-sm bg-surface-chip text-ink text-sm focus:ring-2 focus:ring-primary-focus outline-none">
-                        </div>
-                        <div>
-                            <span id="bs-item-accounts-label" class="block text-body-muted text-xs mb-1">ประกอบด้วยรหัสบัญชี</span>
-                            <!-- รายการบัญชีเติมจาก JS ตามหมวดของกลุ่มที่เลือก (ดู onBsGroupChange) -->
-                            <div id="bs-item-accounts" role="group" aria-labelledby="bs-item-accounts-label" tabindex="0"
-                                class="elev-chip max-h-48 overflow-y-auto rounded-sm bg-surface-chip p-2 space-y-1 text-sm text-ink">
-                                <p class="px-2 py-1 text-body-muted text-xs">เลือกกลุ่มบัญชีก่อน</p>
-                            </div>
-                        </div>
-                        <div class="flex gap-3 pt-2">
-                            <button type="button" id="bs-item-save" onclick="if(typeof saveBsItem==='function') saveBsItem()"
-                                class="flex-1 py-2.5 bg-primary hover:bg-primary-pressed text-on-primary rounded-pill font-medium text-sm transition-all cursor-pointer">บันทึก</button>
-                            <button type="button" onclick="if(typeof closeBsItemModal==='function') closeBsItemModal()"
-                                class="flex-1 py-2.5 bg-surface-chip hover:bg-surface-tile-2 text-body-muted rounded-pill font-medium text-sm transition-all cursor-pointer">ยกเลิก</button>
-                        </div>
-                    </div>
                 </div>
 
                 <!-- Modal: เพิ่ม/แก้ไขรหัสบัญชี -->
@@ -1624,6 +1567,15 @@
                         </div>
                     </div>
                     <p id="transfer-cart-error" class="hidden text-xs text-red-400"></p>
+                </div>
+
+                <div class="space-y-2">
+                    <label for="transfer-note" class="text-ink font-medium flex items-center gap-2 text-xs">
+                        <i class="fa-solid fa-file-lines text-ink"></i> หมายเหตุ
+                    </label>
+                    <textarea id="transfer-note" rows="2" maxlength="500"
+                        placeholder="หมายเหตุการโอนย้าย (ไม่บังคับ)"
+                        class="elev-field w-full px-4 py-2.5 rounded-xl bg-field text-ink focus:ring-2 focus:ring-accent-ink focus:outline-none transition-all placeholder-ink-muted-48 text-sm resize-none"></textarea>
                 </div>
             </div>
 
@@ -4151,33 +4103,33 @@
         class="hidden fixed inset-0 z-50 flex items-center justify-center bg-canvas/70 backdrop-blur-sm opacity-0 pointer-events-none transition-all duration-300 p-4"
         role="dialog" aria-modal="true" aria-labelledby="arrival-modal-title">
         <div
-            class="elev-modal modal-content relative w-full max-w-5xl max-h-[92vh] flex flex-col bg-elevated rounded-xl overflow-hidden transform scale-95 transition-transform duration-300">
-            <!-- [1] หัวโมดัล -->
-            <div class="shrink-0 px-6 pt-5 pb-4 border-b border-hairline flex items-start justify-between gap-4">
+            class="modal-content relative w-full max-w-5xl max-h-[92vh] flex flex-col bg-[#18181B] border border-[#4D4D4D] rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.5)] overflow-hidden transform scale-95 transition-transform duration-300">
+            <!-- [1] หัวโมดัล: ไอคอนเล็ก + ชื่อ + เลข PO สีเหลือง + ปุ่มปิดแดง (ตามเฟรม Desktop - 48) -->
+            <div class="shrink-0 px-8 py-5 border-b border-[#4D4D4D] flex items-start justify-between gap-4">
                 <div class="flex items-start gap-3.5 min-w-0">
                     <div id="arrival-modal-icon-container"
-                        class="w-11 h-11 shrink-0 rounded-sm bg-primary/10 flex items-center justify-center">
+                        class="w-10 h-10 shrink-0 rounded-lg bg-[#FFE169]/10 flex items-center justify-center">
                         <i id="arrival-modal-icon" class="fa-solid fa-truck-ramp-box text-accent-ink"></i>
                     </div>
                     <div class="min-w-0">
-                        <h3 id="arrival-modal-title" class="text-xl font-bold text-ink flex flex-wrap items-baseline gap-x-2">
+                        <h3 id="arrival-modal-title" class="text-xl font-semibold text-white flex flex-wrap items-baseline gap-x-2">
                             <span id="arrival-title-prefix">ยืนยันสินค้าถึงสาขาและบันทึก IMEI</span>
-                            <span id="arrival-po-number" class="font-mono text-accent-ink"></span>
+                            <span id="arrival-po-number" class="font-mono text-[#FFE169]"></span>
                         </h3>
-                        <p id="arrival-po-meta" class="text-[13px] text-body-muted mt-1"></p>
+                        <p id="arrival-po-meta" class="text-[13px] text-white/70 mt-1"></p>
                     </div>
                 </div>
                 <button type="button" aria-label="ปิด" id="btn-close-po-arrival"
-                    class="shrink-0 w-10 h-10 flex items-center justify-center text-body-muted hover:text-ink rounded-full hover:bg-surface-chip transition-colors cursor-pointer">
+                    class="shrink-0 p-1 text-red-500 hover:text-red-400 transition-colors cursor-pointer">
                     <i class="fa-solid fa-xmark text-xl"></i>
                 </button>
             </div>
 
-            <div class="flex-1 min-h-0 overflow-y-auto px-6 py-5 space-y-5" tabindex="0">
+            <div class="flex-1 min-h-0 overflow-y-auto px-8 py-6 space-y-6" tabindex="0">
                 <!-- [2] คำแนะนำ (โหมดแก้ไขเปลี่ยนข้อความ) -->
-                <div class="flex items-start gap-3 px-4 py-3 rounded-sm bg-primary/[0.08] text-[13px]">
+                <div class="flex items-start gap-3 px-4 py-3 rounded-xl bg-[#FFE169]/[0.08] text-[13px]">
                     <i class="fa-solid fa-circle-info text-accent-ink mt-0.5"></i>
-                    <p class="text-body-muted">
+                    <p class="text-white/70">
                         <span id="arrival-banner-title" class="font-semibold text-accent-ink">คำแนะนำสำหรับพนักงานขาย</span>
                         <span class="mx-1 text-ink-muted-48">—</span>
                         <span id="arrival-banner-desc">ตรวจสินค้าที่ส่งมาถึงสาขา สแกน IMEI ให้ครบทุกเครื่อง และระบุจำนวนอุปกรณ์เสริมที่ได้รับในรอบนี้</span>
@@ -4186,47 +4138,47 @@
 
                 <!-- [3] ความคืบหน้า -->
                 <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
-                    <div data-arr-dev class="bg-surface-tile-2 rounded-sm px-4 py-3">
-                        <p class="text-xs font-medium text-body-muted">เครื่องตาม PO</p>
-                        <p class="flex items-baseline gap-1.5 mt-0.5"><span id="arr-stat-target" class="text-2xl font-bold text-ink">0</span>
-                            <span id="arr-stat-models" class="text-xs text-body-muted">เครื่อง</span></p>
+                    <div data-arr-dev class="bg-[#27272A] rounded-xl px-5 py-4">
+                        <p class="text-xs font-medium text-white/70">เครื่องตาม PO</p>
+                        <p class="flex items-baseline gap-1.5 mt-0.5"><span id="arr-stat-target" class="text-2xl font-bold text-white">0</span>
+                            <span id="arr-stat-models" class="text-xs text-white/70">เครื่อง</span></p>
                     </div>
-                    <div data-arr-dev class="bg-primary/[0.08] ring-1 ring-accent-ink rounded-sm px-4 py-3">
+                    <div data-arr-dev class="bg-[#FFE169]/[0.08] ring-1 ring-[#FFE169]/60 rounded-xl px-5 py-4">
                         <p class="text-xs font-medium text-accent-ink">สแกนแล้ว</p>
                         <p class="flex items-baseline gap-1.5 mt-0.5"><span id="arr-stat-scanned" class="text-2xl font-bold text-accent-ink">0</span>
-                            <span id="arr-stat-scanned-of" class="text-xs text-body-muted">/ 0 เครื่อง</span></p>
+                            <span id="arr-stat-scanned-of" class="text-xs text-white/70">/ 0 เครื่อง</span></p>
                     </div>
-                    <div data-arr-dev class="bg-surface-tile-2 rounded-sm px-4 py-3">
-                        <p class="text-xs font-medium text-body-muted">รอสแกน</p>
-                        <p class="flex items-baseline gap-1.5 mt-0.5"><span id="arr-stat-remaining" class="text-2xl font-bold text-ink">0</span>
-                            <span class="text-xs text-body-muted">เครื่อง</span></p>
+                    <div data-arr-dev class="bg-[#27272A] rounded-xl px-5 py-4">
+                        <p class="text-xs font-medium text-white/70">รอสแกน</p>
+                        <p class="flex items-baseline gap-1.5 mt-0.5"><span id="arr-stat-remaining" class="text-2xl font-bold text-white">0</span>
+                            <span class="text-xs text-white/70">เครื่อง</span></p>
                     </div>
-                    <div data-arr-acc class="bg-surface-tile-2 rounded-sm px-4 py-3">
-                        <p class="text-xs font-medium text-body-muted">อุปกรณ์เสริมรอบนี้</p>
-                        <p class="flex items-baseline gap-1.5 mt-0.5"><span id="arr-stat-pieces" class="text-2xl font-bold text-ink">0</span>
-                            <span id="arr-stat-pieces-sub" class="text-xs text-body-muted">ชิ้น</span></p>
+                    <div data-arr-acc class="bg-[#27272A] rounded-xl px-5 py-4">
+                        <p class="text-xs font-medium text-white/70">อุปกรณ์เสริมรอบนี้</p>
+                        <p class="flex items-baseline gap-1.5 mt-0.5"><span id="arr-stat-pieces" class="text-2xl font-bold text-white">0</span>
+                            <span id="arr-stat-pieces-sub" class="text-xs text-white/70">ชิ้น</span></p>
                     </div>
                 </div>
 
                 <!-- [4] ช่องสแกน IMEI -->
                 <div id="arrival-scan-card" class="space-y-2.5">
                     <div class="flex flex-wrap items-center justify-between gap-2">
-                        <label for="arrival-scan-input" class="text-[15px] font-bold text-ink">สแกน IMEI</label>
-                        <span class="text-xs text-body-muted">ยิงบาร์โค้ดทีละเครื่อง ระบบจะจัดเข้ารุ่นให้อัตโนมัติ · วางหลายบรรทัดได้</span>
+                        <label for="arrival-scan-input" class="text-[15px] font-semibold text-white">สแกน IMEI</label>
+                        <span class="text-xs text-white/70">ยิงบาร์โค้ดทีละเครื่อง ระบบจะจัดเข้ารุ่นให้อัตโนมัติ · วางหลายบรรทัดได้</span>
                     </div>
                     <div class="flex flex-col sm:flex-row gap-2.5">
                         <div class="relative flex-1 min-w-0">
                             <i class="fa-solid fa-barcode absolute left-4 top-1/2 -translate-y-1/2 text-accent-ink pointer-events-none"></i>
                             <input type="text" id="arrival-scan-input" autocomplete="off" inputmode="numeric"
                                 placeholder="ยิงบาร์โค้ด หรือพิมพ์ IMEI แล้วกด Enter..."
-                                class="w-full h-12 pl-11 pr-20 rounded-sm bg-surface-chip text-ink text-base placeholder:text-body-muted border-2 border-transparent focus:outline-none focus:border-accent-ink disabled:opacity-60 transition-all">
-                            <kbd class="absolute right-4 top-1/2 -translate-y-1/2 px-2 py-0.5 rounded-xs border border-hairline text-[11px] font-medium text-body-muted font-sans pointer-events-none">Enter</kbd>
+                                class="w-full h-12 pl-11 pr-20 rounded-xl bg-[#27272A] text-white text-base placeholder:text-white/50 border-2 border-transparent focus:outline-none focus:border-accent-ink disabled:opacity-60 transition-all">
+                            <kbd class="absolute right-4 top-1/2 -translate-y-1/2 px-2 py-0.5 rounded border border-[#4D4D4D] text-[11px] font-medium text-white/70 font-sans pointer-events-none">Enter</kbd>
                         </div>
                         <button type="button" id="btn-arrival-scan-add"
-                            class="h-12 px-6 bg-primary hover:bg-primary-pressed active:scale-95 text-on-primary text-[15px] font-bold rounded-pill transition-all cursor-pointer">
+                            class="h-12 px-8 bg-[#FFE169] hover:bg-[#E2B93C] active:scale-95 text-black text-[15px] font-bold rounded-lg transition-all cursor-pointer">
                             เพิ่ม IMEI</button>
                     </div>
-                    <div id="arrival-last-scan" class="hidden flex flex-wrap items-center gap-x-2.5 gap-y-1 px-3.5 py-2.5 rounded-sm bg-surface-tile-2 text-[13px]"
+                    <div id="arrival-last-scan" class="hidden flex flex-wrap items-center gap-x-2.5 gap-y-1 px-3.5 py-2.5 rounded-xl bg-[#27272A] text-[13px]"
                         role="status" aria-live="polite"></div>
                 </div>
 
@@ -4234,103 +4186,95 @@
                 <div id="arrival-po-items" class="space-y-5"></div>
             </div>
 
-            <!-- [6] แถบยืนยัน -->
-            <div class="shrink-0 px-6 py-4 border-t border-hairline bg-surface-tile-2 flex flex-col md:flex-row md:items-center gap-3">
+            <!-- [6] แถบยืนยัน: สรุปซ้าย ปุ่มกลาง/ขวา ปุ่มหลักสีเหลือง -->
+            <div class="shrink-0 px-8 py-5 border-t border-[#4D4D4D] flex flex-col md:flex-row md:items-center gap-4">
                 <div class="flex-1 min-w-0">
-                    <p id="arrival-sum-line" class="text-sm font-medium text-ink">แจ้งถึงสาขาในรอบนี้</p>
+                    <p id="arrival-sum-line" class="text-sm font-medium text-white">แจ้งถึงสาขาในรอบนี้</p>
                     <p id="arrival-remaining-warn" class="hidden text-xs font-medium text-accent-ink mt-0.5"></p>
                 </div>
-                <div class="flex items-center gap-2.5">
+                <div class="flex items-center justify-center gap-3">
                     <button type="button" id="btn-cancel-po-arrival"
-                        class="px-5 py-2.5 bg-surface-chip hover:ring-1 hover:ring-accent-ink text-ink text-[15px] font-medium rounded-pill transition-all cursor-pointer">
+                        class="px-8 py-2.5 bg-[#27272A] border border-[#4D4D4D] hover:bg-[#3F3F46] text-white text-[15px] font-medium rounded-lg transition-colors cursor-pointer">
                         ยกเลิก</button>
                     <button type="button" id="btn-submit-po-arrival"
-                        class="px-6 py-2.5 bg-primary hover:bg-primary-pressed active:scale-95 text-on-primary text-[15px] font-bold rounded-pill transition-all cursor-pointer disabled:opacity-60 flex items-center gap-2">
+                        class="px-10 py-2.5 bg-[#FFE169] hover:bg-[#E2B93C] active:scale-95 text-black text-[15px] font-bold rounded-lg transition-all cursor-pointer disabled:opacity-60 flex items-center gap-2">
                         ยืนยันรายการและแจ้งของถึงสาขา</button>
                 </div>
             </div>
         </div>
     </div>
-    <!-- PO Read-Only View Detail Modal -->
+    <!-- PO Read-Only View Detail Modal — ธีมมืด ตามสไตล์โมดัลตรวจรับสินค้า (DESIGN.md §11.10) -->
     <div id="modal-po-view"
         class="hidden fixed inset-0 z-50 flex items-center justify-center bg-canvas/75 backdrop-blur-sm opacity-0 pointer-events-none transition-all duration-300 p-4">
-        <div
-            class="elev-modal modal-content relative w-full max-w-4xl max-h-[90vh] flex flex-col bg-elevated rounded-2xl transform scale-95 transition-transform duration-300">
-            <div
-                class="p-6 border-b border-hairline flex justify-between items-center bg-elevated rounded-t-2xl shrink-0">
-                <h3 class="text-lg font-medium text-ink flex items-center gap-2">
-                    <i class="fa-solid fa-file-lines text-accent-ink text-sm"></i> รายละเอียดใบสั่งซื้อ PO: <span
-                        id="view-po-number" class="font-mono"></span>
-                </h3>
+        <div role="dialog" aria-modal="true" aria-labelledby="view-po-title"
+            class="modal-content relative w-full max-w-5xl max-h-[90vh] flex flex-col bg-[#18181B] border border-[#4D4D4D] rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.5)] transform scale-95 transition-transform duration-300">
+            <!-- หัวโมดัล: ชื่อเอกสาร + เลข PO สีเหลือง + สถานะ -->
+            <div class="px-8 py-5 border-b border-[#4D4D4D] flex justify-between items-center gap-4 shrink-0">
+                <div class="flex flex-wrap items-center gap-x-4 gap-y-2 min-w-0">
+                    <h3 id="view-po-title" class="text-xl font-semibold text-white">
+                        รายละเอียดใบสั่งซื้อ PO: <span id="view-po-number" class="font-mono text-[#FFE169]"></span>
+                    </h3>
+                    <span id="view-po-status" class="inline-flex">-</span>
+                </div>
                 <button aria-label="ปิด" id="btn-close-po-view"
-                    class="text-red-500 hover:text-red-400 transition-colors">
+                    class="shrink-0 text-red-500 hover:text-red-400 transition-colors p-1">
                     <i class="fa-solid fa-xmark text-xl"></i>
                 </button>
             </div>
-            <div class="flex-1 overflow-y-auto p-6 space-y-6">
-                <!-- Info cards grid -->
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div class="elev-field bg-field p-4 rounded-xl">
-                        <span class="text-ink text-xs font-medium block mb-1.5">ผู้จัดจำหน่าย (Supplier)</span>
-                        <span id="view-po-supplier" class="text-ink font-medium text-sm flex items-center gap-1.5"><i
-                                class="fa-solid fa-building text-ink/70 text-xs"></i> -</span>
+            <div class="flex-1 overflow-y-auto px-8 py-6 space-y-7" tabindex="0">
+                <!-- ข้อมูลหลัก: ผู้จัดจำหน่าย / สาขาปลายทาง -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div class="bg-[#27272A] rounded-xl px-5 py-4">
+                        <span class="text-white/70 text-xs font-medium block mb-1.5">ผู้จัดจำหน่าย (Supplier)</span>
+                        <span id="view-po-supplier" class="text-white font-medium text-[15px] flex items-center gap-2"><i
+                                class="fa-solid fa-building text-white/70 text-xs"></i> -</span>
                     </div>
-                    <div class="elev-field bg-field p-4 rounded-xl">
-                        <span class="text-ink text-xs font-medium block mb-1.5">สาขาปลายทาง (Branch)</span>
-                        <span id="view-po-branch" class="text-ink font-medium text-sm flex items-center gap-1.5"><i
-                                class="fa-solid fa-location-dot text-ink/70 text-xs"></i> -</span>
-                    </div>
-                    <div class="elev-field bg-field p-4 rounded-xl">
-                        <span class="text-ink text-xs font-medium block mb-1.5">สถานะปัจจุบัน (Status)</span>
-                        <span id="view-po-status"
-                            class="elev-chip inline-flex px-2.5 py-0.5 rounded-full text-xs font-semibold bg-ink/5 text-body-muted">-</span>
+                    <div class="bg-[#27272A] rounded-xl px-5 py-4">
+                        <span class="text-white/70 text-xs font-medium block mb-1.5">สาขาปลายทาง (Branch)</span>
+                        <span id="view-po-branch" class="text-white font-medium text-[15px] flex items-center gap-2"><i
+                                class="fa-solid fa-location-dot text-white/70 text-xs"></i> -</span>
                     </div>
                 </div>
-                <div class="space-y-3">
-                    <label class="text-ink font-medium flex items-center gap-2 text-xs"><i
-                            class="fa-solid fa-cubes text-ink"></i> รายการสินค้าและยอดตรวจรับ</label>
-                    <div id="view-po-items" class="space-y-4 font-normal">
-                        <!-- Dynamic PO items read-only list -->
-                    </div>
+                <div id="view-po-items" class="space-y-8 font-normal">
+                    <!-- Dynamic PO items read-only list -->
                 </div>
-                <div id="view-po-payment-section" class="space-y-3 pt-4 border-t border-line">
-                    <label class="text-ink font-medium flex items-center gap-2 text-xs"><i
-                            class="fa-solid fa-receipt text-accent-ink"></i> รายละเอียดการชำระเงิน</label>
-                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                        <div class="elev-field bg-field p-4 rounded-xl">
-                            <span class="text-ink text-xs font-medium block mb-1.5">สถานะชำระเงิน</span>
-                            <span id="view-po-pay-status" class="text-ink font-medium text-sm">-</span>
+                <!-- สรุปการชำระเงิน -->
+                <div id="view-po-payment-section" class="space-y-4 pt-6 border-t border-[#4D4D4D]">
+                    <h4 class="text-white font-semibold text-base">รายละเอียดการชำระเงิน</h4>
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                        <div class="bg-[#27272A] rounded-xl px-5 py-4">
+                            <span class="text-white/70 text-xs font-medium block mb-1.5">สถานะชำระเงิน</span>
+                            <span id="view-po-pay-status" class="text-white font-medium text-sm">-</span>
                         </div>
-                        <div class="elev-field bg-field p-4 rounded-xl">
-                            <span class="text-ink text-xs font-medium block mb-1.5">ยอดจ่ายจริงแล้ว</span>
-                            <span id="view-po-pay-paid" class="text-emerald-400 font-bold text-sm font-mono">-</span>
+                        <div class="bg-[#27272A] rounded-xl px-5 py-4">
+                            <span class="text-white/70 text-xs font-medium block mb-1.5">ยอดจ่ายจริงแล้ว</span>
+                            <span id="view-po-pay-paid" class="text-[#20D500] font-bold text-base font-mono">-</span>
                         </div>
-                        <div class="elev-field bg-field p-4 rounded-xl">
-                            <span class="text-ink text-xs font-medium block mb-1.5">ส่วนลดรวม</span>
-                            <span id="view-po-pay-discount" class="text-rose-400 font-bold text-sm font-mono">-</span>
+                        <div class="bg-[#27272A] rounded-xl px-5 py-4">
+                            <span class="text-white/70 text-xs font-medium block mb-1.5">ส่วนลดรวม</span>
+                            <span id="view-po-pay-discount" class="text-rose-400 font-bold text-base font-mono">-</span>
                         </div>
-                        <div class="elev-field bg-field p-4 rounded-xl">
-                            <span class="text-ink text-xs font-medium block mb-1.5">ยอดคงเหลือค้างจ่าย</span>
+                        <div class="bg-[#27272A] rounded-xl px-5 py-4 ring-1 ring-[#FFE169]/30">
+                            <span class="text-white/70 text-xs font-medium block mb-1.5">ยอดคงเหลือค้างจ่าย</span>
                             <span id="view-po-pay-outstanding"
-                                class="text-amber-400 font-bold text-sm font-mono">-</span>
+                                class="text-[#FFE169] font-bold text-base font-mono">-</span>
                         </div>
                     </div>
-                    <div id="view-po-payments-history-container" class="space-y-2 pt-2 hidden">
-                        <span class="text-ink text-xs font-medium block"><i
-                                class="fa-solid fa-clock-rotate-left mr-1 text-ink/70"></i>ประวัติการจ่ายเงินสด
-                            (แต่ละรอบ)</span>
-                        <div class="elev-chip overflow-x-auto rounded-xl">
-                            <table class="w-full text-left border-collapse text-xs">
+                    <div id="view-po-payments-history-container" class="space-y-2 pt-1 hidden">
+                        <span class="text-white/70 text-xs font-medium block"><i
+                                class="fa-solid fa-clock-rotate-left mr-1"></i>ประวัติการจ่ายเงินสด (แต่ละรอบ)</span>
+                        <div class="overflow-x-auto rounded-xl bg-[#27272A]" tabindex="0">
+                            <table class="w-full text-left border-collapse text-sm whitespace-nowrap">
                                 <thead>
-                                    <tr class="bg-surface-tile-3 text-body-muted border-b border-line">
-                                        <th class="p-3 font-semibold">รอบที่</th>
-                                        <th class="p-3 font-semibold">วันที่จ่าย</th>
-                                        <th class="p-3 font-semibold">เลขที่ธุรกรรม</th>
-                                        <th class="p-3 font-semibold text-right">จำนวนเงินจ่ายจริง</th>
-                                        <th class="p-3 font-semibold text-right">ผู้บันทึก</th>
+                                    <tr class="bg-[#4D4D4D]/40 text-white">
+                                        <th class="px-6 py-3 font-semibold">รอบที่</th>
+                                        <th class="px-6 py-3 font-semibold">วันที่จ่าย</th>
+                                        <th class="px-6 py-3 font-semibold">เลขที่ธุรกรรม</th>
+                                        <th class="px-6 py-3 font-semibold text-right">จำนวนเงินจ่ายจริง</th>
+                                        <th class="px-6 py-3 font-semibold text-right">ผู้บันทึก</th>
                                     </tr>
                                 </thead>
-                                <tbody id="view-po-payments-history-rows" class="text-body-muted font-normal">
+                                <tbody id="view-po-payments-history-rows" class="text-white font-normal">
                                     <!-- Dynamic rows -->
                                 </tbody>
                             </table>
@@ -4338,12 +4282,12 @@
                     </div>
                 </div>
             </div>
-            <div class="p-6 border-t border-hairline bg-elevated rounded-b-2xl flex gap-3 shrink-0">
+            <div class="px-8 py-5 border-t border-[#4D4D4D] flex justify-center gap-3 shrink-0">
                 <button id="btn-close-po-view-bottom"
-                    class="flex-1 py-3 rounded-xl bg-[#E4E4E7] text-[#18181B] font-bold hover:bg-white transition-colors">
+                    class="px-16 py-2.5 rounded-lg bg-[#FFE169] text-black text-[15px] font-bold hover:bg-[#E2B93C] transition-colors">
                     ปิดหน้าต่าง </button>
                 <button id="btn-edit-po-from-view"
-                    class="flex-1 py-3 rounded-xl bg-primary text-on-primary font-bold hover:bg-[#E2B93C] transition-colors hidden">
+                    class="px-10 py-2.5 rounded-lg bg-[#27272A] border border-[#4D4D4D] text-white text-[15px] font-bold hover:bg-[#3F3F46] transition-colors hidden">
                     <i class="fa-solid fa-pen-to-square mr-1.5"></i> แก้ไขใบสั่งซื้อ </button>
             </div>
         </div>
@@ -4437,6 +4381,10 @@
                     <div class="space-y-1">
                         <span class="text-xs text-ink/70 block">ผู้ทำรายการ</span>
                         <span id="transfer-view-sender" class="text-sm text-ink">-</span>
+                    </div>
+                    <div class="space-y-1 col-span-2">
+                        <span class="text-xs text-ink/70 block">หมายเหตุ</span>
+                        <span id="transfer-view-note" class="text-sm text-ink whitespace-pre-wrap break-words">-</span>
                     </div>
                 </div>
 
@@ -5389,7 +5337,7 @@
     <!-- defer: ปล่อยให้ parse HTML จบก่อนค่อย execute
          ปลอดภัยเพราะทั้งไฟล์ห่ออยู่ใน DOMContentLoaded listener อยู่แล้ว
          และสคริปต์ defer จะ execute ก่อน event DOMContentLoaded ยิงเสมอ -->
-    <script defer src="script.js?v=apple_active_v132"></script>
+    <script defer src="script.js?v=apple_active_v151"></script>
     <script>
         // ลงทะเบียน Service Worker เพื่อแคช asset คงที่ (css/js/font/icon/รูป) ไว้ฝั่งเครื่อง
         // เข้าเว็บครั้งถัดไปเร็วขึ้นมาก โดยเฉพาะตอนเน็ตช้าหรือหลุดชั่วคราว — ดูรายละเอียดที่ sw.js

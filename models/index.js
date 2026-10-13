@@ -232,7 +232,9 @@ const ProductUnit = mongoose.model('ProductUnit', productUnitSchema, 'productuni
 
 // 6. ProductColor (สี: ดำ, ขาว, เทา)
 const productColorSchema = new mongoose.Schema({
-    name: { type: String, required: true, unique: true }
+    name: { type: String, required: true, unique: true },
+    // รหัสสี hex (#RRGGBB) — ตั้งไว้แล้วชนะตารางเดาสีจากชื่อใน resolveProductColorHex ของ script.js
+    color_code: { type: String, default: '' }
 });
 const ProductColor = mongoose.model('ProductColor', productColorSchema, 'productcolor');
 
@@ -259,7 +261,10 @@ const ProductName = mongoose.model('ProductName', productNameSchema, 'productnam
 
 // 10. Supplier (ผู้จัดจำหน่าย)
 const supplierSchema = new mongoose.Schema({
-    name: { type: String, required: true }
+    name: { type: String, required: true },
+    // วงเงินเครดิตที่ซื้อจากผู้จัดจำหน่ายรายนี้ได้ (บาท) — บังคับตอนเพิ่มใหม่ผ่านหน้าตั้งค่า
+    // รายเดิมที่สร้างก่อนมีฟิลด์นี้เป็น null = ยังไม่ได้ตั้งวงเงิน
+    credit_limit: { type: Number, default: null, min: 0 }
 }, { timestamps: true });
 const Supplier = mongoose.model('Supplier', supplierSchema, 'supplier');
 
@@ -309,6 +314,32 @@ movementSchema.index({ from_branch: 1 });
 movementSchema.index({ to_branch: 1 });
 movementSchema.index({ created_at: -1 });
 const Movement = mongoose.model('Movement', movementSchema, 'movement');
+
+// 11.2 StockIssue (ใบจ่ายออกสินค้า — ตัดสต็อกที่ไม่ใช่การขาย/โอน เช่น ชำรุด สูญหาย ส่งซ่อม ใช้ภายใน)
+// หนึ่งใบ = หนึ่งครั้งที่กดบันทึก จ่ายได้ทีละชิ้น (mode 'single') หรือหลายชิ้น (mode 'multi')
+const stockIssueSchema = new mongoose.Schema({
+    issue_no: { type: String, required: true, unique: true },
+    branch_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Branch', required: true },
+    mode: { type: String, enum: ['single', 'multi'], default: 'single' },
+    reason: { type: String, required: true }, // หมายเหตุการจ่ายออก
+    items: [{
+        product_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Product', required: true },
+        product_code: { type: String, default: '' },
+        product_name: { type: String, default: '' },
+        color_name: { type: String, default: '' },
+        imei: { type: String, required: true },
+        supplier_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Supplier', default: null },
+        supplier_name: { type: String, default: '' }, // เก็บชื่อไว้ตอนจ่ายออก กันชื่อเปลี่ยนภายหลัง
+        cost_price: { type: Number, default: 0 }
+    }],
+    total_qty: { type: Number, default: 0 },
+    total_cost: { type: Number, default: 0 }, // มูลค่าต้นทุนรวมของใบ
+    created_by: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee', required: true },
+    created_by_name: { type: String, default: '' }
+}, { timestamps: true });
+stockIssueSchema.index({ branch_id: 1, createdAt: -1 });
+stockIssueSchema.index({ 'items.imei': 1 });
+const StockIssue = mongoose.model('StockIssue', stockIssueSchema, 'stockissue');
 
 // Auto-migration helper (จะถูกเรียกตอนเริ่มรันเซิร์ฟเวอร์)
 async function migrateProductsToERP() {
@@ -416,6 +447,7 @@ const transferSchema = new mongoose.Schema({
         quantity: { type: Number, default: 1 }
     }],
     status: { type: String, default: 'รอดำเนินการ' }, // รอดำเนินการ | รับเข้าแล้ว | ยกเลิกแล้ว
+    note: { type: String, default: '' }, // หมายเหตุของใบโอน (ผู้สร้างกรอกตอนสร้าง)
     created_by: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee', required: true },
     received_by: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee', default: null },
     cancelled_by: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee', default: null }, // ผู้ที่กดยกเลิก (สาขาต้นทาง)
@@ -487,7 +519,9 @@ const purchaseOrderSchema = new mongoose.Schema({
         ordered_qty: { type: Number, required: true },
         received_qty: { type: Number, default: 0 },
         cost_price: { type: Number, required: true },
-        selling_price: { type: Number, required: true },
+        // ส่วนลดต่อชิ้น = ส่วนลดท้ายบิลหารจำนวนชิ้นทั้งใบ (สะสมจากทุกรอบที่ชำระ) — ต้นทุนสุทธิ = cost_price - discount_per_unit
+        discount_per_unit: { type: Number, default: 0 },
+        selling_price: { type: Number, default: 0 }, // กำหนดตอนตรวจรับ/อนุมัตินำเข้า
         imeis_scanned: [{ type: String }],
         imported_qty: { type: Number, default: 0 },
         imported_imeis: [{ type: String }]
@@ -806,6 +840,7 @@ module.exports = {
     Supplier,
     Product,
     Movement,
+    StockIssue,
     Transaction,
     Transfer,
     Member,

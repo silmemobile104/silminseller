@@ -20,6 +20,7 @@
     const transferTableBody = document.getElementById('transfer-table-body');
     const btnCloseCreateTransfer = document.getElementById('btn-close-create-transfer');
     const transferToBranchError = document.getElementById('transfer-to-branch-error');
+    const transferNoteInput = document.getElementById('transfer-note');
     const transferCartError = document.getElementById('transfer-cart-error');
     const transferCartBox = document.getElementById('transfer-cart-box');
     // แถบควบคุม + ชิปตัวกรอง (DESIGN.md ข้อ 11.4 - 11.5)
@@ -49,7 +50,7 @@
     // มุมมองตาราง/การ์ด — จำค่าไว้ข้ามการเข้าหน้า (เหมือนหน้า #deposits)
     let transferViewMode = localStorage.getItem('transfer_view_mode') === 'card' ? 'card' : 'list';
 
-    const TRANSFER_COLS = 6;
+    const TRANSFER_COLS = 7;
 
     // ผู้ใช้ปัจจุบัน + สาขาของตัวเอง
     function getCurrentUser() {
@@ -298,6 +299,7 @@
                 t.transfer_number,
                 t.from_branch && t.from_branch.name,
                 t.to_branch && t.to_branch.name,
+                t.note,
                 ...(t.items || []).map(i => i.product_name),
                 ...(t.items || []).map(i => i.product_code)
             ].filter(Boolean).join(' ').toLowerCase();
@@ -421,6 +423,11 @@
             <td class="px-6 py-4">
                 <span class="text-ink block max-w-[360px] truncate" title="${tfEsc(desc)}">${tfEsc(desc)}</span>
             </td>
+            <td class="px-6 py-4">
+                ${transfer.note
+                    ? `<span class="text-ink block max-w-[240px] truncate" title="${tfEsc(transfer.note)}">${tfEsc(transfer.note)}</span>`
+                    : '<span class="text-ink/50">-</span>'}
+            </td>
             <td class="px-6 py-4">${transferStatusBadge(transfer.status)}</td>
             <td class="px-6 py-4">
                 <div class="flex items-center justify-end gap-1">
@@ -459,6 +466,7 @@
             </div>
 
             <p class="text-ink text-sm mt-3 truncate" title="${tfEsc(desc)}">${tfEsc(desc)}</p>
+            ${transfer.note ? `<p class="text-ink/70 text-xs mt-2 truncate" title="${tfEsc(transfer.note)}"><i class="fa-solid fa-file-lines mr-1"></i>${tfEsc(transfer.note)}</p>` : ''}
 
             <div class="flex items-center justify-end gap-1 mt-3.5 pt-3 border-t border-hairline">
                 ${receiveBtn}${cancelBtn}${detailBtn}
@@ -564,6 +572,8 @@
         if (toEl) toEl.textContent = transfer.to_branch?.name || '-';
         if (dateEl) dateEl.textContent = tfDateTime(transfer.created_at);
         if (senderEl) senderEl.textContent = transfer.created_by?.name || '-';
+        const noteEl = document.getElementById('transfer-view-note');
+        if (noteEl) noteEl.textContent = transfer.note || '-';
 
         if (itemsBody) {
             itemsBody.innerHTML = '';
@@ -704,6 +714,7 @@
         setScanStatus('');
         clearAllTransferFieldErrors();
         if (transferToBranch) transferToBranch.value = '';
+        if (transferNoteInput) transferNoteInput.value = '';
         await loadBranchesForTransfer();
         if (transferScanInput) {
             transferScanInput.value = '';
@@ -719,6 +730,7 @@
         setScanStatus('');
         clearAllTransferFieldErrors();
         if (transferToBranch) transferToBranch.value = '';
+        if (transferNoteInput) transferNoteInput.value = '';
         if (transferScanInput) transferScanInput.value = '';
     }
 
@@ -985,6 +997,7 @@
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     to_branch: transferToBranch.value,
+                    note: transferNoteInput ? transferNoteInput.value.trim() : '',
                     items: transferCart
                 })
             });

@@ -11,6 +11,7 @@ const {
     Employee,
     Product,
     Movement,
+    StockIssue,
     Branch,
     Supplier,
     FinanceCompany,
@@ -1322,6 +1323,232 @@ router.delete('/products/:id', async (req, res) => {
 });
 
 // ==========================================
+// จ่ายออกสินค้า (#stock-issue) — ตัดสต็อกระดับ IMEI ที่ไม่ใช่การขาย/โอน
+// ==========================================
+
+// สาขาที่ใช้จ่ายออก: ผู้มีสิทธิ์เลือกสาขา (แอดมิน/ผู้จัดการ/filter_stock_branch) เลือกเองได้ นอกนั้นบังคับสาขาตัวเอง
+const resolveIssueBranchId = (req, requested) => {
+    const picked = getRequestedBranchId({ user: req.user, query: { branch_id: requested || '' } });
+    if (picked && picked !== 'ALL') return picked;
+    return req.user && req.user.branch_id ? req.user.branch_id : null;
+};
+
+// GET /api/stock-issues/lookup?code=<IMEI>&branch_id=
+// หน้าที่: ค้นเครื่องจาก IMEI ที่สแกน — ต้องอยู่ในสต็อกของสาขาที่จะจ่ายออกเท่านั้น
+router.get('/stock-issues/lookup', async (req, res) => {
+    try {
+        if (!req.user.permissions || !req.user.permissions.manage_stock) {
+            return res.status(403).json({ success: false, message: 'คุณไม่มีสิทธิ์จ่ายออกสินค้า' });
+        }
+        const code = String(req.query.code || '').trim();
+        if (!code) return res.status(400).json({ success: false, message: 'กรุณาสแกนหรือระบุเลข IMEI' });
+
+        const branchId = resolveIssueBranchId(req, req.query.branch_id);
+        if (!branchId) return res.status(400).json({ success: false, message: 'ไม่พบข้อมูลสาขา' });
+
+        const product = await Product.findOne({
+            stock_balances: { $elemMatch: { branch_id: branchId, imeis: code } }
+        }).lean();
+        if (!product) {
+            return res.status(404).json({ success: false, message: `ไม่พบ IMEI ${code} ในสต็อกของสาขานี้` });
+        }
+        const md = await mdCache.get();
+        hydrateProducts([product], md, { withStockBranches: false });
+        res.status(200).json({
+            success: true,
+            item: {
+                product_id: product._id,
+                product_code: product.product_code || '',
+                product_name: product.name,
+                color: product.color_id && product.color_id.name ? product.color_id.name : '',
+                capacity: product.capacity_id && product.capacity_id.name ? product.capacity_id.name : '',
+                imei: code,
+                supplier_id: product.supplier_id && product.supplier_id._id ? product.supplier_id._id : (product.supplier_id || null),
+                supplier_name: product.supplier_id && product.supplier_id.name ? product.supplier_id.name : '',
+                cost_price: product.cost_price || 0
+            }
+        });
+    } catch (error) {
+        console.error('API Error GET /api/stock-issues/lookup:', error);
+        res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการค้นหา IMEI' });
+    }
+});
+
+// POST /api/stock-issues
+// หน้าที่: จ่ายออกสินค้า body = { branch_id?, mode: 'single'|'multi', reason, imeis: [] }
+router.post('/stock-issues', async (req, res) => {
+    try {
+        if (!req.user.permissions || !req.user.permissions.manage_stock) {
+            return res.status(403).json({ success: false, message: 'คุณไม่มีสิทธิ์จ่ายออกสินค้า' });
+        }
+        const reason = String(req.body.reason || '').trim();
+        if (!reason) return res.status(400).json({ success: false, message: 'กรุณาระบุหมายเหตุการจ่ายออก' });
+
+        const mode = req.body.mode === 'multi' ? 'multi' : 'single';
+        const imeis = [...new Set((Array.isArray(req.body.imeis) ? req.body.imeis : [])
+            .map(x => String(x || '').trim()).filter(Boolean))];
+        if (imeis.length === 0) return res.status(400).json({ success: false, message: 'กรุณาสแกน IMEI อย่างน้อย 1 รายการ' });
+        if (mode === 'single' && imeis.length !== 1) {
+            return res.status(400).json({ success: false, message: 'โหมดจ่ายออกทีละชิ้นต้องมี IMEI เพียง 1 รายการ' });
+        }
+
+        const branchId = resolveIssueBranchId(req, req.body.branch_id);
+        if (!branchId) return res.status(400).json({ success: false, message: 'ไม่พบข้อมูลสาขา' });
+
+        // หาสินค้าของทุก IMEI ในคำสั่งเดียว
+        const products = await Product.find({
+            stock_balances: { $elemMatch: { branch_id: branchId, imeis: { $in: imeis } } }
+        }).lean();
+        const imeiToProduct = new Map();
+        products.forEach(p => {
+            const bal = (p.stock_balances || []).find(b => String(b.branch_id) === String(branchId));
+            (bal ? bal.imeis : []).forEach(i => { if (imeis.includes(i)) imeiToProduct.set(i, p); });
+        });
+        const missing = imeis.filter(i => !imeiToProduct.has(i));
+        if (missing.length > 0) {
+            return res.status(404).json({
+                success: false,
+                message: `ไม่พบ IMEI ในสต็อกของสาขานี้: ${missing.join(', ')}`
+            });
+        }
+
+        // ตัดสต็อกทีละ IMEI แบบ atomic (เงื่อนไข elemMatch กันตัดซ้ำจากสองคำสั่งที่ชนกัน)
+        // ถ้ารายการใดล้มเหลวให้คืนสต็อกรายการที่ตัดไปแล้วทั้งหมด — ไม่ปล่อยให้ตัดค้างครึ่งใบ
+        const applied = [];
+        let failedImei = null;
+        for (const imei of imeis) {
+            const p = imeiToProduct.get(imei);
+            const r = await Product.updateOne(
+                { _id: p._id, stock_balances: { $elemMatch: { branch_id: branchId, imeis: imei } } },
+                { $pull: { 'stock_balances.$.imeis': imei }, $inc: { 'stock_balances.$.quantity': -1 } }
+            );
+            if (r.modifiedCount !== 1) { failedImei = imei; break; }
+            applied.push(imei);
+        }
+        // คืนสต็อกเฉพาะ IMEI ที่ยังไม่อยู่ในยอดของสาขา (กันซ้ำถ้ามีการรับเข้า IMEI เดิมระหว่างนั้น)
+        const restoreApplied = async () => {
+            for (const imei of applied) {
+                try {
+                    const p = imeiToProduct.get(imei);
+                    await Product.updateOne(
+                        { _id: p._id, stock_balances: { $elemMatch: { branch_id: branchId, imeis: { $ne: imei } } } },
+                        { $push: { 'stock_balances.$.imeis': imei }, $inc: { 'stock_balances.$.quantity': 1 } }
+                    );
+                } catch (e) {
+                    console.error(`คืนสต็อก IMEI ${imei} ไม่สำเร็จ (ต้องตรวจสอบด้วยมือ):`, e.message);
+                }
+            }
+        };
+        if (failedImei) {
+            await restoreApplied();
+            return res.status(409).json({
+                success: false,
+                message: `IMEI ${failedImei} ถูกตัดสต็อกไปแล้วโดยรายการอื่น กรุณาตรวจสอบแล้วลองใหม่`
+            });
+        }
+
+        // ตัดสต็อกไปแล้ว — ถ้าสร้างใบจ่ายออกไม่สำเร็จต้องคืนสต็อก ไม่ปล่อยให้สต็อกหายเงียบ ๆ
+        let issue, issueNo;
+        try {
+            const emp = await Employee.findById(req.user.employee_id).select('name').lean();
+            const mdMaps = (await mdCache.get()).maps;
+            const sup = mdMaps.suppliers;
+            const items = imeis.map(imei => {
+                const p = imeiToProduct.get(imei);
+                const s = p.supplier_id ? sup.get(String(p.supplier_id)) : null;
+                return {
+                    product_id: p._id,
+                    product_code: p.product_code || '',
+                    product_name: p.name,
+                    color_name: p.color_id && mdMaps.productColors.get(String(p.color_id)) ? mdMaps.productColors.get(String(p.color_id)).name : '',
+                    imei,
+                    supplier_id: s ? s._id : null,
+                    supplier_name: s ? s.name : '',
+                    cost_price: p.cost_price || 0
+                };
+            });
+
+            // เลขใบ = วันเวลา + ตัวอักษรสุ่ม และมี unique index — ชนกันให้สุ่มใหม่
+            const pad = (n) => String(n).padStart(2, '0');
+            for (let attempt = 0; attempt < 5 && !issue; attempt++) {
+                const now = new Date();
+                issueNo = `OUT${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
+                try {
+                    issue = await StockIssue.create({
+                        issue_no: issueNo,
+                        branch_id: branchId,
+                        mode,
+                        reason,
+                        items,
+                        total_qty: imeis.length,
+                        total_cost: items.reduce((sum, it) => sum + it.cost_price, 0),
+                        created_by: req.user.employee_id,
+                        created_by_name: emp ? emp.name : ''
+                    });
+                } catch (e) {
+                    if (!(e && e.code === 11000)) throw e;
+                }
+            }
+            if (!issue) throw new Error('สร้างเลขที่ใบจ่ายออกไม่สำเร็จ');
+        } catch (e) {
+            console.error('สร้างใบจ่ายออกไม่สำเร็จ คืนสต็อกทั้งหมด:', e.message);
+            await restoreApplied();
+            return res.status(500).json({ success: false, message: 'บันทึกใบจ่ายออกไม่สำเร็จ ระบบคืนสต็อกให้แล้ว กรุณาลองใหม่' });
+        }
+
+        // บันทึกลง Movement Ledger ให้ค้นประวัติรายเครื่องได้จากหน้า "ประวัติการเคลื่อนไหว"
+        // ใบจ่ายออกสร้างแล้วจึงไม่คืนสต็อก — ถ้า ledger พลาดให้ log ไว้และตอบสำเร็จ
+        try {
+            await Promise.all(imeis.map(imei => createMovementsForItem({
+                productId: imeiToProduct.get(imei)._id,
+                action: 'จ่ายออก',
+                fromBranch: branchId,
+                toBranch: null,
+                referenceNo: issueNo,
+                createdBy: req.user.employee_id,
+                imeis: [imei]
+            })));
+        } catch (e) {
+            console.error(`บันทึก Movement ของใบจ่ายออก ${issueNo} ไม่ครบ:`, e.message);
+        }
+
+        await logActivity(req, 'จ่ายออกสินค้า', 'Stock', `จ่ายออกสินค้า ${imeis.length} ชิ้น (${reason})`, issueNo, issue._id, {
+            branch_id: String(branchId), imeis, reason
+        });
+
+        res.status(201).json({ success: true, message: `จ่ายออกสินค้าสำเร็จ ${imeis.length} ชิ้น`, issue_no: issueNo });
+    } catch (error) {
+        console.error('API Error POST /api/stock-issues:', error);
+        res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการจ่ายออกสินค้า' });
+    }
+});
+
+// GET /api/stock-issues
+// หน้าที่: ประวัติการจ่ายออก (ล่าสุดก่อน) — ขอบเขตสาขาผ่าน getRequestedBranchId
+router.get('/stock-issues', async (req, res) => {
+    try {
+        if (!req.user.permissions || !req.user.permissions.manage_stock) {
+            return res.status(403).json({ success: false, message: 'คุณไม่มีสิทธิ์ดูประวัติการจ่ายออก' });
+        }
+        const branchId = getRequestedBranchId(req);
+        const query = {};
+        if (branchId && branchId !== 'ALL') query.branch_id = branchId;
+        else if (!branchId) return res.status(400).json({ success: false, message: 'ไม่พบข้อมูลสาขา' });
+
+        const issues = await StockIssue.find(query).sort({ createdAt: -1 }).limit(500).lean();
+        const md = await mdCache.get();
+        issues.forEach(i => {
+            const b = md.maps.branches.get(String(i.branch_id));
+            i.branch_name = b ? b.name : '-';
+        });
+        res.status(200).json({ success: true, data: issues });
+    } catch (error) {
+        console.error('API Error GET /api/stock-issues:', error);
+        res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการดึงประวัติการจ่ายออก' });
+    }
+});
+
+// ==========================================
 // Movement Ledger APIs (ระบบประวัติการเคลื่อนไหว)
 // ==========================================
 
@@ -1870,7 +2097,7 @@ const normalizeCommissionRates = async (input) => {
 router.post('/master/:collection', async (req, res) => {
     try {
         const collection = req.params.collection.toLowerCase();
-        const { name, code, commission_rate, commission_rates } = req.body;
+        const { name, code, type_id, color_code, credit_limit, commission_rate, commission_rates } = req.body;
 
         if (!name) {
             return res.status(400).json({ success: false, message: 'กรุณาระบุชื่อ' });
@@ -1894,6 +2121,22 @@ router.post('/master/:collection', async (req, res) => {
         const payload = { name };
         if (collection === 'productname' && code !== undefined) {
             payload.code = code;
+        }
+        if (collection === 'productname' && type_id !== undefined) {
+            const t = await resolveProductNameTypeId(type_id);
+            if (t.error) return res.status(400).json({ success: false, message: t.error });
+            payload.type_id = t.value;
+        }
+        if (collection === 'productcolor' && color_code !== undefined) {
+            const c = normalizeColorCode(color_code);
+            if (c.error) return res.status(400).json({ success: false, message: c.error });
+            payload.color_code = c.value;
+        }
+        if (collection === 'supplier') {
+            // วงเงินบังคับสำหรับผู้จัดจำหน่ายที่เพิ่มใหม่
+            const l = parseCreditLimit(credit_limit);
+            if (l.error) return res.status(400).json({ success: false, message: l.error });
+            payload.credit_limit = l.value;
         }
         if (collection === 'financecompany' && commission_rate !== undefined) {
             const rate = Number(commission_rate);
@@ -1928,6 +2171,59 @@ router.post('/master/:collection', async (req, res) => {
         }
 
         res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการเพิ่มข้อมูล: ' + error.message });
+    }
+});
+
+// ตรวจ type_id ของชื่อสินค้า: ค่าว่าง/null = ยังไม่ระบุประเภท, นอกนั้นต้องเป็น ProductType ที่มีอยู่จริง
+const resolveProductNameTypeId = async (raw) => {
+    if (raw === null || raw === '') return { value: null };
+    if (!mongoose.Types.ObjectId.isValid(raw)) return { error: 'ประเภทสินค้าไม่ถูกต้อง' };
+    const exists = await ProductType.exists({ _id: raw });
+    return exists ? { value: raw } : { error: 'ไม่พบประเภทสินค้าที่ระบุ' };
+};
+
+// รหัสสี: ว่าง = ไม่กำหนด (ใช้สีเดาจากชื่อ), นอกนั้นต้องเป็น #RGB หรือ #RRGGBB (เก็บเป็นตัวพิมพ์ใหญ่ 6 หลัก)
+const normalizeColorCode = (raw) => {
+    const v = String(raw == null ? '' : raw).trim();
+    if (!v) return { value: '' };
+    const m = /^#?([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.exec(v);
+    if (!m) return { error: 'รหัสสีไม่ถูกต้อง ต้องเป็น hex เช่น #FF3B30' };
+    let h = m[1].toUpperCase();
+    if (h.length === 3) h = h.split('').map(ch => ch + ch).join('');
+    return { value: '#' + h };
+};
+
+// วงเงินผู้จัดจำหน่าย: ต้องเป็นตัวเลขมากกว่า 0
+const parseCreditLimit = (raw) => {
+    if (raw === undefined || raw === null || String(raw).trim() === '') {
+        return { error: 'กรุณาระบุวงเงินของผู้จัดจำหน่าย' };
+    }
+    const n = Number(raw);
+    if (!Number.isFinite(n) || n <= 0) return { error: 'วงเงินต้องเป็นตัวเลขมากกว่า 0' };
+    return { value: Math.round(n * 100) / 100 };
+};
+
+// วงเงินที่ใช้ไปของผู้จัดจำหน่าย = ยอดเงินที่ "ชำระจริง" สะสมของ PO ที่ไม่ถูกยกเลิก (paid_amount)
+// ส่วนลดไม่นับเป็นการใช้วงเงิน เพราะไม่ได้จ่ายเงินออกไป — จ่ายครั้งไหน วงเงินคงเหลือก็ลดลงตามยอดนั้น
+const getSupplierCreditUsage = async (supplierNames) => {
+    const match = { status: { $ne: 'ยกเลิก' } };
+    if (supplierNames) match.supplier_name = { $in: supplierNames };
+    const rows = await PurchaseOrder.aggregate([
+        { $match: match },
+        { $group: { _id: '$supplier_name', used: { $sum: { $ifNull: ['$paid_amount', 0] } }, bill_count: { $sum: 1 } } }
+    ]);
+    const data = {};
+    rows.forEach(r => { if (r._id) data[r._id] = { used: Math.max(0, r.used), bill_count: r.bill_count }; });
+    return data;
+};
+
+// GET /api/suppliers/credit-usage — รวมทุกรายในรอบเดียวด้วย aggregate ไม่วนยิงทีละราย
+router.get('/suppliers/credit-usage', async (req, res) => {
+    try {
+        res.status(200).json({ success: true, data: await getSupplierCreditUsage() });
+    } catch (error) {
+        console.error('API Error GET /api/suppliers/credit-usage:', error);
+        res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการคำนวณวงเงินที่ใช้ไป' });
     }
 });
 
@@ -1975,7 +2271,7 @@ router.put('/master/:collection/:id', async (req, res) => {
     try {
         const collection = req.params.collection.toLowerCase();
         const id = req.params.id;
-        const { name, code, commission_rate, commission_rates } = req.body;
+        const { name, code, type_id, color_code, credit_limit, commission_rate, commission_rates } = req.body;
 
         if (!name) {
             return res.status(400).json({ success: false, message: 'กรุณาระบุชื่อ' });
@@ -1998,6 +2294,23 @@ router.put('/master/:collection/:id', async (req, res) => {
         const updateFields = { name };
         if (collection === 'productname') {
             updateFields.code = code || '';
+            // ไม่ส่ง type_id มา = คงประเภทเดิมไว้ (หน้าแก้ชื่อ/รหัสไม่ต้องรู้เรื่องประเภท)
+            if (type_id !== undefined) {
+                const t = await resolveProductNameTypeId(type_id);
+                if (t.error) return res.status(400).json({ success: false, message: t.error });
+                updateFields.type_id = t.value;
+            }
+        }
+        if (collection === 'productcolor' && color_code !== undefined) {
+            const c = normalizeColorCode(color_code);
+            if (c.error) return res.status(400).json({ success: false, message: c.error });
+            updateFields.color_code = c.value;
+        }
+        // ไม่ส่ง credit_limit มา = คงวงเงินเดิม; ส่งมาแล้วต้องถูกต้องเสมอ (ห้ามล้างเป็นว่าง)
+        if (collection === 'supplier' && credit_limit !== undefined) {
+            const l = parseCreditLimit(credit_limit);
+            if (l.error) return res.status(400).json({ success: false, message: l.error });
+            updateFields.credit_limit = l.value;
         }
         if (collection === 'financecompany' && commission_rate !== undefined) {
             const rate = Number(commission_rate);
@@ -2014,10 +2327,17 @@ router.put('/master/:collection/:id', async (req, res) => {
             updateFields.commission_rates = normalized.rates;
         }
 
+        // ผู้จัดจำหน่ายถูกอ้างจาก PO ด้วยชื่อ — ต้องรู้ชื่อเดิมเพื่อย้ายชื่อใน PO ตามเมื่อเปลี่ยนชื่อ (วงเงินที่ใช้ไปจะไม่หลุด)
+        const oldSupplier = collection === 'supplier' ? await Supplier.findById(id).select('name').lean() : null;
+
         const updatedItem = await Model.findByIdAndUpdate(id, updateFields, { returnDocument: 'after' });
 
         if (!updatedItem) {
             return res.status(404).json({ success: false, message: 'ไม่พบข้อมูลที่ต้องการแก้ไข' });
+        }
+
+        if (oldSupplier && oldSupplier.name && oldSupplier.name !== updatedItem.name) {
+            await PurchaseOrder.updateMany({ supplier_name: oldSupplier.name }, { $set: { supplier_name: updatedItem.name } });
         }
 
         mdCache.invalidate();
@@ -2165,6 +2485,10 @@ router.post('/transfers', async (req, res) => {
             return res.status(403).json({ success: false, message: 'ไม่มีสิทธิ์ในการสร้างรายการโอนย้ายสินค้า' });
         }
         const { to_branch, items } = req.body;
+        const note = String(req.body.note || '').trim();
+        if (note.length > 500) {
+            return res.status(400).json({ success: false, message: 'หมายเหตุต้องไม่เกิน 500 ตัวอักษร' });
+        }
 
         // สาขาต้นทางยึดตามสาขาของผู้ใช้ที่ล็อกอินเสมอ (ไม่รับค่าจาก client)
         const fromBranch = req.user && req.user.branch_id ? req.user.branch_id : null;
@@ -2257,6 +2581,7 @@ router.post('/transfers', async (req, res) => {
             to_branch,
             items: normalizedItems,
             status: 'รอดำเนินการ',
+            note,
             created_by: req.user.employee_id,
             received_by: null,
             created_at: now
@@ -4839,7 +5164,7 @@ const normalizePoItem = (item) => {
         track_imei: kind === 'accessory' ? false : !!item.track_imei,
         ordered_qty: Number(item.ordered_qty),
         cost_price: Number(item.cost_price),
-        selling_price: Number(item.selling_price),
+        selling_price: Number(item.selling_price) || 0, // ใบสั่งซื้อไม่กรอกราคาขาย — กำหนดตอนตรวจรับ/อนุมัตินำเข้า
         imeis_scanned: []
     };
 };
@@ -5700,18 +6025,11 @@ router.put('/accounting/po-pay/:id', async (req, res) => {
             return res.status(400).json({ success: false, message: 'ใบสั่งซื้อนี้ชำระเงินเรียบร้อยแล้ว' });
         }
 
-        const paymentAmount = req.body.payment_amount !== undefined ? Number(req.body.payment_amount) : 0;
         const discountAmount = req.body.discount_amount !== undefined ? Number(req.body.discount_amount) : 0;
         const discountRemark = req.body.discount_remark || '';
 
-        if (isNaN(paymentAmount) || paymentAmount < 0) {
-            return res.status(400).json({ success: false, message: 'จำนวนเงินที่ชำระไม่ถูกต้อง' });
-        }
         if (isNaN(discountAmount) || discountAmount < 0) {
             return res.status(400).json({ success: false, message: 'จำนวนส่วนลดไม่ถูกต้อง' });
-        }
-        if (paymentAmount === 0 && discountAmount === 0) {
-            return res.status(400).json({ success: false, message: 'กรุณากรอกจำนวนเงินชำระหรือส่วนลดอย่างใดอย่างหนึ่ง' });
         }
         if (discountAmount > 0 && !discountRemark.trim()) {
             return res.status(400).json({ success: false, message: 'กรุณาระบุหมายเหตุของส่วนลด' });
@@ -5725,10 +6043,23 @@ router.put('/accounting/po-pay/:id', async (req, res) => {
         const currentDiscount = po.discount || 0;
         const outstanding = totalCost - currentPaid - currentDiscount;
 
-        if (paymentAmount + discountAmount > outstanding + 0.01) {
+        if (discountAmount > outstanding + 0.01) {
             return res.status(400).json({
                 success: false,
-                message: `ยอดรวมจ่ายและส่วนลด (฿${(paymentAmount + discountAmount).toFixed(2)}) เกินยอดค้างจ่ายปัจจุบัน (฿${outstanding.toFixed(2)})`
+                message: `ส่วนลด (฿${discountAmount.toFixed(2)}) เกินยอดค้างจ่ายปัจจุบัน (฿${outstanding.toFixed(2)})`
+            });
+        }
+
+        // จ่ายเต็มจำนวนเท่านั้น ไม่แบ่งจ่าย — คำนวณยอดจ่ายที่เซิร์ฟเวอร์เอง (ราคาสั่งซื้อ = ค้างจ่าย - ส่วนลด)
+        // ไม่เชื่อ payment_amount จากหน้าเว็บ
+        const paymentAmount = Math.max(0, Math.round((outstanding - discountAmount) * 100) / 100);
+
+        // กระจายส่วนลดลงต้นทุนทุกชิ้นเท่ากัน (ส่วนลด ÷ จำนวนชิ้นทั้งใบ) ไม่ให้ต่ำกว่า 0
+        const totalQty = po.items.reduce((sum, item) => sum + (item.ordered_qty || 0), 0);
+        if (discountAmount > 0 && totalQty > 0) {
+            const perUnit = discountAmount / totalQty;
+            po.items.forEach(item => {
+                item.discount_per_unit = Math.min(item.cost_price, (item.discount_per_unit || 0) + perUnit);
             });
         }
 
@@ -5784,10 +6115,24 @@ router.put('/accounting/po-pay/:id', async (req, res) => {
             po._id
         );
 
+        // วงเงินของผู้จัดจำหน่ายหลังจ่ายครั้งนี้ — ให้หน้าเว็บแจ้งยอดคงเหลือได้ทันที
+        let supplierCredit = null;
+        try {
+            const sup = await Supplier.findOne({ name: po.supplier_name }).lean();
+            if (sup && Number(sup.credit_limit) > 0) {
+                const usage = (await getSupplierCreditUsage([po.supplier_name]))[po.supplier_name];
+                const used = usage ? usage.used : 0;
+                supplierCredit = { supplier_name: po.supplier_name, limit: sup.credit_limit, used, remaining: sup.credit_limit - used };
+            }
+        } catch (e) {
+            console.error('คำนวณวงเงินผู้จัดจำหน่ายหลังชำระเงินไม่สำเร็จ:', e.message);
+        }
+
         res.status(200).json({
             success: true,
             message: 'บันทึกการชำระเงินเรียบร้อยแล้ว',
-            data: po
+            data: po,
+            supplier_credit: supplierCredit
         });
     } catch (error) {
         console.error('API Error PUT /api/accounting/po-pay/:id:', error);

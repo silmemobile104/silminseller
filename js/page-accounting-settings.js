@@ -107,7 +107,7 @@
     }
 
     // ---------- ตารางผังบัญชี (DESIGN.md ข้อ 11.5 - 11.7) ----------
-    const COA_COLS = 7, GRP_COLS = 4, PNL_COLS = 6;
+    const COA_COLS = 7, GRP_COLS = 4;
 
     const coaStateRow = (cols, msg, cls = 'text-ink/50 italic') =>
         `<tr><td colspan="${cols}" class="px-6 py-8 text-center ${cls}">${escapeHtml(msg)}</td></tr>`;
@@ -180,6 +180,8 @@
                 renderCOATable(_coaCache.accounts);
                 renderCOAGroupsTable(_coaCache.groups);
                 renderAcctTree();
+                renderStmtPage('pl');
+                renderStmtPage('bs');
             } else {
                 document.getElementById('coa-table-body').innerHTML =
                     coaStateRow(COA_COLS, data.message || 'โหลดข้อมูลผังบัญชีไม่สำเร็จ', 'text-red-400');
@@ -401,7 +403,7 @@
     const COA_BADGE_OFF = 'px-2 py-0.5 rounded-full text-[10px] font-bold bg-chip/60 text-ink';
 
     function switchCOATab(tabName) {
-        ['accounts', 'groups', 'pnl'].forEach(t => {
+        ['accounts', 'groups'].forEach(t => {
             const btn = document.getElementById(`coa-tab-${t}`);
             const content = document.getElementById(`coa-content-${t}`);
             const badge = document.getElementById(`badge-coa-${t}`);
@@ -413,11 +415,6 @@
             if (badge) badge.className = on ? COA_BADGE_ON : COA_BADGE_OFF;
             if (content) content.classList.toggle('hidden', !on);
         });
-
-        if (tabName === 'pnl') {
-            coaSkeleton('pnl-config-table-body', PNL_COLS, 3);
-            loadPnLConfig();
-        }
     }
 
     // สลับมุมมอง List/Card ของตาราง "ผังบัญชีทั้งหมด" — ผูกที่ top-level ได้ (ไฟล์นี้เป็น js/page-*.js
@@ -566,402 +563,82 @@
         }
     }
 
-    // ---------- หน้า "ตั้งค่างบกำไรขาดทุน" (#pnl-config) ----------
-    // ข้อมูลชุดเดียวกับ PnLConfig (collection pnlconfig ที่รายงาน P&L ใช้) — 1 แถว = 1 บรรทัดของงบ
-    // หมวด/section ไม่กรอกเอง เซิร์ฟเวอร์ดูจากกลุ่มบัญชี; กลุ่มที่เลือกได้เฉพาะหมวดรายได้/ค่าใช้จ่าย
-    const PL_COLS = 7;
+    // ---------- หน้า "ตั้งค่างบกำไรขาดทุน" (#pnl-config) และ "ตั้งค่างบดุล" (#balance-sheet-config) ----------
+    // ดูอย่างเดียว — ไม่มี "รายการงบ" แยกอีกแล้ว: ชื่อบัญชี (AccountChart) ผูกกับกลุ่มโดยตรงด้วย group_id
+    // งบกำไรขาดทุน = บัญชีหมวดรายได้/ค่าใช้จ่าย, งบดุล = บัญชีหมวดสินทรัพย์/หนี้สิน/ทุน
+    // เพิ่ม/ย้ายกลุ่มของบัญชีที่หน้า "หมวดหมู่บัญชี" — ข้อมูลชุดเดียวกับ _coaCache (loadCOAData)
     const PL_CATEGORIES = ['รายได้', 'ค่าใช้จ่าย'];
-    let _plItems = [];
+    const STMT_PAGES = {
+        pl: { cols: 5, editable: true, tbody: 'pl-item-table-body', search: 'pl-item-search', count: 'pl-item-result-count', mine: (name) => PL_CATEGORIES.includes(name) },
+        // ทั้งสองงบเพิ่ม/แก้ไข/เปิด-ปิด/ลบบัญชีได้ที่หน้าของตัวเอง (ใช้ฟอร์มและข้อมูลชุดเดียวกับหน้า "หมวดหมู่บัญชี")
+        bs: { cols: 5, editable: true, tbody: 'bs-item-table-body', search: 'bs-item-search', count: 'bs-item-result-count', mine: (name) => !PL_CATEGORIES.includes(name) }
+    };
 
-    async function initPnlConfigPage() {
-        const search = document.getElementById('pl-item-search');
+    async function initStmtPage(kind) {
+        const p = STMT_PAGES[kind];
+        const search = document.getElementById(p.search);
         if (search) search.value = '';
-        coaSkeleton('pl-item-table-body', PL_COLS);
-        await Promise.all([loadCOAData(), loadPlItems()]);
+        coaSkeleton(p.tbody, p.cols);
+        await loadCOAData();
+        renderStmtPage(kind);
     }
+    const initPnlConfigPage = () => initStmtPage('pl');
+    const initBalanceSheetConfig = () => initStmtPage('bs');
+    const renderPlPage = () => renderStmtPage('pl');
+    const renderBsPage = () => renderStmtPage('bs');
+    // เพิ่มบัญชีงบกำไรขาดทุน — เลือกหมวด (รายได้/ค่าใช้จ่าย) และกลุ่มในฟอร์มเอง
+    const openPlAccountModal = () => openAcctAccountModal({}, { categoryFilter: STMT_PAGES.pl.mine });
+    // เพิ่มบัญชีงบดุล — เลือกหมวด (สินทรัพย์/หนี้สิน/ทุน) และกลุ่มในฟอร์มเอง
+    const openBsAccountModal = () => openAcctAccountModal({}, { categoryFilter: STMT_PAGES.bs.mine });
 
-    async function loadPlItems() {
-        const tbody = document.getElementById('pl-item-table-body');
-        try {
-            const res = await authFetch(`${API_BASE_URL}/acct/pnl-config`);
-            const data = await res.json();
-            if (!data.success) {
-                if (tbody) tbody.innerHTML = coaStateRow(PL_COLS, data.message || 'ดึงข้อมูลงบกำไรขาดทุนไม่สำเร็จ', 'text-red-400');
-                return;
-            }
-            _plItems = data.configs || [];
-            renderPlPage();
-        } catch (error) {
-            console.error('Error loadPlItems:', error);
-            if (tbody) tbody.innerHTML = coaStateRow(PL_COLS, 'เชื่อมต่อเซิร์ฟเวอร์ผิดพลาด', 'text-red-400');
-        }
-    }
-
-    function renderPlPage() {
-        const tbody = document.getElementById('pl-item-table-body');
+    function renderStmtPage(kind) {
+        const p = STMT_PAGES[kind];
+        const tbody = document.getElementById(p.tbody);
         if (!tbody) return;
+        const catById = new Map(_coaCache.categories.map(c => [c._id, c]));
+        const grpById = new Map(_coaCache.groups.map(g => [g._id, g]));
+        const th = (a, b) => String(a || '').localeCompare(String(b || ''), 'th', { numeric: true });
 
-        const searchTxt = (document.getElementById('pl-item-search')?.value || '').trim().toLowerCase();
-        const rows = _plItems.filter(it => !searchTxt ||
-            (it.display_name || '').toLowerCase().includes(searchTxt) ||
-            (it.group_id?.group_name || '').toLowerCase().includes(searchTxt) ||
-            (it.account_ids || []).some(a =>
-                (a.account_code || '').toLowerCase().includes(searchTxt) ||
-                (a.account_name || '').toLowerCase().includes(searchTxt)));
-        coaSetText('pl-item-result-count', _plItems.length ? `แสดง ${rows.length} จาก ${_plItems.length} รายการ` : '');
+        const mine = _coaCache.accounts.filter(a => {
+            const cat = catById.get(idOf(a.category_id));
+            return cat && p.mine(cat.category_name);
+        });
+        const q = (document.getElementById(p.search)?.value || '').trim().toLowerCase();
+        const rows = mine.filter(a => {
+            if (!q) return true;
+            const g = grpById.get(idOf(a.group_id)) || {};
+            return [a.account_code, a.account_name, g.group_code, g.group_name].some(x => String(x || '').toLowerCase().includes(q));
+        }).sort((a, b) => {
+            const ca = catById.get(idOf(a.category_id)), cb = catById.get(idOf(b.category_id));
+            const ga = grpById.get(idOf(a.group_id)), gb = grpById.get(idOf(b.group_id));
+            return th(ca.category_code, cb.category_code)
+                || ((ga ? 0 : 1) - (gb ? 0 : 1))
+                || th(ga && ga.group_code, gb && gb.group_code)
+                || th(a.account_code, b.account_code);
+        });
+        coaSetText(p.count, mine.length ? `แสดง ${rows.length} จาก ${mine.length} บัญชี` : '');
 
         if (!rows.length) {
-            tbody.innerHTML = coaStateRow(PL_COLS, _plItems.length ? 'ไม่พบรายการที่ตรงกับคำค้นหา' : 'ยังไม่มีรายการงบกำไรขาดทุน');
+            tbody.innerHTML = coaStateRow(p.cols, mine.length ? 'ไม่พบบัญชีที่ตรงกับคำค้นหา' : 'ยังไม่มีบัญชีในงบนี้');
             return;
         }
         const dash = '<span class="text-ink/50">-</span>';
-        tbody.innerHTML = rows.map(it => {
-            const catName = it.category_id?.category_name;
-            const grpName = it.group_id?.group_name;
-            const accs = it.account_ids || [];
-            const codeLines = accs.length
-                ? accs.map(a => `<div class="font-mono font-semibold text-accent-ink">${escapeHtml(a.account_code)}</div>`).join('')
-                : dash;
-            const nameLines = accs.length
-                ? accs.map(a => `<div class="text-ink">${escapeHtml(a.account_name)}</div>`).join('')
-                : dash;
+        tbody.innerHTML = rows.map(a => {
+            const cat = catById.get(idOf(a.category_id));
+            const g = grpById.get(idOf(a.group_id));
             return `
-            <tr class="hover:bg-divider transition-colors align-top">
-                <td class="px-6 py-4">${catName ? coaChipLabel(catName) : dash}</td>
-                <td class="px-6 py-4">${grpName ? coaChipLabel(grpName) : dash}</td>
-                <td class="px-6 py-4 font-mono text-ink">${escapeHtml(it.sort_order)}</td>
-                <td class="px-6 py-4 text-ink">${escapeHtml(it.display_name)}</td>
-                <td class="px-6 py-4 space-y-1">${codeLines}</td>
-                <td class="px-6 py-4 space-y-1">${nameLines}</td>
-                <td class="px-6 py-4 text-right">
-                    <div class="flex items-center justify-end gap-1">
-                        <button type="button" class="btn-pl-edit text-ink hover:text-amber-400 transition-colors p-2 cursor-pointer"
-                            data-id="${escapeHtml(it._id)}" title="แก้ไขรายการ"
-                            aria-label="แก้ไขรายการ ${escapeHtml(it.display_name)}">
-                            <i class="fa-solid fa-pen-to-square"></i>
-                        </button>
-                        <button type="button" class="btn-pl-delete text-ink hover:text-red-400 transition-colors p-2 cursor-pointer"
-                            data-id="${escapeHtml(it._id)}" title="ลบรายการ"
-                            aria-label="ลบรายการ ${escapeHtml(it.display_name)}">
-                            <i class="fa-solid fa-trash"></i>
-                        </button>
-                    </div>
-                </td>
+            <tr class="hover:bg-divider transition-colors ${a.is_active === false ? 'opacity-60' : ''}">
+                <td class="px-6 py-4">${cat ? coaChipLabel(cat.category_name) : dash}</td>
+                <td class="px-6 py-4">${g ? coaChipLabel(g.group_code + ' ' + g.group_name) : '<span class="text-ink/60 italic">ยังไม่จัดกลุ่ม</span>'}</td>
+                <td class="px-6 py-4 font-mono font-semibold text-accent-ink">${escapeHtml(a.account_code)}</td>
+                <td class="px-6 py-4 text-ink w-full">${escapeHtml(a.account_name)}</td>
+                ${p.editable ? `<td class="px-6 py-4"><div class="flex items-center justify-end gap-2">${a.is_system ? '<span class="text-[10px] px-1.5 py-0.5 rounded bg-chip/60 text-ink shrink-0">ระบบ</span>' : ''}${treeBadge(isOn(a))}${treeActions('acc', a, a.account_code + ' ' + a.account_name, !a.is_system)}</div></td>` : ''}
             </tr>`;
         }).join('');
-        tbody.querySelectorAll('.btn-pl-edit').forEach(b =>
-            b.addEventListener('click', () => openPlItemModal(_plItems.find(x => x._id === b.dataset.id))));
-        tbody.querySelectorAll('.btn-pl-delete').forEach(b =>
-            b.addEventListener('click', () => deletePlItem(_plItems.find(x => x._id === b.dataset.id))));
-    }
-
-    function openPlItemModal(editData = null) {
-        const modal = document.getElementById('modal-pl-item');
-        if (!modal) return;
-        const catIds = new Set(_coaCache.categories.filter(c => PL_CATEGORIES.includes(c.category_name)).map(c => c._id));
-        const grpSelect = document.getElementById('pl-item-group');
-        grpSelect.innerHTML = '<option value="">-- เลือกกลุ่มบัญชี --</option>' + _coaCache.groups
-            .filter(g => catIds.has(idOf(g.category_id)))
-            .map(g => {
-                const cat = _coaCache.categories.find(c => c._id === idOf(g.category_id));
-                return `<option value="${escapeHtml(g._id)}">${escapeHtml(cat.category_name)} · ${escapeHtml(g.group_name)}</option>`;
-            }).join('');
-
-        document.getElementById('modal-pl-item-title').textContent = editData ? 'แก้ไขรายการงบกำไรขาดทุน' : 'เพิ่มรายการงบกำไรขาดทุน';
-        document.getElementById('pl-item-id').value = editData?._id || '';
-        grpSelect.value = editData ? (idOf(editData.group_id) || '') : '';
-        document.getElementById('pl-item-order').value = editData
-            ? editData.sort_order
-            : (_plItems.reduce((m, x) => Math.max(m, x.sort_order || 0), 0) + 1);
-        document.getElementById('pl-item-name').value = editData?.display_name || '';
-
-        // บัญชีที่เลือกได้ = ทุกบัญชีในหมวดรายได้/ค่าใช้จ่าย (ไม่ผูกกับหมวดของกลุ่ม — ดูเหตุผลที่ POST /pnl-items)
-        const picked = new Set((editData?.account_ids || []).map(idOf));
-        const accs = _coaCache.accounts.filter(a => catIds.has(idOf(a.category_id)));
-        document.getElementById('pl-item-accounts').innerHTML = accs.length ? accs.map(a => `
-            <label class="flex items-center gap-2 px-2 py-1 rounded-sm hover:bg-divider cursor-pointer">
-                <input type="checkbox" class="pl-account-check" value="${escapeHtml(a._id)}" ${picked.has(a._id) ? 'checked' : ''}>
-                <span class="font-mono text-accent-ink">${escapeHtml(a.account_code)}</span>
-                <span class="text-ink">${escapeHtml(a.account_name)}</span>
-            </label>`).join('')
-            : '<p class="px-2 py-1 text-body-muted text-xs">ยังไม่มีรหัสบัญชีหมวดรายได้/ค่าใช้จ่าย</p>';
-
-        modal.classList.remove('hidden');
-        grpSelect.focus();
-    }
-
-    function closePlItemModal() {
-        const modal = document.getElementById('modal-pl-item');
-        if (modal) modal.classList.add('hidden');
-    }
-
-    async function savePlItem() {
-        const _id = document.getElementById('pl-item-id')?.value;
-        const payload = {
-            group_id: document.getElementById('pl-item-group')?.value,
-            sort_order: Number(document.getElementById('pl-item-order')?.value),
-            display_name: (document.getElementById('pl-item-name')?.value || '').trim(),
-            account_ids: Array.from(document.querySelectorAll('#pl-item-accounts .pl-account-check:checked')).map(c => c.value)
-        };
-        if (_id) payload._id = _id;
-
-        if (!payload.group_id || !payload.display_name || !Number.isInteger(payload.sort_order) || payload.sort_order < 1) {
-            showToast('กรุณาเลือกกลุ่มบัญชี กรอกลำดับ (จำนวนเต็มตั้งแต่ 1) และชื่อรายการให้ครบ', 'warning');
-            return;
-        }
-
-        const btn = document.getElementById('pl-item-save');
-        if (btn) btn.disabled = true; // กันกดซ้ำ — POST ไม่ retry และไม่ควรยิงซ้ำ
-        try {
-            const res = await authFetch(`${API_BASE_URL}/acct/pnl-items`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
-            const data = await res.json();
-            if (data.success) {
-                showToast(_id ? 'แก้ไขรายการเรียบร้อย' : 'เพิ่มรายการเรียบร้อย', 'success');
-                closePlItemModal();
-                loadPlItems();
-            } else {
-                showToast('บันทึกรายการไม่สำเร็จ: ' + (data.message || 'ไม่ทราบสาเหตุ'), 'error');
-            }
-        } catch (error) {
-            console.error('Error savePlItem:', error);
-            showToast('เชื่อมต่อเซิร์ฟเวอร์ผิดพลาด: ' + error.message, 'error');
-        } finally {
-            if (btn) btn.disabled = false;
-        }
-    }
-
-    function deletePlItem(item) {
-        if (!item) return;
-        const label = `<strong class="font-mono text-accent-ink">${escapeHtml(item.sort_order)}</strong> ${escapeHtml(item.display_name)}`;
-        showConfirm('ลบรายการงบกำไรขาดทุน', `ต้องการลบ ${label} หรือไม่<br><span class="text-xs text-ink/70">การลบนี้ย้อนกลับไม่ได้</span>`,
-            () => doDeletePlItem(item._id), 'ลบรายการ', 'danger');
-    }
-
-    async function doDeletePlItem(id) {
-        try {
-            const res = await authFetch(`${API_BASE_URL}/acct/pnl-items/${id}`, { method: 'DELETE' });
-            const data = await res.json();
-            if (data.success) {
-                showToast('ลบรายการเรียบร้อย', 'success');
-                loadPlItems();
-            } else {
-                showToast('ลบรายการไม่สำเร็จ: ' + (data.message || 'ไม่ทราบสาเหตุ'), 'error');
-            }
-        } catch (error) {
-            console.error('Error doDeletePlItem:', error);
-            showToast('เชื่อมต่อเซิร์ฟเวอร์ผิดพลาด: ' + error.message, 'error');
-        }
-    }
-
-    // ---------- หน้า "ตั้งค่างบดุล" (#balance-sheet-config) ----------
-    // 1 แถว = 1 บรรทัดของงบดุล (collection balancesheetitem): กลุ่มบัญชี + ลำดับ + ชื่อรายการ + รหัสบัญชีที่ประกอบ
-    // หมวดไม่เก็บซ้ำ — ดูจากกลุ่มบัญชี; บัญชีที่เลือกได้ต้องอยู่หมวดเดียวกับกลุ่ม (เซิร์ฟเวอร์ตรวจอีกชั้น)
-    const BS_COLS = 7;
-    let _bsItems = [];
-
-    async function initBalanceSheetConfig() {
-        const search = document.getElementById('bs-item-search');
-        if (search) search.value = '';
-        coaSkeleton('bs-item-table-body', BS_COLS);
-        // loadCOAData เติม _coaCache (กลุ่ม/บัญชี สำหรับฟอร์ม) — โหลดคู่กับรายการงบดุล
-        await Promise.all([loadCOAData(), loadBsItems()]);
-    }
-
-    async function loadBsItems() {
-        const tbody = document.getElementById('bs-item-table-body');
-        try {
-            const res = await authFetch(`${API_BASE_URL}/acct/balance-sheet-items`);
-            const data = await res.json();
-            if (!data.success) {
-                if (tbody) tbody.innerHTML = coaStateRow(BS_COLS, data.message || 'ดึงข้อมูลงบดุลไม่สำเร็จ', 'text-red-400');
-                return;
-            }
-            _bsItems = data.items || [];
-            renderBsPage();
-        } catch (error) {
-            console.error('Error loadBsItems:', error);
-            if (tbody) tbody.innerHTML = coaStateRow(BS_COLS, 'เชื่อมต่อเซิร์ฟเวอร์ผิดพลาด', 'text-red-400');
-        }
-    }
-
-    function renderBsPage() {
-        const tbody = document.getElementById('bs-item-table-body');
-        if (!tbody) return;
-
-        const searchTxt = (document.getElementById('bs-item-search')?.value || '').trim().toLowerCase();
-        const rows = _bsItems.filter(it => !searchTxt ||
-            (it.item_name || '').toLowerCase().includes(searchTxt) ||
-            (it.group_id?.group_name || '').toLowerCase().includes(searchTxt) ||
-            (it.account_ids || []).some(a =>
-                (a.account_code || '').toLowerCase().includes(searchTxt) ||
-                (a.account_name || '').toLowerCase().includes(searchTxt)));
-        coaSetText('bs-item-result-count', _bsItems.length ? `แสดง ${rows.length} จาก ${_bsItems.length} รายการ` : '');
-
-        if (!rows.length) {
-            tbody.innerHTML = coaStateRow(BS_COLS, _bsItems.length ? 'ไม่พบรายการที่ตรงกับคำค้นหา' : 'ยังไม่มีรายการงบดุล');
-            return;
-        }
-        const dash = '<span class="text-ink/50">-</span>';
-        tbody.innerHTML = rows.map(it => {
-            const grp = it.group_id || {};
-            const catName = grp.category_id?.category_name;
-            const accs = it.account_ids || [];
-            const codeLines = accs.length
-                ? accs.map(a => `<div class="font-mono font-semibold text-accent-ink">${escapeHtml(a.account_code)}</div>`).join('')
-                : dash;
-            const nameLines = accs.length
-                ? accs.map(a => `<div class="text-ink">${escapeHtml(a.account_name)}</div>`).join('')
-                : dash;
-            return `
-            <tr class="hover:bg-divider transition-colors align-top">
-                <td class="px-6 py-4">${catName ? coaChipLabel(catName) : dash}</td>
-                <td class="px-6 py-4">${grp.group_name ? coaChipLabel(grp.group_name) : dash}</td>
-                <td class="px-6 py-4 font-mono text-ink">${escapeHtml(it.sort_order)}</td>
-                <td class="px-6 py-4 text-ink">${escapeHtml(it.item_name)}</td>
-                <td class="px-6 py-4 space-y-1">${codeLines}</td>
-                <td class="px-6 py-4 space-y-1">${nameLines}</td>
-                <td class="px-6 py-4 text-right">
-                    <div class="flex items-center justify-end gap-1">
-                        <button type="button" class="btn-bs-edit text-ink hover:text-amber-400 transition-colors p-2 cursor-pointer"
-                            data-id="${escapeHtml(it._id)}" title="แก้ไขบัญชีงบดุล"
-                            aria-label="แก้ไขบัญชีงบดุล ${escapeHtml(it.item_name)}">
-                            <i class="fa-solid fa-pen-to-square"></i>
-                        </button>
-                        <button type="button" class="btn-bs-delete text-ink hover:text-red-400 transition-colors p-2 cursor-pointer"
-                            data-id="${escapeHtml(it._id)}" title="ลบบัญชีงบดุล"
-                            aria-label="ลบบัญชีงบดุล ${escapeHtml(it.item_name)}">
-                            <i class="fa-solid fa-trash"></i>
-                        </button>
-                    </div>
-                </td>
-            </tr>`;
-        }).join('');
-        tbody.querySelectorAll('.btn-bs-edit').forEach(b =>
-            b.addEventListener('click', () => openBsItemModal(_bsItems.find(x => x._id === b.dataset.id))));
-        tbody.querySelectorAll('.btn-bs-delete').forEach(b =>
-            b.addEventListener('click', () => deleteBsItem(_bsItems.find(x => x._id === b.dataset.id))));
-    }
-
-    // เติมรายการกลุ่มบัญชี (ขึ้นต้นด้วยชื่อหมวด) ลงใน select ของฟอร์ม
-    function populateBsGroupSelect(selectEl) {
-        if (!selectEl) return;
-        selectEl.innerHTML = '<option value="">-- เลือกกลุ่มบัญชี --</option>' + _coaCache.groups.map(g => {
-            const cat = _coaCache.categories.find(c => c._id === idOf(g.category_id));
-            return `<option value="${escapeHtml(g._id)}">${escapeHtml(cat ? cat.category_name + ' · ' : '')}${escapeHtml(g.group_name)}</option>`;
-        }).join('');
-    }
-
-    // เติมกล่องเลือกบัญชีตามหมวดของกลุ่มที่เลือก — selectedIds = บัญชีที่ติ๊กไว้แล้ว (ตอนแก้ไข)
-    function onBsGroupChange(selectedIds = []) {
-        const box = document.getElementById('bs-item-accounts');
-        if (!box) return;
-        const groupId = document.getElementById('bs-item-group')?.value;
-        const grp = _coaCache.groups.find(g => g._id === groupId);
-        if (!grp) {
-            box.innerHTML = '<p class="px-2 py-1 text-body-muted text-xs">เลือกกลุ่มบัญชีก่อน</p>';
-            return;
-        }
-        const catId = idOf(grp.category_id);
-        const accs = _coaCache.accounts.filter(a => idOf(a.category_id) === catId);
-        const picked = new Set(Array.isArray(selectedIds) ? selectedIds : []);
-        if (!accs.length) {
-            box.innerHTML = '<p class="px-2 py-1 text-body-muted text-xs">ยังไม่มีรหัสบัญชีในหมวดนี้</p>';
-            return;
-        }
-        box.innerHTML = accs.map(a => `
-            <label class="flex items-center gap-2 px-2 py-1 rounded-sm hover:bg-divider cursor-pointer">
-                <input type="checkbox" class="bs-account-check" value="${escapeHtml(a._id)}" ${picked.has(a._id) ? 'checked' : ''}>
-                <span class="font-mono text-accent-ink">${escapeHtml(a.account_code)}</span>
-                <span class="text-ink">${escapeHtml(a.account_name)}</span>
-            </label>`).join('');
-    }
-
-    function openBsItemModal(editData = null) {
-        const modal = document.getElementById('modal-bs-item');
-        if (!modal) return;
-        populateBsGroupSelect(document.getElementById('bs-item-group'));
-        document.getElementById('modal-bs-item-title').textContent = editData ? 'แก้ไขบัญชีงบดุล' : 'เพิ่มบัญชีงบดุล';
-        document.getElementById('bs-item-id').value = editData?._id || '';
-        document.getElementById('bs-item-group').value = editData ? (idOf(editData.group_id) || '') : '';
-        // เพิ่มใหม่ — เสนอลำดับถัดจากลำดับสูงสุดที่มีอยู่
-        document.getElementById('bs-item-order').value = editData
-            ? editData.sort_order
-            : (_bsItems.reduce((m, x) => Math.max(m, x.sort_order || 0), 0) + 1);
-        document.getElementById('bs-item-name').value = editData?.item_name || '';
-        onBsGroupChange((editData?.account_ids || []).map(idOf));
-        modal.classList.remove('hidden');
-        document.getElementById('bs-item-group')?.focus();
-    }
-
-    function closeBsItemModal() {
-        const modal = document.getElementById('modal-bs-item');
-        if (modal) modal.classList.add('hidden');
-    }
-
-    async function saveBsItem() {
-        const _id = document.getElementById('bs-item-id')?.value;
-        const payload = {
-            group_id: document.getElementById('bs-item-group')?.value,
-            sort_order: Number(document.getElementById('bs-item-order')?.value),
-            item_name: (document.getElementById('bs-item-name')?.value || '').trim(),
-            account_ids: Array.from(document.querySelectorAll('#bs-item-accounts .bs-account-check:checked')).map(c => c.value)
-        };
-        if (_id) payload._id = _id;
-
-        if (!payload.group_id || !payload.item_name || !Number.isInteger(payload.sort_order) || payload.sort_order < 1) {
-            showToast('กรุณาเลือกกลุ่มบัญชี กรอกลำดับ (จำนวนเต็มตั้งแต่ 1) และชื่อรายการให้ครบ', 'warning');
-            return;
-        }
-
-        const btn = document.getElementById('bs-item-save');
-        if (btn) btn.disabled = true; // กันกดซ้ำ — POST ไม่ retry และไม่ควรยิงซ้ำ
-        try {
-            const res = await authFetch(`${API_BASE_URL}/acct/balance-sheet-items`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
-            const data = await res.json();
-            if (data.success) {
-                showToast(_id ? 'แก้ไขบัญชีงบดุลเรียบร้อย' : 'เพิ่มบัญชีงบดุลเรียบร้อย', 'success');
-                closeBsItemModal();
-                loadBsItems();
-            } else {
-                showToast('บันทึกบัญชีงบดุลไม่สำเร็จ: ' + (data.message || 'ไม่ทราบสาเหตุ'), 'error');
-            }
-        } catch (error) {
-            console.error('Error saveBsItem:', error);
-            showToast('เชื่อมต่อเซิร์ฟเวอร์ผิดพลาด: ' + error.message, 'error');
-        } finally {
-            if (btn) btn.disabled = false;
-        }
-    }
-
-    function deleteBsItem(item) {
-        if (!item) return;
-        // การลบย้อนไม่ได้ ต้องผ่าน showConfirm() ของระบบ (ข้อ 11.12 ข้อ 11)
-        const label = `<strong class="font-mono text-accent-ink">${escapeHtml(item.sort_order)}</strong> ${escapeHtml(item.item_name)}`;
-        showConfirm('ลบบัญชีงบดุล', `ต้องการลบ ${label} หรือไม่<br><span class="text-xs text-ink/70">การลบนี้ย้อนกลับไม่ได้</span>`,
-            () => doDeleteBsItem(item._id), 'ลบบัญชีงบดุล', 'danger');
-    }
-
-    async function doDeleteBsItem(id) {
-        try {
-            const res = await authFetch(`${API_BASE_URL}/acct/balance-sheet-items/${id}`, { method: 'DELETE' });
-            const data = await res.json();
-            if (data.success) {
-                showToast('ลบบัญชีงบดุลเรียบร้อย', 'success');
-                loadBsItems();
-            } else {
-                showToast('ลบบัญชีงบดุลไม่สำเร็จ: ' + (data.message || 'ไม่ทราบสาเหตุ'), 'error');
-            }
-        } catch (error) {
-            console.error('Error doDeleteBsItem:', error);
-            showToast('เชื่อมต่อเซิร์ฟเวอร์ผิดพลาด: ' + error.message, 'error');
+        if (p.editable) {
+            // ปุ่มจัดการใช้ตัวจัดการเดียวกับหน้า "หมวดหมู่บัญชี" (แก้ไข / เปิด-ปิดใช้งาน / ลบ) — บันทึกแล้วโหลดผังบัญชีใหม่ทุกหน้า
+            tbody.querySelectorAll('.acct-tree-act').forEach(b =>
+                b.addEventListener('click', () => onTreeAction(b.dataset.act, b.dataset.kind, b.dataset.id)));
         }
     }
 
@@ -1033,13 +710,26 @@
         const match = (...parts) => !q || parts.some(p => String(p || '').toLowerCase().includes(q));
         const stOk = (x) => !st || (st === 'active' ? isOn(x) : !isOn(x));
 
+        // บัญชีผูกกับกลุ่มโดยตรง (group_id) — ไม่มีกลุ่มให้ไปอยู่โฟลเดอร์ "ยังไม่จัดกลุ่ม" ของหมวด
         const accsByGroup = new Map();
+        const loose = new Map();
         _coaCache.accounts.forEach(a => {
             const gid = idOf(a.group_id);
-            if (!gid) return;
-            if (!accsByGroup.has(gid)) accsByGroup.set(gid, []);
-            accsByGroup.get(gid).push(a);
+            const map = gid ? accsByGroup : loose;
+            const key = gid || idOf(a.category_id);
+            if (!map.has(key)) map.set(key, []);
+            map.get(key).push(a);
         });
+
+        const accRow = (a, pad, gOn) => `
+            <div class="flex items-center gap-3 ${pad} pr-3 py-2 hover:bg-divider rounded-lg ${isOn(a) && gOn ? '' : 'opacity-60'}">
+                <i class="fa-solid fa-file-lines text-ink/50 w-4 text-center text-sm"></i>
+                <span class="font-mono font-semibold text-accent-ink w-24 shrink-0">${escapeHtml(a.account_code)}</span>
+                <span class="text-ink flex-1 min-w-0 truncate">${escapeHtml(a.account_name)}</span>
+                ${a.is_system ? '<span class="text-[10px] px-1.5 py-0.5 rounded bg-chip/60 text-ink shrink-0">ระบบ</span>' : ''}
+                <span class="shrink-0">${treeBadge(isOn(a))}</span>
+                ${treeActions('acc', a, a.account_code + ' ' + a.account_name, !a.is_system)}
+            </div>`;
 
         const cats = [..._coaCache.categories].sort((a, b) => th(a.category_code, b.category_code));
         if (!cats.length) { root.innerHTML = `<div class="py-12 text-center text-ink/60 italic">ไม่พบหมวดบัญชี</div>`; return; }
@@ -1055,15 +745,8 @@
                 const gKey = 'grp:' + g._id;
                 const open = searching ? true : _treeOpen.has(gKey);
                 const gOn = isOn(g);
-                const accRows = accList.map(a => `
-                    <div class="flex items-center gap-3 pl-14 pr-3 py-2 hover:bg-divider rounded-lg ${isOn(a) && gOn ? '' : 'opacity-60'}">
-                        <i class="fa-solid fa-file-lines text-ink/50 w-4 text-center text-sm"></i>
-                        <span class="font-mono font-semibold text-accent-ink w-24 shrink-0">${escapeHtml(a.account_code)}</span>
-                        <span class="text-ink flex-1 min-w-0 truncate">${escapeHtml(a.account_name)}</span>
-                        ${a.is_system ? '<span class="text-[10px] px-1.5 py-0.5 rounded bg-chip/60 text-ink shrink-0">ระบบ</span>' : ''}
-                        <span class="shrink-0">${treeBadge(isOn(a))}</span>
-                        ${treeActions('acc', a, a.account_code + ' ' + a.account_name, !a.is_system)}
-                    </div>`).join('') || `<div class="pl-14 py-2 text-sm text-ink/60 italic">${accs.length ? 'ไม่มีรหัสบัญชีที่ตรงกับตัวกรอง' : 'ยังไม่มีรหัสบัญชีในกลุ่มนี้'}</div>`;
+                const accRows = accList.map(a => accRow(a, 'pl-14', gOn)).join('')
+                    || `<div class="pl-14 py-2 text-sm text-ink/60 italic">${accs.length ? 'ไม่มีรหัสบัญชีที่ตรงกับตัวกรอง' : 'ยังไม่มีรหัสบัญชีในกลุ่มนี้'}</div>`;
                 return `
                 <div class="rounded-xl">
                     <div class="flex items-center gap-3 pl-8 pr-3 py-2.5 hover:bg-divider rounded-lg ${gOn ? '' : 'opacity-60'}">
@@ -1083,7 +766,28 @@
                 </div>`;
             }).join('');
 
-            if (searching && !groupHtml) return '';
+            // บัญชีของหมวดนี้ที่ยังไม่มีกลุ่ม — แก้ไขแล้วเลือกกลุ่มให้ได้
+            const looseAll = (loose.get(cat._id) || []).slice().sort((a, b) => th(a.account_code, b.account_code));
+            const looseList = looseAll.filter(a => stOk(a) && match(a.account_code, a.account_name));
+            let looseHtml = '';
+            if (looseList.length) {
+                const lKey = 'ung:' + cat._id;
+                const lOpen = searching ? true : _treeOpen.has(lKey);
+                looseHtml = `
+                <div>
+                    <div class="flex items-center gap-3 pl-8 pr-3 py-2.5 hover:bg-divider rounded-lg">
+                        <button type="button" class="acct-tree-fold flex items-center gap-3 flex-1 min-w-0 text-left cursor-pointer" data-key="${lKey}" aria-expanded="${lOpen}">
+                            <i class="fa-solid ${lOpen ? 'fa-chevron-down' : 'fa-chevron-right'} text-ink/60 w-4 text-center text-xs"></i>
+                            <i class="fa-solid ${lOpen ? 'fa-folder-open' : 'fa-folder'} text-ink/50"></i>
+                            <span class="text-ink/80 italic truncate">ยังไม่จัดกลุ่ม</span>
+                            <span class="text-xs text-ink/60 shrink-0">${looseAll.length} บัญชี</span>
+                        </button>
+                    </div>
+                    ${lOpen ? `<div class="space-y-0.5">${looseList.map(a => accRow(a, 'pl-14', true)).join('')}</div>` : ''}
+                </div>`;
+            }
+
+            if (searching && !groupHtml && !looseHtml) return '';
             const cKey = 'cat:' + cat._id;
             const open = searching ? true : _treeOpen.has(cKey);
             return `
@@ -1100,7 +804,7 @@
                         <i class="fa-solid fa-plus"></i><span>เพิ่มกลุ่ม</span>
                     </button>
                 </div>
-                ${open ? `<div class="pb-3 space-y-1">${groupHtml || '<div class="pl-8 py-2 text-sm text-ink/60 italic">ยังไม่มีกลุ่มบัญชีในหมวดนี้</div>'}</div>` : ''}
+                ${open ? `<div class="pb-3 space-y-1">${(groupHtml + looseHtml) || '<div class="pl-8 py-2 text-sm text-ink/60 italic">ยังไม่มีกลุ่มบัญชีในหมวดนี้</div>'}</div>` : ''}
             </div>`;
         }).join('');
 
@@ -1213,24 +917,56 @@
     }
 
     // ---------- โมดัลรหัสบัญชี ----------
-    function openAcctAccountModal(data = {}) {
+    // เติมตัวเลือกกลุ่มของหมวดที่เลือก — กลุ่มที่ปิดใช้งานเลือกใหม่ไม่ได้ (ยกเว้นกลุ่มที่บัญชีอยู่เดิม)
+    function fillAcctGroupOptions(catId, selectedId) {
+        const sel = document.getElementById('acct-account-parent');
+        if (!sel) return;
+        sel.dataset.cat = catId || '';
+        sel.innerHTML = '<option value="">-- ยังไม่จัดกลุ่ม --</option>' + _coaCache.groups
+            .filter(g => idOf(g.category_id) === catId && (isOn(g) || g._id === selectedId))
+            .sort((x, y) => String(x.group_code).localeCompare(String(y.group_code), 'th', { numeric: true }))
+            .map(g => `<option value="${escapeHtml(g._id)}">${escapeHtml(g.group_code)} ${escapeHtml(g.group_name)}</option>`).join('');
+        sel.value = selectedId || '';
+    }
+
+    // เปลี่ยนหมวดในฟอร์ม (เฉพาะตอนเพิ่มจากหน้างบดุล) — โหลดกลุ่มของหมวดนั้นใหม่
+    function onAcctAccountCategoryChange() {
+        const catId = document.getElementById('acct-account-category')?.value || '';
+        fillAcctGroupOptions(catId, '');
+    }
+
+    // opts.categoryFilter = (ชื่อหมวด) => boolean — ส่งมาเมื่อเพิ่มบัญชีใหม่โดยยังไม่รู้หมวด (หน้างบดุล): ให้เลือกหมวดเอง
+    function openAcctAccountModal(data = {}, opts = {}) {
         const modal = document.getElementById('modal-acct-account');
         if (!modal) return;
         const group = _coaCache.groups.find(g => g._id === idOf(data.group_id));
-        if (!group) { showToast('ไม่พบกลุ่มบัญชี', 'warning'); return; }
-        if (!data._id && !isOn(group)) { showToast('กลุ่มบัญชีนี้ปิดการใช้งานอยู่ เปิดการใช้งานกลุ่มก่อนจึงจะเพิ่มรหัสบัญชีได้', 'warning'); return; }
-        const cat = _coaCache.categories.find(c => c._id === idOf(group.category_id));
+        const pickCat = !!opts.categoryFilter && !data._id && !group;
+        const catId = group ? idOf(group.category_id) : idOf(data.category_id);
+        if (!pickCat && !catId) { showToast('ไม่พบกลุ่มบัญชี', 'warning'); return; }
+        if (!data._id && group && !isOn(group)) { showToast('กลุ่มบัญชีนี้ปิดการใช้งานอยู่ เปิดการใช้งานกลุ่มก่อนจึงจะเพิ่มรหัสบัญชีได้', 'warning'); return; }
+        const cat = _coaCache.categories.find(c => c._id === catId);
         document.getElementById('modal-acct-account-title').textContent = data._id ? 'แก้ไขรหัสบัญชี' : 'เพิ่มรหัสบัญชี';
         document.getElementById('acct-account-id').value = data._id || '';
-        document.getElementById('acct-account-parent').value = group._id;
-        document.getElementById('acct-account-context').textContent =
-            `กลุ่ม ${group.group_code} ${group.group_name}${cat ? ' · หมวด' + cat.category_name : ''}`;
+        document.getElementById('acct-account-context').textContent = cat ? `หมวด ${cat.category_code} ${cat.category_name}` : '';
+        const catWrap = document.getElementById('acct-account-cat-wrap');
+        const catSel = document.getElementById('acct-account-category');
+        if (catWrap) catWrap.classList.toggle('hidden', !pickCat);
+        if (catSel) {
+            catSel.innerHTML = '<option value="">-- เลือกหมวด --</option>' + (pickCat
+                ? _coaCache.categories.filter(c => opts.categoryFilter(c.category_name))
+                    .sort((x, y) => String(x.category_code).localeCompare(String(y.category_code), 'th', { numeric: true }))
+                    .map(c => `<option value="${escapeHtml(c._id)}">${escapeHtml(c.category_code)} ${escapeHtml(c.category_name)}</option>`).join('')
+                : '');
+            catSel.value = '';
+        }
+        // บัญชีผูกกับกลุ่มโดยตรง — เลือกได้เฉพาะกลุ่มในหมวดเดียวกัน
+        fillAcctGroupOptions(catId, group ? group._id : '');
         const code = document.getElementById('acct-account-code');
         code.value = data.account_code || '';
         code.readOnly = !!data.is_system; // บัญชีระบบเปลี่ยนรหัสไม่ได้
         document.getElementById('acct-account-name').value = data.account_name || '';
         modal.classList.remove('hidden');
-        (data.is_system ? document.getElementById('acct-account-name') : code).focus();
+        (pickCat ? catSel : (data.is_system ? document.getElementById('acct-account-name') : code)).focus();
     }
 
     function closeAcctAccountModal() {
@@ -1239,14 +975,16 @@
 
     async function saveAcctAccount() {
         const _id = document.getElementById('acct-account-id')?.value;
-        const group = _coaCache.groups.find(g => g._id === document.getElementById('acct-account-parent')?.value);
+        const sel = document.getElementById('acct-account-parent');
+        const group = _coaCache.groups.find(g => g._id === sel?.value);
         const payload = {
             account_code: (document.getElementById('acct-account-code')?.value || '').trim(),
             account_name: (document.getElementById('acct-account-name')?.value || '').trim(),
-            category_id: group ? idOf(group.category_id) : '',
+            category_id: group ? idOf(group.category_id) : (sel?.dataset.cat || ''),
             group_id: group ? group._id : null
         };
         if (_id) payload._id = _id;
+        if (!payload.category_id) { showToast('กรุณาเลือกหมวดของบัญชี', 'warning'); return; }
         if (!payload.account_code || !payload.account_name) { showToast('กรุณากรอกรหัสและชื่อบัญชีให้ครบ', 'warning'); return; }
         const btn = document.getElementById('acct-account-save');
         if (btn) btn.disabled = true;
@@ -1745,175 +1483,6 @@
             }
         } catch (error) {
             console.error('Error saveAccountGroup:', error);
-            showToast('เชื่อมต่อเซิร์ฟเวอร์ผิดพลาด: ' + error.message, 'error');
-        }
-    }
-
-    async function loadPnLConfig() {
-        try {
-            const res = await authFetch(`${API_BASE_URL}/acct/pnl-config`);
-            const data = await res.json();
-            if (data.success) {
-                renderPnLConfigTable(data.configs || []);
-            } else {
-                showToast(data.message || 'เกิดข้อผิดพลาดในการโหลดข้อมูลโครงสร้างงบ', 'error');
-            }
-        } catch (error) {
-            console.error('Error loadPnLConfig:', error);
-            showToast('เชื่อมต่อเซิร์ฟเวอร์ผิดพลาด', 'error');
-        }
-    }
-
-    function renderPnLConfigTable(configs) {
-        const tbody = document.getElementById('pnl-config-table-body');
-        if (!tbody) return;
-
-        const rows = configs || [];
-        coaSetText('badge-coa-pnl', rows.length);
-
-        tbody.innerHTML = '';
-        if (!rows.length) {
-            tbody.innerHTML = coaStateRow(PNL_COLS, 'ยังไม่มีรายการงบกำไรขาดทุน กด "เพิ่มรายการ" เพื่อเริ่มตั้งค่า');
-            return;
-        }
-        rows.forEach((conf, idx) => tbody.appendChild(createPnLRow(conf, idx)));
-    }
-
-    function createPnLRow(conf = {}, idx = 0) {
-        const tr = document.createElement('tr');
-        tr.className = 'hover:bg-divider transition-colors pnl-row';
-
-        let accOptions = '<option value="">เลือกบัญชี (ออโต้รวม)</option>';
-        _coaCache.accounts.forEach(a => {
-            const isSelected = conf.account_ids && conf.account_ids.some(acc => idOf(acc) === a._id);
-            // บัญชีที่ปิดการใช้งานไม่แสดงให้เลือกใหม่ แต่ถ้าบรรทัดนี้เลือกไว้อยู่แล้วต้องคงไว้ ไม่งั้นบันทึกแล้วจะหลุดหาย
-            if (a.is_active === false && !isSelected) return;
-            accOptions += `<option value="${a._id}" ${isSelected ? 'selected' : ''}>${escapeHtml(a.account_code)} - ${escapeHtml(a.account_name)}</option>`;
-        });
-
-        const sections = [{ value: 'revenue', label: 'รายได้' }, { value: 'expense', label: 'ค่าใช้จ่าย' }];
-        const secOptions = sections.map(s =>
-            `<option value="${s.value}" ${s.value === conf.section ? 'selected' : ''}>${s.label}</option>`).join('');
-
-        // ช่องกรอกในตารางใช้โทเคนชุดเดียวกับฟอร์ม (ข้อ 11.9) แต่ย่อ padding ให้พอดีความสูงแถว
-        const field = 'elev-field w-full px-3 py-2 rounded-xl bg-field text-ink focus:ring-2 focus:ring-accent-ink focus:outline-none transition-all text-sm';
-
-        tr.innerHTML = `
-            <td class="px-6 py-4">
-                <input type="number" inputmode="numeric" aria-label="ลำดับการแสดง"
-                    class="pnl-sort ${field} text-center font-mono" value="${conf.sort_order ?? (idx + 1) * 10}">
-            </td>
-            <td class="px-6 py-4">
-                <input type="text" aria-label="ชื่อรายการ" placeholder="ชื่อรายการ"
-                    class="pnl-name ${field} placeholder-ink-muted-48 min-w-[160px]" value="${escapeHtml(conf.display_name || '')}">
-            </td>
-            <td class="px-6 py-4">
-                <div class="relative min-w-[130px]">
-                    <select class="pnl-section ${field} appearance-none pr-9 cursor-pointer" aria-label="ส่วนของงบ">
-                        ${secOptions}
-                    </select>
-                    <div class="absolute right-3 top-[11px] pointer-events-none text-body-muted">
-                        <i class="fa-solid fa-chevron-down text-xs"></i>
-                    </div>
-                </div>
-            </td>
-            <td class="px-6 py-4">
-                <div class="relative min-w-[220px]">
-                    <select class="pnl-account ${field} appearance-none pr-9 cursor-pointer" aria-label="บัญชีที่เชื่อมโยง">
-                        ${accOptions}
-                    </select>
-                    <div class="absolute right-3 top-[11px] pointer-events-none text-body-muted">
-                        <i class="fa-solid fa-chevron-down text-xs"></i>
-                    </div>
-                </div>
-            </td>
-            <td class="px-6 py-4 text-center">
-                <input type="checkbox" aria-label="แสดงเป็นตัวหนา"
-                    class="elev-field pnl-bold w-4 h-4 rounded bg-field accent-accent-ink cursor-pointer"
-                    ${conf.is_bold ? 'checked' : ''}>
-            </td>
-            <td class="px-6 py-4 text-right">
-                <div class="flex items-center justify-end gap-1">
-                    <button type="button" class="btn-pnl-remove text-ink hover:text-red-400 transition-colors p-2 cursor-pointer"
-                        title="ลบรายการนี้" aria-label="ลบรายการงบกำไรขาดทุน">
-                        <i class="fa-solid fa-trash"></i>
-                    </button>
-                </div>
-            </td>
-        `;
-
-        const rm = tr.querySelector('.btn-pnl-remove');
-        if (rm) rm.addEventListener('click', () => removePnLLine(rm));
-        return tr;
-    }
-
-    function addPnLLine() {
-        const tbody = document.getElementById('pnl-config-table-body');
-        if (!tbody) return;
-        // แถวสถานะว่างไม่ใช่ข้อมูลจริง ต้องเคลียร์ก่อนเพิ่มแถวแรก
-        if (!tbody.querySelector('.pnl-row')) tbody.innerHTML = '';
-        tbody.appendChild(createPnLRow({}, tbody.children.length));
-        coaSetText('badge-coa-pnl', tbody.querySelectorAll('.pnl-row').length);
-    }
-
-    // การลบเป็นการกระทำที่ย้อนไม่ได้ ต้องผ่าน showConfirm() ของระบบ (ข้อ 11.12 ข้อ 11)
-    // ของเดิมใช้ confirm() ของเบราว์เซอร์ ซึ่งหน้าตาไม่เข้ากับธีมและบล็อกทั้งหน้า
-    function removePnLLine(btn) {
-        const tr = btn.closest('tr');
-        if (!tr) return;
-        const name = (tr.querySelector('.pnl-name')?.value || '').trim();
-        showConfirm(
-            'ลบรายการงบกำไรขาดทุน',
-            name
-                ? `ต้องการลบรายการ <strong class="text-ink">${escapeHtml(name)}</strong> ออกจากงบกำไรขาดทุนหรือไม่<br><span class="text-xs text-ink/70">การเปลี่ยนแปลงจะมีผลเมื่อกดบันทึก</span>`
-                : 'ต้องการลบรายการนี้ออกจากงบกำไรขาดทุนหรือไม่',
-            () => {
-                tr.remove();
-                const tbody = document.getElementById('pnl-config-table-body');
-                if (tbody) {
-                    const left = tbody.querySelectorAll('.pnl-row').length;
-                    coaSetText('badge-coa-pnl', left);
-                    if (!left) tbody.innerHTML = coaStateRow(PNL_COLS, 'ยังไม่มีรายการงบกำไรขาดทุน กด "เพิ่มรายการ" เพื่อเริ่มตั้งค่า');
-                }
-            },
-            'ลบรายการ',
-            'danger'
-        );
-    }
-
-    async function savePnLConfig() {
-        const rows = document.querySelectorAll('.pnl-row');
-        const lines = [];
-
-        rows.forEach(tr => {
-            const accId = tr.querySelector('.pnl-account')?.value;
-            lines.push({
-                sort_order: parseInt(tr.querySelector('.pnl-sort')?.value || 0),
-                display_name: tr.querySelector('.pnl-name')?.value || '',
-                section: tr.querySelector('.pnl-section')?.value || '',
-                account_id: accId || null,
-                account_ids: accId ? [accId] : [],
-                is_bold: tr.querySelector('.pnl-bold')?.checked || false
-            });
-        });
-
-        lines.sort((a, b) => a.sort_order - b.sort_order);
-
-        try {
-            const res = await authFetch(`${API_BASE_URL}/acct/pnl-config`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ lines })
-            });
-            const data = await res.json();
-            if (data.success) {
-                showToast('บันทึกโครงสร้างงบเรียบร้อย', 'success');
-                loadPnLConfig();
-            } else {
-                showToast('บันทึกโครงสร้างงบไม่สำเร็จ: ' + (data.message || 'ไม่ทราบสาเหตุ'), 'error');
-            }
-        } catch (error) {
-            console.error('Error savePnLConfig:', error);
             showToast('เชื่อมต่อเซิร์ฟเวอร์ผิดพลาด: ' + error.message, 'error');
         }
     }
@@ -2571,9 +2140,6 @@
     window.closeAddGroupModal = closeAddGroupModal;
     window.saveAccountGroup = saveAccountGroup;
     window.onGroupCategoryChange = onGroupCategoryChange;
-    window.addPnLLine = addPnLLine;
-    window.savePnLConfig = savePnLConfig;
-    window.removePnLLine = removePnLLine;
     window.calcDVVat = calcDVVat;
     window.submitDisbursement = submitDisbursement;
     window.loadDisbursements = loadDisbursements;
@@ -2582,15 +2148,11 @@
     window.initDisbursement = initDisbursement;
     window.initPnlConfigPage = initPnlConfigPage;
     window.renderPlPage = renderPlPage;
-    window.openPlItemModal = openPlItemModal;
-    window.closePlItemModal = closePlItemModal;
-    window.savePlItem = savePlItem;
     window.initBalanceSheetConfig = initBalanceSheetConfig;
+    window.openBsAccountModal = openBsAccountModal;
+    window.openPlAccountModal = openPlAccountModal;
+    window.onAcctAccountCategoryChange = onAcctAccountCategoryChange;
     window.renderBsPage = renderBsPage;
-    window.openBsItemModal = openBsItemModal;
-    window.closeBsItemModal = closeBsItemModal;
-    window.onBsGroupChange = onBsGroupChange;
-    window.saveBsItem = saveBsItem;
     window.initAccountTree = initAccountTree;
     window.openAcctGroupModal = openAcctGroupModal;
     window.closeAcctGroupModal = closeAcctGroupModal;

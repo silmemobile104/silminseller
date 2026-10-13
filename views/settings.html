@@ -87,6 +87,33 @@
                         <input type="text" id="master-data-code-input" autocomplete="off" placeholder="เช่น IP15PM"
                             class="elev-modal w-full px-4 py-2.5 rounded-xl bg-elevated text-ink focus:ring-2 focus:ring-accent-ink focus:outline-none transition-all placeholder-ink-muted-48 text-sm font-mono">
                     </div>
+                    <div id="master-data-limit-wrap" class="hidden space-y-2 sm:w-56">
+                        <label for="master-data-limit-input" class="text-ink font-medium flex items-center gap-2 text-xs">
+                            <i class="fa-solid fa-hand-holding-dollar text-ink"></i> วงเงิน (บาท) <span class="text-red-500">*</span>
+                        </label>
+                        <input type="number" id="master-data-limit-input" min="1" step="any" inputmode="decimal" placeholder="เช่น 500000"
+                            class="elev-modal w-full px-4 py-2.5 rounded-xl bg-elevated text-ink focus:ring-2 focus:ring-accent-ink focus:outline-none transition-all placeholder-ink-muted-48 text-sm font-mono text-right">
+                    </div>
+                    <div id="master-data-color-wrap" class="hidden space-y-2 sm:w-56">
+                        <label for="master-data-color-hex" class="text-ink font-medium flex items-center gap-2 text-xs">
+                            <i class="fa-solid fa-palette text-ink"></i> รหัสสี (hex)
+                        </label>
+                        <div class="flex items-center gap-2">
+                            <input type="color" id="master-data-color-picker" value="#8e8e93" aria-label="เลือกสี"
+                                class="elev-modal h-10 w-12 shrink-0 rounded-xl bg-elevated p-1 cursor-pointer">
+                            <input type="text" id="master-data-color-hex" autocomplete="off" placeholder="#FF3B30" maxlength="7"
+                                class="elev-modal w-full px-4 py-2.5 rounded-xl bg-elevated text-ink focus:ring-2 focus:ring-accent-ink focus:outline-none transition-all placeholder-ink-muted-48 text-sm font-mono uppercase">
+                        </div>
+                    </div>
+                    <div id="master-data-type-wrap" class="space-y-2 sm:w-56">
+                        <label for="master-data-type-input" class="text-ink font-medium flex items-center gap-2 text-xs">
+                            <i class="fa-solid fa-tag text-ink"></i> ประเภทสินค้า
+                        </label>
+                        <select id="master-data-type-input"
+                            class="elev-modal w-full px-4 py-2.5 rounded-xl bg-elevated text-ink focus:ring-2 focus:ring-accent-ink focus:outline-none transition-all text-sm">
+                            <option value="">ไม่ระบุประเภท</option>
+                        </select>
+                    </div>
                     <div class="flex items-end">
                         <button id="btn-add-master-data" type="button"
                             class="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-primary hover:bg-[#E2B93C] text-on-primary font-semibold text-sm transition-colors flex items-center justify-center gap-2 cursor-pointer whitespace-nowrap">
@@ -96,6 +123,9 @@
                 </div>
             </div>
         </div>
+
+        <!-- กรองชื่อสินค้าตามประเภท — แสดงเฉพาะแท็บชื่อสินค้า (เติมจาก js/page-settings.js) -->
+        <div id="settings-type-filter" class="hidden px-6 pt-4 flex flex-wrap gap-2" role="group" aria-label="กรองตามประเภทสินค้า"></div>
 
         <!-- ชิปตัวกรอง + ตัวนับผลลัพธ์ (ข้อ 11.5) -->
         <div class="px-6 py-4">
