@@ -7,52 +7,10 @@
         </div>
     </div>
 
-    <!-- [2] แท็บหมวดข้อมูล — ป้ายตัวเลขเติมจากข้อมูลจริงใน js/page-settings.js -->
-    <div id="settings-tabs" class="flex flex-wrap items-center gap-2">
-        <button type="button" data-tab="productname" aria-pressed="true"
-            class="border border-transparent settings-tab-btn px-4 py-2.5 rounded-xl text-sm font-bold transition-colors flex items-center gap-2 cursor-pointer bg-primary text-on-primary ring-1 ring-accent-ink">
-            <i class="fa-solid fa-mobile-screen"></i> ชื่อสินค้า
-            <span class="settings-tab-badge px-2 py-0.5 rounded-full text-[10px] font-bold bg-hairline/20">0</span>
-        </button>
-        <button type="button" data-tab="producttype" aria-pressed="false"
-            class="elev-field settings-tab-btn px-4 py-2.5 rounded-xl text-sm font-bold transition-colors flex items-center gap-2 cursor-pointer bg-field text-body-muted hover:ring-1 hover:ring-accent-ink hover:text-ink">
-            <i class="fa-solid fa-tag"></i> ประเภทสินค้า
-            <span class="settings-tab-badge px-2 py-0.5 rounded-full text-[10px] font-bold bg-chip/60 text-ink">0</span>
-        </button>
-        <button type="button" data-tab="productunit" aria-pressed="false"
-            class="elev-field settings-tab-btn px-4 py-2.5 rounded-xl text-sm font-bold transition-colors flex items-center gap-2 cursor-pointer bg-field text-body-muted hover:ring-1 hover:ring-accent-ink hover:text-ink">
-            <i class="fa-solid fa-ruler"></i> หน่วยนับ
-            <span class="settings-tab-badge px-2 py-0.5 rounded-full text-[10px] font-bold bg-chip/60 text-ink">0</span>
-        </button>
-        <button type="button" data-tab="productcolor" aria-pressed="false"
-            class="elev-field settings-tab-btn px-4 py-2.5 rounded-xl text-sm font-bold transition-colors flex items-center gap-2 cursor-pointer bg-field text-body-muted hover:ring-1 hover:ring-accent-ink hover:text-ink">
-            <i class="fa-solid fa-palette"></i> สี
-            <span class="settings-tab-badge px-2 py-0.5 rounded-full text-[10px] font-bold bg-chip/60 text-ink">0</span>
-        </button>
-        <button type="button" data-tab="productcapacity" aria-pressed="false"
-            class="elev-field settings-tab-btn px-4 py-2.5 rounded-xl text-sm font-bold transition-colors flex items-center gap-2 cursor-pointer bg-field text-body-muted hover:ring-1 hover:ring-accent-ink hover:text-ink">
-            <i class="fa-solid fa-database"></i> ความจุ
-            <span class="settings-tab-badge px-2 py-0.5 rounded-full text-[10px] font-bold bg-chip/60 text-ink">0</span>
-        </button>
-        <button type="button" data-tab="productcondition" aria-pressed="false"
-            class="elev-field settings-tab-btn px-4 py-2.5 rounded-xl text-sm font-bold transition-colors flex items-center gap-2 cursor-pointer bg-field text-body-muted hover:ring-1 hover:ring-accent-ink hover:text-ink">
-            <i class="fa-solid fa-star"></i> สภาพเครื่อง
-            <span class="settings-tab-badge px-2 py-0.5 rounded-full text-[10px] font-bold bg-chip/60 text-ink">0</span>
-        </button>
-        <button type="button" data-tab="supplier" aria-pressed="false"
-            class="elev-field settings-tab-btn px-4 py-2.5 rounded-xl text-sm font-bold transition-colors flex items-center gap-2 cursor-pointer bg-field text-body-muted hover:ring-1 hover:ring-accent-ink hover:text-ink">
-            <i class="fa-solid fa-truck-front"></i> ผู้จัดจำหน่าย
-            <span class="settings-tab-badge px-2 py-0.5 rounded-full text-[10px] font-bold bg-chip/60 text-ink">0</span>
-        </button>
-        <button type="button" data-tab="financecompany" aria-pressed="false"
-            class="elev-field settings-tab-btn px-4 py-2.5 rounded-xl text-sm font-bold transition-colors flex items-center gap-2 cursor-pointer bg-field text-body-muted hover:ring-1 hover:ring-accent-ink hover:text-ink">
-            <i class="fa-solid fa-hand-holding-dollar"></i> บริษัทจัดไฟแนนซ์
-            <span class="settings-tab-badge px-2 py-0.5 rounded-full text-[10px] font-bold bg-chip/60 text-ink">0</span>
-        </button>
-    </div>
+    <!-- [2] หมวดข้อมูลเลือกจากเมนูย่อย "การตั้งค่าระบบ" ใน sidebar (ไม่มีแท็บในหน้านี้) -->
 
     <!-- [3] การ์ดพาเนล — ฟอร์มเพิ่ม + ค้นหา + ชิป + รายการ อยู่ในการ์ดใบเดียว (ข้อ 11.1, 11.3) -->
-    <div class="bg-panel/40 rounded-2xl shadow-lg overflow-hidden backdrop-blur-sm">
+    <div id="settings-main-card" class="bg-panel/40 rounded-2xl shadow-lg overflow-hidden backdrop-blur-sm">
         <div class="p-6 pb-0 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
             <h3 id="settings-panel-title" class="text-lg text-ink flex items-center gap-2">
                 <i class="fa-solid fa-list-ul text-accent-ink"></i> ชื่อสินค้า

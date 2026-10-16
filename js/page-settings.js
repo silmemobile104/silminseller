@@ -4,8 +4,7 @@
 // window.masterDataCache, API_BASE_URL (global จาก script.js)
 (function () {
     // DOM elements ที่หน้านี้ใช้ (ดึงเองแยกจาก core เพราะ const เดิมอยู่คนละไฟล์กันแล้ว)
-    const settingsTabBtns = document.querySelectorAll('.settings-tab-btn');
-    const masterDataInput = document.getElementById('master-data-input');
+        const masterDataInput = document.getElementById('master-data-input');
     const masterDataCodeInput = document.getElementById('master-data-code-input');
     const masterDataTypeInput = document.getElementById('master-data-type-input');
     const masterDataLimitInput = document.getElementById('master-data-limit-input');
@@ -22,6 +21,41 @@
         }
         if (currentSettingsTab === 'supplier') renderSettingsList();
     };
+    // ส่วนลดจากเคลมของผู้จัดจำหน่าย { [ชื่อ]: { device:{total,claims}, accessory:{total,claims} } } — โหลดจาก /suppliers/claim-discounts
+    let _stClaimDiscounts = {};
+    const stLoadClaimDiscounts = async () => {
+        try {
+            const res = await authFetch(`${API_BASE_URL}/suppliers/claim-discounts`);
+            const json = await res.json();
+            if (json.success) _stClaimDiscounts = json.data || {};
+        } catch (err) {
+            console.error('Error loading supplier claim discounts:', err);
+        }
+        if (currentSettingsTab === 'supplier') renderSettingsList();
+    };
+    // สถานะวงเงินของผู้จัดจำหน่าย: ไม่ตั้งวงเงิน / ปกติ (<80%) / ใกล้เต็ม (>=80%) / เกินวงเงิน (>=100%)
+    // class สี spell เต็มทุกตัว เพื่อให้ Tailwind สแกนเจอตอน build
+    const ST_TONE = {
+        ok: { text: 'text-state-ok', bar: 'bg-state-ok', tint: 'bg-state-ok/15' },
+        pending: { text: 'text-state-pending', bar: 'bg-state-pending', tint: 'bg-state-pending/15' },
+        danger: { text: 'text-state-danger', bar: 'bg-state-danger', tint: 'bg-state-danger/15' }
+    };
+    const ST_SUPPLIER_STATUSES = [
+        { key: 'ok', label: 'ปกติ', tone: 'ok' },
+        { key: 'near', label: 'ใกล้เต็มวงเงิน', tone: 'pending' },
+        { key: 'over', label: 'เกินวงเงิน', tone: 'danger' },
+        { key: 'nolimit', label: 'ยังไม่ตั้งวงเงิน', tone: 'pending' }
+    ];
+    const stSupplierStatus = (item) => {
+        const limit = Number(item.credit_limit);
+        const hasLimit = Number.isFinite(limit) && limit > 0;
+        const used = (_stCreditUsage[item.name] && _stCreditUsage[item.name].used) || 0;
+        const pct = hasLimit ? (used / limit) * 100 : 0;
+        const key = !hasLimit ? 'nolimit' : pct >= 100 ? 'over' : pct >= 80 ? 'near' : 'ok';
+        return { ...ST_SUPPLIER_STATUSES.find(s => s.key === key), limit, hasLimit, used, pct };
+    };
+    // กรองผู้จัดจำหน่ายตามสถานะวงเงิน: '' = ทั้งหมด, นอกนั้นคือ key ใน ST_SUPPLIER_STATUSES
+    let _stStatusFilter = '';
     const masterDataColorPicker = document.getElementById('master-data-color-picker');
     const masterDataColorHex = document.getElementById('master-data-color-hex');
     const ST_HEX_RE = /^#?([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/;
@@ -104,27 +138,23 @@
         box.appendChild(chip);
     };
 
-    // ป้ายตัวเลขบนแท็บ นับจากข้อมูลจริงทุกหมวด
+    // ตัวเลขจำนวนรายการท้ายเมนูย่อยใน sidebar นับจากข้อมูลจริงทุกหมวด
     const stUpdateTabBadges = () => {
-        document.querySelectorAll('#settings-tabs .settings-tab-btn').forEach(btn => {
-            const badge = btn.querySelector('.settings-tab-badge');
-            if (badge) badge.textContent = stDataOf(btn.dataset.tab).length;
+        document.querySelectorAll('#nav-settings-submenu [data-settings-tab]').forEach(a => {
+            const c = a.querySelector('.settings-nav-count');
+            if (!c) return;
+            const tab = a.dataset.settingsTab;
+            c.textContent = stDataOf(tab).length;
         });
     };
 
-    const ST_TAB_BASE = 'elev-chip settings-tab-btn px-4 py-2.5 rounded-xl text-sm font-bold transition-colors flex items-center gap-2 cursor-pointer';
+    // สไตล์ปุ่มกรองประเภท (ชิปในแท็บชื่อสินค้า) ยังใช้ร่วมกัน
     const ST_TAB_ON = 'bg-primary text-on-primary ring-1 ring-accent-ink apple-active-accent';
     const ST_TAB_OFF = 'elev-field bg-field text-body-muted hover:ring-1 hover:ring-accent-ink hover:text-ink';
-    const ST_BADGE_ON = 'settings-tab-badge px-2 py-0.5 rounded-full text-[10px] font-bold bg-hairline/20';
-    const ST_BADGE_OFF = 'settings-tab-badge px-2 py-0.5 rounded-full text-[10px] font-bold bg-chip/60 text-ink';
 
     const stActivateTab = (tab) => {
-        document.querySelectorAll('#settings-tabs .settings-tab-btn').forEach(btn => {
-            const on = btn.dataset.tab === tab;
-            btn.className = `${ST_TAB_BASE} ${on ? ST_TAB_ON : ST_TAB_OFF}`;
-            btn.setAttribute('aria-pressed', String(on));
-            const badge = btn.querySelector('.settings-tab-badge');
-            if (badge) badge.className = on ? ST_BADGE_ON : ST_BADGE_OFF;
+        document.querySelectorAll('#nav-settings-submenu [data-settings-tab]').forEach(a => {
+            a.classList.toggle('active', a.dataset.settingsTab === tab);
         });
     };
 
@@ -137,13 +167,37 @@
         const isName = currentSettingsTab === 'productname';
         const wrap = document.getElementById('master-data-type-wrap');
         if (wrap) wrap.classList.toggle('hidden', !isName);
+        const isSupplier = currentSettingsTab === 'supplier';
         const bar = document.getElementById('settings-type-filter');
-        if (bar) bar.classList.toggle('hidden', !isName);
+        if (bar) bar.classList.toggle('hidden', !isName && !isSupplier);
         const limitWrap = document.getElementById('master-data-limit-wrap');
         if (limitWrap) limitWrap.classList.toggle('hidden', currentSettingsTab !== 'supplier');
         const colorWrap = document.getElementById('master-data-color-wrap');
         if (colorWrap) colorWrap.classList.toggle('hidden', currentSettingsTab !== 'productcolor');
+
+        // ผู้จัดจำหน่าย: ชิปกรองตามสถานะวงเงิน (จุดสี + จำนวน)
+        if (isSupplier && bar) {
+            const sups = stDataOf('supplier');
+            const counts = {};
+            sups.forEach(s => { const k = stSupplierStatus(s).key; counts[k] = (counts[k] || 0) + 1; });
+            const opts = [{ key: '', label: 'ทั้งหมด', n: sups.length }]
+                .concat(ST_SUPPLIER_STATUSES.map(s => ({ key: s.key, label: s.label, tone: s.tone, n: counts[s.key] || 0 })));
+            bar.setAttribute('aria-label', 'กรองตามสถานะวงเงิน');
+            bar.innerHTML = opts.map(o => {
+                const on = _stStatusFilter === o.key;
+                const dot = o.tone ? `<span class="w-1.5 h-1.5 rounded-full ${ST_TONE[o.tone].bar}" aria-hidden="true"></span>` : '';
+                return `<button type="button" data-status-filter="${o.key}" aria-pressed="${on}"
+                    class="${on ? ST_TAB_ON : ST_TAB_OFF} elev-chip px-3.5 py-2 rounded-full text-xs font-semibold transition-colors flex items-center gap-2 cursor-pointer">
+                    ${dot}${stEsc(o.label)} <span class="opacity-70">${o.n}</span></button>`;
+            }).join('');
+            bar.querySelectorAll('button').forEach(b => b.addEventListener('click', () => {
+                _stStatusFilter = b.dataset.statusFilter;
+                renderSettingsList();
+            }));
+            return;
+        }
         if (!isName) return;
+        if (bar) bar.setAttribute('aria-label', 'กรองตามประเภทสินค้า');
 
         if (masterDataTypeInput) {
             const keep = masterDataTypeInput.value;
@@ -205,6 +259,113 @@
             'บันทึก', 'success', 'max-w-md');
     };
 
+    // การ์ดผู้จัดจำหน่าย (ดีไซน์ Figma "Desktop - 53"): ชื่อ + ป้ายสถานะ + ปุ่มแก้ไข/ลบ,
+    // วงเงิน/แถบใช้ไป/คงเหลือ, ส่วนลดจากเคลมแยกเครื่อง/อุปกรณ์เสริม + ตารางใบเคลมที่กางดูได้
+    // ใช้ class btn-edit-master / btn-delete-master เดิมเพื่อให้ตัวผูก listener ท้าย renderSettingsList ทำงานต่อ
+    const stSupplierCard = (item) => {
+        const st = stSupplierStatus(item);
+        const tone = ST_TONE[st.tone];
+        const sid = stEsc(item._id);
+
+        const creditBlock = st.hasLimit
+            ? `<div class="space-y-1.5">
+                <div class="flex items-center justify-between text-xs">
+                    <span class="text-ink/70">วงเงิน <span class="font-mono text-ink font-semibold">${stBaht(st.limit)}</span></span>
+                    <span class="font-mono font-semibold ${tone.text}">${st.pct.toFixed(1)}%</span>
+                </div>
+                <div class="h-1.5 rounded-full bg-chip/60 overflow-hidden" role="progressbar" aria-label="วงเงินที่ใช้ไปของ ${stEsc(item.name)}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.min(100, Math.round(st.pct))}">
+                    <div class="h-full rounded-full ${tone.bar}" style="width:${Math.min(100, st.pct)}%"></div>
+                </div>
+                <div class="flex items-center justify-between text-[11px] text-ink/70">
+                    <span>ใช้ไป <span class="font-mono ${tone.text} font-semibold">${stBaht(st.used)}</span></span>
+                    <span>คงเหลือ <span class="font-mono text-ink">${stBaht(Math.max(0, st.limit - st.used))}</span></span>
+                </div>
+            </div>`
+            : `<div class="text-xs ${tone.text}">ยังไม่ได้ตั้งวงเงิน — กดแก้ไขเพื่อกำหนด${st.used > 0 ? ` (ใช้ไปแล้ว <span class="font-mono">${stBaht(st.used)}</span>)` : ''}</div>`;
+
+        // ส่วนลดจากเคลม: สรุปยอด + จำนวนของแต่ละชนิด แล้วกางตารางรายใบเคลมได้
+        const cd = _stClaimDiscounts[item.name];
+        const kinds = [['device', 'สำหรับเครื่อง', 'IMEI', 'IMEI'], ['accessory', 'สำหรับอุปกรณ์เสริม', 'จำนวน', 'ชิ้น']];
+        const hasClaims = !!cd && kinds.some(([k]) => cd[k] && cd[k].total > 0);
+        const countOf = (k) => ((cd && cd[k] && cd[k].claims) || []).reduce((sum, c) =>
+            sum + ((c.items && c.items.length) ? c.items.reduce((s, it) => s + (k === 'device' ? 1 : (Number(it.quantity) || 1)), 0) : 1), 0);
+        const detailId = `st-claim-detail-${sid}`;
+
+        let claimBlock;
+        if (hasClaims) {
+            const summary = kinds.map(([k, label, , unit]) => {
+                const total = cd[k] && cd[k].total > 0 ? cd[k].total : 0;
+                return `<div class="flex items-center justify-between rounded-lg bg-surface-tile-2/60 px-2.5 py-1.5 text-xs">
+                    <span class="text-ink">${label}${total ? ` <span class="text-ink/55 text-[10px]">· ${countOf(k)} ${unit}</span>` : ''}</span>
+                    ${total ? `<span class="font-mono font-semibold text-state-ok">${stBaht(total)}</span>` : '<span class="text-ink/40">—</span>'}
+                </div>`;
+            }).join('');
+            const details = kinds.filter(([k]) => cd[k] && cd[k].total > 0).map(([k, label, idHead]) => {
+                const rows = cd[k].claims.map(c => {
+                    const its = (c.items && c.items.length) ? c.items : [{ product_name: '-', imei: '', quantity: 1 }];
+                    return its.map((it, n) => `<tr class="border-t border-line/60">
+                        ${n === 0 ? `<td rowspan="${its.length}" class="px-2 py-1.5 align-top font-mono text-[10px] text-accent-ink whitespace-nowrap">${stEsc(c.claim_no)}</td>` : ''}
+                        <td class="px-2 py-1.5 text-ink">${stEsc(it.product_name)}${it.color_name ? ` <span class="text-ink/60">· ${stEsc(it.color_name)}</span>` : ''}</td>
+                        <td class="px-2 py-1.5 font-mono text-ink/80 whitespace-nowrap">${it.imei ? stEsc(it.imei) : `× ${Number(it.quantity) || 1}`}</td>
+                        ${n === 0 ? `<td rowspan="${its.length}" class="px-2 py-1.5 align-top text-right font-mono font-semibold text-state-ok whitespace-nowrap">${stBaht(c.amount)}</td>` : ''}
+                    </tr>`).join('');
+                }).join('');
+                return `<div class="space-y-1">
+                    <div class="text-[11px] text-ink/70 font-semibold">${label}</div>
+                    <div class="rounded-lg overflow-x-auto bg-surface-tile-2/60" tabindex="0">
+                        <table class="w-full text-left text-[11px] border-collapse">
+                            <thead class="text-ink/60"><tr>
+                                <th class="px-2 py-1.5 font-semibold">ใบเคลม</th>
+                                <th class="px-2 py-1.5 font-semibold">สินค้า</th>
+                                <th class="px-2 py-1.5 font-semibold">${idHead}</th>
+                                <th class="px-2 py-1.5 font-semibold text-right">ส่วนลด</th></tr></thead>
+                            <tbody>${rows}</tbody>
+                        </table>
+                    </div>
+                </div>`;
+            }).join('');
+            claimBlock = `<div class="space-y-2">${summary}
+                <button type="button" class="st-claim-toggle text-xs font-semibold text-accent-ink hover:underline flex items-center gap-1 cursor-pointer"
+                    aria-expanded="false" aria-controls="${detailId}">
+                    <span class="st-claim-toggle-label">ดูรายการใบเคลม</span>
+                    <i class="fa-solid fa-chevron-right text-[9px] transition-transform" aria-hidden="true"></i>
+                </button>
+                <div id="${detailId}" class="hidden space-y-3">${details}</div>
+            </div>`;
+        } else {
+            claimBlock = '<div class="text-xs text-ink/45">ยังไม่มีส่วนลดจากเคลม</div>';
+        }
+
+        return `
+        <div class="elev-field bg-field rounded-xl p-4 flex flex-col gap-3 hover:ring-1 hover:ring-accent-ink transition-colors">
+            <div class="flex items-start justify-between gap-3">
+                <div class="min-w-0 space-y-1.5">
+                    <div class="text-ink font-semibold text-sm truncate" title="${stEsc(item.name)}">${stEsc(item.name)}</div>
+                    <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10px] font-semibold ${tone.tint} ${tone.text}">
+                        <span class="w-1.5 h-1.5 rounded-full ${tone.bar}" aria-hidden="true"></span>${st.label}
+                    </span>
+                </div>
+                <div class="flex items-center gap-1.5 shrink-0">
+                    <button type="button" class="btn-edit-master w-7 h-7 rounded-[0.4375rem] bg-chip text-ink hover:text-amber-400 transition-colors flex items-center justify-center cursor-pointer"
+                        data-id="${sid}" data-name="${stEsc(item.name)}" data-code="" data-limit="${stEsc(item.credit_limit == null ? '' : item.credit_limit)}"
+                        title="แก้ไข" aria-label="แก้ไข ${stEsc(item.name)}">
+                        <i class="fa-solid fa-pen text-xs"></i>
+                    </button>
+                    <button type="button" class="btn-delete-master w-7 h-7 rounded-[0.4375rem] bg-chip text-state-danger-soft hover:text-red-400 transition-colors flex items-center justify-center cursor-pointer"
+                        data-id="${sid}" data-name="${stEsc(item.name)}"
+                        title="ลบ" aria-label="ลบ ${stEsc(item.name)}">
+                        <i class="fa-solid fa-trash-can text-xs"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="border-t border-line pt-3">${creditBlock}</div>
+            <div class="border-t border-line pt-3 space-y-2">
+                <div class="text-xs text-ink font-semibold flex items-center gap-1.5"><i class="fa-solid fa-tag" aria-hidden="true"></i> ส่วนลดจากเคลม</div>
+                ${claimBlock}
+            </div>
+        </div>`;
+    };
+
     function renderSettingsList() {
         if (!masterDataList) return;
 
@@ -229,7 +390,21 @@
         const conf = ST_TABS[currentSettingsTab] || ST_TABS.productname;
         stSetText('settings-panel-title', '');
         const title = document.getElementById('settings-panel-title');
-        if (title) title.innerHTML = `<i class="fa-solid fa-list-ul text-accent-ink"></i> ${stEsc(conf.label)}`;
+        const isSupplierTab = currentSettingsTab === 'supplier';
+        if (title) title.innerHTML = isSupplierTab
+            ? '<i class="fa-solid fa-truck-front text-accent-ink"></i> ผู้จัดจำหน่าย (Supplier)'
+            : `<i class="fa-solid fa-list-ul text-accent-ink"></i> ${stEsc(conf.label)}`;
+
+        // ผู้จัดจำหน่ายแสดงเป็นการ์ด 3 คอลัมน์ (หมวดอื่นคง 4 คอลัมน์บนจอ 2xl)
+        masterDataList.classList.toggle('2xl:grid-cols-4', !isSupplierTab);
+        // ฟอร์มเพิ่ม: ป้ายและตัวอย่างของช่องชื่อเปลี่ยนตามหมวด
+        const nameLabel = document.querySelector('label[for="master-data-input"]');
+        if (nameLabel) nameLabel.innerHTML = isSupplierTab
+            ? '<i class="fa-solid fa-truck-front text-ink"></i> ชื่อผู้จัดจำหน่าย <span class="text-red-500">*</span>'
+            : '<i class="fa-solid fa-plus text-ink"></i> เพิ่มข้อมูลใหม่ <span class="text-red-500">*</span>';
+        if (masterDataInput) masterDataInput.placeholder = isSupplierTab ? 'เช่น SYSNEX' : 'พิมพ์ข้อมูลใหม่...';
+        const searchInput = document.getElementById('settings-search');
+        if (searchInput) searchInput.placeholder = isSupplierTab ? 'ค้นหาผู้จัดจำหน่าย...' : 'ค้นหาในหมวดนี้...';
 
         stActivateTab(currentSettingsTab);
         stUpdateTabBadges();
@@ -242,6 +417,7 @@
         const rows = all.filter(item => {
             if (typeFilter === 'none' && stNameTypeId(item)) return false;
             if (typeFilter && typeFilter !== 'none' && stNameTypeId(item) !== typeFilter) return false;
+            if (currentSettingsTab === 'supplier' && _stStatusFilter && stSupplierStatus(item).key !== _stStatusFilter) return false;
             return !q || [item.name, item.code].filter(Boolean).join(' ').toLowerCase().includes(q);
         });
 
@@ -255,6 +431,7 @@
         }
 
         masterDataList.innerHTML = rows.map(item => {
+            if (currentSettingsTab === 'supplier') return stSupplierCard(item);
             // หมวด "สี" โชว์ตัวอย่างสีจริงด้วย เพราะหน้านี้คือที่ที่ตั้งค่าสีของเครื่อง
             // ใช้ตัวสร้างกลาง window.productColorDot() ตามข้อ 11.14 (ห้ามเขียนมาร์กอัปเอง)
             const swatch = (currentSettingsTab === 'productcolor' && typeof window.productColorDot === 'function')
@@ -263,32 +440,6 @@
             const codeBadge = (currentSettingsTab === 'productname' && item.code)
                 ? `<span class="px-2 py-0.5 rounded-[0.375rem] text-[10px] font-mono font-semibold bg-chip/60 text-accent-ink shrink-0">${stEsc(item.code)}</span>`
                 : '';
-
-            // ผู้จัดจำหน่าย: วงเงิน + ใช้ไปกี่ % / กี่บาท (ใช้ไป = ยอดที่ชำระจริงสะสมของ PO ที่ไม่ถูกยกเลิก)
-            let creditBlock = '';
-            if (currentSettingsTab === 'supplier') {
-                const limit = Number(item.credit_limit);
-                const hasLimit = Number.isFinite(limit) && limit > 0;
-                const used = (_stCreditUsage[item.name] && _stCreditUsage[item.name].used) || 0;
-                const pct = hasLimit ? (used / limit) * 100 : 0;
-                const tone = !hasLimit ? 'text-body-muted' : pct >= 100 ? 'text-state-danger' : pct >= 80 ? 'text-state-pending' : 'text-state-ok';
-                const bar = !hasLimit ? 'bg-body-muted' : pct >= 100 ? 'bg-state-danger' : pct >= 80 ? 'bg-state-pending' : 'bg-state-ok';
-                creditBlock = hasLimit
-                    ? `<div class="basis-full pt-2 mt-1 border-t border-line space-y-1.5">
-                        <div class="flex items-center justify-between text-xs">
-                            <span class="text-ink/70">วงเงิน <span class="font-mono text-ink font-semibold">${stBaht(limit)}</span></span>
-                            <span class="font-mono font-semibold ${tone}">${pct.toFixed(1)}%</span>
-                        </div>
-                        <div class="h-1.5 rounded-full bg-chip/60 overflow-hidden" role="progressbar" aria-label="วงเงินที่ใช้ไปของ ${stEsc(item.name)}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.min(100, Math.round(pct))}">
-                            <div class="h-full rounded-full ${bar}" style="width:${Math.min(100, pct)}%"></div>
-                        </div>
-                        <div class="flex items-center justify-between text-[11px] text-ink/70">
-                            <span>ใช้ไป <span class="font-mono ${tone} font-semibold">${stBaht(used)}</span></span>
-                            <span>คงเหลือ <span class="font-mono text-ink">${stBaht(Math.max(0, limit - used))}</span></span>
-                        </div>
-                    </div>`
-                    : `<div class="basis-full pt-2 mt-1 border-t border-line text-xs text-state-pending">ยังไม่ได้ตั้งวงเงิน — กดแก้ไขเพื่อกำหนด${used > 0 ? ` (ใช้ไปแล้ว <span class="font-mono">${stBaht(used)}</span>)` : ''}</div>`;
-            }
 
             // หมวดสี: ช่องเลือกสีบนการ์ด เปลี่ยนแล้วบันทึกทันที + แสดงรหัส hex ปัจจุบัน
             const colorEdit = currentSettingsTab === 'productcolor'
@@ -328,9 +479,20 @@
                         <i class="fa-solid fa-trash-can text-xs"></i>
                     </button>
                 </div>
-                ${creditBlock}
             </div>`;
         }).join('');
+
+        // กาง/พับตารางใบเคลมของผู้จัดจำหน่าย
+        masterDataList.querySelectorAll('.st-claim-toggle').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const panel = document.getElementById(btn.getAttribute('aria-controls'));
+                if (!panel) return;
+                const open = panel.classList.toggle('hidden') === false;
+                btn.setAttribute('aria-expanded', String(open));
+                btn.querySelector('.st-claim-toggle-label').textContent = open ? 'ซ่อนรายการใบเคลม' : 'ดูรายการใบเคลม';
+                btn.querySelector('i').classList.toggle('rotate-90', open);
+            });
+        });
 
         masterDataList.querySelectorAll('.st-color-pick').forEach(inp => {
             // change (ไม่ใช่ input) = ผู้ใช้เลือกเสร็จแล้ว ไม่ยิงบันทึกทุกครั้งที่ลากในจานสี
@@ -383,23 +545,22 @@
     }
     window.renderSettingsList = renderSettingsList;
 
-    if (settingsTabBtns) {
-        settingsTabBtns.forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                currentSettingsTab = e.currentTarget.dataset.tab;
-                _stSearch = '';
-                _stTypeFilter = '';
-                const s = document.getElementById('settings-search');
-                if (s) s.value = '';
-                if (masterDataInput) masterDataInput.value = '';
-                if (masterDataCodeInput) masterDataCodeInput.value = '';
-                if (masterDataColorHex) masterDataColorHex.value = '';
-                if (masterDataLimitInput) masterDataLimitInput.value = '';
-                renderSettingsList();
-                if (currentSettingsTab === 'supplier') stLoadCreditUsage();
-            });
-        });
-    }
+    // เรียกจากเมนูย่อยใน sidebar (script.js switchView 'settings') เพื่อสลับหมวด
+    window.setSettingsTab = (tab) => {
+        if (!ST_TABS[tab]) tab = 'productname';
+        currentSettingsTab = tab;
+        _stSearch = '';
+        _stTypeFilter = '';
+        _stStatusFilter = '';
+        const s = document.getElementById('settings-search');
+        if (s) s.value = '';
+        if (masterDataInput) masterDataInput.value = '';
+        if (masterDataCodeInput) masterDataCodeInput.value = '';
+        if (masterDataColorHex) masterDataColorHex.value = '';
+        if (masterDataLimitInput) masterDataLimitInput.value = '';
+        renderSettingsList();
+        if (tab === 'supplier') { stLoadCreditUsage(); stLoadClaimDiscounts(); }
+    };
 
     if (btnAddMasterData) {
         btnAddMasterData.addEventListener('click', async () => {

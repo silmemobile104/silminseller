@@ -171,7 +171,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // โหลดสคริปต์เฉพาะหน้า (js/page-<name>.js) แบบ dynamic ครั้งเดียว แล้ว cache ไว้
     // PAGE_SCRIPT_VERSION: บัมพ์เลขนี้ทุกครั้งที่แก้ไฟล์ใน js/ เพื่อไม่ให้เบราว์เซอร์ใช้ของเก่าที่ cache ไว้
-    const PAGE_SCRIPT_VERSION = 'apple_active_v141';
+    const PAGE_SCRIPT_VERSION = 'apple_active_v166';
     const __loadedPageScripts = {};
     function loadPageScript(name) {
         if (__loadedPageScripts[name]) return __loadedPageScripts[name];
@@ -224,7 +224,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // ไม่ได้รอ init function ถ้า HTML ยังไม่ถูกแทรกเข้า DOM ก่อน ตัวแปรที่ query ไว้จะเป็น null ถาวร
     // ชื่อ name ต้องตรงกับชื่อที่ใช้ใน loadPageScript — ไฟล์เดียวอาจมีหลาย <div id="view-XXX"> รวมกัน
     // ถ้าหน้านั้นถูก share โดยสคริปต์เดียวกันหลาย view (ดูตาราง mapping ในแผน)
-    const VIEW_FRAGMENT_VERSION = 'v148'; // บัมพ์เลขนี้ทุกครั้งที่แก้ไฟล์ใน views/
+    const VIEW_FRAGMENT_VERSION = 'v163'; // บัมพ์เลขนี้ทุกครั้งที่แก้ไฟล์ใน views/
     const __loadedPageViews = {};
     function loadPageView(name) {
         if (__loadedPageViews[name]) return __loadedPageViews[name];
@@ -2346,7 +2346,7 @@ document.addEventListener('DOMContentLoaded', () => {
         setVisible(navMembers, permissions.do_pos);
         setVisible(navPersonnel, permissions.manage_personnel);
         setVisible(navBranches, permissions.manage_branches);
-        setVisible(navSettings, permissions.manage_settings);
+        document.querySelectorAll('#nav-settings-submenu [data-settings-tab]').forEach(a => setVisible(a, permissions.manage_settings));
         setVisible(navRoles, permissions.manage_roles);
 
         // เมนูใหม่
@@ -3696,10 +3696,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 loadBranches();
             }
             else if (viewName === 'settings') {
-                activateView(viewSettings, navSettings);
+                const settingsTab = window._pendingSettingsTab || 'productname';
+                window._pendingSettingsTab = null;
+                activateView(viewSettings, document.querySelector(`#nav-settings-submenu [data-settings-tab="${settingsTab}"]`) || navSettings);
                 await loadPageView('settings');
                 await Promise.all([loadPageScript('settings'), fetchMasterData()]);
-                if (typeof renderSettingsList === 'function') renderSettingsList();
+                if (typeof window.setSettingsTab === 'function') window.setSettingsTab(settingsTab);
+                else if (typeof renderSettingsList === 'function') renderSettingsList();
             }
             else if (viewName === 'roles') {
                 activateView(viewRoles, navRoles);
@@ -3892,7 +3895,14 @@ document.addEventListener('DOMContentLoaded', () => {
     if (navTransactions) navTransactions.addEventListener('click', (e) => { e.preventDefault(); switchView('transactions'); });
     if (navPersonnel) navPersonnel.addEventListener('click', (e) => { e.preventDefault(); switchView('personnel'); });
     if (navBranches) navBranches.addEventListener('click', (e) => { e.preventDefault(); switchView('branches'); });
-    if (navSettings) navSettings.addEventListener('click', (e) => { e.preventDefault(); switchView('settings'); });
+    // เมนูย่อยการตั้งค่าระบบ: จำหมวดที่เลือกไว้ให้ switchView('settings') แล้วค่อยเปิดหน้า
+    document.querySelectorAll('#nav-settings-submenu [data-settings-tab]').forEach((a) => {
+        a.addEventListener('click', (e) => {
+            e.preventDefault();
+            window._pendingSettingsTab = a.dataset.settingsTab;
+            switchView('settings');
+        });
+    });
     if (navRoles) navRoles.addEventListener('click', (e) => { e.preventDefault(); switchView('roles'); });
     if (navSalesHistory) navSalesHistory.addEventListener('click', (e) => { e.preventDefault(); switchView('sales-history'); });
     if (navTransfers) navTransfers.addEventListener('click', (e) => { e.preventDefault(); switchView('transfers'); });
@@ -5781,84 +5791,51 @@ document.addEventListener('DOMContentLoaded', () => {
     // อุปกรณ์เสริม = รายการที่ไม่ใช่เครื่องและไม่ผูก IMEI (เงื่อนไขเดียวกับที่ใช้เลือกแสดงปุ่ม "กดขาย/ของแถม")
     const isPosAccessoryItem = (item) => !(item._isDevice || item.imei_sold);
 
-    // ช่องราคาในหน้าชำระเงินแก้ได้เมื่อ: อุปกรณ์เสริมที่ "กดขาย" (ทุกวิธีชำระ) หรือ เครื่องที่จัดไฟแนนซ์
-    const canEditModalPrice = (item) => {
-        if (item.is_gift) return false;
-        if (isPosAccessoryItem(item)) return true;
-        return !!(paymentMethod && paymentMethod.value === 'จัดไฟแนนซ์' && item.unit_name === 'เครื่อง');
-    };
+    // ช่องราคาในหน้าชำระเงินแก้ได้ทุกรายการที่ไม่ใช่ของแถม (ทั้งซื้อสดและจัดไฟแนนซ์ ทั้งเครื่องและอุปกรณ์เสริม)
+    const canEditModalPrice = (item) => !item.is_gift;
 
     const validateFinancePrices = () => {
-        const isFinancing = (paymentMethod && paymentMethod.value === 'จัดไฟแนนซ์');
-
         cart.forEach((item, index) => {
             const badgeContainer = confirmPriceList ? confirmPriceList.querySelector(`.modal-item-price-badge[data-index="${index}"]`) : null;
             const input = confirmPriceList ? confirmPriceList.querySelector(`.modal-item-price-input[data-index="${index}"]`) : null;
 
-            // อุปกรณ์เสริมที่กดขาย: ปล่อยให้แก้ราคาเอง ไม่รีเซ็ตกลับเป็นราคาขายหน้าร้าน
-            if (!item.is_gift && isPosAccessoryItem(item)) {
-                if (input) {
-                    input.removeAttribute('disabled');
-                    input.classList.remove('opacity-60', 'bg-surface-tile-3/50');
-                }
-                if (badgeContainer) badgeContainer.innerHTML = '';
-                return;
-            }
-
+            // ของแถมล็อกราคาเป็น 0 — ที่เหลือปล่อยให้แก้เอง ห้ามรีเซ็ตกลับเป็นราคาขายหน้าร้าน
             if (input) {
-                if (item.is_gift || item.unit_name !== 'เครื่อง') {
-                    input.setAttribute('disabled', 'true');
-                    input.classList.add('opacity-60', 'bg-surface-tile-3/50');
-                } else if (isFinancing) {
-                    input.removeAttribute('disabled');
-                    input.classList.remove('opacity-60', 'bg-surface-tile-3/50');
-                } else {
-                    input.setAttribute('disabled', 'true');
-                    input.classList.add('opacity-60', 'bg-surface-tile-3/50');
-                }
+                const locked = !canEditModalPrice(item);
+                input.toggleAttribute('disabled', locked);
+                input.classList.toggle('opacity-60', locked);
+                input.classList.toggle('bg-surface-tile-3/50', locked);
             }
-
             if (!badgeContainer) return;
 
-            if (item.is_gift || item.unit_name !== 'เครื่อง') {
+            if (item.is_gift) {
                 badgeContainer.innerHTML = '';
-                const targetPrice = item.is_gift ? 0 : (item.default_selling_price !== undefined ? item.default_selling_price : (item.original_price || 0));
-                if (item.price !== targetPrice) {
-                    item.price = targetPrice;
-                    item.subtotal = item.price * item.quantity;
-                    if (input) input.value = item.price;
+                if (item.price !== 0) {
+                    item.price = 0;
+                    item.subtotal = 0;
+                    if (input) input.value = 0;
                     const subtotalLabel = confirmPriceList ? confirmPriceList.querySelector(`.modal-item-subtotal[data-index="${index}"]`) : null;
-                    if (subtotalLabel) {
-                        subtotalLabel.textContent = `฿${item.subtotal.toLocaleString()}`;
-                    }
+                    if (subtotalLabel) subtotalLabel.textContent = `฿${item.subtotal.toLocaleString()}`;
                 }
                 return;
             }
 
-            if (!isFinancing) {
+            // เตือนราคาเฉพาะเครื่อง (อุปกรณ์เสริมไม่มีราคาทุนให้เทียบ)
+            if (item.unit_name !== 'เครื่อง') {
                 badgeContainer.innerHTML = '';
-                const targetPrice = item.default_selling_price !== undefined ? item.default_selling_price : (item.original_price || 0);
-                if (item.price !== targetPrice) {
-                    item.price = targetPrice;
-                    item.subtotal = item.price * item.quantity;
-                    if (input) input.value = item.price;
-                    const subtotalLabel = confirmPriceList ? confirmPriceList.querySelector(`.modal-item-subtotal[data-index="${index}"]`) : null;
-                    if (subtotalLabel) {
-                        subtotalLabel.textContent = `฿${item.subtotal.toLocaleString()}`;
-                    }
-                }
                 return;
             }
 
             const currentPrice = item.price;
             const costPrice = item.cost_price || 0;
             const defaultSellingPrice = item.default_selling_price || 0;
+            const isFinancing = (paymentMethod && paymentMethod.value === 'จัดไฟแนนซ์');
 
             if (currentPrice < costPrice) {
                 badgeContainer.innerHTML = `
                     <div class="elev-chip px-2.5 py-1 rounded-lg text-[10px] font-bold bg-red-500/20 text-red-400 ring-1 ring-red-500/30 flex items-center gap-1 mt-2.5 animate-pulse">
                         <i class="fa-solid fa-circle-exclamation"></i>
-                        <span>ผิดพลาด: ราคาขายจัดไฟแนนซ์ต่ำกว่าราคาทุนของสินค้า</span>
+                        <span>${isFinancing ? 'ผิดพลาด: ราคาขายจัดไฟแนนซ์ต่ำกว่าราคาทุนของสินค้า' : 'คำเตือน: ราคาขายต่ำกว่าราคาทุนของสินค้า'}</span>
                     </div>
                 `;
             } else if (currentPrice < defaultSellingPrice) {

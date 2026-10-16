@@ -26,7 +26,7 @@
     </script>
 
     <link rel="icon" type="image/png" href="logo.png?v=2">
-    <link rel="stylesheet" href="tailwind.css?v=120">
+    <link rel="stylesheet" href="tailwind.css?v=121">
     <!-- xlsx ถูกย้ายไปโหลดแบบ on-demand ตอนเปิด modal นำเข้า Excel แล้ว (ดู ensureXlsxLoaded ใน script.js)
          เดิมโหลดตรงนี้แบบ render-blocking ทุกครั้งที่เข้าเว็บ ทั้งที่ใช้แค่ฟีเจอร์เดียว -->
     <!-- ไอคอน: self-host + ตัดเหลือเฉพาะที่ใช้จริง (Font Awesome 144 + Bootstrap Icons 28)
@@ -344,11 +344,67 @@
                     <span class="sidebar-text ml-3 font-medium">จัดการไฟแนนซ์</span>
                 </a>
 
-                <a href="#" id="nav-settings" data-tooltip="การตั้งค่าระบบ"
-                    class="flex items-center px-3 py-3 rounded-xl text-body-muted hover:bg-field/50 hover:text-ink transition-all group nav-menu-item">
+                <!-- เมนูกลุ่ม "การตั้งค่าระบบ" (dropdown) — เมนูย่อยแต่ละหมวดข้อมูลพื้นฐาน เปิดหน้า #settings ที่หมวดนั้น (ดู window.setSettingsTab ใน js/page-settings.js)
+                     ปุ่มหัวกลุ่มคือ #nav-settings; ตัวเลขจำนวนรายการเติมโดย page-settings.js -->
+                <button type="button" id="nav-settings" data-tooltip="การตั้งค่าระบบ"
+                    data-nav-group-toggle="nav-settings-submenu"
+                    aria-expanded="false" aria-controls="nav-settings-submenu"
+                    class="w-full flex items-center px-3 py-3 rounded-xl text-body-muted hover:bg-field/50 hover:text-ink transition-all group nav-menu-item nav-group-toggle">
                     <i class="bi bi-gear text-body-muted w-5 text-center text-xl"></i>
                     <span class="sidebar-text ml-3 font-medium">การตั้งค่าระบบ</span>
-                </a>
+                    <i class="fa-solid fa-chevron-down sidebar-text nav-group-chevron ml-auto text-xs" aria-hidden="true"></i>
+                </button>
+
+                <div id="nav-settings-submenu" class="nav-submenu" hidden>
+                    <a href="#" data-settings-tab="productname" data-tooltip="ชื่อสินค้า"
+                        class="flex items-center px-3 py-3 rounded-xl text-body-muted hover:bg-field/50 hover:text-ink transition-all group nav-menu-item">
+                        <i class="fa-solid fa-mobile-screen text-body-muted w-5 text-center text-xl"></i>
+                        <span class="sidebar-text ml-3 font-medium">ชื่อสินค้า</span>
+                        <span class="settings-nav-count sidebar-text ml-auto text-[10px] font-bold opacity-70"></span>
+                    </a>
+                    <a href="#" data-settings-tab="producttype" data-tooltip="ประเภทสินค้า"
+                        class="flex items-center px-3 py-3 rounded-xl text-body-muted hover:bg-field/50 hover:text-ink transition-all group nav-menu-item">
+                        <i class="fa-solid fa-tag text-body-muted w-5 text-center text-xl"></i>
+                        <span class="sidebar-text ml-3 font-medium">ประเภทสินค้า</span>
+                        <span class="settings-nav-count sidebar-text ml-auto text-[10px] font-bold opacity-70"></span>
+                    </a>
+                    <a href="#" data-settings-tab="productunit" data-tooltip="หน่วยนับ"
+                        class="flex items-center px-3 py-3 rounded-xl text-body-muted hover:bg-field/50 hover:text-ink transition-all group nav-menu-item">
+                        <i class="fa-solid fa-ruler text-body-muted w-5 text-center text-xl"></i>
+                        <span class="sidebar-text ml-3 font-medium">หน่วยนับ</span>
+                        <span class="settings-nav-count sidebar-text ml-auto text-[10px] font-bold opacity-70"></span>
+                    </a>
+                    <a href="#" data-settings-tab="productcolor" data-tooltip="สี"
+                        class="flex items-center px-3 py-3 rounded-xl text-body-muted hover:bg-field/50 hover:text-ink transition-all group nav-menu-item">
+                        <i class="fa-solid fa-palette text-body-muted w-5 text-center text-xl"></i>
+                        <span class="sidebar-text ml-3 font-medium">สี</span>
+                        <span class="settings-nav-count sidebar-text ml-auto text-[10px] font-bold opacity-70"></span>
+                    </a>
+                    <a href="#" data-settings-tab="productcapacity" data-tooltip="ความจุ"
+                        class="flex items-center px-3 py-3 rounded-xl text-body-muted hover:bg-field/50 hover:text-ink transition-all group nav-menu-item">
+                        <i class="fa-solid fa-database text-body-muted w-5 text-center text-xl"></i>
+                        <span class="sidebar-text ml-3 font-medium">ความจุ</span>
+                        <span class="settings-nav-count sidebar-text ml-auto text-[10px] font-bold opacity-70"></span>
+                    </a>
+                    <a href="#" data-settings-tab="productcondition" data-tooltip="สภาพเครื่อง"
+                        class="flex items-center px-3 py-3 rounded-xl text-body-muted hover:bg-field/50 hover:text-ink transition-all group nav-menu-item">
+                        <i class="fa-solid fa-star text-body-muted w-5 text-center text-xl"></i>
+                        <span class="sidebar-text ml-3 font-medium">สภาพเครื่อง</span>
+                        <span class="settings-nav-count sidebar-text ml-auto text-[10px] font-bold opacity-70"></span>
+                    </a>
+                    <a href="#" data-settings-tab="supplier" data-tooltip="ผู้จัดจำหน่าย"
+                        class="flex items-center px-3 py-3 rounded-xl text-body-muted hover:bg-field/50 hover:text-ink transition-all group nav-menu-item">
+                        <i class="fa-solid fa-truck-front text-body-muted w-5 text-center text-xl"></i>
+                        <span class="sidebar-text ml-3 font-medium">ผู้จัดจำหน่าย</span>
+                        <span class="settings-nav-count sidebar-text ml-auto text-[10px] font-bold opacity-70"></span>
+                    </a>
+                    <a href="#" data-settings-tab="financecompany" data-tooltip="บริษัทจัดไฟแนนซ์"
+                        class="flex items-center px-3 py-3 rounded-xl text-body-muted hover:bg-field/50 hover:text-ink transition-all group nav-menu-item">
+                        <i class="fa-solid fa-hand-holding-dollar text-body-muted w-5 text-center text-xl"></i>
+                        <span class="sidebar-text ml-3 font-medium">บริษัทจัดไฟแนนซ์</span>
+                        <span class="settings-nav-count sidebar-text ml-auto text-[10px] font-bold opacity-70"></span>
+                    </a>
+                </div>
 
                 <a href="#" id="nav-audit-logs" data-tooltip="ประวัติกิจกรรมระบบ"
                     class="flex items-center px-3 py-3 rounded-xl text-body-muted hover:bg-field/50 hover:text-ink transition-all group nav-menu-item hidden">
@@ -5337,7 +5393,7 @@
     <!-- defer: ปล่อยให้ parse HTML จบก่อนค่อย execute
          ปลอดภัยเพราะทั้งไฟล์ห่ออยู่ใน DOMContentLoaded listener อยู่แล้ว
          และสคริปต์ defer จะ execute ก่อน event DOMContentLoaded ยิงเสมอ -->
-    <script defer src="script.js?v=apple_active_v151"></script>
+    <script defer src="script.js?v=apple_active_v176"></script>
     <script>
         // ลงทะเบียน Service Worker เพื่อแคช asset คงที่ (css/js/font/icon/รูป) ไว้ฝั่งเครื่อง
         // เข้าเว็บครั้งถัดไปเร็วขึ้นมาก โดยเฉพาะตอนเน็ตช้าหรือหลุดชั่วคราว — ดูรายละเอียดที่ sw.js
