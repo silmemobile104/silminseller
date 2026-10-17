@@ -62,7 +62,7 @@
     // ประวัติการจ่ายออก
     // ==========================================
     const skeletonRows = () => {
-        const bar = (w) => `<div class="h-3.5 ${w} rounded-full bg-[#5c5c5c] animate-pulse"></div>`;
+        const bar = (w) => `<div class="h-3.5 ${w} rounded-full bg-skeleton animate-pulse"></div>`;
         const cells = ['w-32', 'w-28', 'w-20', 'w-16', 'w-8', 'w-40', 'w-24', 'w-24', 'w-8']
             .map(w => `<td class="px-6 py-4">${bar(w)}</td>`).join('');
         return Array.from({ length: 8 }, () => `<tr>${cells}</tr>`).join('');
@@ -73,9 +73,9 @@
     // ตัวเลือกที่เลือกได้ตอนจ่ายออก (ต่อชิ้น)
     const ISSUE_CLAIM_OPTIONS = ['goods', 'cash', 'discount', 'loss'];
     const CLAIM_STATUS_STYLE = {
-        'ส่งเคลมแล้ว': { dot: 'bg-orange-500', bg: 'bg-orange-500/[0.12]', text: 'text-orange-400' },
-        'ปิดเคลม': { dot: 'bg-[#20D500]', bg: 'bg-[#42A231]/[0.12]', text: 'text-[#20D500]' },
-        'ปฏิเสธ': { dot: 'bg-red-500', bg: 'bg-red-500/[0.12]', text: 'text-red-400' }
+        'ส่งเคลมแล้ว': { dot: 'bg-state-pending', bg: 'bg-state-pending/[0.12]', text: 'text-state-pending' },
+        'ปิดเคลม': { dot: 'bg-state-ok', bg: 'bg-state-ok-tint/[0.12]', text: 'text-state-ok' },
+        'ปฏิเสธ': { dot: 'bg-state-danger', bg: 'bg-state-danger/[0.12]', text: 'text-state-danger-soft' }
     };
     const claimBadge = (status, title) => {
         const t = CLAIM_STATUS_STYLE[status] || CLAIM_STATUS_STYLE['ส่งเคลมแล้ว'];
@@ -87,8 +87,8 @@
     const claimCell = (issue) => {
         const claims = issue.claims || [];
         const lossCount = (issue.items || []).filter(x => x.claim_type === 'loss').length;
-        const lossBadge = lossCount ? `<div class="inline-flex items-center gap-2 px-2.5 py-1 rounded-[0.375rem] bg-red-500/[0.12]" title="${lossCount} ชิ้นที่จ่ายออกเปล่า ไม่เปิดใบเคลม"><div class="w-2 h-2 rounded-full bg-red-500"></div><span class="text-red-400 font-medium text-xs">ขาดทุน ${lossCount}</span></div>` : '';
-        if (!issue.is_claim || claims.length === 0) return lossBadge || '<span class="text-white/50">-</span>';
+        const lossBadge = lossCount ? `<div class="inline-flex items-center gap-2 px-2.5 py-1 rounded-[0.375rem] bg-state-danger/[0.12]" title="${lossCount} ชิ้นที่จ่ายออกเปล่า ไม่เปิดใบเคลม"><div class="w-2 h-2 rounded-full bg-state-danger"></div><span class="text-state-danger-soft font-medium text-xs">ขาดทุน ${lossCount}</span></div>` : '';
+        if (!issue.is_claim || claims.length === 0) return lossBadge || '<span class="text-ink/50">-</span>';
         return `<div class="flex flex-wrap gap-1">${claims.map(c => claimBadge(c.status, `${c.claim_no} · ${c.supplier_name}`)).join('')}${lossBadge}</div>`;
     };
 
@@ -113,7 +113,7 @@
         }
         chips.forEach(c => {
             const chip = document.createElement('div');
-            chip.className = 'px-4 py-2.5 rounded-xl bg-[#4D4D4D]/40 border border-[#3F3F46] text-white text-sm font-medium transition-colors flex items-center gap-2';
+            chip.className = 'px-4 py-2.5 rounded-xl bg-panel/40 border border-line-strong text-ink text-sm font-medium transition-colors flex items-center gap-2';
             chip.innerHTML = `<span>${esc(c.label)}</span><i class="fa-solid fa-xmark text-[10px] opacity-80 cursor-pointer" role="button" aria-label="ลบตัวกรอง"></i>`;
             chip.addEventListener('click', (e) => {
                 if (!e.target.closest('i.fa-xmark')) return;
@@ -128,7 +128,7 @@
         if (chips.length > 1) {
             const clr = document.createElement('button');
             clr.type = 'button';
-            clr.className = 'px-2.5 py-1 bg-red-500/10 hover:bg-red-500/15 text-red-300 rounded-full text-xs font-medium border border-red-500/30 transition-colors';
+            clr.className = 'px-2.5 py-1 bg-state-danger/10 hover:bg-state-danger/15 text-state-danger-soft rounded-full text-xs font-medium border border-state-danger/30 transition-colors';
             clr.textContent = 'ล้างทั้งหมด';
             clr.addEventListener('click', () => {
                 $('stock-issue-search-input').value = '';
@@ -165,23 +165,23 @@
         if (count) count.textContent = `แสดง ${rows.length} จาก ${_issues.length} รายการ`;
 
         if (rows.length === 0) {
-            body.innerHTML = `<tr><td colspan="${TABLE_COLS}" class="px-6 py-8 text-center text-white/50 italic">${_issues.length ? 'ไม่พบรายการที่ค้นหา' : 'ยังไม่มีประวัติการจ่ายออกสินค้า'}</td></tr>`;
+            body.innerHTML = `<tr><td colspan="${TABLE_COLS}" class="px-6 py-8 text-center text-ink/50 italic">${_issues.length ? 'ไม่พบรายการที่ค้นหา' : 'ยังไม่มีประวัติการจ่ายออกสินค้า'}</td></tr>`;
             return;
         }
 
         body.innerHTML = rows.map(i => {
-            return `<tr class="hover:bg-[#464646] transition-colors">
-                <td class="px-6 py-4"><span class="font-mono font-semibold text-[#FFE169]">${esc(i.issue_no)}</span></td>
-                <td class="px-6 py-4 text-white text-sm">${fmtDateTime(i.createdAt)}</td>
-                <td class="px-6 py-4 text-white text-sm">${esc(i.branch_name || '-')}</td>
-                <td class="px-6 py-4 text-white text-sm max-w-[220px] truncate" title="${esc(supplierNames(i).join(', '))}">${esc(supplierNames(i).join(', ') || '-')}</td>
-                <td class="px-6 py-4 text-center text-white font-medium">${i.total_qty || (i.items || []).length} <span class="text-xs font-normal">ชิ้น</span></td>
-                <td class="px-6 py-4 text-right text-white font-mono">${baht(i.total_cost)}</td>
-                <td class="px-6 py-4 text-white text-sm max-w-[260px] truncate" title="${esc(i.reason)}">${esc(i.reason || '-')}</td>
-                <td class="px-6 py-4 text-white text-sm">${esc(i.created_by_name || '-')}</td>
+            return `<tr class="hover:bg-divider transition-colors">
+                <td class="px-6 py-4"><span class="font-mono font-semibold text-accent-ink">${esc(i.issue_no)}</span></td>
+                <td class="px-6 py-4 text-ink text-sm">${fmtDateTime(i.createdAt)}</td>
+                <td class="px-6 py-4 text-ink text-sm">${esc(i.branch_name || '-')}</td>
+                <td class="px-6 py-4 text-ink text-sm max-w-[220px] truncate" title="${esc(supplierNames(i).join(', '))}">${esc(supplierNames(i).join(', ') || '-')}</td>
+                <td class="px-6 py-4 text-center text-ink font-medium">${i.total_qty || (i.items || []).length} <span class="text-xs font-normal">ชิ้น</span></td>
+                <td class="px-6 py-4 text-right text-ink font-mono">${baht(i.total_cost)}</td>
+                <td class="px-6 py-4 text-ink text-sm max-w-[260px] truncate" title="${esc(i.reason)}">${esc(i.reason || '-')}</td>
+                <td class="px-6 py-4 text-ink text-sm">${esc(i.created_by_name || '-')}</td>
                 <td class="px-6 py-4">${claimCell(i)}</td>
                 <td class="px-6 py-4"><div class="flex items-center justify-end gap-1">
-                    <button type="button" data-detail="${esc(i._id)}" aria-haspopup="dialog" class="text-white hover:text-indigo-400 transition-colors p-2" title="ดูรายการสินค้า" aria-label="ดูรายการสินค้า ${esc(i.issue_no)}"><i class="fa-solid fa-eye"></i></button>
+                    <button type="button" data-detail="${esc(i._id)}" aria-haspopup="dialog" class="text-ink hover:text-accent-ink transition-colors p-2" title="ดูรายการสินค้า" aria-label="ดูรายการสินค้า ${esc(i.issue_no)}"><i class="fa-solid fa-eye"></i></button>
                 </div></td>
             </tr>`;
         }).join('');
@@ -213,19 +213,19 @@
                     outcome = `ได้รับส่วนลด ${baht(rs.discount_amount)} (${rs.discount_kind === 'accessory' ? 'อุปกรณ์เสริม' : 'มือถือ / แท็บเล็ต'})${rs.po_number ? ` · อ้างอิงใบสั่งซื้อ ${esc(rs.po_number)}` : ''}`;
                 }
             }
-            const outcomeHtml = outcome ? `<p class="text-xs text-[#20D500] mt-2">${outcome}</p>` : '';
-            const result = c.result_note ? `<p class="text-xs text-white/80 mt-2 whitespace-pre-line">ผล: ${esc(c.result_note)}${c.status === 'ปฏิเสธ' ? (c.returned_to_stock ? ' (คืนเครื่องเข้าสต็อกแล้ว)' : ' (ตัดทิ้ง)') : ''}</p>` : '';
+            const outcomeHtml = outcome ? `<p class="text-xs text-state-ok mt-2">${outcome}</p>` : '';
+            const result = c.result_note ? `<p class="text-xs text-ink/80 mt-2 whitespace-pre-line">ผล: ${esc(c.result_note)}${c.status === 'ปฏิเสธ' ? (c.returned_to_stock ? ' (คืนเครื่องเข้าสต็อกแล้ว)' : ' (ตัดทิ้ง)') : ''}</p>` : '';
             const actions = open ? `<div class="flex gap-2 mt-3">
-                <button type="button" data-claim-close="${esc(c._id)}" data-issue="${esc(issue._id)}" class="px-4 py-1.5 rounded-xl bg-[#FFE169] text-[#333333] text-xs font-bold hover:bg-[#E2B93C] transition-colors">ปิดเคลม</button>
+                <button type="button" data-claim-close="${esc(c._id)}" data-issue="${esc(issue._id)}" class="px-4 py-1.5 rounded-xl bg-primary text-on-primary text-xs font-bold hover:bg-primary-pressed transition-colors">ปิดเคลม</button>
                 <button type="button" data-claim-reject="${esc(c._id)}" data-issue="${esc(issue._id)}" class="px-4 py-1.5 rounded-xl bg-[#E4E4E7] text-[#18181B] text-xs font-bold hover:bg-white transition-colors">ซัพปฏิเสธ</button></div>` : '';
             return `<div class="elev-field bg-field rounded-xl px-4 py-3">
                 <div class="flex items-center justify-between gap-2">
-                    <p class="text-sm text-white"><span class="font-mono text-[#FFE169]">${esc(c.claim_no)}</span> · ${esc(c.supplier_name || 'ไม่ระบุ')}</p>${claimBadge(c.status)}</div>
-                <p class="text-xs text-white/70 mt-1">กรณี: ${esc(CLAIM_TYPE_LABEL[c.claim_type] || 'ยังไม่กำหนด (เลือกตอนปิดเคลม)')} · ${c.item_kind === 'accessory' ? 'อุปกรณ์เสริม' : 'เครื่อง'} ${c.total_qty} ชิ้น · ต้นทุน ${baht(c.total_cost)}</p>
-                <p class="text-xs text-white/60 mt-1">${(c.items || []).map(x => x.imei ? `<span class="font-mono">${esc(x.imei)}</span>` : `${esc(x.product_name)} × ${Number(x.quantity) || 1}`).join(' · ')}</p>
+                    <p class="text-sm text-ink"><span class="font-mono text-accent-ink">${esc(c.claim_no)}</span> · ${esc(c.supplier_name || 'ไม่ระบุ')}</p>${claimBadge(c.status)}</div>
+                <p class="text-xs text-ink/70 mt-1">กรณี: ${esc(CLAIM_TYPE_LABEL[c.claim_type] || 'ยังไม่กำหนด (เลือกตอนปิดเคลม)')} · ${c.item_kind === 'accessory' ? 'อุปกรณ์เสริม' : 'เครื่อง'} ${c.total_qty} ชิ้น · ต้นทุน ${baht(c.total_cost)}</p>
+                <p class="text-xs text-ink/60 mt-1">${(c.items || []).map(x => x.imei ? `<span class="font-mono">${esc(x.imei)}</span>` : `${esc(x.product_name)} × ${Number(x.quantity) || 1}`).join(' · ')}</p>
                 ${outcomeHtml}${result}${actions}</div>`;
         }).join('');
-        return `<div class="mb-5"><p class="text-xs text-white/70 mb-2">ใบเคลม</p><div class="space-y-2">${cards}</div></div>`;
+        return `<div class="mb-5"><p class="text-xs text-ink/70 mb-2">ใบเคลม</p><div class="space-y-2">${cards}</div></div>`;
     };
 
     const callClaim = async (id, action, body, issueId) => {
@@ -268,7 +268,7 @@
         if (!c0.claim_type && !draft.type) {
             showConfirm('เลือกกรณีเคลม',
                 `<div class="text-left space-y-2"><p class="text-xs text-ink/70">ซัพรายนี้ยังไม่ได้ตั้งกรณีเคลมไว้ ผลเคลมครั้งนี้เป็นแบบไหน</p>
-                    ${Object.keys(CLAIM_TYPE_LABEL).map((k, n) => `<label class="flex items-center gap-2 text-sm text-ink cursor-pointer"><input type="radio" name="claim-pick-type" value="${k}" ${n === 0 ? 'checked' : ''} class="accent-[#FFE169]"> ${CLAIM_TYPE_LABEL[k]}</label>`).join('')}</div>`,
+                    ${Object.keys(CLAIM_TYPE_LABEL).map((k, n) => `<label class="flex items-center gap-2 text-sm text-ink cursor-pointer"><input type="radio" name="claim-pick-type" value="${k}" ${n === 0 ? 'checked' : ''} class="accent-accent-ink"> ${CLAIM_TYPE_LABEL[k]}</label>`).join('')}</div>`,
                 () => {
                     const t = (document.querySelector('input[name="claim-pick-type"]:checked') || {}).value || 'goods';
                     setTimeout(() => confirmCloseClaim(id, issueId, { ...draft, type: t }), 350); // showConfirm ปิดตัวเองเสมอ
@@ -338,8 +338,8 @@
             fields = (kindFixed
                 ? `<p class="text-xs text-ink/70">ส่วนลดนี้ใช้กับ: <span class="text-ink font-semibold">${c.item_kind === 'accessory' ? 'อุปกรณ์เสริม' : 'มือถือ / แท็บเล็ต'}</span> (ตามชนิดสินค้าในใบเคลม)</p>`
                 : `<fieldset class="space-y-2"><legend class="text-ink font-medium text-xs mb-1">ส่วนลดนี้ใช้กับสินค้าชนิดไหน <span class="text-red-500">*</span></legend>
-                    <label class="flex items-center gap-2 text-sm text-ink cursor-pointer"><input type="radio" name="claim-discount-kind" value="device" ${draft.kind === 'accessory' ? '' : 'checked'} class="accent-[#FFE169]"> มือถือ / แท็บเล็ต</label>
-                    <label class="flex items-center gap-2 text-sm text-ink cursor-pointer"><input type="radio" name="claim-discount-kind" value="accessory" ${draft.kind === 'accessory' ? 'checked' : ''} class="accent-[#FFE169]"> อุปกรณ์เสริม</label></fieldset>`)
+                    <label class="flex items-center gap-2 text-sm text-ink cursor-pointer"><input type="radio" name="claim-discount-kind" value="device" ${draft.kind === 'accessory' ? '' : 'checked'} class="accent-accent-ink"> มือถือ / แท็บเล็ต</label>
+                    <label class="flex items-center gap-2 text-sm text-ink cursor-pointer"><input type="radio" name="claim-discount-kind" value="accessory" ${draft.kind === 'accessory' ? 'checked' : ''} class="accent-accent-ink"> อุปกรณ์เสริม</label></fieldset>`)
                 + `
                 <div><label for="claim-discount-amount" class="text-ink font-medium text-xs">มูลค่าส่วนลดที่ได้รับ (บาท) <span class="text-red-500">*</span></label>
                     <input id="claim-discount-amount" type="number" min="0.01" step="any" inputmode="decimal" value="${esc(draft.amount !== undefined ? draft.amount : (c.total_cost || ''))}" class="${inputCls} font-mono text-right mt-1.5">
@@ -400,8 +400,8 @@
     const confirmRejectClaim = (id, issueId) => showConfirm('ซัพปฏิเสธเคลม',
         `<div class="text-left space-y-3">
             <fieldset class="space-y-2"><legend class="text-ink font-medium text-xs mb-1">เครื่องที่ถูกปฏิเสธ</legend>
-                <label class="flex items-center gap-2 text-sm text-ink cursor-pointer"><input type="radio" name="claim-reject-return" value="1" checked class="accent-[#FFE169]"> คืนเข้าสต็อกสาขาเดิม</label>
-                <label class="flex items-center gap-2 text-sm text-ink cursor-pointer"><input type="radio" name="claim-reject-return" value="0" class="accent-[#FFE169]"> ตัดทิ้ง (ไม่คืนสต็อก)</label></fieldset>
+                <label class="flex items-center gap-2 text-sm text-ink cursor-pointer"><input type="radio" name="claim-reject-return" value="1" checked class="accent-accent-ink"> คืนเข้าสต็อกสาขาเดิม</label>
+                <label class="flex items-center gap-2 text-sm text-ink cursor-pointer"><input type="radio" name="claim-reject-return" value="0" class="accent-accent-ink"> ตัดทิ้ง (ไม่คืนสต็อก)</label></fieldset>
             ${noteBox('เหตุผลที่ซัพปฏิเสธ <span class="text-red-500">*</span>')}</div>`,
         () => {
             const note = (($('claim-result-note') || {}).value || '').trim();
@@ -416,8 +416,8 @@
         const modal = $('stock-issue-detail-modal');
         if (!i || !modal) return;
 
-        $('stock-issue-detail-title').innerHTML = `<i class="fa-solid fa-clock-rotate-left text-[#FFE169]"></i> ใบจ่ายออก <span class="font-mono text-[#FFE169]">${esc(i.issue_no)}</span>`;
-        const info = (label, val) => `<div><p class="text-xs text-white/70">${label}</p><p class="text-sm text-white font-medium">${val}</p></div>`;
+        $('stock-issue-detail-title').innerHTML = `<i class="fa-solid fa-clock-rotate-left text-accent-ink"></i> ใบจ่ายออก <span class="font-mono text-accent-ink">${esc(i.issue_no)}</span>`;
+        const info = (label, val) => `<div><p class="text-xs text-ink/70">${label}</p><p class="text-sm text-ink font-medium">${val}</p></div>`;
         const head = [
             info('วันที่', fmtDateTime(i.createdAt)),
             info('สาขา', esc(i.branch_name || '-')),
@@ -430,29 +430,29 @@
         ].join('');
         const groups = groupBySupplier(i.items || []).map(g => {
             const rowsHtml = g.entries.map(({ item: it }) => `<tr>
-                <td class="px-4 py-2 text-white text-sm">${esc(it.product_name)}${it.color_name ? ` <span class="text-xs text-white/70 ml-2">${colorTag(it.color_name)}</span>` : ''}${it.product_code ? ` <span class="text-xs text-white/70 font-mono">${esc(it.product_code)}</span>` : ''}</td>
-                <td class="px-4 py-2 font-mono text-sm text-white">${it.imei ? esc(it.imei) : `× ${Number(it.quantity) || 1}`}</td>
-                <td class="px-4 py-2 font-mono text-xs text-white/80">${esc(it.po_number || '-')}</td>
-                <td class="px-4 py-2 text-xs ${it.claim_type === 'loss' ? 'text-red-400' : 'text-white/80'}">${esc(CLAIM_TYPE_LABEL[it.claim_type] || '-')}</td>
-                <td class="px-4 py-2 text-right font-mono text-sm text-white">${baht(Number(it.cost_price || 0) * Number(it.quantity || 1))}</td></tr>`).join('');
+                <td class="px-4 py-2 text-ink text-sm">${esc(it.product_name)}${it.color_name ? ` <span class="text-xs text-ink/70 ml-2">${colorTag(it.color_name)}</span>` : ''}${it.product_code ? ` <span class="text-xs text-ink/70 font-mono">${esc(it.product_code)}</span>` : ''}</td>
+                <td class="px-4 py-2 font-mono text-sm text-ink">${it.imei ? esc(it.imei) : `× ${Number(it.quantity) || 1}`}</td>
+                <td class="px-4 py-2 font-mono text-xs text-ink/80">${esc(it.po_number || '-')}</td>
+                <td class="px-4 py-2 text-xs ${it.claim_type === 'loss' ? 'text-state-danger-soft' : 'text-ink/80'}">${esc(CLAIM_TYPE_LABEL[it.claim_type] || '-')}</td>
+                <td class="px-4 py-2 text-right font-mono text-sm text-ink">${baht(Number(it.cost_price || 0) * Number(it.quantity || 1))}</td></tr>`).join('');
             return `<div class="mb-4 last:mb-0">
                 <div class="flex items-center justify-between px-4 py-2">
-                    <p class="text-sm font-medium text-[#FFE169]">${esc(g.name)} <span class="text-xs text-white/70 font-normal">(${g.entries.length} ชิ้น)</span></p>
-                    <p class="text-sm text-white font-mono">รวม ${baht(g.total)}</p>
+                    <p class="text-sm font-medium text-accent-ink">${esc(g.name)} <span class="text-xs text-ink/70 font-normal">(${g.entries.length} ชิ้น)</span></p>
+                    <p class="text-sm text-ink font-mono">รวม ${baht(g.total)}</p>
                 </div>
                 <table class="w-full text-left border-collapse"><thead><tr>
-                    <th class="px-4 py-2 text-xs font-semibold text-white/70">สินค้า</th>
-                    <th class="px-4 py-2 text-xs font-semibold text-white/70">IMEI / จำนวน</th>
-                    <th class="px-4 py-2 text-xs font-semibold text-white/70">ใบสั่งซื้อ</th>
-                    <th class="px-4 py-2 text-xs font-semibold text-white/70">กรณีเคลม</th>
-                    <th class="px-4 py-2 text-xs font-semibold text-white/70 text-right">ราคาต้นทุน</th></tr></thead>
-                    <tbody class="divide-y divide-[#464646]">${rowsHtml}</tbody></table></div>`;
+                    <th class="px-4 py-2 text-xs font-semibold text-ink/70">สินค้า</th>
+                    <th class="px-4 py-2 text-xs font-semibold text-ink/70">IMEI / จำนวน</th>
+                    <th class="px-4 py-2 text-xs font-semibold text-ink/70">ใบสั่งซื้อ</th>
+                    <th class="px-4 py-2 text-xs font-semibold text-ink/70">กรณีเคลม</th>
+                    <th class="px-4 py-2 text-xs font-semibold text-ink/70 text-right">ราคาต้นทุน</th></tr></thead>
+                    <tbody class="divide-y divide-divider">${rowsHtml}</tbody></table></div>`;
         }).join('');
         $('stock-issue-detail-body').innerHTML = `
             <div class="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-5">${head}</div>
-            <div class="mb-5"><p class="text-xs text-white/70">หมายเหตุ</p><p class="text-sm text-white whitespace-pre-line">${esc(i.reason || '-')}</p></div>
+            <div class="mb-5"><p class="text-xs text-ink/70">หมายเหตุ</p><p class="text-sm text-ink whitespace-pre-line">${esc(i.reason || '-')}</p></div>
             ${claimSection(i)}
-            <div class="elev-field bg-field rounded-xl py-2">${groups || '<p class="px-4 py-6 text-center text-white/50 italic text-sm">ไม่มีรายการสินค้า</p>'}</div>`;
+            <div class="elev-field bg-field rounded-xl py-2">${groups || '<p class="px-4 py-6 text-center text-ink/50 italic text-sm">ไม่มีรายการสินค้า</p>'}</div>`;
 
         modal.classList.remove('hidden');
         modal.classList.add('flex');
@@ -492,7 +492,7 @@
             renderHistory();
         } catch (err) {
             console.error(err);
-            if (body) body.innerHTML = `<tr><td colspan="${TABLE_COLS}" class="px-6 py-8 text-center text-red-300">${esc(err.message || 'เชื่อมต่อเซิร์ฟเวอร์ไม่ได้')}</td></tr>`;
+            if (body) body.innerHTML = `<tr><td colspan="${TABLE_COLS}" class="px-6 py-8 text-center text-state-danger-soft">${esc(err.message || 'เชื่อมต่อเซิร์ฟเวอร์ไม่ได้')}</td></tr>`;
         }
     };
 
@@ -513,7 +513,7 @@
     // ==========================================
     // เลือกกรณีเคลมต่อชิ้น — ยังไม่เลือกขอบแดงเตือน
     const claimSelectHtml = (idx, val) => `<label for="si-claim-${idx}" class="sr-only">กรณีเคลมของรายการที่ ${idx + 1}</label>
-        <select id="si-claim-${idx}" data-claim-idx="${idx}" class="px-2 py-1.5 rounded-lg bg-[#27272A] border ${val ? 'border-[#3F3F46]' : 'border-red-500/60'} text-white text-xs focus:border-[#FFE169] focus:outline-none cursor-pointer max-w-[10rem]">
+        <select id="si-claim-${idx}" data-claim-idx="${idx}" class="px-2 py-1.5 rounded-lg bg-field border ${val ? 'border-line-strong' : 'border-state-danger/60'} text-ink text-xs focus:border-accent-ink focus:outline-none cursor-pointer max-w-[10rem]">
             <option value="">-- เลือกกรณี --</option>
             ${ISSUE_CLAIM_OPTIONS.map(k => `<option value="${k}" ${val === k ? 'selected' : ''}>${esc(CLAIM_TYPE_LABEL[k])}</option>`).join('')}
         </select>`;
@@ -524,30 +524,30 @@
         $('stock-issue-submit-btn').disabled = _submitting || _scanned.length === 0;
         if (!body) return;
         if (_scanned.length === 0) {
-            body.innerHTML = '<tr><td colspan="5" class="px-4 py-6 text-center text-white/50 italic text-sm">ยังไม่มีรายการที่เพิ่ม</td></tr>';
+            body.innerHTML = '<tr><td colspan="5" class="px-4 py-6 text-center text-ink/50 italic text-sm">ยังไม่มีรายการที่เพิ่ม</td></tr>';
             return;
         }
         const lineCost = (s) => Number(s.cost_price || 0) * Number(s.quantity || 1);
-        body.innerHTML = groupBySupplier(_scanned).map(g => `<tr class="bg-[#4D4D4D]/40">
-            <td colspan="2" class="px-4 py-2 text-sm font-medium text-[#FFE169]">${esc(g.name)} <span class="text-xs text-white/70 font-normal">(${g.entries.length} รายการ)</span></td>
-            <td colspan="3" class="px-4 py-2 text-sm text-white font-mono text-right">รวม ${baht(g.total)}</td></tr>`
-            + g.entries.map(({ item: s, idx }) => `<tr class="hover:bg-[#464646] transition-colors">
-            <td class="px-4 py-3 text-white text-sm">
+        body.innerHTML = groupBySupplier(_scanned).map(g => `<tr class="bg-panel/40">
+            <td colspan="2" class="px-4 py-2 text-sm font-medium text-accent-ink">${esc(g.name)} <span class="text-xs text-ink/70 font-normal">(${g.entries.length} รายการ)</span></td>
+            <td colspan="3" class="px-4 py-2 text-sm text-ink font-mono text-right">รวม ${baht(g.total)}</td></tr>`
+            + g.entries.map(({ item: s, idx }) => `<tr class="hover:bg-divider transition-colors">
+            <td class="px-4 py-3 text-ink text-sm">
                 <p class="font-medium">${esc(s.product_name)}</p>
-                <p class="text-xs text-white/70 flex items-center gap-1.5">${s.kind === 'accessory' ? '<span class="px-1.5 py-0.5 rounded bg-[#3F3F46] text-[10px]">อุปกรณ์เสริม</span>' : ''}${colorTag(s.color) || ''}${s.color && s.capacity ? ' · ' : ''}${esc(s.capacity || (s.color ? '' : (s.product_code || '-')))}</p>
+                <p class="text-xs text-ink/70 flex items-center gap-1.5">${s.kind === 'accessory' ? '<span class="px-1.5 py-0.5 rounded bg-line text-[10px]">อุปกรณ์เสริม</span>' : ''}${colorTag(s.color) || ''}${s.color && s.capacity ? ' · ' : ''}${esc(s.capacity || (s.color ? '' : (s.product_code || '-')))}</p>
             </td>
             <td class="px-4 py-3 text-sm">${s.kind === 'accessory'
                 ? `<label for="si-qty-${idx}" class="sr-only">จำนวนของ ${esc(s.product_name)}</label>
                    <input id="si-qty-${idx}" data-qty-idx="${idx}" type="number" min="1" max="${Number(s.stock_available) || 1}" step="1" value="${Number(s.quantity) || 1}" inputmode="numeric"
-                        class="w-20 px-2 py-1.5 rounded-lg bg-[#27272A] border border-[#3F3F46] text-white text-sm font-mono text-right focus:border-[#FFE169] focus:outline-none">
-                   <span class="text-xs text-white/60 block mt-0.5">คงเหลือ ${Number(s.stock_available) || 0}</span>`
-                : `<span class="font-mono text-[#FFE169]">${esc(s.imei)}</span>`}</td>
-            <td class="px-4 py-3 text-right font-mono text-sm text-white">${baht(lineCost(s))}</td>
+                        class="w-20 px-2 py-1.5 rounded-lg bg-field border border-line-strong text-ink text-sm font-mono text-right focus:border-accent-ink focus:outline-none">
+                   <span class="text-xs text-ink/60 block mt-0.5">คงเหลือ ${Number(s.stock_available) || 0}</span>`
+                : `<span class="font-mono text-accent-ink">${esc(s.imei)}</span>`}</td>
+            <td class="px-4 py-3 text-right font-mono text-sm text-ink">${baht(lineCost(s))}</td>
             <td class="px-4 py-3">${claimSelectHtml(idx, s.claim_type)}</td>
-            <td class="px-4 py-3 text-right"><button type="button" data-remove="${idx}" class="text-white hover:text-red-400 transition-colors p-2" title="นำออก" aria-label="นำ ${esc(s.imei || s.product_name)} ออกจากรายการ"><i class="fa-solid fa-trash"></i></button></td>
+            <td class="px-4 py-3 text-right"><button type="button" data-remove="${idx}" class="text-ink hover:text-state-danger-soft transition-colors p-2" title="นำออก" aria-label="นำ ${esc(s.imei || s.product_name)} ออกจากรายการ"><i class="fa-solid fa-trash"></i></button></td>
         </tr>`).join('')).join('')
-            + `<tr class="bg-[#4D4D4D]/40"><td colspan="2" class="px-4 py-3 text-sm font-semibold text-white">มูลค่าต้นทุนรวมทั้งหมด</td>
-            <td colspan="3" class="px-4 py-3 text-sm font-semibold text-white font-mono text-right">${baht(_scanned.reduce((t, s) => t + lineCost(s), 0))}</td></tr>`;
+            + `<tr class="bg-panel/40"><td colspan="2" class="px-4 py-3 text-sm font-semibold text-ink">มูลค่าต้นทุนรวมทั้งหมด</td>
+            <td colspan="3" class="px-4 py-3 text-sm font-semibold text-ink font-mono text-right">${baht(_scanned.reduce((t, s) => t + lineCost(s), 0))}</td></tr>`;
     };
 
     const getIssueBranchId = () => (canPickBranch() ? $('stock-issue-branch').value : '');
@@ -560,7 +560,7 @@
         document.querySelectorAll('.stock-issue-kind-btn').forEach(b => {
             const on = b.dataset.kind === _kind;
             b.setAttribute('aria-pressed', String(on));
-            b.className = `stock-issue-kind-btn flex-1 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${on ? 'bg-[#FFE169] text-[#333333]' : 'bg-[#27272A] text-slate-300 hover:text-white'}`;
+            b.className = `stock-issue-kind-btn flex-1 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${on ? 'bg-primary text-on-primary' : 'bg-field text-body-muted hover:text-ink'}`;
         });
         (_kind === 'device' ? $('stock-issue-imei') : $('stock-issue-acc-search'))?.focus();
     };
@@ -600,11 +600,11 @@
         const box = $('stock-issue-acc-results');
         if (!box) return;
         if (_accResults.length === 0) {
-            box.innerHTML = '<p class="px-4 py-3 text-xs text-white/60 italic">ไม่พบอุปกรณ์เสริมที่มีของในสาขานี้</p>';
+            box.innerHTML = '<p class="px-4 py-3 text-xs text-ink/60 italic">ไม่พบอุปกรณ์เสริมที่มีของในสาขานี้</p>';
         } else {
-            box.innerHTML = _accResults.map((r, n) => `<button type="button" data-acc-pick="${n}" class="w-full text-left px-4 py-2.5 hover:bg-[#3F3F46] transition-colors">
-                <p class="text-sm text-white">${esc(r.product_name)}</p>
-                <p class="text-xs text-white/60">${esc(r.product_code || '-')} · คงเหลือ ${Number(r.stock_available) || 0} ${esc(r.unit_name)} · ${esc(r.supplier_name || 'ไม่ระบุ Supplier')}</p></button>`).join('');
+            box.innerHTML = _accResults.map((r, n) => `<button type="button" data-acc-pick="${n}" class="w-full text-left px-4 py-2.5 hover:bg-line transition-colors">
+                <p class="text-sm text-ink">${esc(r.product_name)}</p>
+                <p class="text-xs text-ink/60">${esc(r.product_code || '-')} · คงเหลือ ${Number(r.stock_available) || 0} ${esc(r.unit_name)} · ${esc(r.supplier_name || 'ไม่ระบุ Supplier')}</p></button>`).join('');
         }
         box.classList.remove('hidden');
     };
@@ -762,7 +762,7 @@
         showConfirm('ยืนยันการจ่ายออกสินค้า',
             `จ่ายออกสินค้า ${_scanned.reduce((t, s) => t + (Number(s.quantity) || 1), 0)} ชิ้นออกจากสต็อก — ย้อนกลับไม่ได้`
             + (_scanned.some(s => s.claim_type !== 'loss') ? '<br><span class="text-xs">ระบบจะสร้างใบเคลมแยกตามผู้จัดจำหน่ายและกรณีเคลมที่เลือกให้อัตโนมัติ</span>' : '')
-            + (_scanned.some(s => s.claim_type === 'loss') ? `<br><span class="text-xs text-red-300">มี ${_scanned.filter(s => s.claim_type === 'loss').length} รายการที่จ่ายออกเปล่า (ขาดทุน) — ไม่เปิดใบเคลม</span>` : ''),
+            + (_scanned.some(s => s.claim_type === 'loss') ? `<br><span class="text-xs text-state-danger-soft">มี ${_scanned.filter(s => s.claim_type === 'loss').length} รายการที่จ่ายออกเปล่า (ขาดทุน) — ไม่เปิดใบเคลม</span>` : ''),
             doSubmit, 'จ่ายออก');
     };
 
@@ -798,8 +798,8 @@
                 if (sel) {
                     const item = _scanned[Number(sel.dataset.claimIdx)];
                     if (item) item.claim_type = sel.value;
-                    sel.classList.toggle('border-red-500/60', !sel.value);
-                    sel.classList.toggle('border-[#3F3F46]', !!sel.value);
+                    sel.classList.toggle('border-state-danger/60', !sel.value);
+                    sel.classList.toggle('border-line-strong', !!sel.value);
                     return;
                 }
                 const q = e.target.closest('[data-qty-idx]');

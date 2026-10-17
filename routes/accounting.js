@@ -3,7 +3,7 @@ const router = express.Router();
 const jwt = require('jsonwebtoken');
 const mongoose = require('mongoose');
 const {
-    AccountCategory, AccountGroup, AccountChart, AccountBook, AccountDocument, AccountBookLink, DisbursementVoucher,
+    AccountCategory, AccountGroup, AccountChart, AccountBook, AccountDocument, AccountBookLink, DisbursementVoucher, OtherEntry,
     Employee, Branch, CashMovement, Transaction, PurchaseOrder, FinanceReceivable, AuditLog
 } = require('../models');
 const { uploadBufferToDriveInFolder } = require('../utils/googleDrive');
@@ -71,7 +71,7 @@ async function logActivity(req, action, module, description, targetId, refNo, de
 
 // กลุ่มบัญชีเริ่มต้นที่ seedDefaultCOA (models/index.js) สร้างให้ — ต้องตรงกับ defaultGroups ในนั้น
 // seed ค้นกลุ่มด้วย group_code แล้วสร้างใหม่ถ้าไม่เจอ จึงห้ามลบหรือเปลี่ยนรหัส ไม่งั้นรีสตาร์ทแล้วจะได้กลุ่มซ้ำกลับมา
-const SYSTEM_GROUP_CODES = new Set(['11', '12', '21', '31', '41', '42', '51', '52']);
+const SYSTEM_GROUP_CODES = new Set(['110', '210', '310', '410', '510']);
 const isSystemGroup = (group) => SYSTEM_GROUP_CODES.has(group.group_code);
 
 // ความยาวสูงสุดของรหัส/ชื่อ ต้องตรงกับ maxlength ในฟอร์ม (index.html) — กันคนยิง API ตรงข้ามฟอร์ม
@@ -110,19 +110,25 @@ router.post('/chart-of-accounts', async (req, res) => {
         const account_name = String(req.body.account_name || '').trim();
         const hasGroup = Object.prototype.hasOwnProperty.call(req.body, 'group_id');
         const group_id = req.body.group_id || null;
+        const hasBook = Object.prototype.hasOwnProperty.call(req.body, 'book_id');
+        const book_id = req.body.book_id || null;
         if (!account_code || !account_name || !category_id) {
             return res.status(400).json({ success: false, message: 'กรุณากรอกข้อมูลให้ครบถ้วน' });
         }
         const accLenErr = lengthError(account_code, account_name);
         if (accLenErr) return res.status(400).json({ success: false, message: accLenErr });
-        const [category, group, dup] = await Promise.all([
+        const [category, group, book, dup] = await Promise.all([
             AccountCategory.findById(category_id).lean(),
             group_id ? AccountGroup.findById(group_id).lean() : null,
+            book_id ? AccountBook.findById(book_id).lean() : null,
             AccountChart.findOne({ account_code, ...(_id ? { _id: { $ne: _id } } : {}) }).lean()
         ]);
         if (!category) return res.status(400).json({ success: false, message: 'ไม่พบหมวดบัญชีที่เลือก' });
         if (group_id && (!group || String(group.category_id) !== String(category._id))) {
             return res.status(400).json({ success: false, message: 'กลุ่มบัญชีไม่ตรงกับหมวดที่เลือก' });
+        }
+        if (book_id && (!book || String(book.category_id || '') !== String(category._id))) {
+            return res.status(400).json({ success: false, message: 'สมุดบัญชีไม่ตรงกับหมวดที่เลือก' });
         }
         if (dup) return res.status(400).json({ success: false, message: 'รหัสบัญชีนี้มีอยู่แล้ว' });
         // เพิ่มรหัสบัญชีใหม่เข้ากลุ่มที่ปิดใช้งานไม่ได้ (แก้บัญชีเดิมที่อยู่ในกลุ่มนั้นยังทำได้)
@@ -148,11 +154,14 @@ router.post('/chart-of-accounts', async (req, res) => {
             // ไม่ได้ส่งกลุ่มมา = คงกลุ่มเดิมไว้ เว้นแต่ย้ายหมวด (กลุ่มเดิมไม่ตรงหมวดใหม่แล้ว จึงล้างทิ้ง)
             if (hasGroup) account.group_id = group_id;
             else if (categoryChanged) account.group_id = null;
+            // สมุดบัญชี: ไม่ได้ส่งมา = คงเดิม เว้นแต่ย้ายหมวด (สมุดเดิมอยู่คนละหมวดแล้ว จึงล้างทิ้ง)
+            if (hasBook) account.book_id = book_id;
+            else if (categoryChanged) account.book_id = null;
             if (level) account.level = level;
             await account.save();
             await logActivity(req, 'UPDATE', 'COA', `แก้ไขผังบัญชี ${account_code} ${account_name}`, account._id);
         } else {
-            account = await AccountChart.create({ account_code, account_name, category_id: category._id, group_id, level: level || 3 });
+            account = await AccountChart.create({ account_code, account_name, category_id: category._id, group_id, book_id, level: level || 3 });
             await logActivity(req, 'CREATE', 'COA', `เพิ่มผังบัญชี ${account_code} ${account_name}`, account._id);
         }
         res.json({ success: true, account });
@@ -309,22 +318,32 @@ router.post('/account-books', async (req, res) => {
         const { _id } = req.body;
         const book_code = String(req.body.book_code || '').trim();
         const book_name = String(req.body.book_name || '').trim();
+        const category_id = req.body.category_id || null;
         if (!book_code || !book_name) {
             return res.status(400).json({ success: false, message: 'กรุณากรอกรหัสและชื่อสมุดบัญชีให้ครบถ้วน' });
         }
         const dup = await AccountBook.findOne({ book_code, ...(_id ? { _id: { $ne: _id } } : {}) }).lean();
         if (dup) return res.status(400).json({ success: false, message: 'รหัสสมุดบัญชีนี้มีอยู่แล้ว' });
+        if (category_id && !(await AccountCategory.exists({ _id: category_id }))) {
+            return res.status(400).json({ success: false, message: 'ไม่พบหมวดบัญชีที่เลือก' });
+        }
 
         let book;
         if (_id) {
             book = await AccountBook.findById(_id);
             if (!book) return res.status(404).json({ success: false, message: 'ไม่พบสมุดบัญชีนี้' });
+            // ย้ายสมุดไปหมวดอื่นไม่ได้ถ้ายังมีรหัสบัญชีผูกอยู่ — ไม่งั้นรหัสเหล่านั้นจะอยู่คนละหมวดกับสมุด
+            if (String(book.category_id || '') !== String(category_id || '')) {
+                const accCount = await AccountChart.countDocuments({ book_id: book._id });
+                if (accCount) return res.status(400).json({ success: false, message: `ย้ายหมวดไม่ได้ เพราะมีรหัสบัญชีผูกกับสมุดนี้อยู่ ${accCount} รายการ — เปลี่ยนสมุดของรหัสเหล่านั้นก่อน` });
+            }
             book.book_code = book_code;
             book.book_name = book_name;
+            book.category_id = category_id;
             await book.save();
             await logActivity(req, 'UPDATE', 'ACCOUNT_BOOK', `แก้ไขสมุดบัญชี ${book_code} ${book_name}`, book._id, book_code);
         } else {
-            book = await AccountBook.create({ book_code, book_name });
+            book = await AccountBook.create({ book_code, book_name, category_id });
             await logActivity(req, 'CREATE', 'ACCOUNT_BOOK', `เพิ่มสมุดบัญชี ${book_code} ${book_name}`, book._id, book_code);
         }
         res.json({ success: true, book });
@@ -348,6 +367,10 @@ router.delete('/account-books/:id', async (req, res) => {
                 success: false,
                 message: `สมุดบัญชีนี้ถูกเชื่อมกับเอกสารอยู่ ${linkCount} รายการ — ไปที่เมนู "เชื่อมสมุดบัญชีกับเอกสาร" เปลี่ยนการเชื่อมไปสมุดอื่นก่อนจึงจะลบได้`
             });
+        }
+        const accLinked = await AccountChart.countDocuments({ book_id: book._id });
+        if (accLinked > 0) {
+            return res.status(400).json({ success: false, message: `สมุดบัญชีนี้มีรหัสบัญชีผูกอยู่ ${accLinked} รายการ — เปลี่ยนสมุดของรหัสบัญชีเหล่านั้นก่อนจึงจะลบได้` });
         }
         await AccountBook.findByIdAndDelete(req.params.id);
         await logActivity(req, 'DELETE', 'ACCOUNT_BOOK', `ลบสมุดบัญชี ${book.book_code} ${book.book_name}`, book._id, book.book_code);
@@ -675,6 +698,92 @@ router.get('/disbursements/:id', async (req, res) => {
         voucherObj.total_amount = voucherTotalAmount(voucherObj);
 
         res.json({ success: true, voucher: voucherObj });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+// ============================================
+// รายได้และรายจ่ายอื่นๆ (OtherEntry)
+// ============================================
+
+// GET /api/acct/other-entries?kind=income|expense&startDate&endDate
+router.get('/other-entries', async (req, res) => {
+    try {
+        const filter = {};
+        if (['income', 'expense'].includes(req.query.kind)) filter.kind = req.query.kind;
+        if (req.query.startDate || req.query.endDate) {
+            filter.entry_date = {};
+            if (req.query.startDate) filter.entry_date.$gte = new Date(req.query.startDate + 'T00:00:00');
+            if (req.query.endDate) filter.entry_date.$lte = new Date(req.query.endDate + 'T23:59:59');
+        }
+        const entries = await OtherEntry.find(filter)
+            .populate('category_id', 'category_name')
+            .populate('group_id', 'group_code group_name')
+            .populate('account_id', 'account_code account_name')
+            .populate('created_by', 'name')
+            .sort({ entry_date: -1, createdAt: -1 })
+            .lean();
+        res.json({ success: true, entries });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+// POST /api/acct/other-entries
+router.post('/other-entries', async (req, res) => {
+    try {
+        const { kind, entry_date, category_id, group_id, account_id } = req.body;
+        const source = String(req.body.source || '').trim();
+        const remark = String(req.body.remark || '').trim();
+        const amount = Number(req.body.amount);
+        if (!['income', 'expense'].includes(kind)) return res.status(400).json({ success: false, message: 'ประเภทรายการไม่ถูกต้อง' });
+        if (!source || !category_id || !group_id || !account_id) {
+            return res.status(400).json({ success: false, message: 'กรุณากรอกข้อมูลให้ครบถ้วน' });
+        }
+        if (!Number.isFinite(amount) || amount <= 0) return res.status(400).json({ success: false, message: 'จำนวนเงินต้องมากกว่า 0' });
+        if (source.length > MAX_NAME_LEN || remark.length > 500) return res.status(400).json({ success: false, message: 'ข้อความยาวเกินกำหนด' });
+
+        const [category, group, account] = await Promise.all([
+            AccountCategory.findById(category_id).lean(),
+            AccountGroup.findById(group_id).lean(),
+            AccountChart.findById(account_id).lean()
+        ]);
+        if (!category || !group || !account) return res.status(400).json({ success: false, message: 'ไม่พบหมวด กลุ่มบัญชี หรือรหัสบัญชีที่เลือก' });
+        if (String(account.category_id) !== String(category._id)) {
+            return res.status(400).json({ success: false, message: 'รหัสบัญชีที่เลือกไม่อยู่ในหมวดนี้' });
+        }
+        if (String(group.category_id) !== String(category._id)) {
+            return res.status(400).json({ success: false, message: 'กลุ่มบัญชีที่เลือกไม่อยู่ในหมวดนี้' });
+        }
+        if (String(account.group_id || '') !== String(group._id)) {
+            return res.status(400).json({ success: false, message: 'รหัสบัญชีที่เลือกไม่อยู่ในกลุ่มบัญชีนี้' });
+        }
+        if (group.is_active === false) return res.status(400).json({ success: false, message: 'กลุ่มบัญชีที่เลือกถูกปิดการใช้งานแล้ว' });
+        if (account.is_active === false) return res.status(400).json({ success: false, message: 'บัญชีที่เลือกถูกปิดการใช้งานแล้ว' });
+
+        const entry = await OtherEntry.create({
+            kind, source, amount, remark,
+            entry_date: entry_date ? new Date(entry_date + 'T12:00:00') : new Date(),
+            category_id: category._id, group_id: group._id, account_id: account._id,
+            branch_id: req.user.branch_id || undefined,
+            created_by: req.user.employee_id
+        });
+        const label = kind === 'income' ? 'รายได้' : 'รายจ่าย';
+        await logActivity(req, 'CREATE', 'ACCOUNTING', `บันทึก${label}อื่นๆ ${source} ${amount.toLocaleString('th-TH')} บาท (${account.account_code} ${account.account_name})`, entry._id, account.account_code);
+        res.json({ success: true, entry });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+// DELETE /api/acct/other-entries/:id
+router.delete('/other-entries/:id', async (req, res) => {
+    try {
+        const entry = await OtherEntry.findByIdAndDelete(req.params.id);
+        if (!entry) return res.status(404).json({ success: false, message: 'ไม่พบรายการนี้' });
+        await logActivity(req, 'DELETE', 'ACCOUNTING', `ลบ${entry.kind === 'income' ? 'รายได้' : 'รายจ่าย'}อื่นๆ ${entry.source} ${entry.amount.toLocaleString('th-TH')} บาท`, entry._id);
+        res.json({ success: true });
     } catch (err) {
         res.status(500).json({ success: false, message: err.message });
     }

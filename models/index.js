@@ -760,6 +760,8 @@ const accountChartSchema = new mongoose.Schema({
     category_id: { type: mongoose.Schema.Types.ObjectId, ref: 'AccountCategory', required: true },
     // ไม่บังคับ — บัญชีที่สร้างจากหน้า "รหัสบัญชี" ผูกแค่หมวด (category_id) ไม่มีกลุ่ม
     group_id: { type: mongoose.Schema.Types.ObjectId, ref: 'AccountGroup', default: null },
+    // สมุดบัญชีที่รหัสนี้อยู่ (ไม่บังคับ) — ต้องเป็นสมุดในหมวดเดียวกับบัญชี (API ตรวจ)
+    book_id: { type: mongoose.Schema.Types.ObjectId, ref: 'AccountBook', default: null },
     level: { type: Number, default: 1, min: 1, max: 3 },
     is_system: { type: Boolean, default: false },
     is_active: { type: Boolean, default: true }
@@ -769,7 +771,9 @@ const AccountChart = mongoose.model('AccountChart', accountChartSchema, 'account
 // AccountBook (สมุดบัญชี) — ข้อมูลตั้งค่าจากเมนู "ตั้งค่าบัญชี > สมุดบัญชี" กรอกแค่ รหัส / ชื่อ
 const accountBookSchema = new mongoose.Schema({
     book_code: { type: String, required: true, unique: true, trim: true },
-    book_name: { type: String, required: true, trim: true }
+    book_name: { type: String, required: true, trim: true },
+    // หมวดบัญชีที่สมุดนี้อยู่ — ใช้กรองในฟอร์ม "รายได้และรายจ่ายอื่นๆ" (หมวด → สมุด → รหัสบัญชี); สมุดเดิมที่ยังไม่กำหนดเป็น null
+    category_id: { type: mongoose.Schema.Types.ObjectId, ref: 'AccountCategory', default: null }
 }, { timestamps: true });
 const AccountBook = mongoose.model('AccountBook', accountBookSchema, 'accountbook');
 
@@ -840,6 +844,24 @@ const disbursementVoucherSchema = new mongoose.Schema({
     created_at: { type: Date, default: Date.now }
 }, { timestamps: true });
 const DisbursementVoucher = mongoose.model('DisbursementVoucher', disbursementVoucherSchema, 'disbursementvoucher');
+
+// OtherEntry (รายได้และรายจ่ายอื่นๆ) — บันทึกรายได้/รายจ่ายนอกเหนือการขายและใบสำคัญจ่าย จากเมนู "บัญชีและการเงิน > รายได้และรายจ่ายอื่นๆ"
+// ผูกหมวด / กลุ่มบัญชี / รหัสบัญชี ด้วย ObjectId (Mongo ไม่บังคับ FK — API ตรวจว่าบัญชีอยู่ในหมวดที่เลือกตอนบันทึก)
+const otherEntrySchema = new mongoose.Schema({
+    kind: { type: String, enum: ['income', 'expense'], required: true },
+    entry_date: { type: Date, required: true, default: Date.now },
+    source: { type: String, required: true, trim: true }, // รายได้จาก / รายจ่ายจาก
+    amount: { type: Number, required: true, min: 0.01 },
+    category_id: { type: mongoose.Schema.Types.ObjectId, ref: 'AccountCategory', required: true },
+    group_id: { type: mongoose.Schema.Types.ObjectId, ref: 'AccountGroup', required: true },
+    account_id: { type: mongoose.Schema.Types.ObjectId, ref: 'AccountChart', required: true },
+    remark: { type: String, default: '', trim: true },
+    branch_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Branch' },
+    created_by: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee', required: true }
+}, { timestamps: true });
+otherEntrySchema.index({ kind: 1, entry_date: -1 });
+otherEntrySchema.index({ account_id: 1 }); // ใช้ตอนเช็กว่าบัญชีถูกใช้ก่อนลบ
+const OtherEntry = mongoose.model('OtherEntry', otherEntrySchema, 'otherentry');
 
 // Expense (ค่าใช้จ่าย — บันทึกจากหน้าตรวจสอบออเดอร์)
 // แยกจาก DisbursementVoucher โดยตั้งใจ: ใบสำคัญจ่ายต้องผูกคู่บัญชีเดบิต/เครดิตในผังบัญชี
@@ -925,6 +947,7 @@ module.exports = {
     PnLConfig,
     BalanceSheetItem,
     DisbursementVoucher,
+    OtherEntry,
     Expense,
     seedDefaultRoles,
     migrateProductsToERP,

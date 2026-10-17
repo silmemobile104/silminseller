@@ -26,7 +26,7 @@
     </script>
 
     <link rel="icon" type="image/png" href="logo.png?v=2">
-    <link rel="stylesheet" href="tailwind.css?v=121">
+    <link rel="stylesheet" href="tailwind.css?v=124">
     <!-- xlsx ถูกย้ายไปโหลดแบบ on-demand ตอนเปิด modal นำเข้า Excel แล้ว (ดู ensureXlsxLoaded ใน script.js)
          เดิมโหลดตรงนี้แบบ render-blocking ทุกครั้งที่เข้าเว็บ ทั้งที่ใช้แค่ฟีเจอร์เดียว -->
     <!-- ไอคอน: self-host + ตัดเหลือเฉพาะที่ใช้จริง (Font Awesome 144 + Bootstrap Icons 28)
@@ -278,6 +278,12 @@
                     <span class="sidebar-text ml-3 font-medium">ตรวจสอบออเดอร์</span>
                 </a>
 
+                <a href="#" id="nav-other-entries" data-tooltip="รายได้และรายจ่ายอื่นๆ"
+                    class="flex items-center px-3 py-3 rounded-xl text-body-muted hover:bg-field/50 hover:text-ink transition-all group nav-menu-item">
+                    <i class="bi bi-arrow-left-right text-body-muted w-5 text-center text-xl"></i>
+                    <span class="sidebar-text ml-3 font-medium">รายได้และรายจ่ายอื่นๆ</span>
+                </a>
+
                 <!-- เมนูกลุ่ม "ตั้งค่าบัญชี" (dropdown) — ปุ่มหัวกลุ่มแสดง/ซ่อนตามเมนูย่อยอัตโนมัติ (ดู applyPermissions ใน script.js)
                      เพิ่มเมนูย่อยได้โดยใส่ <a class="nav-menu-item ..."> ลงใน #nav-account-settings-submenu -->
                 <button type="button" id="nav-account-settings-toggle" data-tooltip="ตั้งค่าบัญชี"
@@ -294,6 +300,12 @@
                         class="flex items-center px-3 py-3 rounded-xl text-body-muted hover:bg-field/50 hover:text-ink transition-all group nav-menu-item">
                         <i class="fa-solid fa-folder-tree text-body-muted w-5 text-center text-xl"></i>
                         <span class="sidebar-text ml-3 font-medium">หมวดหมู่บัญชี</span>
+                    </a>
+
+                    <a href="#" id="nav-account-books" data-tooltip="สมุดบัญชี"
+                        class="flex items-center px-3 py-3 rounded-xl text-body-muted hover:bg-field/50 hover:text-ink transition-all group nav-menu-item">
+                        <i class="bi bi-journal-check text-body-muted w-5 text-center text-xl"></i>
+                        <span class="sidebar-text ml-3 font-medium">สมุดบัญชี</span>
                     </a>
 
                     <a href="#" id="nav-pnl-config" data-tooltip="ตั้งค่างบกำไรขาดทุน"
@@ -1053,6 +1065,16 @@
                 <div id="view-finance-companies" class="hidden space-y-8 animate-fade-in">
                 </div>
 
+                <!-- VIEW: สมุดบัญชี -->
+                <!-- เนื้อหาอยู่ที่ views/account-books.html โหลดแบบ dynamic ผ่าน loadPageView('account-books') (ดู switchView case 'account-books') -->
+                <div id="view-account-books" class="hidden space-y-8 animate-fade-in">
+                </div>
+
+                <!-- VIEW: รายได้และรายจ่ายอื่นๆ -->
+                <!-- เนื้อหาอยู่ที่ views/other-entries.html โหลดแบบ dynamic ผ่าน loadPageView('other-entries') (ดู switchView case 'other-entries') -->
+                <div id="view-other-entries" class="hidden space-y-8 animate-fade-in">
+                </div>
+
                 <!-- VIEW: ตั้งค่าผังบัญชี (Chart of Accounts Settings) -->
                 <!-- เนื้อหาแยกไปที่ views/accounting-settings.html แล้ว โหลดแบบ dynamic ผ่าน loadPageView('accounting-settings') (ดู switchView case 'accounting-settings') -->
                 <div id="view-accounting-settings" class="hidden space-y-8 animate-fade-in">
@@ -1118,6 +1140,13 @@
                             <select id="acct-account-parent"
                                 class="elev-chip w-full px-3 py-2.5 rounded-sm bg-surface-chip text-ink text-sm focus:ring-2 focus:ring-primary-focus outline-none">
                                 <option value="">-- ยังไม่จัดกลุ่ม --</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="acct-account-book" class="block text-body-muted text-xs mb-1">สมุดบัญชี</label>
+                            <select id="acct-account-book"
+                                class="elev-chip w-full px-3 py-2.5 rounded-sm bg-surface-chip text-ink text-sm focus:ring-2 focus:ring-primary-focus outline-none">
+                                <option value="">-- ยังไม่ระบุสมุดบัญชี --</option>
                             </select>
                         </div>
                         <div>
@@ -5393,7 +5422,7 @@
     <!-- defer: ปล่อยให้ parse HTML จบก่อนค่อย execute
          ปลอดภัยเพราะทั้งไฟล์ห่ออยู่ใน DOMContentLoaded listener อยู่แล้ว
          และสคริปต์ defer จะ execute ก่อน event DOMContentLoaded ยิงเสมอ -->
-    <script defer src="script.js?v=apple_active_v176"></script>
+    <script defer src="script.js?v=apple_active_v182"></script>
     <script>
         // ลงทะเบียน Service Worker เพื่อแคช asset คงที่ (css/js/font/icon/รูป) ไว้ฝั่งเครื่อง
         // เข้าเว็บครั้งถัดไปเร็วขึ้นมาก โดยเฉพาะตอนเน็ตช้าหรือหลุดชั่วคราว — ดูรายละเอียดที่ sw.js

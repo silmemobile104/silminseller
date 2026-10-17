@@ -1,0 +1,152 @@
+<div id="view-other-entries">
+    <!-- [1] หัวหน้า — DESIGN.md ข้อ 11.2 -->
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div class="flex items-center gap-4">
+            <i class="hidden md:block bi bi-arrow-left-right text-ink w-5 text-2xl text-center"></i>
+            <h3 class="hidden md:block text-2xl text-ink">รายได้และรายจ่ายอื่นๆ</h3>
+        </div>
+        <div class="flex items-center gap-2">
+            <!-- 2 ปุ่มเลือกประเภท: รายได้ / รายจ่าย — สลับฟอร์มและประวัติด้านล่าง (js/page-other-entries.js) -->
+            <button type="button" id="oe-tab-income" aria-pressed="true"
+                class="px-4 py-2 rounded-[0.5rem] text-sm font-semibold flex items-center gap-2 transition-colors cursor-pointer bg-green-500 hover:bg-green-600 text-white">
+                <i class="fa-solid fa-arrow-right-to-bracket"></i> รายได้
+            </button>
+            <button type="button" id="oe-tab-expense" aria-pressed="false"
+                class="px-4 py-2 rounded-[0.5rem] text-sm font-semibold flex items-center gap-2 transition-colors cursor-pointer bg-surface-chip text-body-muted hover:text-ink">
+                <i class="fa-solid fa-arrow-right-from-bracket"></i> รายจ่าย
+            </button>
+            <button id="btn-refresh-oe" type="button"
+                class="page-filter-control px-3 py-2 bg-panel/40 cursor-pointer text-ink flex items-center justify-center gap-1.5 rounded-[0.5rem] text-sm hover:bg-skeleton transition-colors w-fit">
+                <i class="fa-solid fa-rotate"></i> รีเฟรช
+            </button>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
+        <!-- ============ ฟอร์มบันทึก ============ -->
+        <div id="oe-form-card" class="lg:col-span-4 bg-panel/40 rounded-2xl shadow-lg overflow-hidden backdrop-blur-sm">
+            <div id="oe-form-bar" class="h-1 bg-green-500" aria-hidden="true"></div>
+            <div class="p-6 pb-0">
+                <h3 id="oe-form-title" class="text-lg text-ink flex items-center gap-2">
+                    <i class="fa-solid fa-pen-to-square text-green-400"></i> บันทึกรายได้
+                </h3>
+            </div>
+
+            <div class="p-6 space-y-5 text-sm">
+                <div class="space-y-2">
+                    <label for="oe-date" class="text-ink font-medium flex items-center gap-2 text-xs">
+                        <i class="fa-solid fa-calendar text-ink"></i> วันที่ <span class="text-red-500">*</span>
+                    </label>
+                    <input type="date" id="oe-date"
+                        class="elev-field w-full px-4 py-2.5 rounded-xl bg-field text-ink focus:ring-2 focus:ring-accent-ink focus:outline-none transition-all text-sm [color-scheme:dark]">
+                </div>
+
+                <div class="space-y-2">
+                    <label for="oe-source" id="oe-source-label" class="text-ink font-medium flex items-center gap-2 text-xs">
+                        รายได้จาก <span class="text-red-500">*</span>
+                    </label>
+                    <input type="text" id="oe-source" maxlength="120" autocomplete="off" placeholder="เช่น ค่าปลด iCloud, ดอกเบี้ยรับ"
+                        class="elev-field w-full px-4 py-2.5 rounded-xl bg-field text-ink focus:ring-2 focus:ring-accent-ink focus:outline-none transition-all text-sm placeholder-body-muted">
+                </div>
+
+                <div class="space-y-2">
+                    <label for="oe-amount" class="text-ink font-medium flex items-center gap-2 text-xs">
+                        <i class="fa-solid fa-money-bill-wave text-ink"></i> จำนวน (บาท) <span class="text-red-500">*</span>
+                    </label>
+                    <input type="number" inputmode="decimal" id="oe-amount" placeholder="0.00" step="0.01" min="0"
+                        class="elev-field w-full px-4 py-2.5 rounded-xl bg-field text-ink focus:ring-2 focus:ring-accent-ink focus:outline-none transition-all text-sm placeholder-body-muted">
+                </div>
+
+                <!-- ประเภท: หมวด → สมุดบัญชี → รหัสบัญชี (รหัสบัญชีกรองตามหมวดที่เลือก) -->
+                <div class="space-y-2">
+                    <label for="oe-category" class="text-ink font-medium flex items-center gap-2 text-xs">
+                        <i class="fa-solid fa-folder-tree text-ink"></i> ประเภท: หมวด <span class="text-red-500">*</span>
+                    </label>
+                    <div class="relative">
+                        <select id="oe-category"
+                            class="elev-field w-full appearance-none px-4 py-2.5 rounded-xl bg-field text-ink focus:ring-2 focus:ring-accent-ink focus:outline-none transition-all text-sm cursor-pointer">
+                            <option value="">-- เลือกหมวด --</option>
+                        </select>
+                        <div class="absolute right-4 top-[14px] pointer-events-none text-body-muted"><i class="fa-solid fa-chevron-down text-xs"></i></div>
+                    </div>
+                </div>
+
+                <div class="space-y-2">
+                    <label for="oe-group" class="text-ink font-medium flex items-center gap-2 text-xs">
+                        กลุ่มบัญชี <span class="text-red-500">*</span>
+                    </label>
+                    <div class="relative">
+                        <select id="oe-group"
+                            class="elev-field w-full appearance-none px-4 py-2.5 rounded-xl bg-field text-ink focus:ring-2 focus:ring-accent-ink focus:outline-none transition-all text-sm cursor-pointer">
+                            <option value="">-- เลือกหมวดก่อน --</option>
+                        </select>
+                        <div class="absolute right-4 top-[14px] pointer-events-none text-body-muted"><i class="fa-solid fa-chevron-down text-xs"></i></div>
+                    </div>
+                </div>
+
+                <div class="space-y-2">
+                    <label for="oe-account" class="text-ink font-medium flex items-center gap-2 text-xs">
+                        รหัสบัญชี <span class="text-red-500">*</span>
+                    </label>
+                    <div class="relative">
+                        <select id="oe-account"
+                            class="elev-field w-full appearance-none px-4 py-2.5 rounded-xl bg-field text-ink focus:ring-2 focus:ring-accent-ink focus:outline-none transition-all text-sm cursor-pointer">
+                            <option value="">-- เลือกกลุ่มบัญชีก่อน --</option>
+                        </select>
+                        <div class="absolute right-4 top-[14px] pointer-events-none text-body-muted"><i class="fa-solid fa-chevron-down text-xs"></i></div>
+                    </div>
+                </div>
+
+                <div class="space-y-2">
+                    <label for="oe-remark" class="text-ink font-medium text-xs">หมายเหตุ</label>
+                    <textarea id="oe-remark" rows="2" maxlength="500" placeholder="ระบุหมายเหตุเพิ่มเติม (ถ้ามี)"
+                        class="elev-field w-full px-4 py-2.5 rounded-xl bg-field text-ink focus:ring-2 focus:ring-accent-ink focus:outline-none transition-all text-sm placeholder-body-muted resize-none"></textarea>
+                </div>
+
+                <button type="button" id="btn-submit-oe"
+                    class="w-full px-5 py-2.5 rounded-xl bg-green-500 hover:bg-green-600 text-white font-semibold text-sm transition-colors flex items-center justify-center gap-2 cursor-pointer">
+                    <i class="fa-solid fa-floppy-disk"></i> <span id="btn-submit-oe-text">บันทึกรายได้</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- ============ ประวัติรายการ ============ -->
+        <div id="oe-history-card" class="lg:col-span-8 bg-panel/40 rounded-2xl shadow-lg overflow-hidden backdrop-blur-sm">
+            <div id="oe-history-bar" class="h-1 bg-green-500" aria-hidden="true"></div>
+            <div class="p-6 pb-0 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+                <h3 id="oe-history-title" class="text-lg text-ink flex items-center gap-2">
+                    <i class="fa-solid fa-clock-rotate-left text-green-400"></i> ประวัติรายได้
+                </h3>
+                <div class="flex flex-wrap items-center gap-2.5 w-full lg:w-auto">
+                    <label for="oe-filter-start" class="sr-only">วันที่เริ่มต้น</label>
+                    <input type="date" id="oe-filter-start"
+                        class="elev-card bg-panel/40 rounded-[0.5rem] text-sm px-3 py-2 text-ink focus:outline-none focus:ring-2 focus:ring-accent-ink [color-scheme:dark] w-full sm:w-auto">
+                    <label for="oe-filter-end" class="sr-only">วันที่สิ้นสุด</label>
+                    <input type="date" id="oe-filter-end"
+                        class="elev-card bg-panel/40 rounded-[0.5rem] text-sm px-3 py-2 text-ink focus:outline-none focus:ring-2 focus:ring-accent-ink [color-scheme:dark] w-full sm:w-auto">
+                </div>
+            </div>
+
+            <div class="px-6 py-4 flex items-center justify-between gap-3">
+                <div id="oe-result-count" class="text-xs text-ink font-medium"></div>
+                <div id="oe-total" class="text-sm text-ink font-semibold"></div>
+            </div>
+
+            <div class="overflow-x-auto" tabindex="0">
+                <table class="w-full text-left text-sm whitespace-nowrap border-collapse">
+                    <thead class="bg-panel/40 text-ink">
+                        <tr>
+                            <th class="px-6 py-4 font-semibold text-[15px]">วันที่</th>
+                            <th id="oe-th-source" class="px-6 py-4 font-semibold text-[15px]">รายได้จาก</th>
+                            <th class="px-6 py-4 font-semibold text-[15px]">หมวด / กลุ่ม / รหัสบัญชี</th>
+                            <th class="px-6 py-4 font-semibold text-[15px] w-full">หมายเหตุ</th>
+                            <th class="px-6 py-4 font-semibold text-[15px] text-right">จำนวน</th>
+                            <th class="px-6 py-4 font-semibold text-[15px] text-right">จัดการ</th>
+                        </tr>
+                    </thead>
+                    <tbody id="oe-table-body" class="divide-y divide-divider"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>

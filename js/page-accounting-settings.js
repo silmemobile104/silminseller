@@ -929,14 +929,33 @@
         sel.value = selectedId || '';
     }
 
-    // เปลี่ยนหมวดในฟอร์ม (เฉพาะตอนเพิ่มจากหน้างบดุล) — โหลดกลุ่มของหมวดนั้นใหม่
+    // สมุดบัญชีในฟอร์มรหัสบัญชี — เลือกได้เฉพาะสมุดที่อยู่ในหมวดเดียวกับบัญชี (API ตรวจซ้ำ)
+    let _acctBooksCache = [];
+    function fillAcctBookOptions(catId, selectedId) {
+        const sel = document.getElementById('acct-account-book');
+        if (!sel) return;
+        const books = _acctBooksCache.filter(b => idOf(b.category_id) === catId);
+        sel.innerHTML = `<option value="">${books.length ? '-- ยังไม่ระบุสมุดบัญชี --' : '-- หมวดนี้ยังไม่มีสมุดบัญชี --'}</option>` + books
+            .map(b => `<option value="${escapeHtml(b._id)}">${escapeHtml(b.book_code)} · ${escapeHtml(b.book_name)}</option>`).join('');
+        sel.value = books.some(b => b._id === selectedId) ? selectedId : '';
+    }
+    async function loadAcctBooksCache() {
+        try {
+            const res = await authFetch(`${API_BASE_URL}/acct/account-books`);
+            const data = await res.json();
+            if (data.success) _acctBooksCache = data.books;
+        } catch (e) { /* ใช้ค่าเดิม — ฟอร์มยังบันทึกได้โดยไม่ระบุสมุด */ }
+    }
+
+    // เปลี่ยนหมวดในฟอร์ม (เฉพาะตอนเพิ่มจากหน้างบดุล) — โหลดกลุ่มและสมุดของหมวดนั้นใหม่
     function onAcctAccountCategoryChange() {
         const catId = document.getElementById('acct-account-category')?.value || '';
         fillAcctGroupOptions(catId, '');
+        fillAcctBookOptions(catId, '');
     }
 
     // opts.categoryFilter = (ชื่อหมวด) => boolean — ส่งมาเมื่อเพิ่มบัญชีใหม่โดยยังไม่รู้หมวด (หน้างบดุล): ให้เลือกหมวดเอง
-    function openAcctAccountModal(data = {}, opts = {}) {
+    async function openAcctAccountModal(data = {}, opts = {}) {
         const modal = document.getElementById('modal-acct-account');
         if (!modal) return;
         const group = _coaCache.groups.find(g => g._id === idOf(data.group_id));
@@ -961,6 +980,13 @@
         }
         // บัญชีผูกกับกลุ่มโดยตรง — เลือกได้เฉพาะกลุ่มในหมวดเดียวกัน
         fillAcctGroupOptions(catId, group ? group._id : '');
+        fillAcctBookOptions(catId, idOf(data.book_id));
+        loadAcctBooksCache().then(() => {
+            // รายการสมุดมาถึงหลังเปิดฟอร์ม — เติมใหม่ถ้าผู้ใช้ยังไม่ได้เปลี่ยนหมวดไปเอง
+            const curCat = pickCat ? (document.getElementById('acct-account-category')?.value || '') : catId;
+            const picked = document.getElementById('acct-account-book')?.value || idOf(data.book_id);
+            fillAcctBookOptions(curCat, picked);
+        });
         const code = document.getElementById('acct-account-code');
         code.value = data.account_code || '';
         code.readOnly = !!data.is_system; // บัญชีระบบเปลี่ยนรหัสไม่ได้
@@ -981,7 +1007,8 @@
             account_code: (document.getElementById('acct-account-code')?.value || '').trim(),
             account_name: (document.getElementById('acct-account-name')?.value || '').trim(),
             category_id: group ? idOf(group.category_id) : (sel?.dataset.cat || ''),
-            group_id: group ? group._id : null
+            group_id: group ? group._id : null,
+            book_id: document.getElementById('acct-account-book')?.value || null
         };
         if (_id) payload._id = _id;
         if (!payload.category_id) { showToast('กรุณาเลือกหมวดของบัญชี', 'warning'); return; }
