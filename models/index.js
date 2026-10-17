@@ -264,7 +264,10 @@ const supplierSchema = new mongoose.Schema({
     name: { type: String, required: true },
     // วงเงินเครดิตที่ซื้อจากผู้จัดจำหน่ายรายนี้ได้ (บาท) — บังคับตอนเพิ่มใหม่ผ่านหน้าตั้งค่า
     // รายเดิมที่สร้างก่อนมีฟิลด์นี้เป็น null = ยังไม่ได้ตั้งวงเงิน
-    credit_limit: { type: Number, default: null, min: 0 }
+    credit_limit: { type: Number, default: null, min: 0 },
+    // กรณีเคลมสินค้ากับผู้จัดจำหน่ายรายนี้ — 1 ราย อยู่ได้กรณีเดียว (เก็บเป็นฟิลด์เดียวจึงซ้ำกันไม่ได้)
+    // goods = ได้รับสินค้า, cash = ได้รับเงินสด, discount = ได้รับส่วนลด, null = ยังไม่กำหนด
+    claim_type: { type: String, enum: ['goods', 'cash', 'discount', null], default: null }
 }, { timestamps: true });
 const Supplier = mongoose.model('Supplier', supplierSchema, 'supplier');
 
@@ -322,15 +325,22 @@ const stockIssueSchema = new mongoose.Schema({
     branch_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Branch', required: true },
     mode: { type: String, enum: ['single', 'multi'], default: 'single' },
     reason: { type: String, required: true }, // หมายเหตุการจ่ายออก
+    is_claim: { type: Boolean, default: false }, // เป็นการส่งเคลมผู้จัดจำหน่าย — มีใบเคลมผูกอยู่ (collection claim)
     items: [{
         product_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Product', required: true },
         product_code: { type: String, default: '' },
         product_name: { type: String, default: '' },
         color_name: { type: String, default: '' },
-        imei: { type: String, required: true },
+        // เครื่อง = มี IMEI จำนวน 1 / อุปกรณ์เสริม = ไม่มี IMEI ระบุเป็นจำนวน (ใบเก่าไม่มีฟิลด์นี้ = เครื่อง)
+        item_kind: { type: String, enum: ['device', 'accessory'], default: 'device' },
+        imei: { type: String, default: '' },
+        quantity: { type: Number, default: 1 },
         supplier_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Supplier', default: null },
         supplier_name: { type: String, default: '' }, // เก็บชื่อไว้ตอนจ่ายออก กันชื่อเปลี่ยนภายหลัง
-        cost_price: { type: Number, default: 0 }
+        // กรณีเคลมของชิ้นนี้ (เลือกต่อชิ้น): goods = ได้รับสินค้า, cash = ได้รับเงินสด, discount = ได้รับส่วนลด,
+        // loss = จ่ายออกเปล่า (ขาดทุน ไม่เปิดใบเคลม), null = ใบเก่าก่อนมีการเลือกต่อชิ้น
+        claim_type: { type: String, enum: ['goods', 'cash', 'discount', 'loss', null], default: null },
+        cost_price: { type: Number, default: 0 } // ต้นทุนต่อหน่วย
     }],
     total_qty: { type: Number, default: 0 },
     total_cost: { type: Number, default: 0 }, // มูลค่าต้นทุนรวมของใบ
@@ -340,6 +350,58 @@ const stockIssueSchema = new mongoose.Schema({
 stockIssueSchema.index({ branch_id: 1, createdAt: -1 });
 stockIssueSchema.index({ 'items.imei': 1 });
 const StockIssue = mongoose.model('StockIssue', stockIssueSchema, 'stockissue');
+
+// 11.3 Claim (ใบเคลมสินค้ากับผู้จัดจำหน่าย) — เกิดจากใบจ่ายออกที่ติ๊ก "เคลม" 1 ใบจ่ายออก แตกเป็น 1 ใบเคลมต่อผู้จัดจำหน่าย
+// สถานะ: ส่งเคลมแล้ว -> ปิดเคลม (ได้ผลแล้ว) | ปฏิเสธ (ซัพไม่รับ คืนสต็อกหรือตัดทิ้ง)
+const claimSchema = new mongoose.Schema({
+    claim_no: { type: String, required: true, unique: true },
+    issue_id: { type: mongoose.Schema.Types.ObjectId, ref: 'StockIssue', required: true },
+    issue_no: { type: String, default: '' },
+    branch_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Branch', required: true },
+    supplier_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Supplier', default: null },
+    supplier_name: { type: String, default: '' },
+    // เก็บกรณี ณ วันที่ส่งเคลม — ถ้าภายหลังเปลี่ยนการตั้งค่าซัพ ใบเก่าต้องไม่เปลี่ยนตาม
+    // null = ซัพรายนี้ยังไม่ได้ตั้งกรณีเคลม (หรือไม่ระบุซัพ) — เลือกกรณีตอนปิดเคลม
+    claim_type: { type: String, enum: ['goods', 'cash', 'discount', null], default: null },
+    items: [{
+        _id: false,
+        product_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Product', required: true },
+        product_code: { type: String, default: '' },
+        product_name: { type: String, default: '' },
+        color_name: { type: String, default: '' },
+        imei: { type: String, default: '' },   // อุปกรณ์เสริมไม่มี IMEI
+        quantity: { type: Number, default: 1 },
+        cost_price: { type: Number, default: 0 } // ต้นทุนต่อหน่วย
+    }],
+    // ชนิดสินค้าในใบเคลมนี้ (ใบหนึ่งมีชนิดเดียว): ใช้เป็นชนิดของส่วนลดตอนปิดเคลมกรณีส่วนลด; ใบเก่า = device
+    item_kind: { type: String, enum: ['device', 'accessory'], default: 'device' },
+    total_qty: { type: Number, default: 0 },
+    total_cost: { type: Number, default: 0 },
+    status: { type: String, enum: ['ส่งเคลมแล้ว', 'ปิดเคลม', 'ปฏิเสธ'], default: 'ส่งเคลมแล้ว' },
+    note: { type: String, default: '' },          // หมายเหตุตอนส่งเคลม
+    result_note: { type: String, default: '' },   // ผลเคลม / เหตุผลที่ซัพปฏิเสธ
+    returned_to_stock: { type: Boolean, default: false }, // ปฏิเสธแล้วคืนเครื่องเข้าสต็อก
+    // ผลเคลมตอนปิด — ใช้ฟิลด์ตามกรณี: goods = received_items, cash = cash_amount/received_date, discount = discount_amount/po_number
+    resolution: {
+        _id: false,
+        received_items: [{ _id: false, original_imei: String, new_imei: String, product_id: mongoose.Schema.Types.ObjectId, quantity: Number }], // เครื่องที่ได้รับ (ใช้ IMEI เดิมได้ถ้าซ่อมแล้วคืน)
+        cash_amount: { type: Number, default: 0 },
+        received_date: { type: Date, default: null },
+        discount_amount: { type: Number, default: 0 },  // เครดิตส่วนลดจากซัพ — ระยะนี้บันทึกอย่างเดียว ไม่ไปแก้ใบสั่งซื้อ
+        // ส่วนลดนี้ใช้กับสินค้าชนิดไหนในใบสั่งซื้อ: device = มือถือ/แท็บเล็ต, accessory = อุปกรณ์เสริม (ใบเก่าที่ไม่มีค่า = device)
+        discount_kind: { type: String, enum: ['device', 'accessory', null], default: null },
+        po_number: { type: String, default: '' }         // ใบสั่งซื้อที่จะใช้หักส่วนลด (อ้างอิง ไม่บังคับ)
+    },
+    created_by: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee', required: true },
+    created_by_name: { type: String, default: '' },
+    closed_by: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee', default: null },
+    closed_by_name: { type: String, default: '' },
+    closed_at: { type: Date, default: null }
+}, { timestamps: true });
+claimSchema.index({ issue_id: 1 });
+claimSchema.index({ branch_id: 1, status: 1, createdAt: -1 });
+claimSchema.index({ 'items.imei': 1 });
+const Claim = mongoose.model('Claim', claimSchema, 'claim');
 
 // Auto-migration helper (จะถูกเรียกตอนเริ่มรันเซิร์ฟเวอร์)
 async function migrateProductsToERP() {
@@ -841,6 +903,7 @@ module.exports = {
     Product,
     Movement,
     StockIssue,
+    Claim,
     Transaction,
     Transfer,
     Member,

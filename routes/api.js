@@ -12,6 +12,7 @@ const {
     Product,
     Movement,
     StockIssue,
+    Claim,
     Branch,
     Supplier,
     FinanceCompany,
@@ -1374,8 +1375,56 @@ router.get('/stock-issues/lookup', async (req, res) => {
     }
 });
 
+// GET /api/stock-issues/accessories?q=&branch_id=
+// หน้าที่: ค้นอุปกรณ์เสริม (สินค้าที่ไม่ใช่หน่วย "เครื่อง") ที่มีของในสาขาที่จะจ่ายออก — ใช้เลือกในโมดัลจ่ายออก
+router.get('/stock-issues/accessories', async (req, res) => {
+    try {
+        if (!req.user.permissions || !req.user.permissions.manage_stock) {
+            return res.status(403).json({ success: false, message: 'คุณไม่มีสิทธิ์จ่ายออกสินค้า' });
+        }
+        const branchId = resolveIssueBranchId(req, req.query.branch_id);
+        if (!branchId) return res.status(400).json({ success: false, message: 'ไม่พบข้อมูลสาขา' });
+        const q = String(req.query.q || '').trim();
+        const md = await mdCache.get();
+        const deviceUnitIds = [...md.maps.productUnits.values()].filter(u => u.name === 'เครื่อง').map(u => u._id);
+        const filter = { stock_balances: { $elemMatch: { branch_id: branchId, quantity: { $gt: 0 } } } };
+        if (deviceUnitIds.length) filter.unit_id = { $nin: deviceUnitIds };
+        if (q) {
+            const rx = new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+            filter.$or = [{ name: rx }, { product_code: rx }];
+        }
+        const products = await Product.find(filter).sort({ name: 1 }).limit(30).lean();
+        hydrateProducts(products, md, { withStockBranches: false });
+        res.status(200).json({
+            success: true,
+            data: products.map(p => {
+                const bal = (p.stock_balances || []).find(b => String(b.branch_id) === String(branchId));
+                return {
+                    product_id: p._id,
+                    product_code: p.product_code || '',
+                    product_name: p.name,
+                    color: p.color_id && p.color_id.name ? p.color_id.name : '',
+                    supplier_id: p.supplier_id && p.supplier_id._id ? p.supplier_id._id : (p.supplier_id || null),
+                    supplier_name: p.supplier_id && p.supplier_id.name ? p.supplier_id.name : '',
+                    unit_name: p.unit_id && p.unit_id.name ? p.unit_id.name : 'ชิ้น',
+                    cost_price: p.cost_price || 0,
+                    stock_available: bal ? bal.quantity : 0
+                };
+            })
+        });
+    } catch (error) {
+        console.error('API Error GET /api/stock-issues/accessories:', error);
+        res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการค้นหาอุปกรณ์เสริม' });
+    }
+});
+
 // POST /api/stock-issues
-// หน้าที่: จ่ายออกสินค้า body = { branch_id?, mode: 'single'|'multi', reason, imeis: [] }
+// หน้าที่: จ่ายออกสินค้า body = { branch_id?, reason, items: [...] } เลือกกรณีเคลม "ต่อชิ้น"
+//   เครื่อง        : { kind: 'device', imei, claim_type }
+//   อุปกรณ์เสริม  : { kind: 'accessory', product_id, quantity, claim_type }
+//   claim_type = goods | cash | discount | loss (loss = จ่ายออกเปล่า ขาดทุน ไม่เปิดใบเคลม)
+// ใบเคลมแตกเป็น 1 ใบต่อ (ผู้จัดจำหน่าย + กรณีเคลม + ชนิดสินค้า)
+const ISSUE_CLAIM_TYPES = ['goods', 'cash', 'discount', 'loss'];
 router.post('/stock-issues', async (req, res) => {
     try {
         if (!req.user.permissions || !req.user.permissions.manage_stock) {
@@ -1384,89 +1433,149 @@ router.post('/stock-issues', async (req, res) => {
         const reason = String(req.body.reason || '').trim();
         if (!reason) return res.status(400).json({ success: false, message: 'กรุณาระบุหมายเหตุการจ่ายออก' });
 
-        const mode = req.body.mode === 'multi' ? 'multi' : 'single';
-        const imeis = [...new Set((Array.isArray(req.body.imeis) ? req.body.imeis : [])
-            .map(x => String(x || '').trim()).filter(Boolean))];
-        if (imeis.length === 0) return res.status(400).json({ success: false, message: 'กรุณาสแกน IMEI อย่างน้อย 1 รายการ' });
-        if (mode === 'single' && imeis.length !== 1) {
-            return res.status(400).json({ success: false, message: 'โหมดจ่ายออกทีละชิ้นต้องมี IMEI เพียง 1 รายการ' });
+        const rawItems = Array.isArray(req.body.items) ? req.body.items : [];
+        if (rawItems.length === 0) return res.status(400).json({ success: false, message: 'กรุณาเพิ่มรายการสินค้าอย่างน้อย 1 รายการ' });
+
+        // ตรวจรูปแบบรายการทั้งหมดก่อนแตะสต็อก
+        const reqs = [];
+        const seenImei = new Set(), seenAcc = new Set();
+        for (const r of rawItems) {
+            const claimType = String((r && r.claim_type) || '').trim();
+            if (!ISSUE_CLAIM_TYPES.includes(claimType)) {
+                return res.status(400).json({ success: false, message: 'กรุณาเลือกกรณีเคลมให้ครบทุกรายการ' });
+            }
+            if (r.kind === 'accessory') {
+                const productId = String(r.product_id || '').trim();
+                const qty = Number(r.quantity);
+                if (!mongoose.Types.ObjectId.isValid(productId)) return res.status(400).json({ success: false, message: 'ข้อมูลอุปกรณ์เสริมไม่ถูกต้อง' });
+                if (!Number.isInteger(qty) || qty < 1) return res.status(400).json({ success: false, message: 'จำนวนอุปกรณ์เสริมต้องเป็นจำนวนเต็มตั้งแต่ 1 ขึ้นไป' });
+                const key = `${productId}|${claimType}`;
+                if (seenAcc.has(key)) return res.status(400).json({ success: false, message: 'มีอุปกรณ์เสริมรายการเดียวกันซ้ำในใบ กรุณารวมเป็นรายการเดียว' });
+                seenAcc.add(key);
+                reqs.push({ kind: 'accessory', product_id: productId, quantity: qty, claim_type: claimType });
+            } else {
+                const imei = String((r && r.imei) || '').trim();
+                if (!imei) return res.status(400).json({ success: false, message: 'กรุณาสแกนเลข IMEI' });
+                if (seenImei.has(imei)) return res.status(400).json({ success: false, message: `IMEI ${imei} ซ้ำในรายการ` });
+                seenImei.add(imei);
+                reqs.push({ kind: 'device', imei, quantity: 1, claim_type: claimType });
+            }
         }
+        const imeis = reqs.filter(x => x.kind === 'device').map(x => x.imei);
+        const accReqs = reqs.filter(x => x.kind === 'accessory');
 
         const branchId = resolveIssueBranchId(req, req.body.branch_id);
         if (!branchId) return res.status(400).json({ success: false, message: 'ไม่พบข้อมูลสาขา' });
 
+        const md = await mdCache.get();
+        const mdMaps = md.maps;
+
         // หาสินค้าของทุก IMEI ในคำสั่งเดียว
-        const products = await Product.find({
-            stock_balances: { $elemMatch: { branch_id: branchId, imeis: { $in: imeis } } }
-        }).lean();
         const imeiToProduct = new Map();
-        products.forEach(p => {
-            const bal = (p.stock_balances || []).find(b => String(b.branch_id) === String(branchId));
-            (bal ? bal.imeis : []).forEach(i => { if (imeis.includes(i)) imeiToProduct.set(i, p); });
-        });
-        const missing = imeis.filter(i => !imeiToProduct.has(i));
-        if (missing.length > 0) {
-            return res.status(404).json({
-                success: false,
-                message: `ไม่พบ IMEI ในสต็อกของสาขานี้: ${missing.join(', ')}`
+        if (imeis.length) {
+            const products = await Product.find({
+                stock_balances: { $elemMatch: { branch_id: branchId, imeis: { $in: imeis } } }
+            }).lean();
+            products.forEach(p => {
+                const bal = (p.stock_balances || []).find(b => String(b.branch_id) === String(branchId));
+                (bal ? bal.imeis : []).forEach(i => { if (imeis.includes(i)) imeiToProduct.set(i, p); });
             });
+            const missing = imeis.filter(i => !imeiToProduct.has(i));
+            if (missing.length > 0) {
+                return res.status(404).json({ success: false, message: `ไม่พบ IMEI ในสต็อกของสาขานี้: ${missing.join(', ')}` });
+            }
+        }
+        // อุปกรณ์เสริม: ต้องเป็นสินค้าที่ไม่ใช่หน่วย "เครื่อง" และมีของพอในสาขา
+        const accIdToProduct = new Map();
+        if (accReqs.length) {
+            const products = await Product.find({ _id: { $in: [...new Set(accReqs.map(x => x.product_id))] } }).lean();
+            products.forEach(p => accIdToProduct.set(String(p._id), p));
+            for (const r of accReqs) {
+                const p = accIdToProduct.get(r.product_id);
+                if (!p) return res.status(404).json({ success: false, message: 'ไม่พบอุปกรณ์เสริมที่เลือก' });
+                const unit = p.unit_id ? mdMaps.productUnits.get(String(p.unit_id)) : null;
+                if (unit && unit.name === 'เครื่อง') {
+                    return res.status(400).json({ success: false, message: `"${p.name}" เป็นเครื่อง ต้องจ่ายออกด้วยการสแกน IMEI` });
+                }
+                const bal = (p.stock_balances || []).find(b => String(b.branch_id) === String(branchId));
+                if (!bal || bal.quantity < r.quantity) {
+                    return res.status(409).json({ success: false, message: `"${p.name}" มีไม่พอในสต็อกสาขานี้ (คงเหลือ ${bal ? bal.quantity : 0})` });
+                }
+            }
         }
 
-        // ตัดสต็อกทีละ IMEI แบบ atomic (เงื่อนไข elemMatch กันตัดซ้ำจากสองคำสั่งที่ชนกัน)
+        // ตัดสต็อกแบบ atomic (เงื่อนไข elemMatch กันตัดซ้ำ/ตัดเกินจากสองคำสั่งที่ชนกัน)
         // ถ้ารายการใดล้มเหลวให้คืนสต็อกรายการที่ตัดไปแล้วทั้งหมด — ไม่ปล่อยให้ตัดค้างครึ่งใบ
-        const applied = [];
-        let failedImei = null;
-        for (const imei of imeis) {
-            const p = imeiToProduct.get(imei);
-            const r = await Product.updateOne(
-                { _id: p._id, stock_balances: { $elemMatch: { branch_id: branchId, imeis: imei } } },
-                { $pull: { 'stock_balances.$.imeis': imei }, $inc: { 'stock_balances.$.quantity': -1 } }
-            );
-            if (r.modifiedCount !== 1) { failedImei = imei; break; }
-            applied.push(imei);
+        const applied = []; // { kind, imei?, product_id, quantity }
+        let failedMsg = null;
+        for (const r of reqs) {
+            if (r.kind === 'device') {
+                const p = imeiToProduct.get(r.imei);
+                const u = await Product.updateOne(
+                    { _id: p._id, stock_balances: { $elemMatch: { branch_id: branchId, imeis: r.imei } } },
+                    { $pull: { 'stock_balances.$.imeis': r.imei }, $inc: { 'stock_balances.$.quantity': -1 } }
+                );
+                if (u.modifiedCount !== 1) { failedMsg = `IMEI ${r.imei} ถูกตัดสต็อกไปแล้วโดยรายการอื่น กรุณาตรวจสอบแล้วลองใหม่`; break; }
+                applied.push({ kind: 'device', imei: r.imei, product_id: p._id, quantity: 1 });
+            } else {
+                const p = accIdToProduct.get(r.product_id);
+                const u = await Product.updateOne(
+                    { _id: p._id, stock_balances: { $elemMatch: { branch_id: branchId, quantity: { $gte: r.quantity } } } },
+                    { $inc: { 'stock_balances.$.quantity': -r.quantity } }
+                );
+                if (u.modifiedCount !== 1) { failedMsg = `"${p.name}" มีไม่พอในสต็อก (ถูกตัดไปโดยรายการอื่น) กรุณาตรวจสอบแล้วลองใหม่`; break; }
+                applied.push({ kind: 'accessory', product_id: p._id, quantity: r.quantity });
+            }
         }
-        // คืนสต็อกเฉพาะ IMEI ที่ยังไม่อยู่ในยอดของสาขา (กันซ้ำถ้ามีการรับเข้า IMEI เดิมระหว่างนั้น)
         const restoreApplied = async () => {
-            for (const imei of applied) {
+            for (const a of applied) {
                 try {
-                    const p = imeiToProduct.get(imei);
-                    await Product.updateOne(
-                        { _id: p._id, stock_balances: { $elemMatch: { branch_id: branchId, imeis: { $ne: imei } } } },
-                        { $push: { 'stock_balances.$.imeis': imei }, $inc: { 'stock_balances.$.quantity': 1 } }
-                    );
+                    if (a.kind === 'device') {
+                        // คืนเฉพาะ IMEI ที่ยังไม่อยู่ในยอดของสาขา (กันซ้ำถ้ามีการรับเข้า IMEI เดิมระหว่างนั้น)
+                        await Product.updateOne(
+                            { _id: a.product_id, stock_balances: { $elemMatch: { branch_id: branchId, imeis: { $ne: a.imei } } } },
+                            { $push: { 'stock_balances.$.imeis': a.imei }, $inc: { 'stock_balances.$.quantity': 1 } }
+                        );
+                    } else {
+                        await Product.updateOne(
+                            { _id: a.product_id, 'stock_balances.branch_id': branchId },
+                            { $inc: { 'stock_balances.$.quantity': a.quantity } }
+                        );
+                    }
                 } catch (e) {
-                    console.error(`คืนสต็อก IMEI ${imei} ไม่สำเร็จ (ต้องตรวจสอบด้วยมือ):`, e.message);
+                    console.error(`คืนสต็อก ${a.imei || a.product_id} ไม่สำเร็จ (ต้องตรวจสอบด้วยมือ):`, e.message);
                 }
             }
         };
-        if (failedImei) {
+        if (failedMsg) {
             await restoreApplied();
-            return res.status(409).json({
-                success: false,
-                message: `IMEI ${failedImei} ถูกตัดสต็อกไปแล้วโดยรายการอื่น กรุณาตรวจสอบแล้วลองใหม่`
-            });
+            return res.status(409).json({ success: false, message: failedMsg });
         }
 
         // ตัดสต็อกไปแล้ว — ถ้าสร้างใบจ่ายออกไม่สำเร็จต้องคืนสต็อก ไม่ปล่อยให้สต็อกหายเงียบ ๆ
         let issue, issueNo;
         try {
             const emp = await Employee.findById(req.user.employee_id).select('name').lean();
-            const mdMaps = (await mdCache.get()).maps;
             const sup = mdMaps.suppliers;
-            const items = imeis.map(imei => {
-                const p = imeiToProduct.get(imei);
+            const items = reqs.map(r => {
+                const p = r.kind === 'device' ? imeiToProduct.get(r.imei) : accIdToProduct.get(r.product_id);
                 const s = p.supplier_id ? sup.get(String(p.supplier_id)) : null;
                 return {
                     product_id: p._id,
                     product_code: p.product_code || '',
                     product_name: p.name,
                     color_name: p.color_id && mdMaps.productColors.get(String(p.color_id)) ? mdMaps.productColors.get(String(p.color_id)).name : '',
-                    imei,
+                    item_kind: r.kind,
+                    imei: r.kind === 'device' ? r.imei : '',
+                    quantity: r.quantity,
                     supplier_id: s ? s._id : null,
                     supplier_name: s ? s.name : '',
+                    claim_type: r.claim_type,
                     cost_price: p.cost_price || 0
                 };
             });
+            const totalQty = items.reduce((t, it) => t + it.quantity, 0);
+            const hasClaim = items.some(it => it.claim_type !== 'loss');
 
             // เลขใบ = วันเวลา + ตัวอักษรสุ่ม และมี unique index — ชนกันให้สุ่มใหม่
             const pad = (n) => String(n).padStart(2, '0');
@@ -1477,11 +1586,12 @@ router.post('/stock-issues', async (req, res) => {
                     issue = await StockIssue.create({
                         issue_no: issueNo,
                         branch_id: branchId,
-                        mode,
+                        mode: 'multi',
                         reason,
+                        is_claim: hasClaim,
                         items,
-                        total_qty: imeis.length,
-                        total_cost: items.reduce((sum, it) => sum + it.cost_price, 0),
+                        total_qty: totalQty,
+                        total_cost: items.reduce((sum, it) => sum + it.cost_price * it.quantity, 0),
                         created_by: req.user.employee_id,
                         created_by_name: emp ? emp.name : ''
                     });
@@ -1490,8 +1600,56 @@ router.post('/stock-issues', async (req, res) => {
                 }
             }
             if (!issue) throw new Error('สร้างเลขที่ใบจ่ายออกไม่สำเร็จ');
+
+            // แตกใบเคลม 1 ใบต่อ (ผู้จัดจำหน่าย + กรณีเคลม + ชนิดสินค้า) — ของที่เลือก "จ่ายออกเปล่า" ไม่เปิดใบเคลม
+            const groups = new Map();
+            issue.items.filter(it => it.claim_type !== 'loss').forEach(it => {
+                const k = `${it.supplier_id || ''}|${it.claim_type}|${it.item_kind}`;
+                if (!groups.has(k)) groups.set(k, []);
+                groups.get(k).push(it);
+            });
+            let seq = 0;
+            for (const its of groups.values()) {
+                const first = its[0];
+                const supDoc = first.supplier_id ? sup.get(String(first.supplier_id)) : null;
+                let created = null;
+                for (let attempt = 0; attempt < 5 && !created; attempt++) {
+                    const now = new Date();
+                    const claimNo = `CLM${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}${seq}${Math.random().toString(36).slice(2, 5).toUpperCase()}`;
+                    try {
+                        created = await Claim.create({
+                            claim_no: claimNo,
+                            issue_id: issue._id,
+                            issue_no: issueNo,
+                            branch_id: branchId,
+                            supplier_id: supDoc ? supDoc._id : null,
+                            supplier_name: supDoc ? supDoc.name : '',
+                            claim_type: first.claim_type,
+                            item_kind: first.item_kind,
+                            items: its.map(it => ({
+                                product_id: it.product_id, product_code: it.product_code, product_name: it.product_name,
+                                color_name: it.color_name, imei: it.imei, quantity: it.quantity, cost_price: it.cost_price
+                            })),
+                            total_qty: its.reduce((t, it) => t + it.quantity, 0),
+                            total_cost: its.reduce((t, it) => t + (it.cost_price || 0) * it.quantity, 0),
+                            note: reason,
+                            created_by: req.user.employee_id,
+                            created_by_name: emp ? emp.name : ''
+                        });
+                    } catch (e) {
+                        if (!(e && e.code === 11000)) throw e;
+                    }
+                }
+                if (!created) throw new Error('สร้างเลขที่ใบเคลมไม่สำเร็จ');
+                seq++;
+            }
         } catch (e) {
             console.error('สร้างใบจ่ายออกไม่สำเร็จ คืนสต็อกทั้งหมด:', e.message);
+            // ใบเคลมที่สร้างไปแล้วครึ่งทาง (ถ้ามี) และใบจ่ายออก ต้องลบทิ้งพร้อมคืนสต็อก ไม่ให้ค้างเป็นเคลมผี
+            if (issue) {
+                await Claim.deleteMany({ issue_id: issue._id }).catch(() => { });
+                await StockIssue.deleteOne({ _id: issue._id }).catch(() => { });
+            }
             await restoreApplied();
             return res.status(500).json({ success: false, message: 'บันทึกใบจ่ายออกไม่สำเร็จ ระบบคืนสต็อกให้แล้ว กรุณาลองใหม่' });
         }
@@ -1499,24 +1657,27 @@ router.post('/stock-issues', async (req, res) => {
         // บันทึกลง Movement Ledger ให้ค้นประวัติรายเครื่องได้จากหน้า "ประวัติการเคลื่อนไหว"
         // ใบจ่ายออกสร้างแล้วจึงไม่คืนสต็อก — ถ้า ledger พลาดให้ log ไว้และตอบสำเร็จ
         try {
-            await Promise.all(imeis.map(imei => createMovementsForItem({
-                productId: imeiToProduct.get(imei)._id,
+            await Promise.all(applied.map(a => createMovementsForItem({
+                productId: a.product_id,
                 action: 'จ่ายออก',
                 fromBranch: branchId,
                 toBranch: null,
                 referenceNo: issueNo,
                 createdBy: req.user.employee_id,
-                imeis: [imei]
+                imeis: a.kind === 'device' ? [a.imei] : [],
+                quantity: a.quantity
             })));
         } catch (e) {
             console.error(`บันทึก Movement ของใบจ่ายออก ${issueNo} ไม่ครบ:`, e.message);
         }
 
-        await logActivity(req, 'จ่ายออกสินค้า', 'Stock', `จ่ายออกสินค้า ${imeis.length} ชิ้น (${reason})`, issueNo, issue._id, {
-            branch_id: String(branchId), imeis, reason
+        const totalQtyAll = reqs.reduce((t, r) => t + r.quantity, 0);
+        await logActivity(req, 'จ่ายออกสินค้า', 'Stock', `จ่ายออกสินค้า ${totalQtyAll} ชิ้น (${reason})`, issueNo, issue._id, {
+            branch_id: String(branchId), imeis, accessories: accReqs.map(a => ({ product_id: a.product_id, quantity: a.quantity })),
+            claim_types: reqs.map(r => r.claim_type), reason
         });
 
-        res.status(201).json({ success: true, message: `จ่ายออกสินค้าสำเร็จ ${imeis.length} ชิ้น`, issue_no: issueNo });
+        res.status(201).json({ success: true, message: `จ่ายออกสินค้าสำเร็จ ${totalQtyAll} ชิ้น`, issue_no: issueNo });
     } catch (error) {
         console.error('API Error POST /api/stock-issues:', error);
         res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการจ่ายออกสินค้า' });
@@ -1537,14 +1698,337 @@ router.get('/stock-issues', async (req, res) => {
 
         const issues = await StockIssue.find(query).sort({ createdAt: -1 }).limit(500).lean();
         const md = await mdCache.get();
+        // ใบเคลมของทุกใบจ่ายออก ดึงรอบเดียว (ไม่วนยิงทีละใบ)
+        const claimIssueIds = issues.filter(i => i.is_claim).map(i => i._id);
+        const claims = claimIssueIds.length ? await Claim.find({ issue_id: { $in: claimIssueIds } }).sort({ createdAt: 1 }).lean() : [];
+        const claimsByIssue = new Map();
+        claims.forEach(c => {
+            const k = String(c.issue_id);
+            if (!claimsByIssue.has(k)) claimsByIssue.set(k, []);
+            claimsByIssue.get(k).push(c);
+        });
+        // ใบสั่งซื้อที่นำแต่ละเครื่องเข้าคลัง (จับคู่ด้วย IMEI) — ดึงรอบเดียวทั้งหมด; เครื่องที่ไม่ได้เข้าผ่านใบสั่งซื้อจะไม่มีค่า
+        const allImeis = [...new Set(issues.flatMap(i => (i.items || []).map(x => x.imei)).filter(Boolean))];
+        const imeiToPo = new Map();
+        if (allImeis.length) {
+            const pos = await PurchaseOrder.find({ 'items.imported_imeis': { $in: allImeis } })
+                .select('po_number items.imported_imeis').sort({ createdAt: 1 }).lean();
+            pos.forEach(po => (po.items || []).forEach(it => (it.imported_imeis || []).forEach(m => imeiToPo.set(m, po.po_number))));
+        }
         issues.forEach(i => {
             const b = md.maps.branches.get(String(i.branch_id));
             i.branch_name = b ? b.name : '-';
+            i.claims = claimsByIssue.get(String(i._id)) || [];
+            (i.items || []).forEach(x => { x.po_number = imeiToPo.get(x.imei) || ''; });
+            i.po_numbers = [...new Set((i.items || []).map(x => x.po_number).filter(Boolean))];
         });
         res.status(200).json({ success: true, data: issues });
     } catch (error) {
         console.error('API Error GET /api/stock-issues:', error);
         res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการดึงประวัติการจ่ายออก' });
+    }
+});
+
+// ปิด/ปฏิเสธใบเคลม — เปลี่ยนสถานะแบบ atomic (เฉพาะใบที่ยัง 'ส่งเคลมแล้ว') กันกดซ้ำหรือสองคนกดพร้อมกัน
+const loadClaimForAction = async (req, res) => {
+    if (!req.user.permissions || !req.user.permissions.manage_stock) {
+        res.status(403).json({ success: false, message: 'คุณไม่มีสิทธิ์จัดการเคลม' });
+        return null;
+    }
+    const claim = await Claim.findById(req.params.id).lean();
+    if (!claim) {
+        res.status(404).json({ success: false, message: 'ไม่พบใบเคลม' });
+        return null;
+    }
+    const scope = getRequestedBranchId(req);
+    if (scope !== 'ALL' && String(scope) !== String(claim.branch_id)) {
+        res.status(403).json({ success: false, message: 'ใบเคลมนี้เป็นของสาขาอื่น' });
+        return null;
+    }
+    return claim;
+};
+
+const transitionClaim = async (req, res, toStatus, extra, preloaded) => {
+    const claim = preloaded || await loadClaimForAction(req, res);
+    if (!claim) return null;
+    const emp = await Employee.findById(req.user.employee_id).select('name').lean();
+    const updated = await Claim.findOneAndUpdate(
+        { _id: claim._id, status: 'ส่งเคลมแล้ว' },
+        { $set: { status: toStatus, result_note: String(req.body.result_note || '').trim(), closed_by: req.user.employee_id, closed_by_name: emp ? emp.name : '', closed_at: new Date(), ...extra } },
+        { returnDocument: 'after' }
+    );
+    if (!updated) {
+        res.status(409).json({ success: false, message: 'ใบเคลมนี้ถูกดำเนินการไปแล้ว กรุณารีเฟรชหน้า' });
+        return null;
+    }
+    return updated;
+};
+
+// PUT /api/claims/:id/close — ปิดเคลมพร้อมบันทึกผลตามกรณีของใบ
+//   goods    : received = [{ original_imei, new_imei }] เครื่องที่ได้รับกลับมา -> เข้าสต็อกสาขาเดิม (สินค้าเดิม ต้นทุนเดิม)
+//   cash     : cash_amount (> 0), received_date (ไม่ระบุ = วันนี้)
+//   discount : discount_amount (> 0), po_number (อ้างอิง ไม่บังคับ — ต้องเป็นของซัพรายเดียวกัน; ระยะนี้ไม่แก้ใบสั่งซื้อ)
+router.put('/claims/:id/close', async (req, res) => {
+    try {
+        const claim = await loadClaimForAction(req, res);
+        if (!claim) return;
+        if (claim.status !== 'ส่งเคลมแล้ว') {
+            return res.status(409).json({ success: false, message: 'ใบเคลมนี้ถูกดำเนินการไปแล้ว กรุณารีเฟรชหน้า' });
+        }
+
+        // กรณีเคลมมาจากการตั้งค่าซัพ; ถ้าซัพยังไม่ได้ตั้ง (ใบ claim_type = null) ให้ผู้ใช้เลือกตอนปิด
+        const ctype = claim.claim_type || req.body.claim_type;
+        if (!['goods', 'cash', 'discount'].includes(ctype)) {
+            return res.status(400).json({ success: false, message: 'กรุณาเลือกกรณีเคลม (ได้รับสินค้า / เงินสด / ส่วนลด)' });
+        }
+
+        const resolution = {};
+        const receivedItems = [];
+        const isAccClaim = claim.item_kind === 'accessory';
+        if (ctype === 'goods' && isAccClaim) {
+            // อุปกรณ์เสริมไม่มี IMEI — ระบุจำนวนที่ได้รับกลับมาต่อรายการ (ไม่เกินจำนวนที่ส่งเคลม)
+            const rows = (Array.isArray(req.body.received) ? req.body.received : [])
+                .map(r => ({ product_id: String(r && r.product_id || '').trim(), quantity: Number(r && r.quantity) }))
+                .filter(r => r.quantity > 0);
+            if (rows.length === 0) return res.status(400).json({ success: false, message: 'กรุณาระบุจำนวนที่ได้รับอย่างน้อย 1 รายการ (ถ้าไม่ได้รับของ ให้เลือก "ซัพปฏิเสธ")' });
+            const sent = new Map(claim.items.map(it => [String(it.product_id), it.quantity || 1]));
+            const seen = new Set();
+            for (const r of rows) {
+                if (!sent.has(r.product_id)) return res.status(400).json({ success: false, message: 'พบสินค้าที่ไม่อยู่ในใบเคลมนี้' });
+                if (seen.has(r.product_id)) return res.status(400).json({ success: false, message: 'สินค้ารายการเดียวกันซ้ำ' });
+                if (!Number.isInteger(r.quantity) || r.quantity > sent.get(r.product_id)) {
+                    return res.status(400).json({ success: false, message: `จำนวนที่ได้รับต้องเป็นจำนวนเต็มและไม่เกินจำนวนที่ส่งเคลม (${sent.get(r.product_id)})` });
+                }
+                seen.add(r.product_id);
+            }
+            receivedItems.push(...rows);
+            resolution.received_items = rows;
+        } else if (ctype === 'goods') {
+            const rows = (Array.isArray(req.body.received) ? req.body.received : [])
+                .map(r => ({ original_imei: String(r && r.original_imei || '').trim(), new_imei: String(r && r.new_imei || '').trim() }))
+                .filter(r => r.new_imei);
+            if (rows.length === 0) return res.status(400).json({ success: false, message: 'กรุณาระบุ IMEI เครื่องที่ได้รับอย่างน้อย 1 เครื่อง (ถ้าไม่ได้รับของ ให้เลือก "ซัพปฏิเสธ")' });
+            const byOriginal = new Map(claim.items.map(it => [it.imei, it]));
+            const seenOrig = new Set(), seenNew = new Set();
+            for (const r of rows) {
+                if (!byOriginal.has(r.original_imei)) return res.status(400).json({ success: false, message: `ไม่พบ IMEI ${r.original_imei} ในใบเคลมนี้` });
+                if (seenOrig.has(r.original_imei)) return res.status(400).json({ success: false, message: `IMEI ${r.original_imei} ซ้ำในรายการ` });
+                if (seenNew.has(r.new_imei)) return res.status(400).json({ success: false, message: `IMEI ที่ได้รับ ${r.new_imei} ซ้ำกัน` });
+                seenOrig.add(r.original_imei); seenNew.add(r.new_imei);
+            }
+            // IMEI ที่ได้รับต้องไม่อยู่ในสต็อกสาขาใดอยู่แล้ว (เครื่องเดิมที่ซ่อมแล้วคืนใช้ IMEI เดิมได้ เพราะถูกตัดออกตอนส่งเคลม)
+            const newImeis = rows.map(r => r.new_imei);
+            const clash = await Product.find({ 'stock_balances.imeis': { $in: newImeis } }).select('stock_balances').lean();
+            const inStock = new Set();
+            clash.forEach(p => (p.stock_balances || []).forEach(b => (b.imeis || []).forEach(i => { if (newImeis.includes(i)) inStock.add(i); })));
+            if (inStock.size > 0) {
+                return res.status(409).json({ success: false, message: `IMEI ${[...inStock].join(', ')} มีอยู่ในสต็อกแล้ว ใช้ซ้ำไม่ได้` });
+            }
+            receivedItems.push(...rows);
+            resolution.received_items = rows;
+        } else if (ctype === 'cash') {
+            const amt = Number(req.body.cash_amount);
+            if (!Number.isFinite(amt) || amt <= 0) return res.status(400).json({ success: false, message: 'กรุณาระบุจำนวนเงินสดที่ได้รับ (ต้องมากกว่า 0)' });
+            const d = req.body.received_date ? new Date(req.body.received_date) : new Date();
+            if (isNaN(d.getTime())) return res.status(400).json({ success: false, message: 'วันที่ได้รับเงินไม่ถูกต้อง' });
+            resolution.cash_amount = Math.round(amt * 100) / 100;
+            resolution.received_date = d;
+        } else if (ctype === 'discount') {
+            const amt = Number(req.body.discount_amount);
+            if (!Number.isFinite(amt) || amt <= 0) return res.status(400).json({ success: false, message: 'กรุณาระบุมูลค่าส่วนลดที่ได้รับ (ต้องมากกว่า 0)' });
+            const poNo = String(req.body.po_number || '').trim();
+            if (poNo) {
+                const po = await PurchaseOrder.findOne({ po_number: poNo }).select('supplier_name').lean();
+                if (!po) return res.status(400).json({ success: false, message: `ไม่พบใบสั่งซื้อเลขที่ ${poNo}` });
+                if (po.supplier_name !== claim.supplier_name) return res.status(400).json({ success: false, message: `ใบสั่งซื้อ ${poNo} ไม่ใช่ของผู้จัดจำหน่าย ${claim.supplier_name}` });
+            }
+            resolution.discount_amount = Math.round(amt * 100) / 100;
+            resolution.po_number = poNo;
+            // ชนิดของส่วนลด = ชนิดสินค้าในใบเคลม (ใบหนึ่งมีชนิดเดียว); ใบเก่าที่ไม่มี item_kind ใช้ค่าที่ส่งมา
+            const dk = claim.item_kind || req.body.discount_kind;
+            resolution.discount_kind = dk === 'accessory' ? 'accessory' : 'device';
+        }
+
+        const updated = await transitionClaim(req, res, 'ปิดเคลม', { resolution, claim_type: ctype }, claim);
+        if (!updated) return;
+
+        // กรณีได้รับสินค้า: รับเครื่องเข้าสต็อกสาขาเดิม (สถานะเปลี่ยนแล้วจึงไม่เข้าซ้ำ)
+        const failed = [];
+        if (ctype === 'goods' && isAccClaim) {
+            for (const r of receivedItems) {
+                try {
+                    const up = await Product.updateOne(
+                        { _id: r.product_id, 'stock_balances.branch_id': claim.branch_id },
+                        { $inc: { 'stock_balances.$.quantity': r.quantity } }
+                    );
+                    if (up.modifiedCount !== 1) { failed.push(String(r.product_id)); continue; }
+                    await createMovementsForItem({
+                        productId: r.product_id, action: 'รับเข้าสต็อก (เคลมได้รับสินค้า)', fromBranch: null, toBranch: claim.branch_id,
+                        referenceNo: claim.claim_no, createdBy: req.user.employee_id, imeis: [], quantity: r.quantity
+                    });
+                } catch (e) {
+                    console.error(`รับเข้าอุปกรณ์เสริม ${r.product_id} จากใบเคลม ${claim.claim_no} ไม่สำเร็จ (ต้องตรวจสอบด้วยมือ):`, e.message);
+                    failed.push(String(r.product_id));
+                }
+            }
+        } else if (ctype === 'goods') {
+            const byOriginal = new Map(claim.items.map(it => [it.imei, it]));
+            for (const r of receivedItems) {
+                const it = byOriginal.get(r.original_imei);
+                try {
+                    const up = await Product.updateOne(
+                        { _id: it.product_id, stock_balances: { $elemMatch: { branch_id: claim.branch_id, imeis: { $ne: r.new_imei } } } },
+                        { $push: { 'stock_balances.$.imeis': r.new_imei }, $inc: { 'stock_balances.$.quantity': 1 } }
+                    );
+                    if (up.modifiedCount !== 1) { failed.push(r.new_imei); continue; }
+                    // เครื่องหนึ่งเครื่อง = หนึ่งเอกสารสินค้า และ product_code คือ IMEI ของเครื่องนั้น (ดู script.js คอลัมน์ "รหัสสินค้า")
+                    // เปลี่ยน IMEI แล้วรหัสสินค้าต้องเปลี่ยนตาม — เปลี่ยนเฉพาะเมื่อรหัสเดิมตรงกับ IMEI เดิม กันไปแก้รหัสรุ่นที่ใช้ร่วมกัน
+                    if (r.new_imei !== r.original_imei) {
+                        await Product.updateOne({ _id: it.product_id, product_code: r.original_imei }, { $set: { product_code: r.new_imei } });
+                    }
+                    await createMovementsForItem({
+                        productId: it.product_id, action: 'รับเข้าสต็อก (เคลมได้รับสินค้า)', fromBranch: null, toBranch: claim.branch_id,
+                        referenceNo: claim.claim_no, createdBy: req.user.employee_id, imeis: [r.new_imei]
+                    });
+                } catch (e) {
+                    console.error(`รับเข้า IMEI ${r.new_imei} จากใบเคลม ${claim.claim_no} ไม่สำเร็จ (ต้องตรวจสอบด้วยมือ):`, e.message);
+                    failed.push(r.new_imei);
+                }
+            }
+        }
+
+        const summary = ctype === 'goods'
+            ? (isAccClaim
+                ? `รับสินค้า ${receivedItems.reduce((t, r) => t + r.quantity, 0)}/${claim.total_qty} ชิ้น`
+                : `รับสินค้า ${receivedItems.length - failed.length}/${claim.total_qty} เครื่อง`)
+            : ctype === 'cash' ? `รับเงินสด ${resolution.cash_amount}` : `รับส่วนลด ${resolution.discount_amount}${resolution.po_number ? ` (อ้างอิง ${resolution.po_number})` : ''}`;
+        await logActivity(req, 'CLAIM_CLOSE', 'Stock', `ปิดเคลม ${updated.claim_no} (${updated.supplier_name}): ${summary}`, updated.claim_no, updated._id, { resolution, failed_imeis: failed, result_note: updated.result_note });
+        const gotQty = isAccClaim ? receivedItems.reduce((t, r) => t + r.quantity, 0) : receivedItems.length;
+        const short = ctype === 'goods' && gotQty < claim.total_qty ? ` (ได้รับไม่ครบ ขาด ${claim.total_qty - gotQty} ${isAccClaim ? 'ชิ้น' : 'เครื่อง'})` : '';
+        res.status(200).json({
+            success: true,
+            message: failed.length ? `ปิดเคลมแล้ว แต่รับเข้าสต็อกไม่สำเร็จ ${failed.length} เครื่อง (${failed.join(', ')}) กรุณาตรวจสอบ` : `ปิดเคลมสำเร็จ — ${summary}${short}`,
+            data: updated
+        });
+    } catch (error) {
+        console.error('API Error PUT /api/claims/:id/close:', error);
+        res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการปิดเคลม' });
+    }
+});
+
+// GET /api/suppliers/claim-discounts?supplier_name= — ส่วนลดจากเคลมที่ซัพรายนี้ให้มาแล้ว แยกตามชนิดสินค้า (ใช้แสดงตอนสร้างใบสั่งซื้อ)
+// นับทุกใบเคลมกรณีส่วนลดที่ปิดแล้ว — po_number บนใบเคลมเป็นแค่เลขอ้างอิง ระบบยังไม่ได้หักส่วนลดออกจากใบสั่งซื้อจริง จึงใช้เป็นเงื่อนไขกรองไม่ได้
+// ใบเก่าที่ไม่มี discount_kind ตีความเป็น device เพราะตอนนั้นเคลมได้เฉพาะเครื่องที่มี IMEI
+router.get('/suppliers/claim-discounts', async (req, res) => {
+    try {
+        const perms = req.user.permissions || {};
+        if (!perms.manage_po && !perms.manage_stock && !perms.manage_finance) {
+            return res.status(403).json({ success: false, message: 'คุณไม่มีสิทธิ์ดูส่วนลดเคลม' });
+        }
+        // ไม่ส่ง supplier_name = ทุกราย (หน้าตั้งค่าผู้จัดจำหน่าย) -> data เป็น map { [ชื่อ]: { device, accessory } }
+        const name = String(req.query.supplier_name || '').trim();
+        const filter = { claim_type: 'discount', status: 'ปิดเคลม', 'resolution.discount_amount': { $gt: 0 } };
+        if (name) filter.supplier_name = name; else filter.supplier_name = { $ne: '' };
+        const rows = await Claim.find(filter).sort({ closed_at: 1 }).select('claim_no supplier_name resolution closed_at items').lean();
+        const blank = () => ({ device: { total: 0, claims: [] }, accessory: { total: 0, claims: [] } });
+        const bySupplier = {};
+        rows.forEach(c => {
+            const g = bySupplier[c.supplier_name] || (bySupplier[c.supplier_name] = blank());
+            const k = c.resolution.discount_kind === 'accessory' ? 'accessory' : 'device';
+            g[k].total += c.resolution.discount_amount;
+            g[k].claims.push({ claim_no: c.claim_no, amount: c.resolution.discount_amount, po_number: c.resolution.po_number || '', closed_at: c.closed_at,
+                items: (c.items || []).map(it => ({ product_name: it.product_name, color_name: it.color_name, imei: it.imei || '', quantity: it.quantity || 1 })) });
+        });
+        const data = name ? (bySupplier[name] || blank()) : bySupplier;
+        res.status(200).json({ success: true, data });
+    } catch (error) {
+        console.error('API Error GET /api/suppliers/claim-discounts:', error);
+        res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการดึงส่วนลดเคลม' });
+    }
+});
+
+// GET /api/claims/:id/suggest-po — ใบสั่งซื้อที่อ้างอิงหักส่วนลดเคลม
+// 1) ใบสั่งซื้อที่นำเครื่องในใบเคลมนี้เข้าคลัง (imported_imeis ตรงกับ IMEI ในใบ) — ถ้าหลายใบ เลือกใบที่ตรงมากที่สุด/ล่าสุด
+// 2) ไม่พบ (เช่น เครื่องรับเข้าแบบไม่ผ่านใบสั่งซื้อ) -> ใบล่าสุดของซัพรายเดียวกันที่ยังไม่ยกเลิกและยังชำระไม่ครบ
+router.get('/claims/:id/suggest-po', async (req, res) => {
+    try {
+        const claim = await loadClaimForAction(req, res);
+        if (!claim) return;
+        const imeis = claim.items.map(it => it.imei);
+        const pos = await PurchaseOrder.find({ status: { $ne: 'ยกเลิก' }, 'items.imported_imeis': { $in: imeis } })
+            .select('po_number supplier_name payment_status items.imported_imeis createdAt').sort({ createdAt: -1 }).lean();
+        let best = null, bestHits = 0;
+        pos.forEach(po => {
+            const hits = new Set();
+            (po.items || []).forEach(i => (i.imported_imeis || []).forEach(m => { if (imeis.includes(m)) hits.add(m); }));
+            if (hits.size > bestHits) { best = po; bestHits = hits.size; }
+        });
+        if (best) {
+            return res.status(200).json({ success: true, data: { po_number: best.po_number, source: 'item', matched: bestHits, total: imeis.length, payment_status: best.payment_status } });
+        }
+        const po = claim.supplier_name ? await PurchaseOrder.findOne({
+            supplier_name: claim.supplier_name,
+            status: { $ne: 'ยกเลิก' },
+            payment_status: { $ne: 'ชำระเงินแล้ว' }
+        }).sort({ createdAt: -1 }).select('po_number payment_status').lean() : null;
+        res.status(200).json({ success: true, data: po ? { po_number: po.po_number, source: 'supplier', payment_status: po.payment_status } : null });
+    } catch (error) {
+        console.error('API Error GET /api/claims/:id/suggest-po:', error);
+        res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการหาใบสั่งซื้อ' });
+    }
+});
+
+// PUT /api/claims/:id/reject — ซัพปฏิเสธเคลม; return_to_stock=true คืนเครื่องเข้าสต็อกสาขาเดิม, false = ตัดทิ้ง (สต็อกไม่กลับ)
+router.put('/claims/:id/reject', async (req, res) => {
+    try {
+        if (!String(req.body.result_note || '').trim()) {
+            return res.status(400).json({ success: false, message: 'กรุณาระบุเหตุผลที่ซัพปฏิเสธเคลม' });
+        }
+        const returnToStock = req.body.return_to_stock === true || req.body.return_to_stock === 'true';
+        const updated = await transitionClaim(req, res, 'ปฏิเสธ', { returned_to_stock: returnToStock });
+        if (!updated) return;
+
+        const failed = [];
+        if (returnToStock) {
+            // คืนเฉพาะ IMEI ที่ยังไม่อยู่ในยอดสาขา (กันซ้ำถ้ามีการรับเข้า IMEI เดิมระหว่างนั้น)
+            for (const it of updated.items) {
+                try {
+                    if (updated.item_kind === 'accessory') {
+                        const r = await Product.updateOne(
+                            { _id: it.product_id, 'stock_balances.branch_id': updated.branch_id },
+                            { $inc: { 'stock_balances.$.quantity': it.quantity || 1 } }
+                        );
+                        if (r.modifiedCount !== 1) { failed.push(it.product_name); continue; }
+                        await createMovementsForItem({
+                            productId: it.product_id, action: 'คืนสต็อก (ซัพปฏิเสธเคลม)', fromBranch: null, toBranch: updated.branch_id,
+                            referenceNo: updated.claim_no, createdBy: req.user.employee_id, imeis: [], quantity: it.quantity || 1
+                        });
+                        continue;
+                    }
+                    const r = await Product.updateOne(
+                        { _id: it.product_id, stock_balances: { $elemMatch: { branch_id: updated.branch_id, imeis: { $ne: it.imei } } } },
+                        { $push: { 'stock_balances.$.imeis': it.imei }, $inc: { 'stock_balances.$.quantity': 1 } }
+                    );
+                    if (r.modifiedCount !== 1) { failed.push(it.imei); continue; }
+                    await createMovementsForItem({
+                        productId: it.product_id, action: 'คืนสต็อก (ซัพปฏิเสธเคลม)', fromBranch: null, toBranch: updated.branch_id,
+                        referenceNo: updated.claim_no, createdBy: req.user.employee_id, imeis: [it.imei]
+                    });
+                } catch (e) {
+                    console.error(`คืนสต็อก IMEI ${it.imei} จากใบเคลม ${updated.claim_no} ไม่สำเร็จ (ต้องตรวจสอบด้วยมือ):`, e.message);
+                    failed.push(it.imei);
+                }
+            }
+        }
+        await logActivity(req, 'CLAIM_REJECT', 'Stock', `ซัพปฏิเสธเคลม ${updated.claim_no} (${updated.supplier_name}) ${returnToStock ? 'คืนสต็อก' : 'ตัดทิ้ง'}`, updated.claim_no, updated._id, { result_note: updated.result_note, return_to_stock: returnToStock, failed_imeis: failed });
+        res.status(200).json({
+            success: true,
+            message: failed.length ? `บันทึกแล้ว แต่คืนสต็อกไม่สำเร็จ ${failed.length} เครื่อง (${failed.join(', ')}) กรุณาตรวจสอบ` : 'บันทึกการปฏิเสธเคลมสำเร็จ',
+            data: updated
+        });
+    } catch (error) {
+        console.error('API Error PUT /api/claims/:id/reject:', error);
+        res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการบันทึกการปฏิเสธเคลม' });
     }
 });
 
@@ -2349,6 +2833,32 @@ router.put('/master/:collection/:id', async (req, res) => {
     } catch (error) {
         console.error(`API Error PUT /api/master/${req.params.collection}:`, error);
         res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการแก้ไขข้อมูล' });
+    }
+});
+
+// PUT /api/suppliers/:id/claim-type — กำหนดกรณีเคลมของผู้จัดจำหน่าย (goods | cash | discount | null = ถอดออก)
+// 1 ราย = 1 กรณี: เก็บเป็นฟิลด์เดียวบน Supplier การย้ายกรณีจึงเขียนทับของเดิมเสมอ
+const CLAIM_TYPE_LABELS = { goods: 'ได้รับสินค้า', cash: 'ได้รับเงินสด', discount: 'ได้รับส่วนลด' };
+router.put('/suppliers/:id/claim-type', async (req, res) => {
+    try {
+        if (!req.user || !req.user.permissions || !req.user.permissions.manage_settings) {
+            return res.status(403).json({ success: false, message: 'คุณไม่มีสิทธิ์ตั้งค่าระบบ' });
+        }
+        const claimType = req.body.claim_type || null;
+        if (claimType !== null && !CLAIM_TYPE_LABELS[claimType]) {
+            return res.status(400).json({ success: false, message: 'กรณีเคลมไม่ถูกต้อง' });
+        }
+        const supplier = await Supplier.findByIdAndUpdate(req.params.id, { claim_type: claimType }, { returnDocument: 'after' });
+        if (!supplier) return res.status(404).json({ success: false, message: 'ไม่พบผู้จัดจำหน่าย' });
+
+        mdCache.invalidate();
+        await logActivity(req, 'UPDATE', 'SETTINGS',
+            claimType ? `กำหนดเคลมสินค้าผู้จัดจำหน่าย ${supplier.name}: ${CLAIM_TYPE_LABELS[claimType]}` : `ถอดผู้จัดจำหน่าย ${supplier.name} ออกจากกรณีเคลมสินค้า`,
+            null, supplier._id);
+        res.status(200).json({ success: true, message: 'บันทึกสำเร็จ', data: supplier });
+    } catch (error) {
+        console.error('API Error PUT /api/suppliers/:id/claim-type:', error);
+        res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการบันทึก' });
     }
 });
 

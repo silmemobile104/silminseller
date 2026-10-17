@@ -43,8 +43,39 @@
 
     // วงเงินคงเหลือของ Supplier ที่เลือกในฟอร์มสร้างใบสั่งซื้อ
     // ใช้ไป = ยอดชำระจริงสะสม (endpoint เดียวกับหน้าตั้งค่า) — Supplier ที่ยังไม่ตั้งวงเงินจะไม่แสดงอะไร
+    // ส่วนลดจากเคลมของ Supplier ที่เลือก แสดงใต้ช่องเลือก Supplier แยกตามชนิดสินค้า (มีส่วนลดชนิดไหนก็โชว์ชนิดนั้น)
+    let poClaimDiscReqId = 0;
+    const refreshPoClaimDiscounts = async (supplierName) => {
+        const box = document.getElementById('po-claim-discount');
+        if (!box) return;
+        box.classList.add('hidden');
+        box.innerHTML = '';
+        if (!supplierName) return;
+        const reqId = ++poClaimDiscReqId;
+        try {
+            const res = await authFetch(`${API_BASE_URL}/suppliers/claim-discounts?supplier_name=${encodeURIComponent(supplierName)}`);
+            const json = await res.json();
+            if (reqId !== poClaimDiscReqId || !json.success) return;
+            const fmt = (n) => '฿' + (Number(n) || 0).toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            const labels = { device: 'สำหรับเครื่อง (มือถือ / แท็บเล็ต)', accessory: 'สำหรับอุปกรณ์เสริม' };
+            const rows = ['device', 'accessory'].filter(k => json.data[k] && json.data[k].total > 0).map(kind => {
+                const g = json.data[kind];
+                return `<div class="space-y-0.5">
+                    <div class="flex items-center justify-between gap-3"><span class="text-ink/70"><i class="fa-solid fa-tag mr-1"></i>ส่วนลดจากเคลม <span class="text-ink font-semibold">${labels[kind]}</span></span>
+                        <span class="font-mono font-semibold text-sm text-state-ok">${fmt(g.total)}</span></div>
+                    <p class="text-[11px] text-ink/70">${g.claims.map(c => `${poEsc(c.claim_no)} (${fmt(c.amount)}${c.po_number ? ` · อ้างอิง ${poEsc(c.po_number)}` : ''})`).join(' · ')}</p></div>`;
+            });
+            if (!rows.length) return;
+            box.classList.remove('hidden');
+            box.innerHTML = `<div class="elev-field bg-field rounded-xl px-4 py-2.5 mt-2 text-xs space-y-2">${rows.join('')}</div>`;
+        } catch (err) {
+            console.error('Error loading supplier claim discounts:', err);
+        }
+    };
+
     let poCreditReqId = 0;
     const refreshPoSupplierCredit = async (supplierName) => {
+        refreshPoClaimDiscounts(supplierName);
         const box = document.getElementById('po-supplier-credit');
         if (!box) return;
         const reqId = ++poCreditReqId; // กันผลของ request เก่ามาทับเมื่อผู้ใช้เปลี่ยน Supplier เร็วๆ
@@ -4677,7 +4708,7 @@
     //   - ช่องสแกนช่องเดียว: IMEI ที่ยิงเข้ามาถูกจัดเข้าแถวเครื่องให้อัตโนมัติ
     //     ถ้ามีหลายรุ่นที่ยังรับไม่ครบ ต้องให้พนักงานเลือกเอง — เดาผิด = IMEI ไปผูกกับรุ่น/สีผิด สต็อกเพี้ยน
     //   - ตาราง "รายการเครื่อง" (track_imei) / "รายการอุปกรณ์เสริม" (นับจำนวน ปรับด้วยปุ่ม −/+)
-    //   - ราคาขายต่อชิ้นแก้ได้ด้วยปุ่ม "แก้ไข"
+    //   - ราคาขายต่อชิ้น: ช่องกรอกตรงๆ บังคับกรอกสำหรับแถวที่รับของรอบนี้ ค่าเริ่มต้นว่าง
     //   - กดยืนยันครั้งเดียวส่ง POST /po/:id/scan-item (สถานะ -> กำลังตรวจรับ รอผู้จัดการอนุมัตินำเข้าคลัง)
     //     รับไม่ครบได้ — ส่วนที่ยังไม่รับค้างไว้รับรอบถัดไป (ค้างรับ = ยอดสั่ง − ที่นำเข้าคลังแล้ว)
     // ==========================================
@@ -4769,61 +4800,38 @@
         }
     };
 
-    // ราคาแสดงเป็นตัวเลขเฉยๆ + ปุ่มดินสอเงียบ (ไม่ใช่ปุ่มเหลืองทึบทุกแถว — หนึ่งไทล์ปุ่มทึบได้ปุ่มเดียว ข้อ 6)
+    // ช่องราคาขายต่อชิ้น: กรอกได้ตลอด (ไม่ต้องกดแก้ไข) และ "บังคับกรอก" สำหรับแถวที่รับของรอบนี้
+    // ค่าเริ่มต้นเป็นค่าว่าง — มีค่าก็ต่อเมื่อรายการนี้เคยถูกตั้งราคาขายไว้แล้ว (>0) ตรวจตอนกดยืนยัน (ดู btn-submit-po-receive)
     const rcPriceCell = () => `
-        <div class="-my-1.5 inline-flex items-center justify-end gap-1">
-            <input type="text" inputmode="decimal" readonly aria-label="ราคาขายต่อชิ้น"
-                class="rc-price-input h-8 px-2 rounded-sm bg-field text-ink text-sm font-mono text-right focus:outline-none focus:ring-1 focus:ring-accent-ink read-only:bg-transparent read-only:cursor-default read-only:focus:ring-0">
-            <button type="button" aria-label="แก้ไขราคาขาย" title="แก้ไขราคาขาย"
-                class="rc-price-edit w-8 h-8 flex items-center justify-center rounded-full text-body-muted hover:text-accent-ink hover:bg-surface-chip transition-colors cursor-pointer"><i class="fa-solid fa-pen text-[11px]"></i></button>
+        <div class="inline-flex items-center justify-end">
+            <input type="text" inputmode="decimal" autocomplete="off" required aria-required="true" aria-label="ราคาขายต่อชิ้น (บังคับกรอก)" placeholder="ระบุราคา"
+                class="rc-price-input h-9 w-32 px-3 rounded-sm bg-field text-ink text-sm font-mono text-right placeholder-body-muted focus:outline-none focus:ring-1 focus:ring-accent-ink">
         </div>`;
 
-    // ปุ่ม "แก้ไข" สลับช่องราคาเป็นโหมดพิมพ์ (ปุ่มกลายเป็น "ตกลง") — Enter = ตกลง, Esc = ยกเลิก
     const rcBindPriceEditor = (row) => {
         const input = row.querySelector('.rc-price-input');
-        const btn = row.querySelector('.rc-price-edit');
-        if (!input || !btn) return;
-
-        const fit = () => { input.style.width = `${Math.max(72, input.value.length * 8 + 18)}px`; };
-        const show = () => {
-            input.readOnly = true;
-            input.value = rcBaht(row.dataset.price);
-            btn.innerHTML = '<i class="fa-solid fa-pen text-[11px]"></i>'; btn.setAttribute('aria-label', 'แก้ไขราคาขาย');
-            fit();
-            rcRecalc(row);
-        };
-        const commit = () => {
+        if (!input) return;
+        const initial = Number(row.dataset.price);
+        input.value = initial > 0 ? String(initial) : '';
+        input.addEventListener('input', () => {
             const raw = String(input.value).replace(/[฿,\s]/g, '');
             const n = Number(raw);
-            if (raw === '' || !Number.isFinite(n) || n < 0) {
-                showToast(`ราคาขายของ ${row.dataset.productName} ต้องเป็นตัวเลขไม่ติดลบ`, 'error');
-                input.focus();
-                return false;
-            }
-            if (n !== Number(row.dataset.price)) rcDirty = true;
-            row.dataset.price = String(n);
-            show();
-            return true;
-        };
-        // ให้ปุ่มยืนยันด้านล่างสั่งปิดโหมดแก้ไขที่ค้างอยู่ก่อนส่งได้
-        row._rcCommitPrice = () => (input.readOnly ? true : commit());
-
-        btn.addEventListener('click', () => {
-            if (!input.readOnly) { commit(); return; }
-            input.readOnly = false;
-            input.value = row.dataset.price;
-            btn.innerHTML = '<i class="fa-solid fa-check text-xs"></i>'; btn.setAttribute('aria-label', 'บันทึกราคาขาย');
-            fit();
+            row.dataset.price = raw !== '' && Number.isFinite(n) && n > 0 ? String(n) : '0';
+            input.classList.remove('ring-1', 'ring-state-danger');
+            rcDirty = true;
+            rcRecalc(row);
+        });
+        // ตรวจก่อนส่ง: แถวที่รับของรอบนี้ต้องมีราคาขาย > 0
+        row._rcCommitPrice = () => {
+            if (rcRowCount(row) === 0) return true;
+            const raw = String(input.value).replace(/[฿,\s]/g, '');
+            const n = Number(raw);
+            if (raw !== '' && Number.isFinite(n) && n > 0) return true;
+            input.classList.add('ring-1', 'ring-state-danger');
+            showToast(`กรุณาระบุราคาขายต่อชิ้นของ ${row.dataset.productName} (บังคับกรอก)`, 'error');
             input.focus();
-            input.select();
-        });
-        input.addEventListener('keydown', (e) => {
-            if (input.readOnly) return;
-            if (e.key === 'Enter') { e.preventDefault(); commit(); }
-            else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); show(); }
-        });
-        input.addEventListener('input', fit);
-        show();
+            return false;
+        };
     };
 
     // ปุ่มลบโผล่ตอนชี้แถว IMEI (หรือตอนโฟกัสด้วยคีย์บอร์ด) — รายการยาวๆ จึงไม่มีถังขยะแดงเรียงเต็มคอลัมน์
@@ -5065,7 +5073,7 @@
             container.insertAdjacentHTML('beforeend', rcTableCard('รายการเครื่อง',
                 `${imeiItems.length} รุ่น`, 'rc-sec-dev-count',
                 [['ชื่อสินค้า'], ['ความจุ'], ['IMEI ที่สแกน'], ['สแกนแล้ว', 'text-center'],
-                    ['ราคาขายต่อชิ้น', 'text-right'], ['ราคาขายรวม', 'text-right']],
+                    ['ราคาขายต่อชิ้น <span class="text-red-500">*</span>', 'text-right'], ['ราคาขายรวม', 'text-right']],
                 'rc-imei-body'));
             const tbody = container.querySelector('#rc-imei-body');
 
@@ -5110,7 +5118,7 @@
         if (qtyItems.length) {
             container.insertAdjacentHTML('beforeend', rcTableCard('รายการอุปกรณ์เสริม',
                 'นับจำนวน ไม่ต้องสแกน', 'rc-sec-acc-count',
-                [['รหัสสินค้า'], ['ชื่อสินค้า'], ['จำนวนที่รับ', 'text-center'], ['ราคาขายต่อชิ้น', 'text-right'], ['ราคาขายรวม', 'text-right']],
+                [['รหัสสินค้า'], ['ชื่อสินค้า'], ['จำนวนที่รับ', 'text-center'], ['ราคาขายต่อชิ้น <span class="text-red-500">*</span>', 'text-right'], ['ราคาขายรวม', 'text-right']],
                 'rc-qty-body'));
             const tbody = container.querySelector('#rc-qty-body');
 
@@ -5278,9 +5286,9 @@
                     if (qtyNewRound > 0) hasInput = true;
                 }
 
-                // ส่งราคาขายไปเฉพาะแถวที่แก้จริง
+                // ส่งราคาขายของแถวที่รับของรอบนี้ (บังคับกรอกแล้ว) และแถวที่แก้ราคาจริง
                 const price = Number(row.dataset.price);
-                if (price !== Number(row.dataset.origPrice)) {
+                if (rcRowCount(row) > 0 || price !== Number(row.dataset.origPrice)) {
                     entry.selling_price = price;
                     hasInput = true;
                 }
