@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="SilminMobile — ระบบจัดการคลังสินค้า การขาย และบัญชีสำหรับร้านมือถือ">
-    <title>SilminMobile - ระบบจัดการคลังสินค้า</title>
+    <title>Silminmobile</title>
 
     <!-- preconnect ไป jsdelivr/cdnjs ถูกลบแล้ว — jsdelivr ไม่ถูกอ้างถึงที่ไหนในโค้ดเลย (ซากจากธีมเดิม)
          ส่วน cdnjs ใช้แค่ตอนโหลด xlsx แบบ on-demand (ensureXlsxLoaded ใน script.js) ซึ่งเกิดขึ้นนานๆ ครั้งตอนเปิด modal นำเข้า Excel
@@ -491,21 +491,6 @@
                 </div>
 
                 <div class="flex items-center gap-5 sm:gap-6">
-                    <!-- Notifications -->
-                    <!-- กระดิ่ง: เดิมเป็น icon/bell.png ซึ่งเป็น PNG สีเดียวตายตัว ย้อมตามธีมไม่ได้
-                         เปลี่ยนเป็น SVG inline ที่วาดด้วย stroke="currentColor" สีจึงมาจากคลาส text-* ของปุ่ม
-                         รูปทรงและความหนาเส้น (8 หน่วยใน viewBox 128) วัดจากไฟล์ภาพเดิม -->
-                    <button aria-label="การแจ้งเตือน" type="button"
-                        class="relative text-body-muted hover:text-ink transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-ink rounded-sm">
-                        <svg id="icon-bell" width="20" height="20" viewBox="0 0 128 128" aria-hidden="true" fill="none"
-                            stroke="currentColor" stroke-width="8" stroke-linecap="round" stroke-linejoin="round">
-                            <path
-                                d="M18 99.5C23 94 28 86 28 78V46C28 27 44 12 64 12C84 12 100 27 100 46V78C100 86 105 94 109 99.5Z" />
-                            <path d="M49 104C49 111 55 115 64 115C73 115 79 111 79 104" />
-                        </svg>
-                        <span class="absolute -top-0.5 -right-0.8 w-2 h-2 bg-red-500 rounded-full "></span>
-                    </button>
-
                     <!-- Theme Toggle -->
                     <button id="btn-theme-toggle" type="button" aria-label="สลับเป็นโหมดสว่าง"
                         class="text-body-muted hover:text-ink transition-colors cursor-pointer focus:outline-none">
@@ -5422,7 +5407,7 @@
     <!-- defer: ปล่อยให้ parse HTML จบก่อนค่อย execute
          ปลอดภัยเพราะทั้งไฟล์ห่ออยู่ใน DOMContentLoaded listener อยู่แล้ว
          และสคริปต์ defer จะ execute ก่อน event DOMContentLoaded ยิงเสมอ -->
-    <script defer src="script.js?v=apple_active_v182"></script>
+    <script defer src="script.js?v=apple_active_v183"></script>
     <script>
         // ลงทะเบียน Service Worker เพื่อแคช asset คงที่ (css/js/font/icon/รูป) ไว้ฝั่งเครื่อง
         // เข้าเว็บครั้งถัดไปเร็วขึ้นมาก โดยเฉพาะตอนเน็ตช้าหรือหลุดชั่วคราว — ดูรายละเอียดที่ sw.js

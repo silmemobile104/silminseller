@@ -461,7 +461,7 @@
             return `
             <div class="elev-field bg-field rounded-xl px-4 py-3 flex flex-wrap items-center gap-x-3 hover:ring-1 hover:ring-accent-ink transition-colors">
                 ${swatch}
-                <span class="text-ink font-medium truncate flex-1 min-w-0" title="${stEsc(item.name)}">${stEsc(item.name)}</span>
+                <span class="text-ink font-medium flex-1 min-w-[8rem] break-words" title="${stEsc(item.name)}">${stEsc(item.name)}</span>
                 ${codeBadge}
                 ${typeSelect}
                 ${colorEdit}
