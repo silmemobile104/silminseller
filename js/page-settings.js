@@ -162,6 +162,23 @@
     // type_id ของชื่อสินค้าอาจเป็น string / object ที่ populate แล้ว — ดึงเป็น string id เสมอ
     const stNameTypeId = (item) => item.type_id ? String(item.type_id._id || item.type_id) : '';
 
+    // ช่อง "รหัสชื่อสินค้า" ในฟอร์มเพิ่ม แสดงเฉพาะเมื่อเลือกประเภท "อุปกรณ์เสริม" เท่านั้น
+    const ST_ACCESSORY_TYPE_NAME = 'อุปกรณ์เสริม';
+    const stIsAccessorySelected = () => {
+        if (currentSettingsTab !== 'productname' || !masterDataTypeInput || !masterDataTypeInput.value) return false;
+        const t = stTypes().find(x => String(x._id) === masterDataTypeInput.value);
+        return !!t && String(t.name).trim() === ST_ACCESSORY_TYPE_NAME;
+    };
+    const stSyncCodeField = () => {
+        const show = stIsAccessorySelected();
+        const codeWrap = document.getElementById('master-data-code-wrap');
+        if (codeWrap) codeWrap.classList.toggle('hidden', !show);
+        if (masterDataCodeInput) {
+            masterDataCodeInput.classList.toggle('hidden', !show);
+            if (!show) masterDataCodeInput.value = '';
+        }
+    };
+
     // ชิปกรองประเภท + ตัวเลือกประเภทในฟอร์มเพิ่ม (เติมใหม่ทุกครั้งที่ render เพราะประเภทอาจถูกเพิ่ม/ลบ)
     const stRenderTypeControls = () => {
         const isName = currentSettingsTab === 'productname';
@@ -382,10 +399,6 @@
             }
         }
 
-        // ช่อง "รหัสชื่อสินค้า" ใช้เฉพาะหมวดชื่อสินค้า
-        const codeWrap = document.getElementById('master-data-code-wrap');
-        if (codeWrap) codeWrap.classList.toggle('hidden', currentSettingsTab !== 'productname');
-        if (masterDataCodeInput) masterDataCodeInput.classList.toggle('hidden', currentSettingsTab !== 'productname');
 
         const conf = ST_TABS[currentSettingsTab] || ST_TABS.productname;
         stSetText('settings-panel-title', '');
@@ -410,6 +423,7 @@
         stUpdateTabBadges();
         stRenderChips();
         stRenderTypeControls();
+        stSyncCodeField();
 
         const all = stDataOf(currentSettingsTab);
         const q = _stSearch.trim().toLowerCase();
@@ -512,9 +526,13 @@
                 if (currentSettingsTab === 'productname') {
                     showPrompt('แก้ไขชื่อสินค้า', oldName, (newName) => {
                         if (!newName || !newName.trim()) return;
-                        showPrompt('แก้ไขรหัสชื่อสินค้า (ปล่อยว่างไว้ได้)', oldCode, (newCode) => {
+                        const row = stDataOf('productname').find(x => String(x._id) === String(id));
+                        const rowType = stTypes().find(t => String(t._id) === (row ? stNameTypeId(row) : ''));
+                        const needCode = !!rowType && String(rowType.name).trim() === ST_ACCESSORY_TYPE_NAME;
+                        showPrompt(needCode ? 'แก้ไขรหัสชื่อสินค้า (บังคับกรอก)' : 'แก้ไขรหัสชื่อสินค้า (ปล่อยว่างไว้ได้)', oldCode, (newCode) => {
                             const finalName = newName.trim();
                             const finalCode = (newCode || '').trim();
+                            if (needCode && !finalCode) return showToast('กรุณาระบุรหัสชื่อสินค้าของอุปกรณ์เสริม', 'error');
                             if (finalName !== oldName || finalCode !== oldCode) {
                                 editMasterData(id, finalName, finalCode);
                             }
@@ -562,6 +580,8 @@
         if (tab === 'supplier') { stLoadCreditUsage(); stLoadClaimDiscounts(); }
     };
 
+    if (masterDataTypeInput) masterDataTypeInput.addEventListener('change', stSyncCodeField);
+
     if (btnAddMasterData) {
         btnAddMasterData.addEventListener('click', async () => {
             const name = masterDataInput.value.trim();
@@ -581,7 +601,9 @@
                 payload.color_code = hexVal ? stSixHex(hexVal).toUpperCase() : '';
             }
             if (currentSettingsTab === 'productname' && masterDataCodeInput) {
-                payload.code = masterDataCodeInput.value.trim();
+                const isAccessory = stIsAccessorySelected();
+                payload.code = isAccessory ? masterDataCodeInput.value.trim() : '';
+                if (isAccessory && !payload.code) return showToast('กรุณาระบุรหัสชื่อสินค้าของอุปกรณ์เสริม', 'error');
                 payload.type_id = masterDataTypeInput && masterDataTypeInput.value ? masterDataTypeInput.value : null;
             }
 
