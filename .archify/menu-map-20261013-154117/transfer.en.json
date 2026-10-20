@@ -1,0 +1,127 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "Branch transfers",
+    "output": ".archify/menu-map-20261013-154117/transfer.en.html",
+    "quality_profile": "showcase",
+    "locale": "en"
+  },
+  "lanes": [
+    {
+      "id": "src",
+      "label": "Source branch"
+    },
+    {
+      "id": "dst",
+      "label": "Destination branch"
+    },
+    {
+      "id": "hist",
+      "label": "Movement history"
+    }
+  ],
+  "mainPath": [
+    "create",
+    "wait",
+    "recv",
+    "log"
+  ],
+  "nodes": [
+    {
+      "id": "create",
+      "lane": "src",
+      "col": 0,
+      "type": "frontend",
+      "label": "Create transfer",
+      "sublabel": "pick branch + scan IMEI",
+      "width": 160
+    },
+    {
+      "id": "cancel",
+      "lane": "src",
+      "col": 3,
+      "type": "security",
+      "label": "Cancel transfer",
+      "sublabel": "status ยกเลิกแล้ว",
+      "width": 160
+    },
+    {
+      "id": "wait",
+      "lane": "dst",
+      "col": 1,
+      "type": "messagebus",
+      "label": "Waiting",
+      "sublabel": "shown as a notice",
+      "width": 160
+    },
+    {
+      "id": "recv",
+      "lane": "dst",
+      "col": 2,
+      "type": "frontend",
+      "label": "Confirm receipt",
+      "sublabel": "status รับเข้าแล้ว",
+      "width": 160
+    },
+    {
+      "id": "log",
+      "lane": "hist",
+      "col": 3,
+      "type": "database",
+      "label": "Recorded",
+      "sublabel": "sent · received · cancelled",
+      "width": 160
+    }
+  ],
+  "edges": [
+    {
+      "id": "t1",
+      "from": "create",
+      "to": "wait",
+      "label": "send",
+      "variant": "emphasis"
+    },
+    {
+      "id": "t2",
+      "from": "wait",
+      "to": "recv",
+      "label": "arrives",
+      "variant": "emphasis"
+    },
+    {
+      "id": "t3",
+      "from": "recv",
+      "to": "log",
+      "variant": "dashed"
+    },
+    {
+      "id": "t4",
+      "from": "wait",
+      "to": "cancel",
+      "label": "before receipt",
+      "variant": "security",
+      "role": "error"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Who does what",
+      "items": [
+        "Source branch creates and may cancel while waiting",
+        "Destination branch confirms receipt",
+        "Admin and Manager can do either for any branch"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Stock",
+      "items": [
+        "Stock leaves the source when the transfer is created",
+        "It joins the destination when received; cancelling returns it",
+        "You can add a note (หมายเหตุ); it shows in ประวัติทั้งหมด"
+      ]
+    }
+  ]
+}

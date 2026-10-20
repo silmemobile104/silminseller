@@ -1,0 +1,150 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "การสั่งซื้อและรับสินค้า (PO)",
+    "output": ".archify/menu-map-20261013-154117/buy.th.html",
+    "quality_profile": "showcase",
+    "legend": {
+      "mode": "auto",
+      "entries": {
+        "frontend": {
+          "label": "หน้าที่ผู้ใช้เห็น"
+        },
+        "backend": {
+          "label": "ขั้นตอนของระบบ"
+        },
+        "database": {
+          "label": "ข้อมูลที่ถูกบันทึก"
+        },
+        "cloud": {
+          "label": "ภาพรวม"
+        },
+        "security": {
+          "label": "ตรวจสอบ / สิทธิ์"
+        },
+        "messagebus": {
+          "label": "ขั้นตอนระหว่างกัน"
+        },
+        "external": {
+          "label": "ผู้ใช้งาน"
+        }
+      }
+    }
+  },
+  "lanes": [
+    {
+      "id": "buyer",
+      "label": "ฝ่ายสั่งซื้อ · ระบบสั่งซื้อ (PO)"
+    },
+    {
+      "id": "branch",
+      "label": "สาขา"
+    },
+    {
+      "id": "stock",
+      "label": "สต็อกและคลังสินค้า"
+    }
+  ],
+  "mainPath": [
+    "create",
+    "arrive",
+    "scan",
+    "in"
+  ],
+  "nodes": [
+    {
+      "id": "create",
+      "lane": "buyer",
+      "col": 0,
+      "type": "frontend",
+      "label": "สร้างใบสั่งซื้อ",
+      "sublabel": "สถานะ รอจัดส่ง",
+      "width": 160
+    },
+    {
+      "id": "pay",
+      "lane": "buyer",
+      "col": 4,
+      "type": "security",
+      "label": "จ่ายเงินใบสั่งซื้อ",
+      "sublabel": "การชำระเงินระบบสั่งซื้อ",
+      "width": 160
+    },
+    {
+      "id": "arrive",
+      "lane": "branch",
+      "col": 1,
+      "type": "frontend",
+      "label": "แจ้งของถึงสาขา",
+      "sublabel": "สถานะ ของถึงสาขาแล้ว",
+      "width": 160
+    },
+    {
+      "id": "scan",
+      "lane": "branch",
+      "col": 2,
+      "type": "frontend",
+      "label": "ตรวจรับของเข้า",
+      "sublabel": "สแกน IMEI · นับจำนวน",
+      "width": 160
+    },
+    {
+      "id": "in",
+      "lane": "stock",
+      "col": 3,
+      "type": "backend",
+      "label": "สินค้าเข้าสต็อก",
+      "sublabel": "สถานะ นำเข้าสำเร็จ",
+      "width": 160
+    }
+  ],
+  "edges": [
+    {
+      "id": "b1",
+      "from": "create",
+      "to": "arrive",
+      "label": "ของถูกส่งมา",
+      "variant": "emphasis"
+    },
+    {
+      "id": "b2",
+      "from": "arrive",
+      "to": "scan",
+      "label": "สแกน"
+    },
+    {
+      "id": "b3",
+      "from": "scan",
+      "to": "in",
+      "label": "ยืนยัน",
+      "variant": "emphasis"
+    },
+    {
+      "id": "b4",
+      "from": "create",
+      "to": "pay",
+      "label": "จ่ายตามกำหนด",
+      "variant": "dashed",
+      "role": "branch"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "ควรรู้",
+      "items": [
+        "รับของไม่ครบ: ใบสั่งซื้อกลับไป รอจัดส่ง เพื่อรอของที่เหลือ",
+        "แก้ไขหรือยกเลิกใบสั่งซื้อได้เฉพาะก่อนของถูกส่ง",
+        "การจ่ายเงินแยกจากการรับของ และต้องมีสิทธิ์การชำระเงินระบบสั่งซื้อ"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "ของที่ไม่มี PO",
+      "items": [
+        "สาขาแจ้งเอง แล้วผู้มีสิทธิ์อนุมัติที่ ตรวจสอบนำเข้า"
+      ]
+    }
+  ]
+}

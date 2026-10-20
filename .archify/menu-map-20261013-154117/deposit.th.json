@@ -1,0 +1,150 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "การมัดจำสินค้า",
+    "output": ".archify/menu-map-20261013-154117/deposit.th.html",
+    "quality_profile": "showcase",
+    "legend": {
+      "mode": "auto",
+      "entries": {
+        "frontend": {
+          "label": "หน้าที่ผู้ใช้เห็น"
+        },
+        "backend": {
+          "label": "ขั้นตอนของระบบ"
+        },
+        "database": {
+          "label": "ข้อมูลที่ถูกบันทึก"
+        },
+        "cloud": {
+          "label": "ภาพรวม"
+        },
+        "security": {
+          "label": "ตรวจสอบ / สิทธิ์"
+        },
+        "messagebus": {
+          "label": "ขั้นตอนระหว่างกัน"
+        },
+        "external": {
+          "label": "ผู้ใช้งาน"
+        }
+      }
+    }
+  },
+  "lanes": [
+    {
+      "id": "dep",
+      "label": "การมัดจำสินค้า"
+    },
+    {
+      "id": "sale",
+      "label": "รายการขาย"
+    },
+    {
+      "id": "no",
+      "label": "ยกเลิก",
+      "variant": "exception"
+    }
+  ],
+  "mainPath": [
+    "take",
+    "wait",
+    "done"
+  ],
+  "nodes": [
+    {
+      "id": "take",
+      "lane": "dep",
+      "col": 0,
+      "type": "frontend",
+      "label": "รับเงินมัดจำ",
+      "sublabel": "ลูกค้า + สินค้า + ยอดมัดจำ",
+      "width": 160
+    },
+    {
+      "id": "wait",
+      "lane": "dep",
+      "col": 1,
+      "type": "messagebus",
+      "label": "รอดำเนินการ",
+      "sublabel": "รอลูกค้ารับเครื่อง ฯลฯ",
+      "width": 160
+    },
+    {
+      "id": "done",
+      "lane": "dep",
+      "col": 4,
+      "type": "database",
+      "label": "สำเร็จ",
+      "sublabel": "ผูกกับเลขบิลขาย",
+      "width": 160
+    },
+    {
+      "id": "apply",
+      "lane": "sale",
+      "col": 3,
+      "type": "frontend",
+      "label": "หักมัดจำในรายการขาย",
+      "sublabel": "จ่ายส่วนที่เหลือ",
+      "width": 160
+    },
+    {
+      "id": "cancel",
+      "lane": "no",
+      "col": 2,
+      "type": "security",
+      "label": "ยกเลิกใบมัดจำ",
+      "sublabel": "ระบุเหตุผล",
+      "width": 160
+    }
+  ],
+  "edges": [
+    {
+      "id": "d1",
+      "from": "take",
+      "to": "wait",
+      "variant": "emphasis"
+    },
+    {
+      "id": "d2",
+      "from": "wait",
+      "to": "done",
+      "label": "ส่งมอบสินค้า",
+      "variant": "emphasis"
+    },
+    {
+      "id": "d3",
+      "from": "wait",
+      "to": "apply",
+      "label": "หรือขาย",
+      "variant": "dashed",
+      "role": "branch"
+    },
+    {
+      "id": "d4",
+      "from": "apply",
+      "to": "done",
+      "variant": "dashed",
+      "role": "branch"
+    },
+    {
+      "id": "d5",
+      "from": "wait",
+      "to": "cancel",
+      "variant": "security",
+      "role": "error"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "ควรรู้",
+      "items": [
+        "ระหว่างรอดำเนินการ แก้ไขใบมัดจำได้",
+        "ขั้นย่อย: รอลูกค้ารับเครื่อง · รอโอนย้ายจากสาขาอื่น · รอสินค้าเข้า · รอฝ่ายจัดซื้อสั่งสินค้า",
+        "ตรวจสอบออเดอร์ มีแท็บมัดจำให้ฝ่ายบัญชีดู"
+      ]
+    }
+  ]
+}

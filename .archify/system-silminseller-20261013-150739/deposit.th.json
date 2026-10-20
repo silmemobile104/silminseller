@@ -1,0 +1,177 @@
+{
+  "schema_version": 2,
+  "diagram_type": "lifecycle",
+  "meta": {
+    "title": "วงจรใบมัดจำสินค้า",
+    "output": ".archify/system-silminseller-20261013-150739/deposit.th.html",
+    "quality_profile": "showcase",
+    "repository": {
+      "url": "https://github.com/silmemobile104/silminseller.git",
+      "provider": "github",
+      "revision": "dcf694923433006facd22a0fd73d70b1cb354edb"
+    },
+    "legend": {
+      "mode": "auto",
+      "entries": {
+        "start": {
+          "label": "จุดเริ่มต้น"
+        },
+        "active": {
+          "label": "กำลังดำเนินการ"
+        },
+        "waiting": {
+          "label": "รอดำเนินการ"
+        },
+        "decision": {
+          "label": "ตัดสินใจ"
+        },
+        "success": {
+          "label": "สำเร็จ"
+        },
+        "failure": {
+          "label": "ยกเลิก / ล้มเหลว"
+        },
+        "neutral": {
+          "label": "ระบบปิดให้"
+        },
+        "external": {
+          "label": "ภายนอก"
+        }
+      }
+    }
+  },
+  "lanes": [
+    {
+      "id": "main",
+      "label": "ใบมัดจำ"
+    },
+    {
+      "id": "terminal",
+      "label": "ยกเลิก"
+    }
+  ],
+  "states": [
+    {
+      "id": "created",
+      "type": "start",
+      "label": "รับเงินมัดจำ",
+      "sublabel": "DEP-YYYYMMDD-####",
+      "lane": "main",
+      "col": 0,
+      "step": "01",
+      "tag": "manage_deposits",
+      "sources": [
+        {
+          "path": "routes/api.js",
+          "line": 6907,
+          "end_line": 6984,
+          "label": "POST /deposits"
+        }
+      ]
+    },
+    {
+      "id": "waiting",
+      "type": "waiting",
+      "label": "รอดำเนินการ",
+      "sublabel": "4 ขั้นย่อย แก้ไขได้",
+      "lane": "main",
+      "col": 1,
+      "step": "02",
+      "tag": "รอดำเนินการ",
+      "sources": [
+        {
+          "path": "models/index.js",
+          "line": 658,
+          "end_line": 659,
+          "label": "status + stage"
+        }
+      ]
+    },
+    {
+      "id": "done",
+      "type": "success",
+      "label": "สำเร็จ",
+      "sublabel": "ผูกเลขบิลแล้ว",
+      "lane": "main",
+      "col": 2,
+      "step": "03",
+      "tag": "สำเร็จ",
+      "sources": [
+        {
+          "path": "routes/api.js",
+          "line": 7033,
+          "end_line": 7123,
+          "label": "PUT /deposits/:id/complete"
+        },
+        {
+          "path": "routes/api.js",
+          "line": 2939,
+          "end_line": 2950,
+          "label": "applied in a POS sale"
+        }
+      ]
+    },
+    {
+      "id": "cancelled",
+      "type": "failure",
+      "label": "ยกเลิก",
+      "sublabel": "เก็บเหตุผล",
+      "lane": "terminal",
+      "col": 1,
+      "sources": [
+        {
+          "path": "routes/api.js",
+          "line": 7126,
+          "end_line": 7152,
+          "label": "PUT /deposits/:id/cancel"
+        }
+      ]
+    }
+  ],
+  "transitions": [
+    {
+      "from": "created",
+      "to": "waiting",
+      "label": "บันทึก"
+    },
+    {
+      "from": "waiting",
+      "to": "done",
+      "label": "ส่งมอบ หรือหักในบิลขาย",
+      "variant": "emphasis"
+    },
+    {
+      "from": "waiting",
+      "to": "cancelled",
+      "label": "ยกเลิก",
+      "variant": "security"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "ขั้นย่อยระหว่างรอ",
+      "items": [
+        "รอลูกค้ารับเครื่อง · รอโอนย้ายจากสาขาอื่น",
+        "รอสินค้าเข้า · รอฝ่ายจัดซื้อสั่งสินค้า"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "เงิน",
+      "items": [
+        "รับมัดจำ: บันทึก CashMovement ประเภทรายรับ",
+        "ส่งมอบ: สร้างบิลซื้อสดราคาเต็ม",
+        "แก้ไขได้เฉพาะตอนรอดำเนินการ"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "ข้อสังเกตจากโค้ด",
+      "items": [
+        "เส้นทางส่งมอบสร้างบิลแต่ไม่ได้ตัด stock_balances",
+        "การหักมัดจำผ่านหน้า POS จะตัดสต็อกตามปกติ"
+      ]
+    }
+  ]
+}

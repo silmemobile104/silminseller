@@ -1,0 +1,181 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "การขายสินค้า",
+    "output": ".archify/menu-map-20261013-154117/sell.th.html",
+    "quality_profile": "showcase",
+    "legend": {
+      "mode": "auto",
+      "entries": {
+        "frontend": {
+          "label": "หน้าที่ผู้ใช้เห็น"
+        },
+        "backend": {
+          "label": "ขั้นตอนของระบบ"
+        },
+        "database": {
+          "label": "ข้อมูลที่ถูกบันทึก"
+        },
+        "cloud": {
+          "label": "ภาพรวม"
+        },
+        "security": {
+          "label": "ตรวจสอบ / สิทธิ์"
+        },
+        "messagebus": {
+          "label": "ขั้นตอนระหว่างกัน"
+        },
+        "external": {
+          "label": "ผู้ใช้งาน"
+        }
+      }
+    }
+  },
+  "lanes": [
+    {
+      "id": "sales",
+      "label": "พนักงานขาย · รายการขาย"
+    },
+    {
+      "id": "stock",
+      "label": "สต็อกและคลังสินค้า"
+    },
+    {
+      "id": "acct",
+      "label": "บัญชีและการเงิน"
+    }
+  ],
+  "mainPath": [
+    "pick",
+    "pay",
+    "cut",
+    "bill",
+    "verify",
+    "books"
+  ],
+  "nodes": [
+    {
+      "id": "pick",
+      "lane": "sales",
+      "col": 0,
+      "type": "external",
+      "label": "เลือกสินค้า",
+      "sublabel": "สแกน IMEI หรือค้นหา",
+      "width": 160
+    },
+    {
+      "id": "pay",
+      "lane": "sales",
+      "col": 1,
+      "type": "frontend",
+      "label": "เลือกการชำระเงิน",
+      "sublabel": "ซื้อสด / จัดไฟแนนซ์",
+      "width": 160
+    },
+    {
+      "id": "bill",
+      "lane": "sales",
+      "col": 3,
+      "type": "frontend",
+      "label": "ใบเสร็จ",
+      "sublabel": "ประวัติการขาย",
+      "width": 160
+    },
+    {
+      "id": "cut",
+      "lane": "stock",
+      "col": 2,
+      "type": "backend",
+      "label": "จำนวนสินค้าลดลง",
+      "sublabel": "สินค้าในสาขา",
+      "width": 160
+    },
+    {
+      "id": "log",
+      "lane": "stock",
+      "col": 3,
+      "type": "database",
+      "label": "บันทึกการเคลื่อนไหว",
+      "sublabel": "ประวัติการเคลื่อนไหว",
+      "width": 160
+    },
+    {
+      "id": "verify",
+      "lane": "acct",
+      "col": 4,
+      "type": "security",
+      "label": "ตรวจสอบออเดอร์",
+      "sublabel": "ชำระแล้ว / ยังไม่ชำระ",
+      "width": 160
+    },
+    {
+      "id": "books",
+      "lane": "acct",
+      "col": 5,
+      "type": "database",
+      "label": "บัญชีและการเงิน",
+      "sublabel": "จัดไฟแนนซ์ = ลูกหนี้",
+      "width": 160
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "from": "pick",
+      "to": "pay"
+    },
+    {
+      "id": "e2",
+      "from": "pay",
+      "to": "cut",
+      "label": "ยืนยันการขาย",
+      "variant": "emphasis"
+    },
+    {
+      "id": "e3",
+      "from": "cut",
+      "to": "bill",
+      "label": "ออกใบเสร็จ",
+      "variant": "emphasis"
+    },
+    {
+      "id": "e4",
+      "from": "bill",
+      "to": "verify",
+      "label": "ไปตรวจสอบ"
+    },
+    {
+      "id": "e5",
+      "from": "verify",
+      "to": "books",
+      "variant": "emphasis"
+    },
+    {
+      "id": "e6",
+      "from": "cut",
+      "to": "log",
+      "variant": "dashed",
+      "role": "branch"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "emerald",
+      "title": "เมนูที่เกี่ยวข้อง",
+      "items": [
+        "สมาชิก: ผูกสมาชิกกับบิลขาย",
+        "การมัดจำสินค้า: หักมัดจำตอนขาย",
+        "สรุปยอดขายรายวัน และ แดชบอร์ด รวมยอดจากบิลขาย"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "การยกเลิก",
+      "items": [
+        "ต้องมีสิทธิ์ ยกเลิกบิลขาย และระบุเหตุผล",
+        "สินค้ากลับเข้าสต็อกของสาขา"
+      ]
+    }
+  ]
+}

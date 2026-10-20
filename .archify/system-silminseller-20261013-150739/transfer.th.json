@@ -1,0 +1,175 @@
+{
+  "schema_version": 2,
+  "diagram_type": "lifecycle",
+  "meta": {
+    "title": "วงจรการโอนย้ายสินค้าระหว่างสาขา",
+    "output": ".archify/system-silminseller-20261013-150739/transfer.th.html",
+    "quality_profile": "showcase",
+    "repository": {
+      "url": "https://github.com/silmemobile104/silminseller.git",
+      "provider": "github",
+      "revision": "dcf694923433006facd22a0fd73d70b1cb354edb"
+    },
+    "legend": {
+      "mode": "auto",
+      "entries": {
+        "start": {
+          "label": "จุดเริ่มต้น"
+        },
+        "active": {
+          "label": "กำลังดำเนินการ"
+        },
+        "waiting": {
+          "label": "รอดำเนินการ"
+        },
+        "decision": {
+          "label": "ตัดสินใจ"
+        },
+        "success": {
+          "label": "สำเร็จ"
+        },
+        "failure": {
+          "label": "ยกเลิก / ล้มเหลว"
+        },
+        "neutral": {
+          "label": "ระบบปิดให้"
+        },
+        "external": {
+          "label": "ภายนอก"
+        }
+      }
+    }
+  },
+  "lanes": [
+    {
+      "id": "main",
+      "label": "สาขาต้นทาง"
+    },
+    {
+      "id": "dest",
+      "label": "สาขาปลายทาง"
+    },
+    {
+      "id": "terminal",
+      "label": "ยกเลิก"
+    }
+  ],
+  "states": [
+    {
+      "id": "create",
+      "type": "start",
+      "label": "สร้างใบโอน",
+      "sublabel": "สต็อกออกจากต้นทาง",
+      "lane": "main",
+      "col": 0,
+      "step": "01",
+      "tag": "manage_transfers",
+      "sources": [
+        {
+          "path": "routes/api.js",
+          "line": 2482,
+          "end_line": 2597,
+          "label": "POST /transfers"
+        }
+      ]
+    },
+    {
+      "id": "pending",
+      "type": "waiting",
+      "label": "รอดำเนินการ",
+      "sublabel": "อยู่ระหว่างขนส่ง",
+      "lane": "main",
+      "col": 1,
+      "step": "02",
+      "tag": "รอดำเนินการ",
+      "sources": [
+        {
+          "path": "models/index.js",
+          "line": 449,
+          "end_line": 449,
+          "label": "status default"
+        }
+      ]
+    },
+    {
+      "id": "received",
+      "type": "success",
+      "label": "รับเข้าแล้ว",
+      "sublabel": "สต็อกเข้าปลายทาง",
+      "lane": "dest",
+      "col": 1,
+      "tag": "รับเข้าแล้ว",
+      "sources": [
+        {
+          "path": "routes/api.js",
+          "line": 2606,
+          "end_line": 2693,
+          "label": "PUT /transfers/:id/receive"
+        }
+      ]
+    },
+    {
+      "id": "cancelled",
+      "type": "failure",
+      "label": "ยกเลิกแล้ว",
+      "sublabel": "สต็อกกลับต้นทาง",
+      "lane": "terminal",
+      "col": 1,
+      "tag": "ยกเลิกแล้ว",
+      "sources": [
+        {
+          "path": "routes/api.js",
+          "line": 2697,
+          "end_line": 2783,
+          "label": "PUT /transfers/:id/cancel"
+        }
+      ]
+    }
+  ],
+  "transitions": [
+    {
+      "from": "create",
+      "to": "pending",
+      "label": "บันทึก"
+    },
+    {
+      "from": "pending",
+      "to": "received",
+      "label": "ปลายทางยืนยันรับ",
+      "variant": "emphasis"
+    },
+    {
+      "from": "pending",
+      "to": "cancelled",
+      "label": "ต้นทางยกเลิก",
+      "variant": "security"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "ใครทำได้",
+      "items": [
+        "พนักงาน: ต้นทางยกเลิก ปลายทางรับเข้า",
+        "บทบาท Administrator / แอดมิน / ผู้จัดการ ข้ามการตรวจสาขา",
+        "ทั้งสามการกระทำต้องมี manage_transfers"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "ผลต่อสต็อก",
+      "items": [
+        "สร้างใบ: ตัด IMEI/จำนวนที่ต้นทาง",
+        "รับเข้า: เพิ่มที่ปลายทาง (ไม่ซ้ำ IMEI)",
+        "ทุกขั้นบันทึก Movement ผูกเลขที่โอน"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "หมายเหตุ",
+      "items": [
+        "ผู้สร้างใส่หมายเหตุได้ (ไม่เกิน 500 ตัวอักษร) แสดงในประวัติ"
+      ]
+    }
+  ]
+}

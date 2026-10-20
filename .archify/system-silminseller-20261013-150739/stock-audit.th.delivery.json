@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "receiptId": "83bb08d4-3a2c-4abc-910f-6910db2d0aca",
+  "status": "current",
+  "command": "deliver",
+  "type": "lifecycle",
+  "input": "D:\\silminseller_project\\silminseller\\.archify\\system-silminseller-20261013-150739\\stock-audit.th.json",
+  "output": "D:\\silminseller_project\\silminseller\\.archify\\system-silminseller-20261013-150739\\stock-audit.th.html",
+  "specification": {
+    "sha256": "81ee1dbe0bc98bf0fe154b2340cee7d5a0e913505f60cc9a0b221bcb4ac0e105",
+    "bytes": 5215
+  },
+  "artifact": {
+    "sha256": "7aeb8ed8d87af739ad18750afaafb9913ab589fe5b6e4f83fa4ada35ee34b9d1",
+    "bytes": 755012
+  }
+}

@@ -1,0 +1,149 @@
+{
+  "schema_version": 2,
+  "diagram_type": "lifecycle",
+  "meta": {
+    "title": "Deposit (Reservation) Lifecycle",
+    "output": ".archify/system-silminseller-20261013-150739/deposit.en.html",
+    "quality_profile": "showcase",
+    "repository": {
+      "url": "https://github.com/silmemobile104/silminseller.git",
+      "provider": "github",
+      "revision": "dcf694923433006facd22a0fd73d70b1cb354edb"
+    },
+    "locale": "en"
+  },
+  "lanes": [
+    {
+      "id": "main",
+      "label": "Deposit"
+    },
+    {
+      "id": "terminal",
+      "label": "Cancelled"
+    }
+  ],
+  "states": [
+    {
+      "id": "created",
+      "type": "start",
+      "label": "Deposit taken",
+      "sublabel": "DEP-YYYYMMDD-####",
+      "lane": "main",
+      "col": 0,
+      "step": "01",
+      "tag": "manage_deposits",
+      "sources": [
+        {
+          "path": "routes/api.js",
+          "line": 6907,
+          "end_line": 6984,
+          "label": "POST /deposits"
+        }
+      ]
+    },
+    {
+      "id": "waiting",
+      "type": "waiting",
+      "label": "Pending",
+      "sublabel": "4 stages, editable",
+      "lane": "main",
+      "col": 1,
+      "step": "02",
+      "tag": "รอดำเนินการ",
+      "sources": [
+        {
+          "path": "models/index.js",
+          "line": 658,
+          "end_line": 659,
+          "label": "status + stage"
+        }
+      ]
+    },
+    {
+      "id": "done",
+      "type": "success",
+      "label": "Completed",
+      "sublabel": "bill number linked",
+      "lane": "main",
+      "col": 2,
+      "step": "03",
+      "tag": "สำเร็จ",
+      "sources": [
+        {
+          "path": "routes/api.js",
+          "line": 7033,
+          "end_line": 7123,
+          "label": "PUT /deposits/:id/complete"
+        },
+        {
+          "path": "routes/api.js",
+          "line": 2939,
+          "end_line": 2950,
+          "label": "applied in a POS sale"
+        }
+      ]
+    },
+    {
+      "id": "cancelled",
+      "type": "failure",
+      "label": "Cancelled",
+      "sublabel": "reason recorded",
+      "lane": "terminal",
+      "col": 1,
+      "sources": [
+        {
+          "path": "routes/api.js",
+          "line": 7126,
+          "end_line": 7152,
+          "label": "PUT /deposits/:id/cancel"
+        }
+      ]
+    }
+  ],
+  "transitions": [
+    {
+      "from": "created",
+      "to": "waiting",
+      "label": "saved"
+    },
+    {
+      "from": "waiting",
+      "to": "done",
+      "label": "deliver, or apply in POS",
+      "variant": "emphasis"
+    },
+    {
+      "from": "waiting",
+      "to": "cancelled",
+      "label": "cancel",
+      "variant": "security"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Stages while pending",
+      "items": [
+        "รอลูกค้ารับเครื่อง · รอโอนย้ายจากสาขาอื่น",
+        "รอสินค้าเข้า · รอฝ่ายจัดซื้อสั่งสินค้า"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Money",
+      "items": [
+        "Taking a deposit writes a CashMovement (income)",
+        "Delivery creates a cash-sale Transaction for the full price",
+        "Only completed or cancelled stops further edits"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Known gap",
+      "items": [
+        "The deliver route creates the bill but does not deduct stock_balances",
+        "Applying the deposit in POS does deduct stock"
+      ]
+    }
+  ]
+}

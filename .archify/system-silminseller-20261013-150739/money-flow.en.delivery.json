@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "receiptId": "4a623b64-1434-4b52-8315-ee7ad55cf4f4",
+  "status": "current",
+  "command": "deliver",
+  "type": "dataflow",
+  "input": "D:\\silminseller_project\\silminseller\\.archify\\system-silminseller-20261013-150739\\money-flow.en.json",
+  "output": "D:\\silminseller_project\\silminseller\\.archify\\system-silminseller-20261013-150739\\money-flow.en.html",
+  "specification": {
+    "sha256": "ac0618a9fbe3753d9047165ebf63bacc869e872de9d18bfb5854af0c20e6949e",
+    "bytes": 7522
+  },
+  "artifact": {
+    "sha256": "658136a4c8ba97ab05c316bceb4246ef03ccb0a2652cf10f1a54d716ef3690d8",
+    "bytes": 765699
+  }
+}

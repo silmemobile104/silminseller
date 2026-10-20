@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "receiptId": "85ec54e0-281d-45b8-b359-a2429e5f9e1a",
+  "status": "current",
+  "command": "deliver",
+  "type": "sequence",
+  "input": "D:\\silminseller_project\\silminseller\\.archify\\system-silminseller-20261013-150739\\login.en.json",
+  "output": "D:\\silminseller_project\\silminseller\\.archify\\system-silminseller-20261013-150739\\login.en.html",
+  "specification": {
+    "sha256": "e1040e739a458afdfb52ed818212aa254b86b57f2fef7f8dd0fd0f2742507f62",
+    "bytes": 4530
+  },
+  "artifact": {
+    "sha256": "b6711f9e87fdd35e70cdd2d7144a45e689cdd7098f638f19b0c5a24ad9dfc4ad",
+    "bytes": 756905
+  }
+}

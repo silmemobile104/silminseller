@@ -1,0 +1,288 @@
+{
+  "schema_version": 1,
+  "diagram_type": "dataflow",
+  "meta": {
+    "title": "การไหลของข้อมูลสต็อก",
+    "viewBox": [
+      1060,
+      560
+    ],
+    "output": ".archify/system-silminseller-20261013-150739/stock-flow.th.html",
+    "quality_profile": "showcase",
+    "repository": {
+      "url": "https://github.com/silmemobile104/silminseller.git",
+      "provider": "github",
+      "revision": "dcf694923433006facd22a0fd73d70b1cb354edb"
+    },
+    "legend": {
+      "mode": "auto",
+      "entries": {
+        "default": {
+          "label": "การไหลของข้อมูล"
+        },
+        "emphasis": {
+          "label": "เส้นทางหลัก"
+        },
+        "security": {
+          "label": "ควบคุม / ตรวจสิทธิ์"
+        },
+        "dashed": {
+          "label": "เส้นรอง"
+        },
+        "database": {
+          "label": "ที่เก็บข้อมูล"
+        }
+      }
+    }
+  },
+  "stages": [
+    {
+      "label": "การกระทำ"
+    },
+    {
+      "label": "การเปลี่ยนสต็อก"
+    },
+    {
+      "label": "ที่เก็บข้อมูล"
+    },
+    {
+      "label": "ผู้อ่านข้อมูล"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "inb",
+      "type": "backend",
+      "label": "สต็อกเข้า",
+      "sublabel": "PO · นำเข้า · รับโอน",
+      "stage": 0,
+      "row": 0,
+      "width": 150,
+      "tag": "+",
+      "sources": [
+        {
+          "path": "routes/api.js",
+          "line": 412,
+          "end_line": 660,
+          "label": "PO finalize import"
+        },
+        {
+          "path": "routes/api.js",
+          "line": 4817,
+          "end_line": 4979,
+          "label": "approve import"
+        },
+        {
+          "path": "routes/api.js",
+          "line": 2606,
+          "end_line": 2693,
+          "label": "transfer receive"
+        }
+      ]
+    },
+    {
+      "id": "out",
+      "type": "backend",
+      "label": "สต็อกออก",
+      "sublabel": "ขาย · โอนออก · จ่ายออก",
+      "stage": 0,
+      "row": 2,
+      "width": 150,
+      "tag": "−",
+      "sources": [
+        {
+          "path": "routes/api.js",
+          "line": 2787,
+          "end_line": 3025,
+          "label": "POS sale"
+        },
+        {
+          "path": "routes/api.js",
+          "line": 2482,
+          "end_line": 2597,
+          "label": "transfer send"
+        },
+        {
+          "path": "routes/api.js",
+          "line": 1379,
+          "end_line": 1495,
+          "label": "stock issue"
+        }
+      ]
+    },
+    {
+      "id": "hub",
+      "type": "security",
+      "label": "เปลี่ยนสต็อก",
+      "sublabel": "ตามสาขา + IMEI/จำนวน",
+      "stage": 1,
+      "row": 1,
+      "width": 140,
+      "tag": "getRequestedBranchId",
+      "sources": [
+        {
+          "path": "routes/api.js",
+          "line": 192,
+          "end_line": 192,
+          "label": "getRequestedBranchId"
+        },
+        {
+          "path": "routes/api.js",
+          "line": 684,
+          "end_line": 725,
+          "label": "createMovementsForItem"
+        }
+      ]
+    },
+    {
+      "id": "bal",
+      "type": "database",
+      "label": "stock_balances",
+      "sublabel": "ต่อสาขา: จำนวน + imeis[]",
+      "stage": 2,
+      "row": 0,
+      "width": 150,
+      "sources": [
+        {
+          "path": "models/index.js",
+          "line": 297,
+          "end_line": 297,
+          "label": "Product"
+        }
+      ]
+    },
+    {
+      "id": "mov",
+      "type": "database",
+      "label": "Movement",
+      "sublabel": "หนึ่งแถวต่อ IMEI",
+      "stage": 2,
+      "row": 2,
+      "width": 150,
+      "sources": [
+        {
+          "path": "models/index.js",
+          "line": 316,
+          "end_line": 316,
+          "label": "Movement"
+        }
+      ]
+    },
+    {
+      "id": "pos",
+      "type": "frontend",
+      "label": "สต็อก · POS · ตรวจนับ",
+      "sublabel": "ของพร้อมขาย, IMEI ที่ควรมี",
+      "stage": 3,
+      "row": 0,
+      "width": 140,
+      "sources": [
+        {
+          "path": "routes/api.js",
+          "line": 972,
+          "end_line": 972,
+          "label": "GET /products"
+        },
+        {
+          "path": "routes/api.js",
+          "line": 6540,
+          "end_line": 6565,
+          "label": "audit expected IMEIs"
+        }
+      ]
+    },
+    {
+      "id": "hist",
+      "type": "frontend",
+      "label": "ประวัติเคลื่อนไหว",
+      "sublabel": "GET /movements/search",
+      "stage": 3,
+      "row": 2,
+      "width": 140,
+      "sources": [
+        {
+          "path": "routes/api.js",
+          "line": 1557,
+          "end_line": 1557,
+          "label": "movements/search"
+        }
+      ]
+    }
+  ],
+  "flows": [
+    {
+      "id": "f-in",
+      "from": "inb",
+      "to": "hub",
+      "label": "+",
+      "classification": "in"
+    },
+    {
+      "id": "f-out",
+      "from": "out",
+      "to": "hub",
+      "label": "−",
+      "classification": "out",
+      "variant": "security"
+    },
+    {
+      "id": "f-bal",
+      "from": "hub",
+      "to": "bal",
+      "label": "อัปเดต",
+      "classification": "balance",
+      "variant": "emphasis"
+    },
+    {
+      "id": "f-mov",
+      "from": "hub",
+      "to": "mov",
+      "label": "บันทึก",
+      "classification": "ledger",
+      "variant": "dashed"
+    },
+    {
+      "id": "f-pos",
+      "from": "bal",
+      "to": "pos",
+      "label": "อ่าน",
+      "classification": "read"
+    },
+    {
+      "id": "f-hist",
+      "from": "mov",
+      "to": "hist",
+      "label": "ย้อนรอย",
+      "classification": "read",
+      "variant": "dashed"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "emerald",
+      "title": "สต็อกเข้า",
+      "items": [
+        "นำเข้าจาก PO: Product ต่อ IMEI, อุปกรณ์เสริมนับตามจำนวน",
+        "อนุมัตินำเข้าสินค้านอก PO",
+        "รับโอน; ยกเลิกโอนและยกเลิกบิลขายคืนสต็อก"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "สต็อกออก",
+      "items": [
+        "ขาย POS ตัด IMEI หรือจำนวนที่ขาย",
+        "โอนออกและจ่ายออก (ชำรุด สูญหาย ใช้ภายใน)"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "กฎสำคัญ",
+      "items": [
+        "สต็อกอยู่ใน Product.stock_balances เท่านั้น หนึ่งรายการต่อสาขา",
+        "ทุกการเปลี่ยนเขียน Movement เพื่อย้อนรอย",
+        "จ่ายออก update รายตัวแบบ atomic; ขายและโอนบันทึกทั้งเอกสาร"
+      ]
+    }
+  ]
+}

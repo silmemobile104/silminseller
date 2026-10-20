@@ -1,0 +1,222 @@
+{
+  "schema_version": 2,
+  "diagram_type": "lifecycle",
+  "meta": {
+    "title": "Purchase Order Lifecycle",
+    "output": ".archify/system-silminseller-20261013-150739/purchase-order.en.html",
+    "quality_profile": "showcase",
+    "repository": {
+      "url": "https://github.com/silmemobile104/silminseller.git",
+      "provider": "github",
+      "revision": "dcf694923433006facd22a0fd73d70b1cb354edb"
+    },
+    "locale": "en"
+  },
+  "lanes": [
+    {
+      "id": "main",
+      "label": "Delivery and import"
+    },
+    {
+      "id": "pay",
+      "label": "Payment"
+    },
+    {
+      "id": "terminal",
+      "label": "Cancelled"
+    }
+  ],
+  "states": [
+    {
+      "id": "pending",
+      "type": "start",
+      "label": "Awaiting shipment",
+      "sublabel": "PO created",
+      "lane": "main",
+      "col": 0,
+      "step": "01",
+      "tag": "manage_po",
+      "sources": [
+        {
+          "path": "routes/api.js",
+          "line": 5258,
+          "end_line": 5305,
+          "label": "POST /purchase-orders"
+        }
+      ]
+    },
+    {
+      "id": "arrived",
+      "type": "active",
+      "label": "Arrived",
+      "sublabel": "IMEIs reported",
+      "lane": "main",
+      "col": 1,
+      "step": "02",
+      "tag": "report_arrival",
+      "sources": [
+        {
+          "path": "routes/api.js",
+          "line": 5487,
+          "end_line": 5574,
+          "label": "report-arrival"
+        }
+      ]
+    },
+    {
+      "id": "receiving",
+      "type": "active",
+      "label": "Receiving",
+      "sublabel": "scan + set price",
+      "lane": "main",
+      "col": 2,
+      "step": "03",
+      "tag": "receive_po",
+      "sources": [
+        {
+          "path": "routes/api.js",
+          "line": 5578,
+          "end_line": 5672,
+          "label": "scan-item"
+        }
+      ]
+    },
+    {
+      "id": "imported",
+      "type": "success",
+      "label": "Imported",
+      "sublabel": "stock added",
+      "lane": "main",
+      "col": 3,
+      "step": "04",
+      "tag": "นำเข้าสำเร็จ",
+      "sources": [
+        {
+          "path": "routes/api.js",
+          "line": 412,
+          "end_line": 660,
+          "label": "executeFinalizeImport"
+        },
+        {
+          "path": "routes/api.js",
+          "line": 5676,
+          "end_line": 5693,
+          "label": "finalize-import"
+        }
+      ]
+    },
+    {
+      "id": "unpaid",
+      "type": "start",
+      "label": "Unpaid",
+      "sublabel": "owed to supplier",
+      "lane": "pay",
+      "col": 2,
+      "tag": "default",
+      "sources": [
+        {
+          "path": "models/index.js",
+          "line": 533,
+          "end_line": 533,
+          "label": "payment_status"
+        }
+      ]
+    },
+    {
+      "id": "paid",
+      "type": "success",
+      "label": "Paid",
+      "sublabel": "full amount − discount",
+      "lane": "pay",
+      "col": 3,
+      "tag": "pay_po",
+      "sources": [
+        {
+          "path": "routes/api.js",
+          "line": 6012,
+          "end_line": 6100,
+          "label": "PUT /accounting/po-pay/:id"
+        }
+      ]
+    },
+    {
+      "id": "cancelled",
+      "type": "failure",
+      "label": "Cancelled",
+      "sublabel": "before shipment only",
+      "lane": "terminal",
+      "col": 0,
+      "sources": [
+        {
+          "path": "routes/api.js",
+          "line": 5454,
+          "end_line": 5483,
+          "label": "cancel"
+        }
+      ]
+    }
+  ],
+  "transitions": [
+    {
+      "from": "pending",
+      "to": "arrived",
+      "label": "branch reports arrival"
+    },
+    {
+      "from": "arrived",
+      "to": "receiving",
+      "label": "scan items"
+    },
+    {
+      "from": "receiving",
+      "to": "imported",
+      "label": "all imported",
+      "variant": "emphasis"
+    },
+    {
+      "from": "receiving",
+      "to": "pending",
+      "label": "partly imported",
+      "variant": "dashed"
+    },
+    {
+      "from": "pending",
+      "to": "cancelled",
+      "label": "cancel",
+      "variant": "security"
+    },
+    {
+      "from": "unpaid",
+      "to": "paid",
+      "label": "pay in full",
+      "variant": "emphasis"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Delivery track",
+      "items": [
+        "Edit and cancel only while awaiting shipment",
+        "Scanning can start without the arrival report",
+        "Import creates one Product per IMEI; accessories by quantity"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Payment track",
+      "items": [
+        "Independent of delivery; needs pay_po",
+        "Server computes the amount; client value ignored",
+        "Writes a CashMovement; discount needs a remark"
+      ]
+    },
+    {
+      "dot": "slate",
+      "title": "Also in the data",
+      "items": [
+        "Status ชำระเงินบางส่วน exists in the enum but full-only pay never sets it"
+      ]
+    }
+  ]
+}

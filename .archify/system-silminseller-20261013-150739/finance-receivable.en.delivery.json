@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "receiptId": "8552d777-4203-4cd6-ac74-78809a39b231",
+  "status": "current",
+  "command": "deliver",
+  "type": "lifecycle",
+  "input": "D:\\silminseller_project\\silminseller\\.archify\\system-silminseller-20261013-150739\\finance-receivable.en.json",
+  "output": "D:\\silminseller_project\\silminseller\\.archify\\system-silminseller-20261013-150739\\finance-receivable.en.html",
+  "specification": {
+    "sha256": "db27754220b9028b744c5ad9a050702b91d8bb82ba68f0ec7c73cafbd43e6dd8",
+    "bytes": 3912
+  },
+  "artifact": {
+    "sha256": "6f343cd667afbe1b969bb856ebd16f6984532ea4d5ef032ba6154b8050b1332c",
+    "bytes": 755623
+  }
+}

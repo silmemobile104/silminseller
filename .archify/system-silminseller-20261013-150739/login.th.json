@@ -1,0 +1,244 @@
+{
+  "schema_version": 1,
+  "diagram_type": "sequence",
+  "meta": {
+    "title": "ลำดับการเข้าสู่ระบบและเซสชัน",
+    "viewBox": [
+      1000,
+      560
+    ],
+    "column_fit": "spread",
+    "output": ".archify/system-silminseller-20261013-150739/login.th.html",
+    "quality_profile": "showcase",
+    "repository": {
+      "url": "https://github.com/silmemobile104/silminseller.git",
+      "provider": "github",
+      "revision": "dcf694923433006facd22a0fd73d70b1cb354edb"
+    },
+    "legend": {
+      "mode": "auto",
+      "entries": {
+        "default": {
+          "label": "คำขอ"
+        },
+        "emphasis": {
+          "label": "เส้นทางหลัก"
+        },
+        "security": {
+          "label": "ตรวจสิทธิ์"
+        },
+        "dashed": {
+          "label": "งานเสริม"
+        },
+        "return": {
+          "label": "ตอบกลับ"
+        }
+      }
+    }
+  },
+  "participants": [
+    {
+      "id": "staff",
+      "type": "external",
+      "label": "พนักงาน",
+      "sublabel": "รหัสพนักงาน + รหัสผ่าน"
+    },
+    {
+      "id": "web",
+      "type": "frontend",
+      "label": "เว็บเชลล์",
+      "sublabel": "index.html · script.js",
+      "sources": [
+        {
+          "path": "script.js",
+          "line": 53,
+          "end_line": 53,
+          "label": "authFetch"
+        }
+      ]
+    },
+    {
+      "id": "api",
+      "type": "backend",
+      "label": "POST /auth/login",
+      "sublabel": "routes/api.js",
+      "sources": [
+        {
+          "path": "routes/api.js",
+          "line": 1650,
+          "end_line": 1770,
+          "label": "login handler"
+        }
+      ]
+    },
+    {
+      "id": "db",
+      "type": "database",
+      "label": "MongoDB",
+      "sublabel": "Employee · Role",
+      "sources": [
+        {
+          "path": "routes/api.js",
+          "line": 1662,
+          "end_line": 1662,
+          "label": "Employee.findOne"
+        },
+        {
+          "path": "routes/api.js",
+          "line": 1689,
+          "end_line": 1689,
+          "label": "Role.findOne"
+        }
+      ]
+    },
+    {
+      "id": "audit",
+      "type": "database",
+      "label": "AuditLog",
+      "sublabel": "บันทึก LOGIN",
+      "sources": [
+        {
+          "path": "routes/api.js",
+          "line": 1738,
+          "end_line": 1747,
+          "label": "AuditLog.create"
+        }
+      ]
+    }
+  ],
+  "segments": [
+    {
+      "from": 150,
+      "to": 245,
+      "label": "ตรวจรหัส"
+    },
+    {
+      "from": 250,
+      "to": 325,
+      "label": "โหลดสิทธิ์"
+    },
+    {
+      "from": 330,
+      "to": 410,
+      "label": "เปิดเซสชัน"
+    }
+  ],
+  "messages": [
+    {
+      "id": "enter",
+      "from": "staff",
+      "to": "web",
+      "y": 165,
+      "label": "กรอกรหัส + รหัสผ่าน"
+    },
+    {
+      "id": "post-login",
+      "from": "web",
+      "to": "api",
+      "y": 195,
+      "label": "POST /auth/login",
+      "variant": "emphasis"
+    },
+    {
+      "id": "find-emp",
+      "from": "api",
+      "to": "db",
+      "y": 225,
+      "label": "ค้นพนักงานด้วย emp_id"
+    },
+    {
+      "id": "emp-row",
+      "from": "db",
+      "to": "api",
+      "y": 253,
+      "label": "พนักงาน + hash",
+      "variant": "return"
+    },
+    {
+      "id": "find-role",
+      "from": "api",
+      "to": "db",
+      "y": 283,
+      "label": "bcrypt ผ่าน → โหลด Role"
+    },
+    {
+      "id": "role-row",
+      "from": "db",
+      "to": "api",
+      "y": 311,
+      "label": "สิทธิ์",
+      "variant": "return"
+    },
+    {
+      "id": "log-login",
+      "from": "api",
+      "to": "audit",
+      "y": 341,
+      "label": "บันทึก LOGIN",
+      "variant": "dashed"
+    },
+    {
+      "id": "jwt",
+      "from": "api",
+      "to": "web",
+      "y": 369,
+      "label": "JWT 24 ชม. + สิทธิ์",
+      "variant": "security"
+    },
+    {
+      "id": "open-view",
+      "from": "web",
+      "to": "staff",
+      "y": 397,
+      "label": "เข้าหน้าเริ่มต้น",
+      "variant": "return"
+    }
+  ],
+  "activations": [
+    {
+      "participant": "web",
+      "from": 185,
+      "to": 405,
+      "type": "frontend"
+    },
+    {
+      "participant": "api",
+      "from": 190,
+      "to": 375,
+      "type": "backend"
+    },
+    {
+      "participant": "db",
+      "from": 220,
+      "to": 318,
+      "type": "database"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "rose",
+      "title": "ถูกปฏิเสธ",
+      "items": [
+        "ไม่กรอกครบ → 400",
+        "รหัสไม่มี/รหัสผิด → 401 (ข้อความเดียวกัน)",
+        "บัญชีถูกระงับ → 403"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "โทเค็น",
+      "items": [
+        "JWT เก็บพนักงาน บทบาท สาขา และสิทธิ์",
+        "สิทธิ์ใหม่ที่ขาดจะอิงสิทธิ์เดิมที่เกี่ยวข้อง"
+      ]
+    },
+    {
+      "dot": "cyan",
+      "title": "ทุกคำขอหลังจากนั้น",
+      "items": [
+        "verifyToken ตรวจ Bearer JWT ทุก route ใต้ /api",
+        "401 = เซสชันหมดอายุ; 403 = ไม่มีสิทธิ์"
+      ]
+    }
+  ]
+}

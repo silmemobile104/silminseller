@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "receiptId": "115b81a1-ecf5-45f8-8e3f-ec13f3a6f047",
+  "status": "current",
+  "command": "deliver",
+  "type": "lifecycle",
+  "input": "D:\\silminseller_project\\silminseller\\.archify\\system-silminseller-20261013-150739\\purchase-order.en.json",
+  "output": "D:\\silminseller_project\\silminseller\\.archify\\system-silminseller-20261013-150739\\purchase-order.en.html",
+  "specification": {
+    "sha256": "4b98a12ecc31a415afdc2e0675844cf0e90aa60ef6c90710773ec1db3c04969e",
+    "bytes": 4872
+  },
+  "artifact": {
+    "sha256": "4344e8495d4c8a60f6e1893d64792d20b69bd9b2aebf0e60c5aa4554129ad7d8",
+    "bytes": 760105
+  }
+}

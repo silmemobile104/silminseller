@@ -1,0 +1,210 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "บทบาท สิทธิ์ และเมนู เชื่อมกันอย่างไร",
+    "output": ".archify/menu-map-20261013-154117/roles.th.html",
+    "quality_profile": "showcase",
+    "legend": {
+      "mode": "auto",
+      "entries": {
+        "frontend": {
+          "label": "หน้าที่ผู้ใช้เห็น"
+        },
+        "backend": {
+          "label": "ขั้นตอนของระบบ"
+        },
+        "database": {
+          "label": "ข้อมูลที่ถูกบันทึก"
+        },
+        "cloud": {
+          "label": "ภาพรวม"
+        },
+        "security": {
+          "label": "ตรวจสอบ / สิทธิ์"
+        },
+        "messagebus": {
+          "label": "ขั้นตอนระหว่างกัน"
+        },
+        "external": {
+          "label": "ผู้ใช้งาน"
+        }
+      }
+    }
+  },
+  "components": [
+    {
+      "id": "emp",
+      "type": "external",
+      "label": "พนักงาน",
+      "sublabel": "จัดการพนักงาน",
+      "pos": [
+        40,
+        300
+      ],
+      "size": [
+        160,
+        64
+      ]
+    },
+    {
+      "id": "role",
+      "type": "security",
+      "label": "บทบาท",
+      "sublabel": "แอดมิน · ผู้จัดการ · พนักงานขาย",
+      "pos": [
+        290,
+        300
+      ],
+      "size": [
+        160,
+        64
+      ]
+    },
+    {
+      "id": "perm",
+      "type": "security",
+      "label": "สิทธิ์ใช้งาน",
+      "sublabel": "จัดการสิทธิ์ใช้งาน",
+      "pos": [
+        540,
+        300
+      ],
+      "size": [
+        160,
+        64
+      ]
+    },
+    {
+      "id": "menu",
+      "type": "frontend",
+      "label": "เมนูที่เห็น",
+      "sublabel": "ไม่มีสิทธิ์ = ไม่เห็นเมนู",
+      "pos": [
+        790,
+        300
+      ],
+      "size": [
+        160,
+        64
+      ]
+    },
+    {
+      "id": "branch",
+      "type": "database",
+      "label": "สาขา",
+      "sublabel": "จัดการสาขา",
+      "pos": [
+        40,
+        450
+      ],
+      "size": [
+        160,
+        64
+      ]
+    },
+    {
+      "id": "data",
+      "type": "backend",
+      "label": "ข้อมูลที่เห็น",
+      "sublabel": "สาขาตนเอง หรือทุกสาขา",
+      "pos": [
+        790,
+        450
+      ],
+      "size": [
+        160,
+        64
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "id": "r-has",
+      "from": "emp",
+      "to": "role",
+      "label": "มีบทบาท"
+    },
+    {
+      "id": "r-gets",
+      "from": "role",
+      "to": "perm",
+      "label": "ได้สิทธิ์",
+      "variant": "security"
+    },
+    {
+      "id": "r-open",
+      "from": "perm",
+      "to": "menu",
+      "label": "เปิดเมนู",
+      "variant": "emphasis"
+    },
+    {
+      "id": "r-in",
+      "from": "emp",
+      "to": "branch",
+      "label": "สังกัดสาขา",
+      "fromSide": "bottom",
+      "toSide": "top"
+    },
+    {
+      "id": "r-scope",
+      "from": "perm",
+      "to": "data",
+      "label": "กรองสาขา",
+      "variant": "security",
+      "fromSide": "bottom",
+      "toSide": "left"
+    },
+    {
+      "id": "r-show",
+      "from": "menu",
+      "to": "data",
+      "label": "แสดงข้อมูล",
+      "fromSide": "bottom",
+      "toSide": "top"
+    },
+    {
+      "id": "r-own",
+      "from": "branch",
+      "to": "data",
+      "label": "สาขาของตน",
+      "variant": "dashed"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "rose",
+      "title": "แอดมิน",
+      "items": [
+        "ทุกเมนู ทุกสาขา"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "ผู้จัดการ",
+      "items": [
+        "ทุกเมนู ยกเว้น จัดการสิทธิ์ใช้งาน · ตรวจสอบนำเข้า · จัดการฐานข้อมูล",
+        "เห็นข้อมูลทุกสาขา"
+      ]
+    },
+    {
+      "dot": "cyan",
+      "title": "พนักงานขาย",
+      "items": [
+        "สรุปยอดขายรายวัน · รายการขาย · สมาชิก · เช็คประกัน · ประวัติการขาย · การมัดจำสินค้า",
+        "จัดการสต็อก · จ่ายออกสินค้า · ประวัติการเคลื่อนไหว · ตรวจนับสต็อกประจำวัน",
+        "แจ้งของถึงสาขา · ตรวจรับของเข้า",
+        "เห็นเฉพาะสาขาของตน"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "บทบาทที่สร้างเอง",
+      "items": [
+        "ติ๊กสิทธิ์ทีละข้อใน จัดการสิทธิ์ใช้งาน",
+        "เปิดสิทธิ์ กรองสาขาในเมนู จัดการสต็อก เพื่อดูทุกสาขา"
+      ]
+    }
+  ]
+}

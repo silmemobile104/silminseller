@@ -1,0 +1,173 @@
+{
+  "schema_version": 2,
+  "diagram_type": "lifecycle",
+  "meta": {
+    "title": "Daily Stock Audit Lifecycle",
+    "output": ".archify/system-silminseller-20261013-150739/stock-audit.en.html",
+    "quality_profile": "showcase",
+    "repository": {
+      "url": "https://github.com/silmemobile104/silminseller.git",
+      "provider": "github",
+      "revision": "dcf694923433006facd22a0fd73d70b1cb354edb"
+    },
+    "locale": "en"
+  },
+  "lanes": [
+    {
+      "id": "main",
+      "label": "Audit session"
+    },
+    {
+      "id": "terminal",
+      "label": "Closed by system"
+    }
+  ],
+  "states": [
+    {
+      "id": "counting",
+      "type": "active",
+      "label": "Counting",
+      "sublabel": "branch scans IMEIs",
+      "lane": "main",
+      "col": 0,
+      "step": "01",
+      "tag": "do_stock_audit",
+      "sources": [
+        {
+          "path": "utils/cronTasks.js",
+          "line": 57,
+          "end_line": 76,
+          "label": "daily 00:05 scheduler"
+        },
+        {
+          "path": "routes/api.js",
+          "line": 6442,
+          "end_line": 6493,
+          "label": "open session"
+        },
+        {
+          "path": "routes/api.js",
+          "line": 6657,
+          "end_line": 6717,
+          "label": "scan"
+        }
+      ]
+    },
+    {
+      "id": "review",
+      "type": "waiting",
+      "label": "Awaiting review",
+      "sublabel": "submitted to stock team",
+      "lane": "main",
+      "col": 1,
+      "step": "02",
+      "tag": "manage_stock_audit",
+      "sources": [
+        {
+          "path": "routes/api.js",
+          "line": 6741,
+          "end_line": 6761,
+          "label": "submit"
+        },
+        {
+          "path": "routes/api.js",
+          "line": 6764,
+          "end_line": 6800,
+          "label": "review item"
+        }
+      ]
+    },
+    {
+      "id": "approved",
+      "type": "success",
+      "label": "Approved",
+      "sublabel": "all items judged",
+      "lane": "main",
+      "col": 2,
+      "step": "03",
+      "tag": "อนุมัติแล้ว",
+      "sources": [
+        {
+          "path": "routes/api.js",
+          "line": 6803,
+          "end_line": 6831,
+          "label": "close session"
+        }
+      ]
+    },
+    {
+      "id": "auto",
+      "type": "neutral",
+      "label": "Auto-closed",
+      "sublabel": "a newer session replaced it",
+      "lane": "terminal",
+      "col": 1,
+      "sources": [
+        {
+          "path": "routes/api.js",
+          "line": 6466,
+          "end_line": 6470,
+          "label": "auto-close stale"
+        },
+        {
+          "path": "utils/cronTasks.js",
+          "line": 21,
+          "end_line": 26,
+          "label": "cron auto-close"
+        }
+      ]
+    }
+  ],
+  "transitions": [
+    {
+      "from": "counting",
+      "to": "review",
+      "label": "submit",
+      "variant": "emphasis"
+    },
+    {
+      "from": "review",
+      "to": "approved",
+      "label": "close session",
+      "variant": "emphasis"
+    },
+    {
+      "from": "review",
+      "to": "counting",
+      "label": "recheck item",
+      "variant": "dashed"
+    },
+    {
+      "from": "review",
+      "to": "auto",
+      "label": "new session opens",
+      "variant": "security"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Per item",
+      "items": [
+        "Scan stores the IMEI and an optional box photo (on Drive)",
+        "Judged ผ่าน / ไม่ผ่าน / ตรวจใหม่; recheck deletes the scan"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Rules",
+      "items": [
+        "One active session per branch per day",
+        "Closing is blocked while any item awaits a verdict",
+        "Counts devices only (unit เครื่อง)"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Effect",
+      "items": [
+        "The audit does not change stock_balances"
+      ]
+    }
+  ]
+}

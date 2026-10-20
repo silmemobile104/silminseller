@@ -1,0 +1,367 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "ขั้นตอนการขาย POS (POST /transactions)",
+    "output": ".archify/system-silminseller-20261013-150739/pos-sale.th.html",
+    "quality_profile": "showcase",
+    "repository": {
+      "url": "https://github.com/silmemobile104/silminseller.git",
+      "provider": "github",
+      "revision": "dcf694923433006facd22a0fd73d70b1cb354edb"
+    },
+    "legend": {
+      "mode": "auto",
+      "entries": {
+        "frontend": {
+          "label": "ฝั่งเบราว์เซอร์"
+        },
+        "backend": {
+          "label": "ตรรกะฝั่งเซิร์ฟเวอร์"
+        },
+        "database": {
+          "label": "ข้อมูลที่เก็บไว้"
+        },
+        "cloud": {
+          "label": "ไฟล์สแตติก"
+        },
+        "security": {
+          "label": "ตรวจสิทธิ์ / ปฏิเสธ"
+        },
+        "messagebus": {
+          "label": "ตัวกลาง"
+        },
+        "external": {
+          "label": "ผู้ใช้ / ภายนอก"
+        }
+      }
+    }
+  },
+  "lanes": [
+    {
+      "id": "ui",
+      "label": "แคชเชียร์ · หน้า POS"
+    },
+    {
+      "id": "api",
+      "label": "API ขาย"
+    },
+    {
+      "id": "exc",
+      "label": "ถูกปฏิเสธ",
+      "variant": "exception"
+    },
+    {
+      "id": "records",
+      "label": "ข้อมูลสต็อก + การเงิน"
+    }
+  ],
+  "mainPath": [
+    "cart",
+    "pos",
+    "validate",
+    "deduct",
+    "savetx",
+    "after",
+    "done"
+  ],
+  "nodes": [
+    {
+      "id": "cart",
+      "lane": "ui",
+      "col": 0,
+      "type": "external",
+      "label": "แคชเชียร์",
+      "sublabel": "จัดตะกร้า",
+      "width": 156
+    },
+    {
+      "id": "pos",
+      "lane": "ui",
+      "col": 1,
+      "type": "frontend",
+      "label": "หน้า POS",
+      "sublabel": "authFetch POST",
+      "width": 156
+    },
+    {
+      "id": "done",
+      "lane": "ui",
+      "col": 5,
+      "type": "frontend",
+      "label": "ใบเสร็จ",
+      "sublabel": "201 + เลข INV",
+      "width": 156
+    },
+    {
+      "id": "validate",
+      "lane": "api",
+      "col": 1,
+      "type": "backend",
+      "label": "ตรวจข้อมูล",
+      "sublabel": "สินค้า + ช่องทางจ่าย",
+      "sources": [
+        {
+          "path": "routes/api.js",
+          "line": 2787,
+          "end_line": 2803,
+          "label": "basic validation"
+        }
+      ],
+      "width": 156
+    },
+    {
+      "id": "deduct",
+      "lane": "api",
+      "col": 2,
+      "type": "backend",
+      "width": 156,
+      "label": "ตัดสต็อก",
+      "sublabel": "ทีละชิ้น ตามสาขา",
+      "sources": [
+        {
+          "path": "routes/api.js",
+          "line": 2837,
+          "end_line": 2883,
+          "label": "per-item deduction"
+        }
+      ]
+    },
+    {
+      "id": "savetx",
+      "lane": "api",
+      "col": 3,
+      "type": "backend",
+      "label": "บันทึกบิล",
+      "sublabel": "Transaction INV-…",
+      "sources": [
+        {
+          "path": "routes/api.js",
+          "line": 2901,
+          "end_line": 2934,
+          "label": "Transaction.save"
+        }
+      ],
+      "width": 156
+    },
+    {
+      "id": "after",
+      "lane": "api",
+      "col": 4,
+      "type": "backend",
+      "label": "หลังขาย",
+      "sublabel": "มัดจำ + ไฟแนนซ์",
+      "sources": [
+        {
+          "path": "routes/api.js",
+          "line": 2939,
+          "end_line": 2950,
+          "label": "applied deposit"
+        },
+        {
+          "path": "routes/api.js",
+          "line": 2955,
+          "end_line": 3005,
+          "label": "financing split"
+        }
+      ],
+      "width": 156
+    },
+    {
+      "id": "reject",
+      "lane": "exc",
+      "col": 1,
+      "type": "security",
+      "label": "ปฏิเสธ",
+      "sublabel": "400 / 404",
+      "sources": [
+        {
+          "path": "routes/api.js",
+          "line": 2851,
+          "end_line": 2877,
+          "label": "missing branch/IMEI/qty"
+        }
+      ],
+      "width": 156
+    },
+    {
+      "id": "bal",
+      "lane": "records",
+      "col": 2,
+      "type": "database",
+      "label": "stock_balances",
+      "sublabel": "−IMEI หรือ −จำนวน",
+      "sources": [
+        {
+          "path": "models/index.js",
+          "line": 297,
+          "end_line": 297,
+          "label": "Product"
+        }
+      ],
+      "width": 156
+    },
+    {
+      "id": "mov",
+      "lane": "records",
+      "col": 3,
+      "type": "database",
+      "label": "Movement",
+      "sublabel": "action ขายออก",
+      "sources": [
+        {
+          "path": "routes/api.js",
+          "line": 2887,
+          "end_line": 2897,
+          "label": "createMovementsForItem"
+        }
+      ],
+      "width": 156
+    },
+    {
+      "id": "cash",
+      "lane": "records",
+      "col": 4,
+      "type": "database",
+      "label": "CashMovement",
+      "sublabel": "เงินสดรับทันที",
+      "sources": [
+        {
+          "path": "routes/api.js",
+          "line": 2981,
+          "end_line": 2990,
+          "label": "CashMovement.save"
+        }
+      ],
+      "width": 156
+    },
+    {
+      "id": "recv",
+      "lane": "records",
+      "col": 5,
+      "type": "database",
+      "label": "ลูกหนี้",
+      "sublabel": "FinanceReceivable",
+      "width": 156,
+      "sources": [
+        {
+          "path": "routes/api.js",
+          "line": 2993,
+          "end_line": 3004,
+          "label": "FinanceReceivable.save"
+        }
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "id": "e-cart",
+      "from": "cart",
+      "to": "pos"
+    },
+    {
+      "id": "e-submit",
+      "from": "pos",
+      "to": "validate",
+      "label": "POST",
+      "variant": "emphasis"
+    },
+    {
+      "id": "e-valid",
+      "from": "validate",
+      "to": "deduct"
+    },
+    {
+      "id": "e-deduct",
+      "from": "deduct",
+      "to": "savetx"
+    },
+    {
+      "id": "e-save",
+      "from": "savetx",
+      "to": "after"
+    },
+    {
+      "id": "e-done",
+      "from": "after",
+      "to": "done",
+      "variant": "emphasis",
+      "role": "return"
+    },
+    {
+      "id": "e-bad",
+      "from": "validate",
+      "to": "reject",
+      "label": "ไม่ถูกต้อง",
+      "variant": "security",
+      "role": "error"
+    },
+    {
+      "id": "e-miss",
+      "from": "deduct",
+      "to": "reject",
+      "label": "ของไม่พอ",
+      "variant": "security",
+      "role": "error"
+    },
+    {
+      "id": "e-bal",
+      "from": "deduct",
+      "to": "bal",
+      "variant": "dashed",
+      "role": "branch"
+    },
+    {
+      "id": "e-mov",
+      "from": "bal",
+      "to": "mov",
+      "label": "บันทึก",
+      "variant": "dashed",
+      "role": "branch"
+    },
+    {
+      "id": "e-cash",
+      "from": "after",
+      "to": "cash",
+      "label": "ไฟแนนซ์",
+      "variant": "dashed",
+      "role": "branch"
+    },
+    {
+      "id": "e-recv",
+      "from": "cash",
+      "to": "recv",
+      "label": "เข้าคิว",
+      "variant": "dashed",
+      "role": "branch"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "emerald",
+      "title": "ขายปกติ",
+      "items": [
+        "สาขามาจากคำขอหรือสาขาของผู้ใช้",
+        "สินค้ามี IMEI ตัด IMEI; อุปกรณ์เสริมลดจำนวน",
+        "ซื้อสดเริ่มเป็นชำระแล้ว; ไฟแนนซ์เริ่มเป็นยังไม่ชำระ"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "ยกเลิกบิล",
+      "items": [
+        "ต้องมี cancel_sale หรือแอดมิน/ผู้จัดการ และระบุเหตุผล",
+        "คืนสต็อกและบันทึก Movement ยกเลิกการขาย",
+        "ไม่แก้ FinanceReceivable หรือ CashMovement"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "ข้อสังเกตจากโค้ด",
+      "items": [
+        "ตัดสต็อกทีละชิ้น ถ้าชิ้นหลังล้มเหลว ชิ้นก่อนหน้ายังถูกตัดอยู่",
+        "ไม่มี transaction ครอบลูปนี้"
+      ]
+    }
+  ]
+}

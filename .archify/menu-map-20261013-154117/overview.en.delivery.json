@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "receiptId": "7a32ae20-96bd-428a-a770-c856216e42e3",
+  "status": "current",
+  "command": "deliver",
+  "type": "architecture",
+  "input": "D:\\silminseller_project\\silminseller\\.archify\\menu-map-20261013-154117\\overview.en.json",
+  "output": "D:\\silminseller_project\\silminseller\\.archify\\menu-map-20261013-154117\\overview.en.html",
+  "specification": {
+    "sha256": "8e2d800bfda7e72bb29c39e75734e7538d556bbecb842e5e0ecce2954b78ddc5",
+    "bytes": 4346
+  },
+  "artifact": {
+    "sha256": "8c0fc1ab25ff7d0a54dfe25376af63b63a6b51ff075d253b28551687e301ecfb",
+    "bytes": 758617
+  }
+}

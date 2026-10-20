@@ -1,0 +1,250 @@
+{
+  "schema_version": 2,
+  "diagram_type": "lifecycle",
+  "meta": {
+    "title": "วงจรใบสั่งซื้อ (PO)",
+    "output": ".archify/system-silminseller-20261013-150739/purchase-order.th.html",
+    "quality_profile": "showcase",
+    "repository": {
+      "url": "https://github.com/silmemobile104/silminseller.git",
+      "provider": "github",
+      "revision": "dcf694923433006facd22a0fd73d70b1cb354edb"
+    },
+    "legend": {
+      "mode": "auto",
+      "entries": {
+        "start": {
+          "label": "จุดเริ่มต้น"
+        },
+        "active": {
+          "label": "กำลังดำเนินการ"
+        },
+        "waiting": {
+          "label": "รอดำเนินการ"
+        },
+        "decision": {
+          "label": "ตัดสินใจ"
+        },
+        "success": {
+          "label": "สำเร็จ"
+        },
+        "failure": {
+          "label": "ยกเลิก / ล้มเหลว"
+        },
+        "neutral": {
+          "label": "ระบบปิดให้"
+        },
+        "external": {
+          "label": "ภายนอก"
+        }
+      }
+    }
+  },
+  "lanes": [
+    {
+      "id": "main",
+      "label": "การจัดส่งและนำเข้า"
+    },
+    {
+      "id": "pay",
+      "label": "การชำระเงิน"
+    },
+    {
+      "id": "terminal",
+      "label": "ยกเลิก"
+    }
+  ],
+  "states": [
+    {
+      "id": "pending",
+      "type": "start",
+      "label": "รอจัดส่ง",
+      "sublabel": "สร้าง PO แล้ว",
+      "lane": "main",
+      "col": 0,
+      "step": "01",
+      "tag": "manage_po",
+      "sources": [
+        {
+          "path": "routes/api.js",
+          "line": 5258,
+          "end_line": 5305,
+          "label": "POST /purchase-orders"
+        }
+      ]
+    },
+    {
+      "id": "arrived",
+      "type": "active",
+      "label": "ของถึงสาขาแล้ว",
+      "sublabel": "แจ้ง IMEI แล้ว",
+      "lane": "main",
+      "col": 1,
+      "step": "02",
+      "tag": "report_arrival",
+      "sources": [
+        {
+          "path": "routes/api.js",
+          "line": 5487,
+          "end_line": 5574,
+          "label": "report-arrival"
+        }
+      ]
+    },
+    {
+      "id": "receiving",
+      "type": "active",
+      "label": "กำลังตรวจรับ",
+      "sublabel": "สแกน + ตั้งราคา",
+      "lane": "main",
+      "col": 2,
+      "step": "03",
+      "tag": "receive_po",
+      "sources": [
+        {
+          "path": "routes/api.js",
+          "line": 5578,
+          "end_line": 5672,
+          "label": "scan-item"
+        }
+      ]
+    },
+    {
+      "id": "imported",
+      "type": "success",
+      "label": "นำเข้าสำเร็จ",
+      "sublabel": "เพิ่มเข้าสต็อกแล้ว",
+      "lane": "main",
+      "col": 3,
+      "step": "04",
+      "tag": "นำเข้าสำเร็จ",
+      "sources": [
+        {
+          "path": "routes/api.js",
+          "line": 412,
+          "end_line": 660,
+          "label": "executeFinalizeImport"
+        },
+        {
+          "path": "routes/api.js",
+          "line": 5676,
+          "end_line": 5693,
+          "label": "finalize-import"
+        }
+      ]
+    },
+    {
+      "id": "unpaid",
+      "type": "start",
+      "label": "ยังไม่ได้ชำระ",
+      "sublabel": "ค้างจ่ายผู้จัดจำหน่าย",
+      "lane": "pay",
+      "col": 2,
+      "tag": "default",
+      "sources": [
+        {
+          "path": "models/index.js",
+          "line": 533,
+          "end_line": 533,
+          "label": "payment_status"
+        }
+      ]
+    },
+    {
+      "id": "paid",
+      "type": "success",
+      "label": "ชำระเงินแล้ว",
+      "sublabel": "ยอดเต็ม − ส่วนลด",
+      "lane": "pay",
+      "col": 3,
+      "tag": "pay_po",
+      "sources": [
+        {
+          "path": "routes/api.js",
+          "line": 6012,
+          "end_line": 6100,
+          "label": "PUT /accounting/po-pay/:id"
+        }
+      ]
+    },
+    {
+      "id": "cancelled",
+      "type": "failure",
+      "label": "ยกเลิก",
+      "sublabel": "ก่อนจัดส่งเท่านั้น",
+      "lane": "terminal",
+      "col": 0,
+      "sources": [
+        {
+          "path": "routes/api.js",
+          "line": 5454,
+          "end_line": 5483,
+          "label": "cancel"
+        }
+      ]
+    }
+  ],
+  "transitions": [
+    {
+      "from": "pending",
+      "to": "arrived",
+      "label": "สาขาแจ้งของถึง"
+    },
+    {
+      "from": "arrived",
+      "to": "receiving",
+      "label": "สแกนตรวจรับ"
+    },
+    {
+      "from": "receiving",
+      "to": "imported",
+      "label": "นำเข้าครบ",
+      "variant": "emphasis"
+    },
+    {
+      "from": "receiving",
+      "to": "pending",
+      "label": "นำเข้าไม่ครบ",
+      "variant": "dashed"
+    },
+    {
+      "from": "pending",
+      "to": "cancelled",
+      "label": "ยกเลิก",
+      "variant": "security"
+    },
+    {
+      "from": "unpaid",
+      "to": "paid",
+      "label": "จ่ายเต็มจำนวน",
+      "variant": "emphasis"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "สายการรับของ",
+      "items": [
+        "แก้ไข/ยกเลิกได้เฉพาะตอนรอจัดส่ง",
+        "สแกนตรวจรับได้โดยไม่ต้องแจ้งของถึงก่อน",
+        "นำเข้าสร้าง Product ต่อ IMEI; อุปกรณ์เสริมนับตามจำนวน"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "สายการจ่ายเงิน",
+      "items": [
+        "แยกจากสายรับของ; ต้องมี pay_po",
+        "เซิร์ฟเวอร์คำนวณยอดเอง ไม่เชื่อค่าจากหน้าเว็บ",
+        "บันทึก CashMovement; ส่วนลดต้องมีหมายเหตุ"
+      ]
+    },
+    {
+      "dot": "slate",
+      "title": "ที่มีในข้อมูล",
+      "items": [
+        "สถานะ ชำระเงินบางส่วน มีใน enum แต่การจ่ายเต็มจำนวนไม่ตั้งค่านี้"
+      ]
+    }
+  ]
+}

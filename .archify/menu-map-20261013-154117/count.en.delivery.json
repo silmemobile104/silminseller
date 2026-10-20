@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "receiptId": "243f58da-691c-42a9-a8b6-5d44eaca7a47",
+  "status": "current",
+  "command": "deliver",
+  "type": "workflow",
+  "input": "D:\\silminseller_project\\silminseller\\.archify\\menu-map-20261013-154117\\count.en.json",
+  "output": "D:\\silminseller_project\\silminseller\\.archify\\menu-map-20261013-154117\\count.en.html",
+  "specification": {
+    "sha256": "ccb5bcd8433067b3796a6b305d9929ae0f00875cac00ee63362e589f69eaab1c",
+    "bytes": 2476
+  },
+  "artifact": {
+    "sha256": "dd202c6fdc95a828bc86ec7faecb0192da971a055283997f12b4ab1e1220b35c",
+    "bytes": 749988
+  }
+}

@@ -1,0 +1,205 @@
+{
+  "schema_version": 2,
+  "diagram_type": "lifecycle",
+  "meta": {
+    "title": "วงจรลูกหนี้จัดไฟแนนซ์",
+    "output": ".archify/system-silminseller-20261013-150739/finance-receivable.th.html",
+    "quality_profile": "showcase",
+    "repository": {
+      "url": "https://github.com/silmemobile104/silminseller.git",
+      "provider": "github",
+      "revision": "dcf694923433006facd22a0fd73d70b1cb354edb"
+    },
+    "legend": {
+      "mode": "auto",
+      "entries": {
+        "start": {
+          "label": "จุดเริ่มต้น"
+        },
+        "active": {
+          "label": "กำลังดำเนินการ"
+        },
+        "waiting": {
+          "label": "รอดำเนินการ"
+        },
+        "decision": {
+          "label": "ตัดสินใจ"
+        },
+        "success": {
+          "label": "สำเร็จ"
+        },
+        "failure": {
+          "label": "ยกเลิก / ล้มเหลว"
+        },
+        "neutral": {
+          "label": "ระบบปิดให้"
+        },
+        "external": {
+          "label": "ภายนอก"
+        }
+      }
+    }
+  },
+  "lanes": [
+    {
+      "id": "main",
+      "label": "สถานะลูกหนี้"
+    },
+    {
+      "id": "terminal",
+      "label": "ยกเลิก"
+    }
+  ],
+  "states": [
+    {
+      "id": "awaiting",
+      "type": "start",
+      "label": "รออนุมัติ",
+      "sublabel": "เกิดจากการขายไฟแนนซ์",
+      "lane": "main",
+      "col": 0,
+      "step": "01",
+      "tag": "default",
+      "sources": [
+        {
+          "path": "routes/api.js",
+          "line": 2993,
+          "end_line": 3004,
+          "label": "created with the sale"
+        },
+        {
+          "path": "models/index.js",
+          "line": 589,
+          "end_line": 589,
+          "label": "status enum"
+        }
+      ]
+    },
+    {
+      "id": "pending",
+      "type": "waiting",
+      "label": "ค้างโอน",
+      "sublabel": "ไฟแนนซ์ยังไม่โอน",
+      "lane": "main",
+      "col": 1,
+      "step": "02",
+      "tag": "ค้างโอน",
+      "sources": [
+        {
+          "path": "routes/api.js",
+          "line": 6207,
+          "end_line": 6252,
+          "label": "settle"
+        }
+      ]
+    },
+    {
+      "id": "settled",
+      "type": "success",
+      "label": "ชำระแล้ว",
+      "sublabel": "ยืนยันว่าชำระแล้ว",
+      "lane": "main",
+      "col": 2,
+      "step": "03",
+      "tag": "ชำระแล้ว",
+      "sources": [
+        {
+          "path": "routes/api.js",
+          "line": 3511,
+          "end_line": 3520,
+          "label": "order verification"
+        }
+      ]
+    },
+    {
+      "id": "received",
+      "type": "success",
+      "label": "ได้รับเงินครบแล้ว",
+      "sublabel": "ยืนยันรับเงินโอน",
+      "lane": "main",
+      "col": 3,
+      "step": "04",
+      "tag": "manage_finance",
+      "sources": [
+        {
+          "path": "routes/api.js",
+          "line": 6402,
+          "end_line": 6436,
+          "label": "POST /finance/payout/:id"
+        }
+      ]
+    },
+    {
+      "id": "cancelled",
+      "type": "failure",
+      "label": "ยกเลิก",
+      "sublabel": "ฝ่ายบัญชีตั้งสถานะ",
+      "lane": "terminal",
+      "col": 1,
+      "sources": [
+        {
+          "path": "routes/api.js",
+          "line": 6213,
+          "end_line": 6224,
+          "label": "valid statuses"
+        }
+      ]
+    }
+  ],
+  "transitions": [
+    {
+      "from": "awaiting",
+      "to": "pending",
+      "label": "ตั้งค้างโอน"
+    },
+    {
+      "from": "pending",
+      "to": "settled",
+      "label": "ตั้งชำระแล้ว",
+      "variant": "emphasis"
+    },
+    {
+      "from": "settled",
+      "to": "received",
+      "label": "ยืนยันรับเงิน",
+      "variant": "emphasis"
+    },
+    {
+      "from": "settled",
+      "to": "pending",
+      "label": "เปิดใหม่",
+      "variant": "dashed"
+    },
+    {
+      "from": "pending",
+      "to": "cancelled",
+      "label": "ยกเลิก",
+      "variant": "security"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "ใครเปลี่ยนสถานะ",
+      "items": [
+        "หน้าบัญชี: settle และ payout ต้องมี manage_finance",
+        "หน้าตรวจสอบออเดอร์: สลับชำระ/ค้างโอน ต้องมี verify_orders"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "การนำไปรายงาน",
+      "items": [
+        "ชำระแล้ว และ ได้รับเงินครบแล้ว นับเป็นชำระเงินแล้วเหมือนกัน",
+        "ยอด = ราคารวม − ดาวน์ − ค่า iCloud − ค่าใบสัญญา"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "ข้อสังเกต",
+      "items": [
+        "settle รับสถานะได้ทั้งสี่ค่า ลูกศรคือเส้นทางที่ใช้บ่อย"
+      ]
+    }
+  ]
+}

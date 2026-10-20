@@ -1,0 +1,145 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "ตรวจนับสต็อกประจำวัน",
+    "output": ".archify/menu-map-20261013-154117/count.th.html",
+    "quality_profile": "showcase",
+    "legend": {
+      "mode": "auto",
+      "entries": {
+        "frontend": {
+          "label": "หน้าที่ผู้ใช้เห็น"
+        },
+        "backend": {
+          "label": "ขั้นตอนของระบบ"
+        },
+        "database": {
+          "label": "ข้อมูลที่ถูกบันทึก"
+        },
+        "cloud": {
+          "label": "ภาพรวม"
+        },
+        "security": {
+          "label": "ตรวจสอบ / สิทธิ์"
+        },
+        "messagebus": {
+          "label": "ขั้นตอนระหว่างกัน"
+        },
+        "external": {
+          "label": "ผู้ใช้งาน"
+        }
+      }
+    }
+  },
+  "lanes": [
+    {
+      "id": "branch",
+      "label": "พนักงานสาขา · ตรวจนับสต็อกประจำวัน"
+    },
+    {
+      "id": "team",
+      "label": "ทีมสต็อก · ตรวจสอบผลสต็อก"
+    }
+  ],
+  "mainPath": [
+    "open",
+    "scan",
+    "send",
+    "review",
+    "close"
+  ],
+  "nodes": [
+    {
+      "id": "open",
+      "lane": "branch",
+      "col": 0,
+      "type": "backend",
+      "label": "เปิดรอบตรวจนับ",
+      "sublabel": "ทุกวัน แยกตามสาขา",
+      "width": 160
+    },
+    {
+      "id": "scan",
+      "lane": "branch",
+      "col": 1,
+      "type": "frontend",
+      "label": "สแกนเครื่อง",
+      "sublabel": "IMEI + รูปกล่อง",
+      "width": 160
+    },
+    {
+      "id": "send",
+      "lane": "branch",
+      "col": 2,
+      "type": "frontend",
+      "label": "ส่งตรวจ",
+      "sublabel": "สถานะ รอการอนุมัติ",
+      "width": 160
+    },
+    {
+      "id": "review",
+      "lane": "team",
+      "col": 3,
+      "type": "security",
+      "label": "ตรวจทีละรายการ",
+      "sublabel": "ผ่าน / ไม่ผ่าน / ตรวจใหม่",
+      "width": 160
+    },
+    {
+      "id": "close",
+      "lane": "team",
+      "col": 4,
+      "type": "database",
+      "label": "ปิดรอบ",
+      "sublabel": "สถานะ อนุมัติแล้ว",
+      "width": 160
+    }
+  ],
+  "edges": [
+    {
+      "id": "k1",
+      "from": "open",
+      "to": "scan",
+      "variant": "emphasis"
+    },
+    {
+      "id": "k2",
+      "from": "scan",
+      "to": "send",
+      "variant": "emphasis"
+    },
+    {
+      "id": "k3",
+      "from": "send",
+      "to": "review",
+      "variant": "emphasis"
+    },
+    {
+      "id": "k4",
+      "from": "review",
+      "to": "close",
+      "label": "ตัดสินครบ",
+      "variant": "emphasis"
+    },
+    {
+      "id": "k5",
+      "from": "review",
+      "to": "scan",
+      "label": "ตรวจใหม่",
+      "variant": "dashed",
+      "role": "return"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "ควรรู้",
+      "items": [
+        "นับเฉพาะเครื่อง เทียบกับสินค้าในสาขา",
+        "ปิดรอบไม่ได้ถ้ายังมีรายการรอตัดสิน",
+        "การตรวจนับไม่ได้ปรับจำนวนสต็อก"
+      ]
+    }
+  ]
+}

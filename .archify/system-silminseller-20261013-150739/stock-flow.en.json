@@ -1,0 +1,269 @@
+{
+  "schema_version": 1,
+  "diagram_type": "dataflow",
+  "meta": {
+    "title": "Stock Movement Data Flow",
+    "viewBox": [
+      1060,
+      560
+    ],
+    "output": ".archify/system-silminseller-20261013-150739/stock-flow.en.html",
+    "quality_profile": "showcase",
+    "repository": {
+      "url": "https://github.com/silmemobile104/silminseller.git",
+      "provider": "github",
+      "revision": "dcf694923433006facd22a0fd73d70b1cb354edb"
+    },
+    "locale": "en"
+  },
+  "stages": [
+    {
+      "label": "Actions"
+    },
+    {
+      "label": "Stock change"
+    },
+    {
+      "label": "Stores"
+    },
+    {
+      "label": "Readers"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "inb",
+      "type": "backend",
+      "label": "Stock in",
+      "sublabel": "PO · import · transfer in",
+      "stage": 0,
+      "row": 0,
+      "width": 150,
+      "tag": "+",
+      "sources": [
+        {
+          "path": "routes/api.js",
+          "line": 412,
+          "end_line": 660,
+          "label": "PO finalize import"
+        },
+        {
+          "path": "routes/api.js",
+          "line": 4817,
+          "end_line": 4979,
+          "label": "approve import"
+        },
+        {
+          "path": "routes/api.js",
+          "line": 2606,
+          "end_line": 2693,
+          "label": "transfer receive"
+        }
+      ]
+    },
+    {
+      "id": "out",
+      "type": "backend",
+      "label": "Stock out",
+      "sublabel": "sale · transfer out · issue",
+      "stage": 0,
+      "row": 2,
+      "width": 150,
+      "tag": "−",
+      "sources": [
+        {
+          "path": "routes/api.js",
+          "line": 2787,
+          "end_line": 3025,
+          "label": "POS sale"
+        },
+        {
+          "path": "routes/api.js",
+          "line": 2482,
+          "end_line": 2597,
+          "label": "transfer send"
+        },
+        {
+          "path": "routes/api.js",
+          "line": 1379,
+          "end_line": 1495,
+          "label": "stock issue"
+        }
+      ]
+    },
+    {
+      "id": "hub",
+      "type": "security",
+      "label": "Stock change",
+      "sublabel": "branch + IMEI / quantity",
+      "stage": 1,
+      "row": 1,
+      "width": 140,
+      "tag": "getRequestedBranchId",
+      "sources": [
+        {
+          "path": "routes/api.js",
+          "line": 192,
+          "end_line": 192,
+          "label": "getRequestedBranchId"
+        },
+        {
+          "path": "routes/api.js",
+          "line": 684,
+          "end_line": 725,
+          "label": "createMovementsForItem"
+        }
+      ]
+    },
+    {
+      "id": "bal",
+      "type": "database",
+      "label": "stock_balances",
+      "sublabel": "per branch: qty + imeis[]",
+      "stage": 2,
+      "row": 0,
+      "width": 150,
+      "sources": [
+        {
+          "path": "models/index.js",
+          "line": 297,
+          "end_line": 297,
+          "label": "Product"
+        }
+      ]
+    },
+    {
+      "id": "mov",
+      "type": "database",
+      "label": "Movement",
+      "sublabel": "one row per IMEI",
+      "stage": 2,
+      "row": 2,
+      "width": 150,
+      "sources": [
+        {
+          "path": "models/index.js",
+          "line": 316,
+          "end_line": 316,
+          "label": "Movement"
+        }
+      ]
+    },
+    {
+      "id": "pos",
+      "type": "frontend",
+      "label": "Stock, POS, audit",
+      "sublabel": "availability, expected IMEIs",
+      "stage": 3,
+      "row": 0,
+      "width": 140,
+      "sources": [
+        {
+          "path": "routes/api.js",
+          "line": 972,
+          "end_line": 972,
+          "label": "GET /products"
+        },
+        {
+          "path": "routes/api.js",
+          "line": 6540,
+          "end_line": 6565,
+          "label": "audit expected IMEIs"
+        }
+      ]
+    },
+    {
+      "id": "hist",
+      "type": "frontend",
+      "label": "Movement history",
+      "sublabel": "GET /movements/search",
+      "stage": 3,
+      "row": 2,
+      "width": 140,
+      "sources": [
+        {
+          "path": "routes/api.js",
+          "line": 1557,
+          "end_line": 1557,
+          "label": "movements/search"
+        }
+      ]
+    }
+  ],
+  "flows": [
+    {
+      "id": "f-in",
+      "from": "inb",
+      "to": "hub",
+      "label": "+",
+      "classification": "in"
+    },
+    {
+      "id": "f-out",
+      "from": "out",
+      "to": "hub",
+      "label": "−",
+      "classification": "out",
+      "variant": "security"
+    },
+    {
+      "id": "f-bal",
+      "from": "hub",
+      "to": "bal",
+      "label": "update",
+      "classification": "balance",
+      "variant": "emphasis"
+    },
+    {
+      "id": "f-mov",
+      "from": "hub",
+      "to": "mov",
+      "label": "log",
+      "classification": "ledger",
+      "variant": "dashed"
+    },
+    {
+      "id": "f-pos",
+      "from": "bal",
+      "to": "pos",
+      "label": "read",
+      "classification": "read"
+    },
+    {
+      "id": "f-hist",
+      "from": "mov",
+      "to": "hist",
+      "label": "trace",
+      "classification": "read",
+      "variant": "dashed"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "emerald",
+      "title": "Stock in",
+      "items": [
+        "PO finalize import: one Product per IMEI, accessories by quantity",
+        "Import approval for goods outside a PO",
+        "Transfer receive; cancelled transfers and cancelled sales restock"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Stock out",
+      "items": [
+        "POS sale removes the sold IMEI or quantity",
+        "Transfer send and stock issue (damaged, lost, internal use)"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Invariants",
+      "items": [
+        "Stock lives only in Product.stock_balances, one entry per branch",
+        "Every change writes a Movement for later tracing",
+        "Stock issue updates per IMEI atomically; sale and transfer save the whole document"
+      ]
+    }
+  ]
+}

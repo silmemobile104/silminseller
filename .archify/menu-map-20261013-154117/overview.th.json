@@ -1,0 +1,220 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "กลุ่มเมนูทั้งหมดเชื่อมกันอย่างไร",
+    "output": ".archify/menu-map-20261013-154117/overview.th.html",
+    "quality_profile": "showcase",
+    "legend": {
+      "mode": "auto",
+      "entries": {
+        "frontend": {
+          "label": "การขายและลูกค้า"
+        },
+        "backend": {
+          "label": "สต็อกและคลังสินค้า"
+        },
+        "messagebus": {
+          "label": "การสั่งซื้อและรับสินค้า"
+        },
+        "database": {
+          "label": "บัญชีและการเงิน"
+        },
+        "security": {
+          "label": "ตั้งค่าระบบ"
+        },
+        "cloud": {
+          "label": "ภาพรวม"
+        },
+        "external": {
+          "label": "ผู้ใช้งาน"
+        }
+      }
+    }
+  },
+  "components": [
+    {
+      "id": "settings",
+      "type": "security",
+      "label": "ตั้งค่าระบบ",
+      "sublabel": "พนักงาน · สาขา · สิทธิ์",
+      "pos": [
+        40,
+        150
+      ],
+      "size": [
+        160,
+        64
+      ]
+    },
+    {
+      "id": "dash",
+      "type": "cloud",
+      "label": "ภาพรวม",
+      "sublabel": "แดชบอร์ด",
+      "pos": [
+        290,
+        150
+      ],
+      "size": [
+        160,
+        64
+      ]
+    },
+    {
+      "id": "user",
+      "type": "external",
+      "label": "พนักงาน",
+      "sublabel": "เข้าสู่ระบบด้วยรหัสพนักงาน",
+      "pos": [
+        40,
+        300
+      ],
+      "size": [
+        160,
+        64
+      ]
+    },
+    {
+      "id": "sales",
+      "type": "frontend",
+      "label": "การขายและลูกค้า",
+      "sublabel": "รายการขาย · มัดจำ · สมาชิก",
+      "pos": [
+        290,
+        300
+      ],
+      "size": [
+        160,
+        64
+      ]
+    },
+    {
+      "id": "stock",
+      "type": "backend",
+      "label": "สต็อกและคลังสินค้า",
+      "sublabel": "จัดการสต็อก · ตรวจนับ",
+      "pos": [
+        540,
+        300
+      ],
+      "size": [
+        160,
+        64
+      ]
+    },
+    {
+      "id": "po",
+      "type": "messagebus",
+      "label": "การสั่งซื้อและรับสินค้า",
+      "sublabel": "PO · โอนย้าย · ตรวจรับ",
+      "pos": [
+        790,
+        300
+      ],
+      "size": [
+        160,
+        64
+      ]
+    },
+    {
+      "id": "acct",
+      "type": "database",
+      "label": "บัญชีและการเงิน",
+      "sublabel": "ตรวจสอบออเดอร์ · บัญชี",
+      "pos": [
+        540,
+        450
+      ],
+      "size": [
+        160,
+        64
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "id": "c-role",
+      "from": "settings",
+      "to": "user",
+      "label": "บทบาท · สิทธิ์",
+      "variant": "security",
+      "fromSide": "bottom",
+      "toSide": "top"
+    },
+    {
+      "id": "c-sell",
+      "from": "user",
+      "to": "sales",
+      "label": "ขายสินค้า",
+      "variant": "emphasis"
+    },
+    {
+      "id": "c-sum",
+      "from": "sales",
+      "to": "dash",
+      "label": "สรุปยอดขาย",
+      "variant": "dashed",
+      "fromSide": "top",
+      "toSide": "bottom"
+    },
+    {
+      "id": "c-cut",
+      "from": "sales",
+      "to": "stock",
+      "label": "สต็อกลดลง",
+      "variant": "emphasis"
+    },
+    {
+      "id": "c-recv",
+      "from": "po",
+      "to": "stock",
+      "label": "ของเข้าสต็อก",
+      "variant": "emphasis"
+    },
+    {
+      "id": "c-verify",
+      "from": "sales",
+      "to": "acct",
+      "label": "ตรวจสอบออเดอร์",
+      "fromSide": "bottom",
+      "toSide": "left"
+    },
+    {
+      "id": "c-pay",
+      "from": "po",
+      "to": "acct",
+      "label": "จ่ายเงิน PO",
+      "fromSide": "bottom",
+      "toSide": "right"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "ฝั่งขาย",
+      "items": [
+        "ขายในรายการขาย จำนวนสินค้าในสาขานั้นลดลง",
+        "ทุกบิลขายไปรอที่ตรวจสอบออเดอร์",
+        "แดชบอร์ดและสรุปยอดขายรายวันอ่านจากบิลขาย"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "ฝั่งซื้อ",
+      "items": [
+        "ของเข้าผ่าน PO → แจ้งของถึงสาขา → ตรวจรับของเข้า",
+        "โอนย้ายสินค้าระหว่างสาขา ย้ายสต็อกจากสาขาหนึ่งไปอีกสาขา",
+        "การจ่ายเงิน PO ไปอยู่ในบัญชีและการเงิน"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "ใครเห็นอะไร",
+      "items": [
+        "บทบาทและสิทธิ์กำหนดว่าเห็นเมนูไหน",
+        "ทุกการกระทำสำคัญถูกเก็บใน ประวัติกิจกรรมระบบ"
+      ]
+    }
+  ]
+}

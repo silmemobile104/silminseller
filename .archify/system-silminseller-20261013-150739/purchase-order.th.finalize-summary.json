@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "ok": true,
+  "command": "finalize",
+  "status": "pass",
+  "type": "lifecycle",
+  "quality": "showcase",
+  "specification": {
+    "path": "D:\\silminseller_project\\silminseller\\.archify\\system-silminseller-20261013-150739\\purchase-order.th.json",
+    "sha256": "8b69390222de5ccc6235283dd65283f65ea257d6285d5daa0b8b1bbfc9bd8d29",
+    "bytes": 6678
+  },
+  "artifact": {
+    "path": "D:\\silminseller_project\\silminseller\\.archify\\system-silminseller-20261013-150739\\purchase-order.th.html",
+    "sha256": "6bcfc66f14fccca91c31f1a528702c2f2f81760af13be443ebc31f517a9f4270",
+    "bytes": 763405
+  },
+  "gates": {
+    "validate": "pass",
+    "deliver": "pass",
+    "check": "pass",
+    "browser-check": "pass"
+  },
+  "diagnostics": [],
+  "diagnosticSummary": {
+    "total": 0,
+    "shown": 0,
+    "truncated": false
+  },
+  "evidence": {
+    "receipt": "D:\\silminseller_project\\silminseller\\.archify\\system-silminseller-20261013-150739\\purchase-order.th.finalize.json",
+    "summaryReceipt": "D:\\silminseller_project\\silminseller\\.archify\\system-silminseller-20261013-150739\\purchase-order.th.finalize-summary.json",
+    "browserCheckReceipt": "D:\\silminseller_project\\silminseller\\.archify\\system-silminseller-20261013-150739\\purchase-order.th.browser-check.json"
+  },
+  "update": {
+    "status": "current",
+    "installedVersion": "3.0.1",
+    "availableVersion": "3.0.1",
+    "releaseNotes": null,
+    "checkedAt": "2026-10-13T07:51:18.863Z",
+    "source": "cache",
+    "noticeRequired": false,
+    "noticeText": null
+  },
+  "visualReview": "not-requested",
+  "durationMs": 1952
+}

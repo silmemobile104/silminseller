@@ -1,0 +1,38 @@
+[
+  {
+    "id": "login",
+    "type": "sequence"
+  },
+  {
+    "id": "pos-sale",
+    "type": "workflow"
+  },
+  {
+    "id": "transfer",
+    "type": "lifecycle"
+  },
+  {
+    "id": "purchase-order",
+    "type": "lifecycle"
+  },
+  {
+    "id": "finance-receivable",
+    "type": "lifecycle"
+  },
+  {
+    "id": "deposit",
+    "type": "lifecycle"
+  },
+  {
+    "id": "stock-audit",
+    "type": "lifecycle"
+  },
+  {
+    "id": "stock-flow",
+    "type": "dataflow"
+  },
+  {
+    "id": "money-flow",
+    "type": "dataflow"
+  }
+]

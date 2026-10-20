@@ -1,0 +1,120 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "Daily stock count",
+    "output": ".archify/menu-map-20261013-154117/count.en.html",
+    "quality_profile": "showcase",
+    "locale": "en"
+  },
+  "lanes": [
+    {
+      "id": "branch",
+      "label": "Branch staff · Daily stock count"
+    },
+    {
+      "id": "team",
+      "label": "Stock team · Stock count review"
+    }
+  ],
+  "mainPath": [
+    "open",
+    "scan",
+    "send",
+    "review",
+    "close"
+  ],
+  "nodes": [
+    {
+      "id": "open",
+      "lane": "branch",
+      "col": 0,
+      "type": "backend",
+      "label": "Round opens",
+      "sublabel": "every day, per branch",
+      "width": 160
+    },
+    {
+      "id": "scan",
+      "lane": "branch",
+      "col": 1,
+      "type": "frontend",
+      "label": "Scan devices",
+      "sublabel": "IMEI + box photo",
+      "width": 160
+    },
+    {
+      "id": "send",
+      "lane": "branch",
+      "col": 2,
+      "type": "frontend",
+      "label": "Send for review",
+      "sublabel": "status รอการอนุมัติ",
+      "width": 160
+    },
+    {
+      "id": "review",
+      "lane": "team",
+      "col": 3,
+      "type": "security",
+      "label": "Check each item",
+      "sublabel": "ผ่าน / ไม่ผ่าน / ตรวจใหม่",
+      "width": 160
+    },
+    {
+      "id": "close",
+      "lane": "team",
+      "col": 4,
+      "type": "database",
+      "label": "Close the round",
+      "sublabel": "status อนุมัติแล้ว",
+      "width": 160
+    }
+  ],
+  "edges": [
+    {
+      "id": "k1",
+      "from": "open",
+      "to": "scan",
+      "variant": "emphasis"
+    },
+    {
+      "id": "k2",
+      "from": "scan",
+      "to": "send",
+      "variant": "emphasis"
+    },
+    {
+      "id": "k3",
+      "from": "send",
+      "to": "review",
+      "variant": "emphasis"
+    },
+    {
+      "id": "k4",
+      "from": "review",
+      "to": "close",
+      "label": "all judged",
+      "variant": "emphasis"
+    },
+    {
+      "id": "k5",
+      "from": "review",
+      "to": "scan",
+      "label": "scan again",
+      "variant": "dashed",
+      "role": "return"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Good to know",
+      "items": [
+        "Counts devices only, compared with the branch inventory",
+        "A round cannot close while any item is still waiting for a verdict",
+        "The count itself does not change stock quantities"
+      ]
+    }
+  ]
+}

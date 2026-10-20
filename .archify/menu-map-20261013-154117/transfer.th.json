@@ -1,0 +1,152 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "โอนย้ายสินค้าระหว่างสาขา",
+    "output": ".archify/menu-map-20261013-154117/transfer.th.html",
+    "quality_profile": "showcase",
+    "legend": {
+      "mode": "auto",
+      "entries": {
+        "frontend": {
+          "label": "หน้าที่ผู้ใช้เห็น"
+        },
+        "backend": {
+          "label": "ขั้นตอนของระบบ"
+        },
+        "database": {
+          "label": "ข้อมูลที่ถูกบันทึก"
+        },
+        "cloud": {
+          "label": "ภาพรวม"
+        },
+        "security": {
+          "label": "ตรวจสอบ / สิทธิ์"
+        },
+        "messagebus": {
+          "label": "ขั้นตอนระหว่างกัน"
+        },
+        "external": {
+          "label": "ผู้ใช้งาน"
+        }
+      }
+    }
+  },
+  "lanes": [
+    {
+      "id": "src",
+      "label": "สาขาต้นทาง"
+    },
+    {
+      "id": "dst",
+      "label": "สาขาปลายทาง"
+    },
+    {
+      "id": "hist",
+      "label": "ประวัติการเคลื่อนไหว"
+    }
+  ],
+  "mainPath": [
+    "create",
+    "wait",
+    "recv",
+    "log"
+  ],
+  "nodes": [
+    {
+      "id": "create",
+      "lane": "src",
+      "col": 0,
+      "type": "frontend",
+      "label": "สร้างรายการโอนย้าย",
+      "sublabel": "เลือกสาขา + สแกน IMEI",
+      "width": 160
+    },
+    {
+      "id": "cancel",
+      "lane": "src",
+      "col": 3,
+      "type": "security",
+      "label": "ยกเลิกการโอนย้าย",
+      "sublabel": "สถานะ ยกเลิกแล้ว",
+      "width": 160
+    },
+    {
+      "id": "wait",
+      "lane": "dst",
+      "col": 1,
+      "type": "messagebus",
+      "label": "รอดำเนินการ",
+      "sublabel": "มีแจ้งเตือนที่สาขาปลายทาง",
+      "width": 160
+    },
+    {
+      "id": "recv",
+      "lane": "dst",
+      "col": 2,
+      "type": "frontend",
+      "label": "ยืนยันรับเข้า",
+      "sublabel": "สถานะ รับเข้าแล้ว",
+      "width": 160
+    },
+    {
+      "id": "log",
+      "lane": "hist",
+      "col": 3,
+      "type": "database",
+      "label": "บันทึกประวัติ",
+      "sublabel": "ส่งโอน · รับโอน · ยกเลิก",
+      "width": 160
+    }
+  ],
+  "edges": [
+    {
+      "id": "t1",
+      "from": "create",
+      "to": "wait",
+      "label": "ส่งไป",
+      "variant": "emphasis"
+    },
+    {
+      "id": "t2",
+      "from": "wait",
+      "to": "recv",
+      "label": "ของถึง",
+      "variant": "emphasis"
+    },
+    {
+      "id": "t3",
+      "from": "recv",
+      "to": "log",
+      "variant": "dashed"
+    },
+    {
+      "id": "t4",
+      "from": "wait",
+      "to": "cancel",
+      "label": "ก่อนรับเข้า",
+      "variant": "security",
+      "role": "error"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "ใครทำอะไร",
+      "items": [
+        "สาขาต้นทางสร้างรายการ และยกเลิกได้ตอนรอดำเนินการ",
+        "สาขาปลายทางเป็นผู้ยืนยันรับเข้า",
+        "แอดมินและผู้จัดการทำแทนได้ทุกสาขา"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "สต็อก",
+      "items": [
+        "สต็อกออกจากต้นทางทันทีที่สร้างรายการ",
+        "เข้าปลายทางเมื่อรับเข้า; ถ้ายกเลิกจะกลับต้นทาง",
+        "ใส่หมายเหตุได้ และเห็นใน ประวัติทั้งหมด"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,225 @@
+{
+  "schema_version": 1,
+  "diagram_type": "sequence",
+  "meta": {
+    "title": "Login and Session Sequence",
+    "viewBox": [
+      1000,
+      560
+    ],
+    "column_fit": "spread",
+    "output": ".archify/system-silminseller-20261013-150739/login.en.html",
+    "quality_profile": "showcase",
+    "repository": {
+      "url": "https://github.com/silmemobile104/silminseller.git",
+      "provider": "github",
+      "revision": "dcf694923433006facd22a0fd73d70b1cb354edb"
+    },
+    "locale": "en"
+  },
+  "participants": [
+    {
+      "id": "staff",
+      "type": "external",
+      "label": "Staff",
+      "sublabel": "emp_id + password"
+    },
+    {
+      "id": "web",
+      "type": "frontend",
+      "label": "Web shell",
+      "sublabel": "index.html · script.js",
+      "sources": [
+        {
+          "path": "script.js",
+          "line": 53,
+          "end_line": 53,
+          "label": "authFetch"
+        }
+      ]
+    },
+    {
+      "id": "api",
+      "type": "backend",
+      "label": "POST /auth/login",
+      "sublabel": "routes/api.js",
+      "sources": [
+        {
+          "path": "routes/api.js",
+          "line": 1650,
+          "end_line": 1770,
+          "label": "login handler"
+        }
+      ]
+    },
+    {
+      "id": "db",
+      "type": "database",
+      "label": "MongoDB",
+      "sublabel": "Employee · Role",
+      "sources": [
+        {
+          "path": "routes/api.js",
+          "line": 1662,
+          "end_line": 1662,
+          "label": "Employee.findOne"
+        },
+        {
+          "path": "routes/api.js",
+          "line": 1689,
+          "end_line": 1689,
+          "label": "Role.findOne"
+        }
+      ]
+    },
+    {
+      "id": "audit",
+      "type": "database",
+      "label": "AuditLog",
+      "sublabel": "LOGIN entry",
+      "sources": [
+        {
+          "path": "routes/api.js",
+          "line": 1738,
+          "end_line": 1747,
+          "label": "AuditLog.create"
+        }
+      ]
+    }
+  ],
+  "segments": [
+    {
+      "from": 150,
+      "to": 245,
+      "label": "Credentials"
+    },
+    {
+      "from": 250,
+      "to": 325,
+      "label": "Permissions"
+    },
+    {
+      "from": 330,
+      "to": 410,
+      "label": "Session"
+    }
+  ],
+  "messages": [
+    {
+      "id": "enter",
+      "from": "staff",
+      "to": "web",
+      "y": 165,
+      "label": "enter ID + password"
+    },
+    {
+      "id": "post-login",
+      "from": "web",
+      "to": "api",
+      "y": 195,
+      "label": "POST /auth/login",
+      "variant": "emphasis"
+    },
+    {
+      "id": "find-emp",
+      "from": "api",
+      "to": "db",
+      "y": 225,
+      "label": "find Employee by emp_id"
+    },
+    {
+      "id": "emp-row",
+      "from": "db",
+      "to": "api",
+      "y": 253,
+      "label": "employee + hash",
+      "variant": "return"
+    },
+    {
+      "id": "find-role",
+      "from": "api",
+      "to": "db",
+      "y": 283,
+      "label": "bcrypt ok → load Role"
+    },
+    {
+      "id": "role-row",
+      "from": "db",
+      "to": "api",
+      "y": 311,
+      "label": "permissions",
+      "variant": "return"
+    },
+    {
+      "id": "log-login",
+      "from": "api",
+      "to": "audit",
+      "y": 341,
+      "label": "log LOGIN",
+      "variant": "dashed"
+    },
+    {
+      "id": "jwt",
+      "from": "api",
+      "to": "web",
+      "y": 369,
+      "label": "JWT 24h + permissions",
+      "variant": "security"
+    },
+    {
+      "id": "open-view",
+      "from": "web",
+      "to": "staff",
+      "y": 397,
+      "label": "open default view",
+      "variant": "return"
+    }
+  ],
+  "activations": [
+    {
+      "participant": "web",
+      "from": 185,
+      "to": 405,
+      "type": "frontend"
+    },
+    {
+      "participant": "api",
+      "from": 190,
+      "to": 375,
+      "type": "backend"
+    },
+    {
+      "participant": "db",
+      "from": 220,
+      "to": 318,
+      "type": "database"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "rose",
+      "title": "Rejected",
+      "items": [
+        "Missing fields → 400",
+        "Unknown ID or wrong password → 401 (same message)",
+        "Suspended account → 403"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Token",
+      "items": [
+        "JWT carries employee, role, branch and permissions",
+        "Missing new permissions fall back to related ones"
+      ]
+    },
+    {
+      "dot": "cyan",
+      "title": "Every later call",
+      "items": [
+        "verifyToken checks the Bearer JWT on all /api routes",
+        "401 = expired session; 403 = lacks permission"
+      ]
+    }
+  ]
+}

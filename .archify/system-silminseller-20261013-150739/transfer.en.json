@@ -1,0 +1,147 @@
+{
+  "schema_version": 2,
+  "diagram_type": "lifecycle",
+  "meta": {
+    "title": "Branch Transfer Lifecycle",
+    "output": ".archify/system-silminseller-20261013-150739/transfer.en.html",
+    "quality_profile": "showcase",
+    "repository": {
+      "url": "https://github.com/silmemobile104/silminseller.git",
+      "provider": "github",
+      "revision": "dcf694923433006facd22a0fd73d70b1cb354edb"
+    },
+    "locale": "en"
+  },
+  "lanes": [
+    {
+      "id": "main",
+      "label": "Source branch"
+    },
+    {
+      "id": "dest",
+      "label": "Destination branch"
+    },
+    {
+      "id": "terminal",
+      "label": "Cancelled"
+    }
+  ],
+  "states": [
+    {
+      "id": "create",
+      "type": "start",
+      "label": "Created",
+      "sublabel": "stock leaves source",
+      "lane": "main",
+      "col": 0,
+      "step": "01",
+      "tag": "manage_transfers",
+      "sources": [
+        {
+          "path": "routes/api.js",
+          "line": 2482,
+          "end_line": 2597,
+          "label": "POST /transfers"
+        }
+      ]
+    },
+    {
+      "id": "pending",
+      "type": "waiting",
+      "label": "Pending",
+      "sublabel": "in transit",
+      "lane": "main",
+      "col": 1,
+      "step": "02",
+      "tag": "รอดำเนินการ",
+      "sources": [
+        {
+          "path": "models/index.js",
+          "line": 449,
+          "end_line": 449,
+          "label": "status default"
+        }
+      ]
+    },
+    {
+      "id": "received",
+      "type": "success",
+      "label": "Received",
+      "sublabel": "stock enters destination",
+      "lane": "dest",
+      "col": 1,
+      "tag": "รับเข้าแล้ว",
+      "sources": [
+        {
+          "path": "routes/api.js",
+          "line": 2606,
+          "end_line": 2693,
+          "label": "PUT /transfers/:id/receive"
+        }
+      ]
+    },
+    {
+      "id": "cancelled",
+      "type": "failure",
+      "label": "Cancelled",
+      "sublabel": "stock returns to source",
+      "lane": "terminal",
+      "col": 1,
+      "tag": "ยกเลิกแล้ว",
+      "sources": [
+        {
+          "path": "routes/api.js",
+          "line": 2697,
+          "end_line": 2783,
+          "label": "PUT /transfers/:id/cancel"
+        }
+      ]
+    }
+  ],
+  "transitions": [
+    {
+      "from": "create",
+      "to": "pending",
+      "label": "saved"
+    },
+    {
+      "from": "pending",
+      "to": "received",
+      "label": "destination confirms",
+      "variant": "emphasis"
+    },
+    {
+      "from": "pending",
+      "to": "cancelled",
+      "label": "source cancels",
+      "variant": "security"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Who may act",
+      "items": [
+        "Staff: source branch cancels, destination branch receives",
+        "Administrator / แอดมิน / ผู้จัดการ bypass the branch check",
+        "All three actions need manage_transfers"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Stock effects",
+      "items": [
+        "Create deducts IMEIs or quantity at the source",
+        "Receive adds them to the destination (no duplicate IMEI)",
+        "Every step logs a Movement with the transfer number"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Note",
+      "items": [
+        "The creator may add a note (max 500 chars), shown in history"
+      ]
+    }
+  ]
+}

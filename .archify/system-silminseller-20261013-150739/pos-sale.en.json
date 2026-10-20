@@ -1,0 +1,342 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "POS Sale Workflow (POST /transactions)",
+    "output": ".archify/system-silminseller-20261013-150739/pos-sale.en.html",
+    "quality_profile": "showcase",
+    "repository": {
+      "url": "https://github.com/silmemobile104/silminseller.git",
+      "provider": "github",
+      "revision": "dcf694923433006facd22a0fd73d70b1cb354edb"
+    },
+    "locale": "en"
+  },
+  "lanes": [
+    {
+      "id": "ui",
+      "label": "Cashier · POS page"
+    },
+    {
+      "id": "api",
+      "label": "Sale endpoint"
+    },
+    {
+      "id": "exc",
+      "label": "Rejected",
+      "variant": "exception"
+    },
+    {
+      "id": "records",
+      "label": "Stock + money records"
+    }
+  ],
+  "mainPath": [
+    "cart",
+    "pos",
+    "validate",
+    "deduct",
+    "savetx",
+    "after",
+    "done"
+  ],
+  "nodes": [
+    {
+      "id": "cart",
+      "lane": "ui",
+      "col": 0,
+      "type": "external",
+      "label": "Cashier",
+      "sublabel": "builds the cart",
+      "width": 156
+    },
+    {
+      "id": "pos",
+      "lane": "ui",
+      "col": 1,
+      "type": "frontend",
+      "label": "POS page",
+      "sublabel": "authFetch POST",
+      "width": 156
+    },
+    {
+      "id": "done",
+      "lane": "ui",
+      "col": 5,
+      "type": "frontend",
+      "label": "Receipt",
+      "sublabel": "201 + INV number",
+      "width": 156
+    },
+    {
+      "id": "validate",
+      "lane": "api",
+      "col": 1,
+      "type": "backend",
+      "label": "Validate",
+      "sublabel": "items + payment",
+      "sources": [
+        {
+          "path": "routes/api.js",
+          "line": 2787,
+          "end_line": 2803,
+          "label": "basic validation"
+        }
+      ],
+      "width": 156
+    },
+    {
+      "id": "deduct",
+      "lane": "api",
+      "col": 2,
+      "type": "backend",
+      "width": 156,
+      "label": "Deduct stock",
+      "sublabel": "item by item, own branch",
+      "sources": [
+        {
+          "path": "routes/api.js",
+          "line": 2837,
+          "end_line": 2883,
+          "label": "per-item deduction"
+        }
+      ]
+    },
+    {
+      "id": "savetx",
+      "lane": "api",
+      "col": 3,
+      "type": "backend",
+      "label": "Save sale",
+      "sublabel": "Transaction INV-…",
+      "sources": [
+        {
+          "path": "routes/api.js",
+          "line": 2901,
+          "end_line": 2934,
+          "label": "Transaction.save"
+        }
+      ],
+      "width": 156
+    },
+    {
+      "id": "after",
+      "lane": "api",
+      "col": 4,
+      "type": "backend",
+      "label": "Post-sale",
+      "sublabel": "deposit + financing",
+      "sources": [
+        {
+          "path": "routes/api.js",
+          "line": 2939,
+          "end_line": 2950,
+          "label": "applied deposit"
+        },
+        {
+          "path": "routes/api.js",
+          "line": 2955,
+          "end_line": 3005,
+          "label": "financing split"
+        }
+      ],
+      "width": 156
+    },
+    {
+      "id": "reject",
+      "lane": "exc",
+      "col": 1,
+      "type": "security",
+      "label": "Reject",
+      "sublabel": "400 / 404",
+      "sources": [
+        {
+          "path": "routes/api.js",
+          "line": 2851,
+          "end_line": 2877,
+          "label": "missing branch/IMEI/qty"
+        }
+      ],
+      "width": 156
+    },
+    {
+      "id": "bal",
+      "lane": "records",
+      "col": 2,
+      "type": "database",
+      "label": "stock_balances",
+      "sublabel": "−IMEI or −qty",
+      "sources": [
+        {
+          "path": "models/index.js",
+          "line": 297,
+          "end_line": 297,
+          "label": "Product"
+        }
+      ],
+      "width": 156
+    },
+    {
+      "id": "mov",
+      "lane": "records",
+      "col": 3,
+      "type": "database",
+      "label": "Movement",
+      "sublabel": "action ขายออก",
+      "sources": [
+        {
+          "path": "routes/api.js",
+          "line": 2887,
+          "end_line": 2897,
+          "label": "createMovementsForItem"
+        }
+      ],
+      "width": 156
+    },
+    {
+      "id": "cash",
+      "lane": "records",
+      "col": 4,
+      "type": "database",
+      "label": "CashMovement",
+      "sublabel": "immediate cash",
+      "sources": [
+        {
+          "path": "routes/api.js",
+          "line": 2981,
+          "end_line": 2990,
+          "label": "CashMovement.save"
+        }
+      ],
+      "width": 156
+    },
+    {
+      "id": "recv",
+      "lane": "records",
+      "col": 5,
+      "type": "database",
+      "label": "Receivable",
+      "sublabel": "FinanceReceivable",
+      "width": 156,
+      "sources": [
+        {
+          "path": "routes/api.js",
+          "line": 2993,
+          "end_line": 3004,
+          "label": "FinanceReceivable.save"
+        }
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "id": "e-cart",
+      "from": "cart",
+      "to": "pos"
+    },
+    {
+      "id": "e-submit",
+      "from": "pos",
+      "to": "validate",
+      "label": "POST",
+      "variant": "emphasis"
+    },
+    {
+      "id": "e-valid",
+      "from": "validate",
+      "to": "deduct"
+    },
+    {
+      "id": "e-deduct",
+      "from": "deduct",
+      "to": "savetx"
+    },
+    {
+      "id": "e-save",
+      "from": "savetx",
+      "to": "after"
+    },
+    {
+      "id": "e-done",
+      "from": "after",
+      "to": "done",
+      "variant": "emphasis",
+      "role": "return"
+    },
+    {
+      "id": "e-bad",
+      "from": "validate",
+      "to": "reject",
+      "label": "invalid",
+      "variant": "security",
+      "role": "error"
+    },
+    {
+      "id": "e-miss",
+      "from": "deduct",
+      "to": "reject",
+      "label": "no stock",
+      "variant": "security",
+      "role": "error"
+    },
+    {
+      "id": "e-bal",
+      "from": "deduct",
+      "to": "bal",
+      "variant": "dashed",
+      "role": "branch"
+    },
+    {
+      "id": "e-mov",
+      "from": "bal",
+      "to": "mov",
+      "label": "log",
+      "variant": "dashed",
+      "role": "branch"
+    },
+    {
+      "id": "e-cash",
+      "from": "after",
+      "to": "cash",
+      "label": "financing",
+      "variant": "dashed",
+      "role": "branch"
+    },
+    {
+      "id": "e-recv",
+      "from": "cash",
+      "to": "recv",
+      "label": "queue",
+      "variant": "dashed",
+      "role": "branch"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "emerald",
+      "title": "Normal sale",
+      "items": [
+        "Branch comes from the request or the user",
+        "IMEI items remove the IMEI; accessories reduce quantity",
+        "Cash sale starts as paid; financing starts unpaid"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Cancel sale",
+      "items": [
+        "Needs cancel_sale or admin/manager, plus a reason",
+        "Puts stock back and logs Movement ยกเลิกการขาย",
+        "Does not touch FinanceReceivable or CashMovement"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Known gap",
+      "items": [
+        "Items are saved one by one; a later failure keeps earlier deductions",
+        "No transaction wraps the loop"
+      ]
+    }
+  ]
+}

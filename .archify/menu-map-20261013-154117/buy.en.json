@@ -1,0 +1,125 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "Ordering and receiving goods (PO)",
+    "output": ".archify/menu-map-20261013-154117/buy.en.html",
+    "quality_profile": "showcase",
+    "locale": "en"
+  },
+  "lanes": [
+    {
+      "id": "buyer",
+      "label": "Purchasing · Purchase orders (PO)"
+    },
+    {
+      "id": "branch",
+      "label": "Branch"
+    },
+    {
+      "id": "stock",
+      "label": "Stock & warehouse"
+    }
+  ],
+  "mainPath": [
+    "create",
+    "arrive",
+    "scan",
+    "in"
+  ],
+  "nodes": [
+    {
+      "id": "create",
+      "lane": "buyer",
+      "col": 0,
+      "type": "frontend",
+      "label": "Create PO",
+      "sublabel": "status รอจัดส่ง",
+      "width": 160
+    },
+    {
+      "id": "pay",
+      "lane": "buyer",
+      "col": 4,
+      "type": "security",
+      "label": "Pay the PO",
+      "sublabel": "การชำระเงินระบบสั่งซื้อ",
+      "width": 160
+    },
+    {
+      "id": "arrive",
+      "lane": "branch",
+      "col": 1,
+      "type": "frontend",
+      "label": "Arrival report",
+      "sublabel": "status ของถึงสาขาแล้ว",
+      "width": 160
+    },
+    {
+      "id": "scan",
+      "lane": "branch",
+      "col": 2,
+      "type": "frontend",
+      "label": "Goods receiving",
+      "sublabel": "scan IMEI · check qty",
+      "width": 160
+    },
+    {
+      "id": "in",
+      "lane": "stock",
+      "col": 3,
+      "type": "backend",
+      "label": "Stock goes up",
+      "sublabel": "status นำเข้าสำเร็จ",
+      "width": 160
+    }
+  ],
+  "edges": [
+    {
+      "id": "b1",
+      "from": "create",
+      "to": "arrive",
+      "label": "goods shipped",
+      "variant": "emphasis"
+    },
+    {
+      "id": "b2",
+      "from": "arrive",
+      "to": "scan",
+      "label": "scan"
+    },
+    {
+      "id": "b3",
+      "from": "scan",
+      "to": "in",
+      "label": "confirm",
+      "variant": "emphasis"
+    },
+    {
+      "id": "b4",
+      "from": "create",
+      "to": "pay",
+      "label": "pay when due",
+      "variant": "dashed",
+      "role": "branch"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Good to know",
+      "items": [
+        "Part of the goods arrived: the PO goes back to รอจัดส่ง for the rest",
+        "A PO can be edited or cancelled only before goods ship",
+        "Paying is separate from receiving; it needs its own permission"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Goods without a PO",
+      "items": [
+        "Branch reports them; a manager approves in Import approval"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,357 @@
+{
+  "schema_version": 1,
+  "diagram_type": "dataflow",
+  "meta": {
+    "title": "Money and Accounting Data Flow",
+    "viewBox": [
+      1060,
+      683
+    ],
+    "output": ".archify/system-silminseller-20261013-150739/money-flow.en.html",
+    "quality_profile": "showcase",
+    "repository": {
+      "url": "https://github.com/silmemobile104/silminseller.git",
+      "provider": "github",
+      "revision": "dcf694923433006facd22a0fd73d70b1cb354edb"
+    },
+    "locale": "en"
+  },
+  "stages": [
+    {
+      "label": "Actions"
+    },
+    {
+      "label": "Records"
+    },
+    {
+      "label": "Reports"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sales",
+      "type": "backend",
+      "label": "Sales + verify",
+      "sublabel": "POST /transactions",
+      "stage": 0,
+      "row": 0,
+      "width": 140,
+      "sources": [
+        {
+          "path": "routes/api.js",
+          "line": 2787,
+          "end_line": 3025,
+          "label": "sale"
+        },
+        {
+          "path": "routes/api.js",
+          "line": 3418,
+          "end_line": 3622,
+          "label": "order verification"
+        }
+      ]
+    },
+    {
+      "id": "dep",
+      "type": "backend",
+      "label": "Deposits",
+      "sublabel": "/deposits",
+      "stage": 0,
+      "row": 1,
+      "width": 150,
+      "sources": [
+        {
+          "path": "routes/api.js",
+          "line": 6907,
+          "end_line": 7123,
+          "label": "deposit routes"
+        }
+      ]
+    },
+    {
+      "id": "exp",
+      "type": "backend",
+      "label": "Expenses",
+      "sublabel": "accounting/expenses",
+      "stage": 0,
+      "row": 2,
+      "width": 150,
+      "sources": [
+        {
+          "path": "routes/api.js",
+          "line": 5961,
+          "end_line": 6009,
+          "label": "POST /accounting/expenses"
+        }
+      ]
+    },
+    {
+      "id": "popay",
+      "type": "security",
+      "label": "PO payment",
+      "sublabel": "pay_po",
+      "yOffset": -18,
+      "stage": 0,
+      "row": 3,
+      "width": 150,
+      "sources": [
+        {
+          "path": "routes/api.js",
+          "line": 6012,
+          "end_line": 6100,
+          "label": "po-pay"
+        }
+      ]
+    },
+    {
+      "id": "pv",
+      "type": "backend",
+      "label": "Voucher",
+      "sublabel": "acct/disbursements",
+      "yOffset": -36,
+      "stage": 0,
+      "row": 4,
+      "width": 150,
+      "sources": [
+        {
+          "path": "routes/accounting.js",
+          "line": 554,
+          "end_line": 661,
+          "label": "POST /disbursements"
+        }
+      ]
+    },
+    {
+      "id": "tx",
+      "type": "database",
+      "label": "Sales bills",
+      "sublabel": "bills + receivable",
+      "stage": 1,
+      "row": 0,
+      "width": 140,
+      "sources": [
+        {
+          "path": "models/index.js",
+          "line": 436,
+          "end_line": 436,
+          "label": "Transaction"
+        },
+        {
+          "path": "models/index.js",
+          "line": 599,
+          "end_line": 599,
+          "label": "FinanceReceivable"
+        }
+      ]
+    },
+    {
+      "id": "cash",
+      "type": "database",
+      "label": "CashMovement",
+      "sublabel": "income / expense",
+      "stage": 1,
+      "row": 1,
+      "height": 178,
+      "width": 140,
+      "sources": [
+        {
+          "path": "models/index.js",
+          "line": 578,
+          "end_line": 578,
+          "label": "CashMovement"
+        }
+      ]
+    },
+    {
+      "id": "ppay",
+      "type": "database",
+      "label": "PO payments",
+      "sublabel": "paid + cash line",
+      "yOffset": -18,
+      "stage": 1,
+      "row": 3,
+      "width": 140,
+      "sources": [
+        {
+          "path": "models/index.js",
+          "line": 543,
+          "end_line": 543,
+          "label": "PurchaseOrder"
+        }
+      ]
+    },
+    {
+      "id": "vch",
+      "type": "database",
+      "label": "Vouchers",
+      "sublabel": "accounts + cash",
+      "yOffset": -36,
+      "stage": 1,
+      "row": 4,
+      "width": 140,
+      "sources": [
+        {
+          "path": "models/index.js",
+          "line": 780,
+          "end_line": 780,
+          "label": "DisbursementVoucher"
+        }
+      ]
+    },
+    {
+      "id": "pnl",
+      "type": "frontend",
+      "label": "Profit & loss",
+      "sublabel": "profit-loss",
+      "stage": 2,
+      "row": 0,
+      "height": 292,
+      "width": 140,
+      "sources": [
+        {
+          "path": "routes/api.js",
+          "line": 5750,
+          "end_line": 5958,
+          "label": "profit-loss"
+        }
+      ]
+    },
+    {
+      "id": "ap",
+      "type": "frontend",
+      "label": "Payables",
+      "sublabel": "ap-summary",
+      "yOffset": -18,
+      "stage": 2,
+      "row": 3,
+      "width": 140,
+      "sources": [
+        {
+          "path": "routes/api.js",
+          "line": 6256,
+          "end_line": 6317,
+          "label": "ap-summary"
+        },
+        {
+          "path": "routes/api.js",
+          "line": 2179,
+          "end_line": 2199,
+          "label": "credit usage"
+        }
+      ]
+    },
+    {
+      "id": "pnl2",
+      "type": "frontend",
+      "label": "P&L by account",
+      "sublabel": "pnl-report",
+      "yOffset": -36,
+      "stage": 2,
+      "row": 4,
+      "width": 140,
+      "sources": [
+        {
+          "path": "routes/accounting.js",
+          "line": 690,
+          "end_line": 774,
+          "label": "pnl-report"
+        }
+      ]
+    }
+  ],
+  "flows": [
+    {
+      "id": "m-sales-tx",
+      "from": "sales",
+      "to": "tx",
+      "label": "bill",
+      "classification": "sale",
+      "variant": "emphasis"
+    },
+    {
+      "id": "m-dep-cash",
+      "from": "dep",
+      "to": "cash",
+      "label": "deposit",
+      "classification": "income"
+    },
+    {
+      "id": "m-exp-cash",
+      "from": "exp",
+      "to": "cash",
+      "label": "expense",
+      "classification": "expense"
+    },
+    {
+      "id": "m-po-ppay",
+      "from": "popay",
+      "to": "ppay",
+      "label": "paid",
+      "classification": "payable",
+      "variant": "security"
+    },
+    {
+      "id": "m-pv-vch",
+      "from": "pv",
+      "to": "vch",
+      "label": "voucher",
+      "classification": "expense"
+    },
+    {
+      "id": "m-tx-pnl",
+      "from": "tx",
+      "to": "pnl",
+      "label": "revenue",
+      "classification": "read"
+    },
+    {
+      "id": "m-cash-pnl",
+      "from": "cash",
+      "to": "pnl",
+      "label": "other",
+      "classification": "read"
+    },
+    {
+      "id": "m-ppay-ap",
+      "from": "ppay",
+      "to": "ap",
+      "label": "owed",
+      "classification": "read"
+    },
+    {
+      "id": "m-vch-pnl2",
+      "from": "vch",
+      "to": "pnl2",
+      "label": "by account",
+      "classification": "read"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Two reports",
+      "items": [
+        "profit-loss: sales bills + CashMovement + imported POs + PO cash lines",
+        "pnl-report: voucher debits per account + sales bills"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Where cash lines come from",
+      "items": [
+        "A plain cash sale writes no CashMovement; revenue comes from the bill",
+        "Financing writes the immediate cash and a receivable",
+        "Delivering a deposit also creates a cash-sale bill",
+        "PO payments and vouchers each add an expense line to CashMovement"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Access",
+      "items": [
+        "All /api/acct routes require manage_finance",
+        "PO payment requires pay_po"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "receiptId": "b7b718e3-ce34-4254-813a-0013ce9d7cfb",
+  "status": "current",
+  "command": "deliver",
+  "type": "workflow",
+  "input": "D:\\silminseller_project\\silminseller\\.archify\\system-silminseller-20261013-150739\\pos-sale.en.json",
+  "output": "D:\\silminseller_project\\silminseller\\.archify\\system-silminseller-20261013-150739\\pos-sale.en.html",
+  "specification": {
+    "sha256": "2c99af3e78f29587f6fa452ed213264645693019e918182099fe7664865a7598",
+    "bytes": 7085
+  },
+  "artifact": {
+    "sha256": "9735d2225d32c79cb2d5be4267d4da484543246258613b18611104fe628bf76e",
+    "bytes": 765407
+  }
+}

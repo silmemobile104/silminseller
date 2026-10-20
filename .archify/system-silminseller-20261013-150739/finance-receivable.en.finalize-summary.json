@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "ok": true,
+  "command": "finalize",
+  "status": "pass",
+  "type": "lifecycle",
+  "quality": "showcase",
+  "specification": {
+    "path": "D:\\silminseller_project\\silminseller\\.archify\\system-silminseller-20261013-150739\\finance-receivable.en.json",
+    "sha256": "db27754220b9028b744c5ad9a050702b91d8bb82ba68f0ec7c73cafbd43e6dd8",
+    "bytes": 3912
+  },
+  "artifact": {
+    "path": "D:\\silminseller_project\\silminseller\\.archify\\system-silminseller-20261013-150739\\finance-receivable.en.html",
+    "sha256": "6f343cd667afbe1b969bb856ebd16f6984532ea4d5ef032ba6154b8050b1332c",
+    "bytes": 755623
+  },
+  "gates": {
+    "validate": "pass",
+    "deliver": "pass",
+    "check": "pass",
+    "browser-check": "pass"
+  },
+  "diagnostics": [],
+  "diagnosticSummary": {
+    "total": 0,
+    "shown": 0,
+    "truncated": false
+  },
+  "evidence": {
+    "receipt": "D:\\silminseller_project\\silminseller\\.archify\\system-silminseller-20261013-150739\\finance-receivable.en.finalize.json",
+    "summaryReceipt": "D:\\silminseller_project\\silminseller\\.archify\\system-silminseller-20261013-150739\\finance-receivable.en.finalize-summary.json",
+    "browserCheckReceipt": "D:\\silminseller_project\\silminseller\\.archify\\system-silminseller-20261013-150739\\finance-receivable.en.browser-check.json"
+  },
+  "update": {
+    "status": "current",
+    "installedVersion": "3.0.1",
+    "availableVersion": "3.0.1",
+    "releaseNotes": null,
+    "checkedAt": "2026-10-13T07:51:18.863Z",
+    "source": "cache",
+    "noticeRequired": false,
+    "noticeText": null
+  },
+  "visualReview": "not-requested",
+  "durationMs": 1600
+}

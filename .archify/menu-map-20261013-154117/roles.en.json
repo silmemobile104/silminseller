@@ -1,0 +1,185 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Roles, permissions and menus",
+    "output": ".archify/menu-map-20261013-154117/roles.en.html",
+    "quality_profile": "showcase",
+    "locale": "en"
+  },
+  "components": [
+    {
+      "id": "emp",
+      "type": "external",
+      "label": "Staff member",
+      "sublabel": "Staff: set role + branch",
+      "pos": [
+        40,
+        300
+      ],
+      "size": [
+        160,
+        64
+      ]
+    },
+    {
+      "id": "role",
+      "type": "security",
+      "label": "Role",
+      "sublabel": "Admin · Manager · Sales",
+      "pos": [
+        290,
+        300
+      ],
+      "size": [
+        160,
+        64
+      ]
+    },
+    {
+      "id": "perm",
+      "type": "security",
+      "label": "Permissions",
+      "sublabel": "Roles & permissions",
+      "pos": [
+        540,
+        300
+      ],
+      "size": [
+        160,
+        64
+      ]
+    },
+    {
+      "id": "menu",
+      "type": "frontend",
+      "label": "Menus shown",
+      "sublabel": "hidden if no permission",
+      "pos": [
+        790,
+        300
+      ],
+      "size": [
+        160,
+        64
+      ]
+    },
+    {
+      "id": "branch",
+      "type": "database",
+      "label": "Branch",
+      "sublabel": "Branches: staff belong to one",
+      "pos": [
+        40,
+        450
+      ],
+      "size": [
+        160,
+        64
+      ]
+    },
+    {
+      "id": "data",
+      "type": "backend",
+      "label": "Data shown",
+      "sublabel": "own branch or all branches",
+      "pos": [
+        790,
+        450
+      ],
+      "size": [
+        160,
+        64
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "id": "r-has",
+      "from": "emp",
+      "to": "role",
+      "label": "has"
+    },
+    {
+      "id": "r-gets",
+      "from": "role",
+      "to": "perm",
+      "label": "gets",
+      "variant": "security"
+    },
+    {
+      "id": "r-open",
+      "from": "perm",
+      "to": "menu",
+      "label": "opens",
+      "variant": "emphasis"
+    },
+    {
+      "id": "r-in",
+      "from": "emp",
+      "to": "branch",
+      "label": "works at",
+      "fromSide": "bottom",
+      "toSide": "top"
+    },
+    {
+      "id": "r-scope",
+      "from": "perm",
+      "to": "data",
+      "label": "branch filter",
+      "variant": "security",
+      "fromSide": "bottom",
+      "toSide": "left"
+    },
+    {
+      "id": "r-show",
+      "from": "menu",
+      "to": "data",
+      "label": "shows",
+      "fromSide": "bottom",
+      "toSide": "top"
+    },
+    {
+      "id": "r-own",
+      "from": "branch",
+      "to": "data",
+      "label": "own branch",
+      "variant": "dashed"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "rose",
+      "title": "Admin (แอดมิน)",
+      "items": [
+        "Every menu, every branch"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Manager (ผู้จัดการ)",
+      "items": [
+        "Every menu except Roles & permissions, Import approval, Database management",
+        "Sees all branches"
+      ]
+    },
+    {
+      "dot": "cyan",
+      "title": "Sales staff (พนักงานขาย)",
+      "items": [
+        "Daily sales summary, Sales, Members, Warranty check, Sales history, Deposits",
+        "Stock management, Stock issue, Movement history, Daily stock count",
+        "Arrival report, Goods receiving",
+        "Own branch only"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Custom roles",
+      "items": [
+        "Tick permissions one by one in Roles & permissions",
+        "The same page can show every branch for one role"
+      ]
+    }
+  ]
+}

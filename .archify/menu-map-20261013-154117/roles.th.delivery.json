@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "receiptId": "b17ac9e3-54b4-42d1-9756-eb5a49a4ea06",
+  "status": "current",
+  "command": "deliver",
+  "type": "architecture",
+  "input": "D:\\silminseller_project\\silminseller\\.archify\\menu-map-20261013-154117\\roles.th.json",
+  "output": "D:\\silminseller_project\\silminseller\\.archify\\menu-map-20261013-154117\\roles.th.html",
+  "specification": {
+    "sha256": "e7437e2459695980e0f698ec9e6cf22e8275a50d75e63eb06f1bf2037d6f57d8",
+    "bytes": 5541
+  },
+  "artifact": {
+    "sha256": "5cdbd43f82ff82aec8ef65e88fdccecc7e464b19233de10f2c57fa027c177e14",
+    "bytes": 759055
+  }
+}

@@ -1,0 +1,30 @@
+[
+  {
+    "id": "overview",
+    "type": "architecture"
+  },
+  {
+    "id": "roles",
+    "type": "architecture"
+  },
+  {
+    "id": "sell",
+    "type": "workflow"
+  },
+  {
+    "id": "buy",
+    "type": "workflow"
+  },
+  {
+    "id": "transfer",
+    "type": "workflow"
+  },
+  {
+    "id": "deposit",
+    "type": "workflow"
+  },
+  {
+    "id": "count",
+    "type": "workflow"
+  }
+]

@@ -1,0 +1,177 @@
+{
+  "schema_version": 2,
+  "diagram_type": "lifecycle",
+  "meta": {
+    "title": "Finance Receivable Lifecycle",
+    "output": ".archify/system-silminseller-20261013-150739/finance-receivable.en.html",
+    "quality_profile": "showcase",
+    "repository": {
+      "url": "https://github.com/silmemobile104/silminseller.git",
+      "provider": "github",
+      "revision": "dcf694923433006facd22a0fd73d70b1cb354edb"
+    },
+    "locale": "en"
+  },
+  "lanes": [
+    {
+      "id": "main",
+      "label": "Receivable status"
+    },
+    {
+      "id": "terminal",
+      "label": "Cancelled"
+    }
+  ],
+  "states": [
+    {
+      "id": "awaiting",
+      "type": "start",
+      "label": "Awaiting approval",
+      "sublabel": "created by a financed sale",
+      "lane": "main",
+      "col": 0,
+      "step": "01",
+      "tag": "default",
+      "sources": [
+        {
+          "path": "routes/api.js",
+          "line": 2993,
+          "end_line": 3004,
+          "label": "created with the sale"
+        },
+        {
+          "path": "models/index.js",
+          "line": 589,
+          "end_line": 589,
+          "label": "status enum"
+        }
+      ]
+    },
+    {
+      "id": "pending",
+      "type": "waiting",
+      "label": "Transfer pending",
+      "sublabel": "finance not yet paid",
+      "lane": "main",
+      "col": 1,
+      "step": "02",
+      "tag": "ค้างโอน",
+      "sources": [
+        {
+          "path": "routes/api.js",
+          "line": 6207,
+          "end_line": 6252,
+          "label": "settle"
+        }
+      ]
+    },
+    {
+      "id": "settled",
+      "type": "success",
+      "label": "Settled",
+      "sublabel": "verified as paid",
+      "lane": "main",
+      "col": 2,
+      "step": "03",
+      "tag": "ชำระแล้ว",
+      "sources": [
+        {
+          "path": "routes/api.js",
+          "line": 3511,
+          "end_line": 3520,
+          "label": "order verification"
+        }
+      ]
+    },
+    {
+      "id": "received",
+      "type": "success",
+      "label": "Fully received",
+      "sublabel": "payout confirmed",
+      "lane": "main",
+      "col": 3,
+      "step": "04",
+      "tag": "manage_finance",
+      "sources": [
+        {
+          "path": "routes/api.js",
+          "line": 6402,
+          "end_line": 6436,
+          "label": "POST /finance/payout/:id"
+        }
+      ]
+    },
+    {
+      "id": "cancelled",
+      "type": "failure",
+      "label": "Cancelled",
+      "sublabel": "set by accounting",
+      "lane": "terminal",
+      "col": 1,
+      "sources": [
+        {
+          "path": "routes/api.js",
+          "line": 6213,
+          "end_line": 6224,
+          "label": "valid statuses"
+        }
+      ]
+    }
+  ],
+  "transitions": [
+    {
+      "from": "awaiting",
+      "to": "pending",
+      "label": "mark pending"
+    },
+    {
+      "from": "pending",
+      "to": "settled",
+      "label": "mark paid",
+      "variant": "emphasis"
+    },
+    {
+      "from": "settled",
+      "to": "received",
+      "label": "payout",
+      "variant": "emphasis"
+    },
+    {
+      "from": "settled",
+      "to": "pending",
+      "label": "re-open",
+      "variant": "dashed"
+    },
+    {
+      "from": "pending",
+      "to": "cancelled",
+      "label": "cancel",
+      "variant": "security"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Who changes it",
+      "items": [
+        "Accounting page: settle and payout need manage_finance",
+        "Order verification: paid / unpaid toggle needs verify_orders"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Reporting",
+      "items": [
+        "Settled and Fully received both count as paid",
+        "Amount = total − down payment − iCloud fee − contract fee"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Transitions are loose",
+      "items": [
+        "settle accepts any of the four statuses; arrows show common paths"
+      ]
+    }
+  ]
+}

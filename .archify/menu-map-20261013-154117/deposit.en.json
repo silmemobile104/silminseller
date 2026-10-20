@@ -1,0 +1,125 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "Deposits",
+    "output": ".archify/menu-map-20261013-154117/deposit.en.html",
+    "quality_profile": "showcase",
+    "locale": "en"
+  },
+  "lanes": [
+    {
+      "id": "dep",
+      "label": "Deposits"
+    },
+    {
+      "id": "sale",
+      "label": "Sales"
+    },
+    {
+      "id": "no",
+      "label": "Cancelled",
+      "variant": "exception"
+    }
+  ],
+  "mainPath": [
+    "take",
+    "wait",
+    "done"
+  ],
+  "nodes": [
+    {
+      "id": "take",
+      "lane": "dep",
+      "col": 0,
+      "type": "frontend",
+      "label": "Take a deposit",
+      "sublabel": "customer + product + amount",
+      "width": 160
+    },
+    {
+      "id": "wait",
+      "lane": "dep",
+      "col": 1,
+      "type": "messagebus",
+      "label": "Waiting",
+      "sublabel": "รอลูกค้ารับเครื่อง ฯลฯ",
+      "width": 160
+    },
+    {
+      "id": "done",
+      "lane": "dep",
+      "col": 4,
+      "type": "database",
+      "label": "Completed",
+      "sublabel": "linked to a bill number",
+      "width": 160
+    },
+    {
+      "id": "apply",
+      "lane": "sale",
+      "col": 3,
+      "type": "frontend",
+      "label": "Use deposit in a sale",
+      "sublabel": "pay the rest",
+      "width": 160
+    },
+    {
+      "id": "cancel",
+      "lane": "no",
+      "col": 2,
+      "type": "security",
+      "label": "Cancel deposit",
+      "sublabel": "with a reason",
+      "width": 160
+    }
+  ],
+  "edges": [
+    {
+      "id": "d1",
+      "from": "take",
+      "to": "wait",
+      "variant": "emphasis"
+    },
+    {
+      "id": "d2",
+      "from": "wait",
+      "to": "done",
+      "label": "hand over",
+      "variant": "emphasis"
+    },
+    {
+      "id": "d3",
+      "from": "wait",
+      "to": "apply",
+      "label": "or sell",
+      "variant": "dashed",
+      "role": "branch"
+    },
+    {
+      "id": "d4",
+      "from": "apply",
+      "to": "done",
+      "variant": "dashed",
+      "role": "branch"
+    },
+    {
+      "id": "d5",
+      "from": "wait",
+      "to": "cancel",
+      "variant": "security",
+      "role": "error"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Good to know",
+      "items": [
+        "While waiting, the deposit can still be edited",
+        "Four waiting steps: waiting for the customer, a transfer, goods, or purchasing",
+        "Order verification has a Deposits tab for accounting"
+      ]
+    }
+  ]
+}
