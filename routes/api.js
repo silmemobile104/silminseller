@@ -2708,10 +2708,11 @@ const getSupplierCreditUsage = async (supplierNames) => {
                 { $max: [0, { $subtract: ['$_total', { $add: [{ $ifNull: ['$paid_amount', 0] }, { $ifNull: ['$discount', 0] }] }] }] }
             ] }
         } },
-        { $group: { _id: '$supplier_name', used: { $sum: '$_outstanding' }, bill_count: { $sum: 1 } } }
+        { $group: { _id: '$supplier_name', used: { $sum: '$_outstanding' }, bill_count: { $sum: 1 }, total_ordered: { $sum: '$_total' } } }
     ]);
+    // total_ordered = ยอดสั่งซื้อสะสม (ราคาทุนรวมก่อนหักส่วนลด ไม่นับใบที่ยกเลิก), bill_count = จำนวนครั้งที่สั่ง
     const data = {};
-    rows.forEach(r => { if (r._id) data[r._id] = { used: Math.max(0, r.used), bill_count: r.bill_count }; });
+    rows.forEach(r => { if (r._id) data[r._id] = { used: Math.max(0, r.used), bill_count: r.bill_count, total_ordered: r.total_ordered || 0 }; });
     return data;
 };
 

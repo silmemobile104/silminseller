@@ -8,7 +8,7 @@
     const masterDataCodeInput = document.getElementById('master-data-code-input');
     const masterDataTypeInput = document.getElementById('master-data-type-input');
     const masterDataLimitInput = document.getElementById('master-data-limit-input');
-    // วงเงินที่ใช้ไปของผู้จัดจำหน่าย { [ชื่อ]: { used, bill_count } } — โหลดจาก /suppliers/credit-usage
+    // วงเงินที่ใช้ไปของผู้จัดจำหน่าย { [ชื่อ]: { used, bill_count, total_ordered } } — โหลดจาก /suppliers/credit-usage
     let _stCreditUsage = {};
     const stBaht = (n) => '฿' + (Number(n) || 0).toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     const stLoadCreditUsage = async () => {
@@ -369,6 +369,9 @@
         const st = stSupplierStatus(item);
         const tone = ST_TONE[st.tone];
         const sid = stEsc(item._id);
+        const usage = _stCreditUsage[item.name] || {};
+        const totalOrdered = usage.total_ordered || 0;
+        const orderCount = usage.bill_count || 0;
 
         const creditBlock = st.hasLimit
             ? `<div class="space-y-1.5">
@@ -462,6 +465,13 @@
                 </div>
             </div>
             <div class="border-t border-line pt-3">${creditBlock}</div>
+            <div class="border-t border-line pt-3 space-y-2">
+                <div class="text-xs text-ink font-semibold flex items-center gap-1.5"><i class="fa-solid fa-hand-holding-dollar" aria-hidden="true"></i> ยอดสั่งซื้อสะสม</div>
+                <div class="flex items-center justify-between rounded-lg bg-surface-tile-2/60 px-2.5 py-1.5 text-xs">
+                    <span class="text-ink">ยอดรวม <span class="text-ink/55 text-[10px]">· ${orderCount} ครั้ง</span></span>
+                    <span class="font-mono font-semibold text-ink">${stBaht(totalOrdered)}</span>
+                </div>
+            </div>
             <div class="border-t border-line pt-3 space-y-2">
                 <div class="text-xs text-ink font-semibold flex items-center gap-1.5"><i class="fa-solid fa-tag" aria-hidden="true"></i> ส่วนลดจากเคลม</div>
                 ${claimBlock}
