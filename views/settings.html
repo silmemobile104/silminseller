@@ -28,7 +28,14 @@
         </div>
 
         <!-- ฟอร์มเพิ่มข้อมูล (ข้อ 11.9) -->
-        <div class="px-6 pt-5">
+        <!-- แท็บผู้จัดจำหน่าย: แสดงแค่ปุ่มเพิ่ม กดแล้วเปิด popup กรอกข้อมูล (js/page-settings.js) -->
+        <div id="supplier-add-bar" class="hidden px-6 pt-5 flex justify-end">
+            <button id="btn-open-supplier-add" type="button"
+                class="px-5 py-2.5 rounded-xl bg-primary hover:bg-[#E2B93C] text-on-primary font-semibold text-sm transition-colors flex items-center justify-center gap-2 cursor-pointer whitespace-nowrap">
+                <i class="fa-solid fa-plus"></i> เพิ่ม
+            </button>
+        </div>
+        <div id="master-data-form-card" class="px-6 pt-5">
             <div class="elev-field bg-field rounded-xl p-4">
                 <div class="flex flex-col sm:flex-row gap-3">
                     <div class="flex-1 space-y-2">

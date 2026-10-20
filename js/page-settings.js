@@ -189,6 +189,11 @@
         if (bar) bar.classList.toggle('hidden', !isName && !isSupplier);
         const limitWrap = document.getElementById('master-data-limit-wrap');
         if (limitWrap) limitWrap.classList.toggle('hidden', currentSettingsTab !== 'supplier');
+        // ผู้จัดจำหน่าย: ซ่อนฟอร์มเดิม แสดงเฉพาะปุ่มเพิ่ม (เปิด popup)
+        const formCard = document.getElementById('master-data-form-card');
+        if (formCard) formCard.classList.toggle('hidden', isSupplier);
+        const supplierAddBar = document.getElementById('supplier-add-bar');
+        if (supplierAddBar) supplierAddBar.classList.toggle('hidden', !isSupplier);
         const colorWrap = document.getElementById('master-data-color-wrap');
         if (colorWrap) colorWrap.classList.toggle('hidden', currentSettingsTab !== 'productcolor');
 
@@ -275,6 +280,87 @@
             },
             'บันทึก', 'success', 'max-w-md');
     };
+
+    // ฟอร์มแก้ไขชื่อสินค้าประเภทอุปกรณ์เสริม: ชื่อ + รหัส (บังคับ) ในหน้าต่างเดียว
+    const stAccessoryEditDialog = (id, oldName, oldCode, curName = oldName, curCode = oldCode) => {
+        const fieldCls = 'elev-field w-full px-4 py-2.5 rounded-xl bg-field text-ink focus:ring-2 focus:ring-accent-ink focus:outline-none transition-all text-sm';
+        const labelCls = 'text-ink font-medium flex items-center gap-2 text-xs mb-1.5';
+        showConfirm('แก้ไขชื่อสินค้า',
+            `<div class="text-left space-y-4">
+                <div>
+                    <label for="st-acc-edit-name" class="${labelCls}"><i class="fa-solid fa-mobile-screen"></i> ชื่อสินค้า <span class="text-red-500">*</span></label>
+                    <input type="text" id="st-acc-edit-name" autocomplete="off" value="${stEsc(curName)}" class="${fieldCls}">
+                </div>
+                <div>
+                    <label for="st-acc-edit-code" class="${labelCls}"><i class="fa-solid fa-barcode"></i> รหัสชื่อสินค้า <span class="text-red-500">*</span></label>
+                    <input type="text" id="st-acc-edit-code" autocomplete="off" value="${stEsc(curCode)}" placeholder="เช่น CASE-11" class="${fieldCls} font-mono">
+                </div>
+            </div>`,
+            () => {
+                const nameVal = (document.getElementById('st-acc-edit-name')?.value || '').trim();
+                const codeVal = (document.getElementById('st-acc-edit-code')?.value || '').trim();
+                if (!nameVal || !codeVal) {
+                    showToast(!nameVal ? 'กรุณาระบุชื่อสินค้า' : 'กรุณาระบุรหัสชื่อสินค้าของอุปกรณ์เสริม', 'error');
+                    return setTimeout(() => stAccessoryEditDialog(id, oldName, oldCode, nameVal, codeVal), 350);
+                }
+                if (nameVal === oldName && codeVal === oldCode) return;
+                editMasterData(id, nameVal, codeVal);
+            },
+            'บันทึก', 'success', 'max-w-md');
+    };
+
+    // popup เพิ่มผู้จัดจำหน่าย: ชื่อ + วงเงิน (บังคับ) — ถ้าข้อมูลไม่ผ่านจะแจ้งเตือนแล้วเปิดใหม่พร้อมค่าที่กรอกไว้
+    const stSupplierAddDialog = (oldName = '', oldLimit = '') => {
+        const fieldCls = 'elev-field w-full px-4 py-2.5 rounded-xl bg-field text-ink focus:ring-2 focus:ring-accent-ink focus:outline-none transition-all text-sm';
+        const labelCls = 'text-ink font-medium flex items-center gap-2 text-xs mb-1.5';
+        showConfirm('เพิ่มผู้จัดจำหน่าย',
+            `<div class="text-left space-y-4">
+                <div>
+                    <label for="st-supplier-add-name" class="${labelCls}"><i class="fa-solid fa-truck-front"></i> ชื่อผู้จัดจำหน่าย <span class="text-red-500">*</span></label>
+                    <input type="text" id="st-supplier-add-name" autocomplete="off" value="${stEsc(oldName)}" placeholder="เช่น SYSNEX" class="${fieldCls}">
+                </div>
+                <div>
+                    <label for="st-supplier-add-limit" class="${labelCls}"><i class="fa-solid fa-hand-holding-dollar"></i> วงเงิน (บาท) <span class="text-red-500">*</span></label>
+                    <input type="number" id="st-supplier-add-limit" min="1" step="any" inputmode="decimal" value="${stEsc(oldLimit)}" placeholder="เช่น 500000"
+                        class="${fieldCls} font-mono text-right">
+                </div>
+            </div>`,
+            async () => {
+                const nameVal = (document.getElementById('st-supplier-add-name')?.value || '').trim();
+                const limitRaw = (document.getElementById('st-supplier-add-limit')?.value || '').trim();
+                const lim = Number(limitRaw);
+                if (!nameVal) {
+                    showToast('กรุณาระบุชื่อผู้จัดจำหน่าย', 'error');
+                    return setTimeout(() => stSupplierAddDialog(nameVal, limitRaw), 350);
+                }
+                if (!limitRaw || !Number.isFinite(lim) || lim <= 0) {
+                    showToast('กรุณาระบุวงเงิน (ต้องมากกว่า 0)', 'error');
+                    return setTimeout(() => stSupplierAddDialog(nameVal, limitRaw), 350);
+                }
+                try {
+                    const response = await authFetch(`${API_BASE_URL}/master/supplier`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ name: nameVal, credit_limit: lim })
+                    });
+                    const result = await response.json();
+                    if (result.success) {
+                        showToast('เพิ่มข้อมูลสำเร็จ');
+                        await fetchMasterData();
+                    } else {
+                        showToast('เกิดข้อผิดพลาด: ' + result.message, 'error');
+                        setTimeout(() => stSupplierAddDialog(nameVal, limitRaw), 350);
+                    }
+                } catch (error) {
+                    console.error('Error adding supplier:', error);
+                    showToast('ไม่สามารถเพิ่มข้อมูลได้', 'error');
+                }
+            },
+            'เพิ่ม', 'success', 'max-w-md');
+    };
+
+    const btnOpenSupplierAdd = document.getElementById('btn-open-supplier-add');
+    if (btnOpenSupplierAdd) btnOpenSupplierAdd.addEventListener('click', () => stSupplierAddDialog());
 
     // การ์ดผู้จัดจำหน่าย (ดีไซน์ Figma "Desktop - 53"): ชื่อ + ป้ายสถานะ + ปุ่มแก้ไข/ลบ,
     // วงเงิน/แถบใช้ไป/คงเหลือ, ส่วนลดจากเคลมแยกเครื่อง/อุปกรณ์เสริม + ตารางใบเคลมที่กางดูได้
@@ -524,20 +610,19 @@
                 const oldCode = btn.dataset.code || '';
 
                 if (currentSettingsTab === 'productname') {
-                    showPrompt('แก้ไขชื่อสินค้า', oldName, (newName) => {
-                        if (!newName || !newName.trim()) return;
-                        const row = stDataOf('productname').find(x => String(x._id) === String(id));
-                        const rowType = stTypes().find(t => String(t._id) === (row ? stNameTypeId(row) : ''));
-                        const needCode = !!rowType && String(rowType.name).trim() === ST_ACCESSORY_TYPE_NAME;
-                        showPrompt(needCode ? 'แก้ไขรหัสชื่อสินค้า (บังคับกรอก)' : 'แก้ไขรหัสชื่อสินค้า (ปล่อยว่างไว้ได้)', oldCode, (newCode) => {
-                            const finalName = newName.trim();
-                            const finalCode = (newCode || '').trim();
-                            if (needCode && !finalCode) return showToast('กรุณาระบุรหัสชื่อสินค้าของอุปกรณ์เสริม', 'error');
-                            if (finalName !== oldName || finalCode !== oldCode) {
-                                editMasterData(id, finalName, finalCode);
+                    const row = stDataOf('productname').find(x => String(x._id) === String(id));
+                    const rowType = stTypes().find(t => String(t._id) === (row ? stNameTypeId(row) : ''));
+                    const isAccessory = !!rowType && String(rowType.name).trim() === ST_ACCESSORY_TYPE_NAME;
+                    // แก้รหัสได้เฉพาะอุปกรณ์เสริม ประเภทอื่นแก้แค่ชื่อและคงรหัสเดิมไว้
+                    if (isAccessory) {
+                        stAccessoryEditDialog(id, oldName, oldCode);
+                    } else {
+                        showPrompt('แก้ไขชื่อสินค้า', oldName, (newName) => {
+                            if (newName && newName.trim() && newName.trim() !== oldName) {
+                                editMasterData(id, newName.trim(), oldCode);
                             }
                         });
-                    });
+                    }
                 } else if (currentSettingsTab === 'supplier') {
                     stSupplierEditDialog(id, oldName, btn.dataset.limit || '');
                 } else {
