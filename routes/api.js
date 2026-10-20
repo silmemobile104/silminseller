@@ -3791,6 +3791,7 @@ router.get('/order-verifications', async (req, res) => {
 
         const transactions = await Transaction.find(filter)
             .populate('employee_id', 'name emp_id')
+            .populate('member_id', 'prefix first_name last_name phone')
             .sort({ created_at: -1 })
             .lean();
 
@@ -3810,7 +3811,7 @@ router.get('/order-verifications', async (req, res) => {
         const [md, products, receivables, updaters] = await Promise.all([
             mdCache.get(),
             productIds.length
-                ? Product.find({ _id: { $in: productIds } }).select('product_code type_id color_id unit_id').lean()
+                ? Product.find({ _id: { $in: productIds } }).select('product_code type_id color_id unit_id cost_price').lean()
                 : Promise.resolve([]),
             txnIds.length
                 ? FinanceReceivable.find({ transaction_id: { $in: txnIds } }).lean()
@@ -3856,6 +3857,7 @@ router.get('/order-verifications', async (req, res) => {
                     imei_sold: it.imei_sold || '',
                     quantity: Number(it.quantity) || 1,
                     price: Number(it.price) || 0,
+                    cost_price: p ? (Number(p.cost_price) || 0) : 0,
                     is_gift: it.is_gift === true,
                     type_name: typeDoc ? typeDoc.name : '',
                     color_name: colorDoc ? colorDoc.name : '',
@@ -3878,6 +3880,13 @@ router.get('/order-verifications', async (req, res) => {
             const receivable = receivableMap.get(String(t._id)) || null;
             const branchDoc = t.branch_id ? maps.branches.get(String(t.branch_id)) : null;
             const paymentType = t.payment_type || t.payment_method;
+            // ส่วนลดท้ายบิล: POS ไม่ได้เก็บเป็นฟิลด์ เก็บแค่ยอดสุทธิใน total_amount
+            // สูตรตอนขายคือ total = รายการสินค้า - ส่วนลด - มัดจำ + ค่าใบสัญญา + ค่าระบบ จึงย้อนกลับหาส่วนลดได้
+            // (ตรวจกับบิลเก่าทั้งหมดแล้วได้ 0 ตรงกัน — ติดลบถือว่าไม่มีส่วนลด)
+            const itemsSubtotal = items.filter(it => !it.is_gift).reduce((sum, it) => sum + it.price * it.quantity, 0);
+            const discountAmount = Math.max(0, Math.round((itemsSubtotal
+                + (Number(t.contract_fee) || 0) + (Number(t.icloud_fee) || 0)
+                - (Number(t.applied_deposit_amount) || 0) - (Number(t.total_amount) || 0)) * 100) / 100);
             const financeSheet = buildOrderFinanceSheet(t, deviceItems, fcDoc, receivable);
             // บิลผ่อน: เงินสด + เงินโอน ต้องเท่ากับเงินรับรวม (ดาวน์ + ค่าใบสัญญา + ค่าระบบ) — ไม่ใช่แค่ดาวน์
             const financeSplit = paymentType === 'จัดไฟแนนซ์'
@@ -3890,6 +3899,10 @@ router.get('/order-verifications', async (req, res) => {
                 created_at: t.created_at,
                 branch_name: branchDoc ? branchDoc.name : '-',
                 employee_name: t.employee_id ? t.employee_id.name : '-',
+                customer_name: t.member_id
+                    ? `${t.member_id.prefix || ''}${t.member_id.first_name || ''} ${t.member_id.last_name || ''}`.trim()
+                    : '',
+                customer_phone: t.member_id ? (t.member_id.phone || '') : '',
                 status: t.status,
                 payment_status: resolvePaymentStatus(t, receivable),
                 verify_status: t.verify_status || 'รอตรวจสอบ',
@@ -3898,6 +3911,7 @@ router.get('/order-verifications', async (req, res) => {
                 finance_company_name: fcDoc ? fcDoc.name : (t.finance_company || ''),
                 finance_months: Number(t.finance_months) || 0,
                 total_amount: Number(t.total_amount) || 0,
+                discount_amount: discountAmount,
                 // รูปแบบการชำระเงินของลูกค้า — บิลผ่อนแยกเงินรับรวมเป็นสด/โอน ส่วนบิลซื้อสดใช้ยอดหลัก
                 cash_amount: financeSplit ? financeSplit.cash : (Number(t.cash_amount) || 0),
                 transfer_amount: financeSplit ? financeSplit.transfer : (Number(t.transfer_amount) || 0),

@@ -7,7 +7,7 @@
 //    หน้านี้มีหน้าที่แค่จัดรูปแบบการแสดงผล ห้ามคำนวณสูตรเงินซ้ำที่ฝั่ง frontend
 //    ไม่งั้นสองที่จะเพี้ยนจากกันเงียบๆ เวลามีคนแก้สูตรข้างใดข้างหนึ่ง
 (function () {
-    const OV_COLS = 9;
+    const OV_COLS = 13;
 
     const ovSearch = document.getElementById('order-verification-search');
     const ovStatus = document.getElementById('order-verification-status');
@@ -30,6 +30,18 @@
     const ovProductTypeContainer = document.getElementById('order-verification-product-type-container');
 
     const ovStatusMenu = document.getElementById('order-verification-status-menu');
+
+    // โมดัลพิมพ์รายงานสรุปผลการดำเนินงาน (ปุ่ม "ส่งออกรายงาน" บนหัวหน้า)
+    const ovReportModal = document.getElementById('modal-ov-report');
+    const ovReportPreview = document.getElementById('ov-report-preview');
+    const ovReportBranch = document.getElementById('ov-report-branch');
+    const ovReportStart = document.getElementById('ov-report-start');
+    const ovReportEnd = document.getElementById('ov-report-end');
+    const btnOvReportOpen = document.getElementById('btn-ov-report-open');
+    const btnOvReportClose = document.getElementById('btn-ov-report-close');
+    const btnOvReportCancel = document.getElementById('btn-ov-report-cancel');
+    const btnOvReportExcel = document.getElementById('btn-ov-report-excel');
+    const btnOvReportPrint = document.getElementById('btn-ov-report-print');
 
     const ovDetailModal = document.getElementById('modal-order-verification-detail');
     const btnOvDetailClose = document.getElementById('btn-order-verification-detail-close');
@@ -140,8 +152,12 @@
             html += `
                 <tr>
                     <td class="px-6 py-4">${bar('w-32')}</td>
+                    <td class="px-6 py-4">${bar('w-28')}</td>
                     <td class="px-6 py-4"><div class="space-y-2">${bar('w-48')}${bar('w-36')}</div></td>
+                    <td class="px-6 py-4">${bar('w-28')}</td>
+                    <td class="px-6 py-4">${bar('w-8')}</td>
                     <td class="px-6 py-4">${bar('w-24')}</td>
+                    <td class="px-6 py-4">${bar('w-20')}</td>
                     <td class="px-6 py-4">${bar('w-20')}</td>
                     <td class="px-6 py-4">${bar('w-24 h-6')}</td>
                     <td class="px-6 py-4">${bar('w-24 h-6')}</td>
@@ -207,27 +223,31 @@
         const dot = firstItem && window.productColorDot
             ? window.productColorDot(firstItem.color_name)
             : '';
-        const imeiText = firstItem && firstItem.imei_sold
-            ? `IMEI : ${ovEsc(firstItem.imei_sold)}`
-            : (firstItem && firstItem.product_code ? `รหัส : ${ovEsc(firstItem.product_code)}` : '-');
+        const dash = '<span class="text-ink/50">-</span>';
         const t = ovDateParts(row.created_at);
-        // ราคาเครื่อง = ราคาเดิมของเครื่องในบิล (ตัวเดียวกับที่ใช้คิดทุนเช่าซื้อ) บิลที่ขายแต่อุปกรณ์เสริมจึงเป็น 0
+        // ราคาขาย = ราคาเดิมของเครื่องในบิล (ตัวเดียวกับที่ใช้คิดทุนเช่าซื้อ) บิลที่ขายแต่อุปกรณ์เสริมจึงเป็น 0
         const devicePrice = (row.finance && row.finance.full_price) || 0;
+        const costPrice = firstItem ? (firstItem.cost_price || 0) : 0;
 
         tr.innerHTML = `
             <td class="px-6 py-4 text-ink">
                 <span class="font-mono">${t.date}</span>
                 <span class="font-mono text-ink/70 ml-2">${t.time}</span>
             </td>
+            <td class="px-6 py-4 text-ink">${row.customer_name ? ovEsc(row.customer_name) : dash}</td>
             <td class="px-6 py-4">
                 <p class="font-medium text-ink flex items-center gap-2">
                     ${dot}<span>${ovEsc(firstItem ? firstItem.product_name : '-')}</span>
                     ${extraCount > 0 ? `<span class="text-xs text-ink/70">และอีก ${extraCount} รายการ</span>` : ''}
                 </p>
-                <p class="text-xs text-ink/70 mt-0.5">${imeiText}</p>
             </td>
+            <td class="px-6 py-4 text-ink font-mono">${firstItem && (firstItem.product_code || firstItem.imei_sold)
+                ? `<div>${firstItem.product_code ? ovEsc(firstItem.product_code) : dash}</div>${firstItem.imei_sold ? `<div class="text-xs text-ink/70 mt-0.5">${ovEsc(firstItem.imei_sold)}</div>` : ''}`
+                : dash}</td>
+            <td class="px-6 py-4 text-ink font-mono text-right">${firstItem ? firstItem.quantity : dash}</td>
             <td class="px-6 py-4 text-ink">${ovEsc(ovSaleTypeText(row))}</td>
-            <td class="px-6 py-4 text-ink font-mono">${devicePrice > 0 ? ovBahtShort(devicePrice) : '<span class="text-ink/50">-</span>'}</td>
+            <td class="px-6 py-4 text-ink font-mono">${costPrice > 0 ? ovBahtShort(costPrice) : dash}</td>
+            <td class="px-6 py-4 text-ink font-mono">${devicePrice > 0 ? ovBahtShort(devicePrice) : dash}</td>
             <td class="px-6 py-4">${ovStatusPill(row)}</td>
             <td class="px-6 py-4">${ovVerifyBadge(row)}</td>
             <td class="px-6 py-4 text-ink">${ovEsc(row.branch_name || '-')}</td>
@@ -776,6 +796,15 @@
                         select.appendChild(option);
                     });
                 });
+                if (ovReportBranch) {
+                    ovReportBranch.innerHTML = '<option value="">-- ทุกสาขา --</option>';
+                    result.data.forEach(branch => {
+                        const option = document.createElement('option');
+                        option.value = branch._id;
+                        option.textContent = branch.name;
+                        ovReportBranch.appendChild(option);
+                    });
+                }
             }
         } catch (err) {
             console.error('[ORDER-VERIFICATION] Error loading branches:', err);
@@ -975,6 +1004,8 @@
             }).join('') || '<p class="text-ink/50 italic">ไม่มีรายการสินค้า</p>';
         }
 
+        const discount = Number(row.discount_amount) || 0;
+        ovSetText('order-detail-discount', discount > 0 ? `-${ovBaht(discount)}` : ovBaht(0));
         ovSetText('order-detail-contract-fee', ovBaht(f.contract_fee));
         ovSetText('order-detail-icloud-fee', ovBaht(f.icloud_fee));
         ovSetText('order-detail-down', ovBaht(f.down_payment));
@@ -1291,6 +1322,299 @@
     }
     if (btnOvDetailSave) btnOvDetailSave.addEventListener('click', saveOrderDetail);
     if (btnOvDetailCancel) btnOvDetailCancel.addEventListener('click', closeOrderDetailModal);
+
+    // ==========================================
+    // รายงานสรุปผลการดำเนินงาน (รายงานรายละเอียดการขาย)
+    // ==========================================
+    // ดึงจาก /order-verifications ตัวเดียวกับตาราง แต่ใช้เงื่อนไขของโมดัลเอง (สาขา/ช่วงวันที่) ไม่ผูกกับตัวกรองของหน้า
+    // ตัวเลขทุกช่องมาจากข้อมูลบิลตรงๆ: รวมเงิน = จำนวน x ราคา, ต้นทุน = ต้นทุนต่อชิ้น x จำนวน, กำไร = รวมเงิน - ต้นทุน
+    // ส่วนลดเป็นระดับบิล (discount_amount จากเซิร์ฟเวอร์) ไม่มีแยกรายรายการ จึงกระจายลงสินค้าตามสัดส่วนราคา
+    // เศษสตางค์ตกที่รายการสุดท้ายที่ไม่ใช่ของแถม เพื่อให้ผลรวมส่วนลดทุกแถวเท่ากับส่วนลดของบิลพอดี
+    // กำไร = สุทธิ (รวมเงิน - ส่วนลด) - ต้นทุน
+    let ovReportLines = [];
+    let ovReportMeta = { branchText: '-- ทุกสาขา --', dateText: 'ข้อมูลทั้งหมด' };
+    let ovReportSeq = 0; // กันผลของคำขอเก่าทับผลใหม่เวลาเปลี่ยนเงื่อนไขรัวๆ
+
+    const OV_REPORT_HEADERS = ['เลขที่', 'วันที่', 'เอกสาร', 'ลูกค้า', 'โทร', 'วิธีการชำระ', 'รหัสสินค้า/บริการ',
+        'ชื่อสินค้า/บริการ', 'จำนวน', 'ราคา', 'ส่วนลด', 'รวมเงิน', 'ต้นทุน', 'กำไร/ขาดทุน', 'สุทธิ'];
+    // คอลัมน์ที่เป็นตัวเลข (ชิดขวา) เริ่มที่ index 8 เป็นต้นไป
+    const OV_REPORT_NUM_FROM = 8;
+
+    // CSS เดียวกันทั้งพรีวิวในโมดัลและหน้าต่างพิมพ์ — ผูกกับ .ovr เพื่อไม่ไปชนสไตล์ของหน้า
+    const OV_REPORT_CSS = `
+        .ovr { background: #fff; color: #000; padding: 20px 24px; font-family: 'Sarabun', 'Prompt', 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif; }
+        .ovr h2 { margin: 0 0 4px; font-size: 22px; font-weight: 700; }
+        .ovr .ovr-sub { margin: 0 0 14px; font-size: 13px; color: #444; }
+        .ovr table { width: 100%; border-collapse: collapse; font-size: 12px; }
+        .ovr th, .ovr td { border: 1px solid #000; padding: 5px 7px; vertical-align: middle; }
+        .ovr th { text-align: left; font-weight: 700; background: #fff; }
+        .ovr td.c { text-align: center; }
+        .ovr td.n, .ovr th.n { text-align: right; white-space: nowrap; }
+        .ovr td.nw { white-space: nowrap; }
+        .ovr tr.grp td { font-weight: 700; }
+        .ovr tr.tot td { font-weight: 700; }
+        .ovr .ovr-empty { padding: 28px; text-align: center; color: #555; }
+        @media print { .ovr { padding: 0; } .ovr tr { page-break-inside: avoid; } }
+    `;
+
+    const ovMoney = (n) => (Number(n) || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const ovQty = (n) => (Number(n) || 0).toLocaleString('en-US', { maximumFractionDigits: 0 });
+
+    // วันที่แบบ YYYY-MM-DD ตามเวลาท้องถิ่น (รูปแบบเดียวกับต้นแบบรายงาน)
+    const ovIsoDate = (value) => {
+        const d = new Date(value);
+        if (Number.isNaN(d.getTime())) return '-';
+        const pad = (x) => String(x).padStart(2, '0');
+        return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+    };
+
+    const ovReportPaymentText = (row) => {
+        if (row.is_financing) return ovSaleTypeText(row);
+        const cash = Number(row.cash_amount) || 0;
+        const transfer = Number(row.transfer_amount) || 0;
+        if (cash > 0 && transfer > 0) return 'เงินสด + เงินโอน';
+        return transfer > 0 ? 'โอนเงิน' : 'เงินสด';
+    };
+
+    // แตกบิลเป็นแถวรายการสินค้า — ข้ามบิลที่ยกเลิกแล้วเพราะไม่ใช่ยอดขายจริง
+    const ovBuildReportLines = (orders) => {
+        const lines = [];
+        orders.forEach(row => {
+            if (row.status === 'ยกเลิกแล้ว') return;
+            const items = row.items || [];
+            const billDiscount = Number(row.discount_amount) || 0;
+            const billSubtotal = items.reduce((sum, it) => sum + (it.is_gift ? 0 : (Number(it.quantity) || 0) * (Number(it.price) || 0)), 0);
+            let lastPayableIdx = -1;
+            items.forEach((it, i) => { if (!it.is_gift) lastPayableIdx = i; });
+            let allocated = 0;
+            items.forEach((it, idx) => {
+                const qty = Number(it.quantity) || 0;
+                const price = Number(it.price) || 0;
+                const total = qty * price;
+                let discount = 0;
+                if (!it.is_gift && billDiscount > 0 && billSubtotal > 0) {
+                    discount = idx === lastPayableIdx
+                        ? Math.round((billDiscount - allocated) * 100) / 100
+                        : Math.round(billDiscount * total / billSubtotal * 100) / 100;
+                    allocated += discount;
+                }
+                const cost = (Number(it.cost_price) || 0) * qty;
+                lines.push({
+                    receipt: row.receipt_number || '-',
+                    date: ovIsoDate(row.created_at),
+                    doc: row.receipt_number || '-',
+                    customer: row.customer_name || '-',
+                    phone: row.customer_phone || '-',
+                    payment: ovReportPaymentText(row),
+                    code: it.imei_sold || it.product_code || '-',
+                    name: it.product_name || '-',
+                    qty, price, discount, total, cost,
+                    profit: total - discount - cost,
+                    net: total - discount
+                });
+            });
+        });
+        return lines;
+    };
+
+    const ovReportTotals = (lines) => lines.reduce((t, l) => {
+        t.qty += l.qty; t.discount += l.discount; t.total += l.total;
+        t.cost += l.cost; t.profit += l.profit; t.net += l.net;
+        return t;
+    }, { qty: 0, discount: 0, total: 0, cost: 0, profit: 0, net: 0 });
+
+    const ovReportSubtitle = () => `สาขา: ${ovReportMeta.branchText} | ช่องทางชำระเงิน: ทุกช่องทาง | ${ovReportMeta.dateText}`;
+
+    const ovReportBodyHtml = () => {
+        const head = `<h2>รายงานรายละเอียดการขาย</h2><p class="ovr-sub">${ovEsc(ovReportSubtitle())}</p>`;
+        if (ovReportLines.length === 0) {
+            return `${head}<div class="ovr-empty">ไม่พบข้อมูลการขายตามเงื่อนไขที่เลือก</div>`;
+        }
+        const t = ovReportTotals(ovReportLines);
+        const rows = ovReportLines.map(l => `
+            <tr>
+                <td>${ovEsc(l.receipt)}</td>
+                <td class="c nw">${ovEsc(l.date)}</td>
+                <td>${ovEsc(l.doc)}</td>
+                <td>${ovEsc(l.customer)}</td>
+                <td class="nw">${ovEsc(l.phone)}</td>
+                <td class="c">${ovEsc(l.payment)}</td>
+                <td class="nw">${ovEsc(l.code)}</td>
+                <td>${ovEsc(l.name)}</td>
+                <td class="n">${ovQty(l.qty)}</td>
+                <td class="n">${ovMoney(l.price)}</td>
+                <td class="n">${ovMoney(l.discount)}</td>
+                <td class="n">${ovMoney(l.total)}</td>
+                <td class="n">${ovMoney(l.cost)}</td>
+                <td class="n">${ovMoney(l.profit)}</td>
+                <td class="n">${ovMoney(l.net)}</td>
+            </tr>`).join('');
+        const headCells = OV_REPORT_HEADERS
+            .map((h, i) => `<th class="${i >= OV_REPORT_NUM_FROM ? 'n' : ''}">${h}</th>`).join('');
+        return `${head}
+            <table>
+                <thead><tr>${headCells}</tr></thead>
+                <tbody>
+                    <tr class="grp"><td colspan="${OV_REPORT_HEADERS.length}">(${ovReportLines.length} items)</td></tr>
+                    ${rows}
+                    <tr class="tot">
+                        <td colspan="${OV_REPORT_NUM_FROM}"></td>
+                        <td class="n">${ovQty(t.qty)}</td>
+                        <td></td>
+                        <td class="n">${ovMoney(t.discount)}</td>
+                        <td class="n">${ovMoney(t.total)}</td>
+                        <td class="n">${ovMoney(t.cost)}</td>
+                        <td class="n">${ovMoney(t.profit)}</td>
+                        <td class="n">${ovMoney(t.net)}</td>
+                    </tr>
+                </tbody>
+            </table>`;
+    };
+
+    const ovSyncReportButtons = () => {
+        const empty = ovReportLines.length === 0;
+        if (btnOvReportExcel) btnOvReportExcel.disabled = empty;
+        if (btnOvReportPrint) btnOvReportPrint.disabled = empty;
+    };
+
+    const renderOvReportPreview = () => {
+        if (!ovReportPreview) return;
+        ovReportPreview.innerHTML = `<style>${OV_REPORT_CSS}</style><div class="ovr">${ovReportBodyHtml()}</div>`;
+        ovSyncReportButtons();
+    };
+
+    async function loadOvReport() {
+        if (!ovReportPreview) return;
+        const seq = ++ovReportSeq;
+        ovReportLines = [];
+        ovSyncReportButtons();
+        ovReportPreview.innerHTML = `<style>${OV_REPORT_CSS}</style><div class="ovr"><div class="ovr-empty"><i class="fa-solid fa-circle-notch fa-spin"></i> กำลังโหลดข้อมูลรายงาน...</div></div>`;
+
+        const branchId = ovReportBranch ? ovReportBranch.value : '';
+        const start = ovReportStart ? ovReportStart.value : '';
+        const end = ovReportEnd ? ovReportEnd.value : '';
+        ovReportMeta = {
+            branchText: branchId && ovReportBranch.options[ovReportBranch.selectedIndex]
+                ? ovReportBranch.options[ovReportBranch.selectedIndex].text
+                : '-- ทุกสาขา --',
+            dateText: start && end ? `ตั้งแต่ ${start} ถึง ${end}`
+                : start ? `ตั้งแต่ ${start}`
+                : end ? `ถึง ${end}`
+                : 'ข้อมูลทั้งหมด'
+        };
+
+        try {
+            const params = new URLSearchParams();
+            if (branchId) params.append('branch_id', branchId);
+            if (start) params.append('startDate', start);
+            if (end) params.append('endDate', end);
+            const response = await authFetch(`${API_BASE_URL}/order-verifications?${params.toString()}`);
+            const result = await response.json();
+            if (seq !== ovReportSeq) return;
+
+            if (!result.success) {
+                ovReportPreview.innerHTML = `<style>${OV_REPORT_CSS}</style><div class="ovr"><div class="ovr-empty" style="color:#b91c1c">${ovEsc(result.message || 'ไม่สามารถโหลดข้อมูลรายงานได้')}</div></div>`;
+                return;
+            }
+            ovReportLines = ovBuildReportLines(Array.isArray(result.data) ? result.data : []);
+            renderOvReportPreview();
+        } catch (err) {
+            if (seq !== ovReportSeq) return;
+            console.error('[ORDER-VERIFICATION] Error loading report:', err);
+            ovReportPreview.innerHTML = `<style>${OV_REPORT_CSS}</style><div class="ovr"><div class="ovr-empty" style="color:#b91c1c">เกิดข้อผิดพลาดในการโหลดข้อมูลรายงาน</div></div>`;
+        }
+    }
+
+    const openOvReportModal = () => {
+        if (!ovReportModal) return;
+        ovReportModal.classList.remove('opacity-0', 'pointer-events-none');
+        const content = ovReportModal.querySelector('.modal-content');
+        if (content) content.classList.remove('scale-95');
+        loadOvReport();
+    };
+
+    const closeOvReportModal = () => {
+        if (!ovReportModal) return;
+        ovReportSeq++; // ทิ้งผลของคำขอที่ยังค้างอยู่
+        ovReportModal.classList.add('opacity-0', 'pointer-events-none');
+        const content = ovReportModal.querySelector('.modal-content');
+        if (content) content.classList.add('scale-95');
+    };
+
+    // พิมพ์ผ่านหน้าต่างใหม่ — รูปแบบเดียวกับใบมัดจำใน page-deposits.js (โหลดฟอนต์ self-host จาก /vendor/fonts)
+    const printOvReport = () => {
+        if (ovReportLines.length === 0) return;
+        const printWindow = window.open('', '_blank', 'width=1200,height=800');
+        if (!printWindow) {
+            showToast('เบราว์เซอร์บล็อกหน้าต่างพิมพ์ กรุณาอนุญาต pop-up แล้วลองใหม่', 'error');
+            return;
+        }
+        printWindow.document.write(`<!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="utf-8">
+                <title>รายงานรายละเอียดการขาย</title>
+                <link rel="stylesheet" href="/vendor/fonts/fonts.css?v=2">
+                <style>
+                    @page { size: A4 landscape; margin: 10mm; }
+                    body { margin: 0; }
+                    ${OV_REPORT_CSS}
+                </style>
+            </head>
+            <body>
+                <div class="ovr">${ovReportBodyHtml()}</div>
+                <script>
+                    window.onload = function () {
+                        setTimeout(function () { window.print(); }, 300);
+                    };
+                <\/script>
+            </body>
+            </html>`);
+        printWindow.document.close();
+    };
+
+    async function exportOvReportExcel() {
+        if (ovReportLines.length === 0) return;
+        try {
+            await window.ensureXlsxLoaded();
+            const t = ovReportTotals(ovReportLines);
+            const aoa = [
+                ['รายงานรายละเอียดการขาย'],
+                [ovReportSubtitle()],
+                [],
+                OV_REPORT_HEADERS,
+                [`(${ovReportLines.length} items)`],
+                ...ovReportLines.map(l => [l.receipt, l.date, l.doc, l.customer, l.phone, l.payment, l.code, l.name,
+                    l.qty, l.price, l.discount, l.total, l.cost, l.profit, l.net]),
+                ['', '', '', '', '', '', '', '', t.qty, '', t.discount, t.total, t.cost, t.profit, t.net]
+            ];
+            const ws = XLSX.utils.aoa_to_sheet(aoa);
+            ws['!cols'] = [26, 12, 26, 24, 14, 14, 20, 34, 8, 12, 10, 14, 14, 14, 14].map(wch => ({ wch }));
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, 'รายงานการขาย');
+            XLSX.writeFile(wb, `รายงานรายละเอียดการขาย_${ovIsoDate(new Date()).replace(/-/g, '')}.xlsx`);
+        } catch (err) {
+            console.error('[ORDER-VERIFICATION] Error exporting report:', err);
+            showToast('ไม่สามารถส่งออกไฟล์ Excel ได้', 'error');
+        }
+    }
+
+    if (btnOvReportOpen) btnOvReportOpen.addEventListener('click', openOvReportModal);
+    if (btnOvReportClose) btnOvReportClose.addEventListener('click', closeOvReportModal);
+    if (btnOvReportCancel) btnOvReportCancel.addEventListener('click', closeOvReportModal);
+    if (btnOvReportPrint) btnOvReportPrint.addEventListener('click', printOvReport);
+    if (btnOvReportExcel) btnOvReportExcel.addEventListener('click', exportOvReportExcel);
+    [ovReportBranch, ovReportStart, ovReportEnd].forEach(el => {
+        if (el) el.addEventListener('change', loadOvReport);
+    });
+    if (ovReportModal) {
+        ovReportModal.addEventListener('click', (e) => {
+            if (e.target === ovReportModal) closeOvReportModal();
+        });
+    }
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && ovReportModal && !ovReportModal.classList.contains('pointer-events-none')) closeOvReportModal();
+    });
 
     // เรียกจาก switchView ตอนเข้าหน้า — โหลดตัวเลือกของตัวกรองให้พร้อมก่อนดึงรายการ
     async function initOrderVerification() {

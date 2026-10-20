@@ -5,6 +5,14 @@
             <i class="hidden md:block bi bi-journal-check text-ink w-5 text-2xl text-center"></i>
             <h3 class="hidden md:block text-2xl text-ink">ตรวจสอบออเดอร์</h3>
         </div>
+        <div class="flex items-center gap-3">
+            <!-- ปุ่มการกระทำหลักของหน้า (DESIGN.md ข้อ 11.2) — เปิดโมดัลรายงานสรุปผลการดำเนินงาน -->
+            <button id="btn-ov-report-open" type="button"
+                class="px-4 py-2 bg-[#FFE169] hover:bg-[#E2B93C] text-[#333333] font-medium rounded-xl transition-all flex items-center gap-2 w-fit cursor-pointer relative">
+                <i class="fa-solid fa-file-lines"></i>
+                <p>ส่งออกรายงาน</p>
+            </button>
+        </div>
     </div>
 
     <!-- [2] การ์ดพาเนล — แถบควบคุม + ชิปตัวกรอง + ตาราง อยู่ในใบเดียว (ข้อ 11.1) -->
@@ -105,9 +113,13 @@
                 <thead class="bg-panel/40 text-ink">
                     <tr>
                         <th class="px-6 py-4 font-semibold text-[15px]">วัน/เวลา</th>
+                        <th class="px-6 py-4 font-semibold text-[15px]">ชื่อลูกค้า</th>
                         <th class="px-6 py-4 font-semibold text-[15px] w-full">รายการขาย</th>
+                        <th class="px-6 py-4 font-semibold text-[15px]">รหัสสินค้า/IMEI</th>
+                        <th class="px-6 py-4 font-semibold text-[15px] text-right">จำนวน</th>
                         <th class="px-6 py-4 font-semibold text-[15px]">รูปแบบการขาย</th>
-                        <th class="px-6 py-4 font-semibold text-[15px]">ราคาเครื่อง</th>
+                        <th class="px-6 py-4 font-semibold text-[15px]">ราคาต้นทุน</th>
+                        <th class="px-6 py-4 font-semibold text-[15px]">ราคาขาย</th>
                         <th class="px-6 py-4 font-semibold text-[15px]">สถานะการชำระเงิน</th>
                         <th class="px-6 py-4 font-semibold text-[15px]">สถานะดำเนินการ</th>
                         <th class="px-6 py-4 font-semibold text-[15px]">สาขา</th>
@@ -274,6 +286,69 @@
     </div>
 
     <!-- ============================================================ -->
+    <!-- โมดัลพิมพ์รายงานสรุปผลการดำเนินงาน — พรีวิวรายงานรายละเอียดการขาย + Export Excel / พิมพ์ -->
+    <!-- ============================================================ -->
+    <div id="modal-ov-report"
+        class="fixed inset-0 z-[60] flex items-center justify-center backdrop-blur-[20px] backdrop-saturate-[1.8] opacity-0 pointer-events-none transition-all duration-300 p-4">
+        <div
+            class="modal-content relative w-full max-w-[1450px] max-h-[90vh] bg-canvas-elevated rounded-lg flex flex-col transform scale-95 transition-transform duration-300">
+            <!-- หัวโมดัล -->
+            <div class="flex items-center justify-between px-6 py-5 border-b border-hairline">
+                <h3 class="text-lg font-bold text-ink">พิมพ์รายงานสรุปผลการดำเนินงาน</h3>
+                <button aria-label="ปิด" id="btn-ov-report-close" type="button"
+                    class="text-ink hover:text-body-muted transition-colors cursor-pointer">
+                    <i class="fa-solid fa-xmark text-xl"></i>
+                </button>
+            </div>
+
+            <div id="ov-report-scroll" tabindex="0" class="flex-1 overflow-y-auto px-6 py-4">
+                <!-- แถบปรับเงื่อนไขรายงานก่อนพิมพ์ -->
+                <div class="flex flex-wrap items-center gap-x-4 gap-y-3 px-4 py-3 rounded-xl bg-field text-sm text-ink">
+                    <span class="font-bold flex items-center gap-2"><i class="fa-solid fa-filter"></i> ปรับเงื่อนไขรายงานก่อนพิมพ์:</span>
+                    <label for="ov-report-branch" class="flex items-center gap-2">
+                        <span class="font-semibold">สาขา:</span>
+                        <select id="ov-report-branch"
+                            class="page-filter-control bg-panel/40 cursor-pointer text-sm rounded-[0.5rem] px-3 py-1.5 text-ink focus:outline-none focus:ring-1 focus:ring-accent-ink min-w-[11rem] [&>option]:bg-panel [&>option:checked]:bg-primary [&>option:checked]:text-on-primary">
+                            <option value="">-- ทุกสาขา --</option>
+                        </select>
+                    </label>
+                    <label for="ov-report-start" class="flex items-center gap-2">
+                        <span class="font-semibold">เริ่มวันที่:</span>
+                        <input type="date" id="ov-report-start"
+                            class="page-filter-control bg-panel/40 text-sm rounded-[0.5rem] px-3 py-1.5 text-ink focus:outline-none focus:ring-1 focus:ring-accent-ink">
+                    </label>
+                    <label for="ov-report-end" class="flex items-center gap-2">
+                        <span class="font-semibold">ถึงวันที่:</span>
+                        <input type="date" id="ov-report-end"
+                            class="page-filter-control bg-panel/40 text-sm rounded-[0.5rem] px-3 py-1.5 text-ink focus:outline-none focus:ring-1 focus:ring-accent-ink">
+                    </label>
+                </div>
+
+                <!-- พรีวิวรายงาน (กระดาษขาว ตัวหนังสือดำเสมอ เพราะคือหน้าตาของใบที่จะพิมพ์) -->
+                <div id="ov-report-preview" class="mt-6 pb-4 overflow-x-auto">
+                    <!-- สร้างจาก js/page-order-verification.js -->
+                </div>
+            </div>
+
+            <!-- ปุ่มท้ายโมดัล -->
+            <div class="flex flex-wrap items-center justify-end gap-3 px-6 py-4 border-t border-hairline">
+                <button id="btn-ov-report-cancel" type="button"
+                    class="px-5 py-2.5 rounded-xl bg-field text-ink text-sm font-medium ring-1 ring-line-strong hover:ring-accent-ink transition-colors cursor-pointer">
+                    ปิดหน้าต่าง
+                </button>
+                <button id="btn-ov-report-excel" type="button"
+                    class="px-5 py-2.5 rounded-xl bg-field text-ink text-sm font-medium ring-1 ring-line-strong hover:ring-accent-ink transition-colors cursor-pointer flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
+                    <i class="fa-solid fa-file-excel"></i> Export Excel
+                </button>
+                <button id="btn-ov-report-print" type="button"
+                    class="px-5 py-2.5 rounded-xl bg-[#FFE169] hover:bg-[#E2B93C] text-[#333333] text-sm font-bold transition-colors cursor-pointer flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
+                    <i class="fa-solid fa-print"></i> เริ่มสั่งพิมพ์รายงาน
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
     <!-- โมดัลรายละเอียดออเดอร์ ("เพิ่มเติม") — ชีทคำนวณรายได้ต่อบิล  -->
     <!-- ============================================================ -->
     <div id="modal-order-verification-detail"
@@ -323,6 +398,10 @@
 
                 <!-- ชีทคำนวณ -->
                 <div class="py-4 border-b border-hairline text-sm text-ink space-y-1.5">
+                    <div class="flex justify-between gap-4">
+                        <span class="text-body-muted">ส่วนลด</span>
+                        <span id="order-detail-discount" class="font-mono">฿0.00</span>
+                    </div>
                     <div class="flex justify-between gap-4">
                         <span class="text-body-muted">ค่าใบสัญญา</span>
                         <span id="order-detail-contract-fee" class="font-mono">฿0.00</span>
