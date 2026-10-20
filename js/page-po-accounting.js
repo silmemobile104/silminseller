@@ -42,7 +42,7 @@
     };
 
     // วงเงินคงเหลือของ Supplier ที่เลือกในฟอร์มสร้างใบสั่งซื้อ
-    // ใช้ไป = ยอดชำระจริงสะสม (endpoint เดียวกับหน้าตั้งค่า) — Supplier ที่ยังไม่ตั้งวงเงินจะไม่แสดงอะไร
+    // ใช้ไป = ยอดค้างจ่ายของ PO ที่ยังไม่ยกเลิก (endpoint เดียวกับหน้าตั้งค่า) — Supplier ที่ยังไม่ตั้งวงเงินจะไม่แสดงอะไร
     // ส่วนลดจากเคลมของ Supplier ที่เลือก แสดงใต้ช่องเลือก Supplier แยกตามชนิดสินค้า (มีส่วนลดชนิดไหนก็โชว์ชนิดนั้น)
     let poClaimDiscReqId = 0;
     const refreshPoClaimDiscounts = async (supplierName) => {
@@ -5073,7 +5073,7 @@
             container.insertAdjacentHTML('beforeend', rcTableCard('รายการเครื่อง',
                 `${imeiItems.length} รุ่น`, 'rc-sec-dev-count',
                 [['ชื่อสินค้า'], ['ความจุ'], ['IMEI ที่สแกน'], ['สแกนแล้ว', 'text-center'],
-                    ['ราคาขายต่อชิ้น <span class="text-red-500">*</span>', 'text-right'], ['ราคาขายรวม', 'text-right']],
+                    ['ราคาต้นทุนต่อชิ้น', 'text-right'], ['ราคาขายต่อชิ้น <span class="text-red-500">*</span>', 'text-right'], ['ราคาขายรวม', 'text-right']],
                 'rc-imei-body'));
             const tbody = container.querySelector('#rc-imei-body');
 
@@ -5102,6 +5102,7 @@
                             <span class="text-xs text-body-muted">/ ${Number(row.dataset.pendingQty)}</span></p>
                         <div class="mt-2 mx-auto h-1 w-16 rounded-full bg-surface-chip overflow-hidden"><div class="rc-bar h-full rounded-full transition-all duration-300" style="width:0%"></div></div>
                     </td>
+                    <td class="${RC_TD} text-right font-mono">${rcBaht(item.cost_price)}</td>
                     <td class="${RC_TD} text-right">${rcPriceCell()}</td>
                     <td class="${RC_TD} text-right font-mono"><span class="rc-total"></span></td>`;
                 tbody.appendChild(row);
@@ -5118,7 +5119,7 @@
         if (qtyItems.length) {
             container.insertAdjacentHTML('beforeend', rcTableCard('รายการอุปกรณ์เสริม',
                 'นับจำนวน ไม่ต้องสแกน', 'rc-sec-acc-count',
-                [['รหัสสินค้า'], ['ชื่อสินค้า'], ['จำนวนที่รับ', 'text-center'], ['ราคาขายต่อชิ้น <span class="text-red-500">*</span>', 'text-right'], ['ราคาขายรวม', 'text-right']],
+                [['รหัสสินค้า'], ['ชื่อสินค้า'], ['จำนวนที่รับ', 'text-center'], ['ราคาต้นทุนต่อชิ้น', 'text-right'], ['ราคาขายต่อชิ้น <span class="text-red-500">*</span>', 'text-right'], ['ราคาขายรวม', 'text-right']],
                 'rc-qty-body'));
             const tbody = container.querySelector('#rc-qty-body');
 
@@ -5147,6 +5148,7 @@
                             <span class="text-xs text-body-muted">/ ${pendingQty} ${rcEsc(unit)}</span>
                         </div>
                     </td>
+                    <td class="${RC_TD} text-right font-mono">${rcBaht(item.cost_price)}</td>
                     <td class="${RC_TD} text-right">${rcPriceCell()}</td>
                     <td class="${RC_TD} text-right font-mono"><span class="rc-total"></span></td>`;
                 tbody.appendChild(row);
@@ -5415,6 +5417,7 @@
                     <h4 class="text-lg font-bold text-ink">${rcEsc(item.product_name)}</h4>
                     <p class="text-xs text-ink/60 font-mono mt-0.5">${rcEsc(item.product_code || '')}</p>
                     <p class="text-sm text-ink/70 mt-3">สั่ง ${item.ordered_qty} เครื่อง · ค้างรับ ${pendingQty} เครื่อง</p>
+                    <p class="text-sm text-ink/70 mt-1">ราคาต้นทุน <span class="font-mono text-ink">${rcBaht(item.cost_price)}</span> / เครื่อง</p>
                     <p class="text-sm text-ink font-medium mt-4">สแกนแล้ว <span id="mob-imei-count" class="font-mono">${imeis.length}</span> / ${pendingQty} เครื่อง</p>
                     <label for="mob-imei-input" class="sr-only">สแกนหรือพิมพ์ IMEI</label>
                     <input id="mob-imei-input" type="text" inputmode="numeric" autocomplete="off"
@@ -5490,6 +5493,7 @@
                     <h4 class="text-lg font-bold text-ink">${rcEsc(item.product_name)}</h4>
                     <p class="text-xs text-ink/60 font-mono mt-0.5">${rcEsc(item.product_code || '')}</p>
                     <p class="text-sm text-ink/70 mt-3">สั่ง ${item.ordered_qty} ชิ้น · ค้างรับ ${pendingQty} ชิ้น</p>
+                    <p class="text-sm text-ink/70 mt-1">ราคาต้นทุน <span class="font-mono text-ink">${rcBaht(item.cost_price)}</span> / ชิ้น</p>
 
                     <button type="button" id="mob-btn-fullqty"
                         class="w-full mt-5 py-3.5 rounded-xl bg-state-ok-tint/[0.12] text-state-ok font-semibold flex items-center justify-center gap-2 hover:bg-state-ok-tint/[0.18] active:scale-[0.98] transition-all">

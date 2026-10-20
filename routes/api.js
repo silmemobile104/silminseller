@@ -2687,14 +2687,28 @@ const parseCreditLimit = (raw) => {
     return { value: Math.round(n * 100) / 100 };
 };
 
-// วงเงินที่ใช้ไปของผู้จัดจำหน่าย = ยอดเงินที่ "ชำระจริง" สะสมของ PO ที่ไม่ถูกยกเลิก (paid_amount)
-// ส่วนลดไม่นับเป็นการใช้วงเงิน เพราะไม่ได้จ่ายเงินออกไป — จ่ายครั้งไหน วงเงินคงเหลือก็ลดลงตามยอดนั้น
+// วงเงินที่ใช้ไปของผู้จัดจำหน่าย = ยอด "ค้างจ่าย" ของ PO ที่ไม่ถูกยกเลิก (ราคาสั่งซื้อรวม - จ่ายแล้ว - ส่วนลด)
+// สร้าง PO แล้วยังไม่จ่าย → วงเงินที่ใช้ไปเพิ่มทันที, กดชำระ → ลดลงตามยอดที่จ่าย (ส่วนลดตัดยอดค้างเช่นกัน)
 const getSupplierCreditUsage = async (supplierNames) => {
     const match = { status: { $ne: 'ยกเลิก' } };
     if (supplierNames) match.supplier_name = { $in: supplierNames };
     const rows = await PurchaseOrder.aggregate([
         { $match: match },
-        { $group: { _id: '$supplier_name', used: { $sum: { $ifNull: ['$paid_amount', 0] } }, bill_count: { $sum: 1 } } }
+        { $addFields: {
+            _total: { $reduce: {
+                input: { $ifNull: ['$items', []] },
+                initialValue: 0,
+                in: { $add: ['$$value', { $multiply: [{ $ifNull: ['$$this.cost_price', 0] }, { $ifNull: ['$$this.ordered_qty', 0] }] }] }
+            } }
+        } },
+        { $addFields: {
+            _outstanding: { $cond: [
+                { $eq: ['$payment_status', 'ชำระเงินแล้ว'] },
+                0,
+                { $max: [0, { $subtract: ['$_total', { $add: [{ $ifNull: ['$paid_amount', 0] }, { $ifNull: ['$discount', 0] }] }] }] }
+            ] }
+        } },
+        { $group: { _id: '$supplier_name', used: { $sum: '$_outstanding' }, bill_count: { $sum: 1 } } }
     ]);
     const data = {};
     rows.forEach(r => { if (r._id) data[r._id] = { used: Math.max(0, r.used), bill_count: r.bill_count }; });

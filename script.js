@@ -171,7 +171,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // โหลดสคริปต์เฉพาะหน้า (js/page-<name>.js) แบบ dynamic ครั้งเดียว แล้ว cache ไว้
     // PAGE_SCRIPT_VERSION: บัมพ์เลขนี้ทุกครั้งที่แก้ไฟล์ใน js/ เพื่อไม่ให้เบราว์เซอร์ใช้ของเก่าที่ cache ไว้
-    const PAGE_SCRIPT_VERSION = 'apple_active_v174';
+    const PAGE_SCRIPT_VERSION = 'apple_active_v176';
     const __loadedPageScripts = {};
     function loadPageScript(name) {
         if (__loadedPageScripts[name]) return __loadedPageScripts[name];
@@ -2587,6 +2587,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <td class="px-6 py-4 text-ink text-sm">${d.branchName}</td>
             <td class="px-6 py-4 text-ink text-sm">${d.supplierName}</td>
             <td class="px-6 py-4"><span class="px-2.5 py-1 bg-field text-body-muted rounded-[0.375rem] text-xs font-medium">${d.categoryName}</span></td>
+            <td class="px-6 py-4 text-right text-body-muted font-mono">฿${(Number(product.cost_price) || 0).toLocaleString()}</td>
             <td class="px-6 py-4 text-right text-ink font-mono">฿${product.selling_price.toLocaleString()}</td>
             <td class="px-6 py-4 text-center text-ink font-medium">${d.stockDisplay}</td>
             <td class="px-6 py-4">
@@ -2675,7 +2676,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!append) {
                 productTableBody.innerHTML = `
                     <tr>
-                        <td colspan="9" class="px-6 py-8 text-center text-body-muted italic">
+                        <td colspan="10" class="px-6 py-8 text-center text-body-muted italic">
                             ไม่พบสินค้าที่ค้นหา
                         </td>
                     </tr>
