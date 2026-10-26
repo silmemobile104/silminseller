@@ -6601,7 +6601,7 @@
     // Connected PO Workflow: ตรวจสอบนำเข้า (Stock Manager / Approver)
     // เดินตามแบบแปลนหน้า #stock ใน DESIGN.md ข้อ 11.5 - 11.7
     // ==========================================
-    const AI_COLS = { po: 5, nonpo: 6, histPo: 5, histNonPo: 6, histDirect: 7 };
+    const AI_COLS = { po: 6, nonpo: 6, histPo: 5, histNonPo: 6, histDirect: 7 };
 
     // สลับมุมมอง List/Card ของตารางในหน้าตรวจสอบนำเข้าสินค้า (#approve-import) — จำโหมดไว้ข้ามการเข้าหน้า
     // ประกาศไว้ก่อนจุดใช้งานทั้งหมดเสมอ (ดูบทเรียนเรื่อง TDZ ของ let ในหน้า #stock-audit-review)
@@ -6682,6 +6682,16 @@
         return { ordered, scanned, total: po.grand_total || total };
     };
 
+    // รายการสินค้าในใบ PO — ชื่อสินค้า + สี (แถวละรายการ) ใช้ทั้งตารางและการ์ดของ #approve-import
+    const aiPoItemsList = (po, extraClass = '') => {
+        const items = po.items || [];
+        if (!items.length) return '<span class="text-ink/50">-</span>';
+        return items.map(item => {
+            const color = item.color ? ` <span class="text-ink/70">· ${aiEsc(item.color)}</span>` : '';
+            return `<p class="text-ink ${extraClass}">${aiEsc(item.product_name)}${color}</p>`;
+        }).join('');
+    };
+
     // ตัวเลข "สแกนแล้ว x / y" — ครบแล้วเป็นเขียว ยังไม่ครบเป็นส้ม (โทนตามข้อ 11.6)
     const aiScanCell = (scanned, ordered) => {
         const done = ordered > 0 && scanned >= ordered;
@@ -6732,6 +6742,7 @@
                 <p class="font-mono font-semibold text-accent-ink">${aiEsc(po.po_number)}</p>
                 <p class="text-xs text-ink/70 mt-0.5">สร้างเมื่อ ${aiDate(po.createdAt)}</p>
             </td>
+            <td class="px-6 py-4 text-sm">${aiPoItemsList(po)}</td>
             <td class="px-6 py-4">${aiTwoLine(aiEsc(po.supplier_name), aiEsc(branchName))}</td>
             <td class="px-6 py-4 text-center">${aiScanCell(t.scanned, t.ordered)}</td>
             <td class="px-6 py-4 text-right text-ink font-mono">${aiBaht(t.total)}</td>
@@ -6755,6 +6766,7 @@
                 <span class="shrink-0 text-xs">${aiScanCell(t.scanned, t.ordered)}</span>
             </div>
             <p class="text-ink font-medium mt-2.5 truncate">${aiEsc(po.supplier_name)}</p>
+            <div class="mt-2 text-xs space-y-0.5">${aiPoItemsList(po, 'truncate')}</div>
             <div class="grid grid-cols-2 gap-2 mt-3.5 pt-3 border-t border-hairline text-xs">
                 <div class="min-w-0">
                     <p class="text-ink/60">สาขาปลายทาง</p>

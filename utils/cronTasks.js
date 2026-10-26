@@ -76,7 +76,40 @@ function initDailyStockAuditScheduler() {
     scheduleNext();
 }
 
+// ตรวจ/ซ่อมยอดเข้า-ออกต่อรายการ (AccountItemEvent) ให้ตรงกับเอกสารต้นทางทุกคืน 03:30
+// การบันทึกยอดตามเอกสารเป็น fire-and-forget (queueRefresh) ถ้าบางครั้งพลาดหรือมีเส้นทางแก้ยอดที่ไม่ได้ผูกไว้ ยอดจะเพี้ยนเงียบๆ — job นี้คือตาข่ายกันไว้
+async function reconcileAccountEntries() {
+    try {
+        const { rebuildAll } = require('./accountEntries');
+        const summary = await rebuildAll({ dryRun: false });
+        const sources = Object.values(summary.types).reduce((s, t) => s + t.sources, 0);
+        console.log(`[Scheduler] Reconciled account entries from ${sources} source documents.`);
+    } catch (error) {
+        if (error.code === 'REBUILD_BUSY') {
+            console.log('[Scheduler] Skip account entries reconcile: rebuild already running.');
+        } else {
+            console.error('[Scheduler] Error reconciling account entries:', error);
+        }
+    }
+}
+
+function initAccountReconcileScheduler() {
+    const scheduleNext = () => {
+        const now = new Date();
+        const next = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 3, 30, 0);
+        if (next <= now) next.setDate(next.getDate() + 1);
+        setTimeout(async () => {
+            await reconcileAccountEntries();
+            scheduleNext();
+        }, next.getTime() - now.getTime());
+        console.log(`[Scheduler] Account entries reconcile scheduled in ${Math.round((next - now) / 1000 / 60)} minutes (at 03:30 AM).`);
+    };
+    scheduleNext();
+}
+
 module.exports = {
     generateDailySessionsForAllBranches,
-    initDailyStockAuditScheduler
+    initDailyStockAuditScheduler,
+    reconcileAccountEntries,
+    initAccountReconcileScheduler
 };

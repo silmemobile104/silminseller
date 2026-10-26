@@ -534,12 +534,18 @@
 <div id="view-account-tree">
     <!-- หน้า "หมวดหมู่บัญชี" — โฟลเดอร์ 3 ชั้น: หมวด (5 หมวดคงที่) > กลุ่มบัญชี > รหัสบัญชี
          เพิ่ม/แก้ไข/ปิดใช้งาน/ลบ ได้ที่ระดับกลุ่มและรหัสบัญชี — โครงสร้างวาดใน renderAcctTree (page-accounting-settings.js) -->
+    <div id="acct-tree-main" class="space-y-8">
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div class="flex items-center gap-4">
             <i class="hidden md:block fa-solid fa-folder-tree text-ink w-5 text-2xl text-center"></i>
             <h3 class="hidden md:block text-2xl text-ink">หมวดหมู่บัญชี</h3>
         </div>
         <div class="flex flex-wrap items-center gap-3">
+            <button type="button" id="btn-acct-summary-open"
+                class="px-4 py-2 bg-primary hover:bg-[#E2B93C] text-on-primary font-medium rounded-xl transition-all flex items-center gap-2 w-fit cursor-pointer">
+                <i class="fa-solid fa-file-lines"></i>
+                <p>ยอดเข้า-ออกต่อรหัสบัญชี</p>
+            </button>
             <button type="button" id="btn-acct-tree-toggle-all"
                 class="elev-field px-4 py-2 bg-field text-ink hover:ring-1 hover:ring-accent-ink font-medium rounded-xl transition-all flex items-center gap-2 w-fit cursor-pointer">
                 <i class="fa-solid fa-chevron-down"></i>
@@ -574,5 +580,73 @@
             </div>
         </div>
         <div id="acct-tree-root" class="px-6 pb-6 space-y-3"></div>
+    </div>
+    </div>
+
+    <!-- ยอดเข้า-ออกต่อรหัสบัญชี — รวมยอดของทุกรายการที่เชื่อมกับรหัสนั้น (เชื่อมได้ที่ฟอร์ม เพิ่ม/แก้ไขรหัสบัญชี)
+         ข้อมูลมาจาก AccountItemEvent ผ่าน GET /acct/account-summary · วาดใน renderAcctSummary (page-accounting-settings.js) -->
+    <div id="acct-summary-page" class="hidden space-y-6">
+    <div class="flex items-center gap-4">
+        <button type="button" id="btn-acct-summary-back"
+            class="elev-field px-4 py-2 bg-field text-ink hover:ring-1 hover:ring-accent-ink font-medium rounded-xl transition-all flex items-center gap-2 w-fit cursor-pointer">
+            <i class="fa-solid fa-arrow-left"></i>
+            <span>กลับไปหมวดหมู่บัญชี</span>
+        </button>
+    </div>
+    <div class="bg-panel/40 rounded-2xl shadow-lg overflow-hidden backdrop-blur-sm">
+        <div class="p-6 pb-4 space-y-4">
+            <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+                <h3 class="text-lg text-ink flex items-center gap-2">
+                    <i class="fa-solid fa-file-lines text-accent-ink"></i>
+                    <span>ยอดเข้า-ออกต่อรหัสบัญชี</span>
+                </h3>
+                <button type="button" id="btn-acct-summary-rebuild"
+                    class="elev-field px-4 py-2 bg-field text-ink hover:ring-1 hover:ring-accent-ink font-medium rounded-xl transition-all flex items-center gap-2 w-fit cursor-pointer text-sm">
+                    <i class="fa-solid fa-clock-rotate-left"></i>
+                    <span>บันทึกย้อนหลัง / คำนวณยอดใหม่</span>
+                </button>
+            </div>
+            <p class="text-xs text-ink/70">รายการหนึ่งที่เชื่อมกับหลายรหัสบัญชี ยอดจะลงทุกรหัสเต็มจำนวน · ยอด "ค้างรับ/ค้างจ่าย" ไม่นับรวมในเข้า-ออก</p>
+            <div class="flex flex-wrap items-end gap-3">
+                <div>
+                    <label for="acct-summary-start" class="block text-body-muted text-xs mb-1">ตั้งแต่วันที่</label>
+                    <input type="date" id="acct-summary-start"
+                        class="page-filter-control bg-panel/40 text-sm rounded-[0.5rem] px-3 py-2 text-ink focus:outline-none focus:ring-1 focus:ring-accent-ink">
+                </div>
+                <div>
+                    <label for="acct-summary-end" class="block text-body-muted text-xs mb-1">ถึงวันที่</label>
+                    <input type="date" id="acct-summary-end"
+                        class="page-filter-control bg-panel/40 text-sm rounded-[0.5rem] px-3 py-2 text-ink focus:outline-none focus:ring-1 focus:ring-accent-ink">
+                </div>
+                <div>
+                    <label for="acct-summary-branch" class="block text-body-muted text-xs mb-1">สาขา</label>
+                    <select id="acct-summary-branch"
+                        class="page-filter-control bg-panel/40 cursor-pointer text-sm rounded-[0.5rem] px-3 py-2 text-ink focus:outline-none focus:ring-1 focus:ring-accent-ink [&>option]:bg-panel [&>option:checked]:bg-primary [&>option:checked]:text-on-primary">
+                        <option value="ALL">ทุกสาขา</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="acct-summary-category" class="block text-body-muted text-xs mb-1">หมวดหมู่</label>
+                    <select id="acct-summary-category"
+                        class="page-filter-control bg-panel/40 cursor-pointer text-sm rounded-[0.5rem] px-3 py-2 text-ink focus:outline-none focus:ring-1 focus:ring-accent-ink [&>option]:bg-panel [&>option:checked]:bg-primary [&>option:checked]:text-on-primary">
+                        <option value="">ทุกหมวดหมู่</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="acct-summary-group" class="block text-body-muted text-xs mb-1">กลุ่มบัญชี</label>
+                    <select id="acct-summary-group"
+                        class="page-filter-control bg-panel/40 cursor-pointer text-sm rounded-[0.5rem] px-3 py-2 text-ink focus:outline-none focus:ring-1 focus:ring-accent-ink [&>option]:bg-panel [&>option:checked]:bg-primary [&>option:checked]:text-on-primary">
+                        <option value="">ทุกกลุ่ม</option>
+                    </select>
+                </div>
+                <button type="button" id="btn-acct-summary-load"
+                    class="px-5 py-2 bg-primary hover:bg-[#E2B93C] text-on-primary font-medium rounded-xl transition-all flex items-center gap-2 w-fit cursor-pointer text-sm">
+                    <i class="fa-solid fa-filter"></i>
+                    <span>แสดงยอด</span>
+                </button>
+            </div>
+        </div>
+        <div id="acct-summary-root" class="px-6 pb-6"></div>
+    </div>
     </div>
 </div>

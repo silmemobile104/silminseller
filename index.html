@@ -154,6 +154,12 @@
                     <span class="sidebar-text ml-3 font-medium">การมัดจำสินค้า</span>
                 </a>
 
+                <a href="#" id="nav-deposit-history" data-tooltip="ประวัติการมัดจำ"
+                    class="flex items-center px-3 py-3 rounded-xl text-body-muted hover:bg-field/50 hover:text-ink transition-all group nav-menu-item relative">
+                    <i class="bi bi-clock text-body-muted w-5 text-center text-xl"></i>
+                    <span class="sidebar-text ml-3 font-medium">ประวัติการมัดจำ</span>
+                </a>
+
                 <a href="#" id="nav-sales-history" data-tooltip="ประวัติการขาย"
                     class="flex items-center px-3 py-3 rounded-xl text-body-muted hover:bg-field/50 hover:text-ink transition-all group nav-menu-item">
                     <i class="bi bi-clock text-body-muted w-5 text-center text-xl"></i>
@@ -1003,6 +1009,10 @@
                 <div id="view-deposits" class="hidden space-y-6 animate-fade-in pb-10">
                 </div>
 
+                <!-- เนื้อหาอยู่ที่ views/deposit-history.html โหลดแบบ dynamic ผ่าน loadPageView('deposit-history') (ดู switchView case 'deposit-history') -->
+                <div id="view-deposit-history" class="hidden space-y-6 animate-fade-in pb-10">
+                </div>
+
                 <!-- ==============================
                  ประวัติการเคลื่อนไหว (Movement Ledger)
             ============================== -->
@@ -1145,11 +1155,39 @@
                             <input type="text" id="acct-account-name" placeholder="เช่น เงินสด" autocomplete="off" maxlength="120"
                                 class="elev-chip w-full px-3 py-2.5 rounded-sm bg-surface-chip text-ink text-sm focus:ring-2 focus:ring-primary-focus outline-none">
                         </div>
+                        <div>
+                            <div class="flex items-center justify-between mb-1">
+                                <span id="acct-account-items-label" class="block text-body-muted text-xs">รายการที่เชื่อมกับรหัสบัญชีนี้</span>
+                                <span id="acct-account-items-count" class="text-xs text-ink/60" aria-live="polite"></span>
+                            </div>
+                            <input type="search" id="acct-account-items-search" placeholder="ค้นหารายการ" autocomplete="off" aria-label="ค้นหารายการที่เชื่อม"
+                                class="elev-chip w-full px-3 py-2 rounded-sm bg-surface-chip text-ink text-sm focus:ring-2 focus:ring-primary-focus outline-none">
+                            <div id="acct-account-items" role="group" aria-labelledby="acct-account-items-label" tabindex="0" style="max-height:15rem"
+                                class="elev-chip mt-2 rounded-sm bg-surface-chip p-1 overflow-y-auto focus:ring-2 focus:ring-primary-focus outline-none"></div>
+                        </div>
                         <div class="flex gap-3 pt-2">
                             <button type="button" id="acct-account-save" onclick="if(typeof saveAcctAccount==='function') saveAcctAccount()"
                                 class="flex-1 py-2.5 bg-primary hover:bg-primary-pressed text-on-primary rounded-pill font-medium text-sm transition-all cursor-pointer">บันทึก</button>
                             <button type="button" onclick="if(typeof closeAcctAccountModal==='function') closeAcctAccountModal()"
                                 class="flex-1 py-2.5 bg-surface-chip hover:bg-surface-tile-2 text-body-muted rounded-pill font-medium text-sm transition-all cursor-pointer">ยกเลิก</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ดูรายละเอียดรหัสบัญชี: รายการที่เชื่อมอยู่ (วาดใน openAcctDetail — page-accounting-settings.js) -->
+                <div id="modal-acct-detail" role="dialog" aria-modal="true" aria-labelledby="modal-acct-detail-title"
+                    class="fixed inset-0 backdrop-blur-[20px] backdrop-saturate-[1.8] z-50 hidden flex items-center justify-center p-4">
+                    <div class="bg-canvas-elevated rounded-lg w-full max-w-2xl p-6 space-y-4">
+                        <h3 class="text-lg font-bold text-ink flex items-center gap-2">
+                            <i class="fa-solid fa-file-lines text-body-muted"></i>
+                            <span id="modal-acct-detail-title">รายละเอียดรหัสบัญชี</span>
+                        </h3>
+                        <div id="acct-detail-body" style="max-height:60vh" class="overflow-y-auto"></div>
+                        <div class="flex gap-3 pt-2">
+                            <button type="button" id="acct-detail-edit"
+                                class="flex-1 py-2.5 bg-primary hover:bg-primary-pressed text-on-primary rounded-pill font-medium text-sm transition-all cursor-pointer">แก้ไขรหัส / รายการที่เชื่อม</button>
+                            <button type="button" onclick="if(typeof closeAcctDetail==='function') closeAcctDetail()"
+                                class="flex-1 py-2.5 bg-surface-chip hover:bg-surface-tile-2 text-body-muted rounded-pill font-medium text-sm transition-all cursor-pointer">ปิด</button>
                         </div>
                     </div>
                 </div>
@@ -3665,8 +3703,8 @@
                     </div>
 
                     <!-- ส่วนหักเงินมัดจำลูกค้า (Deposit Lookup & Apply) -->
-                    <div class="elev-chip bg-hairline rounded-[16px] p-5 space-y-3 relative z-30 hidden">
-                        <!-- Hidden to match design, or keep? The design doesn't show deposit section -->
+                    <!-- ซ่อนไว้ตามดีไซน์ และโผล่เฉพาะตอนมีใบมัดจำถูกใส่ในบิล (script.js setPosDepositSectionVisible) เพื่อโชว์เลขที่ใบ ชื่อ เบอร์ลูกค้า และปุ่มเอามัดจำออก -->
+                    <div id="pos-deposit-section" class="elev-chip bg-hairline rounded-[16px] p-5 space-y-3 relative z-30 hidden">
                         <label class="text-sm font-bold text-ink flex items-center gap-2">
                             <i class="fa-solid fa-hand-holding-dollar text-body-muted"></i> หักเงินมัดจำลูกค้า (ถ้ามี)
                         </label>
@@ -4563,6 +4601,10 @@
                                 <i class="fa-solid fa-chevron-down text-xs"></i>
                             </div>
                         </div>
+                        <!-- โผล่เมื่อเลือก "สินค้าที่ยังไม่มีในรายการ" — จองสินค้าที่ยังไม่มีในระบบได้ ใบนี้จะไม่ผูกสต็อก -->
+                        <input type="text" id="modal-deposit-custom-name" maxlength="120" autocomplete="off"
+                            aria-label="ชื่อสินค้าที่ยังไม่มีในระบบ" placeholder="พิมพ์ชื่อสินค้าที่ลูกค้าต้องการ เช่น iPhone 17 Pro 256 สีส้ม"
+                            class="hidden elev-field w-full px-4 py-2.5 rounded-xl bg-field text-ink focus:ring-2 focus:ring-accent-ink focus:outline-none transition-all placeholder-ink-muted-48 text-sm">
                     </div>
                     <div class="space-y-2">
                         <label for="modal-deposit-imei" class="text-ink font-medium flex items-center gap-2 text-xs">
@@ -4576,7 +4618,7 @@
                 <!-- สี (Swatches) — โครงเดียวกับ #product-color-container ในโมดัลเพิ่มสินค้า -->
                 <div class="space-y-2 relative group">
                     <label class="text-ink font-medium flex items-center gap-2 text-xs">
-                        <i class="fa-solid fa-palette text-ink"></i> สี <span class="text-red-500">*</span>
+                        <i class="fa-solid fa-palette text-ink"></i> สี <span id="modal-deposit-color-req" class="text-red-500">*</span>
                     </label>
                     <input type="hidden" id="modal-deposit-color" required>
                     <div id="modal-deposit-color-container"
@@ -4604,7 +4646,7 @@
                 <!-- ความจุ (Pills) — โครงเดียวกับ #product-capacity-container -->
                 <div class="space-y-2">
                     <label class="text-ink font-medium flex items-center gap-2 text-xs">
-                        <i class="fa-solid fa-microchip text-ink"></i> ความจุ <span class="text-red-500">*</span>
+                        <i class="fa-solid fa-microchip text-ink"></i> ความจุ <span id="modal-deposit-capacity-req" class="text-red-500">*</span>
                     </label>
                     <input type="hidden" id="modal-deposit-capacity" required>
                     <div id="modal-deposit-capacity-container"
@@ -4649,7 +4691,7 @@
                     <div class="space-y-2">
                         <label for="modal-deposit-appointment"
                             class="text-ink font-medium flex items-center gap-2 text-xs">
-                            <i class="fa-solid fa-calendar text-ink"></i> วันที่นัดรับเครื่อง <span
+                            <i class="fa-solid fa-calendar text-ink"></i> วันที่นัดรับเครื่อง (วันครบกำหนด) <span
                                 class="text-red-500">*</span>
                         </label>
                         <input type="date" id="modal-deposit-appointment" required
@@ -4890,6 +4932,44 @@
                     </div>
                 </div>
 
+                <!-- ลูกค้าไม่เอาเครื่องแต่ขอเปลี่ยนเป็นอุปกรณ์เสริม — พาไปหน้าขายพร้อมใส่ใบมัดจำนี้ให้ (script.js startPosSaleWithDeposit)
+                     ไม่แก้ใบมัดจำตรงนี้: ใบจะปิดเป็น "สำเร็จ" ตอนขายเสร็จที่หน้าขาย ส่วนมัดจำที่เหลือจากราคาอุปกรณ์เสริมไม่ทอนคืน ระบบบัญชีนับเป็นรายได้ -->
+                <div id="detail-action-accessory-section" class="elev-field bg-field rounded-xl p-5 space-y-3 hidden">
+                    <h5 class="text-sm font-medium text-ink flex items-center gap-2 border-b border-line pb-3">
+                        <i class="fa-solid fa-chevron-right text-accent-ink"></i> <span id="detail-accessory-title">ลูกค้าขอเปลี่ยนเป็นอุปกรณ์เสริมแทนเครื่อง</span>
+                    </h5>
+                    <p id="detail-accessory-text" class="text-xs text-ink/70">ใช้เมื่อลูกค้ามาตามกำหนดแต่ไม่เอาเครื่อง กดแล้วระบบพาไปหน้าขาย เลือกอุปกรณ์เสริม แล้วกดชำระเงิน เงินมัดจำนี้จะถูกหักให้เอง ถ้ามัดจำเหลือจากราคาอุปกรณ์เสริม ส่วนที่เหลือไม่ทอนคืนและนับเป็นรายได้ของร้าน</p>
+                    <div class="flex justify-end">
+                        <button type="button" id="btn-start-accessory-sale"
+                            class="elev-chip w-full sm:w-auto px-8 py-2.5 rounded-xl bg-surface-chip hover:bg-surface-tile-2 text-ink text-[15px] font-bold transition-colors flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-chevron-right"></i> ไปหน้าขายพร้อมใส่มัดจำ
+                        </button>
+                    </div>
+                </div>
+
+                <!-- ยึดมัดจำ — โชว์เฉพาะใบที่เลยวันนัดรับเครื่องแล้ว (page-deposits.js ตรวจ) เซิร์ฟเวอร์ตรวจซ้ำอีกชั้น
+                     ย้อนกลับไม่ได้เหมือนยกเลิก จึงใช้ขอบแดงและปุ่มโปร่งแบบเดียวกัน -->
+                <div id="detail-action-forfeit-section"
+                    class="elev-field bg-field ring-1 ring-red-500/30 rounded-xl p-5 space-y-4 hidden">
+                    <h5 class="text-sm font-medium text-ink flex items-center gap-2 border-b border-line pb-3">
+                        <i class="fa-solid fa-clock-rotate-left text-red-400"></i> ยึดมัดจำ (เลยวันนัดรับเครื่องแล้ว)
+                    </h5>
+                    <p class="text-xs text-ink/70">ลูกค้าไม่มารับสินค้าตามกำหนด เงินมัดจำทั้งก้อนจะถูกบันทึกเป็นรายได้ ใบนี้จะปิดและกลับมาแก้ไขไม่ได้</p>
+                    <div class="space-y-2">
+                        <label for="detail-forfeit-reason" class="text-ink font-medium flex items-center gap-2 text-xs">
+                            <i class="fa-solid fa-tag text-ink"></i> หมายเหตุ (ไม่บังคับ)
+                        </label>
+                        <input type="text" id="detail-forfeit-reason" maxlength="300" placeholder="เช่น โทรติดตามแล้วลูกค้าแจ้งไม่รับ..."
+                            class="elev-modal w-full px-4 py-2.5 rounded-xl bg-elevated text-ink focus:ring-2 focus:ring-accent-ink focus:outline-none transition-all placeholder-ink-muted-48 text-sm" />
+                    </div>
+                    <div class="flex justify-end">
+                        <button type="button" id="btn-submit-forfeit-deposit"
+                            class="elev-chip w-full sm:w-auto px-8 py-2.5 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-300 ring-1 ring-red-500/30 text-[15px] font-bold transition-colors flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-circle-check"></i> ยืนยันยึดมัดจำเป็นรายได้
+                        </button>
+                    </div>
+                </div>
+
                 <!-- ยกเลิกรายการ — การกระทำที่ย้อนกลับไม่ได้ จึงใช้ขอบแดงกำกับ
                      แต่ยังเป็นปุ่มโปร่ง ไม่ใช่ปุ่มทึบ เพราะหนึ่งหน้าจอมีปุ่มทึบได้ปุ่มเดียว (DESIGN.md ข้อ 6) -->
                 <div id="detail-action-cancel-section"
@@ -4982,7 +5062,7 @@
     <div id="modal-transaction-details"
         class="fixed inset-0 z-[60] flex items-center justify-center backdrop-blur-[20px] backdrop-saturate-[1.8] opacity-0 pointer-events-none transition-all duration-300 p-4">
         <div
-            class="modal-content relative w-full max-w-xl max-h-[90vh] bg-canvas-elevated rounded-lg flex flex-col transform scale-95 transition-transform duration-300">
+            class="modal-content relative w-full max-w-3xl max-h-[90vh] bg-canvas-elevated rounded-lg flex flex-col transform scale-95 transition-transform duration-300">
             <button aria-label="ปิด" id="close-transaction-detail-btn" type="button"
                 class="absolute top-4 right-4 z-10 text-red-500 hover:text-red-400 transition-colors">
                 <i class="fa-solid fa-xmark text-xl"></i>
@@ -5021,41 +5101,57 @@
                     <p>พนักงานขาย : <span id="transaction-detail-employee" class="font-semibold">-</span></p>
                 </div>
                 <!-- Finance / Payment -->
-                <div class="py-4 border-b border-hairline text-sm text-ink space-y-1.5">
-                    <div id="transaction-detail-finance-info" class="hidden gap-2">
-                        <span class="text-body-muted">ข้อมูลการจัดไฟแนนซ์:</span>
+                <div class="py-4 border-b border-hairline text-sm text-ink space-y-3">
+                    <div id="transaction-detail-finance-info" class="hidden items-center justify-between gap-3">
+                        <span class="text-body-muted">ข้อมูลการจัดไฟแนนซ์</span>
                         <span id="transaction-detail-finance-company" class="font-semibold">-</span>
                     </div>
-                    <div id="transaction-detail-downpayment-section" class="hidden space-y-1.5">
-                        <div class="flex gap-2">
-                            <span class="text-body-muted">ยอดเงินดาวน์ / ชำระแล้ว:</span>
-                            <span id="transaction-detail-downpayment" class="font-semibold">฿0</span>
+                    <!-- การ์ดสรุปการชำระเงิน -->
+                    <div id="transaction-detail-downpayment-section" class="hidden bg-surface-chip rounded-md p-3 space-y-1.5">
+                        <div class="flex items-center justify-between gap-3">
+                            <span class="text-body-muted">ยอดเงินดาวน์ / ชำระแล้ว</span>
+                            <span id="transaction-detail-downpayment" class="font-semibold font-mono">฿0</span>
                         </div>
-                        <div id="transaction-detail-payment-breakdown" class="space-y-1">
+                        <div id="transaction-detail-payment-breakdown" class="pl-3 space-y-1">
                             <!-- Breakdowns like Cash: 100, Transfer: 200 -->
                         </div>
-                        <div class="flex gap-2">
-                            <span class="text-body-muted">วิธีการชำระเงิน:</span>
+                        <div id="detail-paid-with-deposit-row" class="hidden items-center justify-between gap-3 pt-1.5 border-t border-hairline">
+                            <span class="text-body-muted">ชำระแล้วรวมมัดจำ</span>
+                            <span id="transaction-detail-paid-with-deposit" class="font-semibold font-mono text-emerald-400">฿0</span>
+                        </div>
+                        <div class="flex items-center justify-between gap-3 pt-1.5 border-t border-hairline">
+                            <span class="text-body-muted">วิธีการชำระเงิน</span>
                             <span id="transaction-detail-payment" class="font-semibold">-</span>
                         </div>
-                        <div class="flex gap-2">
-                            <span class="text-body-muted">ยอดคงเหลือ (Balance):</span>
-                            <span id="transaction-detail-balance" class="font-semibold">฿0</span>
+                        <div class="flex items-center justify-between gap-3">
+                            <span class="text-body-muted">ยอดคงเหลือ (Balance)</span>
+                            <span id="transaction-detail-balance" class="font-semibold font-mono">฿0</span>
                         </div>
                     </div>
-                    <div id="detail-contract-row" class="hidden gap-2">
-                        <span class="text-body-muted">ค่าใบสัญญา:</span>
-                        <span id="transaction-detail-contract" class="font-mono text-ink">฿0.00</span>
-                    </div>
-                    <div id="detail-icloud-row" class="hidden gap-2">
-                        <span class="text-body-muted">ค่าบริการ iCloud:</span>
-                        <span id="transaction-detail-icloud" class="font-mono text-ink">฿0.00</span>
+                    <!-- ค่าธรรมเนียม / รายการหักออกจากราคา (แสดงเฉพาะที่มีค่า) -->
+                    <div class="space-y-1.5">
+                        <div id="detail-contract-row" class="hidden items-center justify-between gap-3">
+                            <span class="text-body-muted">ค่าใบสัญญา</span>
+                            <span id="transaction-detail-contract" class="font-mono text-ink">฿0.00</span>
+                        </div>
+                        <div id="detail-icloud-row" class="hidden items-center justify-between gap-3">
+                            <span class="text-body-muted">ค่าบริการ iCloud</span>
+                            <span id="transaction-detail-icloud" class="font-mono text-ink">฿0.00</span>
+                        </div>
+                        <div id="detail-discount-row" class="hidden items-center justify-between gap-3">
+                            <span class="text-body-muted">ส่วนลด</span>
+                            <span id="transaction-detail-discount" class="font-mono font-semibold text-amber-400">฿0.00</span>
+                        </div>
+                        <div id="detail-deposit-row" class="hidden items-center justify-between gap-3">
+                            <span class="text-body-muted">หักเงินมัดจำ</span>
+                            <span id="transaction-detail-deposit" class="font-mono font-semibold text-amber-400">฿0.00</span>
+                        </div>
                     </div>
                 </div>
                 <!-- Total -->
-                <div class="pt-4 flex items-center gap-2">
-                    <span class="text-body-muted">ยอดรวมทั้งหมด:</span>
-                    <span id="transaction-detail-total" class="text-2xl font-bold text-ink font-mono">฿0</span>
+                <div class="mt-4 flex items-center justify-between gap-4 bg-surface-chip rounded-md p-4 ring-1 ring-primary">
+                    <span class="font-semibold text-ink leading-snug">ยอดสุทธิหลังหักมัดจำและส่วนลด</span>
+                    <span id="transaction-detail-total" class="shrink-0 text-3xl font-bold text-primary font-mono tracking-tight">฿0</span>
                 </div>
                 <!-- Alert Box for Cancelled Transaction -->
                 <div id="transaction-cancelled-alert"
@@ -5080,13 +5176,13 @@
             <!-- Footer -->
             <div class="p-6 pt-0 flex flex-col sm:flex-row gap-3">
                 <button id="btn-cancel-transaction"
-                    class="elev-chip hidden flex-1 py-3.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 ring-1 ring-red-500/30 font-bold rounded-pill flex items-center justify-center gap-2 transition-all active:scale-95">
+                    class="elev-chip hidden flex-1 py-4 px-6 whitespace-nowrap bg-red-500/10 hover:bg-red-500/20 text-red-400 ring-1 ring-red-500/30 font-bold rounded-pill flex items-center justify-center gap-2 transition-all active:scale-95">
                     <i class="fa-solid fa-ban"></i> ยกเลิกบิลขาย </button>
                 <button id="btn-reprint-receipt"
-                    class="flex-1 py-3.5 bg-primary hover:bg-primary-pressed text-on-primary font-bold rounded-pill flex items-center justify-center gap-2 transition-all active:scale-95">
+                    class="flex-1 py-4 px-6 whitespace-nowrap bg-primary hover:bg-primary-pressed text-on-primary font-bold rounded-pill flex items-center justify-center gap-2 transition-all active:scale-95">
                     <i class="fa-solid fa-print"></i> พิมพ์ใบเสร็จซ้ำ (Reprint) </button>
                 <button id="btn-view-receipt-rc" type="button"
-                    class="elev-chip flex-1 py-3.5 bg-surface-chip hover:bg-field text-ink ring-1 ring-accent-ink/40 font-bold rounded-pill flex items-center justify-center gap-2 transition-all active:scale-95">
+                    class="elev-chip flex-1 py-4 px-6 whitespace-nowrap bg-surface-chip hover:bg-field text-ink ring-1 ring-accent-ink/40 font-bold rounded-pill flex items-center justify-center gap-2 transition-all active:scale-95">
                     <i class="fa-solid fa-file-invoice"></i> ดูใบเสร็จรับเงิน </button>
             </div>
         </div>
@@ -5408,7 +5504,7 @@
     <!-- defer: ปล่อยให้ parse HTML จบก่อนค่อย execute
          ปลอดภัยเพราะทั้งไฟล์ห่ออยู่ใน DOMContentLoaded listener อยู่แล้ว
          และสคริปต์ defer จะ execute ก่อน event DOMContentLoaded ยิงเสมอ -->
-    <script defer src="script.js?v=apple_active_v191"></script>
+    <script defer src="script.js?v=apple_active_v204"></script>
     <script>
         // ลงทะเบียน Service Worker เพื่อแคช asset คงที่ (css/js/font/icon/รูป) ไว้ฝั่งเครื่อง
         // เข้าเว็บครั้งถัดไปเร็วขึ้นมาก โดยเฉพาะตอนเน็ตช้าหรือหลุดชั่วคราว — ดูรายละเอียดที่ sw.js

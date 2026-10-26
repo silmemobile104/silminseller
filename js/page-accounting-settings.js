@@ -663,6 +663,8 @@
             _treeBound = true; // ผูกครั้งเดียว — HTML ถูกแทรกครั้งเดียว แต่ init ถูกเรียกทุกครั้งที่เข้าหน้า
             document.getElementById('acct-tree-search')?.addEventListener('input', () => renderAcctTree());
             document.getElementById('acct-tree-status')?.addEventListener('change', () => renderAcctTree());
+            document.getElementById('btn-acct-summary-open')?.addEventListener('click', () => showAcctSummaryPage(true));
+            document.getElementById('btn-acct-summary-back')?.addEventListener('click', () => showAcctSummaryPage(false));
             document.getElementById('btn-acct-tree-toggle-all')?.addEventListener('click', () => {
                 const allOpen = _coaCache.categories.every(c => _treeOpen.has('cat:' + c._id));
                 _coaCache.categories.forEach(c => {
@@ -680,6 +682,16 @@
         const root = document.getElementById('acct-tree-root');
         if (root) root.innerHTML = `<div class="py-12 text-center text-ink/60 italic">กำลังโหลดข้อมูล...</div>`;
         await loadCOAData();
+        // ชื่อรายการไว้โชว์เป็น tooltip ของ "n รายการ" ในแถวบัญชี — มาทีหลังได้ ไม่ต้องรอ
+        loadAcctItemsCache().then(() => { if (_acctItemsCache.loaded) renderAcctTree(); });
+        showAcctSummaryPage(false); // เข้าหน้านี้ทีไรเริ่มที่ผังบัญชีเสมอ
+    }
+
+    // สลับระหว่างผังบัญชีกับหน้า "ยอดเข้า-ออกต่อรหัสบัญชี" ภายใน #account-tree · โหลดยอดตอนกดเข้าเท่านั้น
+    function showAcctSummaryPage(show) {
+        document.getElementById('acct-tree-main')?.classList.toggle('hidden', show);
+        document.getElementById('acct-summary-page')?.classList.toggle('hidden', !show);
+        if (show) initAcctSummary();
     }
 
     function treeBadge(on) {
@@ -694,6 +706,7 @@
         const id = escapeHtml(item._id);
         const lbl = escapeHtml(label);
         return `<div class="flex items-center justify-end gap-0.5 shrink-0">
+            ${kind === 'acc' ? `<button type="button" class="acct-tree-act ${TREE_BTN} hover:text-accent-ink" data-act="view" data-kind="${kind}" data-id="${id}" title="ดูรายละเอียด" aria-label="ดูรายละเอียด ${lbl}"><i class="fa-solid fa-eye"></i></button>` : ''}
             <button type="button" class="acct-tree-act ${TREE_BTN} hover:text-amber-400" data-act="edit" data-kind="${kind}" data-id="${id}" title="แก้ไข" aria-label="แก้ไข ${lbl}"><i class="fa-solid fa-pen-to-square"></i></button>
             <button type="button" class="acct-tree-act ${TREE_BTN} ${on ? 'hover:text-red-400' : 'hover:text-state-ok'}" data-act="toggle" data-kind="${kind}" data-id="${id}" title="${on ? 'ปิดการใช้งาน' : 'เปิดการใช้งาน'}" aria-label="${on ? 'ปิดการใช้งาน' : 'เปิดการใช้งาน'} ${lbl}"><i class="fa-solid ${on ? 'fa-ban' : 'fa-circle-check'}"></i></button>
             ${canDelete ? `<button type="button" class="acct-tree-act ${TREE_BTN} hover:text-red-400" data-act="delete" data-kind="${kind}" data-id="${id}" title="ลบ" aria-label="ลบ ${lbl}"><i class="fa-solid fa-trash"></i></button>` : ''}
@@ -726,6 +739,7 @@
                 <i class="fa-solid fa-file-lines text-ink/50 w-4 text-center text-sm"></i>
                 <span class="font-mono font-semibold text-accent-ink w-24 shrink-0">${escapeHtml(a.account_code)}</span>
                 <span class="text-ink flex-1 min-w-0 truncate">${escapeHtml(a.account_name)}</span>
+                ${(a.item_keys || []).length ? `<span class="text-xs text-ink/60 shrink-0" title="${escapeHtml(a.item_keys.map(k => _acctItemNames.get(k) || k).join(', '))}">${a.item_keys.length} รายการ</span>` : ''}
                 ${a.is_system ? '<span class="text-[10px] px-1.5 py-0.5 rounded bg-chip/60 text-ink shrink-0">ระบบ</span>' : ''}
                 <span class="shrink-0">${treeBadge(isOn(a))}</span>
                 ${treeActions('acc', a, a.account_code + ' ' + a.account_name, !a.is_system)}
@@ -823,6 +837,60 @@
         root.querySelectorAll('.acct-tree-act').forEach(b => b.addEventListener('click', () => onTreeAction(b.dataset.act, b.dataset.kind, b.dataset.id)));
     }
 
+    // ดูรายละเอียดรหัสบัญชี: รหัสนี้เชื่อมกับรายการอะไรบ้าง (ดึงสดจากเซิร์ฟเวอร์ ไม่ใช้แคชเก่า) + รายการนั้นเชื่อมรหัสอื่นอยู่ด้วยไหม
+    async function openAcctDetail(acc) {
+        const modal = document.getElementById('modal-acct-detail');
+        const body = document.getElementById('acct-detail-body');
+        if (!modal || !body) return;
+        const cat = _coaCache.categories.find(c => c._id === idOf(acc.category_id));
+        const grp = _coaCache.groups.find(g => g._id === idOf(acc.group_id));
+        document.getElementById('modal-acct-detail-title').textContent = `${acc.account_code} ${acc.account_name}`;
+        const editBtn = document.getElementById('acct-detail-edit');
+        if (editBtn) editBtn.onclick = () => { closeAcctDetail(); openAcctAccountModal(acc); };
+        const meta = [
+            cat ? `หมวด ${escapeHtml(cat.category_code)} ${escapeHtml(cat.category_name)}` : '',
+            grp ? `กลุ่ม ${escapeHtml(grp.group_code)} ${escapeHtml(grp.group_name)}` : 'ยังไม่จัดกลุ่ม',
+            isOn(acc) ? 'ใช้งานอยู่' : 'ปิดใช้งาน'
+        ].filter(Boolean).join(' · ');
+        const head = `<p class="text-xs text-ink/70 mb-3">${meta}</p>`;
+        body.innerHTML = head + '<div class="py-8 text-center text-ink/60 italic">กำลังโหลดรายการ...</div>';
+        modal.classList.remove('hidden');
+        try {
+            const res = await authFetch(`${API_BASE_URL}/acct/account-items`);
+            const data = await res.json();
+            if (!data.success) throw new Error(data.message || 'โหลดรายการไม่สำเร็จ');
+            const mine = (data.items || []).filter(i => (i.linked_accounts || []).some(a => a._id === acc._id));
+            if (!mine.length) {
+                body.innerHTML = head + '<div class="py-8 text-center text-ink/60 italic">รหัสนี้ยังไม่เชื่อมกับรายการใด — กด "แก้ไขรหัส / รายการที่เชื่อม" เพื่อเลือกรายการ</div>';
+                return;
+            }
+            const rows = mine.map(i => {
+                const others = i.linked_accounts.filter(a => a._id !== acc._id);
+                return `<tr class="border-b border-hairline last:border-0 align-top">
+                    <td class="px-3 py-2.5 text-ink">${escapeHtml(i.name)}<span class="block text-xs text-ink/60">${escapeHtml(i.description)}</span>${others.length ? `<span class="block text-[11px] text-ink/60 mt-0.5">เชื่อมกับ ${others.slice(0, 3).map(a => escapeHtml(a.account_code)).join(', ')}${others.length > 3 ? ` และอีก ${others.length - 3} รหัส` : ''} ด้วย</span>` : ''}</td>
+                    <td class="px-3 py-2.5 text-ink/70 whitespace-nowrap">${escapeHtml(i.group)}</td>
+                    <td class="px-3 py-2.5 text-center text-xs text-ink/70 whitespace-nowrap">${escapeHtml(i.flow_label)}</td>
+                </tr>`;
+            }).join('');
+            body.innerHTML = `${head}
+                <p class="text-sm text-ink mb-2">เชื่อมกับ <strong>${mine.length}</strong> รายการ</p>
+                <table class="w-full text-sm">
+                    <thead><tr class="text-xs text-ink/70 border-b border-hairline">
+                        <th class="text-left font-medium px-3 py-2">รายการ</th>
+                        <th class="text-left font-medium px-3 py-2">กลุ่มรายการ</th>
+                        <th class="text-center font-medium px-3 py-2">ประเภท</th>
+                    </tr></thead>
+                    <tbody>${rows}</tbody>
+                </table>`;
+        } catch (e) {
+            body.innerHTML = head + `<div class="py-8 text-center text-state-danger">โหลดรายการไม่สำเร็จ: ${escapeHtml(e.message)}</div>`;
+        }
+    }
+
+    function closeAcctDetail() {
+        document.getElementById('modal-acct-detail')?.classList.add('hidden');
+    }
+
     function onTreeAction(act, kind, id) {
         if (kind === 'grp') {
             if (act === 'add') return openAcctGroupModal({ category_id: id });
@@ -836,6 +904,7 @@
             if (act === 'add') return openAcctAccountModal({ group_id: id });
             const a = _coaCache.accounts.find(x => x._id === id);
             if (!a) return;
+            if (act === 'view') return openAcctDetail(a);
             if (act === 'edit') return openAcctAccountModal(a);
             if (act === 'toggle') return toggleTreeActive('chart-of-accounts', a, 'รหัสบัญชี', a.account_code + ' ' + a.account_name,
                 'เอกสารเดิมและรายงานยังใช้รหัสนี้ได้ แต่จะเลือกใช้ในเอกสารใหม่ไม่ได้');
@@ -874,6 +943,295 @@
             showToast('เชื่อมต่อเซิร์ฟเวอร์ผิดพลาด: ' + error.message, 'error');
         }
         return false;
+    }
+
+    // ---------- ยอดเข้า-ออกต่อรหัสบัญชี (การ์ดใต้ผังบัญชีในหน้า #account-tree) ----------
+    // ยอดต่อรหัส = รวมยอดของทุกรายการที่เชื่อมกับรหัสนั้นเต็มจำนวน · "ค้างรับ/ค้างจ่าย" แยกคอลัมน์ ไม่รวมในเข้า-ออก (ฝั่งเซิร์ฟเวอร์ utils/accountEntries.js)
+    let _sumBound = false;
+    let _sumBranchesLoaded = false;
+    let _sumData = null;
+    const _sumOpen = new Set();      // _id รหัสบัญชีที่กางรายละเอียดอยู่
+    const _sumEntries = new Map();   // _id รหัสบัญชี -> รายการย่อยที่โหลดแล้ว
+
+    const SUM_SOURCE_LABELS = {
+        transaction: 'บิลขาย', deposit: 'ใบมัดจำ', claim: 'ใบเคลม', stock_issue: 'ใบจ่ายออก', purchase_order: 'ใบสั่งซื้อ',
+        import_notification: 'แจ้งสินค้าเข้า', expense: 'ค่าใช้จ่าย (ตรวจสอบออเดอร์)', cash_movement: 'ค่าใช้จ่าย (ระบบบัญชีและการเงิน)',
+        voucher: 'ใบสำคัญจ่าย', other_entry: 'รายได้/รายจ่ายอื่นๆ'
+    };
+    const sumMoney = (n) => Number(n || 0).toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const SUM_NUM_COL = 'text-right shrink-0 font-mono';
+    const SUM_NUM_STYLE = 'width:7.5rem';
+
+    const SUM_SELECT_CLS = 'page-filter-control bg-panel/40 cursor-pointer text-xs rounded-[0.5rem] px-2 py-1 text-ink focus:outline-none focus:ring-1 focus:ring-accent-ink [&>option]:bg-panel';
+
+    // ตัวเลือกรหัสบัญชีสำหรับ "ย้าย/เชื่อมกับรหัส" (ตัดรหัสต้นทางออก)
+    function sumAccountOptions(excludeId) {
+        return '<option value="">ย้าย/เชื่อมกับรหัส…</option>' + (_coaCache.accounts || [])
+            .filter(a => a.is_active !== false && a._id !== excludeId)
+            .map(a => `<option value="${escapeHtml(a._id)}">${escapeHtml(a.account_code)} ${escapeHtml(a.account_name)}</option>`).join('');
+    }
+
+    // หมวด/กลุ่ม = ตัวกรองรหัสบัญชีที่แสดง (ไม่ใช่ที่เชื่อมรายการ) · กลุ่มกรองตามหมวดที่เลือก
+    function fillSummaryFilters() {
+        const cat = document.getElementById('acct-summary-category');
+        const grp = document.getElementById('acct-summary-group');
+        if (!cat || !grp) return;
+        const catVal = cat.value;
+        cat.innerHTML = '<option value="">ทุกหมวดหมู่</option>' + (_coaCache.categories || [])
+            .map(c => `<option value="${escapeHtml(c._id)}">${escapeHtml(c.category_code)} ${escapeHtml(c.category_name)}</option>`).join('');
+        cat.value = catVal;
+        const grpVal = grp.value;
+        grp.innerHTML = '<option value="">ทุกกลุ่ม</option>' + (_coaCache.groups || [])
+            .filter(g => !cat.value || idOf(g.category_id) === cat.value)
+            .map(g => `<option value="${escapeHtml(g._id)}">${escapeHtml(g.group_code)} ${escapeHtml(g.group_name)}</option>`).join('');
+        grp.value = [...grp.options].some(o => o.value === grpVal) ? grpVal : '';
+    }
+
+    // ย้าย/เชื่อมรายการเข้ารหัสอื่น: คงรหัสอื่นที่รายการเชื่อมอยู่ไว้ แค่เอา fromId ออกแล้วใส่ toId (fromId ว่าง = รายการที่ยังไม่เชื่อม)
+    async function moveAcctItem(key, fromId, toId) {
+        try {
+            const res = await authFetch(`${API_BASE_URL}/acct/account-items`);
+            const data = await res.json();
+            if (!data.success) throw new Error(data.message || 'โหลดรายการไม่สำเร็จ');
+            const item = (data.items || []).find(i => i.key === key);
+            const ids = (item ? item.linked_accounts : []).map(a => a._id).filter(id => id !== fromId);
+            if (!ids.includes(toId)) ids.push(toId);
+            const put = await authFetch(`${API_BASE_URL}/acct/account-items/${encodeURIComponent(key)}/accounts`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ account_ids: ids })
+            });
+            const out = await put.json();
+            if (!out.success) throw new Error(out.message || 'ย้ายรายการไม่สำเร็จ');
+            showToast('ย้ายรายการเรียบร้อย', 'success');
+            await loadAcctSummary();
+            loadAcctItemsCache();
+            loadCOAData().then(() => renderAcctTree()).catch(() => { });
+        } catch (e) {
+            showToast('ย้ายรายการไม่สำเร็จ: ' + e.message, 'error');
+            renderAcctSummary();
+        }
+    }
+
+    function sumParams() {
+        const p = new URLSearchParams();
+        const s = document.getElementById('acct-summary-start')?.value;
+        const e = document.getElementById('acct-summary-end')?.value;
+        const b = document.getElementById('acct-summary-branch')?.value;
+        if (s) p.set('startDate', s);
+        if (e) p.set('endDate', e);
+        if (b && b !== 'ALL') p.set('branch_id', b);
+        return p;
+    }
+
+    async function loadSummaryBranches() {
+        if (_sumBranchesLoaded) return;
+        try {
+            const res = await authFetch(`${API_BASE_URL}/branches`);
+            const data = await res.json();
+            const sel = document.getElementById('acct-summary-branch');
+            if (data.success && sel) {
+                sel.innerHTML = '<option value="ALL">ทุกสาขา</option>' + (data.data || [])
+                    .map(b => `<option value="${escapeHtml(b._id)}">${escapeHtml(b.name)}</option>`).join('');
+                _sumBranchesLoaded = true;
+            }
+        } catch (e) { /* ใช้ตัวเลือก "ทุกสาขา" ต่อไป */ }
+    }
+
+    async function loadAcctSummary() {
+        const root = document.getElementById('acct-summary-root');
+        if (!root) return;
+        root.innerHTML = '<div class="py-8 text-center text-ink/60 italic">กำลังโหลดยอด...</div>';
+        _sumEntries.clear();
+        try {
+            const res = await authFetch(`${API_BASE_URL}/acct/account-summary?${sumParams()}`);
+            const data = await res.json();
+            if (!data.success) throw new Error(data.message || 'โหลดยอดไม่สำเร็จ');
+            _sumData = data;
+            renderAcctSummary();
+        } catch (e) {
+            root.innerHTML = `<div class="py-8 text-center text-state-danger">โหลดยอดไม่สำเร็จ: ${escapeHtml(e.message)}</div>`;
+        }
+    }
+
+    function sumEntriesHtml(list) {
+        if (!list) return '';
+        if (!list.length) return '<div class="text-sm text-ink/60 italic py-2">ไม่มีรายการย่อยในช่วงที่เลือก</div>';
+        const rows = list.map(en => `
+            <div class="flex items-center gap-3 py-1 text-sm">
+                <span class="text-ink/70 shrink-0" style="width:6.5rem">${new Date(en.date).toLocaleDateString('th-TH')}</span>
+                <span class="flex-1 min-w-0 truncate text-ink">${escapeHtml(en.item_name)} <span class="text-ink/60">· ${escapeHtml(en.source_ref || '')}</span></span>
+                <span class="text-xs text-ink/70 shrink-0">${escapeHtml(en.flow_label)}</span>
+                <span class="${SUM_NUM_COL} text-ink" style="${SUM_NUM_STYLE}">${sumMoney(en.amount)}</span>
+            </div>`).join('');
+        return `<div class="border-t border-hairline mt-2 pt-2">${rows}${list.length >= 300 ? '<div class="text-xs text-ink/60 italic py-1">แสดง 300 รายการล่าสุด — จำกัดช่วงวันที่เพื่อดูรายการอื่น</div>' : ''}</div>`;
+    }
+
+    function renderAcctSummary() {
+        const root = document.getElementById('acct-summary-root');
+        const d = _sumData;
+        if (!root || !d) return;
+
+        const catId = document.getElementById('acct-summary-category')?.value || '';
+        const grpId = document.getElementById('acct-summary-group')?.value || '';
+        const coaById = new Map((_coaCache.accounts || []).map(a => [a._id, a]));
+        const accounts = (d.accounts || []).filter(a => {
+            if (!catId && !grpId) return true;
+            const c = coaById.get(a._id);
+            return !!c && (!catId || idOf(c.category_id) === catId) && (!grpId || idOf(c.group_id) === grpId);
+        });
+        const unlinked = d.unlinked || [];
+        if (!accounts.length && !unlinked.length) {
+            root.innerHTML = '<div class="py-8 text-center text-ink/60 italic">ยังไม่มียอด — เชื่อมรายการกับรหัสบัญชีที่ฟอร์มรหัสบัญชี แล้วกด "บันทึกย้อนหลัง / คำนวณยอดใหม่" เพื่อนำข้อมูลเก่าเข้ามา</div>';
+            return;
+        }
+
+        const head = `
+            <div class="flex items-center gap-3 px-3 py-2 text-xs text-ink/70">
+                <span class="shrink-0" style="width:6rem">รหัส</span>
+                <span class="flex-1 min-w-0">ชื่อบัญชี</span>
+                ${['เข้า', 'ออก', 'สุทธิ', 'ค้างรับ', 'ค้างจ่าย'].map(h => `<span class="${SUM_NUM_COL}" style="${SUM_NUM_STYLE}">${h}</span>`).join('')}
+            </div>`;
+
+        const rows = accounts.map(a => {
+            const open = _sumOpen.has(a._id);
+            const netCls = a.net > 0 ? 'text-state-ok' : (a.net < 0 ? 'text-state-danger' : 'text-ink');
+            const items = a.items.length
+                ? a.items.map(i => `
+                    <div class="flex items-center gap-3 py-1 text-sm">
+                        <span class="flex-1 min-w-0 truncate text-ink">${escapeHtml(i.name)} <span class="text-ink/60">· ${escapeHtml(i.group)}</span></span>
+                        <span class="text-xs text-ink/70 shrink-0">${escapeHtml(i.flow_label)} · ${i.count} รายการ</span>
+                        <select class="acct-item-move ${SUM_SELECT_CLS}" style="max-width:11rem" data-key="${escapeHtml(i.key)}" data-from="${escapeHtml(a._id)}" aria-label="ย้ายรายการไปรหัสอื่น">${sumAccountOptions(a._id)}</select>
+                        <span class="${SUM_NUM_COL} text-ink" style="${SUM_NUM_STYLE}">${sumMoney(i.amount)}</span>
+                    </div>`).join('')
+                : '<div class="text-sm text-ink/60 italic py-1">ยังไม่มียอดของรายการที่เชื่อมในช่วงที่เลือก</div>';
+            return `
+            <div class="${a.is_active ? '' : 'opacity-60'}">
+                <button type="button" class="acct-sum-toggle flex items-center gap-3 w-full text-left px-3 py-2 hover:bg-divider rounded-lg cursor-pointer" data-id="${escapeHtml(a._id)}" aria-expanded="${open}">
+                    <span class="font-mono font-semibold text-accent-ink shrink-0" style="width:6rem">${escapeHtml(a.account_code)}</span>
+                    <span class="flex-1 min-w-0 truncate text-ink">${escapeHtml(a.account_name)}</span>
+                    <span class="${SUM_NUM_COL} text-ink" style="${SUM_NUM_STYLE}">${sumMoney(a.in)}</span>
+                    <span class="${SUM_NUM_COL} text-ink" style="${SUM_NUM_STYLE}">${sumMoney(a.out)}</span>
+                    <span class="${SUM_NUM_COL} ${netCls}" style="${SUM_NUM_STYLE}">${sumMoney(a.net)}</span>
+                    <span class="${SUM_NUM_COL} text-ink/80" style="${SUM_NUM_STYLE}">${sumMoney(a.receivable)}</span>
+                    <span class="${SUM_NUM_COL} text-ink/80" style="${SUM_NUM_STYLE}">${sumMoney(a.payable)}</span>
+                </button>
+                ${open ? `
+                <div class="pl-10 pr-3 pb-3">
+                    ${items}
+                    <button type="button" class="acct-sum-entries mt-2 px-3 py-1.5 text-xs rounded-lg bg-surface-chip text-ink hover:bg-surface-tile-2 cursor-pointer" data-id="${escapeHtml(a._id)}">ดูรายการย่อย</button>
+                    <div>${sumEntriesHtml(_sumEntries.get(a._id))}</div>
+                </div>` : ''}
+            </div>`;
+        }).join('');
+
+        const unlinkedHtml = unlinked.length ? `
+            <div class="mt-8 rounded-xl bg-surface-tile-3 p-6">
+                <p class="text-sm font-medium text-ink">รายการที่มียอดแต่ยังไม่ได้เชื่อมกับรหัสบัญชีใด</p>
+                <p class="text-xs text-ink/70 mb-4">เชื่อมได้ที่ฟอร์มเพิ่ม/แก้ไขรหัสบัญชี ยอดจะเข้ารหัสนั้นทันที</p>
+                <div style="overflow-x:auto">
+                    <table class="w-full text-sm" style="min-width:36rem">
+                        <thead>
+                            <tr class="text-xs text-ink/70 border-b border-hairline">
+                                <th class="text-left font-medium px-4 py-3" style="width:3rem">#</th>
+                                <th class="text-left font-medium px-4 py-3">รายการ</th>
+                                <th class="text-left font-medium px-4 py-3">หมวด</th>
+                                <th class="text-center font-medium px-4 py-3" style="width:6rem">ประเภท</th>
+                                <th class="text-right font-medium px-4 py-3" style="width:9rem">ยอด (บาท)</th>
+                                <th class="text-left font-medium px-4 py-3" style="width:13rem">เชื่อมกับรหัส</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${unlinked.map((i, idx) => `
+                            <tr class="border-b border-hairline last:border-0 hover:bg-divider">
+                                <td class="px-4 py-3 text-ink/60">${idx + 1}</td>
+                                <td class="px-4 py-3 text-ink">${escapeHtml(i.name)}</td>
+                                <td class="px-4 py-3 text-ink/70">${escapeHtml(i.group)}</td>
+                                <td class="px-4 py-3 text-center text-xs text-ink/70">${escapeHtml(i.flow_label)}</td>
+                                <td class="px-4 py-3 text-right text-ink" style="font-variant-numeric:tabular-nums">${sumMoney(i.amount)}</td>
+                                <td class="px-4 py-3"><select class="acct-item-move ${SUM_SELECT_CLS}" style="max-width:12rem" data-key="${escapeHtml(i.key)}" data-from="" aria-label="เชื่อมรายการกับรหัสบัญชี">${sumAccountOptions('')}</select></td>
+                            </tr>`).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            </div>` : '';
+
+        root.innerHTML = `<div style="overflow-x:auto"><div style="min-width:56rem">${accounts.length ? head + `<div class="space-y-0.5">${rows}</div>` : '<div class="py-4 text-sm text-ink/60 italic">ยังไม่มีรหัสบัญชีที่เชื่อมกับรายการ</div>'}</div></div>${unlinkedHtml}`;
+
+        root.querySelectorAll('.acct-sum-toggle').forEach(b => b.addEventListener('click', () => {
+            const id = b.dataset.id;
+            if (_sumOpen.has(id)) _sumOpen.delete(id); else _sumOpen.add(id);
+            renderAcctSummary();
+        }));
+        root.querySelectorAll('.acct-item-move').forEach(sel => sel.addEventListener('change', () => {
+            if (!sel.value) return;
+            sel.disabled = true;
+            moveAcctItem(sel.dataset.key, sel.dataset.from, sel.value);
+        }));
+        root.querySelectorAll('.acct-sum-entries').forEach(b => b.addEventListener('click', async () => {
+            const id = b.dataset.id;
+            b.disabled = true;
+            try {
+                const res = await authFetch(`${API_BASE_URL}/acct/account-summary/${id}/entries?${sumParams()}`);
+                const data = await res.json();
+                if (!data.success) throw new Error(data.message || 'โหลดรายการย่อยไม่สำเร็จ');
+                _sumEntries.set(id, data.entries || []);
+            } catch (e) {
+                showToast('โหลดรายการย่อยไม่สำเร็จ: ' + e.message, 'error');
+            }
+            renderAcctSummary();
+        }));
+    }
+
+    // บันทึกย้อนหลัง/คำนวณใหม่: นับก่อน (dry-run) แล้วให้ยืนยันก่อนเขียนจริง · ทำซ้ำกี่ครั้งก็ได้ ผลเท่าเดิม
+    async function rebuildAcctEntries() {
+        const btn = document.getElementById('btn-acct-summary-rebuild');
+        if (btn) btn.disabled = true;
+        const post = async (confirmed) => {
+            const res = await authFetch(`${API_BASE_URL}/acct/account-entries/rebuild`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(confirmed ? { confirm: true } : {})
+            });
+            const data = await res.json();
+            if (!data.success) throw new Error(data.message || 'ทำรายการไม่สำเร็จ');
+            return data;
+        };
+        try {
+            const preview = await post(false);
+            const types = Object.entries(preview.types || {});
+            const totalSources = types.reduce((s, [, t]) => s + t.sources, 0);
+            const totalEvents = types.reduce((s, [, t]) => s + t.events, 0);
+            const list = types.map(([k, t]) => `<li>${escapeHtml(SUM_SOURCE_LABELS[k] || k)}: ${t.sources.toLocaleString('th-TH')} ใบ → ${t.events.toLocaleString('th-TH')} ยอด</li>`).join('');
+            showConfirm('บันทึกย้อนหลัง / คำนวณยอดใหม่',
+                `ตรวจพบเอกสาร <strong class="text-ink">${totalSources.toLocaleString('th-TH')}</strong> ใบ จะบันทึกยอดรวม <strong class="text-ink">${totalEvents.toLocaleString('th-TH')}</strong> รายการ<ul class="text-xs text-ink/70 mt-2 space-y-0.5 list-disc pl-5">${list}</ul><span class="text-xs text-ink/70 block mt-2">คำนวณจากสถานะปัจจุบันของเอกสาร ทำซ้ำกี่ครั้งก็ได้ผลเท่าเดิม ไม่แก้ไขเอกสารต้นทาง และไม่ลบการเชื่อมรายการกับรหัสบัญชี</span>`,
+                async () => {
+                    try {
+                        await post(true);
+                        showToast('บันทึกย้อนหลังเรียบร้อย', 'success');
+                        await loadAcctSummary();
+                    } catch (e) {
+                        showToast('บันทึกย้อนหลังไม่สำเร็จ: ' + e.message, 'error');
+                    }
+                }, 'บันทึกย้อนหลัง');
+        } catch (e) {
+            showToast('ตรวจเอกสารไม่สำเร็จ: ' + e.message, 'error');
+        } finally {
+            if (btn) btn.disabled = false;
+        }
+    }
+
+    function initAcctSummary() {
+        if (!_sumBound) {
+            _sumBound = true; // HTML ถูกแทรกครั้งเดียว แต่ init ถูกเรียกทุกครั้งที่เข้าหน้า
+            document.getElementById('btn-acct-summary-load')?.addEventListener('click', loadAcctSummary);
+            document.getElementById('btn-acct-summary-rebuild')?.addEventListener('click', rebuildAcctEntries);
+            document.getElementById('acct-summary-category')?.addEventListener('change', () => { fillSummaryFilters(); renderAcctSummary(); });
+            document.getElementById('acct-summary-group')?.addEventListener('change', renderAcctSummary);
+        }
+        fillSummaryFilters();
+        loadSummaryBranches();
+        return loadAcctSummary();
     }
 
     // ---------- โมดัลกลุ่มบัญชี ----------
@@ -947,6 +1305,80 @@
         } catch (e) { /* ใช้ค่าเดิม — ฟอร์มยังบันทึกได้โดยไม่ระบุสมุด */ }
     }
 
+    // ---------- รายการที่เชื่อมกับรหัสบัญชี ----------
+    // แคตตาล็อกรายการมาจากเซิร์ฟเวอร์ (utils/accountItems.js) — พนักงานบัญชีเลือกเองว่ารายการไหนเชื่อมกับรหัสนี้ (เลือกได้หลายรายการ)
+    let _acctItemsCache = { groups: [], items: [], loaded: false, failed: false };
+    let _acctItemNames = new Map();   // key → ชื่อรายการ (ไว้โชว์ในตารางผัง)
+    let _acctItemSel = new Set();     // key ที่ติ๊กอยู่ในฟอร์ม
+    let _acctItemsEditId = '';        // _id ของบัญชีที่กำลังแก้ ('' = เพิ่มใหม่) — ไว้ซ่อนป้าย "เชื่อมกับ ... อยู่แล้ว" ของรหัสตัวเอง
+    let _acctItemsKnown = true;       // รู้รายการที่เชื่อมอยู่เดิมของบัญชีนี้ครบไหม — ถ้าไม่รู้ ห้ามส่ง item_keys ไปทับของเดิม
+    let _acctItemsBound = false;
+
+    async function loadAcctItemsCache() {
+        try {
+            const res = await authFetch(`${API_BASE_URL}/acct/account-items`);
+            const data = await res.json();
+            if (!data.success) throw new Error(data.message || 'โหลดรายการไม่สำเร็จ');
+            _acctItemsCache = { groups: data.groups || [], items: data.items || [], loaded: true, failed: false };
+            _acctItemNames = new Map(_acctItemsCache.items.map(i => [i.key, i.name]));
+        } catch (e) {
+            // เคยโหลดสำเร็จแล้วก็ใช้ของเดิมต่อ · ไม่เคยสำเร็จ = ฟอร์มบันทึกได้ แต่ไม่ส่ง item_keys จึงไม่แตะการเชื่อมเดิม
+            if (!_acctItemsCache.loaded) _acctItemsCache.failed = true;
+        }
+    }
+
+    function updateAcctItemsCount() {
+        const el = document.getElementById('acct-account-items-count');
+        if (el) el.textContent = _acctItemsCache.loaded ? `เลือกแล้ว ${_acctItemSel.size} จาก ${_acctItemsCache.items.length}` : '';
+    }
+
+    function renderAcctItems() {
+        const box = document.getElementById('acct-account-items');
+        if (!box) return;
+        updateAcctItemsCount();
+        if (!_acctItemsCache.loaded) {
+            box.innerHTML = `<div class="px-2 py-3 text-sm text-ink/60 italic">${_acctItemsCache.failed ? 'โหลดรายการไม่สำเร็จ — ยังบันทึกรหัสบัญชีได้ โดยไม่แก้รายการที่เชื่อมไว้' : 'กำลังโหลดรายการ...'}</div>`;
+            return;
+        }
+        const q = (document.getElementById('acct-account-items-search')?.value || '').trim().toLowerCase();
+        const items = _acctItemsCache.items.filter(i => !q || [i.name, i.description, i.group].some(s => String(s).toLowerCase().includes(q)));
+        if (!items.length) {
+            box.innerHTML = '<div class="px-2 py-3 text-sm text-ink/60 italic">ไม่พบรายการที่ตรงกับคำค้น</div>';
+            return;
+        }
+        box.innerHTML = _acctItemsCache.groups.map(g => {
+            const rows = items.filter(i => i.group === g);
+            if (!rows.length) return '';
+            const head = `<div class="px-2 pt-2 pb-1 text-xs font-bold text-ink/70">${escapeHtml(g)} <span class="font-normal text-ink/60">(${rows.length})</span></div>`;
+            return head + rows.map(i => {
+                // รายการเดียวเชื่อมได้หลายรหัส — แค่บอกให้รู้ว่ามีรหัสอื่นใช้อยู่ ไม่ห้ามเลือก
+                const others = (i.linked_accounts || []).filter(a => a._id !== _acctItemsEditId);
+                const note = others.length
+                    ? `<span class="block text-[11px] text-ink/60">เชื่อมกับ ${others.slice(0, 2).map(a => escapeHtml(a.account_code)).join(', ')}${others.length > 2 ? ` และอีก ${others.length - 2} รหัส` : ''} อยู่แล้ว</span>`
+                    : '';
+                return `<label class="flex items-start gap-2 px-2 py-1.5 rounded-sm hover:bg-surface-tile-2 cursor-pointer">
+                    <input type="checkbox" class="acct-item-cb mt-0.5 shrink-0" style="accent-color:#FFE169" value="${escapeHtml(i.key)}"${_acctItemSel.has(i.key) ? ' checked' : ''}>
+                    <span class="min-w-0 flex-1">
+                        <span class="block text-ink text-sm">${escapeHtml(i.name)} <span class="text-[10px] px-1.5 py-0.5 rounded bg-chip/60 text-ink">${escapeHtml(i.flow_label)}</span></span>
+                        <span class="block text-xs text-body-muted">${escapeHtml(i.description)}</span>${note}
+                    </span>
+                </label>`;
+            }).join('');
+        }).join('');
+    }
+
+    function bindAcctItemsOnce() {
+        if (_acctItemsBound) return;
+        _acctItemsBound = true; // HTML ของ modal อยู่ใน index.html ครั้งเดียว — ผูกครั้งเดียวพอ
+        document.getElementById('acct-account-items-search')?.addEventListener('input', renderAcctItems);
+        document.getElementById('acct-account-items')?.addEventListener('change', (e) => {
+            const cb = e.target.closest('.acct-item-cb');
+            if (!cb) return;
+            if (cb.checked) _acctItemSel.add(cb.value); else _acctItemSel.delete(cb.value);
+            updateAcctItemsCount();
+        });
+    }
+
     // เปลี่ยนหมวดในฟอร์ม (เฉพาะตอนเพิ่มจากหน้างบดุล) — โหลดกลุ่มและสมุดของหมวดนั้นใหม่
     function onAcctAccountCategoryChange() {
         const catId = document.getElementById('acct-account-category')?.value || '';
@@ -991,6 +1423,15 @@
         code.value = data.account_code || '';
         code.readOnly = !!data.is_system; // บัญชีระบบเปลี่ยนรหัสไม่ได้
         document.getElementById('acct-account-name').value = data.account_name || '';
+        // รายการที่เชื่อม: แก้บัญชีเดิมที่ไม่มี item_keys ในข้อมูล = ไม่รู้ของเดิม จึงไม่ส่งกลับไปทับตอนบันทึก
+        _acctItemsEditId = data._id || '';
+        _acctItemsKnown = !data._id || Array.isArray(data.item_keys);
+        _acctItemSel = new Set(Array.isArray(data.item_keys) ? data.item_keys : []);
+        const itemSearch = document.getElementById('acct-account-items-search');
+        if (itemSearch) itemSearch.value = '';
+        bindAcctItemsOnce();
+        renderAcctItems();
+        loadAcctItemsCache().then(renderAcctItems); // โหลดใหม่ทุกครั้งที่เปิด เพื่อให้ป้าย "เชื่อมกับ ... อยู่แล้ว" เป็นปัจจุบัน
         modal.classList.remove('hidden');
         (pickCat ? catSel : (data.is_system ? document.getElementById('acct-account-name') : code)).focus();
     }
@@ -1011,6 +1452,8 @@
             book_id: document.getElementById('acct-account-book')?.value || null
         };
         if (_id) payload._id = _id;
+        // ส่ง item_keys ต่อเมื่อโหลดแคตตาล็อกได้และรู้ของเดิมครบ — ไม่งั้นไม่ส่ง เพื่อไม่ให้ไปลบการเชื่อมเดิมโดยไม่ตั้งใจ
+        if (_acctItemsCache.loaded && _acctItemsKnown) payload.item_keys = [..._acctItemSel];
         if (!payload.category_id) { showToast('กรุณาเลือกหมวดของบัญชี', 'warning'); return; }
         if (!payload.account_code || !payload.account_name) { showToast('กรุณากรอกรหัสและชื่อบัญชีให้ครบ', 'warning'); return; }
         const btn = document.getElementById('acct-account-save');
@@ -1019,6 +1462,7 @@
         if (btn) btn.disabled = false;
         if (ok) {
             closeAcctAccountModal();
+            if (payload.item_keys) loadAcctSummary(); // เปลี่ยนการเชื่อมรายการ -> ยอดต่อรหัสเปลี่ยนทันที (คำนวณตอนอ่านจากลิงก์)
             if (group) { _treeOpen.add('cat:' + idOf(group.category_id)); _treeOpen.add('grp:' + group._id); saveTreeOpen(); renderAcctTree(); }
         }
     }
@@ -2182,6 +2626,7 @@
     window.renderBsPage = renderBsPage;
     window.initAccountTree = initAccountTree;
     window.openAcctGroupModal = openAcctGroupModal;
+    window.closeAcctDetail = closeAcctDetail;
     window.closeAcctGroupModal = closeAcctGroupModal;
     window.saveAcctGroup = saveAcctGroup;
     window.openAcctAccountModal = openAcctAccountModal;

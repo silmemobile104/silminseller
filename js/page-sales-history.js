@@ -871,6 +871,19 @@
             }
         }
 
+        // มัดจำที่หัก / ส่วนลดท้ายบิล — เซิร์ฟเวอร์คำนวณมาให้ (deposit_applied_display, discount_display) แสดงเฉพาะเมื่อมีค่า
+        const showAmountRow = (rowId, valueId, amount, prefix = '') => {
+            const row = document.getElementById(rowId);
+            const valueEl = document.getElementById(valueId);
+            if (!row || !valueEl) return;
+            const n = Number(amount) || 0;
+            row.classList.toggle('hidden', n <= 0);
+            row.classList.toggle('flex', n > 0);
+            if (n > 0) valueEl.textContent = `${prefix}฿${n.toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
+        };
+        showAmountRow('detail-deposit-row', 'transaction-detail-deposit', txn.deposit_applied_display, '−');
+        showAmountRow('detail-discount-row', 'transaction-detail-discount', txn.discount_display, '−');
+
         // Member Details
         if (transactionDetailMember) {
             if (txn.member_id) {
@@ -889,13 +902,23 @@
             const paidTotal = isFinancing ? (Number(txn.down_payment) || 0) : txn.total_amount;
             transactionDetailDownpayment.textContent = `฿${paidTotal.toLocaleString()}`;
 
+            // ยอดที่ลูกค้าจ่ายมาแล้วทั้งหมด = จ่ายที่หน้าร้าน + มัดจำที่จ่ายไว้ก่อน (แสดงเฉพาะบิลที่มีมัดจำ · ตัวเลขช่องบนยังเป็นยอดหน้าร้านเหมือนเดิม)
+            const paidWithDepositRow = document.getElementById('detail-paid-with-deposit-row');
+            const paidWithDepositEl = document.getElementById('transaction-detail-paid-with-deposit');
+            if (paidWithDepositRow && paidWithDepositEl) {
+                const depositPaid = Number(txn.deposit_applied_display) || 0;
+                paidWithDepositRow.classList.toggle('hidden', depositPaid <= 0);
+                paidWithDepositRow.classList.toggle('flex', depositPaid > 0);
+                if (depositPaid > 0) paidWithDepositEl.textContent = `฿${(paidTotal + depositPaid).toLocaleString()}`;
+            }
+
             if (transactionDetailPaymentBreakdown) {
                 let breakdownHTML = '';
                 const cash = isFinancing ? (txn.finance_down_payment_cash || 0) : (txn.cash_amount || 0);
                 const transfer = isFinancing ? (txn.finance_down_payment_transfer || 0) : (txn.transfer_amount || 0);
 
-                if (cash > 0) breakdownHTML += `<div class="flex gap-2 text-xs text-body-muted italic"><span>เงินสด:</span><span>฿${cash.toLocaleString()}</span></div>`;
-                if (transfer > 0) breakdownHTML += `<div class="flex gap-2 text-xs text-body-muted italic"><span>เงินโอน:</span><span>฿${transfer.toLocaleString()}</span></div>`;
+                if (cash > 0) breakdownHTML += `<div class="flex items-center justify-between gap-3 text-xs text-body-muted"><span>เงินสด</span><span class="font-mono">฿${cash.toLocaleString()}</span></div>`;
+                if (transfer > 0) breakdownHTML += `<div class="flex items-center justify-between gap-3 text-xs text-body-muted"><span>เงินโอน</span><span class="font-mono">฿${transfer.toLocaleString()}</span></div>`;
 
                 transactionDetailPaymentBreakdown.innerHTML = breakdownHTML;
                 transactionDetailPaymentBreakdown.classList.toggle('hidden', breakdownHTML === '');

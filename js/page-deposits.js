@@ -42,6 +42,9 @@
     const modalDepositCustomerName = document.getElementById('modal-deposit-customer-name');
     const modalDepositCustomerPhone = document.getElementById('modal-deposit-customer-phone');
     const modalDepositProductId = document.getElementById('modal-deposit-product-id');
+    const modalDepositCustomName = document.getElementById('modal-deposit-custom-name');
+    const modalDepositColorReq = document.getElementById('modal-deposit-color-req');
+    const modalDepositCapacityReq = document.getElementById('modal-deposit-capacity-req');
     const modalDepositColor = document.getElementById('modal-deposit-color');
     const modalDepositCapacity = document.getElementById('modal-deposit-capacity');
     const modalDepositImei = document.getElementById('modal-deposit-imei');
@@ -92,6 +95,11 @@
     const detailActionCancelSection = document.getElementById('detail-action-cancel-section');
     const detailCancelReason = document.getElementById('detail-cancel-reason');
     const btnSubmitCancelDeposit = document.getElementById('btn-submit-cancel-deposit');
+    const detailActionForfeitSection = document.getElementById('detail-action-forfeit-section');
+    const detailForfeitReason = document.getElementById('detail-forfeit-reason');
+    const btnSubmitForfeitDeposit = document.getElementById('btn-submit-forfeit-deposit');
+    const detailActionAccessorySection = document.getElementById('detail-action-accessory-section');
+    const btnStartAccessorySale = document.getElementById('btn-start-accessory-sale');
 
     // History section
     const detailHistoryInfoSection = document.getElementById('detail-history-info-section');
@@ -162,13 +170,29 @@
         hiddenInput.dispatchEvent(new Event('change'));
     };
 
+    // ค่าพิเศษของตัวเลือก "สินค้าที่ยังไม่มีในรายการ" — ใช้พิมพ์ชื่อเอง จองสินค้าที่ยังไม่มีในระบบได้
+    const CUSTOM_PRODUCT = '__custom__';
+    const isCustomDepositProduct = () => !!modalDepositProductId && modalDepositProductId.value === CUSTOM_PRODUCT;
+
+    // สินค้าพิมพ์เอง: สีกับความจุเป็นตัวเลือก (ไม่บังคับ) — สลับดาว * ตามโหมด
+    const syncDepositCustomMode = () => {
+        const custom = isCustomDepositProduct();
+        if (modalDepositCustomName) {
+            modalDepositCustomName.classList.toggle('hidden', !custom);
+            if (!custom) modalDepositCustomName.value = '';
+        }
+        if (modalDepositColorReq) modalDepositColorReq.classList.toggle('hidden', custom);
+        if (modalDepositCapacityReq) modalDepositCapacityReq.classList.toggle('hidden', custom);
+    };
+
     const populateDepositProducts = () => {
         const select = document.getElementById('modal-deposit-product-id');
         if (!select) return;
         const names = (window.masterDataCache && Array.isArray(window.masterDataCache.productNames))
             ? window.masterDataCache.productNames : [];
         select.innerHTML = '<option value="">-- เลือกสินค้าที่จอง --</option>'
-            + names.map(p => `<option value="${p.name}">${p.name}</option>`).join('');
+            + names.map(p => `<option value="${p.name}">${p.name}</option>`).join('')
+            + `<option value="${CUSTOM_PRODUCT}">+ สินค้าที่ยังไม่มีในรายการ (พิมพ์ชื่อเอง)</option>`;
     };
 
     // Swatch สี — โครงเดียวกับ renderCustomColorSwatches ใน script.js
@@ -384,6 +408,9 @@
             dot = 'bg-state-ok'; bg = 'bg-state-ok-tint/[0.12]'; text = 'text-state-ok';
         } else if (status === 'ยกเลิก') {
             dot = 'bg-state-danger'; bg = 'bg-state-danger/[0.12]'; text = 'text-state-danger';
+        } else if (status === 'ยึดมัดจำ') {
+            // ปิดรายการแล้วแต่ไม่ใช่การยกเลิก (เงินเป็นรายได้ของร้าน) จึงใช้โทนกลาง ไม่ใช้สีแดง
+            dot = 'bg-ink/40'; bg = 'bg-chip/60'; text = 'text-ink';
         }
         return `
             <div class="inline-flex items-center gap-2 px-2.5 py-1 rounded-[0.375rem] ${bg}">
@@ -391,6 +418,16 @@
                 <span class="${text} font-medium text-xs">${status}</span>
             </div>
         `;
+    };
+
+    // เลยกำหนด = ใบที่ยังรอดำเนินการ และวันนี้อยู่หลังวันนัดรับเครื่อง (ต้องเป็นกฎเดียวกับ isDepositOverdue ใน routes/api.js)
+    // appointment_date เป็นเที่ยงคืน UTC ของวันที่เลือก จึงเทียบเป็นสตริง YYYY-MM-DD แทนการเทียบ Date
+    const isDepositOverdue = (deposit) => {
+        if (!deposit || deposit.status !== 'รอดำเนินการ' || !deposit.appointment_date) return false;
+        const due = String(deposit.appointment_date).slice(0, 10);
+        const now = new Date();
+        const today = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
+        return today > due;
     };
 
     // ไอคอนสินค้าประจำแถว — สูตรเดียวกับคอลัมน์ "ชื่อสินค้า" หน้า #stock (ตัวสร้างอยู่ใน script.js ที่เดียว)
@@ -556,7 +593,9 @@
         // เลขที่บิล POS มีเฉพาะรายการที่ส่งมอบแล้ว จึงเกาะไปกับบรรทัดขั้นตอนแทนที่จะกินคอลัมน์ของตัวเอง
         const stageStr = item.bill_number ? `${item.stage} · บิล ${item.bill_number}` : item.stage;
         const remaining = item.remaining_amount || 0;
-        return { dateStr, apptStr, imeiStr, stageStr, remaining };
+        // ใบที่เลยวันนัดแล้วติดป้าย เพื่อให้พนักงานหาใบที่ต้องตามหรือยึดมัดจำได้จากรายการ
+        const overdueTag = isDepositOverdue(item) ? ' <span class="text-state-danger text-xs font-medium">เลยกำหนด</span>' : '';
+        return { dateStr, apptStr: apptStr + overdueTag, imeiStr, stageStr, remaining };
     };
 
     // ผูกปุ่ม view/print + คลิกทั้งชิ้น (แถวหรือการ์ด) ให้ทำงานเหมือนกันทั้งสองมุมมอง
@@ -809,6 +848,7 @@
 
         populateDepositProducts();
         populateDepositColorAndCapacity();
+        syncDepositCustomMode();
 
         modalCreateDeposit.classList.remove('opacity-0', 'pointer-events-none');
         const content = modalCreateDeposit.querySelector('.modal-content');
@@ -854,10 +894,27 @@
         detailPickupCashAmount.value = '';
         detailPickupTransferAmount.value = '';
         detailCancelReason.value = '';
+        if (detailForfeitReason) detailForfeitReason.value = '';
 
         if (deposit.status === 'รอดำเนินการ') {
-            detailActionCompleteSection.classList.remove('hidden');
+            // ใบที่จองสินค้าที่ยังไม่มีในระบบ (ไม่มี product_id) ส่งมอบจากหน้านี้ไม่ได้ — ซ่อนส่วนส่งมอบ ให้ไปขายที่หน้าขายแทน
+            detailActionCompleteSection.classList.toggle('hidden', !deposit.product_id);
             detailActionCancelSection.classList.remove('hidden');
+            // ยึดมัดจำได้เฉพาะหลังเลยวันนัดรับเครื่อง — ก่อนถึงกำหนดไม่โชว์ส่วนนี้เลย
+            if (detailActionForfeitSection) detailActionForfeitSection.classList.toggle('hidden', !isDepositOverdue(deposit));
+            // เปลี่ยนเป็นอุปกรณ์เสริม: โชว์กับทุกใบที่ยังรอดำเนินการ — ใบที่เลยกำหนดแล้วพนักงานเลือกเองว่าจะยึดหรืออนุโลมให้ลูกค้า
+            if (detailActionAccessorySection) detailActionAccessorySection.classList.remove('hidden');
+            const accTitle = document.getElementById('detail-accessory-title');
+            const accText = document.getElementById('detail-accessory-text');
+            if (accTitle && accText) {
+                if (!deposit.product_id) {
+                    accTitle.textContent = 'สินค้าที่จองยังไม่มีในระบบ — ส่งมอบที่หน้าขาย';
+                    accText.textContent = 'ใบนี้จองสินค้าที่ยังไม่มีในระบบ จึงส่งมอบจากหน้านี้ไม่ได้ เมื่อสินค้าเข้าระบบและลูกค้ามารับ กดปุ่มนี้เพื่อไปหน้าขาย เลือกสินค้า แล้วกดชำระเงิน ระบบจะหักเงินมัดจำนี้ให้เอง (ถ้าลูกค้าขอเปลี่ยนเป็นอุปกรณ์เสริมแทน ก็ทำแบบเดียวกัน)';
+                } else {
+                    accTitle.textContent = 'ลูกค้าขอเปลี่ยนเป็นอุปกรณ์เสริมแทนเครื่อง';
+                    accText.textContent = 'ใช้เมื่อลูกค้ามาตามกำหนดแต่ไม่เอาเครื่อง กดแล้วระบบพาไปหน้าขาย เลือกอุปกรณ์เสริม แล้วกดชำระเงิน เงินมัดจำนี้จะถูกหักให้เอง ถ้ามัดจำเหลือจากราคาอุปกรณ์เสริม ส่วนที่เหลือไม่ทอนคืนและนับเป็นรายได้ของร้าน';
+                }
+            }
             detailHistoryInfoSection.classList.add('hidden');
 
             if (deposit.imei && deposit.imei.trim() !== '') {
@@ -871,9 +928,19 @@
         } else {
             detailActionCompleteSection.classList.add('hidden');
             detailActionCancelSection.classList.add('hidden');
+            if (detailActionForfeitSection) detailActionForfeitSection.classList.add('hidden');
+            if (detailActionAccessorySection) detailActionAccessorySection.classList.add('hidden');
             detailHistoryInfoSection.classList.remove('hidden');
 
-            if (deposit.status === 'สำเร็จ') {
+            if (deposit.status === 'ยึดมัดจำ') {
+                detailHistoryCompletedByLabel.textContent = 'ผู้ยึดมัดจำ';
+                detailHistoryCompletedAtLabel.textContent = 'วันเวลาที่ยึดมัดจำ';
+                detailHistoryCompletedBy.textContent = deposit.forfeited_by?.name || '-';
+                detailHistoryCompletedAt.textContent = deposit.forfeited_at ? new Date(deposit.forfeited_at).toLocaleString('th-TH') : '-';
+                detailHistoryBillRow.classList.add('hidden');
+                detailHistoryReasonRow.classList.remove('hidden');
+                detailHistoryReason.textContent = deposit.forfeit_reason || 'ไม่ระบุ';
+            } else if (deposit.status === 'สำเร็จ') {
                 detailHistoryCompletedByLabel.textContent = 'ผู้ส่งมอบสินค้า';
                 detailHistoryCompletedAtLabel.textContent = 'วันเวลาที่ส่งมอบ';
                 detailHistoryCompletedBy.textContent = deposit.completed_by?.name || '-';
@@ -1075,6 +1142,17 @@
         modalDepositProductId.addEventListener('change', (e) => {
             const productName = e.target.value.trim();
 
+            // เลือก "สินค้าที่ยังไม่มีในรายการ": ให้พิมพ์ชื่อเอง ไม่ตรวจกับรายการสินค้าในระบบ
+            if (productName === CUSTOM_PRODUCT) {
+                syncDepositCustomMode();
+                modalDepositProductPrice.value = '';
+                populateDepositColorAndCapacity();
+                updateDepositRemaining(modalDepositProductPrice, modalDepositAmount, modalDepositRemaining);
+                if (modalDepositCustomName) modalDepositCustomName.focus();
+                return;
+            }
+            syncDepositCustomMode();
+
             const matched = window.masterDataCache && Array.isArray(window.masterDataCache.productNames)
                 ? window.masterDataCache.productNames.find(x => x.name.toLowerCase() === productName.toLowerCase())
                 : null;
@@ -1092,6 +1170,7 @@
     }
 
     const handleDepositVariationChange = () => {
+        if (isCustomDepositProduct()) return; // สินค้าพิมพ์เอง: ไม่มีราคาในระบบให้เติม ห้ามล้างราคาที่พนักงานพิมพ์
         const productName = modalDepositProductId.value.trim();
         const colorName = modalDepositColor ? modalDepositColor.value.trim() : '';
         const capacityName = modalDepositCapacity ? modalDepositCapacity.value.trim() : '';
@@ -1168,7 +1247,10 @@
             const customer_name = modalDepositCustomerName.value.trim();
             const customer_phone = modalDepositCustomerPhone.value.trim();
 
-            const productNameInput = modalDepositProductId.value.trim();
+            const customProduct = isCustomDepositProduct();
+            const productNameInput = customProduct
+                ? (modalDepositCustomName ? modalDepositCustomName.value.trim() : '')
+                : modalDepositProductId.value.trim();
             const colorNameInput = modalDepositColor ? modalDepositColor.value.trim() : '';
             const capacityNameInput = modalDepositCapacity ? modalDepositCapacity.value.trim() : '';
 
@@ -1189,15 +1271,20 @@
                 invalid(modalDepositCustomerPhone, 'กรุณาระบุเบอร์โทรลูกค้า');
                 return;
             }
+            if (customProduct && !productNameInput) {
+                invalid(modalDepositCustomName || modalDepositProductId, 'กรุณาพิมพ์ชื่อสินค้าที่จอง');
+                return;
+            }
             if (!productNameInput) {
                 invalid(modalDepositProductId, 'กรุณาเลือกสินค้าที่จอง');
                 return;
             }
-            if (modalDepositColor && !colorNameInput) {
+            // สีและความจุบังคับเฉพาะสินค้าที่เลือกจากรายการ — สินค้าพิมพ์เองจะใส่หรือไม่ใส่ก็ได้
+            if (!customProduct && modalDepositColor && !colorNameInput) {
                 invalid(modalDepositColor, 'กรุณาเลือกสีสินค้า');
                 return;
             }
-            if (modalDepositCapacity && !capacityNameInput) {
+            if (!customProduct && modalDepositCapacity && !capacityNameInput) {
                 invalid(modalDepositCapacity, 'กรุณาเลือกความจุสินค้า');
                 return;
             }
@@ -1222,30 +1309,29 @@
                 return;
             }
 
-            if (typeof allProductsCache === 'undefined' || !Array.isArray(allProductsCache)) {
-                showToast('ระบบขัดข้อง กรุณาลองใหม่อีกครั้ง', 'error');
-                return;
+            // จับคู่สินค้าในระบบ — ไม่เจอก็บันทึกได้ (product_id ว่าง) เพื่อจองสินค้าที่ยังไม่มีในระบบ
+            // สินค้าพิมพ์เองไม่ต้องหาในระบบเลย · ถ้าเลือกจากรายการแต่โหลดสต็อกไม่ได้ ต้องหยุด ไม่งั้นใบจะหลุดการผูกสินค้าที่มีจริง
+            let product_id = null;
+            if (!customProduct) {
+                if (typeof allProductsCache === 'undefined' || !Array.isArray(allProductsCache)) {
+                    showToast('ระบบขัดข้อง กรุณาลองใหม่อีกครั้ง', 'error');
+                    return;
+                }
+
+                // จับคู่ SKU จาก ชื่อสินค้า + สี + ความจุ (ใช้ชื่อแทน _id เพราะ input เป็น text)
+                let matchedProduct = allProductsCache.find(p => {
+                    if (p.name !== productNameInput) return false;
+                    const pColorName = p.color_id && (typeof p.color_id === 'object' ? p.color_id.name : p.color_id);
+                    const pCapName = p.capacity_id && (typeof p.capacity_id === 'object' ? p.capacity_id.name : p.capacity_id);
+                    return pColorName === colorNameInput && pCapName === capacityNameInput;
+                });
+
+                // หากไม่พบ SKU ที่ตรง ให้หา fallback จากชื่อสินค้าเท่านั้น
+                if (!matchedProduct) {
+                    matchedProduct = allProductsCache.find(p => p.name === productNameInput);
+                }
+                if (matchedProduct) product_id = matchedProduct._id;
             }
-
-            // จับคู่ SKU จาก ชื่อสินค้า + สี + ความจุ (ใช้ชื่อแทน _id เพราะ input เป็น text)
-            let matchedProduct = allProductsCache.find(p => {
-                if (p.name !== productNameInput) return false;
-                const pColorName = p.color_id && (typeof p.color_id === 'object' ? p.color_id.name : p.color_id);
-                const pCapName = p.capacity_id && (typeof p.capacity_id === 'object' ? p.capacity_id.name : p.capacity_id);
-                return pColorName === colorNameInput && pCapName === capacityNameInput;
-            });
-
-            // หากไม่พบ SKU ที่ตรง ให้หา fallback จากชื่อสินค้าเท่านั้น
-            if (!matchedProduct) {
-                matchedProduct = allProductsCache.find(p => p.name === productNameInput);
-            }
-
-            if (!matchedProduct) {
-                showToast('ไม่พบสินค้า "' + productNameInput + '" ในระบบ กรุณาตรวจสอบการตั้งค่าสินค้า', 'error');
-                return;
-            }
-
-            const product_id = matchedProduct._id;
             const colorName = colorNameInput;
             const capacityName = capacityNameInput;
             const product_name = [productNameInput, capacityName, colorName].filter(Boolean).join(' ').trim();
@@ -1297,7 +1383,9 @@
 
                 const result = await response.json();
                 if (result.success) {
-                    showToast('บันทึกใบมัดจำสินค้าสำเร็จเรียบร้อยแล้ว!');
+                    showToast(product_id
+                        ? 'บันทึกใบมัดจำสินค้าสำเร็จเรียบร้อยแล้ว!'
+                        : 'บันทึกใบมัดจำแล้ว (สินค้ายังไม่มีในระบบ) — ตอนลูกค้ามารับ ให้ขายที่หน้าขายแล้วหักมัดจำ', 'success', true);
                     closeCreateDepositModal();
                     loadDeposits();
                 } else {
@@ -1424,6 +1512,57 @@
             } finally {
                 btnSubmitCancelDeposit.disabled = false;
                 btnSubmitCancelDeposit.innerHTML = '<i class="fa-solid fa-ban"></i> ยืนยันยกเลิกรายการจอง';
+            }
+        });
+    }
+
+    // ลูกค้าขอเปลี่ยนเป็นอุปกรณ์เสริม — ปิดหน้าต่างนี้แล้วไปหน้าขาย (ใบมัดจำจะถูกใส่ในหน้าชำระเงินให้เอง)
+    if (btnStartAccessorySale) {
+        btnStartAccessorySale.addEventListener('click', () => {
+            if (!activeDeposit || activeDeposit.status !== 'รอดำเนินการ') return;
+            if (typeof window.startPosSaleWithDeposit !== 'function') {
+                showToast('ยังเปิดหน้าขายไม่ได้ กรุณารีเฟรชหน้าแล้วลองใหม่', 'error');
+                return;
+            }
+            const dep = activeDeposit;
+            closeDepositDetailsModal();
+            window.startPosSaleWithDeposit(dep);
+        });
+    }
+
+    // Submit Forfeit — ยึดมัดจำเป็นรายได้ (ปุ่มโผล่เฉพาะใบที่เลยวันนัด และเซิร์ฟเวอร์ตรวจซ้ำ)
+    if (btnSubmitForfeitDeposit) {
+        btnSubmitForfeitDeposit.addEventListener('click', async () => {
+            if (!activeDeposit) return;
+            if (!confirm(`ยืนยันยึดมัดจำ ฿${activeDeposit.deposit_amount.toLocaleString()} ของใบ ${activeDeposit.deposit_number} เป็นรายได้?\nทำแล้วย้อนกลับไม่ได้`)) return;
+
+            btnSubmitForfeitDeposit.disabled = true;
+            btnSubmitForfeitDeposit.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> กำลังดำเนินการ...';
+
+            try {
+                const token = localStorage.getItem('silmin_token');
+                const response = await fetch(`/api/deposits/${activeDeposit._id}/forfeit`, {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ reason: detailForfeitReason ? detailForfeitReason.value.trim() : '' })
+                });
+                const result = await response.json();
+                if (result.success) {
+                    showToast('ยึดมัดจำเรียบร้อยแล้ว');
+                    closeDepositDetailsModal();
+                    loadDeposits();
+                } else {
+                    showToast(result.message || 'เกิดข้อผิดพลาด', 'error');
+                }
+            } catch (err) {
+                console.error(err);
+                showToast('ไม่สามารถติดต่อเซิร์ฟเวอร์ได้', 'error');
+            } finally {
+                btnSubmitForfeitDeposit.disabled = false;
+                btnSubmitForfeitDeposit.innerHTML = '<i class="fa-solid fa-circle-check"></i> ยืนยันยึดมัดจำเป็นรายได้';
             }
         });
     }

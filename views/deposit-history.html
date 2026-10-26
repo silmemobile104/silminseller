@@ -1,0 +1,124 @@
+<div id="view-deposit-history">
+    <!-- หน้า "ประวัติการมัดจำ" — ใบมัดจำแต่ละใบจบอย่างไร และใช้ในบิลขายใบไหนเท่าไร (อ่านอย่างเดียว)
+         ข้อมูลจาก GET /api/deposits/history · วาดใน js/page-deposit-history.js -->
+    <!-- [1] หัวหน้า — DESIGN.md ข้อ 11.2 -->
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div class="flex items-center gap-4">
+            <i class="hidden md:block bi bi-clock text-ink w-5 text-2xl text-center"></i>
+            <h3 class="hidden md:block text-2xl text-ink">ประวัติการมัดจำ</h3>
+        </div>
+        <button id="btn-dh-refresh" type="button"
+            class="page-filter-control px-3 py-2 bg-panel/40 cursor-pointer text-ink flex items-center justify-center gap-1.5 rounded-[0.5rem] text-sm hover:bg-skeleton transition-colors w-fit">
+            <i class="fa-solid fa-rotate"></i> รีเฟรช
+        </button>
+    </div>
+
+    <!-- [2] สรุปยอดของรายการที่แสดงอยู่ -->
+    <div id="dh-summary" class="grid grid-cols-2 lg:grid-cols-5 gap-3">
+        <div class="elev-card bg-surface-tile-3 rounded-md p-4">
+            <p class="text-xs text-ink/70">มัดจำที่รับ</p>
+            <p id="dh-sum-received" class="text-lg font-mono font-semibold text-ink mt-1">฿0.00</p>
+        </div>
+        <div class="elev-card bg-surface-tile-3 rounded-md p-4">
+            <p class="text-xs text-ink/70">หักเป็นค่าสินค้าในบิลขาย</p>
+            <p id="dh-sum-applied" class="text-lg font-mono font-semibold text-ink mt-1">฿0.00</p>
+        </div>
+        <div class="elev-card bg-surface-tile-3 rounded-md p-4">
+            <p class="text-xs text-ink/70">ส่วนเกินค่าสินค้า (เป็นรายได้)</p>
+            <p id="dh-sum-excess" class="text-lg font-mono font-semibold text-ink mt-1">฿0.00</p>
+        </div>
+        <div class="elev-card bg-surface-tile-3 rounded-md p-4">
+            <p class="text-xs text-ink/70">ยึดมัดจำ (เป็นรายได้)</p>
+            <p id="dh-sum-forfeited" class="text-lg font-mono font-semibold text-ink mt-1">฿0.00</p>
+        </div>
+        <div class="elev-card bg-surface-tile-3 rounded-md p-4">
+            <p class="text-xs text-ink/70">คืนเงินลูกค้า (ยกเลิก)</p>
+            <p id="dh-sum-refunded" class="text-lg font-mono font-semibold text-ink mt-1">฿0.00</p>
+        </div>
+    </div>
+
+    <!-- [3] การ์ดพาเนล — แถบกรอง + ตาราง (ข้อ 11.1) -->
+    <div class="bg-panel/40 rounded-2xl shadow-lg overflow-hidden backdrop-blur-sm">
+        <div class="p-6 pb-0 flex flex-col gap-4">
+            <div class="flex flex-wrap items-end gap-3">
+                <div class="relative group w-full sm:w-64 rounded-[0.5rem]">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <i class="fa-solid fa-search text-ink group-focus-within:text-accent-ink transition-colors"></i>
+                    </div>
+                    <label for="dh-search" class="sr-only">ค้นหาด้วยชื่อลูกค้า เบอร์โทร เลขที่ใบมัดจำ หรือเลขที่บิล</label>
+                    <input type="text" id="dh-search" autocomplete="off" placeholder="ชื่อ / เบอร์ / เลขที่ใบมัดจำ / เลขที่บิล..."
+                        class="page-filter-control elev-chip bg-transparent rounded-[10px] text-sm pl-10 pr-4 py-2 w-full text-ink focus:outline-none focus:ring-1 focus:ring-accent-ink transition-all placeholder-body-muted">
+                </div>
+                <div>
+                    <label for="dh-start" class="block text-body-muted text-xs mb-1">รับมัดจำตั้งแต่</label>
+                    <input type="date" id="dh-start"
+                        class="page-filter-control bg-panel/40 text-sm rounded-[0.5rem] px-3 py-2 text-ink focus:outline-none focus:ring-1 focus:ring-accent-ink">
+                </div>
+                <div>
+                    <label for="dh-end" class="block text-body-muted text-xs mb-1">ถึงวันที่</label>
+                    <input type="date" id="dh-end"
+                        class="page-filter-control bg-panel/40 text-sm rounded-[0.5rem] px-3 py-2 text-ink focus:outline-none focus:ring-1 focus:ring-accent-ink">
+                </div>
+                <div>
+                    <label for="dh-branch" class="block text-body-muted text-xs mb-1">สาขา</label>
+                    <select id="dh-branch"
+                        class="page-filter-control bg-panel/40 cursor-pointer text-sm rounded-[0.5rem] px-3 py-2 text-ink focus:outline-none focus:ring-1 focus:ring-accent-ink [&>option]:bg-panel [&>option:checked]:bg-primary [&>option:checked]:text-on-primary">
+                        <option value="ALL">ทุกสาขา</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="dh-outcome" class="block text-body-muted text-xs mb-1">ผลลัพธ์</label>
+                    <select id="dh-outcome"
+                        class="page-filter-control bg-panel/40 cursor-pointer text-sm rounded-[0.5rem] px-3 py-2 text-ink focus:outline-none focus:ring-1 focus:ring-accent-ink [&>option]:bg-panel [&>option:checked]:bg-primary [&>option:checked]:text-on-primary">
+                        <option value="ALL">ทุกผลลัพธ์</option>
+                        <option value="รับเครื่อง">รับเครื่อง</option>
+                        <option value="เปลี่ยนเป็นอุปกรณ์เสริม">เปลี่ยนเป็นอุปกรณ์เสริม</option>
+                        <option value="ยึดมัดจำ">ยึดมัดจำ</option>
+                        <option value="ยกเลิก (คืนเงิน)">ยกเลิก (คืนเงิน)</option>
+                        <option value="รอดำเนินการ">รอดำเนินการ (ยังไม่จบ)</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="dh-scope" class="block text-body-muted text-xs mb-1">แสดง</label>
+                    <select id="dh-scope"
+                        class="page-filter-control bg-panel/40 cursor-pointer text-sm rounded-[0.5rem] px-3 py-2 text-ink focus:outline-none focus:ring-1 focus:ring-accent-ink [&>option]:bg-panel [&>option:checked]:bg-primary [&>option:checked]:text-on-primary">
+                        <option value="closed">เฉพาะใบที่จบแล้ว</option>
+                        <option value="all">รวมใบที่ยังรอดำเนินการ</option>
+                    </select>
+                </div>
+                <button type="button" id="btn-dh-load"
+                    class="px-5 py-2 bg-primary hover:bg-[#E2B93C] text-on-primary font-medium rounded-xl transition-all flex items-center gap-2 w-fit cursor-pointer text-sm">
+                    <i class="fa-solid fa-filter"></i>
+                    <span>แสดงรายการ</span>
+                </button>
+            </div>
+            <div id="dh-result-count" class="text-xs text-ink font-medium" aria-live="polite"></div>
+        </div>
+
+        <!-- ตาราง (ข้อ 11.6) -->
+        <div class="overflow-x-auto mt-3" tabindex="0">
+            <table class="w-full text-left text-sm whitespace-nowrap border-collapse">
+                <thead class="bg-panel/40 text-ink">
+                    <tr>
+                        <th class="px-6 py-4 font-semibold text-[15px]">เลขที่ใบมัดจำ</th>
+                        <th class="px-6 py-4 font-semibold text-[15px] w-full">ลูกค้า / สินค้าที่จอง</th>
+                        <th class="px-6 py-4 font-semibold text-[15px] text-right">ยอดมัดจำ</th>
+                        <th class="px-6 py-4 font-semibold text-[15px]">ผลลัพธ์</th>
+                        <th class="px-6 py-4 font-semibold text-[15px]">บิลขายที่ใช้มัดจำ</th>
+                        <th class="px-6 py-4 font-semibold text-[15px] text-right">หักในบิล</th>
+                        <th class="px-6 py-4 font-semibold text-[15px] text-right">เป็นรายได้</th>
+                        <th class="px-6 py-4 font-semibold text-[15px] text-right">คืนเงิน</th>
+                        <th class="px-6 py-4 font-semibold text-[15px]">วันที่จบ / ผู้ทำรายการ</th>
+                    </tr>
+                </thead>
+                <tbody id="dh-table-body" class="divide-y divide-divider">
+                    <!-- แถวถูกสร้างจาก js/page-deposit-history.js -->
+                </tbody>
+            </table>
+        </div>
+        <div id="dh-more-wrap" class="hidden p-4 text-center">
+            <button type="button" id="btn-dh-more"
+                class="px-5 py-2 rounded-xl bg-surface-chip hover:bg-surface-tile-2 text-ink text-sm font-medium cursor-pointer">แสดงเพิ่ม</button>
+        </div>
+    </div>
+</div>

@@ -74,6 +74,8 @@ async function attachLedgerBooks(ledger) {
 
 const { uploadBufferToDriveInFolder } = require('../utils/googleDrive');
 const mdCache = require('../utils/masterDataCache');
+// บันทึกยอดเข้า-ออกต่อรายการ (AccountItemEvent) — เรียกหลังเอกสารเปลี่ยน ไม่รอผลและไม่ทำให้เส้นทางหลักล้ม (utils/accountEntries.js)
+const { queueRefresh: queueAcctRefresh, analyzeBill, loadTransactionContext } = require('../utils/accountEntries');
 
 // อัปโหลดรูปหน้าตรงสมาชิก (จากเครื่องอ่านบัตร) ขึ้น Google Drive แทนการเก็บ base64 ดิบใน DB
 // - ถ้าเป็น URL อยู่แล้ว (เช่น ส่งค่าเดิมกลับมาตอนแก้ไขข้อมูล) ไม่ต้องอัปโหลดซ้ำ
@@ -659,6 +661,7 @@ const executeFinalizeImport = async (poId, employeeId) => {
 
     po.received_by = employeeId;
     await po.save();
+    queueAcctRefresh('purchase_order', po._id); // ตรวจรับ/นำเข้าสต็อกตาม PO: ยอดรับสินค้าเข้าเปลี่ยน
 
     // Log successful finalize PO import to Audit Trail
     try {
@@ -1654,6 +1657,12 @@ router.post('/stock-issues', async (req, res) => {
             return res.status(500).json({ success: false, message: 'บันทึกใบจ่ายออกไม่สำเร็จ ระบบคืนสต็อกให้แล้ว กรุณาลองใหม่' });
         }
 
+        // ใบจ่ายออกสร้างสำเร็จ (ผ่านจุดที่อาจคืนสต็อกแล้ว) -> บันทึกยอดขาดทุน (loss) และยอดค้างรับของใบเคลมที่แตกออกมา
+        queueAcctRefresh('stock_issue', issue._id);
+        Claim.find({ issue_id: issue._id }).select('_id').lean()
+            .then(cs => cs.forEach(c => queueAcctRefresh('claim', c._id)))
+            .catch(e => console.error('[accountEntries] หาใบเคลมของใบจ่ายออกไม่สำเร็จ:', e.message));
+
         // บันทึกลง Movement Ledger ให้ค้นประวัติรายเครื่องได้จากหน้า "ประวัติการเคลื่อนไหว"
         // ใบจ่ายออกสร้างแล้วจึงไม่คืนสต็อก — ถ้า ledger พลาดให้ log ไว้และตอบสำเร็จ
         try {
@@ -1851,6 +1860,7 @@ router.put('/claims/:id/close', async (req, res) => {
 
         const updated = await transitionClaim(req, res, 'ปิดเคลม', { resolution, claim_type: ctype }, claim);
         if (!updated) return;
+        queueAcctRefresh('claim', updated._id); // ปิดเคลม: ยอดค้างรับหาย → เงินสด/ส่วนลด/สินค้าทดแทนเข้า
 
         // กรณีได้รับสินค้า: รับเครื่องเข้าสต็อกสาขาเดิม (สถานะเปลี่ยนแล้วจึงไม่เข้าซ้ำ)
         const failed = [];
@@ -1987,6 +1997,7 @@ router.put('/claims/:id/reject', async (req, res) => {
         const returnToStock = req.body.return_to_stock === true || req.body.return_to_stock === 'true';
         const updated = await transitionClaim(req, res, 'ปฏิเสธ', { returned_to_stock: returnToStock });
         if (!updated) return;
+        queueAcctRefresh('claim', updated._id); // ซัพปฏิเสธ: ตัดทิ้ง (ขาดทุน) หรือคืนเข้าสต็อก
 
         const failed = [];
         if (returnToStock) {
@@ -3307,16 +3318,52 @@ router.put('/transfers/:id/cancel', async (req, res) => {
     }
 });
 
+// ตัด/คืนสต็อกสาขาแบบ atomic (เงื่อนไขอยู่ใน filter เดียวกับการเขียน) — ห้ามแก้ stock_balances บนเอกสารที่โหลดค้างไว้แล้ว save()
+// เพราะจะเขียนทับการขาย/โอนที่แทรกเข้ามาระหว่างอ่านกับบันทึก · คืน true เมื่อตัดได้จริง
+async function deductBranchStock(productId, branchId, { imei = '', quantity = 1 } = {}) {
+    const result = imei
+        ? await Product.updateOne(
+            { _id: productId, stock_balances: { $elemMatch: { branch_id: branchId, imeis: imei } } },
+            { $pull: { 'stock_balances.$.imeis': imei }, $inc: { 'stock_balances.$.quantity': -1 } }
+        )
+        : await Product.updateOne(
+            { _id: productId, stock_balances: { $elemMatch: { branch_id: branchId, quantity: { $gte: quantity } } } },
+            { $inc: { 'stock_balances.$.quantity': -quantity } }
+        );
+    return result.modifiedCount === 1;
+}
+
+async function restoreBranchStock(productId, branchId, { imei = '', quantity = 1 } = {}) {
+    const filter = { _id: productId, stock_balances: { $elemMatch: { branch_id: branchId } } };
+    return imei
+        ? Product.updateOne(filter, { $addToSet: { 'stock_balances.$.imeis': imei }, $inc: { 'stock_balances.$.quantity': 1 } })
+        : Product.updateOne(filter, { $inc: { 'stock_balances.$.quantity': quantity } });
+}
+
 // POST /api/transactions
 // หน้าที่: บันทึกรายการขายและหักสต็อกอัตโนมัติ
 router.post('/transactions', async (req, res) => {
+    // จองใบมัดจำที่นำมาหักไว้ก่อนตัดสต็อก · ถ้าบิลไม่สำเร็จต้องคืนสถานะ (ใช้ใน early return และ catch)
+    let releaseDeposit = async () => { };
+    // รายการที่ตัดสต็อกไปแล้วในบิลนี้ — ถ้ารายการถัดไปหรือขั้นตอนหลังล้มเหลว ต้องคืนสต็อกและลบ movement ที่สร้างไป ไม่ให้สต็อกหายโดยไม่มีบิล
+    const deductedItems = [];
+    let saleReceiptNo = '';
+    const rollbackSale = async () => {
+        if (deductedItems.length) {
+            await Promise.all(deductedItems.map(d => restoreBranchStock(d.productId, d.branchId, d.opts)))
+                .catch(err => console.error('[POS] คืนสต็อกไม่สำเร็จ:', err));
+            if (saleReceiptNo) await Movement.deleteMany({ reference_no: saleReceiptNo }).catch(err => console.error('[POS] ลบ movement ไม่สำเร็จ:', err));
+            deductedItems.length = 0;
+        }
+        await releaseDeposit();
+    };
     try {
         const {
             items, total_amount, payment_method, down_payment, branch_id, member_id,
             payment_type, cash_amount, transfer_amount, finance_company,
             finance_payment_day, finance_months, finance_down_payment_cash, finance_down_payment_transfer,
             finance_fee_cash, finance_fee_transfer,
-            contract_fee, icloud_fee, applied_deposit_id, applied_deposit_amount
+            contract_fee, icloud_fee, applied_deposit_id, applied_deposit_amount, discount_amount
         } = req.body;
 
         // ตรวจสอบข้อมูลเบื้องต้น
@@ -3332,6 +3379,7 @@ router.post('/transactions', async (req, res) => {
         const dateStr = now.toISOString().slice(0, 10).replace(/-/g, '');
         const randomStr = Math.random().toString(36).substring(2, 7).toUpperCase();
         const receipt_number = `INV-${dateStr}-${randomStr}`;
+        saleReceiptNo = receipt_number;
 
         // Normalize items to ensure imei/downstream fields are persisted
         const normalizedItems = (items || []).map(it => {
@@ -3356,13 +3404,60 @@ router.post('/transactions', async (req, res) => {
             };
         });
 
+        // ส่วนลดท้ายบิลมาจากฝั่งหน้าเว็บ: ต้องเป็นตัวเลขไม่ติดลบ และไม่เกินยอดรวมสินค้า + ค่าธรรมเนียม ก่อนหักสต็อก
+        if (discount_amount !== undefined && discount_amount !== null && discount_amount !== '') {
+            const discountNum = Number(discount_amount);
+            const billGross = normalizedItems.reduce((s, it) => s + it.price * it.quantity, 0)
+                + (Number(contract_fee) || 0) + (Number(icloud_fee) || 0);
+            if (!Number.isFinite(discountNum) || discountNum < 0 || discountNum > billGross + 0.005) {
+                return res.status(400).json({ success: false, message: 'ส่วนลดไม่ถูกต้อง (ต้องไม่ติดลบและไม่เกินยอดรวมของบิล)' });
+            }
+        }
+
+        // มัดจำที่นำมาหัก: ยอดมาจากหน้าเว็บ จึงต้องเทียบกับใบมัดจำจริงก่อนหักสต็อก
+        // ใบต้องมีอยู่ ยังรอดำเนินการ (ใช้แล้ว/ยกเลิก/ยึดแล้วห้ามใช้ซ้ำ) และยอดที่หักต้องไม่เกินยอดที่รับมัดจำไว้จริง
+        const appliedDepositNum = Number(applied_deposit_amount) || 0;
+        if (applied_deposit_id) {
+            if (!mongoose.Types.ObjectId.isValid(applied_deposit_id)) {
+                return res.status(400).json({ success: false, message: 'รหัสใบมัดจำไม่ถูกต้อง' });
+            }
+            const depToApply = await Deposit.findById(applied_deposit_id).lean();
+            if (!depToApply) {
+                return res.status(404).json({ success: false, message: 'ไม่พบใบมัดจำที่นำมาหัก' });
+            }
+            if (depToApply.status !== 'รอดำเนินการ') {
+                return res.status(400).json({ success: false, message: `ใบมัดจำ ${depToApply.deposit_number} อยู่ในสถานะ ${depToApply.status} แล้ว นำมาหักซ้ำไม่ได้` });
+            }
+            if (appliedDepositNum < 0 || appliedDepositNum > (Number(depToApply.deposit_amount) || 0) + 0.005) {
+                return res.status(400).json({ success: false, message: `ยอดมัดจำที่หักเกินยอดที่รับไว้จริง (รับไว้ ฿${Number(depToApply.deposit_amount).toLocaleString()})` });
+            }
+            // จองแบบ atomic: สองบิลที่ใช้ใบเดียวกันพร้อมกัน มีได้บิลเดียวที่ผ่าน
+            const claimedDeposit = await Deposit.findOneAndUpdate(
+                { _id: applied_deposit_id, status: 'รอดำเนินการ' },
+                { $set: { status: 'สำเร็จ', bill_number: receipt_number, completed_by: req.user.employee_id, completed_at: now } },
+                { new: true }
+            ).lean();
+            if (!claimedDeposit) {
+                return res.status(409).json({ success: false, message: `ใบมัดจำ ${depToApply.deposit_number} ถูกใช้หรือเปลี่ยนสถานะไปแล้ว นำมาหักซ้ำไม่ได้` });
+            }
+            releaseDeposit = async () => {
+                await Deposit.updateOne(
+                    { _id: applied_deposit_id, status: 'สำเร็จ', bill_number: receipt_number },
+                    { $set: { status: 'รอดำเนินการ' }, $unset: { bill_number: '', completed_by: '', completed_at: '' } }
+                ).catch(err => console.error('[POS] คืนสถานะใบมัดจำไม่สำเร็จ:', err));
+            };
+        } else if (appliedDepositNum > 0) {
+            return res.status(400).json({ success: false, message: 'มียอดหักมัดจำแต่ไม่ได้ระบุใบมัดจำ' });
+        }
+
         // ==========================================
         // CRITICAL: Stock Deduction Logic (หักสต็อกแยกตามสาขา)
         // ==========================================
         const targetBranchId = branch_id || (req.user && req.user.branch_id ? req.user.branch_id : '');
         for (const item of normalizedItems) {
-            const product = await Product.findById(item.product_id);
+            const product = await Product.findById(item.product_id).lean();
             if (!product) {
+                await rollbackSale();
                 return res.status(404).json({
                     success: false,
                     message: `ไม่พบสินค้า: ${item.product_name} ในระบบ`
@@ -3370,42 +3465,50 @@ router.post('/transactions', async (req, res) => {
             }
 
             const bId = targetBranchId ? targetBranchId.toString() : '';
-            if (!product.stock_balances) product.stock_balances = [];
-            let bal = product.stock_balances.find(x => x.branch_id && x.branch_id.toString() === bId);
+            let bal = (product.stock_balances || []).find(x => x.branch_id && x.branch_id.toString() === bId);
 
             if (!bal) {
+                await rollbackSale();
                 return res.status(400).json({
                     success: false,
                     message: `สินค้า ${item.product_name} ไม่มีอยู่ในคลังของสาขานี้`
                 });
             }
 
+            // ตรวจให้ข้อความชัดเจนจากข้อมูลที่อ่านมา แล้วตัดจริงด้วย atomic update (ตัดไม่ได้ = มีคนตัดตัดหน้าไปแล้ว)
             const hasImeisInStock = Array.isArray(bal.imeis) && bal.imeis.length > 0;
-            if (hasImeisInStock && item.imei_sold && item.imei_sold.trim() !== '') {
+            const soldImei = item.imei_sold ? item.imei_sold.trim() : '';
+            let deductOpts;
+            if (hasImeisInStock && soldImei) {
                 // กรณีมี IMEI (อุปกรณ์มือถือ/แท็บเล็ต): ลบ IMEI ที่ขายออกจาก array ของสาขานี้
-                const imeiIndex = bal.imeis.indexOf(item.imei_sold.trim());
-                if (imeiIndex === -1) {
+                if (!bal.imeis.includes(soldImei)) {
+                    await rollbackSale();
                     return res.status(400).json({
                         success: false,
                         message: `ไม่พบ IMEI: ${item.imei_sold} ในคลังสาขานี้ของสินค้า ${item.product_name}`
                     });
                 }
-                bal.imeis.splice(imeiIndex, 1);
-                bal.quantity = Math.max(0, bal.quantity - 1);
+                deductOpts = { imei: soldImei, quantity: 1 };
             } else {
                 // กรณีไม่มี IMEI (อุปกรณ์เสริม): ลดจำนวนตามที่ซื้อของสาขานี้
                 if (bal.quantity < item.quantity) {
+                    await rollbackSale();
                     return res.status(400).json({
                         success: false,
                         message: `สินค้า ${item.product_name} ในสาขานี้มีไม่เพียงพอ (คงเหลือ: ${bal.quantity})`
                     });
                 }
-                bal.quantity = Math.max(0, bal.quantity - item.quantity);
+                deductOpts = { quantity: item.quantity };
+            }
+            if (!(await deductBranchStock(product._id, bal.branch_id, deductOpts))) {
+                await rollbackSale();
+                return res.status(409).json({
+                    success: false,
+                    message: `สต็อกสินค้า ${item.product_name} เพิ่งมีการเปลี่ยนแปลง กรุณาตรวจสอบแล้วทำรายการใหม่`
+                });
             }
 
-            // แจ้งเตือน Mongoose ว่ามีการแก้ไขในอาเรย์ย่อยเพื่อให้ระบบทำการเซฟข้อมูลอย่างถูกต้อง
-            product.markModified('stock_balances');
-            await product.save();
+            deductedItems.push({ productId: product._id, branchId: bal.branch_id, opts: deductOpts });
 
             // Movement: ขายออก
             const imeiList = (item.imei_sold && item.imei_sold.trim() !== '') ? [item.imei_sold.trim()] : [];
@@ -3446,6 +3549,11 @@ router.post('/transactions', async (req, res) => {
             member_id: member_id || null,
             applied_deposit_id: applied_deposit_id || null,
             applied_deposit_amount: Number(applied_deposit_amount) || 0,
+            // ส่วนลดท้ายบิลที่แคชเชียร์กรอก — เก็บไว้ลงบัญชี (ยอดสุทธิถูกบีบเป็น 0 เมื่อมัดจำเกินยอดบิล ย้อนคำนวณส่วนลดไม่ได้)
+            // ไม่ส่งมา (client เก่า) = ไม่ตั้งฟิลด์ ให้ตัวบันทึกยอดย้อนคำนวณจากยอดบิลเหมือนบิลเก่า
+            ...(discount_amount !== undefined && discount_amount !== null && discount_amount !== ''
+                ? { discount_amount: Math.max(0, Number(discount_amount) || 0) }
+                : {}),
             // ซื้อสด = รับเงินครบหน้าร้านแล้ว / จัดไฟแนนซ์ = รอไฟแนนซ์โอนเงินเข้ามา (ฝ่ายบัญชีเป็นคนกดยืนยันทีหลัง)
             payment_status: resolveDefaultPaymentStatus(payment_type || payment_method),
             // ซื้อสดรับเงินครบหน้าร้าน -> คนที่ขายคือคนบันทึกว่า "ชำระแล้ว" (แสดงในหน้าตรวจสอบออเดอร์)
@@ -3457,21 +3565,12 @@ router.post('/transactions', async (req, res) => {
         });
 
         const savedTransaction = await newTransaction.save();
+        releaseDeposit = async () => { }; // บิลบันทึกแล้ว ใบมัดจำที่จองไว้ต้องคงสถานะ "สำเร็จ"
+        deductedItems.length = 0; // และสต็อกที่ตัดไปต้องคงไว้ด้วย
 
-        // ==========================================
-        // อัปเดตสถานะใบมัดจำที่ถูกนำมาหัก (ถ้ามี)
-        // ==========================================
+        // ใบมัดจำถูกจอง/เปลี่ยนเป็น "สำเร็จ" ไปแล้วก่อนตัดสต็อก — ที่นี่เหลือแค่บันทึกประวัติ
         if (applied_deposit_id) {
-            const linkedDeposit = await Deposit.findById(applied_deposit_id);
-            if (linkedDeposit && linkedDeposit.status === 'รอดำเนินการ') {
-                linkedDeposit.status = 'สำเร็จ';
-                linkedDeposit.bill_number = receipt_number;
-                linkedDeposit.completed_by = req.user.employee_id;
-                linkedDeposit.completed_at = now;
-                await linkedDeposit.save();
-                
-                await logActivity(req, 'UPDATE', 'DEPOSIT', `หักยอดมัดจำใบจอง ${linkedDeposit.deposit_number} ในรายการขาย ${receipt_number}`, null, linkedDeposit._id);
-            }
+            await logActivity(req, 'UPDATE', 'DEPOSIT', `หักยอดมัดจำใบจอง ในรายการขาย ${receipt_number}`, null, applied_deposit_id);
         }
 
         // ===================================================================
@@ -3529,6 +3628,10 @@ router.post('/transactions', async (req, res) => {
             await financeReceivable.save();
         }
 
+        // บันทึกยอดเข้า-ออกต่อรายการ (อยู่หลังสร้างลูกหนี้ไฟแนนซ์แล้ว เพราะยอดไฟแนนซ์อ่านจากเอกสารนั้น)
+        queueAcctRefresh('transaction', savedTransaction._id);
+        if (applied_deposit_id) queueAcctRefresh('deposit', applied_deposit_id); // ใบมัดจำเพิ่งเปลี่ยนเป็น "สำเร็จ" และผูกกับบิลนี้
+
         // Log successful transaction
         await logActivity(req, 'CREATE', 'POS', `ทำรายการขายสำเร็จ เลขที่ใบเสร็จ ${receipt_number} ยอดรวม ฿${total_amount}`, receipt_number, savedTransaction._id);
 
@@ -3541,6 +3644,7 @@ router.post('/transactions', async (req, res) => {
         });
 
     } catch (error) {
+        await rollbackSale();
         console.error('API Error POST /api/transactions:', error);
         res.status(500).json({
             success: false,
@@ -3710,6 +3814,19 @@ router.get('/transactions/:id', async (req, res) => {
             if (fc) {
                 doc.finance_company = fc.name;
             }
+        }
+
+        // มัดจำที่หักในบิล + ส่วนลดท้ายบิล สำหรับ popup รายละเอียดบิล · ใช้ analyzeBill ตัวเดียวกับยอดบัญชี (รวมบิลที่ส่งมอบจากหน้ามัดจำ)
+        // คำนวณไม่ได้ก็ส่งบิลตามปกติ แค่ไม่มีสองฟิลด์นี้
+        try {
+            // doc.items[].product_id ถูก populate เป็นออบเจกต์แล้ว แต่สูตรบัญชีค้นสินค้าด้วย id → ส่งสำเนาที่ย้อนเป็น id
+            const forCalc = { ...doc, items: (doc.items || []).map(it => ({ ...it, product_id: it.product_id && it.product_id._id ? it.product_id._id : it.product_id })) };
+            const ctx = await loadTransactionContext([forCalc]);
+            const a = analyzeBill(forCalc, ctx);
+            doc.deposit_applied_display = Math.round((a.posDeposit + a.completeApplied) * 100) / 100;
+            doc.discount_display = a.discount;
+        } catch (e) {
+            console.error('[transactions/:id] คำนวณมัดจำ/ส่วนลดสำหรับแสดงผลไม่สำเร็จ:', e.message);
         }
 
         res.status(200).json({ success: true, data: doc });
@@ -4123,6 +4240,10 @@ router.patch('/order-verifications/:id', async (req, res) => {
             }
         }
 
+        // ราคา/ดาวน์/สถานะชำระ/วันที่ไฟแนนซ์โอนเปลี่ยน = ยอดเข้า-ออกของบิลนี้ต้องคำนวณใหม่ (บันทึกทับยอดเดิม ไม่ซ้อน)
+        // (ดูที่คำขอ ไม่ใช่ที่ amountsTouched อย่างเดียว: ส่งราคา/ดาวน์มาแต่ค่าเท่าเดิม ก็ให้คำนวณใหม่เพื่อเก็บตกยอดที่เพี้ยนค้างอยู่)
+        if (amountsTouched || device_price !== undefined || down_payment !== undefined || payment_status || finance_paid_at !== undefined) queueAcctRefresh('transaction', txn._id);
+
         const after = resolvePaymentStatus(txn, receivable);
         const verifyAfter = txn.verify_status || 'รอตรวจสอบ';
 
@@ -4314,6 +4435,7 @@ router.post('/expenses', async (req, res) => {
             created_by: req.user.employee_id,
             created_at: now
         });
+        queueAcctRefresh('expense', saved._id);
 
         await logActivity(
             req, 'CREATE', 'EXPENSE',
@@ -4402,6 +4524,7 @@ router.post('/transactions/:id/cancel', async (req, res) => {
         transaction.cancelled_at = new Date();
 
         await transaction.save();
+        queueAcctRefresh('transaction', transaction._id); // บิลยกเลิก = ยอดของบิลนี้หายทั้งหมด
 
         // Log cancellation
         await logActivity(req, 'CANCEL', 'POS', `ยกเลิกบิลขาย เลขที่ใบเสร็จ ${transaction.receipt_number} เนื่องจาก: ${reason}`, transaction.receipt_number, transaction._id);
@@ -5492,7 +5615,11 @@ router.post('/import-notifications/:id/approve', async (req, res) => {
         notification.status = 'อนุมัติแล้ว';
         notification.approved_by = req.user.employee_id;
         notification.approved_at = new Date();
+        // เก็บราคาที่อนุมัติจริงลงใบแจ้งด้วย (เดิมอยู่แค่ในบันทึกกิจกรรม) — ใช้บันทึกยอดรับสินค้าเข้าโดยไม่ผ่าน PO
+        notification.cost_price = finalCostPrice;
+        notification.selling_price = finalSellingPrice;
         await notification.save();
+        queueAcctRefresh('import_notification', notification._id);
 
         await logActivity(req, 'APPROVE', 'STOCK',
             `อนุมัตินำเข้าสต็อกสินค้านอกระบบ PO: ${notification.product_name} (${incomingImeis.length} IMEI, ${savedProducts.length} รายการ)`,
@@ -5827,6 +5954,7 @@ router.post('/purchase-orders', async (req, res) => {
         });
 
         await newPO.save();
+        queueAcctRefresh('purchase_order', newPO._id); // PO ใหม่: ยอดค้างจ่ายนับตั้งแต่สั่งซื้อ (นิยามเดียวกับ ap-summary)
         await registerAccessoryProductNames(poItems);
         await linkDeviceNameTypes(poItems);
 
@@ -5878,6 +6006,7 @@ router.post('/po/create', async (req, res) => {
         });
 
         await newPO.save();
+        queueAcctRefresh('purchase_order', newPO._id);
         await registerAccessoryProductNames(poItems);
         await linkDeviceNameTypes(poItems);
 
@@ -5972,6 +6101,7 @@ router.post('/purchase-orders/:id/update', async (req, res) => {
         po.payment_due_date = payment_due_date;
 
         await po.save();
+        queueAcctRefresh('purchase_order', po._id); // แก้รายการ/ราคา PO = ยอดค้างจ่ายเปลี่ยน
         await registerAccessoryProductNames(poItems);
         await linkDeviceNameTypes(poItems);
 
@@ -6007,6 +6137,7 @@ router.post('/purchase-orders/:id/cancel', async (req, res) => {
 
         po.status = 'ยกเลิก';
         await po.save();
+        queueAcctRefresh('purchase_order', po._id); // ยกเลิก PO = ยอดของ PO นี้หายทั้งหมด
 
         await logActivity(req, 'CANCEL', 'PO', `ยกเลิกใบสั่งซื้อ เลขที่ ${po.po_number}`, po.po_number, po._id);
 
@@ -6533,6 +6664,7 @@ router.post('/accounting/expenses', async (req, res) => {
         });
 
         const saved = await newMovement.save();
+        queueAcctRefresh('cash_movement', saved._id); // ค่าเช่า/ไฟน้ำ/เงินเดือน/อื่นๆ จากหน้า "ระบบบัญชีและการเงิน"
 
         await logActivity(req, 'CREATE', 'ACCOUNTING', `บันทึกค่าใช้จ่ายทั่วไป หมวดหมู่ ${category} จำนวน ฿${amount}`, txn_id, saved._id);
 
@@ -6620,6 +6752,7 @@ router.put('/accounting/po-pay/:id', async (req, res) => {
         }
 
         await po.save();
+        queueAcctRefresh('purchase_order', po._id); // จ่ายเงิน/ส่วนลด: ยอดจ่าย ส่วนลด และค้างจ่ายของ PO เปลี่ยน
 
         // บันทึก CashMovement เฉพาะถ้ามียอดจ่ายจริง
         if (paymentAmount > 0) {
@@ -6774,6 +6907,8 @@ router.put('/accounting/receivables/:id/settle', async (req, res) => {
         }
 
         const savedReceivable = await receivable.save();
+        // ไฟแนนซ์โอน/ย้อนสถานะ = ยอดลูกหนี้ ↔ รับชำระ ของบิลนี้เปลี่ยน (transaction_id ถูก populate มาเป็นเอกสาร)
+        queueAcctRefresh('transaction', receivable.transaction_id && receivable.transaction_id._id ? receivable.transaction_id._id : receivable.transaction_id);
 
         // บันทึกกิจกรรมสำเร็จ
         const receiptNo = receivable.transaction_id ? receivable.transaction_id.receipt_number : '';
@@ -6958,6 +7093,7 @@ router.post('/finance/payout/:id', async (req, res) => {
         receivable.settled_at = settledAt;
 
         const savedReceivable = await receivable.save();
+        queueAcctRefresh('transaction', receivable.transaction_id && receivable.transaction_id._id ? receivable.transaction_id._id : receivable.transaction_id);
 
         // บันทึกกิจกรรมสำเร็จ
         const receiptNo = receivable.transaction_id ? receivable.transaction_id.receipt_number : '';
@@ -7373,6 +7509,16 @@ router.post('/stock-audit/sessions/:id/close', async (req, res) => {
 // DEPOSIT MODULE (การมัดจำสินค้า)
 // ==========================================
 
+// ใบมัดจำเป็นของสาขาไหน → คนสาขาอื่นที่ไม่มีสิทธิ์ดูทุกสาขาต้องแก้/ส่งมอบ/ยกเลิก/ยึดไม่ได้ (กฎเดียวกับ GET /deposits)
+const canAccessDepositBranch = (req, deposit) => {
+    const userRole = req.user.role || '';
+    const perms = req.user.permissions || {};
+    if (perms.filter_stock_branch || userRole === 'Administrator' || userRole === 'ผู้จัดการ') return true;
+    const userBranchId = req.user.branch_id ? String(req.user.branch_id) : '';
+    return !!userBranchId && String(deposit.branch_id) === userBranchId;
+};
+const DEPOSIT_BRANCH_DENIED = { success: false, message: 'ไม่มีสิทธิ์ดำเนินการกับใบมัดจำของสาขาอื่น' };
+
 // GET /api/deposits — ดึงข้อมูลรายการมัดจำสินค้า
 router.get('/deposits', async (req, res) => {
     try {
@@ -7432,6 +7578,7 @@ router.get('/deposits', async (req, res) => {
             .populate('created_by', 'name')
             .populate('completed_by', 'name')
             .populate('cancelled_by', 'name')
+            .populate('forfeited_by', 'name')
             .sort({ createdAt: -1 })
             .lean();
 
@@ -7439,6 +7586,192 @@ router.get('/deposits', async (req, res) => {
     } catch (error) {
         console.error('API Error GET /api/deposits:', error);
         res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการดึงข้อมูลรายการมัดจำ' });
+    }
+});
+
+// GET /api/deposits/history — ประวัติการมัดจำ: ใบมัดจำแต่ละใบจบอย่างไร และใช้ในบิลขายใบไหนเท่าไร (อ่านอย่างเดียว)
+//   scope=closed (ค่าเริ่มต้น: ไม่รวมใบที่ยังรอดำเนินการ) | all
+//   outcome = รับเครื่อง | เปลี่ยนเป็นอุปกรณ์เสริม | ยึดมัดจำ | ยกเลิก (คืนเงิน) | รอดำเนินการ | สำเร็จ (ไม่พบบิลขาย)
+//   ตัวเลข "ใช้ในบิล/ส่วนเกิน" ใช้ analyzeBill ตัวเดียวกับที่ลงยอดบัญชี (utils/accountEntries.js) ตัวเลขสองที่จึงตรงกัน
+const DEPOSIT_HISTORY_LIMIT = 1000;
+// เพดานจำนวนใบที่ยอมไล่อ่านต่อ 1 request — กันกรณีไม่ใส่ช่วงวันที่แล้วต้องกวาดทั้งประวัติ (ถึงเพดานจะตั้ง truncated ให้หน้าเว็บแนะนำให้เลือกช่วงวันที่)
+const DEPOSIT_HISTORY_SCAN_LIMIT = 10000;
+const escapeRegexText = (s) => String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+router.get('/deposits/history', async (req, res) => {
+    try {
+        const perms = req.user.permissions || {};
+        if (!perms.manage_deposits && !perms.verify_orders) {
+            return res.status(403).json({ success: false, message: 'ไม่มีสิทธิ์เข้าถึงข้อมูลมัดจำสินค้า' });
+        }
+
+        const userRole = req.user.role || '';
+        const userBranchId = req.user.branch_id ? req.user.branch_id.toString() : '';
+        const canFilterBranch = perms.filter_stock_branch || userRole === 'Administrator' || userRole === 'ผู้จัดการ';
+
+        const query = {};
+        if (!canFilterBranch) {
+            if (!userBranchId) return res.status(400).json({ success: false, message: 'ไม่พบข้อมูลสาขาของผู้ใช้งาน' });
+            query.branch_id = userBranchId;
+        } else if (req.query.branch_id && req.query.branch_id !== 'ALL') {
+            query.branch_id = req.query.branch_id;
+        }
+
+        if (req.query.scope !== 'all') query.status = { $ne: 'รอดำเนินการ' };
+
+        // กรองผลลัพธ์ที่ฐานข้อมูลก่อนตัดจำนวนแถว ไม่งั้นแถวของผลลัพธ์ที่เลือกอาจถูกตัดทิ้งไปกับแถวอื่น แล้วยอดสรุปไม่ครบ
+        // outcome แต่ละแบบผูกกับสถานะใบมัดจำ (รับเครื่อง/อุปกรณ์เสริม/ไม่พบบิล = สำเร็จ) ส่วนผลลัพธ์ย่อยของ "สำเร็จ" ยังกรองต่อหลังจับคู่บิล
+        const OUTCOME_STATUS = {
+            'รอดำเนินการ': 'รอดำเนินการ',
+            'ยึดมัดจำ': 'ยึดมัดจำ',
+            'ยกเลิก (คืนเงิน)': 'ยกเลิก',
+            'รับเครื่อง': 'สำเร็จ',
+            'เปลี่ยนเป็นอุปกรณ์เสริม': 'สำเร็จ',
+            'สำเร็จ (ไม่พบบิลขาย)': 'สำเร็จ'
+        };
+        const wantedOutcome = String(req.query.outcome || '').trim();
+        if (OUTCOME_STATUS[wantedOutcome]) {
+            if (query.status && query.status.$ne === OUTCOME_STATUS[wantedOutcome]) {
+                query.status = { $in: [] }; // เลือก "รอดำเนินการ" แต่ scope ไม่รวมรอดำเนินการ = ไม่มีแถว
+            } else {
+                query.status = OUTCOME_STATUS[wantedOutcome];
+            }
+        }
+
+        // ช่วงวันที่ = วันที่รับมัดจำ (เหมือนหน้า "การมัดจำ")
+        if (req.query.startDate || req.query.endDate) {
+            query.createdAt = {};
+            if (req.query.startDate) query.createdAt.$gte = new Date(req.query.startDate + 'T00:00:00');
+            if (req.query.endDate) query.createdAt.$lte = new Date(req.query.endDate + 'T23:59:59.999');
+        }
+
+        const search = String(req.query.search || '').trim();
+        if (search) {
+            const rx = new RegExp(escapeRegexText(search), 'i');
+            query.$or = [{ customer_name: rx }, { customer_phone: rx }, { deposit_number: rx }, { bill_number: rx }];
+        }
+
+        const outcomeFilter = String(req.query.outcome || '').trim();
+        const HISTORY_CHUNK = 500;
+
+        // จับคู่บิลและสรุปผลลัพธ์ของใบมัดจำชุดหนึ่ง (ทำทีละก้อนเพื่อไม่ให้ query บิล/บริบทใหญ่เกินไป)
+        const buildRows = async (deposits) => {
+            // บิลขายที่ใช้มัดจำ: ผูกด้วย applied_deposit_id (ขายผ่านหน้าขาย) หรือเลขที่บิล (ส่งมอบจากหน้ามัดจำ)
+            const depIds = deposits.map(d => d._id);
+            const billNos = deposits.map(d => d.bill_number).filter(Boolean);
+            const txns = (depIds.length || billNos.length)
+                ? await Transaction.find({ $or: [{ applied_deposit_id: { $in: depIds } }, { receipt_number: { $in: billNos } }] }).lean()
+                : [];
+            const ctx = txns.length ? await loadTransactionContext(txns) : null;
+            const txnByDeposit = new Map();
+            const txnByReceipt = new Map(txns.map(t => [t.receipt_number, t]));
+            txns.forEach(t => { if (t.applied_deposit_id) txnByDeposit.set(String(t.applied_deposit_id), t); });
+
+            const rows = deposits.map(d => {
+                const txn = txnByDeposit.get(String(d._id)) || (d.bill_number ? txnByReceipt.get(d.bill_number) : null) || null;
+                const amount = Number(d.deposit_amount) || 0;
+                let outcome;
+                let appliedAmount = 0;
+                let excessAmount = 0;
+                let billCancelled = false;
+                let billNumber = d.bill_number || '';
+
+                if (d.status === 'รอดำเนินการ') outcome = 'รอดำเนินการ';
+                else if (d.status === 'ยึดมัดจำ') outcome = 'ยึดมัดจำ';
+                else if (d.status === 'ยกเลิก') outcome = 'ยกเลิก (คืนเงิน)';
+                else if (!txn) outcome = 'สำเร็จ (ไม่พบบิลขาย)';
+                else {
+                    billNumber = txn.receipt_number;
+                    const a = analyzeBill(txn, ctx);
+                    outcome = a.devices.length > 0 ? 'รับเครื่อง' : 'เปลี่ยนเป็นอุปกรณ์เสริม';
+                    billCancelled = txn.status === 'ยกเลิกแล้ว';
+                    if (!billCancelled) {
+                        // ขายผ่านหน้าขาย: ส่วนที่ใช้/ส่วนเกินคิดจากบิล · ส่งมอบจากหน้ามัดจำ: ใช้เต็มจำนวน
+                        appliedAmount = txn.applied_deposit_id ? a.posApplied : amount;
+                        excessAmount = txn.applied_deposit_id ? a.excess : 0;
+                    }
+                }
+
+                const closedBy = d.status === 'สำเร็จ' ? d.completed_by : d.status === 'ยกเลิก' ? d.cancelled_by : d.status === 'ยึดมัดจำ' ? d.forfeited_by : null;
+                const closedAt = d.status === 'สำเร็จ' ? d.completed_at : d.status === 'ยกเลิก' ? d.cancelled_at : d.status === 'ยึดมัดจำ' ? d.forfeited_at : null;
+                return {
+                    _id: d._id,
+                    deposit_number: d.deposit_number,
+                    created_at: d.createdAt,
+                    customer_name: d.customer_name,
+                    customer_phone: d.customer_phone,
+                    product_name: d.product_name,
+                    product_price: d.product_price,
+                    deposit_amount: amount,
+                    payment_method: d.payment_method,
+                    appointment_date: d.appointment_date || null,
+                    status: d.status,
+                    outcome,
+                    closed_at: closedAt || null,
+                    closed_by_name: closedBy && closedBy.name ? closedBy.name : '',
+                    reason: d.status === 'ยกเลิก' ? (d.cancel_reason || '') : d.status === 'ยึดมัดจำ' ? (d.forfeit_reason || '') : '',
+                    bill_number: billNumber,
+                    bill_cancelled: billCancelled,
+                    applied_amount: appliedAmount,
+                    excess_amount: excessAmount,
+                    forfeited_amount: d.status === 'ยึดมัดจำ' ? amount : 0,
+                    refunded_amount: d.status === 'ยกเลิก' ? amount : 0,
+                    branch_name: d.branch_id && d.branch_id.name ? d.branch_id.name : '',
+                    created_by_name: d.created_by && d.created_by.name ? d.created_by.name : ''
+                };
+            });
+            return rows;
+        };
+
+        // อ่านทุกใบที่ตรงเงื่อนไขเป็นก้อนๆ: ยอดสรุปนับจากทุกแถวที่ผ่านตัวกรอง ส่วนแถวที่ส่งกลับตัดที่ DEPOSIT_HISTORY_LIMIT
+        // (ตัวกรองผลลัพธ์ย่อย เช่น รับเครื่อง/อุปกรณ์เสริม กรองหลังจับคู่บิล จึงต้องผ่านทุกก้อนก่อนสรุป)
+        const data = [];
+        const totals = { count: 0, received: 0, applied: 0, excess: 0, forfeited: 0, refunded: 0 };
+        let truncated = false;
+        for (let skip = 0; ; skip += HISTORY_CHUNK) {
+            if (skip >= DEPOSIT_HISTORY_SCAN_LIMIT) { truncated = true; break; }
+            const deposits = await Deposit.find(query)
+                .populate('branch_id', 'name')
+                .populate('created_by', 'name')
+                .populate('completed_by', 'name')
+                .populate('cancelled_by', 'name')
+                .populate('forfeited_by', 'name')
+                .sort({ createdAt: -1, _id: -1 })
+                .skip(skip)
+                .limit(HISTORY_CHUNK)
+                .lean();
+            if (!deposits.length) break;
+            const rows = await buildRows(deposits);
+            for (const r of rows) {
+                if (outcomeFilter && outcomeFilter !== 'ALL' && r.outcome !== outcomeFilter) continue;
+                totals.count += 1;
+                totals.received += Number(r.deposit_amount) || 0;
+                totals.applied += Number(r.applied_amount) || 0;
+                totals.excess += Number(r.excess_amount) || 0;
+                totals.forfeited += Number(r.forfeited_amount) || 0;
+                totals.refunded += Number(r.refunded_amount) || 0;
+                if (data.length < DEPOSIT_HISTORY_LIMIT) data.push(r);
+                else truncated = true;
+            }
+            if (deposits.length < HISTORY_CHUNK) break;
+        }
+        const round2 = (n) => Math.round(n * 100) / 100;
+
+        res.json({
+            success: true,
+            data,
+            truncated,
+            summary: {
+                count: totals.count,
+                received: round2(totals.received),
+                applied: round2(totals.applied),
+                excess: round2(totals.excess),
+                forfeited: round2(totals.forfeited),
+                refunded: round2(totals.refunded)
+            }
+        });
+    } catch (error) {
+        console.error('API Error GET /api/deposits/history:', error);
+        res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการดึงประวัติการมัดจำ' });
     }
 });
 
@@ -7455,8 +7788,12 @@ router.post('/deposits', async (req, res) => {
             transfer_amount, stage, notes
         } = req.body;
 
-        if (!customer_name || !customer_phone || !product_id || !product_name || !product_price || !deposit_amount || !payment_method) {
+        // product_id ไม่บังคับ: จองสินค้าที่ยังไม่มีในระบบได้ (ใช้ชื่อสินค้าที่พิมพ์มาแทน)
+        if (!customer_name || !customer_phone || !product_name || !product_price || !deposit_amount || !payment_method) {
             return res.status(400).json({ success: false, message: 'กรุณากรอกข้อมูลที่จำเป็นให้ครบถ้วน' });
+        }
+        if (product_id && !mongoose.Types.ObjectId.isValid(product_id)) {
+            return res.status(400).json({ success: false, message: 'รหัสสินค้าไม่ถูกต้อง' });
         }
 
         const userBranchId = req.user.branch_id ? req.user.branch_id.toString() : '';
@@ -7479,7 +7816,7 @@ router.post('/deposits', async (req, res) => {
             branch_id: userBranchId,
             customer_name,
             customer_phone,
-            product_id,
+            product_id: product_id || null,
             product_name,
             product_price: Number(product_price),
             deposit_amount: Number(deposit_amount),
@@ -7495,6 +7832,7 @@ router.post('/deposits', async (req, res) => {
         });
 
         const saved = await deposit.save();
+        queueAcctRefresh('deposit', saved._id);
 
         // บันทึกเงินมัดจำลงในตารางเงินบัญชีหมุนเวียน (CashMovement)
         if (Number(deposit_amount) > 0) {
@@ -7537,13 +7875,23 @@ router.put('/deposits/:id', async (req, res) => {
 
         const deposit = await Deposit.findById(req.params.id);
         if (!deposit) return res.status(404).json({ success: false, message: 'ไม่พบรายการมัดจำที่ระบุ' });
+        if (!canAccessDepositBranch(req, deposit)) return res.status(403).json(DEPOSIT_BRANCH_DENIED);
         if (deposit.status !== 'รอดำเนินการ') {
             return res.status(400).json({ success: false, message: 'ไม่สามารถแก้ไขใบมัดจำที่เสร็จสมบูรณ์หรือยกเลิกแล้วได้' });
         }
 
         if (customer_name) deposit.customer_name = customer_name;
         if (customer_phone) deposit.customer_phone = customer_phone;
-        if (product_id) deposit.product_id = product_id;
+        // product_id ส่งมาเป็น null/ว่าง = เปลี่ยนเป็นสินค้าที่ยังไม่มีในระบบ ต้องล้างค่าเดิม ไม่งั้นตอนส่งมอบจะตัดสต็อกสินค้าเดิม
+        if (product_id !== undefined) {
+            if (!product_id) {
+                deposit.product_id = null;
+            } else if (mongoose.Types.ObjectId.isValid(product_id)) {
+                deposit.product_id = product_id;
+            } else {
+                return res.status(400).json({ success: false, message: 'รหัสสินค้าไม่ถูกต้อง' });
+            }
+        }
         if (product_name) deposit.product_name = product_name;
         if (product_price !== undefined) deposit.product_price = Number(product_price);
         if (deposit_amount !== undefined) deposit.deposit_amount = Number(deposit_amount);
@@ -7558,7 +7906,19 @@ router.put('/deposits/:id', async (req, res) => {
         // คืนค่าค้างชำระใหม่
         deposit.remaining_amount = Math.max(0, deposit.product_price - deposit.deposit_amount);
 
-        const updated = await deposit.save();
+        // เขียนเฉพาะฟิลด์ที่แก้ และเฉพาะตอนใบยังรอดำเนินการ — ถ้าระหว่างนี้ใบถูกใช้/ยกเลิก/ยึดไปแล้วจะไม่ไปทับ
+        await deposit.validate(); // ตรวจทั้งเอกสารเหมือน save() เดิม (update validator ตรวจเฉพาะฟิลด์ที่อยู่ใน $set)
+        const $set = {};
+        deposit.modifiedPaths().forEach(p => { $set[p] = deposit.get(p); });
+        const updated = await Deposit.findOneAndUpdate(
+            { _id: deposit._id, status: 'รอดำเนินการ' },
+            { $set },
+            { new: true, runValidators: true }
+        );
+        if (!updated) {
+            return res.status(409).json({ success: false, message: 'ใบมัดจำนี้ถูกดำเนินการหรือเปลี่ยนสถานะไปแล้ว แก้ไขไม่ได้ กรุณารีเฟรชหน้าจอ' });
+        }
+        queueAcctRefresh('deposit', updated._id);
         await logActivity(req, 'UPDATE', 'DEPOSIT', `แก้ไขใบมัดจำสินค้า เลขที่ ${deposit.deposit_number}`, deposit.deposit_number, updated._id);
 
         res.json({ success: true, message: 'แก้ไขข้อมูลสำเร็จ', data: updated });
@@ -7578,15 +7938,46 @@ router.put('/deposits/:id/complete', async (req, res) => {
 
         const deposit = await Deposit.findById(req.params.id);
         if (!deposit) return res.status(404).json({ success: false, message: 'ไม่พบรายการมัดจำที่ระบุ' });
+        if (!canAccessDepositBranch(req, deposit)) return res.status(403).json(DEPOSIT_BRANCH_DENIED);
         if (deposit.status !== 'รอดำเนินการ') {
             return res.status(400).json({ success: false, message: `รายการนี้อยู่ในสถานะ ${deposit.status} แล้ว` });
         }
 
         const selectedImei = (imei || deposit.imei || '').trim();
 
+        // ใบที่จองสินค้าที่ยังไม่มีในระบบ: ไม่มีสินค้าให้ตัดสต็อก ส่งมอบจากหน้านี้ไม่ได้ — ให้ไปขายที่หน้าขายแล้วหักมัดจำ
+        if (!deposit.product_id) {
+            return res.status(400).json({ success: false, message: 'ใบนี้จองสินค้าที่ยังไม่มีในระบบ ส่งมอบจากหน้านี้ไม่ได้ ให้นำสินค้าเข้าระบบก่อน แล้วกด "ไปหน้าขายพร้อมใส่มัดจำ" เพื่อขายและหักมัดจำ' });
+        }
+
         // 1. ดึงข้อมูลสินค้า (ตรวจสอบว่าสินค้ายังคงมีอยู่ในระบบ)
-        const product = await Product.findById(deposit.product_id);
+        let product = await Product.findById(deposit.product_id);
         if (!product) return res.status(404).json({ success: false, message: 'ไม่พบสินค้าในระบบ' });
+
+        // 1.1 ตรวจสต็อกสาขาก่อนสร้างบิล (ตัดจริงก่อนบันทึกบิล) — สต็อกเครื่องเก็บแยกเอกสารตาม IMEI
+        // IMEI ที่เลือกอาจอยู่ในเอกสารสินค้าอื่นที่ไม่ใช่เอกสารที่ใบมัดจำจองไว้ → ค้นจาก IMEI ในสาขานี้แทน
+        const depBranchKey = String(deposit.branch_id);
+        const findBal = (p) => (p.stock_balances || []).find(b => b.branch_id && String(b.branch_id) === depBranchKey);
+        if (selectedImei) {
+            const inThisDoc = findBal(product) && (findBal(product).imeis || []).includes(selectedImei);
+            if (!inThisDoc) {
+                const byImei = await Product.findOne({ stock_balances: { $elemMatch: { branch_id: deposit.branch_id, imeis: selectedImei } } });
+                if (byImei) product = byImei;
+            }
+        }
+        const stockBal = findBal(product);
+        if (!stockBal) {
+            return res.status(400).json({ success: false, message: `สินค้า ${deposit.product_name} ไม่มีอยู่ในคลังของสาขานี้` });
+        }
+        const trackedByImei = Array.isArray(stockBal.imeis) && stockBal.imeis.length > 0;
+        if (trackedByImei) {
+            if (!selectedImei) return res.status(400).json({ success: false, message: 'สินค้านี้ต้องระบุ IMEI ที่ส่งมอบ' });
+            if (!stockBal.imeis.includes(selectedImei)) {
+                return res.status(400).json({ success: false, message: `ไม่พบ IMEI: ${selectedImei} ในคลังสาขานี้` });
+            }
+        } else if ((Number(stockBal.quantity) || 0) < 1) {
+            return res.status(400).json({ success: false, message: `สินค้า ${deposit.product_name} ในสาขานี้หมดสต็อก` });
+        }
 
         // 2. สร้างใบเสร็จ Transaction (POS)
         const now = new Date();
@@ -7597,6 +7988,28 @@ router.put('/deposits/:id/complete', async (req, res) => {
         const period = '1 เดือน'; // ค่าตั้งต้นระยะประกัน
         const expiry = new Date(now);
         expiry.setMonth(expiry.getMonth() + 1);
+
+        // จองใบมัดจำแบบ atomic ก่อนแตะสต็อก: ถ้าระหว่างนี้มีคนกดยึด/ยกเลิก/ใช้ใบนี้ไปแล้ว จะจองไม่ได้และหยุดทันที
+        const soldImei = trackedByImei ? selectedImei : '';
+        const claimedDeposit = await Deposit.findOneAndUpdate(
+            { _id: deposit._id, status: 'รอดำเนินการ' },
+            { $set: { status: 'สำเร็จ', bill_number: receipt_number, imei: selectedImei, completed_by: req.user.employee_id, completed_at: now } },
+            { new: true }
+        );
+        if (!claimedDeposit) {
+            return res.status(409).json({ success: false, message: 'รายการนี้ถูกดำเนินการหรือเปลี่ยนสถานะไปแล้ว กรุณารีเฟรชหน้าจอ' });
+        }
+        const releaseClaim = () => Deposit.updateOne(
+            { _id: deposit._id, status: 'สำเร็จ', bill_number: receipt_number },
+            { $set: { status: 'รอดำเนินการ' }, $unset: { bill_number: '', completed_by: '', completed_at: '' } }
+        ).catch(err => console.error('[Deposit] คืนสถานะใบมัดจำไม่สำเร็จ:', err));
+
+        // ตัดสต็อกสาขาแบบ atomic (ก่อนบันทึกบิล เหมือนหน้าขาย) · บันทึกบิลไม่สำเร็จ = คืนสต็อกและสถานะใบมัดจำ แล้วค่อยแจ้งข้อผิดพลาด
+        const stockOpts = soldImei ? { imei: soldImei } : { quantity: 1 };
+        if (!(await deductBranchStock(product._id, deposit.branch_id, stockOpts))) {
+            await releaseClaim();
+            return res.status(409).json({ success: false, message: 'สต็อกเพิ่งมีการเปลี่ยนแปลง (IMEI/จำนวนถูกตัดไปแล้ว) กรุณาตรวจสอบแล้วลองใหม่' });
+        }
 
         const transaction = new Transaction({
             receipt_number,
@@ -7621,40 +8034,69 @@ router.put('/deposits/:id/complete', async (req, res) => {
             status: 'เสร็จสิ้น'
         });
 
-        const savedTransaction = await transaction.save();
-
-        // 3. บันทึก CashMovement เฉพาะเงินที่จ่ายเพิ่มวันนี้ (ส่วนต่างค้างชำระ)
-        const diffAmount = (Number(final_cash_amount) || 0) + (Number(final_transfer_amount) || 0);
-        if (diffAmount > 0) {
-            const todayStart = new Date(now); todayStart.setHours(0, 0, 0, 0);
-            const todayEnd = new Date(now); todayEnd.setHours(23, 59, 59, 999);
-            const count = await CashMovement.countDocuments({ created_at: { $gte: todayStart, $lte: todayEnd } });
-            const txnDateStr = now.getFullYear() + String(now.getMonth() + 1).padStart(2, '0') + String(now.getDate()).padStart(2, '0');
-            const txn_id = `TXN-${txnDateStr}-${String(count + 1).padStart(4, '0')}`;
-
-            const cashMove = new CashMovement({
-                transaction_id: txn_id,
-                type: 'รายรับ',
-                category: 'ขายสินค้า',
-                amount: diffAmount,
-                reference_id: savedTransaction._id,
-                recorded_by: req.user.employee_id,
-                created_at: new Date()
+        let savedTransaction;
+        try {
+            savedTransaction = await transaction.save();
+        } catch (saveErr) {
+            await restoreBranchStock(product._id, deposit.branch_id, stockOpts).catch(err => console.error('[Deposit] คืนสต็อกไม่สำเร็จ:', err));
+            await releaseClaim();
+            throw saveErr;
+        }
+        // ขั้นตอนหลังบิลบันทึกแล้ว (movement + เงินรับ): ถ้าพังต้องถอยทั้งชุด — ลบบิลกับรายการที่เพิ่งสร้าง คืนสต็อก คืนสถานะใบมัดจำ
+        // ไม่งั้นใบมัดจำเป็น "สำเร็จ" ค้างโดยเงินส่วนต่างไม่ถูกบันทึก และกดซ้ำก็ได้ 409
+        try {
+            await createMovementsForItem({
+                productId: product._id,
+                action: 'ขายออก',
+                fromBranch: deposit.branch_id,
+                toBranch: null,
+                referenceNo: receipt_number,
+                createdBy: req.user.employee_id,
+                transitHours: 0,
+                imeis: soldImei ? [soldImei] : [],
+                quantity: 1
             });
-            await cashMove.save();
+
+            // 3. บันทึก CashMovement เฉพาะเงินที่จ่ายเพิ่มวันนี้ (ส่วนต่างค้างชำระ)
+            const diffAmount = (Number(final_cash_amount) || 0) + (Number(final_transfer_amount) || 0);
+            if (diffAmount > 0) {
+                const todayStart = new Date(now); todayStart.setHours(0, 0, 0, 0);
+                const todayEnd = new Date(now); todayEnd.setHours(23, 59, 59, 999);
+                const count = await CashMovement.countDocuments({ created_at: { $gte: todayStart, $lte: todayEnd } });
+                const txnDateStr = now.getFullYear() + String(now.getMonth() + 1).padStart(2, '0') + String(now.getDate()).padStart(2, '0');
+                const txn_id = `TXN-${txnDateStr}-${String(count + 1).padStart(4, '0')}`;
+
+                const cashMove = new CashMovement({
+                    transaction_id: txn_id,
+                    type: 'รายรับ',
+                    category: 'ขายสินค้า',
+                    amount: diffAmount,
+                    reference_id: savedTransaction._id,
+                    recorded_by: req.user.employee_id,
+                    created_at: new Date()
+                });
+                await cashMove.save();
+            }
+        } catch (postErr) {
+            console.error('[Deposit] ขั้นตอนหลังบันทึกบิลล้มเหลว กำลังถอยทั้งชุด:', postErr);
+            await Promise.all([
+                Movement.deleteMany({ reference_no: receipt_number }),
+                CashMovement.deleteMany({ reference_id: savedTransaction._id }),
+                Transaction.deleteOne({ _id: savedTransaction._id })
+            ]).catch(err => console.error('[Deposit] ลบบิล/รายการที่สร้างค้างไม่สำเร็จ:', err));
+            await restoreBranchStock(product._id, deposit.branch_id, stockOpts).catch(err => console.error('[Deposit] คืนสต็อกไม่สำเร็จ:', err));
+            await releaseClaim();
+            throw postErr;
         }
 
-        // 5. อัปเดตใบมัดจำ
-        deposit.status = 'สำเร็จ';
-        deposit.bill_number = receipt_number;
-        deposit.imei = selectedImei;
-        deposit.completed_by = req.user.employee_id;
-        deposit.completed_at = new Date();
-        await deposit.save();
+        // 5. ใบมัดจำถูกเปลี่ยนเป็น "สำเร็จ" ตั้งแต่ตอนจอง (ข้างบน) แล้ว
+        // บิลที่สร้างตอนส่งมอบหามัดจำเจอจากเลขที่บิล (bill_number) ซึ่งบันทึกไว้ตอนจอง — คำนวณบิลหลังจากนี้
+        queueAcctRefresh('transaction', savedTransaction._id);
+        queueAcctRefresh('deposit', deposit._id); // ใบมัดจำเปลี่ยนเป็น "สำเร็จ" แล้ว ยอดฝั่งมัดจำต้องตามด้วย
 
         await logActivity(req, 'UPDATE', 'DEPOSIT', `ดำเนินการส่งมอบเครื่องมัดจำสำเร็จ เลขใบเสร็จ: ${receipt_number}`, null, deposit._id);
 
-        res.json({ success: true, message: 'ดำเนินการส่งมอบสินค้าสำเร็จ', data: deposit });
+        res.json({ success: true, message: 'ดำเนินการส่งมอบสินค้าสำเร็จ', data: claimedDeposit });
     } catch (error) {
         console.error('API Error PUT /api/deposits/:id/complete:', error);
         res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการส่งมอบสินค้า' });
@@ -7671,22 +8113,82 @@ router.put('/deposits/:id/cancel', async (req, res) => {
 
         const deposit = await Deposit.findById(req.params.id);
         if (!deposit) return res.status(404).json({ success: false, message: 'ไม่พบรายการมัดจำที่ระบุ' });
+        if (!canAccessDepositBranch(req, deposit)) return res.status(403).json(DEPOSIT_BRANCH_DENIED);
         if (deposit.status !== 'รอดำเนินการ') {
             return res.status(400).json({ success: false, message: 'ไม่สามารถยกเลิกรายการจองที่ดำเนินการเสร็จสิ้นหรือยกเลิกแล้วได้' });
         }
 
-        deposit.status = 'ยกเลิก';
-        deposit.cancelled_by = req.user.employee_id;
-        deposit.cancelled_at = new Date();
-        deposit.cancel_reason = reason || 'ไม่ระบุ';
-        await deposit.save();
+        // ยกเลิกแบบ atomic: ถ้าระหว่างนี้ใบถูกนำไปขาย/ส่งมอบ/ยึดไปแล้ว จะไม่ทับเป็น "ยกเลิก" (กันคืนเงินซ้ำ)
+        const cancelled = await Deposit.findOneAndUpdate(
+            { _id: deposit._id, status: 'รอดำเนินการ' },
+            { $set: { status: 'ยกเลิก', cancelled_by: req.user.employee_id, cancelled_at: new Date(), cancel_reason: reason || 'ไม่ระบุ' } },
+            { new: true }
+        );
+        if (!cancelled) {
+            return res.status(409).json({ success: false, message: 'ใบมัดจำนี้ถูกดำเนินการหรือเปลี่ยนสถานะไปแล้ว ยกเลิกไม่ได้ กรุณารีเฟรชหน้าจอ' });
+        }
+        queueAcctRefresh('deposit', deposit._id); // ยกเลิก = คืนเงินมัดจำ (รายการ "คืนเงินมัดจำ")
 
         await logActivity(req, 'CANCEL', 'DEPOSIT', `ยกเลิกใบมัดจำสินค้า เลขที่ ${deposit.deposit_number} เนื่องจาก: ${reason || 'ไม่ระบุ'}`, deposit.deposit_number, deposit._id);
 
-        res.json({ success: true, message: 'ยกเลิกรายการมัดจำสำเร็จ', data: deposit });
+        res.json({ success: true, message: 'ยกเลิกรายการมัดจำสำเร็จ', data: cancelled });
     } catch (error) {
         console.error('API Error PUT /api/deposits/:id/cancel:', error);
         res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการยกเลิกรายการมัดจำ' });
+    }
+});
+
+// ฟังก์ชันคำนวณเดิมของหน้าตรวจสอบออเดอร์ ให้ utils/accountEntries.js ใช้สูตรเดียวกัน (ฝ่ายบัญชียืนยันสูตรแล้ว ห้ามเขียนซ้ำ)
+// แนบกับ router แทนการ export แยก เพราะ module.exports ของไฟล์นี้คือ router (server.js ใช้งานตรงๆ)
+router.accountingHelpers = { buildOrderFinanceSheet, splitFinanceReceived, resolvePaymentStatus };
+
+// ใบมัดจำ "เลยกำหนด" = วันนี้ (เวลาท้องถิ่น) อยู่หลังวันที่นัดรับเครื่อง
+// appointment_date เก็บเป็นเที่ยงคืน UTC ของวันที่เลือกในฟอร์ม จึงเทียบเป็นสตริงวันที่ YYYY-MM-DD ไม่ให้เขตเวลาทำวันเลื่อน
+const isDepositOverdue = (deposit, now = new Date()) => {
+    if (!deposit.appointment_date) return false;
+    const due = new Date(deposit.appointment_date).toISOString().slice(0, 10);
+    const today = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
+    return today > due;
+};
+
+// PUT /api/deposits/:id/forfeit — ยึดมัดจำ: ลูกค้าไม่มารับสินค้าภายในวันที่นัด เงินมัดจำทั้งก้อนเป็นรายได้
+// ยึดได้เฉพาะใบ "รอดำเนินการ" ที่เลยวันนัดแล้วเท่านั้น (ตรวจฝั่งเซิร์ฟเวอร์) และพนักงานต้องกดเอง ระบบไม่ยึดให้อัตโนมัติ
+router.put('/deposits/:id/forfeit', async (req, res) => {
+    try {
+        if (!req.user.permissions || !req.user.permissions.manage_deposits) {
+            return res.status(403).json({ success: false, message: 'ไม่มีสิทธิ์ในการยึดมัดจำ' });
+        }
+        const reason = String(req.body.reason || '').trim().slice(0, 300) || 'ครบกำหนดแล้วลูกค้าไม่มารับสินค้า';
+
+        const deposit = await Deposit.findById(req.params.id);
+        if (!deposit) return res.status(404).json({ success: false, message: 'ไม่พบรายการมัดจำที่ระบุ' });
+        if (!canAccessDepositBranch(req, deposit)) return res.status(403).json(DEPOSIT_BRANCH_DENIED);
+        if (deposit.status !== 'รอดำเนินการ') {
+            return res.status(400).json({ success: false, message: `รายการนี้อยู่ในสถานะ ${deposit.status} แล้ว ยึดมัดจำไม่ได้` });
+        }
+        if (!deposit.appointment_date) {
+            return res.status(400).json({ success: false, message: 'ใบมัดจำนี้ไม่มีวันนัดรับเครื่อง กรุณาแก้ไขใบมัดจำและระบุวันที่ก่อนจึงจะยึดได้' });
+        }
+        if (!isDepositOverdue(deposit)) {
+            const dueText = new Date(deposit.appointment_date).toLocaleDateString('th-TH', { timeZone: 'UTC' });
+            return res.status(400).json({ success: false, message: `ยังไม่เลยกำหนด (นัดรับเครื่อง ${dueText}) ยึดมัดจำได้หลังจากวันนัดเท่านั้น` });
+        }
+
+        // เปลี่ยนสถานะแบบ atomic: กดซ้ำ/อีกเครื่องกดส่งมอบหรือยกเลิกพร้อมกัน จะมีแค่ครั้งเดียวที่สำเร็จ
+        const updated = await Deposit.findOneAndUpdate(
+            { _id: deposit._id, status: 'รอดำเนินการ' },
+            { $set: { status: 'ยึดมัดจำ', forfeited_by: req.user.employee_id, forfeited_at: new Date(), forfeit_reason: reason } },
+            { new: true }
+        );
+        if (!updated) return res.status(400).json({ success: false, message: 'สถานะของรายการนี้เพิ่งเปลี่ยนไป กรุณารีเฟรชแล้วลองใหม่' });
+        queueAcctRefresh('deposit', updated._id);
+
+        await logActivity(req, 'UPDATE', 'DEPOSIT', `ยึดมัดจำ เลขที่ ${updated.deposit_number} ฿${updated.deposit_amount} เนื่องจาก: ${reason}`, updated.deposit_number, updated._id);
+
+        res.json({ success: true, message: 'ยึดมัดจำเรียบร้อยแล้ว', data: updated });
+    } catch (error) {
+        console.error('API Error PUT /api/deposits/:id/forfeit:', error);
+        res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการยึดมัดจำ' });
     }
 });
 

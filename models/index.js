@@ -468,6 +468,8 @@ const transactionSchema = new mongoose.Schema({
     icloud_fee: { type: Number, default: 0 }, // ค่าบริการ iCloud
     applied_deposit_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Deposit', default: null }, // ลิงก์ใบมัดจำที่นำมาหัก
     applied_deposit_amount: { type: Number, default: 0 }, // จำนวนเงินมัดจำที่หักออก
+    // ส่วนลดท้ายบิล — ตั้งใจไม่ใส่ default: บิลเก่าไม่ได้เก็บไว้ (ไม่มีฟิลด์นี้ = ย้อนคำนวณจากยอดบิล ดู utils/accountEntries.js)
+    discount_amount: { type: Number },
     status: { type: String, default: 'เสร็จสิ้น', enum: ['เสร็จสิ้น', 'ยกเลิกแล้ว'] }, // สถานะรายการ
     // ===== ฝ่ายบัญชี: ตรวจสอบออเดอร์ (#order-verification) =====
     // ไม่มี default ในสคีมา บิลเก่าที่ยังไม่มีฟิลด์นี้จึงถูกตีความตอนอ่านแทน (ซื้อสด = ชำระแล้ว, จัดไฟแนนซ์ = ยังไม่ชำระ)
@@ -707,7 +709,8 @@ const depositSchema = new mongoose.Schema({
     branch_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Branch', required: true }, // สาขาที่รับมัดจำ
     customer_name: { type: String, required: true }, // ชื่อลูกค้า
     customer_phone: { type: String, required: true }, // เบอร์โทรศัพท์ลูกค้า
-    product_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Product', required: true }, // รหัสสินค้าอ้างอิง
+    // รหัสสินค้าอ้างอิง — ว่างได้: จองสินค้าที่ยังไม่มีในระบบ (พิมพ์ชื่อเอง) ใบนี้ส่งมอบจากหน้ามัดจำไม่ได้ ต้องขายผ่านหน้าขายแล้วหักมัดจำ
+    product_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Product', default: null },
     product_name: { type: String, required: true }, // รายละเอียดสินค้า (เช่น iPhone 15 128 Black)
     product_price: { type: Number, required: true }, // ราคาขายเต็ม
     deposit_amount: { type: Number, required: true }, // ยอดเงินมัดจำ
@@ -717,7 +720,8 @@ const depositSchema = new mongoose.Schema({
     payment_method: { type: String, required: true, enum: ['เงินสด', 'โอนเงิน', 'ผสม'] },
     cash_amount: { type: Number, default: 0 },
     transfer_amount: { type: Number, default: 0 },
-    status: { type: String, default: 'รอดำเนินการ', enum: ['รอดำเนินการ', 'สำเร็จ', 'ยกเลิก'] },
+    // ยึดมัดจำ = ลูกค้าไม่มารับสินค้าภายในวันที่นัดรับเครื่อง (appointment_date) พนักงานกดยึด เงินมัดจำทั้งก้อนเป็นรายได้
+    status: { type: String, default: 'รอดำเนินการ', enum: ['รอดำเนินการ', 'สำเร็จ', 'ยกเลิก', 'ยึดมัดจำ'] },
     stage: { type: String, default: 'รอลูกค้ารับเครื่อง', enum: ['รอลูกค้ารับเครื่อง', 'รอโอนย้ายจากสาขาอื่น', 'รอสินค้าเข้า', 'รอฝ่ายจัดซื้อสั่งสินค้า'] },
     bill_number: { type: String, default: '' }, // เลขที่ใบเสร็จขายจริงเมื่อมารับเครื่องสำเร็จ
     created_by: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee', required: true },
@@ -726,6 +730,9 @@ const depositSchema = new mongoose.Schema({
     cancelled_by: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee', default: null },
     cancelled_at: { type: Date, default: null },
     cancel_reason: { type: String, default: '' },
+    forfeited_by: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee', default: null },
+    forfeited_at: { type: Date, default: null },
+    forfeit_reason: { type: String, default: '' },
     notes: { type: String, default: '' }
 }, { timestamps: true });
 depositSchema.index({ branch_id: 1, status: 1 });
@@ -883,6 +890,36 @@ expenseSchema.index({ branch_id: 1 });
 expenseSchema.index({ category: 1 });
 const Expense = mongoose.model('Expense', expenseSchema, 'expense');
 
+// AccountItemLink (การเชื่อมรายการกับรหัสบัญชี) — พนักงานบัญชีเลือกเองตอนสร้าง/แก้รหัสบัญชี
+// item_key คือ key ในแคตตาล็อก utils/accountItems.js (ไม่ใช่ ObjectId เพราะรายการเป็นค่าคงที่ของระบบ ไม่ได้เก็บใน DB)
+// 1 รหัสบัญชีเชื่อมได้หลายรายการ และ 1 รายการเชื่อมได้หลายรหัส — ห้ามซ้ำเฉพาะคู่ (รหัสบัญชี, รายการ)
+const accountItemLinkSchema = new mongoose.Schema({
+    account_id: { type: mongoose.Schema.Types.ObjectId, ref: 'AccountChart', required: true },
+    item_key: { type: String, required: true, trim: true },
+    created_by: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee', default: null }
+}, { timestamps: true });
+accountItemLinkSchema.index({ account_id: 1, item_key: 1 }, { unique: true });
+accountItemLinkSchema.index({ item_key: 1 }); // ใช้ตอนโชว์ว่ารายการนี้ถูกเชื่อมกับรหัสอื่นอยู่แล้ว
+const AccountItemLink = mongoose.model('AccountItemLink', accountItemLinkSchema, 'accountitemlink');
+
+// AccountItemEvent (ยอดเข้า-ออกของแต่ละรายการ) — 1 แถว = 1 รายการ (item_key) ของ 1 เอกสารต้นทาง
+// เก็บ "ต่อรายการ" ไม่ใช่ต่อรหัสบัญชี: ยอดต่อรหัสคำนวณตอนอ่านโดย join กับ AccountItemLink จึงเปลี่ยนการเชื่อมแล้วยอดตามทันที
+// เขียนโดย utils/accountEntries.js แบบ "ทำให้ตรงกับเอกสารต้นทางตอนนี้" (upsert + ลบที่ไม่เหลือ) ไม่ใช่ append — แก้/ยกเลิกเอกสารแล้วยอดแก้ตามเอง
+const accountItemEventSchema = new mongoose.Schema({
+    item_key: { type: String, required: true },
+    flow: { type: String, required: true, enum: ['in', 'out', 'receivable', 'payable'] },
+    amount: { type: Number, required: true },
+    event_date: { type: Date, required: true },
+    branch_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Branch', default: null },
+    source_type: { type: String, required: true },  // 'transaction' | 'deposit' | 'claim' | 'stock_issue' | 'purchase_order' | 'import_notification' | 'expense' | 'cash_movement' | 'voucher' | 'other_entry'
+    source_id: { type: mongoose.Schema.Types.ObjectId, required: true },
+    source_ref: { type: String, default: '' }       // เลขที่เอกสารไว้โชว์ เช่น INV-..., DEP-..., PO-...
+}, { timestamps: true });
+accountItemEventSchema.index({ source_type: 1, source_id: 1, item_key: 1 }, { unique: true });
+accountItemEventSchema.index({ item_key: 1, event_date: -1 });
+accountItemEventSchema.index({ branch_id: 1, event_date: -1 });
+const AccountItemEvent = mongoose.model('AccountItemEvent', accountItemEventSchema, 'accountitemevent');
+
 // Seed default COA data
 async function seedDefaultCOA() {
     try {
@@ -949,6 +986,8 @@ module.exports = {
     DisbursementVoucher,
     OtherEntry,
     Expense,
+    AccountItemLink,
+    AccountItemEvent,
     seedDefaultRoles,
     migrateProductsToERP,
     seedDefaultCOA

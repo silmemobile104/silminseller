@@ -79,8 +79,9 @@ mongoose.connect(MONGODB_URI, { maxPoolSize: 20 })
         await seedDefaultCOA();
 
         // Start Daily Stock Audit scheduler
-        const { initDailyStockAuditScheduler } = require('./utils/cronTasks');
+        const { initDailyStockAuditScheduler, initAccountReconcileScheduler } = require('./utils/cronTasks');
         initDailyStockAuditScheduler();
+        initAccountReconcileScheduler();
     })
     .catch((err) => {
         console.error('เกิดข้อผิดพลาดในการเชื่อมต่อฐานข้อมูล:', err);

@@ -171,7 +171,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // โหลดสคริปต์เฉพาะหน้า (js/page-<name>.js) แบบ dynamic ครั้งเดียว แล้ว cache ไว้
     // PAGE_SCRIPT_VERSION: บัมพ์เลขนี้ทุกครั้งที่แก้ไฟล์ใน js/ เพื่อไม่ให้เบราว์เซอร์ใช้ของเก่าที่ cache ไว้
-    const PAGE_SCRIPT_VERSION = 'apple_active_v180';
+    const PAGE_SCRIPT_VERSION = 'apple_active_v189';
     const __loadedPageScripts = {};
     function loadPageScript(name) {
         if (__loadedPageScripts[name]) return __loadedPageScripts[name];
@@ -224,7 +224,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // ไม่ได้รอ init function ถ้า HTML ยังไม่ถูกแทรกเข้า DOM ก่อน ตัวแปรที่ query ไว้จะเป็น null ถาวร
     // ชื่อ name ต้องตรงกับชื่อที่ใช้ใน loadPageScript — ไฟล์เดียวอาจมีหลาย <div id="view-XXX"> รวมกัน
     // ถ้าหน้านั้นถูก share โดยสคริปต์เดียวกันหลาย view (ดูตาราง mapping ในแผน)
-    const VIEW_FRAGMENT_VERSION = 'v172'; // บัมพ์เลขนี้ทุกครั้งที่แก้ไฟล์ใน views/
+    const VIEW_FRAGMENT_VERSION = 'v176'; // บัมพ์เลขนี้ทุกครั้งที่แก้ไฟล์ใน views/
     const __loadedPageViews = {};
     function loadPageView(name) {
         if (__loadedPageViews[name]) return __loadedPageViews[name];
@@ -380,6 +380,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const sidebar = document.getElementById('sidebar');
     const logoutBtn = document.getElementById('logout-btn');
     let cart = [];
+    // ใบมัดจำที่ใส่ในบิลอยู่ตอนนี้ (ประกาศไว้ตรงนี้ให้ logout / renderCart รีเซ็ตได้โดยไม่ติด TDZ) — รายละเอียดดูที่ startPosSaleWithDeposit
+    let posAppliedDeposit = null;
+    // ใบมัดจำที่รอใส่ในหน้าชำระเงินครั้งถัดไป — ประกาศตรงนี้ด้วยเหตุผลเดียวกัน (handler logout ต้องล้างค่านี้)
+    let pendingPosDeposit = null;
 
     const btnAddProduct = document.getElementById('btn-add-product');
     const addProductModal = document.getElementById('add-product-modal');
@@ -415,6 +419,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const navSalesHistory = document.getElementById('nav-sales-history');
     const navTransfers = document.getElementById('nav-transfers');
     const navDeposits = document.getElementById('nav-deposits');
+    const navDepositHistory = document.getElementById('nav-deposit-history');
     const navMovements = document.getElementById('nav-movements');
     const navMembers = document.getElementById('nav-members');
     const navReportArrival = document.getElementById('nav-report-arrival');
@@ -453,6 +458,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const viewSalesHistory = document.getElementById('view-sales-history');
     const viewTransfers = document.getElementById('view-transfers');
     const viewDeposits = document.getElementById('view-deposits');
+    const viewDepositHistory = document.getElementById('view-deposit-history');
     const viewMovements = document.getElementById('view-movements');
     const viewMembers = document.getElementById('view-members');
     const viewReportArrival = document.getElementById('view-report-arrival');
@@ -2346,6 +2352,7 @@ document.addEventListener('DOMContentLoaded', () => {
         setVisible(navSalesHistory, permissions.view_sales_history);
         setVisible(navTransfers, permissions.manage_transfers);
         setVisible(navDeposits, permissions.manage_deposits);
+        setVisible(navDepositHistory, permissions.manage_deposits);
         setVisible(navMovements, permissions.manage_stock);
         setVisible(navMembers, permissions.do_pos);
         setVisible(navPersonnel, permissions.manage_personnel);
@@ -3145,6 +3152,8 @@ document.addEventListener('DOMContentLoaded', () => {
         localStorage.removeItem('silmin_token');
         localStorage.removeItem('silmin_user');
         stopPendingTransferPolling();
+        posAppliedDeposit = null;
+        pendingPosDeposit = null;
 
         mainLayout.classList.remove('opacity-100');
         mainLayout.classList.add('opacity-0');
@@ -3457,7 +3466,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // รายชื่อ view ทั้งหมดที่ switchView รู้จัก — ใช้ตรวจสอบค่าจาก URL hash ว่าถูกต้องก่อนใช้งาน
     const VALID_VIEW_NAMES = new Set([
         'dashboard', 'stock', 'transactions', 'personnel', 'branches', 'settings', 'roles',
-        'sales-history', 'daily-summary', 'transfers', 'deposits', 'movements', 'members',
+        'sales-history', 'daily-summary', 'transfers', 'deposits', 'deposit-history', 'movements', 'members',
         'report-arrival', 'approve-import', 'warranty-check', 'branch-inventory', 'accounting-po',
         'branch-receive', 'accounting', 'audit-logs', 'stock-audit', 'stock-audit-review', 'stock-issue',
         'accounting-settings', 'disbursement', 'pnl-config', 'balance-sheet-config', 'account-doc-links', 'account-tree', 'database',
@@ -3541,6 +3550,7 @@ document.addEventListener('DOMContentLoaded', () => {
             'sales-history': 'view_sales_history',
             'daily-summary': 'view_daily_summary',
             'transfers': 'manage_transfers',
+            'deposit-history': 'manage_deposits',
             'movements': 'manage_stock',
             'members': 'do_pos',
             'report-arrival': 'report_arrival',
@@ -3636,7 +3646,7 @@ document.addEventListener('DOMContentLoaded', () => {
             viewReportArrival, viewApproveImport, viewWarrantyCheck,
             viewBranchInventory, viewStockIssue, viewAccountingPO, viewBranchReceive,
             viewAuditLogs, viewAccounting, viewDailySummary,
-            viewStockAudit, viewStockAuditReview, viewDeposits,
+            viewStockAudit, viewStockAuditReview, viewDeposits, viewDepositHistory,
             viewAccountingSettings, viewDisbursement, viewPnlConfig, viewBalanceSheetConfig, viewAccountDocLinks, viewAccountTree, viewDatabase,
             viewOrderVerification, viewFinanceCompanies, viewOtherEntries, viewAccountBooks
         ];
@@ -3747,6 +3757,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 await loadPageScript('deposits');
                 if (typeof loadBranchesForDeposits === 'function') loadBranchesForDeposits();
                 loadDeposits();
+            }
+            else if (viewName === 'deposit-history') {
+                activateView(viewDepositHistory, navDepositHistory);
+                await loadPageView('deposit-history');
+                await loadPageScript('deposit-history');
+                if (typeof initDepositHistory === 'function') initDepositHistory();
             }
             else if (viewName === 'movements') {
                 activateView(viewMovements, navMovements);
@@ -3930,6 +3946,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (navSalesHistory) navSalesHistory.addEventListener('click', (e) => { e.preventDefault(); switchView('sales-history'); });
     if (navTransfers) navTransfers.addEventListener('click', (e) => { e.preventDefault(); switchView('transfers'); });
     if (navDeposits) navDeposits.addEventListener('click', (e) => { e.preventDefault(); switchView('deposits'); });
+    if (navDepositHistory) navDepositHistory.addEventListener('click', (e) => { e.preventDefault(); switchView('deposit-history'); });
     if (navMovements) navMovements.addEventListener('click', (e) => { e.preventDefault(); switchView('movements'); });
     if (navMembers) navMembers.addEventListener('click', (e) => { e.preventDefault(); switchView('members'); });
     if (navReportArrival) navReportArrival.addEventListener('click', (e) => { e.preventDefault(); switchView('report-arrival'); });
@@ -5474,6 +5491,7 @@ document.addEventListener('DOMContentLoaded', () => {
         existingItems.forEach(el => el.remove());
 
         if (cart.length === 0) {
+            posAppliedDeposit = null; // ตะกร้าว่าง = เลิกบิลนี้ มัดจำของลูกค้าเดิมต้องไม่ติดไปบิลถัดไป
             if (cartEmptyState) cartEmptyState.classList.remove('hidden');
             if (cartHintBanner) cartHintBanner.classList.remove('hidden');
             if (cartCountBadge) cartCountBadge.textContent = '0 รายการ';
@@ -6042,8 +6060,20 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
+    // ส่วนลดสูงสุดที่เซิร์ฟเวอร์ยอมรับ = ยอดสินค้า + ค่าสัญญา/ค่าระบบ (ตรงกับเงื่อนไขใน POST /transactions) ไม่ติดลบ
+    const getPosDiscountValue = () => {
+        const raw = posDiscount ? (parseFloat(posDiscount.value) || 0) : 0;
+        const contractFee = (checkboxContractFee && checkboxContractFee.checked) ? (parseFloat(inputContractFee.value) || 0) : 0;
+        const icloudFee = (checkboxIcloudFee && checkboxIcloudFee.checked) ? (parseFloat(inputIcloudFee.value) || 0) : 0;
+        const cap = cart.reduce((sum, item) => sum + item.subtotal, 0) + contractFee + icloudFee;
+        return Math.min(Math.max(0, raw), cap);
+    };
+
     if (posDiscount) {
         posDiscount.addEventListener('input', () => {
+            const raw = parseFloat(posDiscount.value) || 0;
+            const clamped = getPosDiscountValue();
+            if (raw !== clamped) posDiscount.value = String(clamped); // พิมพ์เกินยอดบิล/ติดลบ = ปรับให้พอดีทันที
             updateModalTotals();
         });
     }
@@ -6542,6 +6572,24 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
+    // กล่อง "หักเงินมัดจำลูกค้า" ในหน้าชำระเงิน — ซ่อนไว้ตามดีไซน์ โชว์เฉพาะตอนมีใบมัดจำถูกใส่ในบิล
+    // (ที่ตัวกล่องมีเลขที่ใบ ชื่อ เบอร์ลูกค้า ยอดมัดจำ และปุ่มเอาออก ซึ่งเดิมไม่เคยโผล่เลย)
+    const setPosDepositSectionVisible = (visible) => {
+        const section = document.getElementById('pos-deposit-section');
+        if (section) section.classList.toggle('hidden', !visible);
+    };
+
+    // ใบมัดจำที่รอใส่ในหน้าชำระเงินครั้งถัดไป — ตั้งจากหน้ามัดจำ (ลูกค้าขอเปลี่ยนจากเครื่องเป็นอุปกรณ์เสริม)
+    // (pendingPosDeposit ประกาศไว้ข้างบนข้าง cart)
+    // ใบมัดจำที่ใส่ในบิลอยู่ตอนนี้ — จำไว้ข้ามการปิด/เปิดหน้าต่างชำระเงิน (กด X ปิดแล้วเปิดใหม่ข้อมูลไม่หาย)
+    // ล้างเมื่อ: กดกากบาทเอามัดจำออก, ขายสำเร็จ (ใบมัดจำถูกใช้แล้ว), ตะกร้าว่าง, ออกจากระบบ หรือรีเฟรชหน้า
+    window.startPosSaleWithDeposit = (dep) => {
+        if (!dep || !dep._id) return;
+        pendingPosDeposit = { dep, at: Date.now() };
+        switchView('transactions'); // หน้าขาย (POS) — ต้องมีสิทธิ์ do_pos ไม่มีสิทธิ์ switchView จะแจ้งเตือนเอง
+        showToast(`เลือกอุปกรณ์เสริมที่ลูกค้าต้องการ แล้วกดชำระเงิน ระบบจะใส่มัดจำ ${dep.deposit_number} ให้`, 'success', true);
+    };
+
     const openCheckoutModal = async () => {
         if (!confirmPriceModal) return;
         if (cart.length === 0) {
@@ -6635,6 +6683,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (searchWrapper) searchWrapper.classList.remove('hidden');
         if (appliedDepositDisplay) appliedDepositDisplay.classList.add('hidden');
         if (posDepositSearchResults) posDepositSearchResults.classList.add('hidden');
+        setPosDepositSectionVisible(false); // เปิดใหม่ทุกครั้งเริ่มจากไม่มีมัดจำ (ถ้ามาจากหน้ามัดจำ จะถูกใส่ใหม่ด้านล่าง)
 
         // Render cart summary items with editable unit prices
         if (confirmPriceList) {
@@ -6863,6 +6912,17 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
 
+        // มาจากปุ่ม "เปลี่ยนเป็นอุปกรณ์เสริม" ในหน้ามัดจำ: ใส่ใบมัดจำนั้นให้เลย (พนักงานกดเอาออกได้ด้วยปุ่มเดิม)
+        // ใช้แค่ครั้งเดียวและหมดอายุใน 30 นาที กันไปติดบิลของลูกค้าคนอื่นที่มาทีหลัง
+        // ถ้าไม่มีใบใหม่รอใส่ แต่เคยใส่ใบมัดจำไว้แล้ว (แล้วกด X ปิดหน้าต่างชำระเงินไป) ให้ใส่ใบเดิมกลับมา
+        let depositToApply = posAppliedDeposit;
+        if (pendingPosDeposit) {
+            const pending = pendingPosDeposit;
+            pendingPosDeposit = null;
+            if (Date.now() - pending.at < 30 * 60 * 1000) depositToApply = pending.dep;
+        }
+        if (depositToApply) applyDepositDiscount(depositToApply);
+
         updateModalTotals();
 
         // Show Modal
@@ -6983,7 +7043,7 @@ document.addEventListener('DOMContentLoaded', () => {
             feeTrans = feeTotal - feeCash;
         }
 
-        const discount = posDiscount ? (parseFloat(posDiscount.value) || 0) : 0;
+        const discount = getPosDiscountValue(); // ค่าส่งขึ้นเซิร์ฟเวอร์ต้องไม่เกินยอดบิล (ติ๊กค่าธรรมเนียมออกทีหลังอาจทำให้เพดานลด)
         const depositVal = appliedDepositAmount ? (parseFloat(appliedDepositAmount.value) || 0) : 0;
         const subtotal = cart.reduce((sum, item) => sum + item.subtotal, 0);
         const contractFee = (checkboxContractFee && checkboxContractFee.checked) ? (parseFloat(inputContractFee.value) || 0) : 0;
@@ -7008,6 +7068,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 member_id: selectedMemberId ? (selectedMemberId.value || null) : null,
                 applied_deposit_id: appliedDepositId ? (appliedDepositId.value || null) : null,
                 applied_deposit_amount: depositVal,
+                discount_amount: discount,
                 items: cart.map(item => ({
                     product_id: item.product_id,
                     product_name: item.product_name,
@@ -7048,6 +7109,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 openCheckoutSuccessModal(result.data);
                 closeCheckoutModal();
                 fetchPosProducts();
+                posAppliedDeposit = null; // ใบมัดจำถูกใช้ไปในบิลนี้แล้ว บิลถัดไปต้องไม่ติดมา
 
                 cart = [];
                 renderCart();
@@ -7212,6 +7274,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const applyDepositDiscount = (dep) => {
+        posAppliedDeposit = dep; // จำไว้ให้ใส่กลับเองเมื่อเปิดหน้าชำระเงินใหม่
         if (appliedDepositId) appliedDepositId.value = dep._id;
         if (appliedDepositAmount) appliedDepositAmount.value = dep.deposit_amount;
 
@@ -7224,6 +7287,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (searchWrapper) searchWrapper.classList.add('hidden');
         if (appliedDepositDisplay) appliedDepositDisplay.classList.remove('hidden');
         if (posDepositSearchResults) posDepositSearchResults.classList.add('hidden');
+        setPosDepositSectionVisible(true);
 
         // หากยังไม่ได้เลือกสมาชิกในหน้าระบบ POS ให้พยายามค้นหาหรือดึงสมาชิกที่มีเบอร์โทรตรงกับมัดจำให้ทันที
         autoSelectMemberByPhone(dep.customer_phone, dep.customer_name);
@@ -7259,6 +7323,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 posDepositSearch.focus();
             }
             if (appliedDepositDisplay) appliedDepositDisplay.classList.add('hidden');
+            posAppliedDeposit = null; // พนักงานตั้งใจเอาออก — เปิดหน้าชำระเงินใหม่ต้องไม่ใส่กลับ
+            setPosDepositSectionVisible(false); // เอามัดจำออกแล้ว ไม่มีอะไรให้โชว์
             updateModalTotals();
         });
     }

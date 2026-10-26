@@ -312,6 +312,16 @@
                             <option value="">-- ทุกสาขา --</option>
                         </select>
                     </label>
+                    <label for="ov-report-payment" class="flex items-center gap-2">
+                        <span class="font-semibold">รูปแบบการชำระเงิน:</span>
+                        <select id="ov-report-payment"
+                            class="page-filter-control bg-panel/40 cursor-pointer text-sm rounded-[0.5rem] px-3 py-1.5 text-ink focus:outline-none focus:ring-1 focus:ring-accent-ink min-w-[9rem] [&>option]:bg-panel [&>option:checked]:bg-primary [&>option:checked]:text-on-primary">
+                            <option value="">-- ทั้งหมด --</option>
+                            <option value="cash">เงินสด</option>
+                            <option value="finance">ไฟแนนซ์</option>
+                            <option value="transfer">เงินโอน</option>
+                        </select>
+                    </label>
                     <label for="ov-report-start" class="flex items-center gap-2">
                         <span class="font-semibold">เริ่มวันที่:</span>
                         <input type="date" id="ov-report-start"
@@ -323,6 +333,10 @@
                             class="page-filter-control bg-panel/40 text-sm rounded-[0.5rem] px-3 py-1.5 text-ink focus:outline-none focus:ring-1 focus:ring-accent-ink">
                     </label>
                 </div>
+
+                <!-- เลือกคอลัมน์ที่จะแสดงในรายงานและส่งออก (สร้างจาก js/page-order-verification.js) -->
+                <div id="ov-report-cols" role="group" aria-label="เลือกคอลัมน์ที่จะแสดงและส่งออก"
+                    class="flex flex-wrap items-center gap-x-4 gap-y-3 px-4 py-3 rounded-xl bg-field text-sm text-ink" style="margin-top:0.75rem"></div>
 
                 <!-- พรีวิวรายงาน (กระดาษขาว ตัวหนังสือดำเสมอ เพราะคือหน้าตาของใบที่จะพิมพ์) -->
                 <div id="ov-report-preview" class="mt-6 pb-4 overflow-x-auto">
