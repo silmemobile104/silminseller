@@ -911,6 +911,8 @@ const accountItemEventSchema = new mongoose.Schema({
     amount: { type: Number, required: true },
     event_date: { type: Date, required: true },
     branch_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Branch', default: null },
+    // มีค่าเฉพาะยอดที่เอกสารต้นทางระบุรหัสบัญชีเอง (เช่น รายได้/รายจ่ายอื่นๆ) — ยอดนี้ลงรหัสนั้นตรงๆ ไม่ผ่าน AccountItemLink
+    account_id: { type: mongoose.Schema.Types.ObjectId, ref: 'AccountChart', default: null },
     source_type: { type: String, required: true },  // 'transaction' | 'deposit' | 'claim' | 'stock_issue' | 'purchase_order' | 'import_notification' | 'expense' | 'cash_movement' | 'voucher' | 'other_entry'
     source_id: { type: mongoose.Schema.Types.ObjectId, required: true },
     source_ref: { type: String, default: '' }       // เลขที่เอกสารไว้โชว์ เช่น INV-..., DEP-..., PO-...

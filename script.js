@@ -171,7 +171,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // โหลดสคริปต์เฉพาะหน้า (js/page-<name>.js) แบบ dynamic ครั้งเดียว แล้ว cache ไว้
     // PAGE_SCRIPT_VERSION: บัมพ์เลขนี้ทุกครั้งที่แก้ไฟล์ใน js/ เพื่อไม่ให้เบราว์เซอร์ใช้ของเก่าที่ cache ไว้
-    const PAGE_SCRIPT_VERSION = 'apple_active_v189';
+    const PAGE_SCRIPT_VERSION = 'apple_active_v197';
     const __loadedPageScripts = {};
     function loadPageScript(name) {
         if (__loadedPageScripts[name]) return __loadedPageScripts[name];
@@ -224,7 +224,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // ไม่ได้รอ init function ถ้า HTML ยังไม่ถูกแทรกเข้า DOM ก่อน ตัวแปรที่ query ไว้จะเป็น null ถาวร
     // ชื่อ name ต้องตรงกับชื่อที่ใช้ใน loadPageScript — ไฟล์เดียวอาจมีหลาย <div id="view-XXX"> รวมกัน
     // ถ้าหน้านั้นถูก share โดยสคริปต์เดียวกันหลาย view (ดูตาราง mapping ในแผน)
-    const VIEW_FRAGMENT_VERSION = 'v176'; // บัมพ์เลขนี้ทุกครั้งที่แก้ไฟล์ใน views/
+    const VIEW_FRAGMENT_VERSION = 'v179'; // บัมพ์เลขนี้ทุกครั้งที่แก้ไฟล์ใน views/
     const __loadedPageViews = {};
     function loadPageView(name) {
         if (__loadedPageViews[name]) return __loadedPageViews[name];
@@ -445,6 +445,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const navFinanceCompanies = document.getElementById('nav-finance-companies');
     const navOtherEntries = document.getElementById('nav-other-entries');
     const navAccountBooks = document.getElementById('nav-account-books');
+    const navAccountSummary = document.getElementById('nav-account-summary');
 
     const viewDashboard = document.getElementById('view-dashboard');
     const viewStock = document.getElementById('view-stock');
@@ -482,6 +483,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const viewFinanceCompanies = document.getElementById('view-finance-companies');
     const viewOtherEntries = document.getElementById('view-other-entries');
     const viewAccountBooks = document.getElementById('view-account-books');
+    const viewAccountSummary = document.getElementById('view-account-summary');
 
     const settingsTabBtns = document.querySelectorAll('.settings-tab-btn');
     const masterDataInput = document.getElementById('master-data-input');
@@ -2371,6 +2373,7 @@ document.addEventListener('DOMContentLoaded', () => {
         setVisible(navDisbursement, permissions.manage_finance);
         setVisible(navOtherEntries, permissions.manage_finance);
         setVisible(navAccountBooks, permissions.manage_finance);
+        setVisible(navAccountSummary, permissions.manage_finance);
         setVisible(navPnlConfig, permissions.manage_finance);
         setVisible(navBalanceSheetConfig, permissions.manage_finance);
         setVisible(navAccountDocLinks, permissions.manage_finance);
@@ -3470,7 +3473,7 @@ document.addEventListener('DOMContentLoaded', () => {
         'report-arrival', 'approve-import', 'warranty-check', 'branch-inventory', 'accounting-po',
         'branch-receive', 'accounting', 'audit-logs', 'stock-audit', 'stock-audit-review', 'stock-issue',
         'accounting-settings', 'disbursement', 'pnl-config', 'balance-sheet-config', 'account-doc-links', 'account-tree', 'database',
-        'order-verification', 'finance-companies', 'other-entries', 'account-books'
+        'order-verification', 'finance-companies', 'other-entries', 'account-books', 'account-summary'
     ]);
     // อ่านชื่อ view จาก URL hash (เช่น #deposits) — คืนค่า null ถ้าไม่มีหรือไม่ใช่ view ที่รู้จัก
     const getViewFromHash = () => {
@@ -3513,6 +3516,7 @@ document.addEventListener('DOMContentLoaded', () => {
             'accounting-settings': 'manage_finance',
             'disbursement': 'manage_finance',
             'other-entries': 'manage_finance',
+            'account-summary': 'manage_finance',
             'account-books': 'manage_finance',
             'pnl-config': 'manage_finance',
             'balance-sheet-config': 'manage_finance',
@@ -3567,6 +3571,7 @@ document.addEventListener('DOMContentLoaded', () => {
             'accounting-settings': 'manage_finance',
             'disbursement': 'manage_finance',
             'other-entries': 'manage_finance',
+            'account-summary': 'manage_finance',
             'account-books': 'manage_finance',
             'pnl-config': 'manage_finance',
             'balance-sheet-config': 'manage_finance',
@@ -3648,7 +3653,7 @@ document.addEventListener('DOMContentLoaded', () => {
             viewAuditLogs, viewAccounting, viewDailySummary,
             viewStockAudit, viewStockAuditReview, viewDeposits, viewDepositHistory,
             viewAccountingSettings, viewDisbursement, viewPnlConfig, viewBalanceSheetConfig, viewAccountDocLinks, viewAccountTree, viewDatabase,
-            viewOrderVerification, viewFinanceCompanies, viewOtherEntries, viewAccountBooks
+            viewOrderVerification, viewFinanceCompanies, viewOtherEntries, viewAccountBooks, viewAccountSummary
         ];
         views.forEach(view => {
             if (view) {
@@ -3901,6 +3906,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 await loadPageScript('account-books');
                 if (typeof initAccountBooks === 'function') initAccountBooks();
             }
+            else if (viewName === 'account-summary') {
+                activateView(viewAccountSummary, navAccountSummary);
+                await loadPageView('account-summary');
+                await loadPageScript('accounting-settings');
+                if (typeof initAccountSummary === 'function') initAccountSummary();
+            }
             else if (viewName === 'other-entries') {
                 activateView(viewOtherEntries, navOtherEntries);
                 await loadPageView('other-entries');
@@ -3973,6 +3984,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (navAccountDocLinks) navAccountDocLinks.addEventListener('click', (e) => { e.preventDefault(); switchView('account-doc-links'); });
     if (navAccountBooks) navAccountBooks.style.display = 'none'; // Will be managed by applyPermissions
     if (navAccountBooks) navAccountBooks.addEventListener('click', (e) => { e.preventDefault(); switchView('account-books'); });
+    if (navAccountSummary) navAccountSummary.style.display = 'none'; // Will be managed by applyPermissions
+    if (navAccountSummary) navAccountSummary.addEventListener('click', (e) => { e.preventDefault(); switchView('account-summary'); });
     if (navOtherEntries) navOtherEntries.style.display = 'none'; // Will be managed by applyPermissions
     if (navOtherEntries) navOtherEntries.addEventListener('click', (e) => { e.preventDefault(); switchView('other-entries'); });
     if (navOrderVerification) navOrderVerification.style.display = 'none'; // Will be managed by applyPermissions

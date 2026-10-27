@@ -35,7 +35,7 @@ function finish(list, fallbackDate) {
         const date = e.date && !isNaN(new Date(e.date)) ? new Date(e.date) : (fallbackDate ? new Date(fallbackDate) : new Date());
         const cur = merged.get(mapKey);
         if (cur) cur.amount = round2(cur.amount + amount);
-        else merged.set(mapKey, { item_key: e.item_key, flow, amount, date });
+        else merged.set(mapKey, { item_key: e.item_key, flow, amount, date, account_id: e.account_id || null });
     }
     return [...merged.values()];
 }
@@ -277,7 +277,8 @@ function buildVoucherEvents(v) {
 function buildOtherEntryEvents(o) {
     const date = o.entry_date || o.createdAt || new Date();
     const key = o.kind === 'income' ? 'other_income' : 'other_expense';
-    return { events: finish([{ item_key: key, amount: num(o.amount), date }], date), branch_id: o.branch_id || null, ref: o.source || '' };
+    // รหัสบัญชีที่เลือกตอนบันทึกเป็นตัวกำหนดว่ายอดไปลงรหัสไหน
+    return { events: finish([{ item_key: key, amount: num(o.amount), date, account_id: o.account_id }], date), branch_id: o.branch_id || null, ref: o.source || '' };
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -352,7 +353,7 @@ function opsFor(sourceType, sourceId, built) {
         ops.push({
             updateOne: {
                 filter: { source_type: sourceType, source_id: sourceId, item_key: e.item_key },
-                update: { $set: { flow: e.flow, amount: e.amount, event_date: e.date, branch_id: built.branch_id || null, source_ref: built.ref || '' } },
+                update: { $set: { flow: e.flow, amount: e.amount, event_date: e.date, branch_id: built.branch_id || null, account_id: e.account_id || null, source_ref: built.ref || '' } },
                 upsert: true
             }
         });
@@ -523,15 +524,22 @@ async function getAccountSummary(filter) {
     const [rows, links, accounts] = await Promise.all([
         AccountItemEvent.aggregate([
             { $match: eventFilter(filter) },
-            { $group: { _id: { item_key: '$item_key', flow: '$flow' }, amount: { $sum: '$amount' }, count: { $sum: 1 } } }
+            { $group: { _id: { item_key: '$item_key', flow: '$flow', account_id: '$account_id' }, amount: { $sum: '$amount' }, count: { $sum: 1 } } }
         ]),
         AccountItemLink.find().select('account_id item_key').lean(),
         AccountChart.find().select('account_code account_name is_active').sort({ account_code: 1 }).lean()
     ]);
 
     const totalsByItem = new Map(); // item_key -> [{ flow, amount, count }]
+    const directByAccount = new Map(); // account_id -> [{ key, flow, amount, count }] ยอดที่เอกสารระบุรหัสบัญชีเอง
     rows.forEach(r => {
         if (!ACCOUNT_ITEM_KEYS.has(r._id.item_key)) return;
+        if (r._id.account_id) {
+            const id = String(r._id.account_id);
+            if (!directByAccount.has(id)) directByAccount.set(id, []);
+            directByAccount.get(id).push({ key: r._id.item_key, flow: r._id.flow, amount: round2(r.amount), count: r.count });
+            return;
+        }
         if (!totalsByItem.has(r._id.item_key)) totalsByItem.set(r._id.item_key, []);
         totalsByItem.get(r._id.item_key).push({ flow: r._id.flow, amount: round2(r.amount), count: r.count });
     });
@@ -553,13 +561,18 @@ async function getAccountSummary(filter) {
 
     const result = [];
     accounts.forEach(a => {
-        const keys = keysByAccount.get(String(a._id));
-        if (!keys || !keys.length) return;
+        const keys = keysByAccount.get(String(a._id)) || [];
+        const direct = directByAccount.get(String(a._id)) || [];
+        if (!keys.length && !direct.length) return;
         const acc = { _id: a._id, account_code: a.account_code, account_name: a.account_name, is_active: a.is_active !== false, in: 0, out: 0, receivable: 0, payable: 0, items: [] };
         keys.forEach(k => (totalsByItem.get(k) || []).forEach(t => {
             acc[t.flow] = round2(acc[t.flow] + t.amount);
             acc.items.push(itemRow(k, t));
         }));
+        direct.forEach(t => {
+            acc[t.flow] = round2(acc[t.flow] + t.amount);
+            acc.items.push({ ...itemRow(t.key, t), direct: true }); // ลงรหัสนี้ตรงๆ ย้าย/เชื่อมใหม่ไม่ได้
+        });
         acc.net = round2(acc.in - acc.out);
         result.push(acc);
     });
@@ -575,8 +588,10 @@ async function getAccountSummary(filter) {
 async function getAccountEntries(accountId, filter, limit = 300) {
     const links = await AccountItemLink.find({ account_id: accountId }).select('item_key').lean();
     const keys = links.map(l => l.item_key).filter(k => ACCOUNT_ITEM_KEYS.has(k));
-    if (!keys.length) return [];
-    const events = await AccountItemEvent.find({ ...eventFilter(filter), item_key: { $in: keys } })
+    const events = await AccountItemEvent.find({
+        ...eventFilter(filter),
+        $or: [{ item_key: { $in: keys }, account_id: null }, { account_id: accountId }]
+    })
         .sort({ event_date: -1 })
         .limit(Math.min(Math.max(Number(limit) || 300, 1), 1000))
         .lean();

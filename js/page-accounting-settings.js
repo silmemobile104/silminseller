@@ -663,8 +663,6 @@
             _treeBound = true; // ผูกครั้งเดียว — HTML ถูกแทรกครั้งเดียว แต่ init ถูกเรียกทุกครั้งที่เข้าหน้า
             document.getElementById('acct-tree-search')?.addEventListener('input', () => renderAcctTree());
             document.getElementById('acct-tree-status')?.addEventListener('change', () => renderAcctTree());
-            document.getElementById('btn-acct-summary-open')?.addEventListener('click', () => showAcctSummaryPage(true));
-            document.getElementById('btn-acct-summary-back')?.addEventListener('click', () => showAcctSummaryPage(false));
             document.getElementById('btn-acct-tree-toggle-all')?.addEventListener('click', () => {
                 const allOpen = _coaCache.categories.every(c => _treeOpen.has('cat:' + c._id));
                 _coaCache.categories.forEach(c => {
@@ -684,14 +682,12 @@
         await loadCOAData();
         // ชื่อรายการไว้โชว์เป็น tooltip ของ "n รายการ" ในแถวบัญชี — มาทีหลังได้ ไม่ต้องรอ
         loadAcctItemsCache().then(() => { if (_acctItemsCache.loaded) renderAcctTree(); });
-        showAcctSummaryPage(false); // เข้าหน้านี้ทีไรเริ่มที่ผังบัญชีเสมอ
     }
 
-    // สลับระหว่างผังบัญชีกับหน้า "ยอดเข้า-ออกต่อรหัสบัญชี" ภายใน #account-tree · โหลดยอดตอนกดเข้าเท่านั้น
-    function showAcctSummaryPage(show) {
-        document.getElementById('acct-tree-main')?.classList.toggle('hidden', show);
-        document.getElementById('acct-summary-page')?.classList.toggle('hidden', !show);
-        if (show) initAcctSummary();
+    // หน้า "ยอดเข้า-ออกต่อรหัสบัญชี" (#account-summary) — ต้องมีข้อมูลผังบัญชีก่อนเพื่อทำตัวกรองและตัวเลือกย้ายรายการ
+    async function initAccountSummary() {
+        await loadCOAData();
+        return initAcctSummary();
     }
 
     function treeBadge(on) {
@@ -945,7 +941,7 @@
         return false;
     }
 
-    // ---------- ยอดเข้า-ออกต่อรหัสบัญชี (การ์ดใต้ผังบัญชีในหน้า #account-tree) ----------
+    // ---------- ยอดเข้า-ออกต่อรหัสบัญชี (หน้า #account-summary ใต้เมนู บัญชีและการเงิน) ----------
     // ยอดต่อรหัส = รวมยอดของทุกรายการที่เชื่อมกับรหัสนั้นเต็มจำนวน · "ค้างรับ/ค้างจ่าย" แยกคอลัมน์ ไม่รวมในเข้า-ออก (ฝั่งเซิร์ฟเวอร์ utils/accountEntries.js)
     let _sumBound = false;
     let _sumBranchesLoaded = false;
@@ -958,6 +954,7 @@
         import_notification: 'แจ้งสินค้าเข้า', expense: 'ค่าใช้จ่าย (ตรวจสอบออเดอร์)', cash_movement: 'ค่าใช้จ่าย (ระบบบัญชีและการเงิน)',
         voucher: 'ใบสำคัญจ่าย', other_entry: 'รายได้/รายจ่ายอื่นๆ'
     };
+    const round2Sum = (n) => Math.round((Number(n) || 0) * 100) / 100;
     const sumMoney = (n) => Number(n || 0).toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     const SUM_NUM_COL = 'text-right shrink-0 font-mono';
     const SUM_NUM_STYLE = 'width:7.5rem';
@@ -985,6 +982,20 @@
             .filter(g => !cat.value || idOf(g.category_id) === cat.value)
             .map(g => `<option value="${escapeHtml(g._id)}">${escapeHtml(g.group_code)} ${escapeHtml(g.group_name)}</option>`).join('');
         grp.value = [...grp.options].some(o => o.value === grpVal) ? grpVal : '';
+        fillSummaryAccountFilter();
+    }
+
+    // รหัสบัญชี = ตัวกรองต่อจากหมวด/กลุ่ม (แคบลงตามที่เลือก)
+    function fillSummaryAccountFilter() {
+        const acc = document.getElementById('acct-summary-account');
+        if (!acc) return;
+        const catId = document.getElementById('acct-summary-category')?.value || '';
+        const grpId = document.getElementById('acct-summary-group')?.value || '';
+        const accVal = acc.value;
+        acc.innerHTML = '<option value="">ทุกรหัสบัญชี</option>' + (_coaCache.accounts || [])
+            .filter(a => (!catId || idOf(a.category_id) === catId) && (!grpId || idOf(a.group_id) === grpId))
+            .map(a => `<option value="${escapeHtml(a._id)}">${escapeHtml(a.account_code)} ${escapeHtml(a.account_name)}</option>`).join('');
+        acc.value = [...acc.options].some(o => o.value === accVal) ? accVal : '';
     }
 
     // ย้าย/เชื่อมรายการเข้ารหัสอื่น: คงรหัสอื่นที่รายการเชื่อมอยู่ไว้ แค่เอา fromId ออกแล้วใส่ toId (fromId ว่าง = รายการที่ยังไม่เชื่อม)
@@ -1057,14 +1068,47 @@
     function sumEntriesHtml(list) {
         if (!list) return '';
         if (!list.length) return '<div class="text-sm text-ink/60 italic py-2">ไม่มีรายการย่อยในช่วงที่เลือก</div>';
-        const rows = list.map(en => `
-            <div class="flex items-center gap-3 py-1 text-sm">
-                <span class="text-ink/70 shrink-0" style="width:6.5rem">${new Date(en.date).toLocaleDateString('th-TH')}</span>
-                <span class="flex-1 min-w-0 truncate text-ink">${escapeHtml(en.item_name)} <span class="text-ink/60">· ${escapeHtml(en.source_ref || '')}</span></span>
-                <span class="text-xs text-ink/70 shrink-0">${escapeHtml(en.flow_label)}</span>
-                <span class="${SUM_NUM_COL} text-ink" style="${SUM_NUM_STYLE}">${sumMoney(en.amount)}</span>
-            </div>`).join('');
-        return `<div class="border-t border-hairline mt-2 pt-2">${rows}${list.length >= 300 ? '<div class="text-xs text-ink/60 italic py-1">แสดง 300 รายการล่าสุด — จำกัดช่วงวันที่เพื่อดูรายการอื่น</div>' : ''}</div>`;
+        const TD = 'px-3 py-2 border-r border-hairline last:border-r-0';
+        const TH = 'px-3 py-2 font-medium border-r border-hairline last:border-r-0';
+        const rows = list.map((en, idx) => `
+            <tr class="border-b border-hairline last:border-0 hover:bg-divider transition-colors ${idx % 2 ? 'bg-surface-tile-3/40' : ''}">
+                <td class="${TD} text-center text-ink/60">${idx + 1}</td>
+                <td class="${TD} text-ink/80 whitespace-nowrap">${new Date(en.date).toLocaleDateString('th-TH')}</td>
+                <td class="${TD} text-ink">${escapeHtml(en.item_name)}</td>
+                <td class="${TD} text-ink/80">${escapeHtml(SUM_SOURCE_LABELS[en.source_type] || en.source_type || '-')}</td>
+                <td class="${TD} text-ink/80">${escapeHtml(en.source_ref || '-')}</td>
+                <td class="${TD} text-right font-mono text-state-ok whitespace-nowrap">${en.flow === 'in' ? sumMoney(en.amount) : ''}</td>
+                <td class="${TD} text-right font-mono text-state-danger whitespace-nowrap">${en.flow === 'out' ? sumMoney(en.amount) : ''}</td>
+                <td class="${TD} text-right font-mono text-ink/70 whitespace-nowrap">${en.flow === 'receivable' || en.flow === 'payable' ? sumMoney(en.amount) + ' (' + escapeHtml(en.flow_label) + ')' : ''}</td>
+            </tr>`).join('');
+        const sumIn = list.filter(e => e.flow === 'in').reduce((n, e) => n + e.amount, 0);
+        const sumOut = list.filter(e => e.flow === 'out').reduce((n, e) => n + e.amount, 0);
+        return `
+            <p class="text-sm font-medium text-ink mt-4 mb-2">รายการทีละใบ (${list.length.toLocaleString('th-TH')} รายการ)</p>
+            <div class="rounded-lg border border-hairline" style="overflow-x:auto">
+                <table class="w-full text-sm" style="min-width:48rem">
+                    <thead class="bg-surface-tile-3"><tr class="text-xs text-ink/80 border-b border-hairline">
+                        <th class="${TH} text-center" style="width:3rem">#</th>
+                        <th class="${TH} text-left">วันที่</th>
+                        <th class="${TH} text-left">รายการ</th>
+                        <th class="${TH} text-left">เอกสาร</th>
+                        <th class="${TH} text-left">เลขที่ / ที่มา</th>
+                        <th class="${TH} text-right">เงินเข้า</th>
+                        <th class="${TH} text-right">เงินออก</th>
+                        <th class="${TH} text-right">ค้างรับ/ค้างจ่าย</th>
+                    </tr></thead>
+                    <tbody>${rows}</tbody>
+                    <tfoot class="bg-surface-tile-3 font-semibold border-t border-hairline">
+                        <tr>
+                            <td class="${TD} text-right" colspan="5">รวม</td>
+                            <td class="${TD} text-right font-mono text-state-ok">${sumIn ? sumMoney(sumIn) : ''}</td>
+                            <td class="${TD} text-right font-mono text-state-danger">${sumOut ? sumMoney(sumOut) : ''}</td>
+                            <td class="${TD}"></td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+            ${list.length >= 300 ? '<div class="text-xs text-ink/60 italic py-1">แสดง 300 รายการล่าสุด — จำกัดช่วงวันที่เพื่อดูรายการอื่น</div>' : ''}`;
     }
 
     function renderAcctSummary() {
@@ -1074,8 +1118,10 @@
 
         const catId = document.getElementById('acct-summary-category')?.value || '';
         const grpId = document.getElementById('acct-summary-group')?.value || '';
+        const accId = document.getElementById('acct-summary-account')?.value || '';
         const coaById = new Map((_coaCache.accounts || []).map(a => [a._id, a]));
         const accounts = (d.accounts || []).filter(a => {
+            if (accId && a._id !== accId) return false;
             if (!catId && !grpId) return true;
             const c = coaById.get(a._id);
             return !!c && (!catId || idOf(c.category_id) === catId) && (!grpId || idOf(c.group_id) === grpId);
@@ -1086,44 +1132,111 @@
             return;
         }
 
-        const head = `
-            <div class="flex items-center gap-3 px-3 py-2 text-xs text-ink/70">
-                <span class="shrink-0" style="width:6rem">รหัส</span>
-                <span class="flex-1 min-w-0">ชื่อบัญชี</span>
-                ${['เข้า', 'ออก', 'สุทธิ', 'ค้างรับ', 'ค้างจ่าย'].map(h => `<span class="${SUM_NUM_COL}" style="${SUM_NUM_STYLE}">${h}</span>`).join('')}
-            </div>`;
+        const netClass = (n) => n > 0 ? 'text-state-ok' : (n < 0 ? 'text-state-danger' : 'text-ink');
+        const NUM_TD = 'px-4 py-3 text-right font-mono whitespace-nowrap';
+        const NUM_TH = 'px-4 py-3 font-semibold text-[15px] text-right whitespace-nowrap';
+        const total = accounts.reduce((t, a) => {
+            ['in', 'out', 'net', 'receivable', 'payable'].forEach(k => { t[k] = round2Sum(t[k] + (a[k] || 0)); });
+            return t;
+        }, { in: 0, out: 0, net: 0, receivable: 0, payable: 0 });
+
+        // ค้างรับ/ค้างจ่ายแสดงเฉพาะเมื่อมียอดจริง — ไม่ให้คอลัมน์ว่างรกตา
+        const showPending = total.receivable !== 0 || total.payable !== 0;
+        const colCount = showPending ? 8 : 6;
+        const groupOf = (a) => {
+            const c = coaById.get(a._id);
+            return c ? (_coaCache.groups || []).find(g => g._id === idOf(c.group_id)) : null;
+        };
+        const groupKeyOf = (a) => (groupOf(a) ? groupOf(a)._id : '');
+        accounts.sort((x, y) => String((groupOf(x) || {}).group_code || '~').localeCompare(String((groupOf(y) || {}).group_code || '~'), undefined, { numeric: true })
+            || String(x.account_code).localeCompare(String(y.account_code), undefined, { numeric: true }));
+        let lastGroup = null;
 
         const rows = accounts.map(a => {
+            const grp = groupOf(a);
+            const grpKey = groupKeyOf(a);
+            let groupHeader = '';
+            if (grpKey !== lastGroup) {
+                lastGroup = grpKey;
+                const members = accounts.filter(x => groupKeyOf(x) === grpKey);
+                const gIn = round2Sum(members.reduce((n, x) => n + (x.in || 0), 0));
+                const gOut = round2Sum(members.reduce((n, x) => n + (x.out || 0), 0));
+                groupHeader = `
+                <tr class="bg-surface-tile-3">
+                    <td class="px-4 py-2 font-semibold text-ink" colspan="3"><i class="fa-solid fa-folder-open text-accent-ink mr-2"></i>${grp ? escapeHtml(grp.group_code + ' ' + grp.group_name) : 'ยังไม่จัดกลุ่ม'}</td>
+                    <td class="${NUM_TD} text-state-ok font-medium">${gIn ? sumMoney(gIn) : ''}</td>
+                    <td class="${NUM_TD} text-state-danger font-medium">${gOut ? sumMoney(gOut) : ''}</td>
+                    <td class="${NUM_TD} font-medium ${netClass(gIn - gOut)}">${sumMoney(gIn - gOut)}</td>
+                    ${showPending ? '<td></td><td></td>' : ''}
+                </tr>`;
+            }
             const open = _sumOpen.has(a._id);
-            const netCls = a.net > 0 ? 'text-state-ok' : (a.net < 0 ? 'text-state-danger' : 'text-ink');
-            const items = a.items.length
+            const dim = a.is_active ? '' : 'opacity-60';
+            const itemRows = a.items.length
                 ? a.items.map(i => `
-                    <div class="flex items-center gap-3 py-1 text-sm">
-                        <span class="flex-1 min-w-0 truncate text-ink">${escapeHtml(i.name)} <span class="text-ink/60">· ${escapeHtml(i.group)}</span></span>
-                        <span class="text-xs text-ink/70 shrink-0">${escapeHtml(i.flow_label)} · ${i.count} รายการ</span>
-                        <select class="acct-item-move ${SUM_SELECT_CLS}" style="max-width:11rem" data-key="${escapeHtml(i.key)}" data-from="${escapeHtml(a._id)}" aria-label="ย้ายรายการไปรหัสอื่น">${sumAccountOptions(a._id)}</select>
-                        <span class="${SUM_NUM_COL} text-ink" style="${SUM_NUM_STYLE}">${sumMoney(i.amount)}</span>
-                    </div>`).join('')
-                : '<div class="text-sm text-ink/60 italic py-1">ยังไม่มียอดของรายการที่เชื่อมในช่วงที่เลือก</div>';
-            return `
-            <div class="${a.is_active ? '' : 'opacity-60'}">
-                <button type="button" class="acct-sum-toggle flex items-center gap-3 w-full text-left px-3 py-2 hover:bg-divider rounded-lg cursor-pointer" data-id="${escapeHtml(a._id)}" aria-expanded="${open}">
-                    <span class="font-mono font-semibold text-accent-ink shrink-0" style="width:6rem">${escapeHtml(a.account_code)}</span>
-                    <span class="flex-1 min-w-0 truncate text-ink">${escapeHtml(a.account_name)}</span>
-                    <span class="${SUM_NUM_COL} text-ink" style="${SUM_NUM_STYLE}">${sumMoney(a.in)}</span>
-                    <span class="${SUM_NUM_COL} text-ink" style="${SUM_NUM_STYLE}">${sumMoney(a.out)}</span>
-                    <span class="${SUM_NUM_COL} ${netCls}" style="${SUM_NUM_STYLE}">${sumMoney(a.net)}</span>
-                    <span class="${SUM_NUM_COL} text-ink/80" style="${SUM_NUM_STYLE}">${sumMoney(a.receivable)}</span>
-                    <span class="${SUM_NUM_COL} text-ink/80" style="${SUM_NUM_STYLE}">${sumMoney(a.payable)}</span>
-                </button>
-                ${open ? `
-                <div class="pl-10 pr-3 pb-3">
-                    ${items}
-                    <button type="button" class="acct-sum-entries mt-2 px-3 py-1.5 text-xs rounded-lg bg-surface-chip text-ink hover:bg-surface-tile-2 cursor-pointer" data-id="${escapeHtml(a._id)}">ดูรายการย่อย</button>
-                    <div>${sumEntriesHtml(_sumEntries.get(a._id))}</div>
-                </div>` : ''}
-            </div>`;
+                    <tr class="border-b border-hairline last:border-0">
+                        <td class="px-3 py-2 text-ink">${escapeHtml(i.name)} <span class="text-xs text-ink/60">· ${escapeHtml(i.flow_label)} ${i.count} ครั้ง</span></td>
+                        <td class="px-3 py-2 text-right font-mono text-ink">${sumMoney(i.amount)}</td>
+                        <td class="px-3 py-2">${i.direct ? '<span class="text-xs text-ink/60">ลงรหัสนี้ตอนบันทึก</span>' : `<select class="acct-item-move ${SUM_SELECT_CLS}" style="max-width:11rem" data-key="${escapeHtml(i.key)}" data-from="${escapeHtml(a._id)}" aria-label="ย้ายรายการไปรหัสอื่น">${sumAccountOptions(a._id)}</select>`}</td>
+                    </tr>`).join('')
+                : '<tr><td colspan="3" class="px-3 py-3 text-sm text-ink/60 italic">ยังไม่มียอดของรายการที่เชื่อมในช่วงที่เลือก</td></tr>';
+            const detail = open ? `
+                <tr class="bg-surface-tile-3/50">
+                    <td colspan="${colCount}" class="px-6 py-4">
+                        <p class="text-sm font-medium text-ink mb-2">ยอดนี้มาจากอะไรบ้าง</p>
+                        <div style="overflow-x:auto">
+                            <table class="w-full text-sm" style="min-width:40rem">
+                                <thead><tr class="text-xs text-ink/70 border-b border-hairline">
+                                    <th class="px-3 py-2 text-left font-medium">รายการ</th>
+                                    <th class="px-3 py-2 text-right font-medium">ยอด (บาท)</th>
+                                    <th class="px-3 py-2 text-left font-medium">ย้ายไปรหัส</th>
+                                </tr></thead>
+                                <tbody>${itemRows}</tbody>
+                            </table>
+                        </div>
+                        ${_sumEntries.has(a._id) ? sumEntriesHtml(_sumEntries.get(a._id)) : `<button type="button" class="acct-sum-entries mt-3 px-3 py-1.5 text-xs rounded-lg bg-surface-chip text-ink hover:bg-surface-tile-2 cursor-pointer" data-id="${escapeHtml(a._id)}">ดูรายการย่อย</button>`}
+                    </td>
+                </tr>` : '';
+            return `${groupHeader}
+                <tr class="acct-sum-toggle cursor-pointer hover:bg-divider transition-colors ${dim}" data-id="${escapeHtml(a._id)}" aria-expanded="${open}">
+                    <td class="px-4 py-3 w-8 text-ink/60"><i class="fa-solid ${open ? 'fa-chevron-down' : 'fa-chevron-right'} text-xs"></i></td>
+                    <td class="px-4 py-3 font-mono font-semibold text-accent-ink whitespace-nowrap">${escapeHtml(a.account_code)}</td>
+                    <td class="px-4 py-3 text-ink">${escapeHtml(a.account_name)}${a.is_active ? '' : ' <span class="text-xs text-ink/60">(ปิดใช้งาน)</span>'}</td>
+                    <td class="${NUM_TD} text-state-ok">${a.in ? sumMoney(a.in) : '-'}</td>
+                    <td class="${NUM_TD} text-state-danger">${a.out ? sumMoney(a.out) : '-'}</td>
+                    <td class="${NUM_TD} font-semibold ${netClass(a.net)}">${sumMoney(a.net)}</td>
+                    ${showPending ? `<td class="${NUM_TD} text-ink/80">${a.receivable ? sumMoney(a.receivable) : '-'}</td>
+                    <td class="${NUM_TD} text-ink/80">${a.payable ? sumMoney(a.payable) : '-'}</td>` : ''}
+                </tr>${detail}`;
         }).join('');
+
+        const table = accounts.length ? `
+            <div class="rounded-xl overflow-hidden bg-panel/40" style="overflow-x:auto">
+                <table class="w-full text-base text-left" style="min-width:44rem">
+                    <thead class="bg-panel/40 text-ink">
+                        <tr>
+                            <th class="px-4 py-3 w-8"></th>
+                            <th class="px-4 py-3 font-semibold text-[15px]">รหัสบัญชี</th>
+                            <th class="px-4 py-3 font-semibold text-[15px] w-full">ชื่อบัญชี</th>
+                            <th class="${NUM_TH}">เงินเข้า</th>
+                            <th class="${NUM_TH}">เงินออก</th>
+                            <th class="${NUM_TH}">คงเหลือ</th>
+                            ${showPending ? `<th class="${NUM_TH}">ค้างรับ</th><th class="${NUM_TH}">ค้างจ่าย</th>` : ''}
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-divider">${rows}</tbody>
+                    <tfoot class="bg-panel/40 text-ink font-semibold border-t border-hairline">
+                        <tr>
+                            <td class="px-4 py-3" colspan="3">รวมทั้งหมด</td>
+                            <td class="${NUM_TD} text-state-ok">${sumMoney(total.in)}</td>
+                            <td class="${NUM_TD} text-state-danger">${sumMoney(total.out)}</td>
+                            <td class="${NUM_TD} ${netClass(total.net)}">${sumMoney(total.net)}</td>
+                            ${showPending ? `<td class="${NUM_TD}">${sumMoney(total.receivable)}</td><td class="${NUM_TD}">${sumMoney(total.payable)}</td>` : ''}
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+            <p class="text-xs text-ink/60 mt-2">เงินเข้า = รายรับ · เงินออก = รายจ่าย · คงเหลือ = เข้า − ออก · กดที่แถวรหัสบัญชีเพื่อดูว่ายอดมาจากอะไร</p>` : '<div class="py-4 text-sm text-ink/60 italic">ยังไม่มีรหัสบัญชีที่ตรงกับตัวกรอง</div>';
 
         const unlinkedHtml = unlinked.length ? `
             <div class="mt-8 rounded-xl bg-surface-tile-3 p-6">
@@ -1156,12 +1269,14 @@
                 </div>
             </div>` : '';
 
-        root.innerHTML = `<div style="overflow-x:auto"><div style="min-width:56rem">${accounts.length ? head + `<div class="space-y-0.5">${rows}</div>` : '<div class="py-4 text-sm text-ink/60 italic">ยังไม่มีรหัสบัญชีที่เชื่อมกับรายการ</div>'}</div></div>${unlinkedHtml}`;
+        root.innerHTML = `${table}${unlinkedHtml}`;
 
         root.querySelectorAll('.acct-sum-toggle').forEach(b => b.addEventListener('click', () => {
             const id = b.dataset.id;
             if (_sumOpen.has(id)) _sumOpen.delete(id); else _sumOpen.add(id);
             renderAcctSummary();
+            // เปิดรหัสแล้วโหลดประวัติรายการย่อยให้เลย ไม่ต้องกดปุ่มเอง
+            if (_sumOpen.has(id) && !_sumEntries.has(id)) root.querySelector(`.acct-sum-entries[data-id="${id}"]`)?.click();
         }));
         root.querySelectorAll('.acct-item-move').forEach(sel => sel.addEventListener('change', () => {
             if (!sel.value) return;
@@ -1227,7 +1342,8 @@
             document.getElementById('btn-acct-summary-load')?.addEventListener('click', loadAcctSummary);
             document.getElementById('btn-acct-summary-rebuild')?.addEventListener('click', rebuildAcctEntries);
             document.getElementById('acct-summary-category')?.addEventListener('change', () => { fillSummaryFilters(); renderAcctSummary(); });
-            document.getElementById('acct-summary-group')?.addEventListener('change', renderAcctSummary);
+            document.getElementById('acct-summary-group')?.addEventListener('change', () => { fillSummaryAccountFilter(); renderAcctSummary(); });
+            document.getElementById('acct-summary-account')?.addEventListener('change', renderAcctSummary);
         }
         fillSummaryFilters();
         loadSummaryBranches();
@@ -2625,6 +2741,7 @@
     window.onAcctAccountCategoryChange = onAcctAccountCategoryChange;
     window.renderBsPage = renderBsPage;
     window.initAccountTree = initAccountTree;
+    window.initAccountSummary = initAccountSummary;
     window.openAcctGroupModal = openAcctGroupModal;
     window.closeAcctDetail = closeAcctDetail;
     window.closeAcctGroupModal = closeAcctGroupModal;
