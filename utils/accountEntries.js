@@ -584,6 +584,9 @@ async function getAccountSummary(filter) {
     return { accounts: result, unlinked };
 }
 
+// รายการในบิลจัดไฟแนนซ์ที่ควรโชว์ว่าเป็นไฟแนนซ์ไหน (นอกเหนือจาก finance_*)
+const FINANCE_BILL_ITEMS = new Set(['sale_device_finance', 'sale_down_payment', 'sale_contract_fee', 'sale_icloud_fee']);
+
 // รายการย่อยของรหัสบัญชีหนึ่งตัว (ไล่จากใหม่ไปเก่า)
 async function getAccountEntries(accountId, filter, limit = 300) {
     const links = await AccountItemLink.find({ account_id: accountId }).select('item_key').lean();
@@ -595,6 +598,36 @@ async function getAccountEntries(accountId, filter, limit = 300) {
         .sort({ event_date: -1 })
         .limit(Math.min(Math.max(Number(limit) || 300, 1), 1000))
         .lean();
+
+    // ชื่อไฟแนนซ์ของบิล: finance_company เก็บได้ทั้ง _id และชื่อที่พนักงานพิมพ์เอง จึงหาแบบ id ก่อนแล้วค่อยเทียบชื่อ
+    const financeTxnIds = [...new Set(events
+        .filter(e => e.source_type === 'transaction' && (e.item_key.startsWith('finance_') || FINANCE_BILL_ITEMS.has(e.item_key)))
+        .map(e => String(e.source_id)))];
+    const financeNameByTxn = new Map();
+    // ชื่อซัพของใบเคลม: ใบเคลมเก็บ supplier_name ไว้ตอนส่งเคลมอยู่แล้ว
+    const supplierNameBySource = new Map();
+    const idsOf = (type) => [...new Set(events.filter(e => e.source_type === type).map(e => String(e.source_id)))];
+    const claimIds = idsOf('claim');
+    const poIds = idsOf('purchase_order');
+    const [claims, pos] = await Promise.all([
+        claimIds.length ? Claim.find({ _id: { $in: claimIds } }).select('supplier_name').lean() : [],
+        poIds.length ? PurchaseOrder.find({ _id: { $in: poIds } }).select('supplier_name').lean() : []
+    ]);
+    // ใบสั่งซื้อก็เก็บ supplier_name ไว้เอง — ใช้ map เดียวกัน (source_id ไม่ซ้ำข้ามชนิดเอกสาร)
+    [...claims, ...pos].forEach(d => { if (d.supplier_name) supplierNameBySource.set(String(d._id), d.supplier_name); });
+    if (financeTxnIds.length) {
+        const [md, txns] = await Promise.all([
+            mdCache.get(),
+            Transaction.find({ _id: { $in: financeTxnIds } }).select('finance_company').lean()
+        ]);
+        txns.forEach(t => {
+            if (!t.finance_company) return;
+            const fc = md.maps.financeCompanies.get(String(t.finance_company)) ||
+                md.lists.financeCompanies.find(c => c.name === t.finance_company);
+            financeNameByTxn.set(String(t._id), fc ? fc.name : String(t.finance_company));
+        });
+    }
+
     return events.map(e => ({
         _id: e._id,
         date: e.event_date,
@@ -605,7 +638,8 @@ async function getAccountEntries(accountId, filter, limit = 300) {
         amount: e.amount,
         source_type: e.source_type,
         source_ref: e.source_ref,
-        branch_id: e.branch_id
+        branch_id: e.branch_id,
+        party_name: financeNameByTxn.get(String(e.source_id)) || supplierNameBySource.get(String(e.source_id)) || ''
     }));
 }
 

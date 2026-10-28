@@ -1074,7 +1074,7 @@
             <tr class="border-b border-hairline last:border-0 hover:bg-divider transition-colors ${idx % 2 ? 'bg-surface-tile-3/40' : ''}">
                 <td class="${TD} text-center text-ink/60">${idx + 1}</td>
                 <td class="${TD} text-ink/80 whitespace-nowrap">${new Date(en.date).toLocaleDateString('th-TH')}</td>
-                <td class="${TD} text-ink">${escapeHtml(en.item_name)}</td>
+                <td class="${TD} text-ink">${escapeHtml(en.item_name)}${en.party_name ? ` <span class="text-xs text-ink/60">· ${escapeHtml(en.party_name)}</span>` : ''}</td>
                 <td class="${TD} text-ink/80">${escapeHtml(SUM_SOURCE_LABELS[en.source_type] || en.source_type || '-')}</td>
                 <td class="${TD} text-ink/80">${escapeHtml(en.source_ref || '-')}</td>
                 <td class="${TD} text-right font-mono text-state-ok whitespace-nowrap">${en.flow === 'in' ? sumMoney(en.amount) : ''}</td>
