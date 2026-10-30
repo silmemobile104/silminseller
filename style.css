@@ -345,3 +345,14 @@ html {
         transition: none;
     }
 }
+
+/* ตารางที่เลื่อนซ้าย/ขวาได้: เมาส์เป็นรูปมือจับ และลากเลื่อนได้ (ดู setupTableDragScroll ใน script.js) */
+.overflow-x-auto:has(> table), .overflow-x-auto:has(table) {
+    cursor: grab;
+}
+
+.is-drag-scrolling,
+.is-drag-scrolling * {
+    cursor: grabbing !important;
+    user-select: none;
+}

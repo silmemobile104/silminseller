@@ -52,7 +52,7 @@
          ที่เหลือปล่อยให้โหลดตามที่ CSS สั่ง เพื่อไม่ให้แย่ง bandwidth ตอนเปิดหน้าแรก -->
     <link rel="preload" as="font" type="font/woff2" crossorigin href="vendor/fonts/sarabun-thai-400.woff2">
     <link rel="preload" as="font" type="font/woff2" crossorigin href="vendor/fonts/sarabun-thai-700.woff2">
-    <link rel="stylesheet" href="style.css?v=13">
+    <link rel="stylesheet" href="style.css?v=14">
 
 </head>
 
@@ -1168,12 +1168,12 @@
                         </div>
                         <div>
                             <div class="flex items-center justify-between mb-1">
-                                <span id="acct-account-items-label" class="block text-body-muted text-xs">รายการที่เชื่อมกับรหัสบัญชีนี้</span>
+                                <span id="acct-account-items-label" class="block text-body-muted text-xs">รายการที่เชื่อมกับรหัสบัญชีนี้ (เลือกได้ 1 รายการ)</span>
                                 <span id="acct-account-items-count" class="text-xs text-ink/60" aria-live="polite"></span>
                             </div>
                             <input type="search" id="acct-account-items-search" placeholder="ค้นหารายการ" autocomplete="off" aria-label="ค้นหารายการที่เชื่อม"
                                 class="elev-chip w-full px-3 py-2 rounded-sm bg-surface-chip text-ink text-sm focus:ring-2 focus:ring-primary-focus outline-none">
-                            <div id="acct-account-items" role="group" aria-labelledby="acct-account-items-label" tabindex="0" style="max-height:15rem"
+                            <div id="acct-account-items" role="radiogroup" aria-labelledby="acct-account-items-label" tabindex="0" style="max-height:15rem"
                                 class="elev-chip mt-2 rounded-sm bg-surface-chip p-1 overflow-y-auto focus:ring-2 focus:ring-primary-focus outline-none"></div>
                         </div>
                         <div class="flex gap-3 pt-2">
@@ -5515,7 +5515,7 @@
     <!-- defer: ปล่อยให้ parse HTML จบก่อนค่อย execute
          ปลอดภัยเพราะทั้งไฟล์ห่ออยู่ใน DOMContentLoaded listener อยู่แล้ว
          และสคริปต์ defer จะ execute ก่อน event DOMContentLoaded ยิงเสมอ -->
-    <script defer src="script.js?v=apple_active_v205"></script>
+    <script defer src="script.js?v=apple_active_v209"></script>
     <script>
         // ลงทะเบียน Service Worker เพื่อแคช asset คงที่ (css/js/font/icon/รูป) ไว้ฝั่งเครื่อง
         // เข้าเว็บครั้งถัดไปเร็วขึ้นมาก โดยเฉพาะตอนเน็ตช้าหรือหลุดชั่วคราว — ดูรายละเอียดที่ sw.js

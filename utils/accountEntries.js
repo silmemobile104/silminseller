@@ -10,7 +10,7 @@
 const mongoose = require('mongoose');
 const {
     Transaction, FinanceReceivable, Product, Deposit, Claim, StockIssue, PurchaseOrder, ImportNotification,
-    Expense, CashMovement, DisbursementVoucher, OtherEntry, Movement, AuditLog,
+    Expense, CashMovement, DisbursementVoucher, OtherEntry, Movement, AuditLog, Employee,
     AccountItemEvent, AccountItemLink, AccountChart
 } = require('../models');
 const mdCache = require('./masterDataCache');
@@ -23,19 +23,26 @@ const sum = (arr) => arr.reduce((s, x) => s + x, 0);
 const getHelpers = () => require('../routes/api').accountingHelpers;
 
 // รวมยอดรายการซ้ำ key เดียวกัน · ทิ้งยอด ≤ 0 · ใส่ flow เริ่มต้นจากแคตตาล็อก · key นอกแคตตาล็อกถือเป็นบั๊ก ข้ามพร้อมเตือน
-function finish(list, fallbackDate) {
+// 1 เอกสารเก็บได้ 1 ยอดต่อ key (unique index) — key ซ้ำที่ flow/รหัสบัญชีต่างกันรวมกันไม่ได้ ถือเป็นบั๊กของตัวสร้างยอด จึงเตือนไว้
+// ยอดติดลบไม่ใช่ยอดที่บันทึกได้ (flow บอกทิศทางแล้ว) แต่เป็นสัญญาณว่าเอกสารผิดปกติ เช่น PO จ่ายเกินยอดสั่ง — เตือนแทนการทิ้งเงียบๆ
+function finish(list, fallbackDate, ref) {
     const merged = new Map();
     for (const e of list) {
         const item = ACCOUNT_ITEM_BY_KEY.get(e.item_key);
         if (!item) { console.warn('[accountEntries] ไม่รู้จักรายการ', e.item_key); continue; }
         const amount = round2(e.amount);
+        if (amount < -0.004) console.warn(`[accountEntries] ยอดติดลบถูกข้าม ${e.item_key} ${amount} (${ref || '-'})`);
         if (!(amount > 0.004)) continue;
         const flow = e.flow || item.flow;
         const mapKey = e.item_key;
         const date = e.date && !isNaN(new Date(e.date)) ? new Date(e.date) : (fallbackDate ? new Date(fallbackDate) : new Date());
         const cur = merged.get(mapKey);
-        if (cur) cur.amount = round2(cur.amount + amount);
-        else merged.set(mapKey, { item_key: e.item_key, flow, amount, date, account_id: e.account_id || null });
+        if (cur) {
+            if (cur.flow !== flow || String(cur.account_id || '') !== String(e.account_id || '')) {
+                console.warn(`[accountEntries] รายการ ${e.item_key} ซ้ำในเอกสารเดียวแต่ทิศทาง/รหัสบัญชีต่างกัน (${ref || '-'}) — ใช้ของตัวแรก`);
+            }
+            cur.amount = round2(cur.amount + amount);
+        } else merged.set(mapKey, { item_key: e.item_key, flow, amount, date, account_id: e.account_id || null });
     }
     return [...merged.values()];
 }
@@ -55,7 +62,9 @@ function analyzeBill(t, ctx) {
             product_name: it.product_name || '',
             price: num(it.price),
             quantity: Number(it.quantity) || 1,
-            cost: p ? num(p.cost_price) : 0,
+            // ราคาทุน ณ วันขาย (เก็บในบิลตั้งแต่ POS/ส่งมอบมัดจำบันทึก) · บิลเก่าไม่มี ใช้ราคาทุนของสินค้า
+            // (แก้/ลบสินค้าจะเก็บราคาทุนเดิมลงบิลเก่าให้ก่อน ดู routes/api.js freezeSoldCost)
+            cost: it.cost_price != null ? num(it.cost_price) : (p ? num(p.cost_price) : 0),
             // POS ล็อกราคาของแถมเป็น 0 และไม่ได้ส่ง is_gift ไปเซิร์ฟเวอร์ — รายการราคา 0 จึงถือเป็นของแถม
             isGift: it.is_gift === true || num(it.price) === 0,
             unitName: unit ? unit.name : '',
@@ -125,6 +134,15 @@ function buildTransactionEvents(t, ctx) {
         } else if (cash + transfer === 0 && total > 0) { // บิลเก่ามากไม่มีฟิลด์แยกเงินสด/โอน ดูวิธีชำระเดิม
             if (t.payment_method === 'โอนเงิน') transfer = total; else cash = total;
         }
+        // บิลเก่าเก็บ "เงินที่ลูกค้ายื่นมา" (รวมเงินทอน) — ส่วนที่เกินยอดที่ต้องเก็บคือเงินทอน ทอนเป็นเงินสดก่อน ขาดค่อยหักจากเงินโอน
+        // (POS ตอนนี้หักเงินทอนก่อนบันทึกแล้ว ดู POST /transactions) · บิลส่งมอบมัดจำ: ยอดที่ต้องเก็บ = ยอดบิล − มัดจำ
+        const due = Math.max(0, total - completeApplied);
+        const change = round2(cash + transfer - due);
+        if (change > 0) {
+            const fromCash = Math.min(cash, change);
+            cash -= fromCash;
+            transfer = Math.max(0, transfer - (change - fromCash));
+        }
     }
 
     const ev = [];
@@ -169,7 +187,7 @@ function buildTransactionEvents(t, ctx) {
         }
     }
 
-    out.events = finish(ev, date); // รายการที่ไม่ได้ระบุวันที่เอง ใช้วันที่ขาย
+    out.events = finish(ev, date, out.ref); // รายการที่ไม่ได้ระบุวันที่เอง ใช้วันที่ขาย
     return out;
 }
 
@@ -184,7 +202,8 @@ function buildDepositEvents(d) {
 function buildClaimEvents(c) {
     const date = c.createdAt || new Date();
     const cost = num(c.total_cost);
-    const ev = [];
+    // ตอนส่งเคลมสินค้าถูกตัดออกจากสต็อกแล้ว (ทุกสถานะ) — คู่กับยอดเข้าของ "ได้รับสินค้าทดแทน" / "คืนเข้าสต็อก" ตอนปิดเคลม
+    const ev = [{ item_key: 'claim_stock_out', amount: cost, date }];
     if (c.status === 'ส่งเคลมแล้ว') {
         ev.push({ item_key: 'claim_send', amount: cost, date });
     } else if (c.status === 'ปิดเคลม') {
@@ -204,13 +223,21 @@ function buildClaimEvents(c) {
     } else if (c.status === 'ปฏิเสธ') {
         ev.push({ item_key: c.returned_to_stock ? 'claim_reject_restock' : 'claim_reject_writeoff', amount: cost, date: c.closed_at || c.updatedAt || date });
     }
-    return { events: finish(ev, date), branch_id: c.branch_id || null, ref: c.claim_no || '' };
+    return { events: finish(ev, date, c.claim_no), branch_id: c.branch_id || null, ref: c.claim_no || '' };
 }
 
-function buildStockIssueEvents(s) {
-    const loss = sum((s.items || []).filter(i => i.claim_type === 'loss').map(i => num(i.cost_price) * (Number(i.quantity) || 1)));
+// ใบจ่ายออก: นับเฉพาะของที่ไม่ได้ไปเป็นใบเคลม (ของที่ส่งเคลมนับที่ใบเคลม ห้ามนับซ้ำ)
+//  - claim_type 'loss' = ขาดทุน
+//  - ใบรุ่นเก่าที่ไม่ได้ระบุประเภทและไม่มีใบเคลมเลย = "จ่ายออกไม่ระบุประเภท" (ถ้ามีใบเคลมแล้ว ของในใบนั้นนับที่ใบเคลม)
+function buildStockIssueEvents(s, ctx) {
+    const lineCost = (i) => num(i.cost_price) * (Number(i.quantity) || 1);
+    const items = s.items || [];
+    const loss = sum(items.filter(i => i.claim_type === 'loss').map(lineCost));
+    const hasClaim = !!(ctx && ctx.issueIdsWithClaim && ctx.issueIdsWithClaim.has(String(s._id)));
+    const untyped = hasClaim ? 0 : sum(items.filter(i => !i.claim_type).map(lineCost));
     const date = s.createdAt || new Date();
-    return { events: finish([{ item_key: 'stock_loss', amount: loss, date }], date), branch_id: s.branch_id || null, ref: s.issue_no || '' };
+    const ev = [{ item_key: 'stock_loss', amount: loss, date }, { item_key: 'stock_issue_untyped', amount: untyped, date }];
+    return { events: finish(ev, date, s.issue_no), branch_id: s.branch_id || null, ref: s.issue_no || '' };
 }
 
 // ใบสั่งซื้อ — ต้นทุนรับเข้าคิดจากจำนวนที่นำเข้าสต็อกแล้ว · ค้างจ่ายใช้นิยามเดียวกับ GET /accounting/ap-summary (ต้นทุนตามจำนวนสั่ง − จ่ายแล้ว − ส่วนลด)
@@ -231,10 +258,12 @@ function buildPurchaseOrderEvents(po, ctx) {
     const ev = [
         { item_key: 'po_receive', amount: importedCost, date: receiveDate },
         { item_key: 'po_pay', amount: paid, date: payDate },
-        { item_key: 'po_discount', amount: discount, date: payDate }
+        { item_key: 'po_discount', amount: discount, date: payDate },
+        // จ่ายก่อนของเข้า: เงินที่จ่ายไปเกินมูลค่าที่นำเข้าแล้ว = ค่าสินค้าจ่ายล่วงหน้า (ลดลงเองเมื่อรับสินค้าเข้า)
+        { item_key: 'po_prepaid', amount: Math.max(0, round2(paid - importedCost)), date: payDate }
     ];
     if (po.payment_status !== 'ชำระเงินแล้ว') ev.push({ item_key: 'ap_trade', amount: round2(orderedCost - paid - discount), date });
-    out.events = finish(ev, date);
+    out.events = finish(ev, date, po.po_number);
     return out;
 }
 
@@ -257,15 +286,17 @@ function buildExpenseEvents(e) {
 }
 
 // CashMovement ที่เป็นค่าใช้จ่ายจากหน้า "ระบบบัญชีและการเงิน" — หมวด 'อื่นๆ' ที่มี reference_id คือใบสำคัญจ่าย (นับที่ใบสำคัญจ่ายแล้ว ห้ามนับซ้ำ)
+// ข้ามเฉพาะเมื่อใบสำคัญจ่ายนั้นยังมีอยู่จริง — ใบถูกลบไปแล้วแต่เงินออกยังค้าง ต้องนับที่นี่ ไม่งั้นยอดหายจากทุกรหัส (แต่ P&L เดิมยังนับ)
+// ไม่มีสาขา (CashMovement ไม่ได้เก็บ) — หน้ายอดเข้า-ออกกรองได้ด้วยตัวเลือก "ไม่ระบุสาขา"
 const CASH_EXPENSE_ITEM = { 'ค่าเช่า': 'exp_rent', 'ค่าไฟ/น้ำ': 'exp_utilities', 'เงินเดือน': 'exp_salary', 'อื่นๆ': 'exp_other_accounting' };
-function buildCashMovementEvents(m) {
+function buildCashMovementEvents(m, ctx) {
     const out = { events: [], branch_id: null, ref: m.transaction_id || '' };
     if (m.type !== 'รายจ่าย') return out;
     const key = CASH_EXPENSE_ITEM[m.category];
     if (!key) return out;
-    if (m.category === 'อื่นๆ' && m.reference_id) return out;
+    if (m.category === 'อื่นๆ' && m.reference_id && ctx && ctx.voucherIds && ctx.voucherIds.has(String(m.reference_id))) return out;
     const date = m.created_at || m.createdAt || new Date();
-    out.events = finish([{ item_key: key, amount: num(m.amount), date }], date);
+    out.events = finish([{ item_key: key, amount: num(m.amount), date }], date, out.ref);
     return out;
 }
 
@@ -328,16 +359,30 @@ async function loadImportNotificationContext(notes) {
     return { approvedCost };
 }
 
+// ใบจ่ายออกที่มีใบเคลมผูกอยู่ (ของในใบนั้นนับที่ใบเคลม)
+async function loadStockIssueContext(issues) {
+    const ids = issues.map(s => s._id);
+    const withClaim = ids.length ? await Claim.distinct('issue_id', { issue_id: { $in: ids } }) : [];
+    return { issueIdsWithClaim: new Set(withClaim.map(String)) };
+}
+
+// ใบสำคัญจ่ายที่ยังมีอยู่ของ CashMovement หมวด 'อื่นๆ' ที่อ้างถึง
+async function loadCashMovementContext(moves) {
+    const refs = moves.filter(m => m.category === 'อื่นๆ' && m.reference_id).map(m => m.reference_id);
+    const found = refs.length ? await DisbursementVoucher.find({ _id: { $in: refs } }).select('_id').lean() : [];
+    return { voucherIds: new Set(found.map(v => String(v._id))) };
+}
+
 // ชนิดเอกสารต้นทางทั้งหมด: model, ตัวกรอง (ถ้ามี), ตัวโหลดประกอบ, ตัวสร้างยอด
 const SOURCES = {
     transaction: { model: Transaction, ctx: loadTransactionContext, build: buildTransactionEvents },
     deposit: { model: Deposit, build: buildDepositEvents },
     claim: { model: Claim, build: buildClaimEvents },
-    stock_issue: { model: StockIssue, build: buildStockIssueEvents },
+    stock_issue: { model: StockIssue, ctx: loadStockIssueContext, build: buildStockIssueEvents },
     purchase_order: { model: PurchaseOrder, ctx: loadPurchaseOrderContext, build: buildPurchaseOrderEvents },
     import_notification: { model: ImportNotification, ctx: loadImportNotificationContext, build: buildImportNotificationEvents },
     expense: { model: Expense, build: buildExpenseEvents },
-    cash_movement: { model: CashMovement, filter: { type: 'รายจ่าย' }, build: buildCashMovementEvents },
+    cash_movement: { model: CashMovement, filter: { type: 'รายจ่าย' }, ctx: loadCashMovementContext, build: buildCashMovementEvents },
     voucher: { model: DisbursementVoucher, build: buildVoucherEvents },
     other_entry: { model: OtherEntry, build: buildOtherEntryEvents }
 };
@@ -361,6 +406,37 @@ function opsFor(sourceType, sourceId, built) {
     // ลบยอดของรายการที่เอกสารนี้ไม่มีแล้ว (เช่น ยกเลิกบิล → keys ว่าง → ลบทั้งหมดของเอกสารนี้)
     ops.push({ deleteMany: { filter: { source_type: sourceType, source_id: sourceId, item_key: { $nin: keys } } } });
     return ops;
+}
+
+// ยอดที่บันทึกไว้แล้วของเอกสารชุดหนึ่ง: Map(String(source_id) -> Map(item_key -> event))
+async function loadSavedEvents(sourceType, ids) {
+    const byDoc = new Map();
+    if (!ids.length) return byDoc;
+    const rows = await AccountItemEvent.find({ source_type: sourceType, source_id: { $in: ids } })
+        .select('source_id item_key flow amount branch_id account_id source_ref').lean();
+    for (const r of rows) {
+        const k = String(r.source_id);
+        if (!byDoc.has(k)) byDoc.set(k, new Map());
+        byDoc.get(k).set(r.item_key, r);
+    }
+    return byDoc;
+}
+
+// จำนวนยอดของเอกสารใบหนึ่งที่ยังไม่ได้บันทึก หรือไม่ตรงกับที่คำนวณได้ตอนนี้ (รวมยอดที่ต้องลบทิ้ง)
+// ไม่เทียบวันที่: เอกสารที่ไม่มีวันที่เลยจะได้วันที่ "ตอนนี้" ทุกครั้ง ทำให้ค้างเป็นรายการรอบันทึกตลอด
+function countPending(savedMap, built) {
+    const saved = savedMap || new Map();
+    const same = (a, b) => String(a || '') === String(b || '');
+    let n = 0;
+    const keys = new Set();
+    for (const e of built.events) {
+        keys.add(e.item_key);
+        const s = saved.get(e.item_key);
+        if (!s || s.flow !== e.flow || round2(s.amount) !== round2(e.amount) ||
+            !same(s.branch_id, built.branch_id) || !same(s.account_id, e.account_id) || !same(s.source_ref, built.ref)) n += 1;
+    }
+    for (const k of saved.keys()) if (!keys.has(k)) n += 1;
+    return n;
 }
 
 async function buildForDocs(sourceType, docs) {
@@ -453,16 +529,20 @@ async function rebuildAllUnlocked({ dryRun = true, types = null, batchSize = 200
     const wanted = Object.keys(SOURCES).filter(t => !types || types.includes(t));
     for (const sourceType of wanted) {
         const src = SOURCES[sourceType];
-        const stat = { sources: 0, events: 0 };
+        // pending_* = ส่วนที่ยังไม่ได้บันทึก/ไม่ตรงกับที่บันทึกไว้ (ใช้แสดงในหน้าต่างยืนยัน)
+        const stat = { sources: 0, events: 0, pending_sources: 0, pending_events: 0 };
         let batch = [];
         const flush = async () => {
             if (!batch.length) return;
             const flushed = batch;
             const built = await buildForDocs(sourceType, batch);
             const ops = [];
+            const saved = dryRun ? await loadSavedEvents(sourceType, built.map(x => x.id)) : new Map();
             for (const { id, built: b } of built) {
                 stat.sources += 1;
                 stat.events += b.events.length;
+                const pending = dryRun ? countPending(saved.get(String(id)), b) : 0;
+                if (pending > 0) { stat.pending_sources += 1; stat.pending_events += pending; }
                 b.events.forEach(e => {
                     const cur = summary.items[e.item_key] || { count: 0, amount: 0 };
                     cur.count += 1; cur.amount = round2(cur.amount + e.amount);
@@ -485,7 +565,7 @@ async function rebuildAllUnlocked({ dryRun = true, types = null, batchSize = 200
             if (batch.length >= batchSize) await flush();
         }
         await flush();
-        if (!dryRun) {
+        {
             // เอกสารต้นทางที่ถูกลบไปแล้ว — ยอดค้างของมันต้องหายด้วย
             // ลบเฉพาะ id ที่ "ตรวจแล้วว่าไม่มีในต้นทาง (ตามตัวกรองของชนิดนี้)" จริง ไม่ใช้รายการที่ไล่เจอตอนเริ่ม
             // เพราะเอกสารที่สร้างระหว่างที่ rebuild วิ่งอยู่ไม่อยู่ในรายการนั้น และห้ามถูกลบยอดทิ้ง
@@ -495,7 +575,14 @@ async function rebuildAllUnlocked({ dryRun = true, types = null, batchSize = 200
                 const existing = await src.model.find({ ...(src.filter || {}), _id: { $in: chunk } }).select('_id').lean();
                 const existingSet = new Set(existing.map(d => String(d._id)));
                 const stale = chunk.filter(id => !existingSet.has(String(id)));
-                if (stale.length) await AccountItemEvent.deleteMany({ source_type: sourceType, source_id: { $in: stale } });
+                if (!stale.length) continue;
+                if (dryRun) {
+                    // dry-run: นับยอดค้างที่จะถูกลบเป็น "ที่ต้องบันทึก" แต่ไม่ลบจริง
+                    stat.pending_sources += stale.length;
+                    stat.pending_events += await AccountItemEvent.countDocuments({ source_type: sourceType, source_id: { $in: stale } });
+                } else {
+                    await AccountItemEvent.deleteMany({ source_type: sourceType, source_id: { $in: stale } });
+                }
             }
         }
         summary.types[sourceType] = stat;
@@ -506,14 +593,21 @@ async function rebuildAllUnlocked({ dryRun = true, types = null, batchSize = 200
 // ---------------------------------------------------------------------------------------------
 // อ่านยอด
 // ---------------------------------------------------------------------------------------------
+// ขอบวันตามเวลาไทยเสมอ (+07:00) ไม่ขึ้นกับเขตเวลาของเครื่องเซิร์ฟเวอร์ — ถ้าเซิร์ฟเวอร์ตั้ง UTC รายการ 00:00–06:59 จะได้ไม่ตกไปอีกวัน
+const DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
+const BRANCH_NONE = 'NONE'; // ยอดที่ไม่มีสาขา (เช่น ค่าใช้จ่ายจากหน้า "ระบบบัญชีและการเงิน") — รวมทุกสาขา + ไม่ระบุสาขา = ทั้งหมด
 function eventFilter({ startDate, endDate, branchId }) {
     const match = {};
-    if (startDate || endDate) {
+    const start = DAY_RE.test(startDate || '') ? new Date(startDate + 'T00:00:00.000+07:00') : null;
+    const end = DAY_RE.test(endDate || '') ? new Date(endDate + 'T23:59:59.999+07:00') : null;
+    if (start || end) {
         match.event_date = {};
-        if (startDate) match.event_date.$gte = new Date(startDate + 'T00:00:00');
-        if (endDate) match.event_date.$lte = new Date(endDate + 'T23:59:59.999');
+        if (start) match.event_date.$gte = start;
+        if (end) match.event_date.$lte = end;
     }
-    if (branchId && branchId !== 'ALL' && mongoose.isValidObjectId(branchId)) {
+    if (branchId === BRANCH_NONE) {
+        match.branch_id = null;
+    } else if (branchId && branchId !== 'ALL' && mongoose.isValidObjectId(branchId)) {
         match.branch_id = new mongoose.Types.ObjectId(branchId); // aggregate ไม่ cast ให้เอง ต้องแปลงเป็น ObjectId
     }
     return match;
@@ -527,7 +621,7 @@ async function getAccountSummary(filter) {
             { $group: { _id: { item_key: '$item_key', flow: '$flow', account_id: '$account_id' }, amount: { $sum: '$amount' }, count: { $sum: 1 } } }
         ]),
         AccountItemLink.find().select('account_id item_key').lean(),
-        AccountChart.find().select('account_code account_name is_active').sort({ account_code: 1 }).lean()
+        AccountChart.find().select('account_code account_name is_active category_id').sort({ account_code: 1 }).lean()
     ]);
 
     const totalsByItem = new Map(); // item_key -> [{ flow, amount, count }]
@@ -546,9 +640,13 @@ async function getAccountSummary(filter) {
 
     const keysByAccount = new Map();
     const linkedKeys = new Set();
+    const accountIds = new Set(accounts.map(a => String(a._id)));
+    const linkCountByKey = new Map();
     links.forEach(l => {
         if (!ACCOUNT_ITEM_KEYS.has(l.item_key)) return;
         const id = String(l.account_id);
+        if (!accountIds.has(id)) return; // ลิงก์ค้างไปรหัสที่ถูกลบแล้ว — ไม่นับว่าเชื่อม ยอดจะไปโผล่ที่ "ยังไม่เชื่อม" แทนการหายเงียบ
+        linkCountByKey.set(l.item_key, (linkCountByKey.get(l.item_key) || 0) + 1);
         if (!keysByAccount.has(id)) keysByAccount.set(id, []);
         keysByAccount.get(id).push(l.item_key);
         linkedKeys.add(l.item_key);
@@ -564,7 +662,7 @@ async function getAccountSummary(filter) {
         const keys = keysByAccount.get(String(a._id)) || [];
         const direct = directByAccount.get(String(a._id)) || [];
         if (!keys.length && !direct.length) return;
-        const acc = { _id: a._id, account_code: a.account_code, account_name: a.account_name, is_active: a.is_active !== false, in: 0, out: 0, receivable: 0, payable: 0, items: [] };
+        const acc = { _id: a._id, account_code: a.account_code, account_name: a.account_name, category_id: a.category_id || null, is_active: a.is_active !== false, in: 0, out: 0, receivable: 0, payable: 0, items: [] };
         keys.forEach(k => (totalsByItem.get(k) || []).forEach(t => {
             acc[t.flow] = round2(acc[t.flow] + t.amount);
             acc.items.push(itemRow(k, t));
@@ -579,26 +677,45 @@ async function getAccountSummary(filter) {
 
     const unlinked = [];
     totalsByItem.forEach((list, key) => { if (!linkedKeys.has(key)) list.forEach(t => unlinked.push(itemRow(key, t))); });
+    // ยอดที่เอกสารระบุรหัสเองแต่รหัสนั้นถูกลบไปแล้ว — ย้ายด้วยลิงก์ไม่ได้ (ต้องแก้ที่เอกสาร) แต่ต้องเห็นยอด
+    directByAccount.forEach((list, id) => {
+        if (!accountIds.has(id)) list.forEach(t => unlinked.push({ ...itemRow(t.key, t), direct: true, missing_account: true }));
+    });
     unlinked.sort((a, b) => b.amount - a.amount);
 
-    return { accounts: result, unlinked };
+    // รายการที่เชื่อมมากกว่า 1 รหัส: ยอดลงทุกรหัสเต็มจำนวน หน้าเว็บต้องเตือนว่ารวมข้ามรหัสแล้วนับซ้ำ
+    const multi_linked = [...linkCountByKey].filter(([, n]) => n > 1)
+        .map(([key, n]) => ({ key, name: ACCOUNT_ITEM_BY_KEY.get(key).name, accounts: n }));
+
+    return { accounts: result, unlinked, multi_linked };
 }
 
 // รายการในบิลจัดไฟแนนซ์ที่ควรโชว์ว่าเป็นไฟแนนซ์ไหน (นอกเหนือจาก finance_*)
 const FINANCE_BILL_ITEMS = new Set(['sale_device_finance', 'sale_down_payment', 'sale_contract_fee', 'sale_icloud_fee']);
 
-// รายการย่อยของรหัสบัญชีหนึ่งตัว (ไล่จากใหม่ไปเก่า)
+// รายการย่อยของรหัสบัญชีหนึ่งตัว (ไล่จากใหม่ไปเก่า) — คืน { entries, truncated }
+// truncated = มีรายการมากกว่าที่ส่งกลับ (ดึงเกินมา 1 แถวเพื่อรู้แน่ ไม่เดาจากจำนวนที่เท่ากับ limit)
 async function getAccountEntries(accountId, filter, limit = 300) {
+    const max = Math.min(Math.max(Number(limit) || 300, 1), 1000);
     const links = await AccountItemLink.find({ account_id: accountId }).select('item_key').lean();
     const keys = links.map(l => l.item_key).filter(k => ACCOUNT_ITEM_KEYS.has(k));
-    const events = await AccountItemEvent.find({
+    const fetched = await AccountItemEvent.find({
         ...eventFilter(filter),
         $or: [{ item_key: { $in: keys }, account_id: null }, { account_id: accountId }]
     })
         .sort({ event_date: -1 })
-        .limit(Math.min(Math.max(Number(limit) || 300, 1), 1000))
+        .limit(max + 1)
         .lean();
+    const truncated = fetched.length > max;
+    const events = truncated ? fetched.slice(0, max) : fetched;
+    const partyNames = await loadPartyNames(events);
 
+    const entries = events.map(e => toEntry(e, partyNames));
+    return { entries, truncated };
+}
+
+// ชื่อไฟแนนซ์/ซัพของแต่ละรายการ — คืน Map source_id -> ชื่อ
+async function loadPartyNames(events) {
     // ชื่อไฟแนนซ์ของบิล: finance_company เก็บได้ทั้ง _id และชื่อที่พนักงานพิมพ์เอง จึงหาแบบ id ก่อนแล้วค่อยเทียบชื่อ
     const financeTxnIds = [...new Set(events
         .filter(e => e.source_type === 'transaction' && (e.item_key.startsWith('finance_') || FINANCE_BILL_ITEMS.has(e.item_key)))
@@ -628,23 +745,148 @@ async function getAccountEntries(accountId, filter, limit = 300) {
         });
     }
 
-    return events.map(e => ({
+    const names = new Map();
+    events.forEach(e => {
+        const id = String(e.source_id);
+        names.set(id, financeNameByTxn.get(id) || supplierNameBySource.get(id) || '');
+    });
+    return names;
+}
+
+function toEntry(e, partyNames) {
+    const item = ACCOUNT_ITEM_BY_KEY.get(e.item_key);
+    return {
         _id: e._id,
         date: e.event_date,
         item_key: e.item_key,
-        item_name: ACCOUNT_ITEM_BY_KEY.get(e.item_key).name,
+        item_name: item ? item.name : e.item_key,
         flow: e.flow,
         flow_label: ACCOUNT_FLOW_LABELS[e.flow],
         amount: e.amount,
         source_type: e.source_type,
         source_ref: e.source_ref,
         branch_id: e.branch_id,
-        party_name: financeNameByTxn.get(String(e.source_id)) || supplierNameBySource.get(String(e.source_id)) || ''
-    }));
+        party_name: partyNames.get(String(e.source_id)) || ''
+    };
+}
+
+// สรุปบิลขายใบเดียวให้คนอ่านรู้เรื่อง: ขายอะไร ราคาเท่าไร ไฟแนนซ์ไหน ดาวน์/สด/โอนเท่าไร ไฟแนนซ์ค้างเท่าไร
+// ใช้สูตรเดียวกับหน้าตรวจสอบออเดอร์ (buildOrderFinanceSheet) และยอดสด/โอนเดียวกับที่ลงบัญชี (buildTransactionEvents) — ไม่คิดสูตรใหม่
+async function getBillSummary(receiptNumber) {
+    const t = await Transaction.findOne({ receipt_number: receiptNumber }).lean();
+    if (!t) return null;
+    const ctx = await loadTransactionContext([t]);
+    const a = analyzeBill(t, ctx);
+    const built = buildTransactionEvents(t, ctx);
+    const evAmount = (key) => round2(sum(built.events.filter(e => e.item_key === key).map(e => e.amount)));
+
+    const Member = require('../models/member');
+    const [emp, member] = await Promise.all([
+        t.employee_id ? Employee.findById(t.employee_id).select('name').lean() : null,
+        t.member_id ? Member.findById(t.member_id).select('prefix first_name last_name phone').lean() : null
+    ]);
+    const { md, helpers } = ctx;
+    const branch = t.branch_id ? md.maps.branches.get(String(t.branch_id)) : null;
+    const fcDoc = t.finance_company
+        ? (md.maps.financeCompanies.get(String(t.finance_company)) ||
+            md.lists.financeCompanies.find(c => c.name === t.finance_company) || null)
+        : null;
+    const receivable = ctx.receivableByTxn.get(String(t._id)) || null;
+    const paid = helpers.resolvePaymentStatus(t, receivable) === 'ชำระแล้ว';
+
+    let finance = null;
+    if (a.isFinance) {
+        const sheetDevices = a.devices.map(l => ({ product_name: l.product_name, type_id: l.typeId, price: l.price, quantity: l.quantity }));
+        const sheet = helpers.buildOrderFinanceSheet(t, sheetDevices, fcDoc, receivable);
+        finance = {
+            company: fcDoc ? fcDoc.name : (t.finance_company || ''),
+            months: Number(t.finance_months) || 0,
+            full_price: round2(sheet.full_price),
+            down_payment: round2(sheet.down_payment),
+            down_percent: round2(sheet.down_percent),
+            hire_purchase: round2(sheet.hire_purchase), // ราคาเต็ม − ดาวน์ = ยอดที่ไฟแนนซ์ต้องจ่ายแทนลูกค้า
+            commission: round2(sheet.commission),
+            credit_amount: round2(sheet.credit_amount), // ทุนเช่าซื้อ + ค่าคอม = ที่ไฟแนนซ์โอนให้ร้านจริง
+            paid
+        };
+    }
+    const cash = evAmount('sale_receive_cash');
+    const transfer = evAmount('sale_receive_transfer');
+    return {
+        receipt_number: t.receipt_number,
+        created_at: t.created_at || t.createdAt || null,
+        status: t.status || '',
+        branch_name: branch ? branch.name : '',
+        employee_name: emp ? emp.name : '',
+        customer_name: member ? `${member.prefix || ''}${member.first_name || ''} ${member.last_name || ''}`.trim() : '',
+        customer_phone: member ? (member.phone || '') : '',
+        payment_type: t.payment_type || t.payment_method || '',
+        is_finance: a.isFinance,
+        items: a.lines.map(l => ({ name: l.product_name, quantity: l.quantity, price: l.price, imei: l.imei, is_gift: l.isGift })),
+        items_subtotal: round2(a.itemsSubtotal),
+        discount: round2(a.discount),
+        deposit_applied: round2(a.posApplied + a.completeApplied),
+        contract_fee: round2(a.contractFee),
+        icloud_fee: round2(a.icloudFee),
+        down_payment: a.isFinance ? round2(num(t.down_payment)) : 0,
+        cash,
+        transfer,
+        received_total: round2(cash + transfer),
+        bill_total: round2(a.total),
+        finance
+    };
+}
+
+// ทุกรายการของเอกสารใบเดียว (ค้นด้วยชนิด + เลขที่) ข้ามทุกรหัสบัญชี — จัดกลุ่มตามรหัสที่รายการนั้นลงบัญชี
+// รายการที่เชื่อมหลายรหัสจะโผล่ในทุกรหัสนั้น · รายการที่ยังไม่เชื่อมรหัสใดไปอยู่กลุ่ม account = null
+// ไม่ใช้ตัวกรองวันที่/สาขา: ต้องการเห็นทั้งใบ ไม่ว่าหน้าจอกรองช่วงไหนอยู่
+async function getEntriesBySource(sourceType, sourceRef) {
+    if (!sourceType || !sourceRef) return { groups: [], truncated: false };
+    const MAX = 500;
+    const fetched = await AccountItemEvent.find({ source_type: sourceType, source_ref: sourceRef })
+        .sort({ event_date: 1 }).limit(MAX + 1).lean();
+    const truncated = fetched.length > MAX;
+    const events = (truncated ? fetched.slice(0, MAX) : fetched).filter(e => ACCOUNT_ITEM_KEYS.has(e.item_key));
+
+    const keys = [...new Set(events.map(e => e.item_key))];
+    const [links, accounts, partyNames] = await Promise.all([
+        AccountItemLink.find({ item_key: { $in: keys } }).select('account_id item_key').lean(),
+        AccountChart.find().select('account_code account_name').lean(),
+        loadPartyNames(events)
+    ]);
+    const accById = new Map(accounts.map(a => [String(a._id), a]));
+    const linksByKey = new Map();
+    links.forEach(l => {
+        if (!accById.has(String(l.account_id))) return; // ลิงก์ค้างไปรหัสที่ถูกลบแล้ว
+        if (!linksByKey.has(l.item_key)) linksByKey.set(l.item_key, []);
+        linksByKey.get(l.item_key).push(String(l.account_id));
+    });
+
+    const groups = new Map(); // account_id ('' = ยังไม่เชื่อม) -> entries
+    events.forEach(e => {
+        const targets = e.account_id && accById.has(String(e.account_id))
+            ? [String(e.account_id)]
+            : (linksByKey.get(e.item_key) || ['']);
+        targets.forEach(id => {
+            if (!groups.has(id)) groups.set(id, []);
+            groups.get(id).push(toEntry(e, partyNames));
+        });
+    });
+    const out = [...groups].map(([id, entries]) => {
+        const a = accById.get(id);
+        return { account: a ? { _id: a._id, account_code: a.account_code, account_name: a.account_name } : null, entries };
+    }).sort((x, y) => String(x.account ? x.account.account_code : '~')
+        .localeCompare(String(y.account ? y.account.account_code : '~'), undefined, { numeric: true }));
+    // สรุปบิลเฉพาะบิลขาย — ล้มเหลวต้องไม่ทำให้รายการลงบัญชีหาย
+    let bill = null;
+    if (sourceType === 'transaction') {
+        try { bill = await getBillSummary(sourceRef); } catch (e) { console.warn('[accountEntries] สรุปบิลไม่สำเร็จ', sourceRef, e.message); }
+    }
+    return { groups: out, truncated, bill };
 }
 
 module.exports = {
-    refreshSource, queueRefresh, rebuildAll, getAccountSummary, getAccountEntries,
+    refreshSource, queueRefresh, rebuildAll, getAccountSummary, getAccountEntries, getEntriesBySource,
     // ใช้ในหน้าประวัติการมัดจำ (routes/api.js GET /deposits/history) ให้ตัวเลขตรงกับที่ลงบัญชี
     analyzeBill, loadTransactionContext,
     // ส่งออกตัวสร้างยอดไว้ทดสอบ (ฟังก์ชันล้วน)

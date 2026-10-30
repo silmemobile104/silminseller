@@ -8,7 +8,7 @@ const {
 } = require('../models');
 const { uploadBufferToDriveInFolder } = require('../utils/googleDrive');
 const { ACCOUNT_ITEMS, ACCOUNT_ITEM_GROUPS, ACCOUNT_ITEM_KEYS, ACCOUNT_FLOW_LABELS } = require('../utils/accountItems');
-const { queueRefresh: queueAcctRefresh, rebuildAll, getAccountSummary, getAccountEntries } = require('../utils/accountEntries');
+const { queueRefresh: queueAcctRefresh, rebuildAll, getAccountSummary, getAccountEntries, getEntriesBySource } = require('../utils/accountEntries');
 
 
 // ============================================
@@ -118,6 +118,8 @@ function parseItemKeys(raw) {
     if (!Array.isArray(raw) || raw.some(k => typeof k !== 'string')) return { error: 'รายการที่เชื่อมไม่ถูกต้อง' };
     const keys = [...new Set(raw.map(k => k.trim()).filter(Boolean))];
     if (keys.some(k => !ACCOUNT_ITEM_KEYS.has(k))) return { error: 'พบรายการที่ไม่มีในระบบ' };
+    // กติกา: รหัสบัญชี 1 รหัสเชื่อมได้ 1 รายการเท่านั้น (รายการเดียวยังเชื่อมได้หลายรหัส)
+    if (keys.length > 1) return { error: 'รหัสบัญชี 1 รหัส เชื่อมได้ 1 รายการเท่านั้น' };
     return { keys };
 }
 
@@ -128,7 +130,6 @@ async function syncAccountItemLinks(accountId, keys, employeeId) {
     const want = new Set(keys);
     const toRemove = [...have].filter(k => !want.has(k));
     const toAdd = keys.filter(k => !have.has(k));
-    if (toRemove.length) await AccountItemLink.deleteMany({ account_id: accountId, item_key: { $in: toRemove } });
     if (toAdd.length) {
         try {
             await AccountItemLink.insertMany(toAdd.map(item_key => ({ account_id: accountId, item_key, created_by: employeeId || null })), { ordered: false });
@@ -140,6 +141,8 @@ async function syncAccountItemLinks(accountId, keys, employeeId) {
             if (!onlyDuplicates) throw err;
         }
     }
+    // เพิ่มก่อนลบ: ถ้าเพิ่มล้มกลางทาง ลิงก์เดิมยังอยู่ครบ ยอดไม่หลุดไปเป็น "ยังไม่เชื่อม"
+    if (toRemove.length) await AccountItemLink.deleteMany({ account_id: accountId, item_key: { $in: toRemove } });
     return { added: toAdd.length, removed: toRemove.length };
 }
 
@@ -167,26 +170,54 @@ router.get('/account-items', async (req, res) => {
     }
 });
 
-// PUT /api/acct/account-items/:key/accounts - ตั้งรหัสบัญชีที่รายการนี้เชื่อมอยู่ให้ตรงตาม account_ids (ย้าย/เพิ่ม/เอาออกได้ ไม่ล็อกรายการ)
+// PUT /api/acct/account-items/:key/accounts - ตั้งรหัสบัญชีที่รายการนี้เชื่อมอยู่ (ย้าย/เพิ่ม/เอาออกได้ ไม่ล็อกรายการ)
 // ฝั่งตรงข้ามของฟอร์มรหัสบัญชี: ฟอร์มนั้นตั้ง "รายการของรหัสนี้" ส่วนอันนี้ตั้ง "รหัสของรายการนี้" · ไม่แตะลิงก์ของรายการอื่น
+// ส่งได้ 2 แบบ:
+//   { move_to, move_from? } — ย้าย/เชื่อมเพิ่มทีละรหัส คำนวณจากลิงก์ล่าสุดในเซิร์ฟเวอร์ (สองคนย้ายพร้อมกันลิงก์ของอีกคนไม่หาย)
+//   { account_ids: [...] }  — ตั้งให้ตรงตามรายการทั้งชุด
+// เพิ่มลิงก์ใหม่ก่อนแล้วค่อยเอาลิงก์เก่าออก: ระหว่างทางรายการไม่ตกไปเป็น "ยังไม่เชื่อม" · รหัสที่ปิดใช้งานเชื่อมเพิ่มไม่ได้ (ที่เชื่อมไว้แล้วคงไว้ได้)
 router.put('/account-items/:key/accounts', async (req, res) => {
     try {
         const key = req.params.key;
         if (!ACCOUNT_ITEM_KEYS.has(key)) return res.status(404).json({ success: false, message: 'ไม่พบรายการนี้ในระบบ' });
-        const raw = req.body.account_ids;
-        if (!Array.isArray(raw) || raw.some(id => typeof id !== 'string' || !mongoose.isValidObjectId(id))) {
-            return res.status(400).json({ success: false, message: 'รหัสบัญชีไม่ถูกต้อง' });
-        }
-        const ids = [...new Set(raw)];
-        const accounts = ids.length ? await AccountChart.find({ _id: { $in: ids } }).select('account_code').lean() : [];
-        if (accounts.length !== ids.length) return res.status(400).json({ success: false, message: 'พบรหัสบัญชีที่ไม่มีในระบบ' });
-
+        const validId = (id) => typeof id === 'string' && mongoose.isValidObjectId(id);
+        const isMove = Object.prototype.hasOwnProperty.call(req.body, 'move_to');
         const existing = await AccountItemLink.find({ item_key: key }).select('account_id').lean();
         const have = new Set(existing.map(l => String(l.account_id)));
+
+        let ids;
+        if (isMove) {
+            const { move_to, move_from } = req.body;
+            if (!validId(move_to) || (move_from && !validId(move_from))) {
+                return res.status(400).json({ success: false, message: 'รหัสบัญชีไม่ถูกต้อง' });
+            }
+            if (move_from && move_from === move_to) return res.status(400).json({ success: false, message: 'รหัสต้นทางกับปลายทางเป็นรหัสเดียวกัน' });
+            ids = [...have].filter(id => id !== move_from);
+            if (!ids.includes(move_to)) ids.push(move_to);
+        } else {
+            const raw = req.body.account_ids;
+            if (!Array.isArray(raw) || raw.some(id => !validId(id))) {
+                return res.status(400).json({ success: false, message: 'รหัสบัญชีไม่ถูกต้อง' });
+            }
+            ids = [...new Set(raw)];
+        }
+
         const want = new Set(ids);
         const toRemove = [...have].filter(id => !want.has(id));
         const toAdd = ids.filter(id => !have.has(id));
-        if (toRemove.length) await AccountItemLink.deleteMany({ item_key: key, account_id: { $in: toRemove } });
+        const addAccounts = toAdd.length ? await AccountChart.find({ _id: { $in: toAdd } }).select('account_code is_active').lean() : [];
+        if (addAccounts.length !== toAdd.length) return res.status(400).json({ success: false, message: 'พบรหัสบัญชีที่ไม่มีในระบบ' });
+        const inactive = addAccounts.find(a => a.is_active === false);
+        if (inactive) return res.status(400).json({ success: false, message: `รหัสบัญชี ${inactive.account_code} ถูกปิดการใช้งานแล้ว เชื่อมรายการเพิ่มไม่ได้` });
+        // กติกา: รหัสบัญชี 1 รหัสเชื่อมได้ 1 รายการ — รหัสปลายทางที่มีรายการอื่นอยู่แล้วต้องเอารายการเดิมออกก่อน
+        if (toAdd.length) {
+            const taken = await AccountItemLink.findOne({ account_id: { $in: toAdd }, item_key: { $ne: key } }).select('account_id').lean();
+            if (taken) {
+                const takenAcc = addAccounts.find(a => String(a._id) === String(taken.account_id));
+                return res.status(400).json({ success: false, message: `รหัสบัญชี ${takenAcc ? takenAcc.account_code : ''} เชื่อมกับรายการอื่นอยู่แล้ว (1 รหัสเชื่อมได้ 1 รายการ) — เอารายการเดิมออกก่อน` });
+            }
+        }
+
         if (toAdd.length) {
             try {
                 await AccountItemLink.insertMany(toAdd.map(account_id => ({ account_id, item_key: key, created_by: req.user.employee_id || null })), { ordered: false });
@@ -196,6 +227,7 @@ router.put('/account-items/:key/accounts', async (req, res) => {
                 if (!onlyDuplicates) throw err;
             }
         }
+        if (toRemove.length) await AccountItemLink.deleteMany({ item_key: key, account_id: { $in: toRemove } });
         if (toAdd.length || toRemove.length) {
             await logActivity(req, 'UPDATE', 'COA', `ย้าย/ตั้งรหัสบัญชีของรายการ ${key} (เพิ่ม ${toAdd.length} เอาออก ${toRemove.length}) รวม ${ids.length} รหัส`, null, key);
         }
@@ -297,6 +329,11 @@ router.delete('/chart-of-accounts/:id', async (req, res) => {
         const dvCount = await DisbursementVoucher.countDocuments({ $or: [{ debit_account_id: account._id }, { credit_account_id: account._id }] });
         if (dvCount) {
             return res.status(400).json({ success: false, message: 'ลบไม่ได้ เพราะบัญชีนี้ถูกใช้ในใบสำคัญจ่ายแล้ว (ปิดการใช้งานแทนได้)' });
+        }
+        // รายได้/รายจ่ายอื่นๆ ลงรหัสนี้ตรงๆ — ลบรหัสแล้วยอดของมันจะไม่มีรหัสให้ลง
+        const oeCount = await OtherEntry.countDocuments({ account_id: account._id });
+        if (oeCount) {
+            return res.status(400).json({ success: false, message: `ลบไม่ได้ เพราะมีรายได้/รายจ่ายอื่นๆ ${oeCount} รายการลงรหัสนี้อยู่ (ปิดการใช้งานแทนได้)` });
         }
         // มีรายการเชื่อมอยู่ = พนักงานบัญชีตั้งใจผูกไว้ ลบเงียบๆ แล้วรายการจะหายจากบัญชีโดยไม่รู้ตัว — ให้เอารายการออกเองก่อน
         const linkCount = await AccountItemLink.countDocuments({ account_id: account._id, item_key: { $in: [...ACCOUNT_ITEM_KEYS] } });
@@ -1020,16 +1057,29 @@ router.get('/account-summary', async (req, res) => {
     }
 });
 
+// GET /api/acct/account-summary/by-source?source_type=transaction&source_ref=INV-... — ทุกรายการของเอกสารใบเดียว ข้ามทุกรหัสบัญชี
+router.get('/account-summary/by-source', async (req, res) => {
+    try {
+        const sourceType = String(req.query.source_type || '');
+        const sourceRef = String(req.query.source_ref || '');
+        if (!sourceType || !sourceRef) return res.status(400).json({ success: false, message: 'ต้องระบุชนิดและเลขที่เอกสาร' });
+        const data = await getEntriesBySource(sourceType, sourceRef);
+        res.json({ success: true, ...data });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
 // GET /api/acct/account-summary/:accountId/entries — รายการย่อยของรหัสบัญชีหนึ่งตัว
 router.get('/account-summary/:accountId/entries', async (req, res) => {
     try {
         if (!mongoose.isValidObjectId(req.params.accountId)) return res.status(400).json({ success: false, message: 'รหัสบัญชีไม่ถูกต้อง' });
-        const entries = await getAccountEntries(
+        const { entries, truncated } = await getAccountEntries(
             req.params.accountId,
             { startDate: req.query.startDate, endDate: req.query.endDate, branchId: req.query.branch_id },
             req.query.limit
         );
-        res.json({ success: true, entries });
+        res.json({ success: true, entries, truncated });
     } catch (err) {
         res.status(500).json({ success: false, message: err.message });
     }

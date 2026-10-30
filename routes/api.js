@@ -75,7 +75,19 @@ async function attachLedgerBooks(ledger) {
 const { uploadBufferToDriveInFolder } = require('../utils/googleDrive');
 const mdCache = require('../utils/masterDataCache');
 // บันทึกยอดเข้า-ออกต่อรายการ (AccountItemEvent) — เรียกหลังเอกสารเปลี่ยน ไม่รอผลและไม่ทำให้เส้นทางหลักล้ม (utils/accountEntries.js)
-const { queueRefresh: queueAcctRefresh, analyzeBill, loadTransactionContext } = require('../utils/accountEntries');
+const { queueRefresh: queueAcctRefresh, analyzeBill, loadTransactionContext, rebuildAll: rebuildAcctEntries } = require('../utils/accountEntries');
+
+// ข้อมูลหลักที่ตัวคำนวณยอดบิลขายอ่าน (หน่วย "เครื่อง" แยกเครื่อง/อุปกรณ์เสริม, ประเภทสินค้า + บริษัทไฟแนนซ์ = % ค่าคอม)
+// แก้/ลบแล้วคำนวณยอดบิลขายใหม่ทันทีแบบไม่รอผล — ไม่ปล่อยให้ยอดค้างไม่ตรงจนรอบ reconcile ตี 3:30
+// rebuild อื่นวิ่งอยู่ = ลองใหม่อีกครั้งใน 1 นาที (ยังพลาดอีกก็เหลือรอบ reconcile เป็นตาข่าย)
+const TXN_ACCT_MASTER = new Set(['productunit', 'producttype', 'financecompany']);
+function queueTxnAcctRebuild(collection, retried) {
+    if (!TXN_ACCT_MASTER.has(collection)) return;
+    rebuildAcctEntries({ dryRun: false, types: ['transaction'] }).catch(err => {
+        if (err && err.code === 'REBUILD_BUSY' && !retried) setTimeout(() => queueTxnAcctRebuild(collection, true), 60 * 1000);
+        else console.error('[accountEntries] คำนวณยอดบิลขายใหม่หลังแก้ข้อมูลหลักไม่สำเร็จ:', err && err.message);
+    });
+}
 
 // อัปโหลดรูปหน้าตรงสมาชิก (จากเครื่องอ่านบัตร) ขึ้น Google Drive แทนการเก็บ base64 ดิบใน DB
 // - ถ้าเป็น URL อยู่แล้ว (เช่น ส่งค่าเดิมกลับมาตอนแก้ไขข้อมูล) ไม่ต้องอัปโหลดซ้ำ
@@ -1190,6 +1202,18 @@ router.get('/products/search', async (req, res) => {
 
 // PUT /api/products/:id
 // หน้าที่: แก้ไขข้อมูลสินค้า
+// ล็อกราคาทุนเดิมลงบิลขายเก่าของสินค้านี้ที่ยังไม่ได้เก็บราคาทุน ณ วันขาย (บิลก่อนเริ่มเก็บ items.cost_price)
+// ต้องเรียก "ก่อน" แก้ราคาทุนหรือลบสินค้า: ไม่งั้นรอบคำนวณยอดถัดไปจะเอาราคาทุนใหม่ (หรือ 0 เมื่อสินค้าถูกลบ) ไปเขียนต้นทุนขายย้อนหลัง
+// ค่าที่ล็อกเท่ากับที่ใช้คำนวณยอดอยู่แล้ว ยอดบัญชีจึงไม่เปลี่ยนและไม่ต้องสั่งคำนวณใหม่
+async function freezeSoldCost(productId, cost) {
+    const id = new mongoose.Types.ObjectId(String(productId));
+    await Transaction.updateMany(
+        { items: { $elemMatch: { product_id: id, cost_price: { $exists: false } } } },
+        { $set: { 'items.$[el].cost_price': Number(cost) || 0 } },
+        { arrayFilters: [{ 'el.product_id': id, 'el.cost_price': { $exists: false } }] }
+    );
+}
+
 router.put('/products/:id', async (req, res) => {
     try {
         const productData = req.body;
@@ -1197,6 +1221,10 @@ router.put('/products/:id', async (req, res) => {
         const product = await Product.findById(req.params.id);
         if (!product) {
             return res.status(404).json({ success: false, message: 'ไม่พบสินค้าที่ระบุ' });
+        }
+
+        if ((Number(productData.cost_price) || 0) !== (Number(product.cost_price) || 0)) {
+            await freezeSoldCost(product._id, product.cost_price);
         }
 
         // Update master fields
@@ -1304,6 +1332,9 @@ router.put('/products/:id', async (req, res) => {
 // หน้าที่: ลบข้อมูลสินค้า
 router.delete('/products/:id', async (req, res) => {
     try {
+        // บิลเก่าที่ยังอ้างสินค้านี้ต้องเก็บราคาทุนไว้ก่อนลบ ไม่งั้นต้นทุนขายย้อนหลังกลายเป็น 0
+        const toDelete = await Product.findById(req.params.id).select('cost_price').lean();
+        if (toDelete) await freezeSoldCost(toDelete._id, toDelete.cost_price);
         const deletedProduct = await Product.findByIdAndDelete(req.params.id);
 
         if (!deletedProduct) {
@@ -2765,6 +2796,7 @@ router.delete('/master/:collection/:id', async (req, res) => {
         }
 
         mdCache.invalidate();
+        queueTxnAcctRebuild(collection);
         res.status(200).json({
             success: true,
             message: 'ลบข้อมูลสำเร็จ'
@@ -2851,6 +2883,7 @@ router.put('/master/:collection/:id', async (req, res) => {
         }
 
         mdCache.invalidate();
+        queueTxnAcctRebuild(collection);
         res.status(200).json({
             success: true,
             message: 'แก้ไขข้อมูลสำเร็จ',
@@ -3509,6 +3542,8 @@ router.post('/transactions', async (req, res) => {
             }
 
             deductedItems.push({ productId: product._id, branchId: bal.branch_id, opts: deductOpts });
+            // ราคาทุน ณ วันขาย: ต้นทุนขายในบัญชีต้องไม่เปลี่ยนตามเมื่อมีคนแก้ราคาทุนสินค้าทีหลัง
+            item.cost_price = Number(product.cost_price) || 0;
 
             // Movement: ขายออก
             const imeiList = (item.imei_sold && item.imei_sold.trim() !== '') ? [item.imei_sold.trim()] : [];
@@ -3525,6 +3560,19 @@ router.post('/transactions', async (req, res) => {
             });
         }
 
+        // ซื้อสด: หน้าขายส่ง "เงินที่ลูกค้ายื่นมา" (รวมเงินทอน) — เก็บเฉพาะเงินที่ร้านได้จริง
+        // ส่วนที่เกินยอดบิลคือเงินทอน ทอนเป็นเงินสดก่อน ขาดค่อยหักจากเงินโอน (หลักเดียวกับบิลจัดไฟแนนซ์ฝั่งหน้าขาย)
+        let saleCash = Math.max(0, Number(cash_amount) || 0);
+        let saleTransfer = Math.max(0, Number(transfer_amount) || 0);
+        if ((payment_type || payment_method) !== 'จัดไฟแนนซ์') {
+            const saleChange = Math.round((saleCash + saleTransfer - (Number(total_amount) || 0)) * 100) / 100;
+            if (saleChange > 0) {
+                const fromCash = Math.min(saleCash, saleChange);
+                saleCash = Math.round((saleCash - fromCash) * 100) / 100;
+                saleTransfer = Math.max(0, Math.round((saleTransfer - (saleChange - fromCash)) * 100) / 100);
+            }
+        }
+
         // บันทึกรายการขาย
         const newTransaction = new Transaction({
             receipt_number,
@@ -3535,8 +3583,8 @@ router.post('/transactions', async (req, res) => {
             payment_method,
             down_payment: Number(down_payment) || 0,
             payment_type: payment_type || payment_method,
-            cash_amount: Number(cash_amount) || 0,
-            transfer_amount: Number(transfer_amount) || 0,
+            cash_amount: saleCash,
+            transfer_amount: saleTransfer,
             finance_company: finance_company || '',
             finance_payment_day: Number(finance_payment_day) || 0,
             finance_months: Number(finance_months) || 0,
@@ -5532,6 +5580,8 @@ router.post('/import-notifications/:id/approve', async (req, res) => {
                         stock_balances: []
                     });
                 } else {
+                    // สินค้าเดิมได้ราคาทุนใหม่: ล็อกราคาทุนเดิมลงบิลขายเก่าก่อน (ต้นทุนขายย้อนหลังห้ามเปลี่ยน)
+                    if ((Number(product.cost_price) || 0) !== (Number(finalCostPrice) || 0)) await freezeSoldCost(product._id, product.cost_price);
                     product.cost_price = finalCostPrice;
                     product.selling_price = finalSellingPrice;
                 }
@@ -5588,6 +5638,8 @@ router.post('/import-notifications/:id/approve', async (req, res) => {
                     stock_balances: []
                 });
             } else {
+                // สินค้าเดิมได้ราคาทุนใหม่: ล็อกราคาทุนเดิมลงบิลขายเก่าก่อน (ต้นทุนขายย้อนหลังห้ามเปลี่ยน)
+                if ((Number(product.cost_price) || 0) !== (Number(finalCostPrice) || 0)) await freezeSoldCost(product._id, product.cost_price);
                 product.cost_price = finalCostPrice;
                 product.selling_price = finalSellingPrice;
             }
@@ -8021,6 +8073,7 @@ router.put('/deposits/:id/complete', async (req, res) => {
                 imei_sold: selectedImei,
                 quantity: 1,
                 price: deposit.product_price,
+                cost_price: Number(product.cost_price) || 0, // ราคาทุน ณ วันขาย (ต้นทุนขายในบัญชี)
                 warranty_period: period,
                 warranty_expiry: expiry,
                 is_gift: false

@@ -171,7 +171,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // โหลดสคริปต์เฉพาะหน้า (js/page-<name>.js) แบบ dynamic ครั้งเดียว แล้ว cache ไว้
     // PAGE_SCRIPT_VERSION: บัมพ์เลขนี้ทุกครั้งที่แก้ไฟล์ใน js/ เพื่อไม่ให้เบราว์เซอร์ใช้ของเก่าที่ cache ไว้
-    const PAGE_SCRIPT_VERSION = 'apple_active_v197';
+    const PAGE_SCRIPT_VERSION = 'apple_active_v205';
     const __loadedPageScripts = {};
     function loadPageScript(name) {
         if (__loadedPageScripts[name]) return __loadedPageScripts[name];
@@ -9255,5 +9255,62 @@ document.addEventListener('DOMContentLoaded', () => {
     // แยกออกไปที่ js/page-accounting-settings.js แล้ว โหลดแบบ dynamic ผ่าน loadPageScript('accounting-settings')
     // (ดู switchView case 'accounting-settings' และ 'disbursement')
 
+    // --- จับตารางแล้วลากเลื่อนซ้าย/ขวา (ทุกหน้าที่มี <table>) ---
+    // ผูกที่ document ครั้งเดียว เพราะหน้าตารางถูกโหลดเข้ามาทีหลังแบบ dynamic
+    // เฉพาะเมาส์เท่านั้น — จอสัมผัสเลื่อนด้วยนิ้วได้อยู่แล้ว
+    (function setupTableDragScroll() {
+        const SKIP = 'a, button, input, select, textarea, label, summary, [contenteditable="true"], [data-no-drag-scroll]';
+        const THRESHOLD = 4; // ขยับเกินกี่ px ถึงนับว่า "ลาก" ไม่ใช่คลิก
+        let drag = null;
+
+        // หาตัวห่อที่เลื่อนแนวนอนได้ใกล้ตารางที่สุด
+        const findScroller = (table) => {
+            for (let el = table.parentElement; el && el !== document.body; el = el.parentElement) {
+                const ox = getComputedStyle(el).overflowX;
+                if ((ox === 'auto' || ox === 'scroll') && el.scrollWidth > el.clientWidth) return el;
+            }
+            return null;
+        };
+
+        document.addEventListener('pointerdown', (e) => {
+            if (e.pointerType !== 'mouse' || e.button !== 0) return;
+            if (e.target.closest(SKIP)) return;
+            const table = e.target.closest('table');
+            if (!table) return;
+            const scroller = findScroller(table);
+            if (!scroller) return;
+            drag = { scroller, startX: e.clientX, startLeft: scroller.scrollLeft, moved: false };
+        });
+
+        document.addEventListener('pointermove', (e) => {
+            if (!drag) return;
+            const dx = e.clientX - drag.startX;
+            if (!drag.moved) {
+                if (Math.abs(dx) < THRESHOLD) return;
+                drag.moved = true;
+                drag.scroller.classList.add('is-drag-scrolling');
+            }
+            e.preventDefault();
+            drag.scroller.scrollLeft = drag.startLeft - dx;
+        });
+
+        const end = () => {
+            if (!drag) return;
+            const { scroller, moved } = drag;
+            drag = null;
+            scroller.classList.remove('is-drag-scrolling');
+            if (moved) {
+                // กันคลิกที่เกิดตอนปล่อยเมาส์ ไม่ให้เปิดแถวที่ลากผ่าน
+                const stop = (ev) => { ev.stopPropagation(); ev.preventDefault(); };
+                document.addEventListener('click', stop, { capture: true, once: true });
+                setTimeout(() => document.removeEventListener('click', stop, true), 0);
+            }
+        };
+        document.addEventListener('pointerup', end);
+        document.addEventListener('pointercancel', end);
+
+        // ลากแล้วไม่ให้ลากเลือกข้อความตาม
+        document.addEventListener('selectstart', (e) => { if (drag && drag.moved) e.preventDefault(); });
+    })();
 
 }); // End of DOMContentLoaded

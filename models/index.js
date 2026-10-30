@@ -444,6 +444,8 @@ const transactionSchema = new mongoose.Schema({
         imei_sold: { type: String, default: '' }, // IMEI ที่ขาย (ถ้ามี)
         quantity: { type: Number, default: 1 }, // จำนวน
         price: { type: Number, default: 0 }, // ราคาต่อชิ้น
+        // ราคาทุนต่อชิ้น ณ วันขาย (ต้นทุนขายในบัญชี) — ตั้งใจไม่ใส่ default: บิลเก่าไม่มีฟิลด์นี้ = ใช้ราคาทุนของสินค้า (ดู utils/accountEntries.js)
+        cost_price: { type: Number },
         warranty_period: { type: String }, // ระยะเวลาประกัน (เช่น "1 เดือน", "1 ปี")
         warranty_expiry: { type: Date }, // วันหมดอายุประกัน
         is_gift: { type: Boolean, default: false } // เป็นของแถม

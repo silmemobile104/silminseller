@@ -999,18 +999,13 @@
     }
 
     // ย้าย/เชื่อมรายการเข้ารหัสอื่น: คงรหัสอื่นที่รายการเชื่อมอยู่ไว้ แค่เอา fromId ออกแล้วใส่ toId (fromId ว่าง = รายการที่ยังไม่เชื่อม)
+    // ให้เซิร์ฟเวอร์คำนวณจากลิงก์ล่าสุดเอง (move_to/move_from) — สองคนย้ายพร้อมกันลิงก์ของอีกคนจะไม่ถูกเขียนทับ
     async function moveAcctItem(key, fromId, toId) {
         try {
-            const res = await authFetch(`${API_BASE_URL}/acct/account-items`);
-            const data = await res.json();
-            if (!data.success) throw new Error(data.message || 'โหลดรายการไม่สำเร็จ');
-            const item = (data.items || []).find(i => i.key === key);
-            const ids = (item ? item.linked_accounts : []).map(a => a._id).filter(id => id !== fromId);
-            if (!ids.includes(toId)) ids.push(toId);
             const put = await authFetch(`${API_BASE_URL}/acct/account-items/${encodeURIComponent(key)}/accounts`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ account_ids: ids })
+                body: JSON.stringify(fromId ? { move_to: toId, move_from: fromId } : { move_to: toId })
             });
             const out = await put.json();
             if (!out.success) throw new Error(out.message || 'ย้ายรายการไม่สำเร็จ');
@@ -1042,8 +1037,10 @@
             const data = await res.json();
             const sel = document.getElementById('acct-summary-branch');
             if (data.success && sel) {
+                // "ไม่ระบุสาขา" = ยอดที่เอกสารไม่มีสาขา (เช่น ค่าใช้จ่ายจากหน้าระบบบัญชีและการเงิน) — ทุกสาขารวมกัน + ตัวนี้ = ทั้งหมด
                 sel.innerHTML = '<option value="ALL">ทุกสาขา</option>' + (data.data || [])
-                    .map(b => `<option value="${escapeHtml(b._id)}">${escapeHtml(b.name)}</option>`).join('');
+                    .map(b => `<option value="${escapeHtml(b._id)}">${escapeHtml(b.name)}</option>`).join('') +
+                    '<option value="NONE">ไม่ระบุสาขา</option>';
                 _sumBranchesLoaded = true;
             }
         } catch (e) { /* ใช้ตัวเลือก "ทุกสาขา" ต่อไป */ }
@@ -1065,8 +1062,12 @@
         }
     }
 
-    function sumEntriesHtml(list) {
-        if (!list) return '';
+    // data = { entries, truncated } จาก GET /acct/account-summary/:id/entries
+    // truncated = มีรายการมากกว่าที่แสดง → แถวรวมท้ายตารางต้องบอกว่าเป็นยอดเฉพาะที่แสดง ไม่ใช่ยอดของรหัส
+    function sumEntriesHtml(data, accountId) {
+        if (!data) return '';
+        const list = data.entries || [];
+        const truncated = !!data.truncated;
         if (!list.length) return '<div class="text-sm text-ink/60 italic py-2">ไม่มีรายการย่อยในช่วงที่เลือก</div>';
         const TD = 'px-3 py-2 border-r border-hairline last:border-r-0';
         const TH = 'px-3 py-2 font-medium border-r border-hairline last:border-r-0';
@@ -1080,11 +1081,14 @@
                 <td class="${TD} text-right font-mono text-state-ok whitespace-nowrap">${en.flow === 'in' ? sumMoney(en.amount) : ''}</td>
                 <td class="${TD} text-right font-mono text-state-danger whitespace-nowrap">${en.flow === 'out' ? sumMoney(en.amount) : ''}</td>
                 <td class="${TD} text-right font-mono text-ink/70 whitespace-nowrap">${en.flow === 'receivable' || en.flow === 'payable' ? sumMoney(en.amount) + ' (' + escapeHtml(en.flow_label) + ')' : ''}</td>
+                <td class="${TD} text-center"><button type="button" class="acct-sum-eye px-2 py-1 rounded-lg text-ink/80 hover:text-accent-ink hover:bg-surface-tile-2 cursor-pointer" data-acct="${escapeHtml(accountId)}" data-idx="${idx}" title="ดูรายละเอียดของเลขที่นี้" aria-label="ดูรายละเอียดของเลขที่นี้"><i class="fa-solid fa-eye"></i></button></td>
             </tr>`).join('');
-        const sumIn = list.filter(e => e.flow === 'in').reduce((n, e) => n + e.amount, 0);
-        const sumOut = list.filter(e => e.flow === 'out').reduce((n, e) => n + e.amount, 0);
+        const sumOf = (pred) => round2Sum(list.filter(pred).reduce((n, e) => n + e.amount, 0));
+        const sumIn = sumOf(e => e.flow === 'in');
+        const sumOut = sumOf(e => e.flow === 'out');
+        const sumPending = sumOf(e => e.flow === 'receivable' || e.flow === 'payable');
         return `
-            <p class="text-sm font-medium text-ink mt-4 mb-2">รายการทีละใบ (${list.length.toLocaleString('th-TH')} รายการ)</p>
+            <p class="text-sm font-medium text-ink mt-4 mb-2">รายการทีละใบ (${truncated ? 'แสดง ' : ''}${list.length.toLocaleString('th-TH')} รายการ${truncated ? 'ล่าสุด จากทั้งหมดที่มากกว่านี้' : ''})</p>
             <div class="rounded-lg border border-hairline" style="overflow-x:auto">
                 <table class="w-full text-sm" style="min-width:48rem">
                     <thead class="bg-surface-tile-3"><tr class="text-xs text-ink/80 border-b border-hairline">
@@ -1096,19 +1100,192 @@
                         <th class="${TH} text-right">เงินเข้า</th>
                         <th class="${TH} text-right">เงินออก</th>
                         <th class="${TH} text-right">ค้างรับ/ค้างจ่าย</th>
+                        <th class="${TH} text-center" style="width:3.5rem"></th>
                     </tr></thead>
                     <tbody>${rows}</tbody>
                     <tfoot class="bg-surface-tile-3 font-semibold border-t border-hairline">
                         <tr>
-                            <td class="${TD} text-right" colspan="5">รวม</td>
+                            <td class="${TD} text-right" colspan="5">${truncated ? 'รวมเฉพาะรายการที่แสดง (ยอดเต็มดูที่แถวรหัสบัญชี)' : 'รวม'}</td>
                             <td class="${TD} text-right font-mono text-state-ok">${sumIn ? sumMoney(sumIn) : ''}</td>
                             <td class="${TD} text-right font-mono text-state-danger">${sumOut ? sumMoney(sumOut) : ''}</td>
+                            <td class="${TD} text-right font-mono text-ink/70">${sumPending ? sumMoney(sumPending) : ''}</td>
                             <td class="${TD}"></td>
                         </tr>
                     </tfoot>
                 </table>
             </div>
-            ${list.length >= 300 ? '<div class="text-xs text-ink/60 italic py-1">แสดง 300 รายการล่าสุด — จำกัดช่วงวันที่เพื่อดูรายการอื่น</div>' : ''}`;
+            ${truncated ? `<div class="text-xs text-state-danger py-1">แสดงเพียง ${list.length.toLocaleString('th-TH')} รายการล่าสุด ยอดรวมท้ายตารางจึงต่ำกว่ายอดของรหัสนี้ — จำกัดช่วงวันที่ให้แคบลงเพื่อดูครบทุกรายการ</div>` : ''}`;
+    }
+
+    // ลูกตา: ค้นเลขที่/ที่มานี้ "ข้ามทุกรหัสบัญชี" แล้วแสดงเป็น popup แยกกลุ่มตามรหัส พร้อมยอดแต่ละส่วนและยอดรวม
+    async function openAcctSourceDetail(accountId, idx) {
+        const data = _sumEntries.get(accountId);
+        const base = data && (data.entries || [])[idx];
+        if (!base) return;
+        const ref = base.source_ref || '';
+        const TD = 'px-3 py-2 border-r border-hairline last:border-r-0';
+        const TH = 'px-3 py-2 font-medium border-r border-hairline last:border-r-0';
+
+        document.getElementById('acct-source-detail')?.remove();
+        const overlay = document.createElement('div');
+        overlay.id = 'acct-source-detail';
+        overlay.style.cssText = 'position:fixed;inset:0;z-index:1000;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.6);padding:1rem';
+        const close = () => { overlay.remove(); document.removeEventListener('keydown', onKey); };
+        const onKey = (e) => { if (e.key === 'Escape') close(); };
+        const shell = (body) => `
+            <div class="bg-canvas-elevated rounded-lg border border-hairline" role="dialog" aria-modal="true" style="width:min(52rem,100%);max-height:90vh;overflow-y:auto;padding:1.5rem">
+                <div class="flex items-start justify-between gap-4 mb-4">
+                    <div>
+                        <p class="text-lg font-semibold text-ink">${escapeHtml(ref || base.item_name || 'รายละเอียด')}</p>
+                        <p class="text-sm text-ink/70">${escapeHtml(SUM_SOURCE_LABELS[base.source_type] || base.source_type || '-')} · ทุกรหัสบัญชีที่มีเลขที่นี้</p>
+                    </div>
+                    <button type="button" class="acct-source-close px-2 py-1 rounded-lg text-ink/70 hover:text-ink hover:bg-surface-tile-2 cursor-pointer" aria-label="ปิด"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+                ${body}
+            </div>`;
+        overlay.innerHTML = shell('<div class="py-8 text-center text-ink/60">กำลังค้นหา...</div>');
+        overlay.addEventListener('click', (e) => { if (e.target === overlay || e.target.closest('.acct-source-close')) close(); });
+        document.addEventListener('keydown', onKey);
+        document.body.appendChild(overlay);
+
+        let result;
+        try {
+            if (!ref) throw new Error('รายการนี้ไม่มีเลขที่เอกสารให้ค้นหา');
+            const qs = new URLSearchParams({ source_type: base.source_type || '', source_ref: ref });
+            const res = await authFetch(`${API_BASE_URL}/acct/account-summary/by-source?${qs}`);
+            result = await res.json();
+            if (!result.success) throw new Error(result.message || 'ค้นหาไม่สำเร็จ');
+        } catch (e) {
+            overlay.innerHTML = shell(`<div class="py-6 text-center text-state-danger">${escapeHtml(e.message)}</div>`);
+            return;
+        }
+
+        const groups = result.groups || [];
+        const billHtml = result.bill ? acctBillSummaryHtml(result.bill) : '';
+        if (!groups.length) {
+            overlay.innerHTML = shell(`${billHtml}<div class="py-6 text-center text-ink/60 italic">ไม่พบรายการลงบัญชีของเลขที่นี้</div>`);
+            return;
+        }
+        const totals = (list) => {
+            const of = (pred) => round2Sum(list.filter(pred).reduce((n, e) => n + e.amount, 0));
+            const tin = of(e => e.flow === 'in');
+            const tout = of(e => e.flow === 'out');
+            return { tin, tout, pending: of(e => e.flow === 'receivable' || e.flow === 'payable'), net: round2Sum(tin - tout) };
+        };
+        const netCls = (n) => n > 0 ? 'text-state-ok' : (n < 0 ? 'text-state-danger' : 'text-ink');
+        const money = (n) => (n ? sumMoney(n) : '');
+
+        const tables = groups.map(g => {
+            const t = totals(g.entries);
+            const title = g.account
+                ? `<span class="font-mono text-accent-ink">${escapeHtml(g.account.account_code)}</span> ${escapeHtml(g.account.account_name)}`
+                : 'ยังไม่ได้เชื่อมกับรหัสบัญชีใด';
+            const rows = g.entries.map((en, i) => `
+                <tr class="border-b border-hairline last:border-0">
+                    <td class="${TD} text-center text-ink/60">${i + 1}</td>
+                    <td class="${TD} text-ink">${escapeHtml(en.item_name)}${en.party_name ? ` <span class="text-xs text-ink/60">· ${escapeHtml(en.party_name)}</span>` : ''}</td>
+                    <td class="${TD} text-ink/80 whitespace-nowrap">${new Date(en.date).toLocaleDateString('th-TH')}</td>
+                    <td class="${TD} text-right font-mono text-state-ok whitespace-nowrap">${en.flow === 'in' ? sumMoney(en.amount) : ''}</td>
+                    <td class="${TD} text-right font-mono text-state-danger whitespace-nowrap">${en.flow === 'out' ? sumMoney(en.amount) : ''}</td>
+                    <td class="${TD} text-right font-mono text-ink/70 whitespace-nowrap">${en.flow === 'receivable' || en.flow === 'payable' ? sumMoney(en.amount) + ' (' + escapeHtml(en.flow_label) + ')' : ''}</td>
+                </tr>`).join('');
+            return `
+                <p class="text-sm font-medium text-ink mt-4 mb-2">${title}</p>
+                <div class="rounded-lg border border-hairline" style="overflow-x:auto">
+                    <table class="w-full text-sm" style="min-width:34rem">
+                        <thead class="bg-surface-tile-3"><tr class="text-xs text-ink/80 border-b border-hairline">
+                            <th class="${TH} text-center" style="width:3rem">#</th>
+                            <th class="${TH} text-left">รายการ</th>
+                            <th class="${TH} text-left">วันที่</th>
+                            <th class="${TH} text-right">เงินเข้า</th>
+                            <th class="${TH} text-right">เงินออก</th>
+                            <th class="${TH} text-right">ค้างรับ/ค้างจ่าย</th>
+                        </tr></thead>
+                        <tbody>${rows}</tbody>
+                        <tfoot class="bg-surface-tile-3 font-semibold border-t border-hairline">
+                            <tr>
+                                <td class="${TD} text-right" colspan="3">รวมรหัสนี้ ${g.entries.length.toLocaleString('th-TH')} รายการ · สุทธิ <span class="font-mono ${netCls(t.net)}">${sumMoney(t.net)}</span></td>
+                                <td class="${TD} text-right font-mono text-state-ok">${money(t.tin)}</td>
+                                <td class="${TD} text-right font-mono text-state-danger">${money(t.tout)}</td>
+                                <td class="${TD} text-right font-mono text-ink/70">${money(t.pending)}</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>`;
+        }).join('');
+
+        // ไม่มียอดรวมข้ามรหัส: รายการเดียวลงหลายรหัสได้ (เช่น รายได้ + เงินสด) รวมข้ามรหัสจะนับเงินก้อนเดียวซ้ำ ดูยอดรวมของแต่ละรหัสที่ท้ายตารางแต่ละอัน
+        const ledger = `
+            <p class="text-sm font-semibold text-ink mt-6 pt-4 border-t border-hairline">รายการลงบัญชี แยกตามรหัสบัญชี</p>
+            ${tables}${result.truncated ? '<p class="text-xs text-state-danger mt-2">เลขที่นี้มีรายการมากเกินกว่าที่แสดง ยอดอาจไม่ครบ</p>' : ''}`;
+        overlay.innerHTML = shell(`${billHtml}${ledger}`);
+    }
+
+    // สรุปบิลขาย เรียงตามความสำคัญ: ขายอะไร/ราคารวม → ไฟแนนซ์+ดาวน์ → ลูกค้าจ่ายสด/โอน → ไฟแนนซ์ค้างชำระ → รายละเอียดรอง
+    function acctBillSummaryHtml(b) {
+        const baht = (n) => '฿' + sumMoney(n);
+        const row = (label, value, cls = '') => `<div class="flex justify-between gap-4 py-1"><span class="text-ink/70">${label}</span><span class="font-mono ${cls}">${value}</span></div>`;
+        const f = b.finance;
+        const items = b.items.map(it => `
+            <div class="flex justify-between gap-4 py-1">
+                <div class="min-w-0">
+                    <p class="text-ink">${escapeHtml(it.name)}${it.quantity > 1 ? ` <span class="text-xs text-ink/60">× ${it.quantity}</span>` : ''}</p>
+                    ${it.imei ? `<p class="text-xs text-ink/60">IMEI : ${escapeHtml(it.imei)}</p>` : ''}
+                </div>
+                <span class="font-mono shrink-0">${it.is_gift ? '<span class="text-ink/70">ของแถม</span>' : baht(it.price * it.quantity)}</span>
+            </div>`).join('');
+
+        // ลูกค้าจ่าย: เงินสด/เงินโอนที่ร้านรับจริงตอนออกบิล
+        const payLines = [
+            b.is_finance && b.down_payment > 0 ? row('เงินดาวน์' + (f ? ` <span class="text-xs text-ink/50">(${f.down_percent.toFixed(1)}% ของราคาเต็ม)</span>` : ''), baht(b.down_payment), 'font-semibold') : '',
+            b.is_finance && b.contract_fee > 0 ? row('ค่าใบสัญญา', baht(b.contract_fee)) : '',
+            b.is_finance && b.icloud_fee > 0 ? row('ค่าระบบ (iCloud)', baht(b.icloud_fee)) : '',
+            b.cash > 0 ? row('จ่ายเป็นเงินสด', baht(b.cash)) : '',
+            b.transfer > 0 ? row('จ่ายเป็นเงินโอน', baht(b.transfer)) : ''
+        ].join('');
+
+        const financeBlock = f ? `
+            <div class="rounded-lg bg-surface-tile-3 px-4 py-3 mt-3">
+                <div class="flex justify-between gap-4 items-center">
+                    <span class="text-ink font-semibold">ไฟแนนซ์ค้างชำระ <span class="text-xs font-normal text-ink/60">(ราคาเต็ม − ดาวน์)</span></span>
+                    <span class="font-mono text-xl font-semibold ${f.paid ? 'text-ink/50 line-through' : 'text-accent-ink'}">${baht(f.hire_purchase)}</span>
+                </div>
+                <p class="text-xs mt-1 ${f.paid ? 'text-state-ok' : 'text-ink/60'}">${f.paid ? 'ไฟแนนซ์ชำระให้ร้านแล้ว' : 'ไฟแนนซ์ยังไม่ได้จ่ายให้ร้าน'}</p>
+            </div>` : '';
+
+        const secondary = [
+            b.discount > 0 ? row('ส่วนลด', '-' + baht(b.discount)) : '',
+            b.deposit_applied > 0 ? row('หักมัดจำ', '-' + baht(b.deposit_applied)) : '',
+            !b.is_finance && b.contract_fee > 0 ? row('ค่าใบสัญญา', baht(b.contract_fee)) : '',
+            !b.is_finance && b.icloud_fee > 0 ? row('ค่าระบบ (iCloud)', baht(b.icloud_fee)) : '',
+            f ? row('ค่าคอมมิชชันจากไฟแนนซ์', baht(f.commission)) : '',
+            f ? row('ไฟแนนซ์จ่ายร้านจริง (ทุนเช่าซื้อ + ค่าคอม)', baht(f.credit_amount)) : '',
+            row('พนักงานขาย', escapeHtml(b.employee_name || '-')),
+            b.customer_name ? row('ลูกค้า', escapeHtml(b.customer_name + (b.customer_phone ? ' · ' + b.customer_phone : ''))) : '',
+            row('สาขา', escapeHtml(b.branch_name || '-')),
+            row('วันที่ขาย', b.created_at ? new Date(b.created_at).toLocaleString('th-TH') : '-')
+        ].join('');
+
+        return `
+            <div class="text-sm">
+                <div class="flex flex-wrap items-center gap-2 mb-3">
+                    <span class="px-2 py-0.5 rounded-lg bg-surface-tile-3 text-xs text-ink">${b.is_finance ? 'ขายผ่อนกับ ' + escapeHtml(f.company || 'ไฟแนนซ์') + (f.months ? ` · ${f.months} งวด` : '') : 'ขายสด'}</span>
+                    ${b.status && b.status !== 'สำเร็จ' ? `<span class="px-2 py-0.5 rounded-lg bg-state-danger/10 text-xs text-state-danger">${escapeHtml(b.status)}</span>` : ''}
+                </div>
+                <p class="text-xs text-ink/60 mb-1">ขายอะไร</p>
+                ${items}
+                <div class="flex justify-between gap-4 pt-2 mt-1 border-t border-hairline items-baseline">
+                    <span class="text-ink font-semibold">ราคารวม</span>
+                    <span class="font-mono text-2xl font-semibold text-ink">${baht(f ? f.full_price : b.items_subtotal)}</span>
+                </div>
+                ${payLines ? `
+                <p class="text-xs text-ink/60 mt-4 mb-1">ลูกค้าจ่ายตอนออกบิล</p>
+                ${payLines}
+                <div class="flex justify-between gap-4 pt-1 border-t border-hairline"><span class="text-ink font-semibold">ร้านรับเงินรวม</span><span class="font-mono font-semibold text-state-ok">${baht(b.received_total)}</span></div>` : ''}
+                ${financeBlock}
+                <p class="text-xs text-ink/60 mt-4 mb-1">รายละเอียดอื่น ๆ</p>
+                <div class="text-xs">${secondary}</div>
+            </div>`;
     }
 
     function renderAcctSummary() {
@@ -1135,10 +1312,26 @@
         const netClass = (n) => n > 0 ? 'text-state-ok' : (n < 0 ? 'text-state-danger' : 'text-ink');
         const NUM_TD = 'px-4 py-3 text-right font-mono whitespace-nowrap';
         const NUM_TH = 'px-4 py-3 font-semibold text-[15px] text-right whitespace-nowrap';
-        const total = accounts.reduce((t, a) => {
+        const addTo = (t, a) => {
             ['in', 'out', 'net', 'receivable', 'payable'].forEach(k => { t[k] = round2Sum(t[k] + (a[k] || 0)); });
             return t;
-        }, { in: 0, out: 0, net: 0, receivable: 0, payable: 0 });
+        };
+        const emptyTotal = () => ({ in: 0, out: 0, net: 0, receivable: 0, payable: 0 });
+        const total = accounts.reduce(addTo, emptyTotal()); // ใช้ตัดสินว่าจะโชว์คอลัมน์ค้างรับ/ค้างจ่ายเท่านั้น ไม่โชว์เป็นยอดรวม
+
+        // ยอดรวม "ต่อหมวด" (สินทรัพย์/หนี้สิน/รายได้/ค่าใช้จ่าย…) — ห้ามรวมข้ามหมวด:
+        // ขายสด 1 ครั้งลงทั้งรายได้และเงินสด รวมข้ามหมวดจึงนับเงินก้อนเดียวหลายครั้ง
+        const catById = new Map((_coaCache.categories || []).map(c => [c._id, c]));
+        const catIdOf = (a) => idOf(a.category_id) || idOf((coaById.get(a._id) || {}).category_id) || '';
+        const catTotals = new Map();
+        accounts.forEach(a => {
+            const cid = catIdOf(a);
+            if (!catTotals.has(cid)) catTotals.set(cid, emptyTotal());
+            addTo(catTotals.get(cid), a);
+        });
+        const catRows = [...catTotals].sort(([x], [y]) => String((catById.get(x) || {}).category_code || '~')
+            .localeCompare(String((catById.get(y) || {}).category_code || '~'), undefined, { numeric: true }));
+        const multiLinked = d.multi_linked || [];
 
         // ค้างรับ/ค้างจ่ายแสดงเฉพาะเมื่อมียอดจริง — ไม่ให้คอลัมน์ว่างรกตา
         const showPending = total.receivable !== 0 || total.payable !== 0;
@@ -1194,7 +1387,7 @@
                                 <tbody>${itemRows}</tbody>
                             </table>
                         </div>
-                        ${_sumEntries.has(a._id) ? sumEntriesHtml(_sumEntries.get(a._id)) : `<button type="button" class="acct-sum-entries mt-3 px-3 py-1.5 text-xs rounded-lg bg-surface-chip text-ink hover:bg-surface-tile-2 cursor-pointer" data-id="${escapeHtml(a._id)}">ดูรายการย่อย</button>`}
+                        ${_sumEntries.has(a._id) ? sumEntriesHtml(_sumEntries.get(a._id), a._id) : `<button type="button" class="acct-sum-entries mt-3 px-3 py-1.5 text-xs rounded-lg bg-surface-chip text-ink hover:bg-surface-tile-2 cursor-pointer" data-id="${escapeHtml(a._id)}">ดูรายการย่อย</button>`}
                     </td>
                 </tr>` : '';
             return `${groupHeader}
@@ -1226,17 +1419,28 @@
                     </thead>
                     <tbody class="divide-y divide-divider">${rows}</tbody>
                     <tfoot class="bg-panel/40 text-ink font-semibold border-t border-hairline">
+                        ${catRows.map(([cid, t]) => {
+                            const c = catById.get(cid);
+                            return `
                         <tr>
-                            <td class="px-4 py-3" colspan="3">รวมทั้งหมด</td>
-                            <td class="${NUM_TD} text-state-ok">${sumMoney(total.in)}</td>
-                            <td class="${NUM_TD} text-state-danger">${sumMoney(total.out)}</td>
-                            <td class="${NUM_TD} ${netClass(total.net)}">${sumMoney(total.net)}</td>
-                            ${showPending ? `<td class="${NUM_TD}">${sumMoney(total.receivable)}</td><td class="${NUM_TD}">${sumMoney(total.payable)}</td>` : ''}
-                        </tr>
+                            <td class="px-4 py-3" colspan="3">รวมหมวด ${c ? escapeHtml(c.category_code + ' ' + c.category_name) : 'ไม่ระบุหมวด'}</td>
+                            <td class="${NUM_TD} text-state-ok">${sumMoney(t.in)}</td>
+                            <td class="${NUM_TD} text-state-danger">${sumMoney(t.out)}</td>
+                            <td class="${NUM_TD} ${netClass(t.net)}">${sumMoney(t.net)}</td>
+                            ${showPending ? `<td class="${NUM_TD}">${sumMoney(t.receivable)}</td><td class="${NUM_TD}">${sumMoney(t.payable)}</td>` : ''}
+                        </tr>`;
+                        }).join('')}
                     </tfoot>
                 </table>
             </div>
-            <p class="text-xs text-ink/60 mt-2">เงินเข้า = รายรับ · เงินออก = รายจ่าย · คงเหลือ = เข้า − ออก · กดที่แถวรหัสบัญชีเพื่อดูว่ายอดมาจากอะไร</p>` : '<div class="py-4 text-sm text-ink/60 italic">ยังไม่มีรหัสบัญชีที่ตรงกับตัวกรอง</div>';
+            <p class="text-xs text-ink/60 mt-2">เงินเข้า = รายรับ · เงินออก = รายจ่าย · คงเหลือ = เข้า − ออก · กดที่แถวรหัสบัญชีเพื่อดูว่ายอดมาจากอะไร · ยอดรวมแยกตามหมวดบัญชี ไม่รวมข้ามหมวด เพราะรายการเดียวกันลงได้หลายหมวด (เช่น ขายสด = รายได้ และเงินสด) รวมข้ามหมวดจะนับเงินก้อนเดียวซ้ำ</p>` : '<div class="py-4 text-sm text-ink/60 italic">ยังไม่มีรหัสบัญชีที่ตรงกับตัวกรอง</div>';
+
+        // รายการที่เชื่อมหลายรหัส: ยอดลงทุกรหัสเต็มจำนวน ยอดรวมหมวดที่มีรหัสเหล่านั้นจึงนับรายการนี้ซ้ำ
+        const multiHtml = multiLinked.length ? `
+            <div class="mb-4 rounded-xl border border-state-danger/40 bg-state-danger/10 px-4 py-3 text-sm text-ink">
+                <i class="fa-solid fa-triangle-exclamation text-state-danger mr-2"></i>รายการต่อไปนี้เชื่อมกับมากกว่า 1 รหัสบัญชี ยอดจึงลงทุกรหัสเต็มจำนวน และยอดรวมหมวดจะนับซ้ำ:
+                ${multiLinked.map(m => `<span class="font-medium">${escapeHtml(m.name)}</span> (${m.accounts} รหัส)`).join(' · ')}
+            </div>` : '';
 
         const unlinkedHtml = unlinked.length ? `
             <div class="mt-8 rounded-xl bg-surface-tile-3 p-6">
@@ -1262,14 +1466,16 @@
                                 <td class="px-4 py-3 text-ink/70">${escapeHtml(i.group)}</td>
                                 <td class="px-4 py-3 text-center text-xs text-ink/70">${escapeHtml(i.flow_label)}</td>
                                 <td class="px-4 py-3 text-right text-ink" style="font-variant-numeric:tabular-nums">${sumMoney(i.amount)}</td>
-                                <td class="px-4 py-3"><select class="acct-item-move ${SUM_SELECT_CLS}" style="max-width:12rem" data-key="${escapeHtml(i.key)}" data-from="" aria-label="เชื่อมรายการกับรหัสบัญชี">${sumAccountOptions('')}</select></td>
+                                <td class="px-4 py-3">${i.missing_account
+                                    ? '<span class="text-xs text-state-danger">รหัสที่ลงตอนบันทึกถูกลบไปแล้ว — แก้ที่เอกสารต้นทาง</span>'
+                                    : `<select class="acct-item-move ${SUM_SELECT_CLS}" style="max-width:12rem" data-key="${escapeHtml(i.key)}" data-from="" aria-label="เชื่อมรายการกับรหัสบัญชี">${sumAccountOptions('')}</select>`}</td>
                             </tr>`).join('')}
                         </tbody>
                     </table>
                 </div>
             </div>` : '';
 
-        root.innerHTML = `${table}${unlinkedHtml}`;
+        root.innerHTML = `${multiHtml}${table}${unlinkedHtml}`;
 
         root.querySelectorAll('.acct-sum-toggle').forEach(b => b.addEventListener('click', () => {
             const id = b.dataset.id;
@@ -1283,6 +1489,9 @@
             sel.disabled = true;
             moveAcctItem(sel.dataset.key, sel.dataset.from, sel.value);
         }));
+        root.querySelectorAll('.acct-sum-eye').forEach(b => b.addEventListener('click', () => {
+            openAcctSourceDetail(b.dataset.acct, Number(b.dataset.idx));
+        }));
         root.querySelectorAll('.acct-sum-entries').forEach(b => b.addEventListener('click', async () => {
             const id = b.dataset.id;
             b.disabled = true;
@@ -1290,7 +1499,7 @@
                 const res = await authFetch(`${API_BASE_URL}/acct/account-summary/${id}/entries?${sumParams()}`);
                 const data = await res.json();
                 if (!data.success) throw new Error(data.message || 'โหลดรายการย่อยไม่สำเร็จ');
-                _sumEntries.set(id, data.entries || []);
+                _sumEntries.set(id, { entries: data.entries || [], truncated: !!data.truncated });
             } catch (e) {
                 showToast('โหลดรายการย่อยไม่สำเร็จ: ' + e.message, 'error');
             }
@@ -1314,12 +1523,17 @@
         };
         try {
             const preview = await post(false);
-            const types = Object.entries(preview.types || {});
-            const totalSources = types.reduce((s, [, t]) => s + t.sources, 0);
-            const totalEvents = types.reduce((s, [, t]) => s + t.events, 0);
-            const list = types.map(([k, t]) => `<li>${escapeHtml(SUM_SOURCE_LABELS[k] || k)}: ${t.sources.toLocaleString('th-TH')} ใบ → ${t.events.toLocaleString('th-TH')} ยอด</li>`).join('');
+            // แสดงเฉพาะที่ยังไม่ได้บันทึก/ไม่ตรงกับที่บันทึกไว้ (pending_*) — บันทึกครบแล้วจะไม่ขึ้นในรายการ
+            const types = Object.entries(preview.types || {}).filter(([, t]) => (t.pending_sources || 0) > 0);
+            if (!types.length) {
+                showToast('บันทึกครบแล้ว ไม่มีรายการที่ต้องบันทึกย้อนหลัง', 'success');
+                return;
+            }
+            const totalSources = types.reduce((s, [, t]) => s + t.pending_sources, 0);
+            const totalEvents = types.reduce((s, [, t]) => s + t.pending_events, 0);
+            const list = types.map(([k, t]) => `<li>${escapeHtml(SUM_SOURCE_LABELS[k] || k)}: ${t.pending_sources.toLocaleString('th-TH')} ใบ → ${t.pending_events.toLocaleString('th-TH')} ยอด</li>`).join('');
             showConfirm('บันทึกย้อนหลัง / คำนวณยอดใหม่',
-                `ตรวจพบเอกสาร <strong class="text-ink">${totalSources.toLocaleString('th-TH')}</strong> ใบ จะบันทึกยอดรวม <strong class="text-ink">${totalEvents.toLocaleString('th-TH')}</strong> รายการ<ul class="text-xs text-ink/70 mt-2 space-y-0.5 list-disc pl-5">${list}</ul><span class="text-xs text-ink/70 block mt-2">คำนวณจากสถานะปัจจุบันของเอกสาร ทำซ้ำกี่ครั้งก็ได้ผลเท่าเดิม ไม่แก้ไขเอกสารต้นทาง และไม่ลบการเชื่อมรายการกับรหัสบัญชี</span>`,
+                `ตรวจพบเอกสารที่ยังไม่ได้บันทึก <strong class="text-ink">${totalSources.toLocaleString('th-TH')}</strong> ใบ จะบันทึกยอดรวม <strong class="text-ink">${totalEvents.toLocaleString('th-TH')}</strong> รายการ<ul class="text-xs text-ink/70 mt-2 space-y-0.5 list-disc pl-5">${list}</ul><span class="text-xs text-ink/70 block mt-2">คำนวณจากสถานะปัจจุบันของเอกสาร ทำซ้ำกี่ครั้งก็ได้ผลเท่าเดิม ไม่แก้ไขเอกสารต้นทาง และไม่ลบการเชื่อมรายการกับรหัสบัญชี</span>`,
                 async () => {
                     try {
                         await post(true);
@@ -1422,7 +1636,7 @@
     }
 
     // ---------- รายการที่เชื่อมกับรหัสบัญชี ----------
-    // แคตตาล็อกรายการมาจากเซิร์ฟเวอร์ (utils/accountItems.js) — พนักงานบัญชีเลือกเองว่ารายการไหนเชื่อมกับรหัสนี้ (เลือกได้หลายรายการ)
+    // แคตตาล็อกรายการมาจากเซิร์ฟเวอร์ (utils/accountItems.js) — พนักงานบัญชีเลือกเองว่ารายการไหนเชื่อมกับรหัสนี้ (รหัสละ 1 รายการ)
     let _acctItemsCache = { groups: [], items: [], loaded: false, failed: false };
     let _acctItemNames = new Map();   // key → ชื่อรายการ (ไว้โชว์ในตารางผัง)
     let _acctItemSel = new Set();     // key ที่ติ๊กอยู่ในฟอร์ม
@@ -1445,7 +1659,7 @@
 
     function updateAcctItemsCount() {
         const el = document.getElementById('acct-account-items-count');
-        if (el) el.textContent = _acctItemsCache.loaded ? `เลือกแล้ว ${_acctItemSel.size} จาก ${_acctItemsCache.items.length}` : '';
+        if (el) el.textContent = _acctItemsCache.loaded ? (_acctItemSel.size ? 'เลือกแล้ว 1 รายการ' : 'ยังไม่ได้เลือก') : '';
     }
 
     function renderAcctItems() {
@@ -1462,7 +1676,11 @@
             box.innerHTML = '<div class="px-2 py-3 text-sm text-ink/60 italic">ไม่พบรายการที่ตรงกับคำค้น</div>';
             return;
         }
-        box.innerHTML = _acctItemsCache.groups.map(g => {
+        const none = `<label class="flex items-center gap-2 px-2 py-1.5 rounded-sm hover:bg-surface-tile-2 cursor-pointer">
+                    <input type="radio" name="acct-item-pick" class="acct-item-cb shrink-0" style="accent-color:#FFE169" value=""${_acctItemSel.size ? '' : ' checked'}>
+                    <span class="text-ink text-sm">ไม่เชื่อมรายการใด</span>
+                </label>`;
+        box.innerHTML = none + _acctItemsCache.groups.map(g => {
             const rows = items.filter(i => i.group === g);
             if (!rows.length) return '';
             const head = `<div class="px-2 pt-2 pb-1 text-xs font-bold text-ink/70">${escapeHtml(g)} <span class="font-normal text-ink/60">(${rows.length})</span></div>`;
@@ -1473,7 +1691,7 @@
                     ? `<span class="block text-[11px] text-ink/60">เชื่อมกับ ${others.slice(0, 2).map(a => escapeHtml(a.account_code)).join(', ')}${others.length > 2 ? ` และอีก ${others.length - 2} รหัส` : ''} อยู่แล้ว</span>`
                     : '';
                 return `<label class="flex items-start gap-2 px-2 py-1.5 rounded-sm hover:bg-surface-tile-2 cursor-pointer">
-                    <input type="checkbox" class="acct-item-cb mt-0.5 shrink-0" style="accent-color:#FFE169" value="${escapeHtml(i.key)}"${_acctItemSel.has(i.key) ? ' checked' : ''}>
+                    <input type="radio" name="acct-item-pick" class="acct-item-cb mt-0.5 shrink-0" style="accent-color:#FFE169" value="${escapeHtml(i.key)}"${_acctItemSel.has(i.key) ? ' checked' : ''}>
                     <span class="min-w-0 flex-1">
                         <span class="block text-ink text-sm">${escapeHtml(i.name)} <span class="text-[10px] px-1.5 py-0.5 rounded bg-chip/60 text-ink">${escapeHtml(i.flow_label)}</span></span>
                         <span class="block text-xs text-body-muted">${escapeHtml(i.description)}</span>${note}
@@ -1490,7 +1708,8 @@
         document.getElementById('acct-account-items')?.addEventListener('change', (e) => {
             const cb = e.target.closest('.acct-item-cb');
             if (!cb) return;
-            if (cb.checked) _acctItemSel.add(cb.value); else _acctItemSel.delete(cb.value);
+            // เลือกได้ครั้งละ 1 รายการ — เลือกอันใหม่ อันเดิมหลุดเอง · ค่าว่าง = ไม่เชื่อมรายการใด
+            _acctItemSel = cb.value ? new Set([cb.value]) : new Set();
             updateAcctItemsCount();
         });
     }
@@ -1542,7 +1761,10 @@
         // รายการที่เชื่อม: แก้บัญชีเดิมที่ไม่มี item_keys ในข้อมูล = ไม่รู้ของเดิม จึงไม่ส่งกลับไปทับตอนบันทึก
         _acctItemsEditId = data._id || '';
         _acctItemsKnown = !data._id || Array.isArray(data.item_keys);
-        _acctItemSel = new Set(Array.isArray(data.item_keys) ? data.item_keys : []);
+        // กติกา 1 รหัส 1 รายการ — รหัสเก่าที่เคยเชื่อมหลายรายการเหลือไว้รายการแรก และเตือนว่าที่เหลือจะถูกเอาออกเมื่อบันทึก
+        const savedKeys = Array.isArray(data.item_keys) ? data.item_keys : [];
+        _acctItemSel = new Set(savedKeys.slice(0, 1));
+        if (savedKeys.length > 1) showToast(`รหัสนี้เคยเชื่อม ${savedKeys.length} รายการ ตอนนี้เชื่อมได้ 1 รายการ — ถ้ากดบันทึก รายการอื่นจะถูกเอาออก`, 'warning');
         const itemSearch = document.getElementById('acct-account-items-search');
         if (itemSearch) itemSearch.value = '';
         bindAcctItemsOnce();

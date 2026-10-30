@@ -1013,6 +1013,16 @@
         ovSetText('order-detail-down', ovBaht(f.down_payment));
         ovSetText('order-detail-received-total', ovBaht(f.received_total));
 
+        // แยกยอดเงินสด / เงินโอน — แสดงเฉพาะช่องทางที่มีเงินเข้าจริง
+        const cashAmt = Number(row.cash_amount) || 0;
+        const transferAmt = Number(row.transfer_amount) || 0;
+        ovSetText('order-detail-cash', ovBaht(cashAmt));
+        ovSetText('order-detail-transfer', ovBaht(transferAmt));
+        const cashRow = document.getElementById('order-detail-cash-row');
+        if (cashRow) cashRow.classList.toggle('hidden', !(cashAmt > 0));
+        const transferRow = document.getElementById('order-detail-transfer-row');
+        if (transferRow) transferRow.classList.toggle('hidden', !(transferAmt > 0));
+
         // บิลซื้อสดไม่มีเงินดาวน์ และเงินรับรวมคือยอดทั้งบิล ไม่ใช่สูตรของฝั่งไฟแนนซ์
         const downRow = document.getElementById('order-detail-down-row');
         if (downRow) downRow.classList.toggle('hidden', !row.is_financing);
