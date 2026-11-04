@@ -710,8 +710,32 @@ async function getAccountEntries(accountId, filter, limit = 300) {
     const events = truncated ? fetched.slice(0, max) : fetched;
     const partyNames = await loadPartyNames(events);
 
-    const entries = events.map(e => toEntry(e, partyNames));
+    const productNames = await loadProductNames(events);
+
+    const entries = events.map(e => toEntry(e, partyNames, productNames));
     return { entries, truncated };
+}
+
+// ชื่อสินค้าของแต่ละเอกสาร — คืน Map source_id -> ชื่อสินค้า (หลายชิ้นคั่นด้วย ", ")
+async function loadProductNames(events) {
+    const idsOf = (type) => [...new Set(events.filter(e => e.source_type === type).map(e => String(e.source_id)))];
+    const joinNames = (items) => [...new Set((items || []).map(i => i && i.product_name).filter(Boolean))].join(', ');
+    const sources = [
+        ['transaction', Transaction], ['purchase_order', PurchaseOrder], ['claim', Claim], ['stock_issue', StockIssue]
+    ];
+    const names = new Map();
+    await Promise.all(sources.map(async ([type, Model]) => {
+        const ids = idsOf(type);
+        if (!ids.length) return;
+        const docs = await Model.find({ _id: { $in: ids } }).select('items.product_name').lean();
+        docs.forEach(d => names.set(String(d._id), joinNames(d.items)));
+    }));
+    const depositIds = idsOf('deposit');
+    if (depositIds.length) {
+        const deps = await Deposit.find({ _id: { $in: depositIds } }).select('product_name').lean();
+        deps.forEach(d => names.set(String(d._id), d.product_name || ''));
+    }
+    return names;
 }
 
 // ชื่อไฟแนนซ์/ซัพของแต่ละรายการ — คืน Map source_id -> ชื่อ
@@ -753,7 +777,7 @@ async function loadPartyNames(events) {
     return names;
 }
 
-function toEntry(e, partyNames) {
+function toEntry(e, partyNames, productNames = new Map()) {
     const item = ACCOUNT_ITEM_BY_KEY.get(e.item_key);
     return {
         _id: e._id,
@@ -766,7 +790,8 @@ function toEntry(e, partyNames) {
         source_type: e.source_type,
         source_ref: e.source_ref,
         branch_id: e.branch_id,
-        party_name: partyNames.get(String(e.source_id)) || ''
+        party_name: partyNames.get(String(e.source_id)) || '',
+        product_name: productNames.get(String(e.source_id)) || ''
     };
 }
 

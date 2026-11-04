@@ -1078,6 +1078,7 @@
                 <td class="${TD} text-ink">${escapeHtml(en.item_name)}${en.party_name ? ` <span class="text-xs text-ink/60">· ${escapeHtml(en.party_name)}</span>` : ''}</td>
                 <td class="${TD} text-ink/80">${escapeHtml(SUM_SOURCE_LABELS[en.source_type] || en.source_type || '-')}</td>
                 <td class="${TD} text-ink/80">${escapeHtml(en.source_ref || '-')}</td>
+                <td class="${TD} text-ink">${escapeHtml(en.product_name || '-')}</td>
                 <td class="${TD} text-right font-mono text-state-ok whitespace-nowrap">${en.flow === 'in' ? sumMoney(en.amount) : ''}</td>
                 <td class="${TD} text-right font-mono text-state-danger whitespace-nowrap">${en.flow === 'out' ? sumMoney(en.amount) : ''}</td>
                 <td class="${TD} text-right font-mono text-ink/70 whitespace-nowrap">${en.flow === 'receivable' || en.flow === 'payable' ? sumMoney(en.amount) + ' (' + escapeHtml(en.flow_label) + ')' : ''}</td>
@@ -1090,13 +1091,14 @@
         return `
             <p class="text-sm font-medium text-ink mt-4 mb-2">รายการทีละใบ (${truncated ? 'แสดง ' : ''}${list.length.toLocaleString('th-TH')} รายการ${truncated ? 'ล่าสุด จากทั้งหมดที่มากกว่านี้' : ''})</p>
             <div class="rounded-lg border border-hairline" style="overflow-x:auto">
-                <table class="w-full text-sm" style="min-width:48rem">
+                <table class="w-full text-sm" style="min-width:56rem">
                     <thead class="bg-surface-tile-3"><tr class="text-xs text-ink/80 border-b border-hairline">
                         <th class="${TH} text-center" style="width:3rem">#</th>
                         <th class="${TH} text-left">วันที่</th>
                         <th class="${TH} text-left">รายการ</th>
                         <th class="${TH} text-left">เอกสาร</th>
                         <th class="${TH} text-left">เลขที่ / ที่มา</th>
+                        <th class="${TH} text-left">ชื่อสินค้า</th>
                         <th class="${TH} text-right">เงินเข้า</th>
                         <th class="${TH} text-right">เงินออก</th>
                         <th class="${TH} text-right">ค้างรับ/ค้างจ่าย</th>
@@ -1105,7 +1107,7 @@
                     <tbody>${rows}</tbody>
                     <tfoot class="bg-surface-tile-3 font-semibold border-t border-hairline">
                         <tr>
-                            <td class="${TD} text-right" colspan="5">${truncated ? 'รวมเฉพาะรายการที่แสดง (ยอดเต็มดูที่แถวรหัสบัญชี)' : 'รวม'}</td>
+                            <td class="${TD} text-right" colspan="6">${truncated ? 'รวมเฉพาะรายการที่แสดง (ยอดเต็มดูที่แถวรหัสบัญชี)' : 'รวม'}</td>
                             <td class="${TD} text-right font-mono text-state-ok">${sumIn ? sumMoney(sumIn) : ''}</td>
                             <td class="${TD} text-right font-mono text-state-danger">${sumOut ? sumMoney(sumOut) : ''}</td>
                             <td class="${TD} text-right font-mono text-ink/70">${sumPending ? sumMoney(sumPending) : ''}</td>
@@ -1370,9 +1372,8 @@
                     <tr class="border-b border-hairline last:border-0">
                         <td class="px-3 py-2 text-ink">${escapeHtml(i.name)} <span class="text-xs text-ink/60">· ${escapeHtml(i.flow_label)} ${i.count} ครั้ง</span></td>
                         <td class="px-3 py-2 text-right font-mono text-ink">${sumMoney(i.amount)}</td>
-                        <td class="px-3 py-2">${i.direct ? '<span class="text-xs text-ink/60">ลงรหัสนี้ตอนบันทึก</span>' : `<select class="acct-item-move ${SUM_SELECT_CLS}" style="max-width:11rem" data-key="${escapeHtml(i.key)}" data-from="${escapeHtml(a._id)}" aria-label="ย้ายรายการไปรหัสอื่น">${sumAccountOptions(a._id)}</select>`}</td>
                     </tr>`).join('')
-                : '<tr><td colspan="3" class="px-3 py-3 text-sm text-ink/60 italic">ยังไม่มียอดของรายการที่เชื่อมในช่วงที่เลือก</td></tr>';
+                : '<tr><td colspan="2" class="px-3 py-3 text-sm text-ink/60 italic">ยังไม่มียอดของรายการที่เชื่อมในช่วงที่เลือก</td></tr>';
             const detail = open ? `
                 <tr class="bg-surface-tile-3/50">
                     <td colspan="${colCount}" class="px-6 py-4">
@@ -1382,7 +1383,6 @@
                                 <thead><tr class="text-xs text-ink/70 border-b border-hairline">
                                     <th class="px-3 py-2 text-left font-medium">รายการ</th>
                                     <th class="px-3 py-2 text-right font-medium">ยอด (บาท)</th>
-                                    <th class="px-3 py-2 text-left font-medium">ย้ายไปรหัส</th>
                                 </tr></thead>
                                 <tbody>${itemRows}</tbody>
                             </table>
