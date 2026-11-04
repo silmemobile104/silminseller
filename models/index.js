@@ -472,6 +472,9 @@ const transactionSchema = new mongoose.Schema({
     applied_deposit_amount: { type: Number, default: 0 }, // จำนวนเงินมัดจำที่หักออก
     // ส่วนลดท้ายบิล — ตั้งใจไม่ใส่ default: บิลเก่าไม่ได้เก็บไว้ (ไม่มีฟิลด์นี้ = ย้อนคำนวณจากยอดบิล ดู utils/accountEntries.js)
     discount_amount: { type: Number },
+    // หลักฐานการชำระเงินหน้าร้าน (สลิปโอน/รูปเงินสด) เก็บบน Drive เก็บเฉพาะลิงก์ — บิลเก่าไม่มีฟิลด์นี้
+    payment_proof_kind: { type: String, enum: ['', 'โอน', 'เงินสด', 'เงินสด+โอน'], default: '' },
+    payment_proof_urls: { type: [String], default: [] },
     status: { type: String, default: 'เสร็จสิ้น', enum: ['เสร็จสิ้น', 'ยกเลิกแล้ว'] }, // สถานะรายการ
     // ===== ฝ่ายบัญชี: ตรวจสอบออเดอร์ (#order-verification) =====
     // ไม่มี default ในสคีมา บิลเก่าที่ยังไม่มีฟิลด์นี้จึงถูกตีความตอนอ่านแทน (ซื้อสด = ชำระแล้ว, จัดไฟแนนซ์ = ยังไม่ชำระ)

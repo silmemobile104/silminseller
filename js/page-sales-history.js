@@ -838,6 +838,13 @@
         if (!transactionDetailReceipt) return;
 
         transactionDetailReceipt.textContent = txn.receipt_number;
+        const statusEl = document.getElementById('transaction-detail-status');
+        if (statusEl) {
+            const cancelled = txn.status === 'ยกเลิกแล้ว';
+            statusEl.textContent = txn.status || 'เสร็จสิ้น';
+            statusEl.style.background = cancelled ? 'rgba(239,68,68,0.15)' : 'rgba(52,211,153,0.15)';
+            statusEl.style.color = cancelled ? '#f87171' : '#34d399';
+        }
         transactionDetailBranch.textContent = txn.branch_id ? txn.branch_id.name : '-';
         transactionDetailEmployee.textContent = txn.employee_id ? txn.employee_id.name : '-';
         transactionDetailDate.textContent = new Date(txn.created_at).toLocaleString('th-TH');
@@ -917,11 +924,50 @@
                 const cash = isFinancing ? (txn.finance_down_payment_cash || 0) : (txn.cash_amount || 0);
                 const transfer = isFinancing ? (txn.finance_down_payment_transfer || 0) : (txn.transfer_amount || 0);
 
-                if (cash > 0) breakdownHTML += `<div class="flex items-center justify-between gap-3 text-xs text-body-muted"><span>เงินสด</span><span class="font-mono">฿${cash.toLocaleString()}</span></div>`;
-                if (transfer > 0) breakdownHTML += `<div class="flex items-center justify-between gap-3 text-xs text-body-muted"><span>เงินโอน</span><span class="font-mono">฿${transfer.toLocaleString()}</span></div>`;
+                if (cash > 0) breakdownHTML += `<div class="flex items-center justify-between gap-3 text-sm text-body-muted"><span>เงินสด</span><span class="font-mono">฿${cash.toLocaleString()}</span></div>`;
+                if (transfer > 0) breakdownHTML += `<div class="flex items-center justify-between gap-3 text-sm text-body-muted"><span>เงินโอน</span><span class="font-mono">฿${transfer.toLocaleString()}</span></div>`;
 
                 transactionDetailPaymentBreakdown.innerHTML = breakdownHTML;
                 transactionDetailPaymentBreakdown.classList.toggle('hidden', breakdownHTML === '');
+            }
+
+            // รูปหลักฐานการชำระเงิน (สลิปโอน/เงินสด) — บิลเก่าก่อนมีฟีเจอร์นี้จะไม่มีรูป จึงซ่อนส่วนนี้
+            const proofBox = document.getElementById('transaction-detail-proof');
+            const proofPhotos = document.getElementById('transaction-detail-proof-photos');
+            const proofKind = document.getElementById('transaction-detail-proof-kind');
+            if (proofBox && proofPhotos) {
+                const urls = (txn.payment_proof_urls || []).filter(u => typeof u === 'string' && u.startsWith('https://'));
+                proofPhotos.innerHTML = '';
+                proofBox.classList.toggle('hidden', urls.length === 0);
+                proofBox.classList.toggle('block', urls.length > 0);
+                if (proofKind) {
+                    const kindLabel = { 'โอน': 'เงินโอน', 'เงินสด': 'เงินสด', 'เงินสด+โอน': 'เงินสด+เงินโอน' }[txn.payment_proof_kind] || txn.payment_proof_kind || '';
+                    proofKind.textContent = kindLabel;
+                    proofKind.classList.toggle('hidden', !kindLabel);
+                }
+                const proofCount = document.getElementById('transaction-detail-proof-count');
+                if (proofCount) proofCount.textContent = `${urls.length} รูป`;
+                urls.forEach((url, i) => {
+                    const link = document.createElement('a');
+                    link.href = url;
+                    link.target = '_blank';
+                    link.rel = 'noopener noreferrer';
+                    link.setAttribute('aria-label', `เปิดรูปหลักฐานที่ ${i + 1} ขนาดใหญ่`);
+                    const img = document.createElement('img');
+                    img.src = url;
+                    img.alt = `หลักฐานการชำระเงินรูปที่ ${i + 1}`;
+                    img.loading = 'lazy';
+                    img.referrerPolicy = 'no-referrer';
+                    img.style.cssText = 'width:96px;height:96px;object-fit:cover;border-radius:10px;display:block;';
+                    // เปิดเป็น popup ซูมได้ (ถ้าไม่มีตัวเปิด ลิงก์จะเปิดแท็บใหม่ตามปกติ)
+                    link.addEventListener('click', (e) => {
+                        if (typeof window.openImageLightbox !== 'function') return;
+                        e.preventDefault();
+                        window.openImageLightbox(urls, i);
+                    });
+                    link.appendChild(img);
+                    proofPhotos.appendChild(link);
+                });
             }
 
             if (isFinancing) {

@@ -983,6 +983,37 @@
         if (!row.is_financing && row.applied_deposit_amount > 0) payParts.push(`หักมัดจำ ${ovBahtShort(row.applied_deposit_amount)}`);
         ovSetText('order-detail-customer-payment', payParts.length ? payParts.join(' · ') : '-');
 
+        // รูปหลักฐานการชำระเงิน — กดเปิดดูขนาดใหญ่ในแท็บใหม่ได้
+        const proofBox = document.getElementById('order-detail-proof');
+        const proofPhotos = document.getElementById('order-detail-proof-photos');
+        if (proofBox && proofPhotos) {
+            const urls = (row.payment_proof_urls || []).filter(u => typeof u === 'string' && u.startsWith('https://'));
+            proofPhotos.innerHTML = '';
+            proofBox.classList.toggle('hidden', urls.length === 0);
+            ovSetText('order-detail-proof-kind', row.payment_proof_kind ? `(${row.payment_proof_kind})` : '');
+            urls.forEach((url, i) => {
+                const link = document.createElement('a');
+                link.href = url;
+                link.target = '_blank';
+                link.rel = 'noopener noreferrer';
+                link.setAttribute('aria-label', `เปิดรูปหลักฐานที่ ${i + 1} ขนาดใหญ่`);
+                const img = document.createElement('img');
+                img.src = url;
+                img.alt = `หลักฐานการชำระเงินรูปที่ ${i + 1}`;
+                img.loading = 'lazy';
+                img.referrerPolicy = 'no-referrer';
+                img.style.cssText = 'width:80px;height:80px;object-fit:cover;border-radius:8px;display:block;';
+                // เปิดเป็น popup ซูมได้ (ถ้าไม่มีตัวเปิด ลิงก์จะเปิดแท็บใหม่ตามปกติ)
+                link.addEventListener('click', (e) => {
+                    if (typeof window.openImageLightbox !== 'function') return;
+                    e.preventDefault();
+                    window.openImageLightbox(urls, i);
+                });
+                link.appendChild(img);
+                proofPhotos.appendChild(link);
+            });
+        }
+
         const itemsBox = document.getElementById('order-detail-items');
         if (itemsBox) {
             itemsBox.innerHTML = (row.items || []).map(it => {

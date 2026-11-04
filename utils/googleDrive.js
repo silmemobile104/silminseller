@@ -124,16 +124,10 @@ const uploadBufferToDrive = async (buffer, mimeType, fileName, maxRetries = 3) =
     }
 };
 
-const getOrCreateSubFolderId = async (folderName) => {
-    const drive = getDriveService();
-    const parentFolderId = process.env.GOOGLE_DRIVE_FOLDER_ID;
-
-    if (!parentFolderId) {
-        throw new Error('GOOGLE_DRIVE_FOLDER_ID not set in environment');
-    }
-
-    const escapedName = String(folderName).replace(/'/g, "\\'");
-    const q = `name='${escapedName}' and mimeType='application/vnd.google-apps.folder' and '${parentFolderId}' in parents and trashed=false`;
+// หาโฟลเดอร์ชื่อนี้ใต้ parentId ถ้าไม่มีก็สร้าง
+const getOrCreateChildFolderId = async (drive, parentId, folderName) => {
+    const escapedName = String(folderName).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+    const q = `name='${escapedName}' and mimeType='application/vnd.google-apps.folder' and '${parentId}' in parents and trashed=false`;
 
     const existing = await drive.files.list({
         q,
@@ -149,12 +143,29 @@ const getOrCreateSubFolderId = async (folderName) => {
         resource: {
             name: folderName,
             mimeType: 'application/vnd.google-apps.folder',
-            parents: [parentFolderId]
+            parents: [parentId]
         },
         fields: 'id'
     });
 
     return created.data.id;
+};
+
+// folderPath เป็นชื่อเดียว (string) หรือลำดับโฟลเดอร์ซ้อนกัน (array) ใต้ GOOGLE_DRIVE_FOLDER_ID
+const getOrCreateSubFolderId = async (folderPath) => {
+    const drive = getDriveService();
+    const parentFolderId = process.env.GOOGLE_DRIVE_FOLDER_ID;
+
+    if (!parentFolderId) {
+        throw new Error('GOOGLE_DRIVE_FOLDER_ID not set in environment');
+    }
+
+    const names = Array.isArray(folderPath) ? folderPath : [folderPath];
+    let currentId = parentFolderId;
+    for (const name of names) {
+        currentId = await getOrCreateChildFolderId(drive, currentId, name);
+    }
+    return currentId;
 };
 
 const uploadBufferToDriveInFolder = async (buffer, mimeType, fileName, folderName) => {
@@ -196,5 +207,6 @@ const uploadBufferToDriveInFolder = async (buffer, mimeType, fileName, folderNam
 module.exports = {
     uploadUrlToDrive,
     uploadBufferToDrive,
-    uploadBufferToDriveInFolder
+    uploadBufferToDriveInFolder,
+    getOrCreateSubFolderId
 };

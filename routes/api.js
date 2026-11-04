@@ -73,6 +73,7 @@ async function attachLedgerBooks(ledger) {
 }
 
 const { uploadBufferToDriveInFolder } = require('../utils/googleDrive');
+const paymentProof = require('../utils/paymentProof');
 const mdCache = require('../utils/masterDataCache');
 // บันทึกยอดเข้า-ออกต่อรายการ (AccountItemEvent) — เรียกหลังเอกสารเปลี่ยน ไม่รอผลและไม่ทำให้เส้นทางหลักล้ม (utils/accountEntries.js)
 const { queueRefresh: queueAcctRefresh, analyzeBill, loadTransactionContext, rebuildAll: rebuildAcctEntries } = require('../utils/accountEntries');
@@ -3396,7 +3397,8 @@ router.post('/transactions', async (req, res) => {
             payment_type, cash_amount, transfer_amount, finance_company,
             finance_payment_day, finance_months, finance_down_payment_cash, finance_down_payment_transfer,
             finance_fee_cash, finance_fee_transfer,
-            contract_fee, icloud_fee, applied_deposit_id, applied_deposit_amount, discount_amount
+            contract_fee, icloud_fee, applied_deposit_id, applied_deposit_amount, discount_amount,
+            payment_proof_photos, payment_proof_kind: chosenProofKind
         } = req.body;
 
         // ตรวจสอบข้อมูลเบื้องต้น
@@ -3413,6 +3415,54 @@ router.post('/transactions', async (req, res) => {
         const randomStr = Math.random().toString(36).substring(2, 7).toUpperCase();
         const receipt_number = `INV-${dateStr}-${randomStr}`;
         saleReceiptNo = receipt_number;
+
+        // หลักฐานการชำระเงิน: ทุกบิลต้องแนบรูปอย่างน้อย 1 รูป
+        // ตรวจและอัปโหลดก่อนหักสต็อก/จองมัดจำ เพื่อให้พลาดแล้วไม่ต้องย้อนคืนอะไร
+        const receivedMoney = paymentProof.splitReceivedMoney({
+            paymentType: payment_type || payment_method,
+            cash: cash_amount,
+            transfer: transfer_amount,
+            totalAmount: total_amount,
+            financeDownCash: finance_down_payment_cash,
+            financeDownTransfer: finance_down_payment_transfer,
+            financeFeeCash: finance_fee_cash,
+            financeFeeTransfer: finance_fee_transfer
+        });
+        // ทุกบิลต้องมีหลักฐาน: ประเภทให้พนักงานเลือกเอง (client เก่าที่ไม่ส่งมาใช้ประเภทตามยอดที่รับ)
+        const proofKind = chosenProofKind || paymentProof.proofKindFor(receivedMoney.cash, receivedMoney.transfer);
+        if (!proofKind) {
+            return res.status(400).json({ success: false, message: 'กรุณาเลือกประเภทหลักฐานการชำระเงิน (เงินสด / เงินโอน / เงินสด+เงินโอน)' });
+        }
+        if (proofKind && !paymentProof.PROOF_FOLDER_BY_KIND[proofKind]) {
+            return res.status(400).json({ success: false, message: 'ประเภทหลักฐานการชำระเงินไม่ถูกต้อง' });
+        }
+        let paymentProofUrls = [];
+        {
+            const rawPhotos = Array.isArray(payment_proof_photos) ? payment_proof_photos : [];
+            if (rawPhotos.length === 0) {
+                return res.status(400).json({ success: false, message: 'กรุณาแนบรูปหลักฐานการชำระเงิน (สลิปโอน/เงินสด) อย่างน้อย 1 รูป' });
+            }
+            if (rawPhotos.length > paymentProof.MAX_PROOF_PHOTOS) {
+                return res.status(400).json({ success: false, message: `แนบรูปหลักฐานได้ไม่เกิน ${paymentProof.MAX_PROOF_PHOTOS} รูป` });
+            }
+            const parsedPhotos = rawPhotos.map(paymentProof.parseProofImage);
+            if (parsedPhotos.some(p => !p)) {
+                return res.status(400).json({ success: false, message: 'รูปหลักฐานไม่ถูกต้อง (รองรับ JPG/PNG/WebP และต้องไม่ใหญ่เกินไป)' });
+            }
+            try {
+                const folderPath = paymentProof.proofFolderPath(proofKind, receipt_number, parsedPhotos.length, now);
+                // อัปโหลดทีละรูปเพื่อให้ชื่อโฟลเดอร์ถูกสร้างครั้งเดียว ไม่ซ้ำจากการแย่งกันสร้าง
+                for (let i = 0; i < parsedPhotos.length; i++) {
+                    const p = parsedPhotos[i];
+                    paymentProofUrls.push(await uploadBufferToDriveInFolder(
+                        p.buffer, p.mimeType, `${receipt_number}_${i + 1}.${p.ext}`, folderPath
+                    ));
+                }
+            } catch (err) {
+                console.error('Drive upload error (payment proof):', err.message || err);
+                return res.status(500).json({ success: false, message: `อัปโหลดรูปหลักฐานไปยัง Google Drive ไม่สำเร็จ: ${err.message || err} (ยังไม่ได้บันทึกการขาย กรุณาลองใหม่)` });
+            }
+        }
 
         // Normalize items to ensure imei/downstream fields are persisted
         const normalizedItems = (items || []).map(it => {
@@ -3603,6 +3653,8 @@ router.post('/transactions', async (req, res) => {
                 ? { discount_amount: Math.max(0, Number(discount_amount) || 0) }
                 : {}),
             // ซื้อสด = รับเงินครบหน้าร้านแล้ว / จัดไฟแนนซ์ = รอไฟแนนซ์โอนเงินเข้ามา (ฝ่ายบัญชีเป็นคนกดยืนยันทีหลัง)
+            payment_proof_kind: proofKind || '',
+            payment_proof_urls: paymentProofUrls,
             payment_status: resolveDefaultPaymentStatus(payment_type || payment_method),
             // ซื้อสดรับเงินครบหน้าร้าน -> คนที่ขายคือคนบันทึกว่า "ชำระแล้ว" (แสดงในหน้าตรวจสอบออเดอร์)
             // จัดไฟแนนซ์ยังไม่ชำระ จึงยังไม่มีผู้บันทึกจนกว่าฝ่ายบัญชีจะกดยืนยัน
@@ -4084,6 +4136,9 @@ router.get('/order-verifications', async (req, res) => {
                 applied_deposit_amount: Number(t.applied_deposit_amount) || 0,
                 finance_paid_at: receivable ? (receivable.settled_at || null) : (t.finance_paid_at || null),
                 verify_note: t.verify_note || '',
+                // หลักฐานการชำระเงินหน้าร้าน (ลิงก์รูปบน Drive) — บิลเก่าไม่มี
+                payment_proof_kind: t.payment_proof_kind || '',
+                payment_proof_urls: Array.isArray(t.payment_proof_urls) ? t.payment_proof_urls : [],
                 // บิลซื้อสดที่ยังไม่มีใครแก้สถานะ: ผู้บันทึก "ชำระแล้ว" คือพนักงานที่ขาย ณ เวลาที่ขาย
                 payment_status_by: resolveUpdater(t.payment_status_updated_by, t.payment_status_updated_at)
                     || (paymentType !== 'จัดไฟแนนซ์' && t.employee_id && t.employee_id._id
@@ -7414,8 +7469,8 @@ router.post('/stock-audit/sessions/:id/scan', async (req, res) => {
                 let buffer, mimeType;
                 if (matches && matches.length === 3) { mimeType = matches[1]; buffer = Buffer.from(matches[2], 'base64'); }
                 else { mimeType = 'image/jpeg'; buffer = Buffer.from(box_photo_base64, 'base64'); }
-                const dateStr = new Date().toISOString().slice(0, 10);
-                boxPhotoUrl = await uploadBufferToDriveInFolder(buffer, mimeType, `AUDIT_${imeiClean}_${Date.now()}.jpg`, `ตรวจสต็อกประจำวัน/${dateStr}`);
+                // silminseller/img_check_stock/เดือน/วัน (ตามเวลาไทย)
+                boxPhotoUrl = await uploadBufferToDriveInFolder(buffer, mimeType, `AUDIT_${imeiClean}_${Date.now()}.jpg`, paymentProof.stockCheckFolderPath());
             } catch (err) {
                 console.error('Drive upload error (audit photo):', err.message || err);
                 return res.status(500).json({ success: false, message: `เกิดข้อผิดพลาดในการอัพโหลดภาพถ่ายไปยัง Google Drive: ${err.message || 'Unknown error'}` });

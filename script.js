@@ -171,7 +171,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // โหลดสคริปต์เฉพาะหน้า (js/page-<name>.js) แบบ dynamic ครั้งเดียว แล้ว cache ไว้
     // PAGE_SCRIPT_VERSION: บัมพ์เลขนี้ทุกครั้งที่แก้ไฟล์ใน js/ เพื่อไม่ให้เบราว์เซอร์ใช้ของเก่าที่ cache ไว้
-    const PAGE_SCRIPT_VERSION = 'apple_active_v205';
+    const PAGE_SCRIPT_VERSION = 'apple_active_v209';
     const __loadedPageScripts = {};
     function loadPageScript(name) {
         if (__loadedPageScripts[name]) return __loadedPageScripts[name];
@@ -224,7 +224,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // ไม่ได้รอ init function ถ้า HTML ยังไม่ถูกแทรกเข้า DOM ก่อน ตัวแปรที่ query ไว้จะเป็น null ถาวร
     // ชื่อ name ต้องตรงกับชื่อที่ใช้ใน loadPageScript — ไฟล์เดียวอาจมีหลาย <div id="view-XXX"> รวมกัน
     // ถ้าหน้านั้นถูก share โดยสคริปต์เดียวกันหลาย view (ดูตาราง mapping ในแผน)
-    const VIEW_FRAGMENT_VERSION = 'v179'; // บัมพ์เลขนี้ทุกครั้งที่แก้ไฟล์ใน views/
+    const VIEW_FRAGMENT_VERSION = 'v180'; // บัมพ์เลขนี้ทุกครั้งที่แก้ไฟล์ใน views/
     const __loadedPageViews = {};
     function loadPageView(name) {
         if (__loadedPageViews[name]) return __loadedPageViews[name];
@@ -4336,6 +4336,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const posCashAmountError = document.getElementById('pos-cash-amount-error');
     const posFinanceCompanyError = document.getElementById('pos-finance-company-error');
     const posFinanceDownAmountError = document.getElementById('pos-finance-down-amount-error');
+    const posProofInput = document.getElementById('pos-proof-input');
+    const posProofAddBtn = document.getElementById('pos-proof-add-btn');
+    const posProofPreviews = document.getElementById('pos-proof-previews');
+    const posProofCount = document.getElementById('pos-proof-count');
+    const posProofError = document.getElementById('pos-proof-error');
+    const posProofSectionEl = document.getElementById('pos-proof-section');
 
     // จับคู่ error message แต่ละอันกับช่องกรอก/กลุ่มที่ต้องขึ้นขอบแดงด้วย
     const posInlineErrorTargets = [
@@ -4382,6 +4388,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (error) error.classList.add('hidden');
             setBorder(false);
         });
+        if (posProofError) posProofError.classList.add('hidden');
     };
     const showPosInlineError = (el) => {
         clearPosInlineErrors();
@@ -4389,6 +4396,233 @@ document.addEventListener('DOMContentLoaded', () => {
         const target = posInlineErrorTargets.find(t => t.error === el);
         if (target) target.setBorder(true);
     };
+
+    // ===== หน้าต่างดูรูปแบบ popup (ซูมเข้า/ออก ลากเลื่อน เลื่อนดูรูปอื่น) ใช้ร่วมกันหลายหน้า =====
+    // ใช้ inline style ทั้งหมด เพราะ tailwind.css เป็นไฟล์ที่คอมไพล์ไว้ล่วงหน้า คลาสใหม่จะไม่มีสไตล์
+    window.openImageLightbox = (urls, startIndex = 0) => {
+        const list = (urls || []).filter(u => typeof u === 'string' && u.startsWith('https://'));
+        if (list.length === 0) return;
+        const existing = document.getElementById('image-lightbox');
+        if (existing) existing.remove();
+
+        let index = Math.min(Math.max(0, startIndex), list.length - 1);
+        let scale = 1, tx = 0, ty = 0;
+        const MIN = 1, MAX = 6;
+
+        const overlay = document.createElement('div');
+        overlay.id = 'image-lightbox';
+        overlay.setAttribute('role', 'dialog');
+        overlay.setAttribute('aria-modal', 'true');
+        overlay.setAttribute('aria-label', 'ดูรูปหลักฐาน');
+        overlay.style.cssText = 'position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,0.88);display:flex;align-items:center;justify-content:center;overflow:hidden;touch-action:none;';
+
+        const img = document.createElement('img');
+        img.alt = 'รูปหลักฐานการชำระเงิน';
+        img.draggable = false;
+        img.referrerPolicy = 'no-referrer';
+        img.style.cssText = 'max-width:92vw;max-height:86vh;object-fit:contain;user-select:none;transform-origin:center center;transition:transform 0.12s ease-out;cursor:zoom-in;';
+        overlay.appendChild(img);
+
+        const btnStyle = 'position:absolute;width:44px;height:44px;border-radius:9999px;border:none;background:rgba(255,255,255,0.16);color:#fff;font-size:24px;line-height:1;display:flex;align-items:center;justify-content:center;cursor:pointer;';
+        const mkBtn = (label, text, css, onClick) => {
+            const b = document.createElement('button');
+            b.type = 'button';
+            b.setAttribute('aria-label', label);
+            b.textContent = text;
+            b.style.cssText = btnStyle + css;
+            // กดปุ่มต้องไม่ถูกนับเป็นการคลิกพื้นหลัง (ซึ่งจะปิดหน้าต่าง)
+            b.addEventListener('click', (e) => { e.stopPropagation(); onClick(); });
+            b.addEventListener('pointerdown', (e) => e.stopPropagation());
+            overlay.appendChild(b);
+            return b;
+        };
+
+        const counter = document.createElement('div');
+        counter.style.cssText = 'position:absolute;top:22px;left:50%;transform:translateX(-50%);color:#fff;font-size:14px;background:rgba(0,0,0,0.4);padding:4px 12px;border-radius:9999px;';
+        overlay.appendChild(counter);
+
+        const zoomLabel = document.createElement('div');
+        zoomLabel.style.cssText = 'position:absolute;bottom:80px;left:50%;transform:translateX(-50%);color:#fff;font-size:13px;background:rgba(0,0,0,0.4);padding:3px 10px;border-radius:9999px;';
+        overlay.appendChild(zoomLabel);
+
+        const apply = () => {
+            if (scale <= MIN) { tx = 0; ty = 0; }
+            img.style.transform = `translate(${tx}px, ${ty}px) scale(${scale})`;
+            img.style.cursor = scale > MIN ? 'grab' : 'zoom-in';
+            zoomLabel.textContent = `${Math.round(scale * 100)}%`;
+        };
+        const setScale = (next) => {
+            scale = Math.min(MAX, Math.max(MIN, next));
+            apply();
+        };
+        const show = (i) => {
+            index = (i + list.length) % list.length;
+            scale = 1; tx = 0; ty = 0;
+            // ขอรูปความละเอียดสูงขึ้นสำหรับซูม (ลิงก์ thumbnail ของ Drive ปรับขนาดได้ด้วย sz=)
+            img.src = list[index].replace(/sz=w\d+/, 'sz=w2000');
+            counter.textContent = list.length > 1 ? `${index + 1} / ${list.length}` : '';
+            apply();
+        };
+
+        const close = () => {
+            document.removeEventListener('keydown', onKey, true);
+            overlay.remove();
+        };
+        const onKey = (e) => {
+            // Esc ต้องปิดแค่หน้าต่างดูรูป ไม่ให้ลามไปปิด popup รายละเอียดด้านหลัง
+            if (e.key === 'Escape') { e.stopImmediatePropagation(); close(); }
+            else if (e.key === '+' || e.key === '=') setScale(scale + 0.5);
+            else if (e.key === '-') setScale(scale - 0.5);
+            else if (e.key === 'ArrowRight' && list.length > 1) show(index + 1);
+            else if (e.key === 'ArrowLeft' && list.length > 1) show(index - 1);
+        };
+        document.addEventListener('keydown', onKey, true);
+
+        mkBtn('ปิด', '×', 'top:16px;right:16px;', close);
+        mkBtn('ซูมออก', '−', 'bottom:24px;left:calc(50% - 56px);', () => setScale(scale - 0.5));
+        mkBtn('ซูมเข้า', '+', 'bottom:24px;left:calc(50% + 12px);', () => setScale(scale + 0.5));
+        if (list.length > 1) {
+            mkBtn('รูปก่อนหน้า', '‹', 'top:50%;left:16px;transform:translateY(-50%);', () => show(index - 1));
+            mkBtn('รูปถัดไป', '›', 'top:50%;right:16px;transform:translateY(-50%);', () => show(index + 1));
+        }
+
+        // คลิกพื้นหลังเพื่อปิด · คลิกที่รูปไม่ปิด
+        overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+        overlay.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            setScale(scale + (e.deltaY < 0 ? 0.25 : -0.25));
+        }, { passive: false });
+        img.addEventListener('dblclick', () => setScale(scale > MIN ? MIN : 2.5));
+
+        // ลากเลื่อนรูปเมื่อซูมอยู่ (เมาส์/นิ้ว)
+        let drag = null;
+        img.addEventListener('pointerdown', (e) => {
+            if (scale <= MIN) return;
+            drag = { x: e.clientX - tx, y: e.clientY - ty };
+            img.setPointerCapture(e.pointerId);
+            img.style.transition = 'none';
+            img.style.cursor = 'grabbing';
+        });
+        img.addEventListener('pointermove', (e) => {
+            if (!drag) return;
+            tx = e.clientX - drag.x;
+            ty = e.clientY - drag.y;
+            apply();
+        });
+        const endDrag = () => {
+            drag = null;
+            img.style.transition = 'transform 0.12s ease-out';
+            apply();
+        };
+        img.addEventListener('pointerup', endDrag);
+        img.addEventListener('pointercancel', endDrag);
+
+        document.body.appendChild(overlay);
+        show(index);
+    };
+
+    // ===== หลักฐานการชำระเงิน (สลิปโอน / รูปเงินสด) =====
+    // เก็บเป็น data URL ที่ย่อแล้วในหน่วยความจำ แล้วส่งไปกับบิล เซิร์ฟเวอร์จะอัปโหลดขึ้น Drive เอง
+    const POS_PROOF_MAX = 5;
+    let posProofPhotos = [];
+    let posProofKind = ''; // ประเภทหลักฐานที่พนักงานเลือกเอง: เงินสด / เงินโอน / เงินสด+เงินโอน
+    const POS_PROOF_KIND_VALUE = { 'เงินสด': 'เงินสด', 'เงินโอน': 'โอน', 'เงินสด+เงินโอน': 'เงินสด+โอน' };
+    const posProofKindBtns = Array.from(document.querySelectorAll('.pos-proof-kind-btn'));
+    const syncPosProofKindUI = () => {
+        posProofKindBtns.forEach(btn => {
+            const active = POS_PROOF_KIND_VALUE[btn.dataset.proofKind] === posProofKind;
+            btn.setAttribute('aria-pressed', active ? 'true' : 'false');
+            btn.classList.toggle('bg-primary', active);
+            btn.classList.toggle('text-on-primary', active);
+            btn.classList.toggle('ring-1', active);
+            btn.classList.toggle('ring-accent-ink', active);
+            btn.classList.toggle('bg-surface-tile-2', !active);
+            btn.classList.toggle('text-body-muted', !active);
+        });
+    };
+    posProofKindBtns.forEach(btn => btn.addEventListener('click', () => {
+        posProofKind = POS_PROOF_KIND_VALUE[btn.dataset.proofKind] || '';
+        syncPosProofKindUI();
+        if (posProofError) posProofError.classList.add('hidden');
+    }));
+
+    // ย่อรูปจากกล้องมือถือ (หลาย MB) ให้ยาวด้านละไม่เกิน 1600px เป็น JPEG เพื่อไม่ให้คำขอขายใหญ่เกินไป
+    const compressProofImage = (file) => new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onerror = () => reject(new Error('อ่านไฟล์ไม่ได้'));
+        reader.onload = () => {
+            const img = new Image();
+            img.onerror = () => reject(new Error('เปิดรูปไม่ได้ (รองรับ JPG/PNG/WebP)'));
+            img.onload = () => {
+                const maxSide = 1600;
+                const scale = Math.min(1, maxSide / Math.max(img.width, img.height));
+                const canvas = document.createElement('canvas');
+                canvas.width = Math.max(1, Math.round(img.width * scale));
+                canvas.height = Math.max(1, Math.round(img.height * scale));
+                canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+                resolve(canvas.toDataURL('image/jpeg', 0.75));
+            };
+            img.src = reader.result;
+        };
+        reader.readAsDataURL(file);
+    });
+
+    const renderPosProofPreviews = () => {
+        if (!posProofPreviews) return;
+        posProofPreviews.querySelectorAll('[data-proof-item]').forEach(el => el.remove());
+        posProofPhotos.forEach((src, idx) => {
+            const wrap = document.createElement('div');
+            wrap.dataset.proofItem = '1';
+            // ใช้ inline style เพราะ tailwind.css เป็นไฟล์ที่คอมไพล์ไว้ล่วงหน้า คลาสใหม่ที่ไม่เคยใช้จะไม่มีสไตล์
+            wrap.style.cssText = 'position:relative;width:64px;height:64px;';
+            const img = document.createElement('img');
+            img.src = src;
+            img.alt = `หลักฐานรูปที่ ${idx + 1}`;
+            img.style.cssText = 'width:64px;height:64px;object-fit:cover;border-radius:8px;display:block;';
+            const del = document.createElement('button');
+            del.type = 'button';
+            del.setAttribute('aria-label', `ลบรูปหลักฐานที่ ${idx + 1}`);
+            del.style.cssText = 'position:absolute;top:-6px;right:-6px;width:20px;height:20px;border-radius:9999px;background:#ef4444;color:#fff;font-size:10px;display:flex;align-items:center;justify-content:center;cursor:pointer;';
+            del.innerHTML = '<i class="fa-solid fa-xmark"></i>';
+            del.addEventListener('click', () => {
+                posProofPhotos.splice(idx, 1);
+                renderPosProofPreviews();
+            });
+            wrap.append(img, del);
+            posProofPreviews.insertBefore(wrap, posProofAddBtn);
+        });
+        if (posProofAddBtn) posProofAddBtn.classList.toggle('hidden', posProofPhotos.length >= POS_PROOF_MAX);
+        if (posProofCount) posProofCount.textContent = `${posProofPhotos.length}/${POS_PROOF_MAX} รูป`;
+        if (posProofPhotos.length > 0 && posProofError) posProofError.classList.add('hidden');
+    };
+
+    const resetPosProofPhotos = () => {
+        posProofPhotos = [];
+        posProofKind = '';
+        syncPosProofKindUI();
+        if (posProofInput) posProofInput.value = '';
+        renderPosProofPreviews();
+    };
+
+    if (posProofAddBtn && posProofInput) {
+        posProofAddBtn.addEventListener('click', () => posProofInput.click());
+        posProofInput.addEventListener('change', async () => {
+            const files = Array.from(posProofInput.files || []);
+            posProofInput.value = '';
+            for (const file of files) {
+                if (posProofPhotos.length >= POS_PROOF_MAX) {
+                    showToast(`แนบรูปหลักฐานได้ไม่เกิน ${POS_PROOF_MAX} รูป`, 'error');
+                    break;
+                }
+                try {
+                    posProofPhotos.push(await compressProofImage(file));
+                } catch (err) {
+                    showToast(err.message || 'แนบรูปไม่สำเร็จ', 'error');
+                }
+            }
+            renderPosProofPreviews();
+        });
+    }
 
     const modalSubtotalDisplay = document.getElementById('modal-subtotal-display');
     const modalDiscountDisplay = document.getElementById('modal-discount-display');
@@ -6946,6 +7180,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const closeCheckoutModal = () => {
         if (!confirmPriceModal) return;
+        resetPosProofPhotos(); // รูปหลักฐานผูกกับบิลที่กำลังทำ ปิดป๊อปอัปแล้วต้องไม่ค้างไปบิลถัดไป
         confirmPriceModal.classList.add('opacity-0', 'pointer-events-none');
         const modalContent = confirmPriceModal.querySelector('.modal-content');
         if (modalContent) modalContent.classList.add('scale-95');
@@ -7056,6 +7291,14 @@ document.addEventListener('DOMContentLoaded', () => {
             feeTrans = feeTotal - feeCash;
         }
 
+        // ทุกบิลต้องเลือกประเภทและแนบรูปหลักฐานอย่างน้อย 1 รูป (ฝั่งเซิร์ฟเวอร์ตรวจซ้ำอีกชั้น)
+        if (posProofPhotos.length === 0 || !posProofKind) {
+            showToast(!posProofKind ? 'กรุณาเลือกประเภทหลักฐาน (เงินสด / เงินโอน / เงินสด+เงินโอน) ก่อนทำรายการ' : 'กรุณาแนบรูปหลักฐานการชำระเงิน (สลิปโอน/เงินสด) ก่อนทำรายการ', 'error');
+            showPosInlineError(posProofError);
+            if (posProofSectionEl) posProofSectionEl.scrollIntoView({ block: 'center', behavior: 'smooth' });
+            return;
+        }
+
         const discount = getPosDiscountValue(); // ค่าส่งขึ้นเซิร์ฟเวอร์ต้องไม่เกินยอดบิล (ติ๊กค่าธรรมเนียมออกทีหลังอาจทำให้เพดานลด)
         const depositVal = appliedDepositAmount ? (parseFloat(appliedDepositAmount.value) || 0) : 0;
         const subtotal = cart.reduce((sum, item) => sum + item.subtotal, 0);
@@ -7107,6 +7350,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 finance_fee_transfer: feeTrans,
                 contract_fee: contractFee,
                 icloud_fee: icloudFee,
+                payment_proof_photos: posProofPhotos,
+                payment_proof_kind: posProofKind,
                 branch_id
             };
 
@@ -7127,6 +7372,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 cart = [];
                 renderCart();
 
+                resetPosProofPhotos();
                 // Reset state and layouts
                 if (paymentMethod) paymentMethod.value = 'ซื้อสด';
                 if (typeof syncPaymentToggleUI === 'function') syncPaymentToggleUI();
