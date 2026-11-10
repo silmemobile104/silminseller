@@ -481,7 +481,8 @@ const executeFinalizeImport = async (poId, employeeId) => {
                 capacityId = cap ? cap._id : null;
             }
 
-            const cond = await ProductCondition.findOne({ name: 'มือ1' }) || await ProductCondition.findOne();
+            const cond = await ProductCondition.findOne({ name: item.condition || 'มือ1' })
+                || await ProductCondition.findOne({ name: 'มือ1' }) || await ProductCondition.findOne();
             conditionId = cond ? cond._id : null;
 
             if (po.supplier_name) {
@@ -598,7 +599,8 @@ const executeFinalizeImport = async (poId, employeeId) => {
             // สภาพสินค้า (มือ1/มือ2) เป็นเรื่องของเครื่อง ไม่ใช่ของอุปกรณ์เสริม
             // และ checkIsDevice ถือว่า "มี condition_id = เป็นเครื่อง" จึงต้องไม่ตั้งให้อุปกรณ์เสริม
             if (!isAccessoryItem) {
-                const cond = await ProductCondition.findOne({ name: 'มือ1' }) || await ProductCondition.findOne();
+                const cond = await ProductCondition.findOne({ name: item.condition || 'มือ1' })
+                    || await ProductCondition.findOne({ name: 'มือ1' }) || await ProductCondition.findOne();
                 conditionId = cond ? cond._id : null;
             }
 
@@ -1959,7 +1961,7 @@ router.put('/claims/:id/close', async (req, res) => {
 });
 
 // GET /api/suppliers/claim-discounts?supplier_name= — ส่วนลดจากเคลมที่ซัพรายนี้ให้มาแล้ว แยกตามชนิดสินค้า (ใช้แสดงตอนสร้างใบสั่งซื้อ)
-// นับทุกใบเคลมกรณีส่วนลดที่ปิดแล้ว — po_number บนใบเคลมเป็นแค่เลขอ้างอิง ระบบยังไม่ได้หักส่วนลดออกจากใบสั่งซื้อจริง จึงใช้เป็นเงื่อนไขกรองไม่ได้
+// นับทุกใบเคลมกรณีส่วนลดที่ปิดแล้ว — po_number บนใบเคลมเป็นแค่เลขอ้างอิง ส่วนที่ถูกหักจริงดูจาก applied_po (ว่าง = ยังใช้ได้) หน้าสร้างใบสั่งซื้อกรองเอง
 // ใบเก่าที่ไม่มี discount_kind ตีความเป็น device เพราะตอนนั้นเคลมได้เฉพาะเครื่องที่มี IMEI
 router.get('/suppliers/claim-discounts', async (req, res) => {
     try {
@@ -1978,7 +1980,7 @@ router.get('/suppliers/claim-discounts', async (req, res) => {
             const g = bySupplier[c.supplier_name] || (bySupplier[c.supplier_name] = blank());
             const k = c.resolution.discount_kind === 'accessory' ? 'accessory' : 'device';
             g[k].total += c.resolution.discount_amount;
-            g[k].claims.push({ claim_no: c.claim_no, amount: c.resolution.discount_amount, po_number: c.resolution.po_number || '', closed_at: c.closed_at,
+            g[k].claims.push({ id: String(c._id), claim_no: c.claim_no, amount: c.resolution.discount_amount, po_number: c.resolution.po_number || '', applied_po: c.resolution.applied_po_number || '', closed_at: c.closed_at,
                 items: (c.items || []).map(it => ({ product_name: it.product_name, color_name: it.color_name, imei: it.imei || '', quantity: it.quantity || 1 })) });
         });
         const data = name ? (bySupplier[name] || blank()) : bySupplier;
@@ -5933,6 +5935,8 @@ const normalizePoItem = (item) => {
         category: kind === 'accessory' ? '' : item.category,
         color: kind === 'accessory' ? '' : item.color,
         capacity: kind === 'accessory' ? '' : item.capacity,
+        // สภาพเครื่อง (มือ1/มือ2) เป็นของเครื่องเท่านั้น — ค่าอื่นนอกจากมือ2 ถือเป็นมือ1
+        condition: kind === 'accessory' ? '' : (item.condition === 'มือ2' ? 'มือ2' : 'มือ1'),
         unit: item.unit,
         track_imei: kind === 'accessory' ? false : !!item.track_imei,
         ordered_qty: Number(item.ordered_qty),
@@ -5949,6 +5953,62 @@ const parsePoDueDate = (value) => {
     if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return undefined;
     const d = new Date(`${value}T00:00:00.000Z`);
     return isNaN(d.getTime()) ? undefined : d;
+};
+
+// หักส่วนลดจากเคลมลงใบสั่งซื้อที่กำลังสร้าง (ผู้ใช้กดปุ่ม "ใช้ส่วนลด" ในฟอร์ม แล้วส่ง claim_ids มา)
+// - ส่วนลดชนิด device หักจากยอดของรายการมือถือ/แท็บเล็ต, accessory หักจากยอดอุปกรณ์เสริม — ห้ามข้ามชนิดกัน
+// - เก็บลง po.discount (ที่เดียวกับส่วนลดตอนจ่ายเงิน) ยอดค้างจ่าย/บัญชีจึงลดตามเองทุกหน้า และกระจายลง discount_per_unit ของชนิดนั้น
+// - จองใบเคลมแบบ atomic (เฉพาะใบที่ยังไม่ถูกใช้) กันสองคนกดใช้ใบเดียวกันพร้อมกัน
+// คืน { error, status } ถ้าใช้ไม่ได้ / { claimIds } ที่จองสำเร็จแล้วให้ผู้เรียกคืนค่าเองถ้าบันทึกใบสั่งซื้อไม่สำเร็จ
+const applyClaimDiscountsToPO = async (po, rawClaimIds) => {
+    const ids = [...new Set((Array.isArray(rawClaimIds) ? rawClaimIds : []).map(String))];
+    if (!ids.length) return { claimIds: [] };
+    if (!ids.every(id => mongoose.Types.ObjectId.isValid(id))) return { error: 'รหัสส่วนลดเคลมไม่ถูกต้อง', status: 400 };
+
+    const claims = await Claim.find({
+        _id: { $in: ids }, claim_type: 'discount', status: 'ปิดเคลม',
+        supplier_name: po.supplier_name, 'resolution.applied_po_number': { $in: ['', null] }
+    }).select('claim_no resolution').lean();
+    if (claims.length !== ids.length) {
+        return { error: 'ส่วนลดเคลมบางรายการใช้ไปแล้วหรือไม่ตรงกับ Supplier นี้ กรุณาเลือกใหม่', status: 409 };
+    }
+
+    const byKind = { device: 0, accessory: 0 };
+    claims.forEach(c => { byKind[c.resolution.discount_kind === 'accessory' ? 'accessory' : 'device'] += c.resolution.discount_amount || 0; });
+
+    const kindOf = (i) => (i.item_kind === 'accessory' ? 'accessory' : 'device');
+    const names = { device: 'เครื่อง (มือถือ/แท็บเล็ต)', accessory: 'อุปกรณ์เสริม' };
+    for (const kind of ['device', 'accessory']) {
+        if (!(byKind[kind] > 0)) continue;
+        const rows = po.items.filter(i => kindOf(i) === kind);
+        const subtotal = rows.reduce((t, i) => t + i.cost_price * i.ordered_qty, 0);
+        if (!rows.length) return { error: `ใช้ส่วนลดสำหรับ${names[kind]}ไม่ได้ เพราะใบสั่งซื้อนี้ไม่มีรายการ${names[kind]}`, status: 400 };
+        if (byKind[kind] > subtotal + 0.01) return { error: `ส่วนลดสำหรับ${names[kind]} (฿${byKind[kind].toFixed(2)}) เกินยอดสินค้าชนิดนี้ในใบ (฿${subtotal.toFixed(2)})`, status: 400 };
+        const qty = rows.reduce((t, i) => t + i.ordered_qty, 0);
+        rows.forEach(i => { i.discount_per_unit = Math.min(i.cost_price, (i.discount_per_unit || 0) + byKind[kind] / qty); });
+    }
+
+    // จองใบเคลม — ถ้าจองได้ไม่ครบ (มีคนตัดหน้า) ให้คืนที่จองไปแล้วและแจ้งผู้ใช้
+    const claimed = await Claim.updateMany(
+        { _id: { $in: ids }, 'resolution.applied_po_number': { $in: ['', null] } },
+        { $set: { 'resolution.applied_po_number': po.po_number } }
+    );
+    if (claimed.modifiedCount !== ids.length) {
+        await Claim.updateMany({ _id: { $in: ids }, 'resolution.applied_po_number': po.po_number }, { $set: { 'resolution.applied_po_number': '' } });
+        return { error: 'ส่วนลดเคลมถูกใช้ไปแล้วระหว่างทำรายการ กรุณาเลือกใหม่', status: 409 };
+    }
+
+    po.discount = (po.discount || 0) + byKind.device + byKind.accessory;
+    const lines = [];
+    if (byKind.device > 0) lines.push(`เครื่อง ฿${byKind.device}`);
+    if (byKind.accessory > 0) lines.push(`อุปกรณ์เสริม ฿${byKind.accessory}`);
+    po.discount_remark = `[ส่วนลดจากเคลม ${lines.join(' + ')}]: ${claims.map(c => c.claim_no).join(', ')}`;
+    return { claimIds: ids };
+};
+const releaseClaimDiscounts = async (poNumber) => {
+    const ids = await Claim.distinct('_id', { 'resolution.applied_po_number': poNumber });
+    await Claim.updateMany({ _id: { $in: ids } }, { $set: { 'resolution.applied_po_number': '' } });
+    ids.forEach(id => queueAcctRefresh('claim', id)); // ส่วนลดกลับไปนับที่ใบเคลมตามเดิม
 };
 
 // จดชื่อ+รหัสของอุปกรณ์เสริมที่เพิ่งตั้งใหม่ ลง master data (ProductName) ทันทีที่สร้างใบสั่งซื้อ
@@ -6060,7 +6120,15 @@ router.post('/purchase-orders', async (req, res) => {
             status: 'รอจัดส่ง'
         });
 
-        await newPO.save();
+        const applied = await applyClaimDiscountsToPO(newPO, req.body.claim_ids);
+        if (applied.error) return res.status(applied.status).json({ success: false, message: applied.error });
+        try {
+            await newPO.save();
+        } catch (saveErr) {
+            if (applied.claimIds.length) await releaseClaimDiscounts(po_number); // บันทึกใบสั่งซื้อไม่สำเร็จ คืนส่วนลดเคลมที่จองไว้
+            throw saveErr;
+        }
+        applied.claimIds.forEach(id => queueAcctRefresh('claim', id)); // ส่วนลดย้ายไปนับที่ใบสั่งซื้อ — คำนวณบัญชีของใบเคลมใหม่
         queueAcctRefresh('purchase_order', newPO._id); // PO ใหม่: ยอดค้างจ่ายนับตั้งแต่สั่งซื้อ (นิยามเดียวกับ ap-summary)
         await registerAccessoryProductNames(poItems);
         await linkDeviceNameTypes(poItems);
@@ -6112,7 +6180,15 @@ router.post('/po/create', async (req, res) => {
             status: 'รอจัดส่ง'
         });
 
-        await newPO.save();
+        const applied = await applyClaimDiscountsToPO(newPO, req.body.claim_ids);
+        if (applied.error) return res.status(applied.status).json({ success: false, message: applied.error });
+        try {
+            await newPO.save();
+        } catch (saveErr) {
+            if (applied.claimIds.length) await releaseClaimDiscounts(po_number); // บันทึกใบสั่งซื้อไม่สำเร็จ คืนส่วนลดเคลมที่จองไว้
+            throw saveErr;
+        }
+        applied.claimIds.forEach(id => queueAcctRefresh('claim', id)); // ส่วนลดย้ายไปนับที่ใบสั่งซื้อ — คำนวณบัญชีของใบเคลมใหม่
         queueAcctRefresh('purchase_order', newPO._id);
         await registerAccessoryProductNames(poItems);
         await linkDeviceNameTypes(poItems);
@@ -6242,9 +6318,14 @@ router.post('/purchase-orders/:id/cancel', async (req, res) => {
             return res.status(400).json({ success: false, message: 'ไม่สามารถยกเลิกใบสั่งซื้อที่ถูกจัดส่งหรือนำเข้าคลังแล้วได้' });
         }
 
+        if ((po.paid_amount || 0) > 0) {
+            return res.status(400).json({ success: false, message: 'ใบสั่งซื้อนี้จ่ายเงินไปแล้ว ไม่สามารถยกเลิกได้' });
+        }
+
         po.status = 'ยกเลิก';
         await po.save();
         queueAcctRefresh('purchase_order', po._id); // ยกเลิก PO = ยอดของ PO นี้หายทั้งหมด
+        await releaseClaimDiscounts(po.po_number); // ส่วนลดเคลมที่ใช้กับใบนี้กลับมาใช้กับใบอื่นได้
 
         await logActivity(req, 'CANCEL', 'PO', `ยกเลิกใบสั่งซื้อ เลขที่ ${po.po_number}`, po.po_number, po._id);
 

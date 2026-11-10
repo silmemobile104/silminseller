@@ -72,11 +72,12 @@
             <table class="w-full text-left text-sm whitespace-nowrap border-collapse">
                 <thead class="bg-panel/40 text-ink">
                     <tr>
-                        <!-- w-full ให้คอลัมน์แรกดูดพื้นที่ว่างทั้งหมดไว้ คอลัมน์ตัวเลขจะได้เกาะกลุ่มกันชิดขวา
-                             ไม่ลอยอยู่กลางตารางเวลาจอกว้าง (ตารางนี้มีแค่ 3 คอลัมน์ ต่างจากหน้า #stock ที่มี 9) -->
-                        <th class="px-6 py-4 font-semibold text-[15px] w-full">สินค้า / รายละเอียด</th>
-                        <th class="px-6 py-4 font-semibold text-[15px] text-center">คงเหลือ</th>
+                        <th class="px-6 py-4 font-semibold text-[15px]">รหัสสินค้า</th>
+                        <th class="px-6 py-4 font-semibold text-[15px]">ชื่อสินค้า</th>
+                        <th class="px-6 py-4 font-semibold text-[15px]">หมวดหมู่</th>
                         <th class="px-6 py-4 font-semibold text-[15px] text-right">ราคาขาย</th>
+                        <th class="px-6 py-4 font-semibold text-[15px] text-center">คงเหลือ</th>
+                        <th class="px-6 py-4 font-semibold text-[15px]">สถานะ</th>
                     </tr>
                 </thead>
                 <tbody id="table-body-branch-mystock" class="divide-y divide-divider">
@@ -101,6 +102,13 @@
                     <input type="text" id="search-branch-globalstock" placeholder="ค้นหา ชื่อ/สาขา/รหัส..." autocomplete="off"
                         aria-label="ค้นหาสินค้าและราคาของสาขาอื่น ด้วยชื่อสินค้า ชื่อสาขา หรือรหัสสินค้า"
                         class="w-full h-10 pl-10 pr-4 rounded-xl bg-field text-ink text-sm placeholder:text-ink-muted-48 focus:outline-none focus:ring-1 focus:ring-accent-ink transition-all">
+                </div>
+                <div class="relative w-full sm:w-auto">
+                    <select id="filter-branch-globalstock-branch" aria-label="กรองตามที่จัดเก็บ (สาขา)"
+                        class="w-full h-10 pl-3.5 pr-9 rounded-xl bg-field text-ink text-sm cursor-pointer appearance-none focus:outline-none focus:ring-1 focus:ring-accent-ink [&>option]:bg-canvas-elevated">
+                        <option value="ALL">ที่จัดเก็บ: ทั้งหมด</option>
+                    </select>
+                    <i class="fa-solid fa-chevron-down absolute right-3.5 top-1/2 -translate-y-1/2 text-[10px] text-body-muted pointer-events-none"></i>
                 </div>
                 <div class="relative w-full sm:w-auto">
                     <select id="filter-branch-globalstock-type" aria-label="กรองตามประเภทสินค้า"
@@ -138,9 +146,12 @@
             <table class="w-full text-left text-sm whitespace-nowrap border-collapse">
                 <thead class="bg-panel/40 text-ink">
                     <tr>
-                        <th class="px-6 py-4 font-semibold text-[15px] w-full">สินค้า / สาขา / รายละเอียด</th>
-                        <th class="px-6 py-4 font-semibold text-[15px] text-center">คงเหลือ</th>
+                        <th class="px-6 py-4 font-semibold text-[15px]">รหัสสินค้า</th>
+                        <th class="px-6 py-4 font-semibold text-[15px]">ชื่อสินค้า</th>
+                        <th class="px-6 py-4 font-semibold text-[15px]">ที่จัดเก็บ</th>
+                        <th class="px-6 py-4 font-semibold text-[15px]">หมวดหมู่</th>
                         <th class="px-6 py-4 font-semibold text-[15px] text-right">ราคาขายอ้างอิง</th>
+                        <th class="px-6 py-4 font-semibold text-[15px] text-center">คงเหลือ</th>
                     </tr>
                 </thead>
                 <tbody id="table-body-branch-globalstock" class="divide-y divide-divider">

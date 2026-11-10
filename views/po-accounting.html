@@ -822,6 +822,7 @@
                             <th class="px-6 py-4 font-semibold text-[15px]">Supplier</th>
                             <th class="px-6 py-4 font-semibold text-[15px] text-center">สถานะนำเข้าสต็อก</th>
                             <th class="px-6 py-4 font-semibold text-[15px] text-right">ยอดรวม</th>
+                            <th class="px-6 py-4 font-semibold text-[15px] text-right">ส่วนลด</th>
                             <th class="px-6 py-4 font-semibold text-[15px] text-right">ค้างชำระ</th>
                             <th class="px-6 py-4 font-semibold text-[15px] text-right">จัดการ</th>
                         </tr>
@@ -936,6 +937,9 @@
                             </button>
                         </div>
                     </div>
+
+                    <!-- สรุปยอดหลังหักส่วนลดจากเคลม (โชว์เมื่อกด "ใช้ส่วนลด") — เติมจาก js/page-po-accounting.js -->
+                    <div id="po-discount-summary" class="hidden" aria-live="polite"></div>
 
                     <!-- Hidden Summary for JS compatibility -->
                     <div class="hidden">

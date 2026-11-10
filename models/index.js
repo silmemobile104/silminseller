@@ -387,10 +387,13 @@ const claimSchema = new mongoose.Schema({
         received_items: [{ _id: false, original_imei: String, new_imei: String, product_id: mongoose.Schema.Types.ObjectId, quantity: Number }], // เครื่องที่ได้รับ (ใช้ IMEI เดิมได้ถ้าซ่อมแล้วคืน)
         cash_amount: { type: Number, default: 0 },
         received_date: { type: Date, default: null },
-        discount_amount: { type: Number, default: 0 },  // เครดิตส่วนลดจากซัพ — ระยะนี้บันทึกอย่างเดียว ไม่ไปแก้ใบสั่งซื้อ
+        discount_amount: { type: Number, default: 0 },  // เครดิตส่วนลดจากซัพ — หักลงใบสั่งซื้อตอนสร้างใบ (ดู applied_po_number)
         // ส่วนลดนี้ใช้กับสินค้าชนิดไหนในใบสั่งซื้อ: device = มือถือ/แท็บเล็ต, accessory = อุปกรณ์เสริม (ใบเก่าที่ไม่มีค่า = device)
         discount_kind: { type: String, enum: ['device', 'accessory', null], default: null },
-        po_number: { type: String, default: '' }         // ใบสั่งซื้อที่จะใช้หักส่วนลด (อ้างอิง ไม่บังคับ)
+        po_number: { type: String, default: '' },        // ใบสั่งซื้อที่จะใช้หักส่วนลด (อ้างอิง ไม่บังคับ)
+        // ใบสั่งซื้อที่หักส่วนลดนี้ไปจริงแล้ว (ตอนสร้างใบสั่งซื้อแล้วกด "ใช้ส่วนลด") — ว่าง = ยังไม่ถูกใช้ ใช้ซ้ำไม่ได้
+        // ยกเลิกใบสั่งซื้อแล้วจะถูกเคลียร์เป็นว่างเพื่อให้กลับมาใช้ได้อีก
+        applied_po_number: { type: String, default: '' }
     },
     created_by: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee', required: true },
     created_by_name: { type: String, default: '' },
@@ -583,6 +586,8 @@ const purchaseOrderSchema = new mongoose.Schema({
         category: { type: String },
         color: { type: String },
         capacity: { type: String },
+        // สภาพเครื่อง: ชื่อใน ProductCondition ('มือ1' / 'มือ2') — ใบเก่าไม่มีค่า ให้ตีความเป็น มือ1 ตอนนำเข้า
+        condition: { type: String },
         unit: { type: String },
         track_imei: { type: Boolean, default: false },
         ordered_qty: { type: Number, required: true },

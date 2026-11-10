@@ -3,278 +3,119 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ใบสั่งซื้อสินค้า (Purchase Order)</title>
+    <title>ใบสั่งซื้อ (Purchase Order)</title>
     <link rel="stylesheet" href="vendor/fonts/fonts.css?v=2">
     <style>
-        :root {
-            --border-color: #000;
-        }
-
-        body {
-            font-family: 'Sarabun', 'Prompt', 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
-            background: #f0f0f0;
-            margin: 0;
-            padding: 20px;
-            color: #000;
-            font-size: 14px;
-        }
-
-        .page {
-            background: #fff;
-            max-width: 210mm; /* A4 width */
-            min-height: 297mm; /* A4 height */
-            margin: 0 auto;
-            padding: 15mm;
-            box-shadow: 0 0 10px rgba(0,0,0,0.1);
-            box-sizing: border-box;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .content-area {
-            flex: 1;
-        }
-
-        /* Header Section */
-        .header-container {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 30px;
-            border-bottom: 2px solid var(--border-color);
-            padding-bottom: 15px;
-        }
-
-        .company-info {
-            flex: 1.2;
-        }
-
-        .company-name {
-            font-size: 20px;
-            font-weight: 700;
-            margin-bottom: 5px;
-        }
-
-        .company-address {
-            font-size: 12px;
-            line-height: 1.5;
-            color: #333;
-        }
-
-        .document-info {
-            flex: 0.8;
-            text-align: right;
-        }
-
-        .doc-title {
-            font-size: 24px;
-            font-weight: 700;
-            margin-bottom: 10px;
-            letter-spacing: 1px;
-        }
-
-        .meta-grid {
-            display: grid;
-            grid-template-columns: auto 1fr;
-            gap: 5px 15px;
-            font-size: 14px;
-            text-align: left;
-            margin-left: auto;
-            width: fit-content;
-        }
-
-        .meta-label {
-            font-weight: 600;
-            text-align: right;
-        }
-
-        /* Details Section */
-        .details-container {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 20px;
-            margin-bottom: 25px;
-            background-color: #fcfcfc;
-            border: 1px solid #ddd;
-            padding: 15px;
-            border-radius: 6px;
-        }
-
-        .details-box h4 {
-            margin: 0 0 8px 0;
-            font-size: 15px;
-            font-weight: 700;
-            border-bottom: 1px solid #eee;
-            padding-bottom: 5px;
-            color: #111;
-        }
-
-        .details-box div {
-            line-height: 1.7;
-        }
-
-        /* Table Section */
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-bottom: 30px;
-            font-size: 13px;
-        }
-
-        th, td {
-            border: 1px solid var(--border-color);
-            padding: 10px 8px;
-            text-align: left;
-        }
-
-        th {
-            background-color: #f5f5f5;
-            font-weight: 600;
-            text-align: center;
-        }
-
-        td.center { text-align: center; }
-        td.right { text-align: right; }
-
-        .summary-row td {
-            font-weight: 700;
-            background-color: #f5f5f5;
-        }
-
-        /* Signatures Section */
-        .signatures {
-            display: flex;
-            justify-content: space-between;
-            margin-top: 50px;
-            padding: 0 10px;
-        }
-
-        .sign-box {
-            text-align: center;
-            width: 30%;
-        }
-
-        .sign-line {
-            margin-top: 50px;
-            border-bottom: 1px dotted var(--border-color);
-            margin-bottom: 8px;
-        }
-
-        .sign-name {
-            margin-bottom: 5px;
-            font-weight: 500;
-        }
-
-        .sign-title {
-            font-size: 12px;
-            color: #555;
-        }
-
-        /* Print adjustments */
+        :root { --line: #000; --head-bg: #dde6f0; }
+        * { box-sizing: border-box; }
+        body { font-family: 'Sarabun', 'Prompt', 'Outfit', sans-serif; background: #f0f0f0; margin: 0; padding: 20px; color: #000; font-size: 13px; }
+        .page { background: #fff; width: 210mm; min-height: 297mm; margin: 0 auto; padding: 10mm; box-shadow: 0 0 10px rgba(0,0,0,.1); display: flex; flex-direction: column; }
+        .top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }
+        .top img { width: 75px; height: 75px; object-fit: contain; display: block; margin-bottom: 8px; }
+        .company { font-size: 12.5px; line-height: 1.35; font-weight: 500; }
+        .docbox { width: 62mm; border: 1px solid var(--line); border-collapse: collapse; }
+        .docbox td { border: 1px solid var(--line); padding: 5px 8px; text-align: center; }
+        .docbox .t1, .docbox .t2 { background: var(--head-bg); }
+        .docbox .t1 { font-size: 15px; font-weight: 600; }
+        .info { display: grid; grid-template-columns: 1fr 1fr; border: 1px solid var(--line); margin-bottom: 8px; font-size: 12.5px; }
+        .info .col { padding: 6px 8px; min-height: 36mm; }
+        .info .col + .col { border-left: 1px solid var(--line); }
+        .row { display: flex; line-height: 1.9; }
+        .row b { font-weight: 400; width: 70px; flex: none; }
+        .items { width: 100%; border-collapse: collapse; flex: 1; }
+        .items th, .items td { border-left: 1px solid var(--line); border-right: 1px solid var(--line); padding: 4px 8px; font-size: 12.5px; }
+        .items thead th { background: var(--head-bg); border: 1px solid var(--line); font-weight: 500; padding: 7px 8px; }
+        .items tbody td { vertical-align: top; }
+        .items tbody tr.fill td { height: 100%; }
+        .items tfoot td { border: 1px solid var(--line); }
+        .r { text-align: right; } .c { text-align: center; }
+        .sum td { padding: 4px 8px; }
+        .sum .lbl { text-align: right; }
+        .sum .total td { background: var(--head-bg); font-weight: 500; }
+        .sign { display: grid; grid-template-columns: 1fr 1fr; border: 1px solid var(--line); margin-top: 8px; text-align: center; font-size: 12.5px; }
+        .sign .box { padding: 8px 14px 6px; }
+        .sign .space { height: 22mm; border-bottom: 1px solid #888; margin: 0 4px 6px; }
+        .pageno { text-align: center; margin-top: 4px; font-size: 12px; }
         @media print {
             body { background: #fff; padding: 0; }
-            .page { box-shadow: none; margin: 0; padding: 10mm; max-width: none; min-height: 297mm; }
-            .content-area { flex: 1; }
+            .page { box-shadow: none; margin: 0; width: auto; min-height: 297mm; }
             @page { size: A4; margin: 0; }
+            * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
         }
     </style>
 </head>
 <body>
-
 <div class="page">
-    <div class="content-area">
-        <!-- Header -->
-        <div class="header-container">
-            <div class="company-info">
-                <img src="main_logo_silmin.jpg" alt="Logo" style="width:150px; height:auto;"><br><br>
-                <div class="company-name">บริษัท ซิลมีน โมบาย จำกัด (สาขา <span id="doc-branch-name"></span>)</div>
-                <div class="company-address">เลขประจำตัวผู้เสียภาษี : 0955562000701 </div>
-            </div>
-            <div class="document-info">
-                <table style="width: 100%; border-collapse: collapse; border: 1px solid #000; text-align: left; table-layout: fixed;">
-                    <tr>
-                        <td colspan="2" style="border: 1px solid #000; padding: 8px; font-weight: 700; font-size: 18px; text-align: center; background-color: #f5f5f5; color: #000; letter-spacing: 0.5px;">
-                            ใบสั่งซื้อ
-                        </td>
-                    </tr>
-                    <tr>
-                        <td colspan="2" style="border: 1px solid #000; padding: 5px; font-weight: 600; font-size: 12px; text-align: center; color: #444; letter-spacing: 0.5px;">
-                            PURCHASE ORDER
-                        </td>
-                    </tr>
-                    <tr>
-                        <th style="width: 45%; background-color: #f5f5f5; border: 1px solid #000; padding: 6px 8px; font-weight: 600; font-size: 11px; text-align: left; line-height: 1.2;">เลขที่ PO / PO No.</th>
-                        <td id="doc-po-number" style="border: 1px solid #000; padding: 6px 8px; font-family: monospace; font-weight: bold; font-size: 12px; text-align: left; line-height: 1.2;">-</td>
-                    </tr>
-                    <tr>
-                        <th style="width: 45%; background-color: #f5f5f5; border: 1px solid #000; padding: 6px 8px; font-weight: 600; font-size: 11px; text-align: left; line-height: 1.2;">วันที่ / Date</th>
-                        <td id="doc-po-date" style="border: 1px solid #000; padding: 6px 8px; font-size: 11.5px; text-align: left; line-height: 1.2;">-</td>
-                    </tr>
-                </table>
+    <div class="top">
+        <div>
+            <img src="main_logo_silmin.jpg" alt="Silmin Mobile">
+            <div class="company">
+                บริษัท ซิลมีน โมบาย จำกัด (สาขา<span id="doc-branch-name">-</span>)<br>
+                <span id="doc-branch-address"></span><br>
+                เลขประจำตัวผู้เสียภาษี 0955562000701
             </div>
         </div>
-
-        <!-- Details -->
-        <div class="details-container">
-            <div class="details-box">
-                <h4>ผู้จำหน่าย (Supplier)</h4>
-                <div><strong>ชื่อซัพพลายเออร์:</strong> <span id="doc-supplier-name">-</span></div>
-                <div><strong>ที่อยู่:</strong> <span id="doc-supplier-address">ที่อยู่ของซัพพลายเออร์</span></div>
-            </div>
-            <div class="details-box">
-                <h4>ผู้จัดซื้อ (Purchaser)</h4>
-                <div><strong>ชื่อผู้จัดซื้อ:</strong> <span id="doc-purchaser-name">-</span></div>
-                <div><strong>ตำแหน่ง:</strong> <span id="doc-position">-</span></div>
-                <div><strong>เบอร์โทรศัพท์:</strong> <span id="doc-phone">-</span></div>
-                <div><strong>ที่อยู่จัดส่ง:</strong> <span id="doc-branch-address">ที่อยู่ของสาขาปลายทาง</span></div>
-            </div>
-        </div>
-
-        <!-- Data Table -->
-        <table>
-            <thead>
-                <tr>
-                    <th style="width: 50px;">ลำดับ</th>
-                    <th>ชื่อสินค้า / รายละเอียดสินค้า</th>
-                    <th style="width: 100px;">จำนวนสั่ง</th>
-                    <th style="width: 110px;">ราคาทุน/ชิ้น</th>
-                    <th style="width: 130px;">ยอดรวมเงิน</th>
-                </tr>
-            </thead>
-            <tbody id="doc-table-body">
-                <!-- Dynamic rows will be inserted here -->
-            </tbody>
-            <tfoot>
-                <tr class="summary-row">
-                    <td colspan="2" id="doc-grand-total-text" style="font-size: 12.5px; font-weight: 500; text-align: center; color: #111;">(-)</td>
-                    <td class="center" id="doc-total-qty">-</td>
-                    <td class="right" style="font-size: 12px; font-weight: bold; width: 110px;">ราคารวมสุทธิ</td>
-                    <td class="right" id="doc-grand-total" style="font-family: monospace; font-size: 15px;">฿0</td>
-                </tr>
-            </tfoot>
+        <table class="docbox">
+            <tr><td colspan="2" class="t1">ใบสั่งซื้อ</td></tr>
+            <tr><td colspan="2" class="t2">Purchase Order</td></tr>
+            <tr><td style="width:35%">เลขที่</td><td id="doc-po-number">-</td></tr>
+            <tr><td>วันที่</td><td id="doc-po-date">-</td></tr>
         </table>
     </div>
 
-    <!-- Signatures -->
-    <div class="signatures">
-        <div class="sign-box">
-            <div style="font-weight: 600;">ผู้สั่งซื้อ</div>
-            <div class="sign-line"></div>
-            <div class="sign-name">(<span id="doc-sign-purchaser-name">...................................................</span>)</div>
-            <div style="font-size: 11px; margin-top: 5px;">วันที่ ......../......../........</div>
+    <div class="info">
+        <div class="col">
+            <div class="row"><b>ผู้จำหน่าย</b><span id="doc-supplier-name">-</span></div>
+            <div class="row"><b>ที่อยู่</b><span id="doc-supplier-address">-</span></div>
+            <div class="row" style="margin-top:14mm"><b>ติดต่อกับ</b><span></span></div>
         </div>
-        <div class="sign-box">
-            <div style="font-weight: 600;">ฝ่ายจัดซื้อ/การเงิน</div>
-            <div class="sign-line"></div>
-            <div class="sign-name">(นางสาวมารีแย ดีอเระ)</div>
-            <div style="font-size: 11px; margin-top: 5px;">วันที่ ......../......../........</div>
-        </div>
-        <div class="sign-box">
-            <div style="font-weight: 600;">ผู้อนุมัติ</div>
-            <div class="sign-line"></div>
-            <div class="sign-name">(นางสาวซาฟาวาตี อาบูวะ)</div>
-            <div style="font-size: 11px; margin-top: 5px;">วันที่ ......../......../........</div>
+        <div class="col">
+            <div class="row"><b>เครดิต</b><span id="doc-credit">สด</span></div>
+            <div class="row"><b>กำหนดส่ง</b><span id="doc-delivery"></span></div>
+            <div class="row"><b>สั่งซื้อโดย</b><span id="doc-purchaser-name">-</span></div>
+            <div class="row"><b>แผนก</b><span>ฝ่ายจัดซื้อ</span></div>
+            <div class="row"><b>เบอร์ติดต่อ</b><span id="doc-phone"></span></div>
         </div>
     </div>
+
+    <table class="items">
+        <thead>
+            <tr>
+                <th style="width:38px">No.</th>
+                <th>รายการ</th>
+                <th style="width:90px">จำนวน</th>
+                <th style="width:90px">ราคาต่อหน่วย</th>
+                <th style="width:70px">ส่วนลด</th>
+                <th style="width:100px">รวมเงิน</th>
+            </tr>
+        </thead>
+        <tbody id="doc-table-body"></tbody>
+        <tfoot>
+            <tr class="sum"><td colspan="3" rowspan="4"></td><td colspan="2" class="lbl">รวมมูลค่าสินค้า</td><td class="r" id="doc-subtotal">0.00</td></tr>
+            <tr class="sum"><td colspan="2" class="lbl">ส่วนลด</td><td class="r" id="doc-discount">0.00</td></tr>
+            <tr class="sum"><td colspan="2" class="lbl">หลังหักส่วนลด</td><td class="r" id="doc-after-discount">0.00</td></tr>
+            <tr class="sum"><td colspan="2" class="lbl">ภาษีมูลค่าเพิ่ม</td><td class="r" id="doc-vat">0.00</td></tr>
+            <tr class="sum total"><td colspan="3" class="c" id="doc-grand-total-text">-</td><td colspan="2" class="lbl">รวมทั้งสิ้น</td><td class="r" id="doc-grand-total">0.00</td></tr>
+        </tfoot>
+    </table>
+
+    <div class="sign">
+        <div class="box">
+            <div>ผู้สั่งซื้อ</div>
+            <div class="space"></div>
+            <div id="doc-sign-purchaser-name">-</div>
+            <div>ฝ่ายจัดซื้อ</div>
+            <div style="margin-top:6px">วันที่ .............................</div>
+        </div>
+        <div class="box">
+            <div>ผู้อนุมัติ</div>
+            <div class="space"></div>
+            <div>ซาฟาวาตี อาบูวะ</div>
+            <div>ฝ่ายสต๊อก</div>
+            <div style="margin-top:6px">วันที่ .............................</div>
+        </div>
+    </div>
+    <div class="pageno">หน้า 1 of 1</div>
 </div>
 
 <script>
@@ -282,63 +123,63 @@
         if (num === null || num === undefined || isNaN(num)) return '';
         num = Math.round(num * 100) / 100;
         if (num === 0) return 'ศูนย์บาทถ้วน';
-        
+
         const numbers = ['ศูนย์', 'หนึ่ง', 'สอง', 'สาม', 'สี่', 'ห้า', 'หก', 'เจ็ด', 'แปด', 'เก้า'];
         const positions = ['', 'สิบ', 'ร้อย', 'พัน', 'หมื่น', 'แสน', 'ล้าน'];
-        
+
         const parts = num.toString().split('.');
         let bahtStr = '';
         let satangStr = '';
-        
+
         const bahtVal = parts[0];
         if (bahtVal !== '0') {
             const len = bahtVal.length;
             for (let i = 0; i < len; i++) {
                 const digit = parseInt(bahtVal.charAt(i));
                 const pos = len - i - 1;
-                
+
                 if (digit !== 0) {
                     let word = numbers[digit];
                     let unit = positions[pos % 6];
-                    
+
                     if (pos % 6 === 1) {
                         if (digit === 1) word = '';
                         else if (digit === 2) word = 'ยี่';
                     }
-                    
+
                     if (pos % 6 === 0 && len > 1 && digit === 1) {
                         if (i > 0 && bahtVal.charAt(i - 1) !== '0') {
                             word = 'เอ็ด';
                         }
                     }
-                    
+
                     bahtStr += word + unit;
                 }
-                
+
                 if (pos > 0 && pos % 6 === 0) {
                     bahtStr += 'ล้าน';
                 }
             }
             bahtStr += 'บาท';
         }
-        
+
         const satangVal = parts[1];
         if (satangVal && satangVal !== '00') {
             let satangNum = parseInt(satangVal);
             if (satangVal.length === 1) satangNum *= 10;
-            
+
             const digit1 = Math.floor(satangNum / 10);
             const digit2 = satangNum % 10;
-            
+
             let word1 = numbers[digit1];
             let word2 = numbers[digit2];
-            
+
             if (digit1 !== 0) {
                 if (digit1 === 1) word1 = '';
                 else if (digit1 === 2) word1 = 'ยี่';
                 satangStr += word1 + 'สิบ';
             }
-            
+
             if (digit2 !== 0) {
                 if (digit2 === 1 && digit1 !== 0) word2 = 'เอ็ด';
                 satangStr += word2;
@@ -347,93 +188,65 @@
         } else {
             satangStr = 'ถ้วน';
         }
-        
+
         return bahtStr + satangStr;
     }
 
+    const money = n => (Number(n) || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const setText = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+    const fmtDate = d => `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
+
     function populatePoDocument(data) {
-        // Doc Info
-        document.getElementById('doc-po-number').textContent = data.po_number || '';
-        
-        // Date formatting
-        if (data.createdAt) {
-            const date = new Date(data.createdAt);
-            const day = date.getDate().toString().padStart(2, '0');
-            const month = (date.getMonth() + 1).toString().padStart(2, '0');
-            const year = date.getFullYear() + 543; // Buddhist Era
-            document.getElementById('doc-po-date').textContent = `${day}/${month}/${year}`;
+        setText('doc-po-number', data.po_number || '');
+        if (data.createdAt) setText('doc-po-date', fmtDate(new Date(data.createdAt)));
+        setText('doc-supplier-name', data.supplier_name || '-');
+        setText('doc-supplier-address', data.supplier_address || '-');
+        setText('doc-branch-name', (data.branch_id && data.branch_id.name) || '-');
+        setText('doc-branch-address', (data.branch_id && data.branch_id.address) || '');
+        if (data.payment_due_date) {
+            const d = new Date(data.payment_due_date);
+            if (!isNaN(d)) setText('doc-credit', 'เครดิต ถึง ' + fmtDate(d));
         }
+        const purchaser = (data.created_by && data.created_by.name) || '-';
+        setText('doc-purchaser-name', purchaser);
+        setText('doc-sign-purchaser-name', purchaser);
+        setText('doc-phone', (data.created_by && data.created_by.phone) || '');
 
-        // Supplier & Destination
-        document.getElementById('doc-supplier-name').textContent = data.supplier_name || '';
-        document.getElementById('doc-supplier-address').textContent = data.supplier_address || 'สำนักงานใหญ่ ผู้จัดจำหน่ายสินค้าไอที';
-        document.getElementById('doc-branch-name').textContent = (data.branch_id && data.branch_id.name) ? data.branch_id.name : '-';
-        document.getElementById('doc-branch-address').textContent = (data.branch_id && data.branch_id.address) ? data.branch_id.address : 'จัดส่งเข้าคลังสินค้าหลักของสาขา';
+        let subtotal = 0;
+        let html = '';
+        (data.items || []).forEach((item, i) => {
+            const qty = item.ordered_qty || 0;
+            const cost = item.cost_price || 0;
+            const rowTotal = qty * cost;
+            subtotal += rowTotal;
+            const label = [item.product_name, item.capacity, item.color, item.condition].filter(Boolean).join(' ');
+            const name = [item.product_code, label].filter(Boolean).join(' - ');
+            const unit = item.unit || (item.track_imei ? 'เครื่อง' : 'ชิ้น');
+            html += `<tr><td class="c">${i + 1}</td><td>${esc(name)}</td><td class="r">${money(qty)} ${esc(unit)}</td><td class="r">${money(cost)}</td><td></td><td class="r">${money(rowTotal)}</td></tr>`;
+        });
+        // แถวว่างสูงสุด ดันตารางสรุปยอดลงล่างสุดของหน้าเหมือนแบบฟอร์ม
+        html += '<tr class="fill"><td></td><td></td><td></td><td></td><td></td><td></td></tr>';
+        document.getElementById('doc-table-body').innerHTML = html;
 
-        // Purchaser Info
-        const purchaserName = (data.created_by && data.created_by.name) ? data.created_by.name : 'เจ้าหน้าที่จัดซื้อกลาง';
-        document.getElementById('doc-purchaser-name').textContent = purchaserName;
-        document.getElementById('doc-position').textContent = (data.created_by && data.created_by.role) ? data.created_by.role : 'เจ้าหน้าที่จัดซื้อ';
-        document.getElementById('doc-phone').textContent = (data.created_by && data.created_by.phone) ? data.created_by.phone : '-';
-        document.getElementById('doc-sign-purchaser-name').textContent = purchaserName;
-
-        // Table Rows
-        const tbody = document.getElementById('doc-table-body');
-        tbody.innerHTML = '';
-
-        let totalQty = 0;
-        let grandTotal = 0;
-        let rowIndex = 1;
-
-        if (data.items && data.items.length > 0) {
-            data.items.forEach(item => {
-                const qty = item.ordered_qty || 0;
-                const cost = item.cost_price || 0;
-                const rowTotal = qty * cost;
-
-                totalQty += qty;
-                grandTotal += rowTotal;
-
-                // Build name display with specifications
-                let displayName = item.product_name || '';
-                const specs = [];
-                if (item.color) specs.push(`สี: ${item.color}`);
-                if (item.capacity) specs.push(`ความจุ: ${item.capacity}`);
-                if (item.category) specs.push(`หมวดหมู่: ${item.category}`);
-                
-                if (specs.length > 0) {
-                    displayName += ` (${specs.join(', ')})`;
-                }
-
-                const unitName = item.unit ? item.unit : (item.track_imei ? 'เครื่อง' : 'ชิ้น');
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td class="center">${rowIndex++}</td>
-                    <td>${displayName}</td>
-                    <td class="center" style="font-weight: bold;">${qty.toLocaleString()} ${unitName}</td>
-                    <td class="right" style="font-family: monospace;">฿${cost.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
-                    <td class="right" style="font-family: monospace; font-weight: bold;">฿${rowTotal.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
-                `;
-                tbody.appendChild(tr);
-            });
-        }
-
-        document.getElementById('doc-total-qty').textContent = totalQty.toLocaleString() + ' รายการ';
-        document.getElementById('doc-grand-total').textContent = '฿' + grandTotal.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
-        document.getElementById('doc-grand-total-text').textContent = '(' + arabicToThaiBaht(grandTotal) + ')';
+        const discount = Number(data.discount) || 0;
+        const net = Math.max(0, subtotal - discount);
+        setText('doc-subtotal', money(subtotal));
+        setText('doc-discount', money(discount));
+        setText('doc-after-discount', money(net));
+        setText('doc-vat', money(0));
+        setText('doc-grand-total', money(net));
+        setText('doc-grand-total-text', '(' + arabicToThaiBaht(net) + ')');
     }
 
     window.onload = function() {
-        const urlParams = new URLSearchParams(window.location.search);
-        const poDataStr = urlParams.get('data');
-        if (poDataStr) {
-            try {
-                const data = JSON.parse(decodeURIComponent(poDataStr));
-                populatePoDocument(data);
-                setTimeout(() => window.print(), 500);
-            } catch (e) {
-                console.error('Error parsing PO data:', e);
-            }
+        const raw = new URLSearchParams(window.location.search).get('data');
+        if (!raw) return;
+        try {
+            populatePoDocument(JSON.parse(raw));
+            setTimeout(() => window.print(), 500);
+        } catch (e) {
+            console.error('Error parsing PO data:', e);
         }
     };
 </script>

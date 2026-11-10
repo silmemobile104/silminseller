@@ -210,7 +210,8 @@ function buildClaimEvents(c) {
         const r = c.resolution || {};
         const closedAt = c.closed_at || c.updatedAt || date;
         ev.push({ item_key: 'claim_cash', amount: num(r.cash_amount), date: r.received_date || closedAt });
-        ev.push({ item_key: 'claim_discount', amount: num(r.discount_amount), date: closedAt });
+        // ส่วนลดที่ถูกนำไปหักใบสั่งซื้อแล้ว (applied_po_number) ไปนับที่ po_discount ของใบสั่งซื้อนั้นแทน — ไม่นับซ้ำสองรอบ
+        ev.push({ item_key: 'claim_discount', amount: r.applied_po_number ? 0 : num(r.discount_amount), date: closedAt });
         if (Array.isArray(r.received_items) && r.received_items.length > 0) {
             // มูลค่าของที่ได้รับกลับ (ต้นทุนเดิม): เครื่อง = จับคู่ด้วย IMEI เดิม · อุปกรณ์เสริม = ต้นทุนต่อชิ้น × จำนวนที่ได้รับ (รับไม่ครบก็ได้)
             const costByImei = new Map((c.items || []).filter(i => i.imei).map(i => [i.imei, num(i.cost_price)]));

@@ -4,7 +4,7 @@
 //
 // หน้านี้เดินตามแบบแปลนหน้า #stock ใน DESIGN.md ข้อ 11:
 //   - แถบควบคุม + ชิปตัวกรอง + ตาราง อยู่ในการ์ดใบเดียว
-//   - ทุกเซลล์ px-6 py-4 ค่าเดียว ลำดับชั้นของ tree สื่อด้วยการเยื้อง (ml-6 / ml-12) ไม่ใช่ padding ที่ต่างกัน
+//   - ตารางแบนเหมือน #stock: 1 แถว = 1 รายการ ทุกเซลล์ px-6 py-4 ค่าเดียว
 //   - รหัสสินค้าเป็นสีเหลือง, เงินเป็น font-mono ชิดขวา, สถานะเป็นป้ายจุด + tint 12%
 (function () {
     let isBranchInventoryInitialized = false;
@@ -25,6 +25,7 @@
             search: 'search-branch-globalstock',
             type: 'filter-branch-globalstock-type',
             condition: 'filter-branch-globalstock-condition',
+            branch: 'filter-branch-globalstock-branch',
             chips: 'chips-branch-globalstock',
             count: 'count-branch-globalstock',
             tbody: 'table-body-branch-globalstock',
@@ -32,38 +33,34 @@
         },
     };
 
-    // จำนวนกลุ่มสินค้าทั้งหมด "ก่อน" กรองประเภท/สภาพ — ใช้เป็นตัวหารใน "แสดง N จาก M รายการ"
+    // จำนวนแถวทั้งหมด "ก่อน" กรองประเภท/สภาพ — ใช้เป็นตัวหารใน "แสดง N จาก M รายการ"
     // ถ้าเอาจำนวนแถวที่เรนเดอร์จริงมาเป็นตัวหาร ตัวเลขจะเท่ากันสองข้างเสมอ ไม่บอกอะไรเลย
     const totalGroups = { mystock: 0, globalstock: 0 };
+
 
     // ==========================================
     // ชิ้นส่วน UI ที่ใช้ซ้ำ (ตาม DESIGN.md ข้อ 11.5 - 11.7)
     // ==========================================
 
+    const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+    // ตารางทั้งสองแท็บมี 6 คอลัมน์ — colspan ของแถวสถานะ/โครงร่างต้องเป็น 6
+    const COLS = 6;
+
     // แถวโครงร่างระหว่างรอข้อมูล — ต้องเรียกก่อน await เสมอ ไม่ปล่อยตารางว่าง (ข้อ 11.7)
     const renderSkeleton = (tbody, rowCount = 6) => {
         const bar = (widthClass) => `<div class="h-3.5 ${widthClass} rounded-full bg-skeleton animate-pulse"></div>`;
+        const cells = [bar('w-20'), bar('w-48'), bar('w-24'), bar('w-16 ml-auto'), bar('w-12 mx-auto'), bar('w-20')];
         let html = '';
         for (let i = 0; i < rowCount; i++) {
-            html += `
-                <tr>
-                    <td class="px-6 py-4">
-                        <div class="flex items-center gap-3">
-                            <div class="w-4 h-4 rounded-full bg-skeleton animate-pulse shrink-0"></div>
-                            ${bar('w-48')}
-                        </div>
-                    </td>
-                    <td class="px-6 py-4">${bar('w-16 mx-auto')}</td>
-                    <td class="px-6 py-4">${bar('w-20 ml-auto')}</td>
-                </tr>
-            `;
+            html += `<tr>${cells.map(c => `<td class="px-6 py-4">${c}</td>`).join('')}</tr>`;
         }
         tbody.innerHTML = html;
     };
 
-    // แถวสถานะ (ว่าง / ผิดพลาด) — ตารางมี 3 คอลัมน์ colspan ต้องเป็น 3
-    const stateRow = (message, extraClass = 'text-body-muted') =>
-        `<tr><td colspan="3" class="px-6 py-8 text-center ${extraClass}">${message}</td></tr>`;
+    // แถวสถานะ (ว่าง / ผิดพลาด) — แถวเดียวกินเต็มความกว้าง (ข้อ 11.7)
+    const stateRow = (message, extraClass = 'text-body-muted italic') =>
+        `<tr><td colspan="${COLS}" class="px-6 py-8 text-center ${extraClass}">${message}</td></tr>`;
 
     const selectedText = (selectEl) => {
         if (!selectEl) return '';
@@ -82,8 +79,8 @@
             el.textContent = '';
             return;
         }
-        const nameRows = tbody.querySelectorAll('tr.name-row');
-        const visible = Array.from(nameRows).filter(r => r.style.display !== 'none').length;
+        const rows = tbody.querySelectorAll('tr.item-row');
+        const visible = Array.from(rows).filter(r => r.style.display !== 'none').length;
         el.textContent = `แสดง ${visible} จาก ${totalGroups[key]} รายการ`;
     };
 
@@ -96,6 +93,7 @@
         const searchEl = document.getElementById(t.search);
         const typeEl = document.getElementById(t.type);
         const condEl = document.getElementById(t.condition);
+        const branchEl = t.branch ? document.getElementById(t.branch) : null;
 
         const addChip = (label, onRemove) => {
             const chip = document.createElement('button');
@@ -128,6 +126,13 @@
                 t.reload();
             });
         }
+        if (branchEl && branchEl.value !== 'ALL') {
+            activeCount++;
+            addChip(`ที่จัดเก็บ: ${branchEl.value}`, () => {
+                branchEl.value = 'ALL';
+                t.reload();
+            });
+        }
         if (condEl && condEl.value !== 'ALL') {
             activeCount++;
             addChip(`สภาพ: ${selectedText(condEl).replace(/^สภาพ:\s*/, '')}`, () => {
@@ -146,79 +151,25 @@
                 if (searchEl) searchEl.value = '';
                 if (typeEl) typeEl.value = 'ALL';
                 if (condEl) condEl.value = 'ALL';
+                if (branchEl) branchEl.value = 'ALL';
                 t.reload();
             });
             box.appendChild(clearBtn);
         }
     };
 
+
     // ค้นหาแบบซ่อน/แสดงแถวที่เรนเดอร์ไว้แล้ว (ไม่ยิง API ใหม่)
-    // แถวที่ตรงคำค้นจะถูกแสดง พร้อมกางแถวแม่ทุกชั้นขึ้นมาให้เห็นบริบทด้วย
+    // ค้นจาก data-search ของแถว (ชื่อ/รหัส/สาขา/IMEI) ไม่ใช่ข้อความที่เห็น — IMEI ไม่ได้แสดงในตารางแต่ยังค้นเจอ
     const applySearch = (key) => {
         const t = TABS[key];
         const tbody = document.getElementById(t.tbody);
         const input = document.getElementById(t.search);
         if (!tbody || !input) return;
 
-        // ตารางยังไม่มีข้อมูลจริง (กำลังโหลด / ว่าง / error) — อย่าไปยุ่งกับแถวสถานะ
-        // ไม่งั้นข้อความ "ไม่พบสินค้า" จะโดนสั่ง .hidden ไปด้วยเพราะมันไม่ใช่ .name-row
-        if (!tbody.querySelector('tr.name-row')) {
-            renderChips(key);
-            updateCount(key);
-            return;
-        }
-
         const term = input.value.toLowerCase().trim();
-        const rows = Array.from(tbody.children);
-
-        if (term === '') {
-            // กลับสู่สถานะเริ่มต้น: เห็นเฉพาะแถวระดับ 1 และลูกศรทุกตัวชี้ขวา
-            rows.forEach(row => {
-                row.style.display = '';
-                const icon = row.querySelector('i.fa-solid');
-                const btn = row.querySelector('button[aria-expanded]');
-                if (row.classList.contains('name-row')) {
-                    if (icon) icon.classList.replace('fa-chevron-down', 'fa-chevron-right');
-                    if (btn) btn.setAttribute('aria-expanded', 'false');
-                } else {
-                    row.classList.add('hidden');
-                    if (row.classList.contains('level2-row')) {
-                        if (icon) icon.classList.replace('fa-chevron-down', 'fa-chevron-right');
-                        if (btn) btn.setAttribute('aria-expanded', 'false');
-                    }
-                }
-            });
-            renderChips(key);
-            updateCount(key);
-            return;
-        }
-
-        rows.forEach(row => { row.style.display = 'none'; });
-
-        const parentsToShow = new Set();
-        rows.forEach(row => {
-            if (row.textContent.toLowerCase().includes(term)) {
-                row.style.display = '';
-                row.classList.remove('hidden');
-                row.classList.forEach(cls => {
-                    if (cls.startsWith('child-of-')) parentsToShow.add(cls.replace('child-of-', ''));
-                });
-            }
-        });
-
-        rows.forEach(row => {
-            parentsToShow.forEach(parentId => {
-                if (row.classList.contains(parentId)) {
-                    row.style.display = '';
-                    row.classList.remove('hidden');
-                    const icon = row.querySelector('i.fa-solid');
-                    if (icon && icon.classList.contains('fa-chevron-right')) {
-                        icon.classList.replace('fa-chevron-right', 'fa-chevron-down');
-                    }
-                    const btn = row.querySelector('button[aria-expanded]');
-                    if (btn) btn.setAttribute('aria-expanded', 'true');
-                }
-            });
+        tbody.querySelectorAll('tr.item-row').forEach(row => {
+            row.style.display = (!term || (row.dataset.search || '').includes(term)) ? '' : 'none';
         });
 
         renderChips(key);
@@ -226,97 +177,68 @@
     };
 
     // ==========================================
-    // สูตรแถวของ tree 3 ระดับ
-    // ระดับชั้นสื่อด้วยการเยื้อง (ml-6 / ml-12) + ลูกศร + น้ำหนักตัวอักษร
-    // ไม่ใช่ด้วยสีพื้นคนละเฉด — เซลล์ทุกใบจึงยังเป็น px-6 py-4 ค่าเดียวตามข้อ 11.6
+    // สูตรเซลล์ — ตามตารางหน้า #stock (productTableRowMarkup ใน script.js)
     // ==========================================
 
-    const ROW_BASE = 'hover:bg-divider transition-colors';
-
-    // ปุ่มกาง/ยุบ — ต้องเป็น <button> จริง ไม่ใช่ onclick บน <tr>
-    // เพราะ <tr> โฟกัสด้วยคีย์บอร์ดไม่ได้ และการใส่ role="button" ให้ <tr> จะพัง semantics ของตาราง
-    const disclosureButton = (rowId, indentClass, iconExtraClass, labelHtml) => `
-        <button type="button" id="btn-${rowId}" aria-expanded="false"
-            class="flex items-center gap-2 w-full text-left cursor-pointer rounded-[0.375rem] ${indentClass}">
-            <i id="icon-${rowId}" class="fa-solid fa-chevron-right text-body-muted w-4 text-center shrink-0 ${iconExtraClass}"></i>
-            ${labelHtml}
-        </button>
-    `;
+    const ROW_BASE = 'item-row hover:bg-divider transition-colors';
 
     // จุดสีประจำแถว — วงกลมเล็ก 16px สีตามสีเครื่อง วางไว้หน้าชื่อ (DESIGN.md ข้อ 11.6)
     // ตัวสร้างอยู่ที่ window.productColorDot ใน script.js ที่เดียว หน้า #stock, #transactions และหน้านี้ใช้ตัวเดียวกัน
     const colorDot = (colorName, colorDoc) =>
         (window.productColorDot ? window.productColorDot(colorName, colorDoc) : '');
 
-    // จำนวนรวมของกลุ่ม — สูตร "จำนวน + หน่วย" ของข้อ 11.6 (ตัวเลขหนา หน่วยเล็ก) ไม่ห่อกล่องให้รก
-    const groupQtyBadge = (qty, unit) => `
-        <span class="font-semibold text-ink">${qty}</span> <span class="text-xs text-body-muted">${unit || 'ชิ้น'}</span>
-    `;
+    const codeCell = (p) =>
+        `<td class="px-6 py-4"><span class="font-mono text-md font-semibold text-accent-ink">${esc(p.product_code || '-')}</span></td>`;
 
-    // ป้ายสถานะ "กำลังโอน" — จุดสี + tint 12% ตามตารางสถานะในข้อ 11.6 (โทเคน state-pending)
-    // ต้องมี <div> บล็อกครอบอีกชั้น ไม่งั้นป้าย inline-flex จะไปเบียดอยู่บรรทัดเดียวกับตัวเลขจำนวน
-    const transferBadge = () => `
-        <div class="mt-1.5">
-            <div class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-pill bg-state-pending/[0.12]">
-                <span class="w-1.5 h-1.5 rounded-full bg-state-pending"></span>
-                <span class="text-state-pending font-semibold text-xs">กำลังโอน</span>
-            </div>
-        </div>
-    `;
-
-    const imeiList = (imeis) => {
-        if (!imeis || !imeis.length) return '';
-        const tags = imeis.map(i =>
-            `<span class="font-mono text-[11px] text-body-muted bg-field px-1.5 py-0.5 rounded-xs">${i}</span>`
-        ).join('');
-        return `<div class="flex flex-wrap items-center gap-1 mt-1"><span class="text-[11px] text-ink-muted-48">IMEI</span>${tags}</div>`;
+    // ชื่อ + คำบรรยาย (ความจุ สี สภาพ) — จุดสี 16px หน้าชื่อ
+    const nameCell = (p) => {
+        const color = p.color_id && p.color_id.name ? p.color_id.name : '';
+        const capacity = p.capacity_id && p.capacity_id.name ? p.capacity_id.name : '';
+        const condition = p.condition_id && p.condition_id.name ? p.condition_id.name : '';
+        const sub = [capacity, color, condition].filter(Boolean).join(' ');
+        return `
+            <td class="px-6 py-4">
+                <p class="font-medium text-ink flex items-center gap-2">
+                    ${colorDot(color, p.color_id)}<span>${esc(p.name || 'ไม่ระบุชื่อ')}</span>
+                </p>
+                <p class="text-xs pl-6 text-ink/70">${esc(sub) || '-'}</p>
+            </td>`;
     };
 
-    // ผูกพฤติกรรมกาง/ยุบให้แถวระดับ 1 (กางลูกระดับ 2 และยุบทั้งสาขาเมื่อปิด)
-    const bindLevel1Toggle = (nameRowId) => {
-        const btn = document.getElementById(`btn-${nameRowId}`);
-        if (!btn) return;
-        btn.addEventListener('click', () => {
-            const icon = document.getElementById(`icon-${nameRowId}`);
-            const isExpanded = icon.classList.contains('fa-chevron-down');
-
-            if (isExpanded) {
-                icon.classList.replace('fa-chevron-down', 'fa-chevron-right');
-                btn.setAttribute('aria-expanded', 'false');
-                document.querySelectorAll(`.child-of-${nameRowId}`).forEach(c => c.classList.add('hidden'));
-                document.querySelectorAll(`.level2-icon-of-${nameRowId}`).forEach(i => {
-                    i.classList.replace('fa-chevron-down', 'fa-chevron-right');
-                    const childBtn = i.closest('button[aria-expanded]');
-                    if (childBtn) childBtn.setAttribute('aria-expanded', 'false');
-                });
-            } else {
-                icon.classList.replace('fa-chevron-right', 'fa-chevron-down');
-                btn.setAttribute('aria-expanded', 'true');
-                // กางแค่ระดับ 2 เท่านั้น ระดับ 3 ยังยุบอยู่จนกว่าจะกดระดับ 2
-                document.querySelectorAll(`.level2-of-${nameRowId}`).forEach(c => c.classList.remove('hidden'));
-            }
-        });
+    const categoryCell = (p) => {
+        const cat = p.type_id && p.type_id.name ? p.type_id.name : 'ทั่วไป';
+        return `<td class="px-6 py-4"><span class="px-2.5 py-1 bg-field text-body-muted rounded-[0.375rem] text-xs font-medium">${esc(cat)}</span></td>`;
     };
 
-    // ผูกพฤติกรรมกาง/ยุบให้แถวระดับ 2
-    const bindLevel2Toggle = (rowId) => {
-        const btn = document.getElementById(`btn-${rowId}`);
-        if (!btn) return;
-        btn.addEventListener('click', () => {
-            const icon = document.getElementById(`icon-${rowId}`);
-            const isExpanded = icon.classList.contains('fa-chevron-down');
-            const children = document.querySelectorAll(`.child-of-${rowId}`);
+    const priceCell = (p) =>
+        `<td class="px-6 py-4 text-right text-ink font-mono">฿${(Number(p.selling_price) || 0).toLocaleString()}</td>`;
 
-            if (isExpanded) {
-                icon.classList.replace('fa-chevron-down', 'fa-chevron-right');
-                btn.setAttribute('aria-expanded', 'false');
-                children.forEach(c => c.classList.add('hidden'));
-            } else {
-                icon.classList.replace('fa-chevron-right', 'fa-chevron-down');
-                btn.setAttribute('aria-expanded', 'true');
-                children.forEach(c => c.classList.remove('hidden'));
-            }
-        });
+    const qtyCell = (qty, unit) =>
+        `<td class="px-6 py-4 text-center text-ink font-medium">${qty} <span class="text-xs text-ink font-normal">${esc(unit || 'ชิ้น')}</span></td>`;
+
+    // ป้ายสถานะ — จุดสี + tint 12% (ข้อ 11.6)
+    const statusCell = (transferring) => transferring
+        ? `<td class="px-6 py-4"><div class="inline-flex items-center gap-2 px-2.5 py-1 rounded-[0.375rem] bg-state-pending/[0.12]"><div class="w-2 h-2 rounded-full bg-state-pending"></div><span class="text-state-pending font-medium text-xs">กำลังโอน</span></div></td>`
+        : `<td class="px-6 py-4"><div class="inline-flex items-center gap-2 px-2.5 py-1 rounded-[0.375rem] bg-[#42A231]/[0.12]"><div class="w-2 h-2 rounded-full bg-[#20D500]"></div><span class="text-[#20D500] font-medium text-xs">ปกติ</span></div></td>`;
+
+    const buildRow = (cells, searchText) => {
+        const tr = document.createElement('tr');
+        tr.className = ROW_BASE;
+        tr.dataset.search = searchText.toLowerCase();
+        tr.innerHTML = cells;
+        return tr;
+    };
+
+    const byName = (a, b) => String(a.name || '').localeCompare(String(b.name || ''), 'th')
+        || String(a.product_code || '').localeCompare(String(b.product_code || ''));
+
+    const matchesFilters = (p, typeFilter, condFilter) => {
+        if (typeFilter !== 'ALL' && (p.type_id ? p.type_id.name : '') !== typeFilter) return false;
+        if (condFilter !== 'ALL') {
+            const condName = p.condition_id ? p.condition_id.name : '';
+            if (condName.replace(/\s+/g, '') !== condFilter.replace(/\s+/g, '')) return false;
+        }
+        return true;
     };
 
     // ==========================================
@@ -383,6 +305,7 @@
                 const t = TABS[key];
                 document.getElementById(t.type)?.addEventListener('change', t.reload);
                 document.getElementById(t.condition)?.addEventListener('change', t.reload);
+                if (t.branch) document.getElementById(t.branch)?.addEventListener('change', t.reload);
                 document.getElementById(t.search)?.addEventListener('input', () => applySearch(key));
             });
 
@@ -392,8 +315,9 @@
         window.loadBranchInventoryMyStock();
     };
 
+
     // ==========================================
-    // แท็บ 1: สต็อกในสาขาของฉัน — จัดกลุ่ม ชื่อสินค้า > สี > รายการ
+    // แท็บ 1: สต็อกในสาขาของฉัน — ตารางแบนเหมือน #stock (1 แถว = 1 รายการสินค้า)
     // ==========================================
 
     // มูลค่ารวมของสต็อกในสาขา (ราคาขาย) — null = ยังไม่มีตัวเลข (กำลังโหลด / โหลดไม่สำเร็จ)
@@ -402,6 +326,11 @@
         const sub = document.getElementById('value-branch-mystock-sub');
         if (el) el.textContent = value == null ? '-' : `฿${Math.round(value).toLocaleString('th-TH')}`;
         if (sub) sub.textContent = value == null ? '' : `จาก ${pieces.toLocaleString('th-TH')} ชิ้น`;
+    };
+
+    const myQty = (p) => {
+        const imeiCount = (p.imeis && p.imeis.length) ? p.imeis.length : 0;
+        return imeiCount > 0 ? imeiCount : (Number(p.quantity) || 0);
     };
 
     window.loadBranchInventoryMyStock = async () => {
@@ -419,25 +348,13 @@
             const data = await res.json();
             if (!data.success) return;
 
-            tbody.innerHTML = '';
-            const baseItems = data.data.filter(p => Number(p.quantity || 0) > 0);
-            // ตัวหารของตัวนับ = จำนวนกลุ่มสินค้าทั้งหมดก่อนกรองประเภท/สภาพ
-            totalGroups.mystock = new Set(baseItems.map(p => p.name || 'ไม่ระบุชื่อ')).size;
-
-            let items = baseItems;
+            const baseItems = data.data.filter(p => Number(p.quantity || 0) > 0 && myQty(p) > 0);
+            // ตัวหารของตัวนับ = จำนวนรายการทั้งหมดก่อนกรองประเภท/สภาพ
+            totalGroups.mystock = baseItems.length;
 
             const typeFilter = document.getElementById('filter-branch-mystock-type')?.value || 'ALL';
-            if (typeFilter !== 'ALL') {
-                items = items.filter(p => (p.type_id ? p.type_id.name : '') === typeFilter);
-            }
-
             const condFilter = document.getElementById('filter-branch-mystock-condition')?.value || 'ALL';
-            if (condFilter !== 'ALL') {
-                items = items.filter(p => {
-                    const condName = p.condition_id ? p.condition_id.name : '';
-                    return condName.replace(/\s+/g, '') === condFilter.replace(/\s+/g, '');
-                });
-            }
+            const items = baseItems.filter(p => matchesFilters(p, typeFilter, condFilter)).sort(byName);
 
             if (items.length === 0) {
                 tbody.innerHTML = stateRow('ไม่พบสินค้าคงเหลือในสาขาของคุณ');
@@ -447,100 +364,22 @@
                 return;
             }
 
-            const groupedData = {};
             let totalValue = 0, totalPieces = 0;
+            const frag = document.createDocumentFragment();
             items.forEach(p => {
-                const imeiCount = (p.imeis && p.imeis.length) ? p.imeis.length : 0;
-                const qty = imeiCount > 0 ? imeiCount : (p.quantity || 0);
-                if (qty <= 0) return;
+                const qty = myQty(p);
+                const unit = (p.unit_id && p.unit_id.name) ? p.unit_id.name : 'ชิ้น';
                 // จำนวนเดียวกับที่ตารางแสดง (IMEI ถ้ามี ไม่งั้น quantity) × ราคาขายต่อชิ้น
                 totalValue += qty * (Number(p.selling_price) || 0);
                 totalPieces += qty;
 
-                const name = p.name || 'ไม่ระบุชื่อ';
-                const color = (p.color_id && p.color_id.name) ? p.color_id.name : 'ไม่ระบุสี';
-                const unit = (p.unit_id && p.unit_id.name) ? p.unit_id.name : 'ชิ้น';
-
-                if (!groupedData[name]) groupedData[name] = { total: 0, colors: {}, unit };
-                groupedData[name].total += qty;
-                groupedData[name].unit = unit;
-
-                // เก็บ doc ของสีไว้ด้วย เพื่อให้วงกลมสีอ่าน color_code ที่แอดมินตั้งเองได้ ไม่ใช่เดาจากชื่ออย่างเดียว
-                if (!groupedData[name].colors[color]) groupedData[name].colors[color] = { total: 0, items: [], unit, colorDoc: p.color_id || null };
-                groupedData[name].colors[color].total += qty;
-                groupedData[name].colors[color].unit = unit;
-                groupedData[name].colors[color].items.push({ ...p, qtyToDisplay: qty, unit });
+                frag.appendChild(buildRow(
+                    codeCell(p) + nameCell(p) + categoryCell(p) + priceCell(p) + qtyCell(qty, unit) + statusCell(!!p.is_transferring),
+                    [p.name, p.product_code, ...(p.imeis || [])].join(' ')
+                ));
             });
-
-            let nameIndex = 0;
-            for (const [name, nameGroup] of Object.entries(groupedData)) {
-                nameIndex++;
-                const nameRowId = `mystock-group-${nameIndex}`;
-
-                // ระดับ 1 — ชื่อสินค้า
-                const trName = document.createElement('tr');
-                trName.className = `name-row ${nameRowId} ${ROW_BASE}`;
-                trName.innerHTML = `
-                    <td class="px-6 py-4">
-                        ${disclosureButton(nameRowId, '', '', `<span class="font-medium text-ink">${name}</span>`)}
-                    </td>
-                    <td class="px-6 py-4 text-center">${groupQtyBadge(nameGroup.total, nameGroup.unit)}</td>
-                    <td class="px-6 py-4"></td>
-                `;
-                tbody.appendChild(trName);
-                bindLevel1Toggle(nameRowId);
-
-                let colorIndex = 0;
-                for (const [color, colorGroup] of Object.entries(nameGroup.colors)) {
-                    colorIndex++;
-                    const colorRowId = `${nameRowId}-color-${colorIndex}`;
-
-                    // ระดับ 2 — สี
-                    const trColor = document.createElement('tr');
-                    trColor.className = `level2-row ${colorRowId} hidden child-of-${nameRowId} level2-of-${nameRowId} ${ROW_BASE}`;
-                    trColor.innerHTML = `
-                        <td class="px-6 py-4">
-                            ${disclosureButton(
-                                colorRowId,
-                                'ml-6',
-                                `text-xs level2-icon-of-${nameRowId}`,
-                                `${colorDot(color, colorGroup.colorDoc)}<span class="text-sm text-body-muted">สี: <span class="font-medium text-ink">${color}</span></span>`
-                            )}
-                        </td>
-                        <td class="px-6 py-4 text-center text-body-muted font-medium">
-                            ${colorGroup.total} <span class="text-xs font-normal">${colorGroup.unit || 'ชิ้น'}</span>
-                        </td>
-                        <td class="px-6 py-4"></td>
-                    `;
-                    tbody.appendChild(trColor);
-                    bindLevel2Toggle(colorRowId);
-
-                    // ระดับ 3 — รายการสินค้า
-                    colorGroup.items.forEach(p => {
-                        const capacity = (p.capacity_id && p.capacity_id.name) ? p.capacity_id.name : 'ไม่ระบุความจุ';
-                        const condition = (p.condition_id && p.condition_id.name) ? p.condition_id.name : '';
-
-                        const trItem = document.createElement('tr');
-                        trItem.className = `item-row hidden child-of-${nameRowId} child-of-${colorRowId} ${ROW_BASE}`;
-                        trItem.innerHTML = `
-                            <td class="px-6 py-4">
-                                <div class="flex flex-col gap-1 ml-12">
-                                    <span class="text-sm text-body-muted">
-                                        ความจุ: <span class="font-medium text-ink">${capacity}</span>${condition ? ` / <span class="font-medium text-ink">${condition}</span>` : ''}
-                                    </span>
-                                    <span class="font-mono text-xs font-semibold text-accent-ink">${p.product_code || '-'}</span>
-                                </div>
-                            </td>
-                            <td class="px-6 py-4 text-center text-ink font-medium">
-                                ${p.qtyToDisplay} <span class="text-xs font-normal">${p.unit || 'ชิ้น'}</span>
-                                ${p.is_transferring ? transferBadge() : ''}
-                            </td>
-                            <td class="px-6 py-4 text-right text-ink font-mono">฿${(p.selling_price || 0).toLocaleString()}</td>
-                        `;
-                        tbody.appendChild(trItem);
-                    });
-                }
-            }
+            tbody.innerHTML = '';
+            tbody.appendChild(frag);
 
             setMyStockValue(totalValue, totalPieces);
 
@@ -556,8 +395,21 @@
     };
 
     // ==========================================
-    // แท็บ 2: สต็อกและราคาอ้างอิงทุกสาขา — จัดกลุ่ม ชื่อสินค้า > สาขา > รายการ
+    // แท็บ 2: สต็อกและราคาอ้างอิงทุกสาขา — 1 แถว = 1 สินค้า × 1 สาขา
     // ==========================================
+
+    // กระจาย stock_balances ของแต่ละสินค้าเป็นแถว (สินค้า × สาขา) เฉพาะสาขาที่มีของ
+    const expandBranchRows = (products) => {
+        const rows = [];
+        products.forEach(p => {
+            (p.stock_balances || []).forEach(b => {
+                const qty = (b.imeis && b.imeis.length > 0) ? b.imeis.length : (b.quantity || 0);
+                if (qty <= 0) return;
+                rows.push({ p, qty, imeis: b.imeis || [], branch: b.branch_id ? (b.branch_id.name || 'ไม่ทราบสาขา') : 'ไม่ทราบสาขา' });
+            });
+        });
+        return rows;
+    };
 
     window.loadBranchInventoryGlobalStock = async () => {
         const tbody = document.getElementById('table-body-branch-globalstock');
@@ -573,136 +425,44 @@
             const data = await res.json();
             if (!data.success) return;
 
-            tbody.innerHTML = '';
             const baseItems = data.data.filter(p => Number(p.global_total_quantity || 0) > 0);
-            totalGroups.globalstock = new Set(baseItems.map(p => p.name || 'ไม่ระบุชื่อ')).size;
-
-            let items = baseItems;
+            totalGroups.globalstock = expandBranchRows(baseItems).length;
 
             const typeFilter = document.getElementById('filter-branch-globalstock-type')?.value || 'ALL';
-            if (typeFilter !== 'ALL') {
-                items = items.filter(p => (p.type_id ? p.type_id.name : '') === typeFilter);
-            }
-
             const condFilter = document.getElementById('filter-branch-globalstock-condition')?.value || 'ALL';
-            if (condFilter !== 'ALL') {
-                items = items.filter(p => {
-                    const condName = p.condition_id ? p.condition_id.name : '';
-                    return condName.replace(/\s+/g, '') === condFilter.replace(/\s+/g, '');
-                });
-            }
+            const allRows = expandBranchRows(baseItems.filter(p => matchesFilters(p, typeFilter, condFilter)));
 
-            if (items.length === 0) {
+            // ตัวเลือก "ที่จัดเก็บ" มาจากสาขาที่มีของจริง — คงค่าที่เลือกไว้ตอนรีโหลด
+            const branchEl = document.getElementById('filter-branch-globalstock-branch');
+            const branchFilter = branchEl?.value || 'ALL';
+            if (branchEl) {
+                const names = [...new Set(expandBranchRows(baseItems).map(r => r.branch))].sort((a, b) => a.localeCompare(b, 'th'));
+                branchEl.innerHTML = '<option value="ALL">ที่จัดเก็บ: ทั้งหมด</option>'
+                    + names.map(n => `<option value="${esc(n)}">ที่จัดเก็บ: ${esc(n)}</option>`).join('');
+                branchEl.value = names.includes(branchFilter) ? branchFilter : 'ALL';
+            }
+            const rows = allRows.filter(r => branchFilter === 'ALL' || r.branch === branchFilter)
+                .sort((a, b) => byName(a.p, b.p) || a.branch.localeCompare(b.branch, 'th'));
+
+            if (rows.length === 0) {
                 tbody.innerHTML = stateRow('ไม่พบข้อมูลสินค้าในระบบ');
                 renderChips('globalstock');
                 updateCount('globalstock');
                 return;
             }
 
-            const groupedData = {};
-            items.forEach(p => {
-                const name = p.name || 'ไม่ระบุชื่อ';
+            const frag = document.createDocumentFragment();
+            rows.forEach(({ p, qty, imeis, branch }) => {
                 const unit = (p.unit_id && p.unit_id.name) ? p.unit_id.name : 'ชิ้น';
-                if (!groupedData[name]) groupedData[name] = { total: 0, branches: {}, unit };
-                groupedData[name].unit = unit;
-
-                if (p.stock_balances && p.stock_balances.length > 0) {
-                    p.stock_balances.forEach(b => {
-                        const bQty = (b.imeis && b.imeis.length > 0) ? b.imeis.length : (b.quantity || 0);
-                        if (bQty <= 0) return;
-
-                        groupedData[name].total += bQty;
-                        const bName = b.branch_id ? (b.branch_id.name || 'ไม่ทราบสาขา') : 'ไม่ทราบสาขา';
-                        if (!groupedData[name].branches[bName]) groupedData[name].branches[bName] = { total: 0, items: [], unit };
-                        groupedData[name].branches[bName].total += bQty;
-                        groupedData[name].branches[bName].unit = unit;
-                        groupedData[name].branches[bName].items.push({
-                            ...p,
-                            qtyToDisplay: bQty,
-                            branchImeis: b.imeis || [],
-                            unit,
-                        });
-                    });
-                }
+                frag.appendChild(buildRow(
+                    codeCell(p) + nameCell(p)
+                    + `<td class="px-6 py-4 text-ink text-sm">${esc(branch)}</td>`
+                    + categoryCell(p) + priceCell(p) + qtyCell(qty, unit),
+                    [p.name, p.product_code, branch, ...imeis].join(' ')
+                ));
             });
-
-            let nameIndex = 0;
-            for (const [name, nameGroup] of Object.entries(groupedData)) {
-                if (nameGroup.total <= 0) continue;
-
-                nameIndex++;
-                const nameRowId = `globalstock-group-${nameIndex}`;
-
-                // ระดับ 1 — ชื่อสินค้า
-                const trName = document.createElement('tr');
-                trName.className = `name-row ${nameRowId} ${ROW_BASE}`;
-                trName.innerHTML = `
-                    <td class="px-6 py-4">
-                        ${disclosureButton(nameRowId, '', '', `<span class="font-medium text-ink">${name}</span>`)}
-                    </td>
-                    <td class="px-6 py-4 text-center">${groupQtyBadge(nameGroup.total, nameGroup.unit)}</td>
-                    <td class="px-6 py-4"></td>
-                `;
-                tbody.appendChild(trName);
-                bindLevel1Toggle(nameRowId);
-
-                let branchIndex = 0;
-                for (const [branchName, branchGroup] of Object.entries(nameGroup.branches)) {
-                    branchIndex++;
-                    const branchRowId = `${nameRowId}-branch-${branchIndex}`;
-
-                    // ระดับ 2 — สาขา
-                    const trBranch = document.createElement('tr');
-                    trBranch.className = `level2-row ${branchRowId} hidden child-of-${nameRowId} level2-of-${nameRowId} ${ROW_BASE}`;
-                    trBranch.innerHTML = `
-                        <td class="px-6 py-4">
-                            ${disclosureButton(
-                                branchRowId,
-                                'ml-6',
-                                `text-xs level2-icon-of-${nameRowId}`,
-                                `<span class="text-sm text-body-muted flex items-center gap-1.5">
-                                    <i class="fa-solid fa-store text-body-muted"></i>
-                                    สาขา: <span class="font-medium text-ink">${branchName}</span>
-                                 </span>`
-                            )}
-                        </td>
-                        <td class="px-6 py-4 text-center text-body-muted font-medium">
-                            ${branchGroup.total} <span class="text-xs font-normal">${branchGroup.unit || 'ชิ้น'}</span>
-                        </td>
-                        <td class="px-6 py-4"></td>
-                    `;
-                    tbody.appendChild(trBranch);
-                    bindLevel2Toggle(branchRowId);
-
-                    // ระดับ 3 — รายการสินค้า
-                    branchGroup.items.forEach(p => {
-                        const capacity = (p.capacity_id && p.capacity_id.name) ? p.capacity_id.name : 'ไม่ระบุความจุ';
-                        const color = (p.color_id && p.color_id.name) ? p.color_id.name : 'ไม่ระบุสี';
-                        const condition = (p.condition_id && p.condition_id.name) ? p.condition_id.name : '';
-
-                        const trItem = document.createElement('tr');
-                        trItem.className = `item-row hidden child-of-${nameRowId} child-of-${branchRowId} ${ROW_BASE}`;
-                        trItem.innerHTML = `
-                            <td class="px-6 py-4">
-                                <div class="flex flex-col gap-1 ml-12">
-                                    <span class="text-sm text-body-muted flex items-center gap-2">
-                                        ${colorDot(color, p.color_id)}
-                                        <span>สี: <span class="font-medium text-ink">${color}</span>
-                                        / ความจุ: <span class="font-medium text-ink">${capacity}</span>${condition ? ` / <span class="font-medium text-ink">${condition}</span>` : ''}</span>
-                                    </span>
-                                    <span class="font-mono text-xs font-semibold text-accent-ink">${p.product_code || '-'}</span>
-                                    ${imeiList(p.branchImeis)}
-                                </div>
-                            </td>
-                            <td class="px-6 py-4 text-center text-ink font-medium">
-                                ${p.qtyToDisplay} <span class="text-xs font-normal">${p.unit || 'ชิ้น'}</span>
-                            </td>
-                            <td class="px-6 py-4 text-right text-ink font-mono">฿${(p.selling_price || 0).toLocaleString()}</td>
-                        `;
-                        tbody.appendChild(trItem);
-                    });
-                }
-            }
+            tbody.innerHTML = '';
+            tbody.appendChild(frag);
 
             applySearch('globalstock');
         } catch (err) {

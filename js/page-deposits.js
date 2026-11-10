@@ -988,94 +988,125 @@
                 return;
             }
             const deposit = d.data[0];
-            const printWindow = window.open('', '_blank', 'width=800,height=600');
+            const printWindow = window.open('', '_blank', 'width=900,height=1100');
 
-            const dateStr = new Date(deposit.createdAt).toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' }) + ' น.';
-            const apptStr = deposit.appointment_date ? new Date(deposit.appointment_date).toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' }) : 'ไม่ระบุ';
+            const esc = (v) => String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+            const fmt = (n) => Number(n || 0).toLocaleString('en-US');
+            // วันที่แบบ วว/ดด/ปป (พ.ศ.) — ใบนัดรับใช้ปี 2 หลัก ใบเสร็จใช้ปี 4 หลัก
+            const thDate = (v, shortYear) => {
+                const dt = new Date(v);
+                const y = String(dt.getFullYear() + 543);
+                return String(dt.getDate()).padStart(2, '0') + '/' + String(dt.getMonth() + 1).padStart(2, '0') + '/' + (shortYear ? y.slice(2) : y);
+            };
+            const issuedStr = thDate(deposit.createdAt) + ' ' + new Date(deposit.createdAt).toLocaleTimeString('en-GB');
+            const apptStr = deposit.appointment_date ? thDate(deposit.appointment_date, true) : '-';
+
+            // ใบมัดจำไม่ได้เก็บสีแยก — product_name = ชื่อ + ความจุ + สี จึงแยกสีออกจากท้ายชื่อด้วยรายชื่อสีในระบบ
+            let itemName = deposit.product_name || '';
+            let colorName = '';
+            const colors = (window.masterDataCache && window.masterDataCache.colors) || [];
+            const hit = colors
+                .map(c => c && c.name)
+                .filter(n => n && itemName.toLowerCase().endsWith(n.toLowerCase()))
+                .sort((x, y) => y.length - x.length)[0];
+            if (hit) {
+                colorName = itemName.slice(itemName.length - hit.length);
+                itemName = itemName.slice(0, itemName.length - hit.length).trim();
+            }
+
+            const total = Number(deposit.deposit_amount) || 0;
+            const emptyRows = Array.from({ length: 4 }, () => '<tr class="empty"><td></td><td></td><td></td><td></td></tr>').join('');
+            const me = JSON.parse(localStorage.getItem('silmin_user') || '{}');
+            const recorderName = me.name || me.username || '-';
 
             printWindow.document.write(`
                 <html>
                 <head>
-                    <title>ใบจองมัดจำสินค้า #${deposit.deposit_number}</title>
+                    <meta charset="utf-8">
+                    <title>ใบรับเงินมัดจำ - ${esc(deposit.customer_name)}</title>
                     <link rel="stylesheet" href="/vendor/fonts/fonts.css?v=2">
                     <style>
-                        body { font-family: 'Sarabun', 'Prompt', 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif; color: #333; padding: 20px; line-height: 1.6; }
-                        .receipt-box { max-width: 600px; margin: 0 auto; border: 1px solid #ccc; padding: 20px; border-radius: 8px; }
-                        .header { text-align: center; margin-bottom: 20px; }
-                        .header h2 { margin: 0; color: #047857; }
-                        .info-table { width: 100%; border-collapse: collapse; margin: 20px 0; }
-                        .info-table td { padding: 8px 0; }
-                        .info-table td.label { font-weight: bold; color: #555; width: 150px; }
-                        .divider { border-top: 2px dashed #ccc; margin: 20px 0; }
-                        .footer { text-align: center; font-size: 12px; color: #777; margin-top: 30px; }
-                        .total-row { background: #f0fdf4; font-size: 16px; font-weight: bold; }
-                        @media print {
-                            body { padding: 0; }
-                            .receipt-box { border: none; }
-                        }
+                        @page { size: A4; margin: 14mm; }
+                        * { box-sizing: border-box; }
+                        body { font-family: 'Sarabun', 'Prompt', 'Outfit', sans-serif; color: #111; margin: 0; font-size: 13px; line-height: 1.5; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                        .page { max-width: 760px; margin: 0 auto; padding: 24px 0; }
+                        .title-wrap { text-align: center; margin-bottom: 22px; }
+                        .title { display: inline-block; border: 2px solid #111; padding: 8px 40px; font-size: 20px; font-weight: 700; }
+                        .head { display: flex; justify-content: space-between; align-items: flex-start; padding-bottom: 16px; border-bottom: 3px solid #111; }
+                        .co-name { font-size: 18px; font-weight: 700; margin-bottom: 4px; }
+                        .co-line { color: #444; font-size: 12px; }
+                        .logo { height: 64px; }
+                        .meta { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 28px; margin: 22px 0; }
+                        .meta .f { display: flex; gap: 6px; border-bottom: 1px solid #ccc; padding-bottom: 3px; }
+                        .meta .f b { white-space: nowrap; font-weight: 600; }
+                        table.items { width: 100%; border-collapse: collapse; }
+                        .items th { border: 1px solid #111; border-bottom-width: 2px; padding: 7px 8px; font-size: 12px; }
+                        .items td { border: 1px solid #ccc; padding: 8px; vertical-align: middle; }
+                        .items td:nth-child(1) { text-align: center; width: 54px; }
+                        .items td:nth-child(3) { text-align: center; width: 150px; }
+                        .items td:nth-child(4) { text-align: right; width: 140px; }
+                        .items tr.empty td { height: 38px; background: #f5f5f3; }
+                        .lower { display: flex; gap: 28px; margin-top: 20px; }
+                        .notes { flex: 1; }
+                        .notes b { font-size: 12px; }
+                        .notes .box { margin-top: 4px; height: 92px; border: 1px solid #ccc; background: #f5f5f3; border-radius: 4px; padding: 6px 8px; font-size: 12px; }
+                        .sum { width: 270px; }
+                        .sum .r { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #ddd; color: #444; }
+                        .sum .r span:last-child { border-bottom: 1px dashed #999; min-width: 110px; text-align: right; color: #111; }
+                        .sum .grand { border-top: 2px solid #111; border-bottom: 0; font-weight: 700; color: #111; font-size: 14px; margin-top: 2px; padding-top: 8px; }
+                        .terms { margin-top: 24px; border: 1px solid #ccc; border-radius: 10px; padding: 14px 18px; }
+                        .terms h4 { margin: 0 0 10px; font-size: 14px; }
+                        .terms .t { display: flex; gap: 10px; margin-bottom: 8px; font-size: 12px; }
+                        .terms .n { flex: none; width: 16px; height: 16px; border-radius: 50%; background: #111; color: #fff; font-size: 10px; text-align: center; line-height: 16px; margin-top: 3px; }
+                        .sign { display: flex; justify-content: space-between; gap: 24px; margin-top: 34px; text-align: center; }
+                        .sign > div { flex: 1; }
+                        .sign b { font-size: 13px; }
+                        .sign .line { margin-top: 48px; border-top: 1px solid #111; padding-top: 6px; font-size: 12px; }
                     </style>
                 </head>
                 <body>
-                    <div class="receipt-box">
-                        <div class="header">
-                            <h2>ใบเสร็จรับเงินมัดจำ / ใบจองสินค้า</h2>
-                            <p style="margin: 5px 0;">สาขา: ${deposit.branch_id?.name || '-'}</p>
-                            <p style="margin: 0; font-size: 13px; font-weight: bold; color: #555;">เลขที่ใบจอง: ${deposit.deposit_number}</p>
+                    <div class="page">
+                        <div class="title-wrap"><div class="title">ใบสั่งจองสินค้า / ใบรับเงินมัดจำ</div></div>
+                        <div class="head">
+                            <div>
+                                <div class="co-name">บริษัท ซิลมีนโมบาย จำกัด</div>
+                                <div class="co-line">เลขที่ 883 ถนนสิโรรส ต.สะเตง อ.เมือง จังหวัดยะลา 95000</div>
+                                <div class="co-line">เลขผู้เสียภาษี : 0955562000701</div>
+                                <div class="co-line">สาขา : <b>${esc(deposit.branch_id?.name || '-')}</b></div>
+                            </div>
+                            <img class="logo" src="/deposit-logo.png?v=1" alt="">
                         </div>
-                        <div class="divider"></div>
-                        <table class="info-table">
-                            <tr>
-                                <td class="label">วันที่ทำรายการ:</td>
-                                <td>${dateStr}</td>
-                            </tr>
-                            <tr>
-                                <td class="label">ชื่อลูกค้า:</td>
-                                <td>${deposit.customer_name}</td>
-                            </tr>
-                            <tr>
-                                <td class="label">เบอร์โทรศัพท์:</td>
-                                <td>${deposit.customer_phone}</td>
-                            </tr>
-                            <tr class="divider">
-                                <td colspan="2"><hr style="border: 0; border-top: 1px solid #eee;"/></td>
-                            </tr>
-                            <tr>
-                                <td class="label">สินค้าที่จอง:</td>
-                                <td style="font-weight: bold;">${deposit.product_name}</td>
-                            </tr>
-                            <tr>
-                                <td class="label">เลข IMEI จอง:</td>
-                                <td>${deposit.imei || 'ไม่ระบุ (รอสินค้า/รอลูกค้ารับเครื่อง)'}</td>
-                            </tr>
-                            <tr>
-                                <td class="label">วันเวลานัดรับเครื่อง:</td>
-                                <td>${apptStr}</td>
-                            </tr>
-                            <tr class="divider">
-                                <td colspan="2"><hr style="border: 0; border-top: 1px solid #eee;"/></td>
-                            </tr>
-                            <tr>
-                                <td class="label">ราคาเต็ม:</td>
-                                <td>฿${deposit.product_price.toLocaleString()}</td>
-                            </tr>
-                            <tr class="total-row">
-                                <td class="label" style="padding: 10px 0 10px 10px;">ยอดมัดจำแล้ว:</td>
-                                <td style="padding: 10px 0; color: #047857;">฿${deposit.deposit_amount.toLocaleString()} (${deposit.payment_method})</td>
-                            </tr>
-                            <tr>
-                                <td class="label">คงเหลือค้างชำระ:</td>
-                                <td style="color: #b91c1c; font-weight: bold;">฿${deposit.remaining_amount.toLocaleString()}</td>
-                            </tr>
-                            <tr>
-                                <td class="label">ขั้นตอนดำเนินงาน:</td>
-                                <td>${deposit.stage}</td>
-                            </tr>
+                        <div class="meta">
+                            <div class="f"><b>ชื่อลูกค้า :</b><span>${esc(deposit.customer_name)}</span></div>
+                            <div class="f"><b>วันที่นัดรับ :</b><span>${esc(apptStr)}</span></div>
+                            <div class="f"><b>เลขที่ใบเสร็จ :</b><span>${esc(deposit.deposit_number)}</span></div>
+                            <div class="f"><b>วันที่ออกใบเสร็จ :</b><span>${esc(issuedStr)}</span></div>
+                        </div>
+                        <table class="items">
+                            <thead><tr><th>ลำดับ</th><th>รายการ</th><th>สี</th><th>จำนวนเงิน (บาท)</th></tr></thead>
+                            <tbody>
+                                <tr><td>1</td><td>ชำระเงินมัดจำ ${esc(itemName)}</td><td>${esc(colorName)}</td><td>${fmt(total)}</td></tr>
+                                ${emptyRows}
+                            </tbody>
                         </table>
-                        <div class="divider"></div>
-                        <p style="font-size: 11px; text-align: center; margin: 10px 0;">* กรุณาเก็บใบเสร็จรับเงินมัดจำนี้ไว้เพื่อเป็นหลักฐานในการรับสินค้า *</p>
-                        <div class="footer">
-                            <p>ผู้ทำรายการ: ${deposit.created_by?.name || '-'}</p>
-                            <p>© SILMIN SELLER System</p>
+                        <div class="lower">
+                            <div class="notes"><b>หมายเหตุ</b><div class="box">${esc(deposit.notes || '')}</div></div>
+                            <div class="sum">
+                                <div class="r"><span>รวมเงิน</span><span>${fmt(total)}</span></div>
+                                <div class="r"><span>ส่วนลด</span><span>0</span></div>
+                                <div class="r grand"><span>จำนวนทั้งสิ้น</span><span>${fmt(total)}</span></div>
+                            </div>
+                        </div>
+                        <div class="terms">
+                            <h4>เงื่อนไขการมัดจำ</h4>
+                            <div class="t"><span class="n">1</span><div><b>การยกเลิกคำสั่งซื้อ:</b> หากลูกค้ายกเลิกคำสั่งซื้อ ทางร้านขอสงวนสิทธิ์ไม่คืนเงินมัดจำในทุกกรณี</div></div>
+                            <div class="t"><span class="n">2</span><div><b>การโอนสิทธิ์และการเปลี่ยนสินค้า:</b> เงินมัดจำนี้มีผลสมบูรณ์เฉพาะกับสินค้าและผู้สั่งซื้อที่ระบุไว้ในเอกสารเท่านั้น ไม่สามารถโอนสิทธิ์ให้บุคคลอื่น หรือนำไปใช้เป็นส่วนลดในการซื้อสินค้ารายการอื่นแทนได้</div></div>
+                            <div class="t"><span class="n">3</span><div><b>การผิดนัดหมายรับสินค้า:</b> กรณีลูกค้าไม่มารับสินค้าตามวันและเวลาที่กำหนด ทางร้านขอสงวนสิทธิ์ไม่คืนเงินมัดจำ และอาจมีการเรียกเก็บค่าดำเนินการเพิ่มเติมตามความเหมาะสม</div></div>
+                        </div>
+                        <div class="sign">
+                            <div><b>ผู้ชำระเงิน</b><div class="line">( ${esc(deposit.customer_name)} )</div></div>
+                            <div><b>ผู้รับเงิน</b><div class="line">( ${esc(deposit.created_by?.name || '-')} )</div></div>
+                            <div><b>ผู้บันทึกข้อมูล</b><div class="line">( ${esc(recorderName)} )</div></div>
                         </div>
                     </div>
                     <script>

@@ -39,35 +39,94 @@
         if (elTotalItems) elTotalItems.textContent = totalItems.toLocaleString();
         if (elTotalQty) elTotalQty.textContent = totalQty.toLocaleString();
         if (elGrandTotal) elGrandTotal.textContent = '฿' + grandTotal.toLocaleString();
+        renderPoDiscountSummary();
     };
+
+    // ส่วนลดจากเคลมที่ผู้ใช้กด "ใช้ส่วนลด" ไว้ในฟอร์ม แยกตามชนิดสินค้า — claims = ใบเคลมที่ยังไม่ถูกใช้ของ Supplier ที่เลือก
+    const poClaimState = { device: { claims: [], applied: false }, accessory: { claims: [], applied: false } };
+    const poClaimKinds = { device: 'เครื่อง (มือถือ / แท็บเล็ต)', accessory: 'อุปกรณ์เสริม' };
+    const poClaimTotal = (kind) => poClaimState[kind].claims.reduce((t, c) => t + (Number(c.amount) || 0), 0);
+    const poKindSubtotal = (kind) => {
+        let t = 0;
+        document.querySelectorAll('.po-item-row').forEach(row => {
+            if ((row.dataset.kind === 'accessory' ? 'accessory' : 'device') !== kind) return;
+            t += (Number(row.querySelector('[name="po_item_qty"]').value) || 0) * (Number(row.querySelector('[name="po_item_cost"]').value) || 0);
+        });
+        return t;
+    };
+    const poFmtBaht = (n) => '฿' + (Number(n) || 0).toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+    // สรุปยอดใต้รายการสินค้า: ยอดสินค้า − ส่วนลด (เครื่อง / อุปกรณ์เสริม) = ยอดสุทธิ — โชว์เฉพาะตอนมีการใช้ส่วนลด
+    function renderPoDiscountSummary() {
+        const box = document.getElementById('po-discount-summary');
+        if (!box) return;
+        const kinds = Object.keys(poClaimKinds).filter(k => poClaimState[k].applied);
+        if (!kinds.length) { box.classList.add('hidden'); box.innerHTML = ''; return; }
+        const gross = poKindSubtotal('device') + poKindSubtotal('accessory');
+        const disc = kinds.reduce((t, k) => t + poClaimTotal(k), 0);
+        const lines = kinds.map(k => {
+            const over = poClaimTotal(k) > poKindSubtotal(k) + 0.01;
+            return `<div class="flex items-center justify-between gap-3"><span class="text-ink/70">ส่วนลดสำหรับ${poClaimKinds[k]}</span>
+                <span class="font-mono ${over ? 'text-state-danger' : 'text-state-ok'}">− ${poFmtBaht(poClaimTotal(k))}</span></div>
+                ${over ? `<p class="text-[11px] text-state-danger">ส่วนลดมากกว่ายอด${poClaimKinds[k]}ในใบ — เพิ่มรายการหรือยกเลิกการใช้ส่วนลด</p>` : ''}`;
+        }).join('');
+        box.classList.remove('hidden');
+        box.innerHTML = `<div class="elev-field bg-field rounded-xl px-4 py-3 text-xs space-y-1.5">
+            <div class="flex items-center justify-between gap-3"><span class="text-ink/70">ยอดสินค้า</span><span class="font-mono text-ink">${poFmtBaht(gross)}</span></div>
+            ${lines}
+            <div class="flex items-center justify-between gap-3 pt-1.5 border-t border-divider"><span class="text-ink font-semibold">ยอดสุทธิที่ต้องจ่าย</span>
+                <span class="font-mono font-semibold text-sm text-ink">${poFmtBaht(Math.max(0, gross - disc))}</span></div></div>`;
+    }
+    document.addEventListener('input', (e) => {
+        if (e.target && e.target.closest && e.target.closest('.po-item-row')) renderPoDiscountSummary();
+    });
 
     // วงเงินคงเหลือของ Supplier ที่เลือกในฟอร์มสร้างใบสั่งซื้อ
     // ใช้ไป = ยอดค้างจ่ายของ PO ที่ยังไม่ยกเลิก (endpoint เดียวกับหน้าตั้งค่า) — Supplier ที่ยังไม่ตั้งวงเงินจะไม่แสดงอะไร
     // ส่วนลดจากเคลมของ Supplier ที่เลือก แสดงใต้ช่องเลือก Supplier แยกตามชนิดสินค้า (มีส่วนลดชนิดไหนก็โชว์ชนิดนั้น)
     let poClaimDiscReqId = 0;
-    const refreshPoClaimDiscounts = async (supplierName) => {
+    const paintPoClaimDiscounts = () => {
         const box = document.getElementById('po-claim-discount');
         if (!box) return;
-        box.classList.add('hidden');
-        box.innerHTML = '';
+        const kinds = Object.keys(poClaimKinds).filter(k => poClaimState[k].claims.length);
+        box.classList.toggle('hidden', !kinds.length);
+        if (!kinds.length) { box.innerHTML = ''; renderPoDiscountSummary(); return; }
+        const rows = kinds.map(kind => {
+            const st = poClaimState[kind];
+            return `<div class="space-y-1">
+                <div class="flex items-center justify-between gap-3"><span class="text-ink/70"><i class="fa-solid fa-tag mr-1"></i>ส่วนลดจากเคลม <span class="text-ink font-semibold">สำหรับ${poClaimKinds[kind]}</span></span>
+                    <span class="font-mono font-semibold text-sm text-state-ok">${poFmtBaht(poClaimTotal(kind))}</span></div>
+                <p class="text-[11px] text-ink/70">${st.claims.map(c => `${poEsc(c.claim_no)} (${poFmtBaht(c.amount)}${c.po_number ? ` · อ้างอิง ${poEsc(c.po_number)}` : ''})`).join(' · ')}</p>
+                <button type="button" data-claim-kind="${kind}" aria-pressed="${st.applied}"
+                    class="btn-po-use-claim w-full py-1.5 rounded-lg text-xs font-semibold transition-colors flex items-center justify-center gap-1.5 ${st.applied ? 'bg-primary text-on-primary' : 'bg-chip/60 text-ink hover:bg-line'}">
+                    <i class="fa-solid ${st.applied ? 'fa-circle-check' : 'fa-ticket'}"></i>${st.applied ? `ใช้ส่วนลดแล้ว — หักจากยอด${poClaimKinds[kind]} (กดเพื่อยกเลิก)` : `ใช้ส่วนลด หักจากยอด${poClaimKinds[kind]}`}</button></div>`;
+        });
+        box.innerHTML = `<div class="elev-field bg-field rounded-xl px-4 py-2.5 mt-2 text-xs space-y-3">${rows.join('')}</div>`;
+        renderPoDiscountSummary();
+    };
+    document.addEventListener('click', (e) => {
+        const btn = e.target && e.target.closest && e.target.closest('.btn-po-use-claim');
+        if (!btn) return;
+        const st = poClaimState[btn.dataset.claimKind];
+        if (!st) return;
+        st.applied = !st.applied;
+        paintPoClaimDiscounts();
+    });
+    const refreshPoClaimDiscounts = async (supplierName) => {
+        // เปลี่ยน Supplier / เริ่มฟอร์มใหม่ = ล้างการกดใช้ส่วนลดเดิมทิ้งเสมอ (ส่วนลดผูกกับ Supplier)
+        Object.values(poClaimState).forEach(st => { st.claims = []; st.applied = false; });
+        paintPoClaimDiscounts();
         if (!supplierName) return;
         const reqId = ++poClaimDiscReqId;
         try {
             const res = await authFetch(`${API_BASE_URL}/suppliers/claim-discounts?supplier_name=${encodeURIComponent(supplierName)}`);
             const json = await res.json();
             if (reqId !== poClaimDiscReqId || !json.success) return;
-            const fmt = (n) => '฿' + (Number(n) || 0).toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-            const labels = { device: 'สำหรับเครื่อง (มือถือ / แท็บเล็ต)', accessory: 'สำหรับอุปกรณ์เสริม' };
-            const rows = ['device', 'accessory'].filter(k => json.data[k] && json.data[k].total > 0).map(kind => {
-                const g = json.data[kind];
-                return `<div class="space-y-0.5">
-                    <div class="flex items-center justify-between gap-3"><span class="text-ink/70"><i class="fa-solid fa-tag mr-1"></i>ส่วนลดจากเคลม <span class="text-ink font-semibold">${labels[kind]}</span></span>
-                        <span class="font-mono font-semibold text-sm text-state-ok">${fmt(g.total)}</span></div>
-                    <p class="text-[11px] text-ink/70">${g.claims.map(c => `${poEsc(c.claim_no)} (${fmt(c.amount)}${c.po_number ? ` · อ้างอิง ${poEsc(c.po_number)}` : ''})`).join(' · ')}</p></div>`;
+            Object.keys(poClaimState).forEach(kind => {
+                // เฉพาะใบเคลมที่ยังไม่เคยถูกใช้หักใบสั่งซื้อ
+                poClaimState[kind].claims = ((json.data[kind] && json.data[kind].claims) || []).filter(c => c.id && !c.applied_po && c.amount > 0);
             });
-            if (!rows.length) return;
-            box.classList.remove('hidden');
-            box.innerHTML = `<div class="elev-field bg-field rounded-xl px-4 py-2.5 mt-2 text-xs space-y-2">${rows.join('')}</div>`;
+            paintPoClaimDiscounts();
         } catch (err) {
             console.error('Error loading supplier claim discounts:', err);
         }
@@ -602,8 +661,163 @@
         });
     };
 
+    // ==========================================
+    // กล่องเลือก (select) ที่พิมพ์ค้นหาได้
+    // ==========================================
+    // <select> เดิมยังเป็นตัวเก็บค่าจริง (โค้ดอื่นอ่าน/เขียน .value, สั่ง disabled, เติม option ใหม่ ฯลฯ ได้เหมือนเดิม)
+    // แค่ซ่อนไว้แล้ววางช่องพิมพ์ + รายการแทน — ช่องพิมพ์ซิงก์ตามค่าของ select ตลอด
+    // (เหตุที่ไม่ใช้ makeSelectSearchable ใน script.js: ไม่มี CSS รองรับ, ไม่ export, และไม่รู้จัก disabled)
+    const enhancePoSelect = (select) => {
+        if (!select || select.dataset.poSearchable === '1' || !select.parentElement) return;
+        select.dataset.poSearchable = '1';
+
+        const wrap = select.parentElement;
+        const uid = `po-sel-${select.id || Math.random().toString(36).slice(2, 8)}`;
+        const labelText = (select.id && document.querySelector(`label[for="${select.id}"]`)?.textContent.trim()) || '';
+
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.autocomplete = 'off';
+        input.className = select.className; // ใช้หน้าตาเดียวกับ select เดิม
+        input.setAttribute('role', 'combobox');
+        input.setAttribute('aria-autocomplete', 'list');
+        input.setAttribute('aria-expanded', 'false');
+        input.setAttribute('aria-controls', `${uid}-list`);
+        if (labelText) input.setAttribute('aria-label', labelText);
+
+        const list = document.createElement('ul');
+        list.id = `${uid}-list`;
+        list.setAttribute('role', 'listbox');
+        list.className = 'hidden absolute z-50 left-0 right-0 mt-1 max-h-56 overflow-y-auto rounded-xl bg-elevated border border-line-strong shadow-[0_10px_40px_rgba(0,0,0,0.5)] p-1.5';
+
+        // ซ่อน select จริงแต่ยังอยู่ใน DOM — ไม่ใช้ display:none เพื่อให้ validation/โฟกัสของเบราว์เซอร์ไม่พัง
+        select.tabIndex = -1;
+        select.setAttribute('aria-hidden', 'true');
+        select.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;opacity:0;pointer-events:none;';
+        select._poProxy = input; // ให้ highlightPoInvalid ไฮไลต์ที่ช่องพิมพ์แทน
+
+        select.parentElement.insertBefore(input, select);
+        wrap.appendChild(list);
+
+        let shown = [];
+        let active = -1;
+
+        const optionsList = () => [...select.options].filter(o => o.value !== '');
+        const selectedText = () => {
+            const o = select.options[select.selectedIndex];
+            return o && o.value !== '' ? o.textContent : '';
+        };
+
+        const sync = () => {
+            input.value = selectedText();
+            input.disabled = select.disabled;
+            const ph = [...select.options].find(o => o.value === '');
+            input.placeholder = ph ? ph.textContent : '';
+        };
+
+        const close = () => {
+            list.classList.add('hidden');
+            input.setAttribute('aria-expanded', 'false');
+            input.removeAttribute('aria-activedescendant');
+            active = -1;
+        };
+
+        const paint = () => {
+            [...list.querySelectorAll('[role="option"]')].forEach((li, i) => {
+                li.classList.toggle('bg-field', i === active);
+                li.setAttribute('aria-selected', String(i === active));
+                if (i === active) input.setAttribute('aria-activedescendant', li.id);
+            });
+        };
+
+        // term ว่าง = โชว์ทั้งหมด (ตอนเพิ่งกดเข้าช่อง ยังไม่ได้พิมพ์)
+        const open = (term = '') => {
+            if (select.disabled) return;
+            const q = term.trim().toLowerCase();
+            const all = optionsList();
+            shown = q ? all.filter(o => o.textContent.toLowerCase().includes(q)) : all;
+            list.innerHTML = shown.length
+                ? shown.map((o, i) => `<li role="option" id="${uid}-o${i}" aria-selected="false" data-i="${i}"
+                        class="px-3 py-2 rounded-lg text-sm text-ink hover:bg-field transition-colors cursor-pointer${o.value === select.value ? ' text-accent-ink' : ''}">${poEsc(o.textContent)}</li>`).join('')
+                : '<li class="px-3 py-2 text-xs text-body-muted">ไม่พบรายการที่ตรงกับที่ค้นหา</li>';
+            list.classList.remove('hidden');
+            input.setAttribute('aria-expanded', 'true');
+            active = -1;
+            if (!q) list.querySelector('.text-accent-ink')?.scrollIntoView({ block: 'nearest' });
+        };
+
+        const pick = (opt) => {
+            select.value = opt.value; // setter ด้านล่างซิงก์ช่องพิมพ์ให้
+            select.dispatchEvent(new Event('change', { bubbles: true }));
+            close();
+        };
+
+        list.addEventListener('mousedown', (e) => {
+            // mousedown ไม่ใช่ click — ไม่งั้น blur ของช่องพิมพ์จะปิดรายการก่อนที่ click จะยิง
+            const li = e.target.closest('[role="option"]');
+            if (!li) return;
+            e.preventDefault();
+            const opt = shown[Number(li.dataset.i)];
+            if (opt) pick(opt);
+        });
+
+        input.addEventListener('focus', () => { input.select(); open(''); });
+        input.addEventListener('click', () => { if (list.classList.contains('hidden')) open(''); });
+        input.addEventListener('input', () => open(input.value));
+        input.addEventListener('blur', () => { close(); sync(); }); // ไม่ได้เลือก = คืนข้อความเดิม
+        input.addEventListener('keydown', (e) => {
+            const isOpen = !list.classList.contains('hidden');
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                if (!isOpen) return open(input.value === selectedText() ? '' : input.value);
+                active = Math.min(active + 1, shown.length - 1);
+                paint();
+                list.querySelector(`#${uid}-o${active}`)?.scrollIntoView({ block: 'nearest' });
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                if (!isOpen) return;
+                active = Math.max(active - 1, 0);
+                paint();
+                list.querySelector(`#${uid}-o${active}`)?.scrollIntoView({ block: 'nearest' });
+            } else if (e.key === 'Enter') {
+                if (!isOpen) return;
+                e.preventDefault(); // กัน Enter ไป submit ฟอร์ม
+                const target = shown[active >= 0 ? active : 0]; // ไม่ได้ลูกศรลง = เอารายการแรกที่ค้นเจอ
+                if (target) pick(target);
+            } else if (e.key === 'Escape') {
+                if (isOpen) { e.preventDefault(); e.stopPropagation(); close(); sync(); }
+            }
+        });
+
+        // โค้ดอื่นตั้ง select.value ตรงๆ (เช่นตอนกางฟอร์มแก้ไข) โดยไม่มี event — ดักไว้ให้ช่องพิมพ์ตามทัน
+        const valueProp = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value');
+        if (valueProp) {
+            Object.defineProperty(select, 'value', {
+                configurable: true,
+                get() { return valueProp.get.call(this); },
+                set(v) { valueProp.set.call(this, v); sync(); }
+            });
+        }
+        // option ถูกสร้างใหม่ / disabled ถูกสลับ (เช่นเลือกหมวดแล้วเติมรายการชื่อ)
+        new MutationObserver(sync).observe(select, { childList: true, subtree: true, attributes: true, attributeFilter: ['disabled', 'selected'] });
+        select.addEventListener('change', sync);
+        select.form?.addEventListener('reset', () => setTimeout(sync, 0));
+
+        sync();
+    };
+
+    // ฟอร์มสร้าง/แก้ไขใบสั่งซื้อ: ผู้จัดจำหน่าย + สาขาปลายทาง (ชื่อสินค้าในแต่ละแถวเรียกตอนสร้างแถว)
+    ['po-supplier', 'po-branch'].forEach(id => enhancePoSelect(document.getElementById(id)));
+
     // หมวดที่เป็นของฟอร์มอุปกรณ์เสริม — เซิร์ฟเวอร์ใช้ชื่อนี้หา ProductType ตอนนำเข้าสต็อก (routes/api.js) จึงห้ามเปลี่ยนชื่อ/ลบ
     const PO_ACCESSORY_TYPE_NAME = 'อุปกรณ์เสริม';
+    // ค่าตัวแทนของชิป "ไม่ระบุสี" (ช่องสีว่างแปลว่ายังไม่ได้เลือก จึงต้องมีค่าแยก) — แปลงเป็น '' ตอนประกอบ payload
+    const PO_NO_COLOR = '__none__';
+    // สภาพเครื่อง: value ต้องตรงกับชื่อใน ProductCondition (master data) — เซิร์ฟเวอร์ใช้ชื่อนี้หา condition_id ตอนนำเข้าสต็อก
+    const PO_CONDITIONS = [
+        { value: 'มือ1', label: 'มือหนึ่ง' },
+        { value: 'มือ2', label: 'มือสอง' }
+    ];
 
     // ชื่อสินค้าของแถวมือถือ/แท็บเล็ต: เลือกหมวดหมู่ก่อน แล้วค่อยแสดงเฉพาะชื่อที่อยู่ในหมวดนั้น
     // ชื่อใน master data ผูกหมวดด้วย type_id — ชื่อที่ยังไม่ผูก (ไม่มี type_id) แสดงให้ทุกหมวด
@@ -685,8 +899,9 @@
                 <!-- Hidden inputs to keep original JS functional -->
                 <input type="hidden" name="po_item_code" value="">
                 <select name="po_item_category" class="hidden"><option value=""></option>${typeChips.map(t => `<option value="${t}">${t}</option>`).join('')}</select>
-                <select name="po_item_color" class="hidden"><option value=""></option>${colorSwatches.map(c => `<option value="${c}">${c}</option>`).join('')}</select>
+                <select name="po_item_color" class="hidden"><option value=""></option><option value="${PO_NO_COLOR}">ไม่ระบุสี</option>${colorSwatches.map(c => `<option value="${c}">${c}</option>`).join('')}</select>
                 <select name="po_item_capacity" class="hidden"><option value=""></option>${capacityChips.map(c => `<option value="${c}">${c}</option>`).join('')}</select>
+                <select name="po_item_condition" class="hidden">${PO_CONDITIONS.map(c => `<option value="${c.value}">${c.label}</option>`).join('')}</select>
                 <select name="po_item_unit" class="hidden"><option value=""></option>${unitChips.map(u => `<option value="${u}">${u}</option>`).join('')}</select>
                 <!-- แถวมือถือ/แท็บเล็ตบันทึก IMEI เสมอ จึงติ๊กไว้ตายตัว ไม่มีตัวเลือกให้ผู้ใช้กดแล้ว -->
                 <input type="checkbox" name="po_item_track_imei" class="hidden" id="track_imei_${id}" checked>
@@ -717,6 +932,11 @@
                     <label class="text-ink font-medium flex items-center gap-2 text-xs"><i class="fa-solid fa-palette text-ink"></i> สี <span class="text-red-500">*</span></label>
                     <div class="flex items-center gap-3 overflow-x-auto hide-scrollbar py-2 px-8 w-full po-chip-group scroll-smooth" data-target="po_item_color">
                         <style>#po-items-container .po-chip-group::-webkit-scrollbar { display: none; } #po-items-container .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }</style>
+                        <!-- ไม่ระบุสี — อยู่หน้าสุด ค่าตัวแทนใช้ผ่านการตรวจ "ต้องเลือกสี" แล้วถูกแปลงเป็นสีว่างตอนบันทึก -->
+                        <div class="flex flex-col items-center gap-1 cursor-pointer po-chip-color group shrink-0" data-value="${PO_NO_COLOR}">
+                            <div class="border-2 w-7 h-7 rounded-full group-hover:scale-110 transition-all flex items-center justify-center color-ring relative" style="border-color:#6b7280;border-style:dashed;background:linear-gradient(to top right, transparent calc(50% - 1px), #9ca3af calc(50% - 1px), #9ca3af calc(50% + 1px), transparent calc(50% + 1px))"></div>
+                            <span class="text-[10px] text-body-muted color-label transition-colors">ไม่ระบุสี</span>
+                        </div>
                         ${colorData.map(c => {
             const name = c.name || c;
             const hex = window.resolveProductColorHex ? window.resolveProductColorHex(name, c) : '#6b7280';
@@ -745,6 +965,14 @@
                     <label class="text-ink font-medium flex items-center gap-2 text-xs"><i class="fa-solid fa-hard-drive text-ink"></i> ความจุ</label>
                     <div class="flex flex-wrap gap-2 po-chip-group" data-target="po_item_capacity">
                         ${capacityChips.map(c => `<button type="button" class="elev-field px-4 py-2.5 rounded-xl bg-field text-body-muted text-sm hover:ring-1 hover:ring-accent-ink hover:text-ink transition-colors po-chip min-w-[60px]" data-value="${c}">${c}</button>`).join('')}
+                    </div>
+                </div>
+
+                <!-- สภาพเครื่อง — มือหนึ่ง/มือสอง (เลือกมือหนึ่งไว้ให้ก่อน) -->
+                <div class="space-y-2">
+                    <label class="text-ink font-medium flex items-center gap-2 text-xs"><i class="fa-solid fa-box text-ink"></i> สภาพเครื่อง <span class="text-red-500">*</span></label>
+                    <div class="flex gap-2 po-chip-group" data-target="po_item_condition">
+                        ${PO_CONDITIONS.map(c => `<button type="button" class="elev-field px-4 py-2.5 rounded-xl bg-field text-body-muted text-sm hover:ring-1 hover:ring-accent-ink hover:text-ink transition-colors po-chip flex-1" data-value="${c.value}">${c.label}</button>`).join('')}
                     </div>
                 </div>
 
@@ -784,6 +1012,9 @@
             </div>
         `;
         container.appendChild(row);
+
+        // ชื่อสินค้า: พิมพ์ค้นหาได้ (select เดิมยังเก็บค่า — bindPoDeviceNameByCategory เติม/ล้างรายการได้เหมือนเดิม)
+        enhancePoSelect(row.querySelector('select[name="po_item_name"]'));
 
         // --- Start of inline logic for Chips to Hidden Inputs ---
 
@@ -835,6 +1066,9 @@
                 });
             });
         }
+
+        // สภาพเครื่องเริ่มต้น = มือหนึ่ง (ตอนกางฟอร์มแก้ไขจะถูกเขียนทับด้วยค่าของใบเดิม)
+        row.querySelector('.po-chip-group[data-target="po_item_condition"] .po-chip')?.click();
 
         // --- End of inline logic ---
 
@@ -919,6 +1153,8 @@
     // displayElement = element ที่จะใส่กรอบแดง/ข้อความต่อท้าย, watchElement = element ที่ต้องฟัง input/change เพื่อล้าง highlight
     const highlightPoInvalid = (displayElement, watchElement, toastMsg, isButton) => {
         if (!displayElement || !watchElement) return;
+        // select ที่เป็นแบบพิมพ์ค้นหาได้ถูกซ่อนไว้ — โฟกัส/กรอบแดง/ข้อความเตือนต้องไปที่ช่องพิมพ์ที่ผู้ใช้เห็นจริง
+        if (displayElement._poProxy) displayElement = displayElement._poProxy;
         showToast(toastMsg, 'error');
 
         if (displayElement.focus && typeof displayElement.focus === 'function' && displayElement.tagName !== 'DIV') {
@@ -1040,8 +1276,9 @@
                     product_code: product_code,
                     item_kind: isAccessory ? 'accessory' : 'device',
                     category: isAccessory ? '' : row.querySelector('[name="po_item_category"]').value,
-                    color: isAccessory ? '' : colorEl.value,
+                    color: (isAccessory || colorEl.value === PO_NO_COLOR) ? '' : colorEl.value,
                     capacity: isAccessory ? '' : row.querySelector('[name="po_item_capacity"]').value,
+                    condition: isAccessory ? '' : (row.querySelector('[name="po_item_condition"]')?.value || 'มือ1'),
                     unit: unitEl.value,
                     ordered_qty: Number(qtyEl.value),
                     cost_price: Number(costEl.value),
@@ -1049,6 +1286,19 @@
                     // มือถือ/แท็บเล็ต = บันทึก IMEI เสมอ, อุปกรณ์เสริม = ไม่บันทึกเสมอ
                     track_imei: !isAccessory
                 });
+            }
+
+            // ส่วนลดจากเคลมที่กดใช้ไว้ (เฉพาะตอนสร้างใหม่) — เช็คเบื้องต้นว่าไม่เกินยอดของชนิดนั้น เซิร์ฟเวอร์ตรวจซ้ำอีกชั้น
+            const claim_ids = [];
+            if (!editingPOId) {
+                for (const kind of Object.keys(poClaimKinds)) {
+                    const st = poClaimState[kind];
+                    if (!st.applied) continue;
+                    if (poClaimTotal(kind) > poKindSubtotal(kind) + 0.01) {
+                        return showToast(`ส่วนลดสำหรับ${poClaimKinds[kind]}มากกว่ายอดสินค้าชนิดนี้ในใบ กรุณาเพิ่มรายการหรือยกเลิกการใช้ส่วนลด`, 'error');
+                    }
+                    st.claims.forEach(c => claim_ids.push(c.id));
+                }
             }
 
             try {
@@ -1060,14 +1310,15 @@
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        supplier_name, branch_id, items,
+                        supplier_name, branch_id, items, claim_ids,
                         // ว่าง = ไม่กำหนดวันจ่าย — ส่งไปเสมอ เพื่อให้ตอนแก้ไขลบวันที่ทิ้งได้ด้วย
                         payment_due_date: document.getElementById('po-payment-due-date')?.value || ''
                     })
                 });
                 const json = await res.json();
                 if (json.success) {
-                    showToast(editingPOId ? 'แก้ไขใบสั่งซื้อสำเร็จ' : 'สร้างใบสั่งซื้อสำเร็จ');
+                    const wasEditing = !!editingPOId;
+                    showToast(wasEditing ? 'แก้ไขใบสั่งซื้อสำเร็จ' : 'สร้างใบสั่งซื้อสำเร็จ');
 
                     // เซิร์ฟเวอร์เพิ่งจดรหัสอุปกรณ์เสริมใหม่ลง master data — ล้างแคชฝั่งหน้าเว็บ
                     // ไม่งั้นรหัสที่เพิ่งตั้งจะยังไม่โผล่ใน dropdown จนกว่าจะรีเฟรชหน้า
@@ -1081,9 +1332,29 @@
                     }
 
                     stopEditingPO();
-                    loadPOHistory(); // Refresh history cache
+                    const historyLoaded = loadPOHistory(); // Refresh history cache
                     switchPoTab('history');
                     showPoPage('history'); // สร้างจากหน้าแดชบอร์ดก็ต้องเห็นใบที่เพิ่งบันทึกในประวัติ
+
+                    // สร้างใหม่สำเร็จ → ถามว่าจะพิมพ์ใบสั่งซื้อเลยไหม
+                    // ใช้ข้อมูลจากประวัติ (populate สาขา/ผู้สั่งซื้อแล้ว) เพราะ response ของ POST ไม่ได้ populate
+                    if (!wasEditing && json.data && json.data._id) {
+                        const newId = String(json.data._id);
+                        const poNo = json.data.po_number || '';
+                        showConfirm(
+                            'สั่งซื้อสำเร็จ',
+                            `สร้างใบสั่งซื้อ <strong class="font-mono">${poEsc(poNo)}</strong> เรียบร้อยแล้ว<br><span class="text-body-muted text-xs">ต้องการพิมพ์ใบสั่งซื้อเลยหรือไม่</span>`,
+                            async () => {
+                                await historyLoaded;
+                                const po = poHistoryCache.find(p => String(p._id) === newId) || json.data;
+                                window.open(`po-print.html?data=${encodeURIComponent(JSON.stringify(po))}`, '_blank');
+                            },
+                            'พิมพ์ใบสั่งซื้อ',
+                            'success'
+                        );
+                        const cancelBtn = document.getElementById('confirm-cancel-btn');
+                        if (cancelBtn) cancelBtn.textContent = 'ไว้ทีหลัง';
+                    }
                 } else {
                     showToast(json.message, 'error');
                 }
@@ -1102,6 +1373,13 @@
 
     // สิทธิ์ "การชำระเงินระบบสั่งซื้อ" — อ่านสดจาก localStorage ทุกครั้ง เพราะ /auth/me ซิงก์สิทธิ์ใหม่ลงมาระหว่างใช้งานได้
     // ไม่มีสิทธิ์ = ไม่เห็นทั้งคอลัมน์การชำระเงินและปุ่มจ่ายเงิน (เซิร์ฟเวอร์ตรวจซ้ำที่ /accounting/po-pay)
+    const canManagePO = () => {
+        try {
+            return !!(JSON.parse(localStorage.getItem('silmin_user') || '{}').permissions || {}).manage_po;
+        } catch (e) {
+            return false;
+        }
+    };
     const canPayPO = () => {
         try {
             return !!(JSON.parse(localStorage.getItem('silmin_user') || '{}').permissions || {}).pay_po;
@@ -1169,6 +1447,7 @@
                 row.querySelector('[name="po_item_category"]')?.dispatchEvent(new CustomEvent('change', { detail: { keepName: true } }));
                 setPoRowValue(row, 'po_item_color', item.color || '');
                 setPoRowValue(row, 'po_item_capacity', item.capacity || '');
+                if (kind === 'device') setPoRowValue(row, 'po_item_condition', item.condition === 'มือ2' ? 'มือ2' : 'มือ1');
                 // เขียนทับหน่วยนับเฉพาะตอนใบเดิมมีค่าจริง — ใบที่สร้างก่อนแก้บั๊ก "unit หายตอนสร้าง"
                 // จะไม่มีหน่วยเก็บไว้ ปล่อยให้ใช้ค่าเริ่มต้นตามชนิดของแถวแทนการโชว์ว่างเปล่า
                 if (item.unit) setPoRowValue(row, 'po_item_unit', item.unit);
@@ -1189,6 +1468,11 @@
                         chip.classList.toggle('text-body-muted', !on);
                     });
                 });
+
+                // แถวมือถือที่ใบเดิมไม่มีสี = "ไม่ระบุสี" — กดชิปนี้ให้ค่าและไฮไลต์ตรงกัน ไม่งั้นบันทึกซ้ำจะติด "กรุณาเลือกสีสินค้า"
+                if (kind === 'device' && !item.color) {
+                    row.querySelector(`.po-chip-color[data-value="${PO_NO_COLOR}"]`)?.click();
+                }
 
                 // คิดยอดของแถว — ต้องทำทั้งสองชนิด ไม่งั้นแถวจะโชว์ยอดรวม ฿0 ทั้งที่กรอกราคาและจำนวนมาแล้ว
                 row.querySelector('[name="po_item_qty"]').dispatchEvent(new Event('input'));
@@ -1212,6 +1496,7 @@
 
         document.getElementById('form-create-po').reset();
         document.getElementById('po-items-container').innerHTML = '';
+        refreshPoClaimDiscounts(''); // form.reset() ไม่ยิง change — ล้างส่วนลดเคลมที่กดใช้ค้างไว้เอง
         syncPoItemsEmptyState();
         calculatePOTotal();
     };
@@ -1527,6 +1812,33 @@
         ` : ''}
     `;
 
+    // ยืนยัน + ยกเลิกใบสั่งซื้อ — ใช้ร่วมกันทั้งตารางประวัติและตาราง "ใบสั่งซื้อที่ต้องจ่าย"
+    const confirmCancelPO = (po) => {
+        showConfirm(
+            'ยืนยันการยกเลิกใบสั่งซื้อ',
+            `คุณแน่ใจหรือไม่ว่าต้องการยกเลิกใบสั่งซื้อ <strong class="text- font-mono">${poEsc(po.po_number)}</strong>?<br><span class="text-body-muted text-xs">การดำเนินการนี้จะไม่สามารถแก้ไขกลับมาใช้งานได้อีก</span>`,
+            async () => {
+                try {
+                    const res = await authFetch(`${API_BASE_URL}/purchase-orders/${po._id}/cancel`, {
+                        method: 'POST'
+                    });
+                    const json = await res.json();
+                    if (json.success) {
+                        showToast('ยกเลิกใบสั่งซื้อเรียบร้อยแล้ว');
+                        loadPOHistory();
+                    } else {
+                        showToast(json.message, 'error');
+                    }
+                } catch (e2) {
+                    console.error(e2);
+                    showToast('เกิดข้อผิดพลาดในการยกเลิกใบสั่งซื้อ', 'error');
+                }
+            },
+            'ยืนยันการยกเลิก',
+            'danger'
+        );
+    };
+
     const bindPoHistoryActionHandlers = (el, po) => {
         el.querySelector('.btn-view-po').addEventListener('click', (e) => {
             e.stopPropagation();
@@ -1551,29 +1863,7 @@
         if (cancelBtn) {
             cancelBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
-                showConfirm(
-                    'ยืนยันการยกเลิกใบสั่งซื้อ',
-                    `คุณแน่ใจหรือไม่ว่าต้องการยกเลิกใบสั่งซื้อ <strong class="text- font-mono">${po.po_number}</strong>?<br><span class="text-body-muted text-xs">การดำเนินการนี้จะไม่สามารถแก้ไขกลับมาใช้งานได้อีก</span>`,
-                    async () => {
-                        try {
-                            const res = await authFetch(`${API_BASE_URL}/purchase-orders/${po._id}/cancel`, {
-                                method: 'POST'
-                            });
-                            const json = await res.json();
-                            if (json.success) {
-                                showToast('ยกเลิกใบสั่งซื้อเรียบร้อยแล้ว');
-                                loadPOHistory();
-                            } else {
-                                showToast(json.message, 'error');
-                            }
-                        } catch (e2) {
-                            console.error(e2);
-                            showToast('เกิดข้อผิดพลาดในการยกเลิกใบสั่งซื้อ', 'error');
-                        }
-                    },
-                    'ยืนยันการยกเลิก',
-                    'danger'
-                );
+                confirmCancelPO(po);
             });
         }
     };
@@ -1932,7 +2222,7 @@
             }).slice(0, 10);
 
             if (!list.length) {
-                dueBody.innerHTML = '<tr><td colspan="7" class="px-6 py-8 text-center text-body-muted italic">ไม่มีใบสั่งซื้อที่ค้างชำระ</td></tr>';
+                dueBody.innerHTML = '<tr><td colspan="8" class="px-6 py-8 text-center text-body-muted italic">ไม่มีใบสั่งซื้อที่ค้างชำระ</td></tr>';
             } else {
                 const canPay = canPayPO();
                 dueBody.innerHTML = list.map(r => {
@@ -1951,6 +2241,13 @@
                             data-paid="${r.paid}" data-discount="${r.discount}" data-outstanding="${r.outstanding}">
                             <i class="fa-solid fa-money-bill-wave"></i> จ่ายเงิน
                         </button>` : '';
+                    // ยกเลิกได้เฉพาะใบที่ยังรอจัดส่งและยังไม่เคยจ่ายเงิน (เซิร์ฟเวอร์ตรวจซ้ำ) และต้องมีสิทธิ์สร้าง/จัดการใบสั่งซื้อ
+                    const cancelBtn = (canManagePO() && r.po.status === 'รอจัดส่ง' && !(r.paid > 0)) ? `
+                                <button type="button" class="btn-dash-cancel-po text-ink hover:text-red-400 transition-colors p-2 cursor-pointer"
+                                    data-id="${poDashEsc(r.po._id)}" title="ยกเลิกการสั่งซื้อ"
+                                    aria-label="ยกเลิกการสั่งซื้อ ${poDashEsc(r.po.po_number)}">
+                                    <i class="fa-solid fa-trash-can"></i>
+                                </button>` : '';
                     return `
                     <tr class="hover:bg-divider transition-colors">
                         <td class="px-6 py-4 text-sm">${dueCell}</td>
@@ -1963,6 +2260,7 @@
                             </div>
                         </td>
                         <td class="px-6 py-4 text-right font-mono text-ink">${poDashBaht(r.total)}</td>
+                        <td class="px-6 py-4 text-right font-mono ${r.discount > 0 ? 'text-state-ok' : 'text-ink/40'}" title="${poDashEsc(r.po.discount_remark || 'ไม่มีส่วนลด')}">${r.discount > 0 ? '− ' + poDashBaht(r.discount) : '-'}</td>
                         <td class="px-6 py-4 text-right font-mono font-semibold text-orange-400">${poDashBaht(r.outstanding)}</td>
                         <td class="px-6 py-4 text-right">
                             <div class="flex items-center justify-end gap-1">
@@ -1972,6 +2270,7 @@
                                     aria-label="ดูรายละเอียดใบสั่งซื้อ ${poDashEsc(r.po.po_number)}">
                                     <i class="fa-solid fa-eye"></i>
                                 </button>
+                                ${cancelBtn}
                             </div>
                         </td>
                     </tr>`;
@@ -1979,6 +2278,10 @@
 
                 dueBody.querySelectorAll('.btn-pay-po').forEach(btn =>
                     btn.addEventListener('click', () => openPoPaymentDialog(btn, () => loadPOHistory())));
+                dueBody.querySelectorAll('.btn-dash-cancel-po').forEach(btn => {
+                    const po = poHistoryCache.find(p => String(p._id) === btn.dataset.id);
+                    if (po) btn.addEventListener('click', () => confirmCancelPO(po));
+                });
                 dueBody.querySelectorAll('.btn-dash-view-po').forEach(btn => {
                     const po = poHistoryCache.find(p => String(p._id) === btn.dataset.id);
                     if (po) btn.addEventListener('click', () => openViewPOModal(po));
