@@ -1719,14 +1719,55 @@
         const container = document.getElementById('po-active-filters-container');
 
         if (textSpan && container) {
+            // โชว์ป้ายเฉพาะตอนมีตัวกรองจริง — "สถานะ:ทั้งหมด" ไม่ได้กรองอะไรจึงไม่ต้องโชว์
             if (texts.length > 0) {
                 textSpan.textContent = texts.join(', ');
                 container.style.display = 'flex';
             } else {
-                textSpan.textContent = 'สถานะ:ทั้งหมด';
-                container.style.display = 'flex';
+                container.style.display = 'none';
             }
         }
+    };
+
+    // ปุ่มลัดกรองสถานะ (พร้อมตัวเลข) เหนือตาราง — กดทีเดียวเห็นงานที่ต้องทำ
+    let poQuickFilter = 'all';
+    const PO_QUICK_FILTERS = [
+        { key: 'all', label: 'ทั้งหมด', needPay: false, test: () => true },
+        { key: 'unpaid', label: 'ยังไม่ชำระ', needPay: true, test: (po, d) => d.canPayNow },
+        { key: 'overdue', label: 'เลยกำหนด', needPay: true, test: (po, d) => d.isOverdue, danger: true },
+        { key: 'shipping', label: 'รอจัดส่ง', needPay: false, test: (po) => po.status === 'รอจัดส่ง' }
+    ];
+
+    const renderPoQuickTabs = () => {
+        const box = document.getElementById('po-quick-tabs');
+        if (!box) return;
+        const canPay = canPayPO();
+        const tabs = PO_QUICK_FILTERS.filter(f => canPay || !f.needPay);
+        if (!tabs.some(f => f.key === poQuickFilter)) poQuickFilter = 'all';
+
+        const counts = {};
+        tabs.forEach(f => { counts[f.key] = 0; });
+        poHistoryCache.forEach(po => {
+            const d = buildPoHistoryCardData(po);
+            tabs.forEach(f => { if (f.test(po, d)) counts[f.key]++; });
+        });
+
+        box.innerHTML = tabs.map(f => {
+            const on = f.key === poQuickFilter;
+            const base = 'px-3.5 py-2 rounded-xl text-sm font-medium transition-colors cursor-pointer flex items-center gap-2';
+            const look = on
+                ? 'bg-surface-chip text-accent-ink ring-1 ring-accent-ink'
+                : 'bg-field text-body-muted hover:text-ink';
+            const countLook = (f.danger && counts[f.key] > 0) ? 'text-state-danger-soft font-semibold' : '';
+            return `<button type="button" data-quick="${f.key}" aria-pressed="${on}" class="${base} ${look}">${f.label}<span class="font-mono text-xs ${countLook}">${counts[f.key].toLocaleString('th-TH')}</span></button>`;
+        }).join('');
+
+        box.querySelectorAll('button[data-quick]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                poQuickFilter = btn.dataset.quick;
+                renderPOHistoryTable();
+            });
+        });
     };
 
     // ข้อมูลที่คำนวณร่วมกันระหว่างแถวตารางกับการ์ด — แยกออกมาครั้งเดียวเพื่อไม่ให้สองมุมมองเพี้ยนจากกัน
@@ -1775,6 +1816,7 @@
         // กำหนดจ่าย — เก็บเป็นเที่ยงคืน UTC จึงตัด 10 ตัวแรกของ ISO ได้วันที่ตามที่กรอก (ไม่เพี้ยนตามเขตเวลา)
         let dueStr = '';
         let isOverdue = false;
+        let overdueDays = 0;
         if (po.payment_due_date) {
             const iso = String(po.payment_due_date).slice(0, 10);
             const [y, m, dd] = iso.split('-');
@@ -1782,6 +1824,11 @@
             const now = new Date();
             const todayIso = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
             isOverdue = iso < todayIso && po.status !== 'ยกเลิก' && po.payment_status !== 'ชำระเงินแล้ว';
+            if (isOverdue) {
+                // จำนวนวันที่เลยกำหนด (นับจากวันที่ตามปฏิทินทั้งคู่ ไม่ขึ้นกับเขตเวลา)
+                const [ty, tm, td] = todayIso.split('-').map(Number);
+                overdueDays = Math.round((Date.UTC(ty, tm - 1, td) - Date.UTC(Number(y), Number(m) - 1, Number(dd))) / 86400000);
+            }
         }
 
         const paidAmount = po.paid_amount || 0;
@@ -1790,26 +1837,30 @@
         // จ่ายได้ = ไม่ยกเลิก + ยังจ่ายไม่ครบ (เกณฑ์เดียวกับแท็บบัญชีเจ้าหนี้)
         const canPayNow = po.status !== 'ยกเลิก' && po.payment_status !== 'ชำระเงินแล้ว';
 
-        return { dateStr, branchName, totalAmount, totalQty, st, pay, dueStr, isOverdue, paidAmount, discount, outstanding, canPayNow };
+        return { dateStr, branchName, totalAmount, totalQty, st, pay, dueStr, isOverdue, overdueDays, paidAmount, discount, outstanding, canPayNow };
     };
 
+    // ทุกแถวใช้โครงเดียวกัน: ป้ายสถานะ · ข้อความกำหนดจ่าย · ปุ่มจ่ายเงิน เรียงในบรรทัดเดียว (ห่อบรรทัดเมื่อจอแคบ)
+    // ใบที่เลยกำหนดบอกจำนวนวันตรง ๆ ด้วยสีแดงอ่อนที่อ่านง่ายบนพื้นดำ
     const poPaymentBadgeHtml = (d, po) => `
-        <div class="inline-flex items-center gap-2 px-2.5 py-1 rounded-[0.375rem] ${d.pay.badge}">
-            <div class="w-2 h-2 rounded-full ${d.pay.dot}"></div>
-            <span class="${d.pay.text} font-medium text-xs">${d.pay.label}</span>
+        <div class="flex flex-wrap items-center justify-center gap-x-2.5 gap-y-1.5">
+            <div class="inline-flex items-center gap-2 px-2.5 py-1 rounded-[0.375rem] ${d.pay.badge}">
+                <div class="w-2 h-2 rounded-full ${d.pay.dot}"></div>
+                <span class="${d.pay.text} font-medium text-xs">${d.pay.label}</span>
+            </div>
+            ${d.dueStr ? `
+                <span class="text-xs ${d.isOverdue ? 'text-state-danger-soft font-semibold' : 'text-ink/70'}" title="กำหนดจ่าย ${d.dueStr}">
+                    ${d.isOverdue ? `เลยกำหนด ${d.overdueDays} วัน` : `กำหนดจ่าย ${d.dueStr}`}
+                </span>
+            ` : ''}
+            ${d.canPayNow ? `
+                <button type="button" class="btn-pay-po px-3 py-1.5 bg-primary hover:bg-[#E2B93C] text-on-primary font-semibold rounded-[0.375rem] text-xs transition-colors inline-flex items-center gap-1.5 cursor-pointer"
+                    data-id="${po._id}" data-no="${po.po_number || ''}" data-amount="${d.totalAmount}"
+                    data-paid="${d.paidAmount}" data-discount="${d.discount}" data-outstanding="${d.outstanding}">
+                    <i class="fa-solid fa-money-bill-wave"></i> จ่ายเงิน
+                </button>
+            ` : ''}
         </div>
-        ${d.dueStr ? `
-            <p class="mt-1 text-[11px] ${d.isOverdue ? 'text-state-danger font-semibold' : 'text-ink/60'}">
-                ${d.isOverdue ? 'เลยกำหนด ' : 'กำหนดจ่าย '}${d.dueStr}
-            </p>
-        ` : ''}
-        ${d.canPayNow ? `
-            <button type="button" class="btn-pay-po mt-1.5 px-3 py-1.5 bg-primary hover:bg-[#E2B93C] text-on-primary font-semibold rounded-[0.375rem] text-xs transition-colors inline-flex items-center gap-1.5 cursor-pointer"
-                data-id="${po._id}" data-no="${po.po_number || ''}" data-amount="${d.totalAmount}"
-                data-paid="${d.paidAmount}" data-discount="${d.discount}" data-outstanding="${d.outstanding}">
-                <i class="fa-solid fa-money-bill-wave"></i> จ่ายเงิน
-            </button>
-        ` : ''}
     `;
 
     // ยืนยัน + ยกเลิกใบสั่งซื้อ — ใช้ร่วมกันทั้งตารางประวัติและตาราง "ใบสั่งซื้อที่ต้องจ่าย"
@@ -1859,26 +1910,71 @@
             });
         }
 
-        const cancelBtn = el.querySelector('.btn-cancel-po');
-        if (cancelBtn) {
-            cancelBtn.addEventListener('click', (e) => {
+        // เมนูสามจุด: ยกเลิกใบ PO อยู่ในนี้ ไม่วางติดปุ่มอื่นเพื่อกันกดพลาด
+        const moreBtn = el.querySelector('.btn-more-po');
+        if (moreBtn) {
+            moreBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
-                confirmCancelPO(po);
+                openPoMoreMenu(moreBtn, po);
             });
         }
     };
 
+    // เมนูลอย (position: fixed) — ตารางมี overflow-x ซึ่งตัดเมนูแบบ absolute ของแถวล่าง ๆ
+    let poMoreMenuEl = null;
+    const closePoMoreMenu = () => {
+        if (poMoreMenuEl) { poMoreMenuEl.remove(); poMoreMenuEl = null; }
+    };
+    const openPoMoreMenu = (btn, po) => {
+        const wasOpenForThis = poMoreMenuEl && poMoreMenuEl.dataset.id === po._id;
+        closePoMoreMenu();
+        if (wasOpenForThis) return;
+
+        const menu = document.createElement('div');
+        menu.dataset.id = po._id;
+        menu.className = 'fixed z-[100] min-w-[10rem] rounded-xl bg-panel shadow-lg ring-1 ring-divider p-1';
+        // ยกเลิกได้เฉพาะใบที่ยังรอจัดส่ง — ใบอื่นโชว์เป็นปุ่มจาง พร้อมบอกเหตุผล
+        const canCancel = po.status === 'รอจัดส่ง' || po.status === 'สั่งซื้อแล้ว';
+        menu.innerHTML = canCancel
+            ? `<button type="button" class="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-state-danger-soft hover:bg-state-danger/10 transition-colors cursor-pointer">
+                    <i class="fa-solid fa-trash-can text-xs"></i> ยกเลิกใบ PO
+               </button>`
+            : `<div class="px-3 py-2 text-sm text-body-muted">ยกเลิกไม่ได้<br><span class="text-xs">ใบนี้ไม่ได้อยู่ในสถานะรอจัดส่ง</span></div>`;
+        const cancelBtn = menu.querySelector('button');
+        if (cancelBtn) {
+            cancelBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                closePoMoreMenu();
+                confirmCancelPO(po);
+            });
+        }
+        document.body.appendChild(menu);
+
+        const r = btn.getBoundingClientRect();
+        const h = menu.offsetHeight;
+        const top = (r.bottom + h + 8 > window.innerHeight) ? Math.max(8, r.top - h - 4) : r.bottom + 4;
+        menu.style.top = `${top}px`;
+        menu.style.left = `${Math.max(8, r.right - menu.offsetWidth)}px`;
+        poMoreMenuEl = menu;
+    };
+    // ปิดเมนูเมื่อคลิกที่อื่น เลื่อนหน้า หรือกด Esc (ผูกครั้งเดียว)
+    document.addEventListener('click', closePoMoreMenu);
+    window.addEventListener('scroll', closePoMoreMenu, true);
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closePoMoreMenu(); });
+
     const poHistoryActionButtonsHtml = (po) => `
-        <button class="btn-view-po text-ink hover:text-indigo-400 transition-colors p-2" title="รายละเอียดใบ PO">
+        <button class="btn-view-po text-ink hover:text-indigo-400 transition-colors p-2" title="รายละเอียดใบ PO" aria-label="ดูรายละเอียดใบ PO">
             <i class="fa-solid fa-eye"></i>
         </button>
-        ${po.status === 'รอจัดส่ง' || po.status === 'สั่งซื้อแล้ว' ? `
-            <button class="btn-cancel-po text-ink hover:text-red-400 transition-colors p-2" title="ยกเลิกใบ PO">
-                <i class="fa-solid fa-trash-can"></i>
-            </button>
-        ` : ''}
-        <button class="btn-print-po text-ink hover:text-amber-400 transition-colors p-2" title="พิมพ์ใบ PO">
+        <button class="btn-print-po text-ink hover:text-amber-400 transition-colors p-2" title="พิมพ์ใบ PO" aria-label="พิมพ์ใบ PO">
             <i class="fa-solid fa-print"></i>
+        </button>
+        <button class="btn-more-po text-ink hover:text-accent-ink transition-colors p-2 w-9 h-9 inline-flex items-center justify-center" title="เพิ่มเติม" aria-label="เมนูเพิ่มเติม" aria-haspopup="true">
+            <span class="flex flex-col gap-[3px]" aria-hidden="true">
+                <span class="block w-[3.5px] h-[3.5px] rounded-full bg-current"></span>
+                <span class="block w-[3.5px] h-[3.5px] rounded-full bg-current"></span>
+                <span class="block w-[3.5px] h-[3.5px] rounded-full bg-current"></span>
+            </span>
         </button>
     `;
 
@@ -1887,7 +1983,7 @@
         const tr = document.createElement('tr');
         tr.className = 'hover:bg-divider transition-colors';
         tr.innerHTML = `
-            <td class="px-6 py-4 text-ink text-sm whitespace-nowrap">
+            <td class="pl-5 pr-6 py-4 text-ink text-sm whitespace-nowrap border-l-4 ${d.isOverdue ? 'border-state-danger' : 'border-transparent'}">
                 <i class="fa-regular fa-clock text-ink/70 mr-1.5"></i>${d.dateStr}
             </td>
             <td class="px-6 py-4 font-mono font-semibold text-accent-ink whitespace-nowrap">${po.po_number || '-'}</td>
@@ -1963,6 +2059,7 @@
 
         updateActiveFilterChip();
         syncPoHistoryPaymentHeader();
+        renderPoQuickTabs();
 
         const query = (document.getElementById('search-po-history')?.value || '').trim().toLowerCase();
         const statusFilter = document.getElementById('filter-po-status')?.value || '';
@@ -1979,8 +2076,15 @@
             const matchBranch = branchFilter === '' || branchName === branchFilter;
             const matchSupplier = supplierFilter === '' || po.supplier_name === supplierFilter;
 
-            return matchSearch && matchStatus && matchBranch && matchSupplier;
+            if (!(matchSearch && matchStatus && matchBranch && matchSupplier)) return false;
+            const quick = PO_QUICK_FILTERS.find(f => f.key === poQuickFilter);
+            return !quick || quick.test(po, buildPoHistoryCardData(po));
         });
+
+        // ใบที่เลยกำหนดขึ้นก่อน (เลยนานสุดอยู่บนสุด) ที่เหลือคงลำดับเดิม
+        const overdueRank = (po) => buildPoHistoryCardData(po).overdueDays;
+        const ranks = new Map(filtered.map(po => [po, overdueRank(po)]));
+        filtered.sort((a, b) => ranks.get(b) - ranks.get(a));
 
         const countLabel = document.getElementById('po-history-total-count');
         if (countLabel) countLabel.textContent = filtered.length;
@@ -3912,7 +4016,7 @@
                 }).join('');
                 html += `<section>${sectionTitle('รายการเครื่อง', devices.length)}
                     <div class="overflow-x-auto" tabindex="0"><table class="w-full text-left border-collapse min-w-[760px]">
-                        <thead><tr class="bg-[#4D4D4D]/40">
+                        <thead><tr class="bg-panel/40">
                             <th class="${thCls} rounded-l-lg">สี</th><th class="${thCls}">IMEI</th><th class="${thCls}">ชื่อสินค้า</th><th class="${thCls}">ความจุ</th>
                             <th class="${thCls} text-center">จำนวน</th><th class="${thCls} text-center">ตรวจรับ</th><th class="${thCls} text-right">ต้นทุนสุทธิ/ชิ้น</th><th class="${thCls} text-right rounded-r-lg">ต้นทุนรวม</th>
                         </tr></thead><tbody>${rows}</tbody></table></div></section>`;
@@ -3928,7 +4032,7 @@
                     </tr>`).join('');
                 html += `<section>${sectionTitle('รายการอุปกรณ์เสริม', accessories.length)}
                     <div class="overflow-x-auto" tabindex="0"><table class="w-full text-left border-collapse min-w-[560px]">
-                        <thead><tr class="bg-[#4D4D4D]/40">
+                        <thead><tr class="bg-panel/40">
                             <th class="${thCls} rounded-l-lg">รหัสสินค้า</th><th class="${thCls}">ชื่อสินค้า</th><th class="${thCls} text-center">จำนวน</th>
                             <th class="${thCls} text-center">ตรวจรับ</th><th class="${thCls} text-right">ต้นทุนสุทธิ/ชิ้น</th><th class="${thCls} text-right rounded-r-lg">ต้นทุนรวม</th>
                         </tr></thead><tbody>${rows}</tbody></table></div></section>`;
@@ -4615,17 +4719,17 @@
     };
 
     const arrTableCard = (title, sub, cols, bodyId) => `
-        <div class="bg-[#1F1F22] border border-[#3F3F46] rounded-xl overflow-hidden">
+        <div class="bg-[#1F1F22] border border-line rounded-xl overflow-hidden">
             <div class="flex flex-wrap items-baseline gap-x-2.5 gap-y-1 px-5 pt-4 pb-3">
                 <h4 class="text-base font-semibold text-white">${title}</h4>
                 <span class="text-[13px] text-white/70">${sub}</span>
             </div>
             <div class="overflow-x-auto" tabindex="0">
                 <table class="w-full min-w-[720px] text-left border-collapse">
-                    <thead class="bg-[#4D4D4D]/40">
+                    <thead class="bg-panel/40">
                         <tr>${cols.map(([label, cls]) => `<th class="${ARR_TH} ${cls || ''}">${label}</th>`).join('')}</tr>
                     </thead>
-                    <tbody id="${bodyId}" class="divide-y divide-[#464646]"></tbody>
+                    <tbody id="${bodyId}" class="divide-y divide-divider"></tbody>
                 </table>
             </div>
         </div>`;

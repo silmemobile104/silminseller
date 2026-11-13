@@ -1017,6 +1017,9 @@
                 </div>
             </div>
 
+            <!-- ปุ่มลัดกรองสถานะ + ตัวเลข (เขียนจาก renderPoQuickTabs ใน js/page-po-accounting.js) -->
+            <div id="po-quick-tabs" class="px-6 pt-4 flex flex-wrap gap-2"></div>
+
             <!-- Active filters chip and count + สลับมุมมอง -->
             <div class="px-6 py-4">
                 <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
@@ -1033,7 +1036,7 @@
                     </div>
                     <div class="flex items-center gap-3">
                         <div class="text-xs text-ink font-medium">
-                            สินค้าทั้งหมด <span id="po-history-total-count">0</span> รายการ
+                            ใบสั่งซื้อ <span id="po-history-total-count">0</span> ใบ
                         </div>
                         <div class="flex items-center gap-1 shrink-0">
                             <button type="button" id="po-history-view-list" aria-label="มุมมองรายการ"

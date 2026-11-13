@@ -44,23 +44,29 @@
 
     const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
-    // ตารางทั้งสองแท็บมี 6 คอลัมน์ — colspan ของแถวสถานะ/โครงร่างต้องเป็น 6
-    const COLS = 6;
+    // จำนวนคอลัมน์ของตาราง (สองแท็บมีไม่เท่ากัน) — อ่านจากหัวตารางจริง ใช้เป็น colspan ของแถวสถานะ/หัวกลุ่ม
+    const colCount = (tbody) => {
+        const table = tbody.closest('table');
+        return table ? table.querySelectorAll('thead th').length : 1;
+    };
 
     // แถวโครงร่างระหว่างรอข้อมูล — ต้องเรียกก่อน await เสมอ ไม่ปล่อยตารางว่าง (ข้อ 11.7)
     const renderSkeleton = (tbody, rowCount = 6) => {
         const bar = (widthClass) => `<div class="h-3.5 ${widthClass} rounded-full bg-skeleton animate-pulse"></div>`;
-        const cells = [bar('w-20'), bar('w-48'), bar('w-24'), bar('w-16 ml-auto'), bar('w-12 mx-auto'), bar('w-20')];
+        // ลำดับ · รหัส · ชื่อ · (ที่จัดเก็บ) · ราคา · คงเหลือ
+        const all = [bar('w-6 mx-auto'), bar('w-20'), bar('w-48'), bar('w-24'), bar('w-16 ml-auto'), bar('w-12 mx-auto')];
+        const n = colCount(tbody);
+        const cells = n >= all.length ? all : [...all.slice(0, 3), ...all.slice(all.length - (n - 3))];
         let html = '';
         for (let i = 0; i < rowCount; i++) {
-            html += `<tr>${cells.map(c => `<td class="px-6 py-4">${c}</td>`).join('')}</tr>`;
+            html += `<tr>${cells.map(c => `<td class="px-4 py-4">${c}</td>`).join('')}</tr>`;
         }
         tbody.innerHTML = html;
     };
 
     // แถวสถานะ (ว่าง / ผิดพลาด) — แถวเดียวกินเต็มความกว้าง (ข้อ 11.7)
-    const stateRow = (message, extraClass = 'text-body-muted italic') =>
-        `<tr><td colspan="${COLS}" class="px-6 py-8 text-center ${extraClass}">${message}</td></tr>`;
+    const stateRow = (tbody, message, extraClass = 'text-body-muted italic') =>
+        `<tr><td colspan="${colCount(tbody)}" class="px-6 py-8 text-center ${extraClass}">${message}</td></tr>`;
 
     const selectedText = (selectEl) => {
         if (!selectEl) return '';
@@ -172,8 +178,111 @@
             row.style.display = (!term || (row.dataset.search || '').includes(term)) ? '' : 'none';
         });
 
+        applySort(key);
+        renumber(key);
         renderChips(key);
         updateCount(key);
+    };
+
+    // ==========================================
+    // กลุ่ม เครื่อง / อุปกรณ์เสริม + เลขลำดับ
+    // ==========================================
+
+    const GROUPS = [
+        { kind: 'device', label: 'เครื่อง', icon: 'fa-mobile-screen' },
+        { kind: 'accessory', label: 'อุปกรณ์เสริม', icon: 'fa-headphones' },
+    ];
+
+    // สินค้าไม่มีฟิลด์ item_kind — ใช้กติกาเดียวกับหน้าขาย (checkIsDevice ใน script.js):
+    // เครื่อง = มีความจุ/สภาพ/IMEI หรือชื่อประเภทเป็นยี่ห้อ/รุ่นเครื่อง ที่เหลือคืออุปกรณ์เสริม
+    const kindOf = (p) => {
+        if (!p) return 'device';
+        if (typeof window.checkIsDevice === 'function') {
+            return window.checkIsDevice(p.type_id ? p.type_id.name : '', p) ? 'device' : 'accessory';
+        }
+        return (p.type_id && p.type_id.name === 'อุปกรณ์เสริม') ? 'accessory' : 'device';
+    };
+
+    // ==========================================
+    // เรียงลำดับด้วยการกดหัวคอลัมน์ (เรียงภายในแต่ละกลุ่ม)
+    // ==========================================
+
+    const sortState = { mystock: null, globalstock: null };
+    const SORTERS = {
+        code: (a, b) => (a.dataset.code || '').localeCompare(b.dataset.code || '', 'th', { numeric: true }),
+        name: (a, b) => (a.dataset.name || '').localeCompare(b.dataset.name || '', 'th'),
+        price: (a, b) => Number(a.dataset.price) - Number(b.dataset.price),
+        qty: (a, b) => Number(a.dataset.qty) - Number(b.dataset.qty),
+    };
+
+    const applySort = (key) => {
+        const s = sortState[key];
+        const tbody = document.getElementById(TABS[key].tbody);
+        if (!tbody) return;
+
+        document.querySelectorAll(`#content-branch-${key} th[data-sort]`).forEach(th => {
+            const arrow = th.querySelector('.sort-arrow');
+            if (arrow) arrow.textContent = s && s.by === th.dataset.sort ? (s.dir === 1 ? '▲' : '▼') : '';
+        });
+        if (!s) return;
+
+        // แยกเป็นช่วงตามหัวกลุ่ม แล้วเรียงเฉพาะแถวข้อมูลในช่วงนั้น
+        const segments = [];
+        let cur = null;
+        Array.from(tbody.children).forEach(tr => {
+            if (tr.classList.contains('group-row')) { cur = { header: tr, rows: [] }; segments.push(cur); }
+            else if (tr.classList.contains('item-row') && cur) cur.rows.push(tr);
+        });
+        segments.forEach(seg => {
+            seg.rows.sort((a, b) => s.dir * SORTERS[s.by](a, b)).forEach(tr => tbody.appendChild(tr));
+        });
+        // เอาหัวกลุ่มกลับมาไว้หน้าแถวของตัวเอง
+        segments.forEach(seg => seg.rows.length && tbody.insertBefore(seg.header, seg.rows[0]));
+    };
+
+    const groupRow = (g, cols) => {
+        const tr = document.createElement('tr');
+        tr.className = 'group-row bg-panel/40';
+        tr.innerHTML = `<td colspan="${cols}" class="px-6 py-3 text-ink font-semibold text-sm">
+            <i class="fa-solid ${g.icon} text-body-muted mr-2" aria-hidden="true"></i>${g.label}
+            <span class="group-count ml-2 text-xs font-normal text-body-muted"></span></td>`;
+        return tr;
+    };
+
+    // ใส่แถวทีละกลุ่ม (เครื่องก่อน อุปกรณ์เสริมตามหลัง) โดยคงลำดับเดิมในแต่ละกลุ่ม
+    const appendGrouped = (frag, tbody, list, getKind, makeRow) => {
+        const cols = colCount(tbody);
+        GROUPS.forEach(g => {
+            const part = list.filter(x => getKind(x) === g.kind);
+            if (!part.length) return;
+            frag.appendChild(groupRow(g, cols));
+            part.forEach(x => frag.appendChild(makeRow(x)));
+        });
+    };
+
+    // ตัวเลขลำดับนับใหม่ในแต่ละกลุ่ม เฉพาะแถวที่มองเห็น (หลังค้นหา) และซ่อนหัวกลุ่มที่ไม่มีแถวเหลือ
+    const renumber = (key) => {
+        const tbody = document.getElementById(TABS[key].tbody);
+        if (!tbody) return;
+        let header = null, n = 0;
+        const closeGroup = () => {
+            if (!header) return;
+            header.style.display = n ? '' : 'none';
+            const c = header.querySelector('.group-count');
+            if (c) c.textContent = `${n} รายการ`;
+        };
+        Array.from(tbody.children).forEach(tr => {
+            if (tr.classList.contains('group-row')) {
+                closeGroup();
+                header = tr;
+                n = 0;
+            } else if (tr.classList.contains('item-row') && tr.style.display !== 'none') {
+                n++;
+                const idx = tr.querySelector('.idx-cell');
+                if (idx) idx.textContent = n;
+            }
+        });
+        closeGroup();
     };
 
     // ==========================================
@@ -187,44 +296,48 @@
     const colorDot = (colorName, colorDoc) =>
         (window.productColorDot ? window.productColorDot(colorName, colorDoc) : '');
 
-    const codeCell = (p) =>
-        `<td class="px-6 py-4"><span class="font-mono text-md font-semibold text-accent-ink">${esc(p.product_code || '-')}</span></td>`;
+    const idxCell = () =>
+        '<td class="idx-cell px-4 py-4 text-center text-body-muted font-mono"></td>';
 
-    // ชื่อ + คำบรรยาย (ความจุ สี สภาพ) — จุดสี 16px หน้าชื่อ
-    const nameCell = (p) => {
+    const codeCell = (p) =>
+        `<td class="px-4 py-4"><span class="font-mono text-md font-semibold text-accent-ink">${esc(p.product_code || '-')}</span></td>`;
+
+    // ชื่อ + ความจุ สี สภาพ อยู่บรรทัดเดียวกัน — จุดสี 16px หน้าชื่อ
+    // ป้ายหมวดหมู่ตัวเล็กท้ายชื่อ + ป้าย "กำลังโอน" เฉพาะตอนที่ของกำลังโอน (ปกติไม่โชว์สถานะ)
+    const nameCell = (p, transferring = false) => {
         const color = p.color_id && p.color_id.name ? p.color_id.name : '';
         const capacity = p.capacity_id && p.capacity_id.name ? p.capacity_id.name : '';
         const condition = p.condition_id && p.condition_id.name ? p.condition_id.name : '';
         const sub = [capacity, color, condition].filter(Boolean).join(' ');
+        const cat = p.type_id && p.type_id.name ? p.type_id.name : '';
+        const transferBadge = transferring
+            ? `<span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-[0.375rem] bg-state-pending/[0.12] text-state-pending text-xs font-medium"><span class="w-1.5 h-1.5 rounded-full bg-state-pending"></span>กำลังโอน</span>`
+            : '';
         return `
-            <td class="px-6 py-4">
+            <td class="px-4 py-4 w-full">
                 <p class="font-medium text-ink flex items-center gap-2">
                     ${colorDot(color, p.color_id)}<span>${esc(p.name || 'ไม่ระบุชื่อ')}</span>
+                    ${sub ? `<span class="text-sm font-normal text-ink/70">${esc(sub)}</span>` : ''}
+                    ${cat ? `<span class="px-2 py-0.5 bg-field text-body-muted rounded-[0.375rem] text-xs font-normal">${esc(cat)}</span>` : ''}
+                    ${transferBadge}
                 </p>
-                <p class="text-xs pl-6 text-ink/70">${esc(sub) || '-'}</p>
             </td>`;
     };
 
-    const categoryCell = (p) => {
-        const cat = p.type_id && p.type_id.name ? p.type_id.name : 'ทั่วไป';
-        return `<td class="px-6 py-4"><span class="px-2.5 py-1 bg-field text-body-muted rounded-[0.375rem] text-xs font-medium">${esc(cat)}</span></td>`;
-    };
-
     const priceCell = (p) =>
-        `<td class="px-6 py-4 text-right text-ink font-mono">฿${(Number(p.selling_price) || 0).toLocaleString()}</td>`;
+        `<td class="px-4 py-4 text-right text-ink font-mono">฿${(Number(p.selling_price) || 0).toLocaleString()}</td>`;
 
     const qtyCell = (qty, unit) =>
-        `<td class="px-6 py-4 text-center text-ink font-medium">${qty} <span class="text-xs text-ink font-normal">${esc(unit || 'ชิ้น')}</span></td>`;
+        `<td class="px-4 py-4 text-center text-ink font-medium">${qty} <span class="text-xs text-ink font-normal">${esc(unit || 'ชิ้น')}</span></td>`;
 
-    // ป้ายสถานะ — จุดสี + tint 12% (ข้อ 11.6)
-    const statusCell = (transferring) => transferring
-        ? `<td class="px-6 py-4"><div class="inline-flex items-center gap-2 px-2.5 py-1 rounded-[0.375rem] bg-state-pending/[0.12]"><div class="w-2 h-2 rounded-full bg-state-pending"></div><span class="text-state-pending font-medium text-xs">กำลังโอน</span></div></td>`
-        : `<td class="px-6 py-4"><div class="inline-flex items-center gap-2 px-2.5 py-1 rounded-[0.375rem] bg-[#42A231]/[0.12]"><div class="w-2 h-2 rounded-full bg-[#20D500]"></div><span class="text-[#20D500] font-medium text-xs">ปกติ</span></div></td>`;
-
-    const buildRow = (cells, searchText) => {
+    const buildRow = (cells, searchText, p, qty) => {
         const tr = document.createElement('tr');
         tr.className = ROW_BASE;
         tr.dataset.search = searchText.toLowerCase();
+        tr.dataset.code = p.product_code || '';
+        tr.dataset.name = p.name || '';
+        tr.dataset.price = Number(p.selling_price) || 0;
+        tr.dataset.qty = qty;
         tr.innerHTML = cells;
         return tr;
     };
@@ -301,6 +414,20 @@
             populateTypeFilter('filter-branch-mystock-type');
             populateTypeFilter('filter-branch-globalstock-type');
 
+            // กดหัวคอลัมน์: ครั้งแรกเรียงขึ้น ครั้งที่สองเรียงลง ครั้งที่สามยกเลิกการเรียง
+            Object.keys(TABS).forEach(key => {
+                document.querySelectorAll(`#content-branch-${key} th[data-sort]`).forEach(th => {
+                    th.addEventListener('click', () => {
+                        const by = th.dataset.sort;
+                        const s = sortState[key];
+                        if (!s || s.by !== by) sortState[key] = { by, dir: 1 };
+                        else if (s.dir === 1) sortState[key] = { by, dir: -1 };
+                        else sortState[key] = null;
+                        applySearch(key);
+                    });
+                });
+            });
+
             Object.keys(TABS).forEach(key => {
                 const t = TABS[key];
                 document.getElementById(t.type)?.addEventListener('change', t.reload);
@@ -321,11 +448,19 @@
     // ==========================================
 
     // มูลค่ารวมของสต็อกในสาขา (ราคาขาย) — null = ยังไม่มีตัวเลข (กำลังโหลด / โหลดไม่สำเร็จ)
-    const setMyStockValue = (value, pieces) => {
+    // byGroup = { device: {pieces, value}, accessory: {pieces, value} } — สรุปแยกกลุ่มใต้ตัวเลขรวม
+    const setMyStockValue = (value, pieces, byGroup) => {
         const el = document.getElementById('value-branch-mystock');
         const sub = document.getElementById('value-branch-mystock-sub');
+        const groupsEl = document.getElementById('value-branch-mystock-groups');
         if (el) el.textContent = value == null ? '-' : `฿${Math.round(value).toLocaleString('th-TH')}`;
         if (sub) sub.textContent = value == null ? '' : `จาก ${pieces.toLocaleString('th-TH')} ชิ้น`;
+        if (groupsEl) {
+            groupsEl.innerHTML = (value == null || !byGroup) ? '' : GROUPS
+                .filter(g => byGroup[g.kind] && byGroup[g.kind].pieces > 0)
+                .map(g => `<span class="px-2.5 py-1 rounded-[0.375rem] bg-field text-ink text-xs"><i class="fa-solid ${g.icon} text-body-muted mr-1.5" aria-hidden="true"></i>${g.label} ${byGroup[g.kind].pieces.toLocaleString('th-TH')} ชิ้น · ฿${Math.round(byGroup[g.kind].value).toLocaleString('th-TH')}</span>`)
+                .join('');
+        }
     };
 
     const myQty = (p) => {
@@ -357,7 +492,7 @@
             const items = baseItems.filter(p => matchesFilters(p, typeFilter, condFilter)).sort(byName);
 
             if (items.length === 0) {
-                tbody.innerHTML = stateRow('ไม่พบสินค้าคงเหลือในสาขาของคุณ');
+                tbody.innerHTML = stateRow(tbody, 'ไม่พบสินค้าคงเหลือในสาขาของคุณ');
                 renderChips('mystock');
                 updateCount('mystock');
                 setMyStockValue(0, 0);
@@ -365,23 +500,29 @@
             }
 
             let totalValue = 0, totalPieces = 0;
+            const byGroup = { device: { pieces: 0, value: 0 }, accessory: { pieces: 0, value: 0 } };
             const frag = document.createDocumentFragment();
-            items.forEach(p => {
+            appendGrouped(frag, tbody, items, kindOf, (p) => {
                 const qty = myQty(p);
                 const unit = (p.unit_id && p.unit_id.name) ? p.unit_id.name : 'ชิ้น';
                 // จำนวนเดียวกับที่ตารางแสดง (IMEI ถ้ามี ไม่งั้น quantity) × ราคาขายต่อชิ้น
-                totalValue += qty * (Number(p.selling_price) || 0);
+                const lineValue = qty * (Number(p.selling_price) || 0);
+                totalValue += lineValue;
                 totalPieces += qty;
+                const g = byGroup[kindOf(p)];
+                g.pieces += qty;
+                g.value += lineValue;
 
-                frag.appendChild(buildRow(
-                    codeCell(p) + nameCell(p) + categoryCell(p) + priceCell(p) + qtyCell(qty, unit) + statusCell(!!p.is_transferring),
-                    [p.name, p.product_code, ...(p.imeis || [])].join(' ')
-                ));
+                return buildRow(
+                    idxCell() + codeCell(p) + nameCell(p, !!p.is_transferring) + priceCell(p) + qtyCell(qty, unit),
+                    [p.name, p.product_code, ...(p.imeis || [])].join(' '),
+                    p, qty
+                );
             });
             tbody.innerHTML = '';
             tbody.appendChild(frag);
 
-            setMyStockValue(totalValue, totalPieces);
+            setMyStockValue(totalValue, totalPieces, byGroup);
 
             // คำค้นที่ค้างอยู่ต้องถูกใช้ซ้ำกับแถวชุดใหม่ ไม่งั้นชิป "ค้นหา: ..." จะโชว์อยู่แต่ตารางไม่ได้กรอง
             applySearch('mystock');
@@ -389,7 +530,7 @@
             console.error(err);
             totalGroups.mystock = 0;
             setMyStockValue(null);
-            tbody.innerHTML = stateRow('เกิดข้อผิดพลาดในการโหลดข้อมูล', 'text-state-danger-soft');
+            tbody.innerHTML = stateRow(tbody, 'เกิดข้อผิดพลาดในการโหลดข้อมูล', 'text-state-danger-soft');
             updateCount('mystock');
         }
     };
@@ -445,21 +586,22 @@
                 .sort((a, b) => byName(a.p, b.p) || a.branch.localeCompare(b.branch, 'th'));
 
             if (rows.length === 0) {
-                tbody.innerHTML = stateRow('ไม่พบข้อมูลสินค้าในระบบ');
+                tbody.innerHTML = stateRow(tbody, 'ไม่พบข้อมูลสินค้าในระบบ');
                 renderChips('globalstock');
                 updateCount('globalstock');
                 return;
             }
 
             const frag = document.createDocumentFragment();
-            rows.forEach(({ p, qty, imeis, branch }) => {
+            appendGrouped(frag, tbody, rows, (r) => kindOf(r.p), ({ p, qty, imeis, branch }) => {
                 const unit = (p.unit_id && p.unit_id.name) ? p.unit_id.name : 'ชิ้น';
-                frag.appendChild(buildRow(
-                    codeCell(p) + nameCell(p)
-                    + `<td class="px-6 py-4 text-ink text-sm">${esc(branch)}</td>`
-                    + categoryCell(p) + priceCell(p) + qtyCell(qty, unit),
-                    [p.name, p.product_code, branch, ...imeis].join(' ')
-                ));
+                return buildRow(
+                    idxCell() + codeCell(p) + nameCell(p)
+                    + `<td class="px-4 py-4 text-ink text-sm">${esc(branch)}</td>`
+                    + priceCell(p) + qtyCell(qty, unit),
+                    [p.name, p.product_code, branch, ...imeis].join(' '),
+                    p, qty
+                );
             });
             tbody.innerHTML = '';
             tbody.appendChild(frag);
@@ -468,7 +610,7 @@
         } catch (err) {
             console.error(err);
             totalGroups.globalstock = 0;
-            tbody.innerHTML = stateRow('เกิดข้อผิดพลาดในการโหลดข้อมูล', 'text-state-danger-soft');
+            tbody.innerHTML = stateRow(tbody, 'เกิดข้อผิดพลาดในการโหลดข้อมูล', 'text-state-danger-soft');
             updateCount('globalstock');
         }
     };
