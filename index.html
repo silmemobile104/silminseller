@@ -26,7 +26,7 @@
     </script>
 
     <link rel="icon" type="image/png" href="logo.png?v=2">
-    <link rel="stylesheet" href="tailwind.css?v=136">
+    <link rel="stylesheet" href="tailwind.css?v=137">
     <!-- xlsx ถูกย้ายไปโหลดแบบ on-demand ตอนเปิด modal นำเข้า Excel แล้ว (ดู ensureXlsxLoaded ใน script.js)
          เดิมโหลดตรงนี้แบบ render-blocking ทุกครั้งที่เข้าเว็บ ทั้งที่ใช้แค่ฟีเจอร์เดียว -->
     <!-- ไอคอน: self-host + ตัดเหลือเฉพาะที่ใช้จริง (Font Awesome 144 + Bootstrap Icons 28)
@@ -204,6 +204,26 @@
                     style="display: none;">
                     <i class="fa-solid fa-arrow-up-from-bracket text-body-muted w-5 text-center text-xl"></i>
                     <span class="sidebar-text ml-3 font-medium">จ่ายออกสินค้า</span>
+                </a>
+
+                <!-- แจ้งเบิกสินค้า / จัดการคำขอเบิก / รายการเตรียมส่ง (ดู views/stock-request.html, js/page-stock-request.js) -->
+                <a href="#" id="nav-stock-request" data-tooltip="แจ้งเบิกสินค้า"
+                    class="flex items-center px-3 py-3 rounded-xl text-body-muted hover:bg-field/50 hover:text-ink transition-all group nav-menu-item"
+                    style="display: none;">
+                    <i class="fa-solid fa-clipboard-list text-body-muted w-5 text-center text-xl"></i>
+                    <span class="sidebar-text ml-3 font-medium">แจ้งเบิกสินค้า</span>
+                </a>
+                <a href="#" id="nav-stock-request-manage" data-tooltip="จัดการคำขอเบิก"
+                    class="flex items-center px-3 py-3 rounded-xl text-body-muted hover:bg-field/50 hover:text-ink transition-all group nav-menu-item"
+                    style="display: none;">
+                    <i class="fa-solid fa-list-check text-body-muted w-5 text-center text-xl"></i>
+                    <span class="sidebar-text ml-3 font-medium">จัดการคำขอเบิก</span>
+                </a>
+                <a href="#" id="nav-stock-request-tech" data-tooltip="รายการเตรียมส่ง"
+                    class="flex items-center px-3 py-3 rounded-xl text-body-muted hover:bg-field/50 hover:text-ink transition-all group nav-menu-item"
+                    style="display: none;">
+                    <i class="fa-solid fa-box text-body-muted w-5 text-center text-xl"></i>
+                    <span class="sidebar-text ml-3 font-medium">รายการเตรียมส่ง</span>
                 </a>
 
                 <!-- [NEW] ตรวจนับสต็อกประจำวัน (พนักงานขาย) -->
@@ -607,6 +627,14 @@
                 <!-- VIEW: Stock Issue — จ่ายออกสินค้า -->
                 <!-- เนื้อหาแยกไปที่ views/stock-issue.html แล้ว โหลดแบบ dynamic ผ่าน loadPageView('stock-issue') (ดู switchView case 'stock-issue') -->
                 <div id="view-stock-issue" class="hidden space-y-8 animate-fade-in">
+                </div>
+
+                <!-- VIEW: แจ้งเบิกสินค้า / จัดการคำขอเบิก / รายการเตรียมส่ง — เนื้อหาแยกไปที่ views/stock-request.html (loadPageView('stock-request')) -->
+                <div id="view-stock-request" class="hidden space-y-8 animate-fade-in">
+                </div>
+                <div id="view-stock-request-manage" class="hidden space-y-8 animate-fade-in">
+                </div>
+                <div id="view-stock-request-tech" class="hidden space-y-8 animate-fade-in">
                 </div>
 
                 <!-- VIEW: Branch Inventory -->
@@ -5576,7 +5604,7 @@
     <!-- defer: ปล่อยให้ parse HTML จบก่อนค่อย execute
          ปลอดภัยเพราะทั้งไฟล์ห่ออยู่ใน DOMContentLoaded listener อยู่แล้ว
          และสคริปต์ defer จะ execute ก่อน event DOMContentLoaded ยิงเสมอ -->
-    <script defer src="script.js?v=apple_active_v273"></script>
+    <script defer src="script.js?v=apple_active_v274"></script>
     <script>
         // ลงทะเบียน Service Worker เพื่อแคช asset คงที่ (css/js/font/icon/รูป) ไว้ฝั่งเครื่อง
         // เข้าเว็บครั้งถัดไปเร็วขึ้นมาก โดยเฉพาะตอนเน็ตช้าหรือหลุดชั่วคราว — ดูรายละเอียดที่ sw.js

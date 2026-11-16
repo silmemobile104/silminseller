@@ -12,6 +12,7 @@ const {
     Product,
     Movement,
     StockIssue,
+    StockRequest,
     Claim,
     Branch,
     Supplier,
@@ -8494,6 +8495,363 @@ router.put('/deposits/:id/forfeit', async (req, res) => {
     } catch (error) {
         console.error('API Error PUT /api/deposits/:id/forfeit:', error);
         res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการยึดมัดจำ' });
+    }
+});
+
+// ============================================================
+// คำขอเบิกสินค้า (StockRequest) — 3 เมนู: แจ้งเบิก / จัดการคำขอ / รายการเตรียมส่ง
+// สิทธิ์ผูกกับสิทธิ์เดิมของระบบ: แจ้งเบิก = manage_stock · จัดการคำขอ = manage_po · เตรียมส่ง = manage_transfers
+// ============================================================
+const genStockRequestNo = () => {
+    const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+    return `REQ-${dateStr}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
+};
+const cleanText = (v, max) => String(v == null ? '' : v).trim().slice(0, max);
+const parseOptionalDate = (v) => {
+    if (!v) return { ok: true, value: null };
+    const d = new Date(v);
+    return isNaN(d.getTime()) ? { ok: false } : { ok: true, value: d };
+};
+const hasPerm = (req, key) => !!(req.user && req.user.permissions && req.user.permissions[key]);
+
+// GET /api/stock-requests — ผู้แจ้งเบิก: เห็นเฉพาะคำขอของสาขาตัวเอง
+router.get('/stock-requests', async (req, res) => {
+    try {
+        if (!hasPerm(req, 'manage_stock')) {
+            return res.status(403).json({ success: false, message: 'คุณไม่มีสิทธิ์แจ้งเบิกสินค้า' });
+        }
+        if (!req.user.branch_id) return res.status(400).json({ success: false, message: 'ไม่พบข้อมูลสาขาของผู้ใช้งาน' });
+        const filter = { branch_id: req.user.branch_id };
+        if (req.query.status) filter.status = String(req.query.status);
+        const rows = await StockRequest.find(filter)
+            .sort({ createdAt: -1 }).limit(500)
+            .populate('created_by', 'name').lean();
+        res.status(200).json({ success: true, data: rows });
+    } catch (error) {
+        console.error('API Error GET /api/stock-requests:', error);
+        res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการดึงรายการแจ้งเบิก' });
+    }
+});
+
+// POST /api/stock-requests — สร้างคำขอเบิกจากสาขาของผู้ใช้
+router.post('/stock-requests', async (req, res) => {
+    try {
+        if (!hasPerm(req, 'manage_stock')) {
+            return res.status(403).json({ success: false, message: 'คุณไม่มีสิทธิ์แจ้งเบิกสินค้า' });
+        }
+        if (!req.user.branch_id) return res.status(400).json({ success: false, message: 'ไม่พบข้อมูลสาขาของผู้ใช้งาน' });
+
+        const title = cleanText(req.body.title, 200);
+        const note = cleanText(req.body.note, 500);
+        if (!title) return res.status(400).json({ success: false, message: 'กรุณาระบุชื่อรายการแจ้งเบิก' });
+
+        const rawItems = Array.isArray(req.body.items) ? req.body.items : [];
+        const items = rawItems.map(it => ({
+            product_code: cleanText(it && it.product_code, 100),
+            product_name: cleanText(it && it.product_name, 200),
+            quantity: Number(it && it.quantity)
+        }));
+        if (items.length === 0) return res.status(400).json({ success: false, message: 'กรุณาเพิ่มสินค้าอย่างน้อย 1 รายการ' });
+        for (const it of items) {
+            if (!it.product_name) return res.status(400).json({ success: false, message: 'กรุณาระบุชื่อสินค้าทุกรายการ' });
+            if (!Number.isInteger(it.quantity) || it.quantity < 1) {
+                return res.status(400).json({ success: false, message: `จำนวนของ ${it.product_name} ต้องเป็นจำนวนเต็มตั้งแต่ 1` });
+            }
+        }
+
+        const doc = await StockRequest.create({
+            request_no: genStockRequestNo(),
+            title,
+            branch_id: req.user.branch_id,
+            created_by: req.user.employee_id || req.user._id || req.user.id,
+            items,
+            note
+        });
+        await logActivity(req, 'CREATE', 'StockRequest', `สร้างคำขอเบิกสินค้า ${doc.request_no}: ${title}`, doc.request_no, doc._id);
+        res.status(201).json({ success: true, message: 'ส่งรายการแจ้งเบิกสำเร็จ', data: doc });
+    } catch (error) {
+        console.error('API Error POST /api/stock-requests:', error);
+        res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการสร้างรายการแจ้งเบิก' });
+    }
+});
+
+// GET /api/stock-requests/manage — ฝ่ายจัดซื้อ: เห็นคำขอของทุกสาขา (กรองสาขาได้)
+router.get('/stock-requests/manage', async (req, res) => {
+    try {
+        if (!hasPerm(req, 'manage_po')) {
+            return res.status(403).json({ success: false, message: 'คุณไม่มีสิทธิ์จัดการคำขอเบิก' });
+        }
+        const filter = {};
+        if (req.query.status) filter.status = String(req.query.status);
+        if (req.query.branch_id && req.query.branch_id !== 'ALL') {
+            if (!mongoose.Types.ObjectId.isValid(req.query.branch_id)) {
+                return res.status(400).json({ success: false, message: 'รหัสสาขาไม่ถูกต้อง' });
+            }
+            filter.branch_id = req.query.branch_id;
+        }
+        const rows = await StockRequest.find(filter)
+            .sort({ createdAt: -1 }).limit(500)
+            .populate('branch_id', 'name')
+            .populate('created_by', 'name').lean();
+        res.status(200).json({ success: true, data: rows });
+    } catch (error) {
+        console.error('API Error GET /api/stock-requests/manage:', error);
+        res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการดึงคำขอเบิกทั้งหมด' });
+    }
+});
+
+// PUT /api/stock-requests/:id/manage — ฝ่ายจัดซื้อ: เลือกรูปแบบการจัดการ สถานะ เลขพัสดุ และสินค้าที่ให้เทคนิคเตรียม
+router.put('/stock-requests/:id/manage', async (req, res) => {
+    try {
+        if (!hasPerm(req, 'manage_po')) {
+            return res.status(403).json({ success: false, message: 'คุณไม่มีสิทธิ์จัดการคำขอเบิก' });
+        }
+        if (!mongoose.Types.ObjectId.isValid(req.params.id)) return res.status(400).json({ success: false, message: 'รหัสคำขอไม่ถูกต้อง' });
+        const doc = await StockRequest.findById(req.params.id);
+        if (!doc) return res.status(404).json({ success: false, message: 'ไม่พบคำขอเบิกที่ระบุ' });
+        if (['shipped', 'canceled'].includes(doc.status)) {
+            return res.status(400).json({ success: false, message: 'คำขอนี้ปิดแล้ว แก้ไขไม่ได้' });
+        }
+
+        const { status, fulfillment_method, tracking_numbers, expected_arrival, tech_item_ids } = req.body;
+        const STATUSES = ['pending', 'ordering', 'sent_to_tech', 'canceled'];
+        if (status !== undefined && !STATUSES.includes(status)) {
+            return res.status(400).json({ success: false, message: 'สถานะที่เลือกไม่ถูกต้อง' });
+        }
+        if (fulfillment_method !== undefined && fulfillment_method !== null && !['purchase', 'stock'].includes(fulfillment_method)) {
+            return res.status(400).json({ success: false, message: 'รูปแบบการจัดการไม่ถูกต้อง' });
+        }
+        const arrival = parseOptionalDate(expected_arrival);
+        if (!arrival.ok) return res.status(400).json({ success: false, message: 'วันที่คาดว่าจะถึงไม่ถูกต้อง' });
+
+        if (fulfillment_method !== undefined) doc.fulfillment_method = fulfillment_method || null;
+        if (Array.isArray(tracking_numbers)) {
+            doc.tracking_numbers = tracking_numbers.map(x => cleanText(x, 100)).filter(Boolean);
+        }
+        if (expected_arrival !== undefined) doc.expected_arrival = arrival.value;
+
+        const method = doc.fulfillment_method;
+        if (method === 'stock' && Array.isArray(tech_item_ids)) {
+            const techSet = new Set(tech_item_ids.map(String));
+            doc.items.forEach(it => { it.is_tech = techSet.has(String(it._id)); });
+        } else if (method === 'purchase') {
+            doc.items.forEach(it => { it.is_tech = false; });
+        }
+
+        if (status !== undefined) {
+            if (status === 'ordering' && method !== 'purchase') {
+                return res.status(400).json({ success: false, message: 'สถานะกำลังสั่งซื้อใช้ได้เมื่อเลือก "สั่งสินค้าใหม่" เท่านั้น' });
+            }
+            if (status === 'sent_to_tech') {
+                if (method !== 'stock') {
+                    return res.status(400).json({ success: false, message: 'ต้องเลือก "เบิกจากส่วนกลาง" ก่อนส่งงานให้ฝ่ายเทคนิค' });
+                }
+                if (!doc.items.some(it => it.is_tech)) {
+                    return res.status(400).json({ success: false, message: 'กรุณาเลือกสินค้าที่ให้ฝ่ายเทคนิคเตรียมอย่างน้อย 1 รายการ' });
+                }
+            }
+            if (status === 'canceled' && doc.status === 'sent_to_tech') {
+                return res.status(400).json({ success: false, message: 'ยกเลิกไม่ได้ เพราะฝ่ายเทคนิคกำลังเตรียมของแล้ว' });
+            }
+            doc.status = status;
+        }
+
+        await doc.save();
+        await logActivity(req, 'UPDATE', 'StockRequest', `จัดการคำขอเบิก ${doc.request_no} สถานะ: ${doc.status}`, doc.request_no, doc._id);
+        res.status(200).json({ success: true, message: 'บันทึกการจัดการคำขอสำเร็จ', data: doc });
+    } catch (error) {
+        console.error('API Error PUT /api/stock-requests/:id/manage:', error);
+        res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการบันทึกคำขอเบิก' });
+    }
+});
+
+// GET /api/stock-requests/tech — ฝ่ายเทคนิค: คำขอที่ส่งงานให้เตรียม และมีสินค้าของฝ่ายเทคนิค
+router.get('/stock-requests/tech', async (req, res) => {
+    try {
+        if (!hasPerm(req, 'manage_transfers')) {
+            return res.status(403).json({ success: false, message: 'คุณไม่มีสิทธิ์เตรียมส่งสินค้า' });
+        }
+        const rows = await StockRequest.find({ status: 'sent_to_tech', items: { $elemMatch: { is_tech: true } } })
+            .sort({ createdAt: 1 }).limit(500)
+            .populate('branch_id', 'name')
+            .populate('created_by', 'name').lean();
+        res.status(200).json({ success: true, data: rows });
+    } catch (error) {
+        console.error('API Error GET /api/stock-requests/tech:', error);
+        res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการดึงรายการเตรียมส่ง' });
+    }
+});
+
+// PUT /api/stock-requests/:id/ship — ฝ่ายเทคนิคกดจัดส่ง
+// หน้าที่: ตัดสต็อกจากสาขาของผู้ใช้ (ต้นทาง) แบบเดียวกับการโอนย้าย แล้วสร้างใบโอนไปยังสาขาผู้ขอ
+// ของที่ส่งไม่ครบ สร้างคำขอค้างส่งใหม่ให้อัตโนมัติ
+router.put('/stock-requests/:id/ship', async (req, res) => {
+    try {
+        if (!hasPerm(req, 'manage_transfers')) {
+            return res.status(403).json({ success: false, message: 'คุณไม่มีสิทธิ์เตรียมส่งสินค้า' });
+        }
+        const fromBranch = req.user.branch_id;
+        if (!fromBranch) return res.status(400).json({ success: false, message: 'ไม่พบข้อมูลสาขาต้นทางของผู้ใช้งาน' });
+        if (!mongoose.Types.ObjectId.isValid(req.params.id)) return res.status(400).json({ success: false, message: 'รหัสคำขอไม่ถูกต้อง' });
+
+        const doc = await StockRequest.findById(req.params.id);
+        if (!doc) return res.status(404).json({ success: false, message: 'ไม่พบคำขอเบิกที่ระบุ' });
+        if (doc.status !== 'sent_to_tech') return res.status(400).json({ success: false, message: 'คำขอนี้ไม่อยู่ในสถานะเตรียมส่ง' });
+        if (String(doc.branch_id) === String(fromBranch)) {
+            return res.status(400).json({ success: false, message: 'สาขาผู้ขอและสาขาต้นทางเป็นสาขาเดียวกัน' });
+        }
+
+        const tracking = Array.isArray(req.body.tracking_numbers)
+            ? req.body.tracking_numbers.map(x => cleanText(x, 100)).filter(Boolean) : [];
+        if (tracking.length === 0) return res.status(400).json({ success: false, message: 'กรุณาระบุเลขพัสดุอย่างน้อย 1 รายการ' });
+        const arrival = parseOptionalDate(req.body.expected_arrival);
+        if (!arrival.ok) return res.status(400).json({ success: false, message: 'วันที่นัดส่งไม่ถูกต้อง' });
+
+        // 1) ตรวจทั้งหมดก่อน (ยังไม่แก้ข้อมูล) เพื่อไม่ให้สต็อกถูกตัดค้างกลางทาง
+        const inputs = new Map((Array.isArray(req.body.items) ? req.body.items : []).map(x => [String(x._id), x]));
+        const lines = [];
+        for (const it of doc.items) {
+            if (!it.is_tech) continue;
+            const inp = inputs.get(String(it._id)) || {};
+            const qty = Number(inp.fulfilled_quantity || 0);
+            if (!Number.isInteger(qty) || qty < 0 || qty > it.quantity) {
+                return res.status(400).json({ success: false, message: `จำนวนที่ส่งของ ${it.product_name} ต้องอยู่ระหว่าง 0 ถึง ${it.quantity}` });
+            }
+            if (qty === 0) continue;
+            if (!it.product_code) {
+                return res.status(400).json({ success: false, message: `สินค้า ${it.product_name} ไม่มีรหัสสินค้า จัดส่งจากสต็อกไม่ได้` });
+            }
+            const imeis = Array.isArray(inp.imeis) ? [...new Set(inp.imeis.map(x => String(x).trim()).filter(Boolean))] : [];
+            lines.push({ item: it, qty, imeis });
+        }
+        if (lines.length === 0) return res.status(400).json({ success: false, message: 'กรุณาระบุจำนวนที่จัดส่งอย่างน้อย 1 รายการ' });
+
+        const products = new Map();
+        const usedImeis = new Set();
+        const usedQty = new Map();
+        for (const line of lines) {
+            const name = line.item.product_name;
+            let product = products.get(line.item.product_code);
+            if (!product) {
+                product = await Product.findOne({ product_code: line.item.product_code });
+                if (!product) return res.status(404).json({ success: false, message: `ไม่พบสินค้าในระบบ: ${name}` });
+                products.set(line.item.product_code, product);
+            }
+            const bal = (product.stock_balances || []).find(b => b.branch_id && String(b.branch_id) === String(fromBranch));
+            if (!bal) return res.status(400).json({ success: false, message: `สินค้า ${name} ไม่มีในสต็อกสาขาต้นทาง` });
+
+            const hasImeis = Array.isArray(bal.imeis) && bal.imeis.length > 0;
+            if (hasImeis) {
+                if (line.imeis.length !== line.qty) {
+                    return res.status(400).json({ success: false, message: `กรุณาระบุ IMEI ให้ครบ ${line.qty} เครื่องสำหรับ ${name}` });
+                }
+                const stockImeis = new Set((bal.imeis || []).map(x => String(x)));
+                for (const imei of line.imeis) {
+                    if (!stockImeis.has(imei) || usedImeis.has(imei)) {
+                        return res.status(400).json({ success: false, message: `ไม่พบ IMEI ${imei} ในสต็อกสาขาต้นทาง (${name})` });
+                    }
+                    usedImeis.add(imei);
+                }
+            } else {
+                if (line.imeis.length > 0) {
+                    return res.status(400).json({ success: false, message: `${name} เป็นอุปกรณ์เสริม ไม่ต้องระบุ IMEI` });
+                }
+                const key = line.item.product_code;
+                const total = (usedQty.get(key) || 0) + line.qty;
+                usedQty.set(key, total);
+                if (Number(bal.quantity || 0) < total) {
+                    return res.status(400).json({ success: false, message: `${name} มีในสต็อกไม่พอ (คงเหลือ ${Number(bal.quantity || 0)})` });
+                }
+            }
+        }
+
+        // 2) ตัดสต็อกต้นทาง
+        for (const line of lines) {
+            const product = products.get(line.item.product_code);
+            const bal = ensureBranchBalance(product, fromBranch);
+            if (Array.isArray(bal.imeis) && bal.imeis.length > 0) {
+                for (const imei of line.imeis) {
+                    const idx = bal.imeis.findIndex(x => String(x) === imei);
+                    if (idx !== -1) bal.imeis.splice(idx, 1);
+                }
+                bal.quantity = Math.max(0, Number(bal.quantity || 0) - line.qty);
+            } else {
+                bal.quantity = Math.max(0, Number(bal.quantity || 0) - line.qty);
+            }
+        }
+        for (const product of products.values()) await product.save();
+
+        // 3) สร้างใบโอนไปยังสาขาผู้ขอ + บันทึกการเคลื่อนไหวสต็อก
+        const now = new Date();
+        const transferNo = `TRF-${now.toISOString().slice(0, 10).replace(/-/g, '')}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
+        const transfer = await Transfer.create({
+            transfer_number: transferNo,
+            from_branch: fromBranch,
+            to_branch: doc.branch_id,
+            items: lines.map(line => ({
+                product_name: line.item.product_name,
+                product_code: line.item.product_code,
+                imeis: line.imeis,
+                quantity: line.qty
+            })),
+            status: 'รอดำเนินการ',
+            note: `จัดส่งตามคำขอเบิก ${doc.request_no}`,
+            created_by: req.user.employee_id || req.user._id,
+            received_by: null,
+            created_at: now
+        });
+        for (const line of lines) {
+            await createMovementsForItem({
+                productId: products.get(line.item.product_code)._id,
+                action: 'ส่งโอนย้าย',
+                fromBranch,
+                toBranch: doc.branch_id,
+                referenceNo: transferNo,
+                createdBy: req.user.employee_id,
+                transitHours: 0,
+                imeis: line.imeis,
+                quantity: line.imeis.length > 0 ? line.imeis.length : line.qty
+            });
+        }
+
+        // 4) อัปเดตคำขอ + สร้างคำขอค้างส่งสำหรับส่วนที่ยังไม่ครบ
+        const shippedMap = new Map(lines.map(line => [String(line.item._id), line.qty]));
+        for (const it of doc.items) {
+            it.fulfilled_quantity = shippedMap.get(String(it._id)) || 0;
+        }
+        const backorderItems = doc.items
+            .map(it => ({ product_code: it.product_code, product_name: it.product_name, quantity: it.quantity - it.fulfilled_quantity }))
+            .filter(it => it.quantity > 0);
+        let backorderNo = null;
+        if (backorderItems.length > 0) {
+            backorderNo = genStockRequestNo();
+            await StockRequest.create({
+                request_no: backorderNo,
+                title: `${doc.title} (ค้างส่ง)`,
+                branch_id: doc.branch_id,
+                created_by: doc.created_by,
+                items: backorderItems,
+                status: 'pending',
+                parent_request_id: doc._id,
+                note: `สร้างอัตโนมัติจากรายการค้างส่งของ ${doc.request_no}`
+            });
+        }
+        doc.status = 'shipped';
+        doc.tracking_numbers = tracking;
+        doc.expected_arrival = arrival.value;
+        doc.transfer_id = transfer._id;
+        doc.shipped_at = now;
+        await doc.save();
+
+        await logActivity(req, 'UPDATE', 'StockRequest', `จัดส่งตามคำขอ ${doc.request_no} ใบโอน ${transferNo}`, doc.request_no, doc._id);
+        res.status(200).json({
+            success: true,
+            message: 'บันทึกการจัดส่งสำเร็จ',
+            data: { request: doc, transfer_number: transferNo, backorder_request_no: backorderNo }
+        });
+    } catch (error) {
+        console.error('API Error PUT /api/stock-requests/:id/ship:', error);
+        res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการบันทึกการจัดส่ง' });
     }
 });
 

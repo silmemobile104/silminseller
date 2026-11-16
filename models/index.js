@@ -962,10 +962,41 @@ async function seedDefaultCOA() {
     }
 }
 
+// 34. StockRequest (คำขอเบิกสินค้าของสาขา: แจ้งเบิก → จัดการคำขอ → เตรียมส่ง → จัดส่งแล้ว)
+const stockRequestSchema = new mongoose.Schema({
+    request_no: { type: String, required: true, unique: true }, // เลขที่คำขอ (REQ-วันที่-สุ่ม)
+    title: { type: String, required: true, default: 'รายการแจ้งเบิกสินค้า' },
+    branch_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Branch', required: true }, // สาขาผู้ขอ (ปลายทางของการจัดส่ง)
+    created_by: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee', required: true },
+    items: [{
+        product_code: { type: String, default: '' },
+        product_name: { type: String, required: true },
+        quantity: { type: Number, default: 1, min: 1 },
+        is_tech: { type: Boolean, default: false }, // ส่งให้ฝ่ายเทคนิคเตรียมของ
+        fulfilled_quantity: { type: Number, default: 0 } // จำนวนที่จัดส่งจริง
+    }],
+    status: {
+        type: String,
+        enum: ['pending', 'ordering', 'sent_to_tech', 'shipped', 'canceled'],
+        default: 'pending'
+    }, // รอตรวจสอบ | กำลังสั่งซื้อ | เทคนิคเตรียมของ | จัดส่งแล้ว | ยกเลิก
+    fulfillment_method: { type: String, enum: ['purchase', 'stock', null], default: null }, // purchase = สั่งซื้อใหม่ | stock = เบิกจากส่วนกลาง
+    tracking_numbers: [{ type: String }],
+    expected_arrival: { type: Date, default: null },
+    transfer_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Transfer', default: null }, // ใบโอนที่สร้างตอนจัดส่ง
+    parent_request_id: { type: mongoose.Schema.Types.ObjectId, ref: 'StockRequest', default: null }, // คำขอแม่ (กรณีค้างส่ง)
+    note: { type: String, default: '' },
+    shipped_at: { type: Date, default: null }
+}, { timestamps: true });
+stockRequestSchema.index({ status: 1 });
+stockRequestSchema.index({ branch_id: 1, createdAt: -1 });
+const StockRequest = mongoose.model('StockRequest', stockRequestSchema, 'stockrequest');
+
 module.exports = {
     Branch,
     Role,
     Employee,
+    StockRequest,
     ProductType,
     ProductUnit,
     ProductColor,

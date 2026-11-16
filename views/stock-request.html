@@ -1,0 +1,295 @@
+<!-- VIEW: แจ้งเบิกสินค้า / จัดการคำขอเบิก / รายการเตรียมส่ง — สคริปต์: js/page-stock-request.js -->
+<!-- โครงหน้าตาม DESIGN.md ข้อ 11 (อ้างอิง #stock) ใช้โทเคนสีเดียวกับ views/stock-issue.html -->
+
+<!-- ===================== [A] แจ้งเบิกสินค้า ===================== -->
+<div id="view-stock-request" class="hidden space-y-8 animate-fade-in">
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div class="flex items-center gap-4">
+            <i class="fa-solid fa-clipboard-list text-ink w-5 text-2xl text-center"></i>
+            <h3 class="text-2xl text-ink">แจ้งเบิกสินค้า</h3>
+        </div>
+        <div class="flex items-center gap-3">
+            <button id="btn-sr-open" type="button"
+                class="px-4 py-2 bg-primary hover:bg-primary-pressed text-on-primary font-medium rounded-xl transition-all flex items-center gap-2 w-fit cursor-pointer">
+                <i class="fa-solid fa-plus"></i>
+                <p>แจ้งเบิกใหม่</p>
+            </button>
+        </div>
+    </div>
+
+    <div class="bg-panel/40 rounded-2xl shadow-lg overflow-hidden backdrop-blur-sm">
+        <div class="p-6 pb-0 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+            <h3 class="text-lg text-ink">คำขอเบิกของสาขา</h3>
+            <div class="flex flex-wrap items-center gap-2.5 w-full lg:w-auto">
+                <div class="relative group w-full sm:w-64 rounded-[0.5rem] overflow-hidden">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <i class="fa-solid fa-search text-ink group-focus-within:text-primary transition-colors"></i>
+                    </div>
+                    <label for="sr-search-input" class="sr-only">ค้นหาคำขอเบิก</label>
+                    <input id="sr-search-input" type="text" placeholder="ค้นหาเลขที่ หรือชื่อสินค้า..."
+                        class="bg-transparent text-sm pl-10 pr-4 py-2 w-full text-ink focus:outline-none focus:ring-1 focus:ring-primary transition-all placeholder-body-muted">
+                </div>
+                <label for="sr-status-filter" class="sr-only">กรองตามสถานะ</label>
+                <select id="sr-status-filter"
+                    class="bg-panel/40 cursor-pointer text-sm rounded-[0.5rem] px-3 py-2 text-ink focus:outline-none focus:ring-1 focus:ring-primary w-full sm:w-auto [&>option]:bg-panel">
+                    <option value="">ทุกสถานะ</option>
+                    <option value="pending">รอตรวจสอบ</option>
+                    <option value="ordering">กำลังสั่งซื้อ</option>
+                    <option value="sent_to_tech">ฝ่ายเทคนิคเตรียมของ</option>
+                    <option value="shipped">จัดส่งแล้ว</option>
+                    <option value="canceled">ยกเลิก</option>
+                </select>
+            </div>
+        </div>
+        <div class="px-6 py-4">
+            <div id="sr-result-count" class="text-xs text-ink font-medium"></div>
+        </div>
+        <div class="overflow-x-auto" tabindex="0">
+            <table class="w-full text-left text-sm whitespace-nowrap border-collapse">
+                <thead class="bg-panel/40 text-ink">
+                    <tr>
+                        <th class="px-6 py-4 font-semibold text-[15px]">เลขที่ / วันที่</th>
+                        <th class="px-6 py-4 font-semibold text-[15px]">รายการ</th>
+                        <th class="px-6 py-4 font-semibold text-[15px]">ผู้ขอ</th>
+                        <th class="px-6 py-4 font-semibold text-[15px]">สถานะ</th>
+                    </tr>
+                </thead>
+                <tbody id="sr-table-body" class="divide-y divide-divider"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- โมดัลสร้างคำขอเบิก -->
+    <div id="sr-modal" class="fixed inset-0 z-50 hidden items-center justify-center backdrop-blur-sm opacity-0 pointer-events-none transition-opacity duration-300 p-4"
+        role="dialog" aria-modal="true" aria-labelledby="sr-modal-title">
+        <div class="modal-content relative w-[95%] md:w-[650px] max-h-[90vh] overflow-y-auto p-8 bg-elevated rounded-2xl shadow-lg border border-line-strong" tabindex="0">
+            <div class="flex items-center justify-between mb-6 pb-2 border-b border-hairline">
+                <h3 id="sr-modal-title" class="text-lg text-ink flex items-center gap-2">
+                    <i class="fa-solid fa-clipboard-list text-primary"></i> แจ้งเบิกสินค้าใหม่
+                </h3>
+                <button id="sr-modal-close" type="button" aria-label="ปิด" class="text-state-danger hover:text-state-danger-soft transition-colors">
+                    <i class="fa-solid fa-xmark text-xl"></i>
+                </button>
+            </div>
+            <form id="sr-form" class="space-y-5 text-sm" novalidate>
+                <div class="space-y-2">
+                    <label for="sr-title" class="text-ink font-medium flex items-center gap-2 text-xs">ชื่อรายการ <span class="text-state-danger">*</span></label>
+                    <input id="sr-title" type="text" autocomplete="off" placeholder="เช่น เบิกอุปกรณ์เสริมสาขาหาดใหญ่"
+                        class="w-full px-4 py-2.5 rounded-xl bg-field border border-line text-ink focus:border-primary focus:outline-none transition-all text-sm">
+                </div>
+                <div class="space-y-2">
+                    <div class="flex items-center justify-between">
+                        <span class="text-ink font-medium text-xs">รายการสินค้า <span class="text-state-danger">*</span></span>
+                        <button id="sr-add-row" type="button" class="px-3 py-1.5 bg-field border border-line rounded-xl text-xs text-ink hover:border-primary transition-colors">
+                            <i class="fa-solid fa-plus"></i> เพิ่มแถว
+                        </button>
+                    </div>
+                    <div id="sr-rows" class="space-y-2"></div>
+                </div>
+                <div class="space-y-2">
+                    <label for="sr-note" class="text-ink font-medium text-xs">หมายเหตุ</label>
+                    <textarea id="sr-note" rows="2" maxlength="500"
+                        class="w-full px-4 py-2.5 rounded-xl bg-field border border-line text-ink focus:border-primary focus:outline-none transition-all text-sm"></textarea>
+                </div>
+                <div class="flex items-center justify-center gap-4 pt-4 border-t border-hairline">
+                    <button id="sr-cancel" type="button" class="px-10 py-2.5 rounded-xl bg-chip text-ink text-[15px] font-bold hover:bg-skeleton transition-colors w-1/2">ยกเลิก</button>
+                    <button id="sr-submit" type="submit" class="px-12 py-2.5 rounded-xl bg-primary text-on-primary text-[15px] font-bold hover:bg-primary-pressed transition-colors w-1/2">ส่งคำขอ</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- ===================== [B] จัดการคำขอเบิก ===================== -->
+<div id="view-stock-request-manage" class="hidden space-y-8 animate-fade-in">
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div class="flex items-center gap-4">
+            <i class="fa-solid fa-list-check text-ink w-5 text-2xl text-center"></i>
+            <h3 class="text-2xl text-ink">จัดการคำขอเบิก</h3>
+        </div>
+    </div>
+
+    <div class="bg-panel/40 rounded-2xl shadow-lg overflow-hidden backdrop-blur-sm">
+        <div class="p-6 pb-0 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+            <h3 class="text-lg text-ink">คำขอเบิกทุกสาขา</h3>
+            <div class="flex flex-wrap items-center gap-2.5 w-full lg:w-auto">
+                <div class="relative group w-full sm:w-64 rounded-[0.5rem] overflow-hidden">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <i class="fa-solid fa-search text-ink group-focus-within:text-primary transition-colors"></i>
+                    </div>
+                    <label for="srm-search-input" class="sr-only">ค้นหาคำขอเบิก</label>
+                    <input id="srm-search-input" type="text" placeholder="ค้นหาเลขที่ หรือชื่อสินค้า..."
+                        class="bg-transparent text-sm pl-10 pr-4 py-2 w-full text-ink focus:outline-none focus:ring-1 focus:ring-primary transition-all placeholder-body-muted">
+                </div>
+                <label for="srm-branch-filter" class="sr-only">กรองตามสาขา</label>
+                <select id="srm-branch-filter"
+                    class="bg-panel/40 cursor-pointer text-sm rounded-[0.5rem] px-3 py-2 text-ink focus:outline-none focus:ring-1 focus:ring-primary w-full sm:w-auto [&>option]:bg-panel">
+                    <option value="ALL">ทุกสาขา</option>
+                </select>
+                <label for="srm-status-filter" class="sr-only">กรองตามสถานะ</label>
+                <select id="srm-status-filter"
+                    class="bg-panel/40 cursor-pointer text-sm rounded-[0.5rem] px-3 py-2 text-ink focus:outline-none focus:ring-1 focus:ring-primary w-full sm:w-auto [&>option]:bg-panel">
+                    <option value="">ทุกสถานะ</option>
+                    <option value="pending">รอตรวจสอบ</option>
+                    <option value="ordering">กำลังสั่งซื้อ</option>
+                    <option value="sent_to_tech">ฝ่ายเทคนิคเตรียมของ</option>
+                    <option value="shipped">จัดส่งแล้ว</option>
+                    <option value="canceled">ยกเลิก</option>
+                </select>
+            </div>
+        </div>
+        <div class="px-6 py-4">
+            <div id="srm-result-count" class="text-xs text-ink font-medium"></div>
+        </div>
+        <div class="overflow-x-auto" tabindex="0">
+            <table class="w-full text-left text-sm whitespace-nowrap border-collapse">
+                <thead class="bg-panel/40 text-ink">
+                    <tr>
+                        <th class="px-6 py-4 font-semibold text-[15px]">เลขที่ / วันที่</th>
+                        <th class="px-6 py-4 font-semibold text-[15px]">สาขา / ผู้ขอ</th>
+                        <th class="px-6 py-4 font-semibold text-[15px]">รายการ</th>
+                        <th class="px-6 py-4 font-semibold text-[15px]">สถานะ</th>
+                        <th class="px-6 py-4 font-semibold text-[15px] text-right">จัดการ</th>
+                    </tr>
+                </thead>
+                <tbody id="srm-table-body" class="divide-y divide-divider"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- โมดัลจัดการคำขอ -->
+    <div id="srm-modal" class="fixed inset-0 z-50 hidden items-center justify-center backdrop-blur-sm opacity-0 pointer-events-none transition-opacity duration-300 p-4"
+        role="dialog" aria-modal="true" aria-labelledby="srm-modal-title">
+        <div class="modal-content relative w-[95%] md:w-[650px] max-h-[90vh] overflow-y-auto p-8 bg-elevated rounded-2xl shadow-lg border border-line-strong" tabindex="0">
+            <div class="flex items-center justify-between mb-6 pb-2 border-b border-hairline">
+                <h3 id="srm-modal-title" class="text-lg text-ink flex items-center gap-2">
+                    <i class="fa-solid fa-list-check text-primary"></i> จัดการคำขอเบิก
+                </h3>
+                <button id="srm-modal-close" type="button" aria-label="ปิด" class="text-state-danger hover:text-state-danger-soft transition-colors">
+                    <i class="fa-solid fa-xmark text-xl"></i>
+                </button>
+            </div>
+            <form id="srm-form" class="space-y-5 text-sm" novalidate>
+                <div class="space-y-2">
+                    <span class="text-ink font-medium text-xs">รายการที่ขอ</span>
+                    <div id="srm-items" class="rounded-xl bg-field border border-line divide-y divide-divider"></div>
+                </div>
+                <fieldset class="space-y-2">
+                    <legend class="text-ink font-medium text-xs">รูปแบบการจัดการ <span class="text-state-danger">*</span></legend>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <label class="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-field border border-line cursor-pointer text-ink">
+                            <input type="radio" name="srm-method" value="purchase" class="accent-primary"> สั่งสินค้าใหม่
+                        </label>
+                        <label class="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-field border border-line cursor-pointer text-ink">
+                            <input type="radio" name="srm-method" value="stock" class="accent-primary"> เบิกจากส่วนกลาง
+                        </label>
+                    </div>
+                </fieldset>
+                <div class="space-y-2">
+                    <label for="srm-status" class="text-ink font-medium text-xs">สถานะ</label>
+                    <select id="srm-status"
+                        class="w-full px-4 py-2.5 rounded-xl bg-field border border-line text-ink focus:border-primary focus:outline-none text-sm">
+                        <option value="pending">รอตรวจสอบ</option>
+                        <option value="ordering" data-method="purchase">กำลังสั่งซื้อ</option>
+                        <option value="sent_to_tech" data-method="stock">ส่งงานให้ฝ่ายเทคนิคเตรียมของ</option>
+                        <option value="canceled">ยกเลิกคำขอ</option>
+                    </select>
+                </div>
+                <div id="srm-arrival-wrap" class="space-y-2">
+                    <label for="srm-arrival" class="text-ink font-medium text-xs">วันที่คาดว่าจะถึง</label>
+                    <input id="srm-arrival" type="date"
+                        class="w-full px-4 py-2.5 rounded-xl bg-field border border-line text-ink focus:border-primary focus:outline-none text-sm">
+                </div>
+                <div id="srm-tracking-wrap" class="space-y-2">
+                    <div class="flex items-center justify-between">
+                        <span class="text-ink font-medium text-xs">เลขพัสดุ</span>
+                        <button id="srm-add-tracking" type="button" class="px-3 py-1.5 bg-field border border-line rounded-xl text-xs text-ink hover:border-primary transition-colors">
+                            <i class="fa-solid fa-plus"></i> เพิ่มเลข
+                        </button>
+                    </div>
+                    <div id="srm-tracking-list" class="space-y-2"></div>
+                </div>
+                <div class="flex items-center justify-center gap-4 pt-4 border-t border-hairline">
+                    <button id="srm-cancel" type="button" class="px-10 py-2.5 rounded-xl bg-chip text-ink text-[15px] font-bold hover:bg-skeleton transition-colors w-1/2">ยกเลิก</button>
+                    <button id="srm-submit" type="submit" class="px-12 py-2.5 rounded-xl bg-primary text-on-primary text-[15px] font-bold hover:bg-primary-pressed transition-colors w-1/2">บันทึก</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- ===================== [C] รายการเตรียมส่ง ===================== -->
+<div id="view-stock-request-tech" class="hidden space-y-8 animate-fade-in">
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div class="flex items-center gap-4">
+            <i class="fa-solid fa-box text-ink w-5 text-2xl text-center"></i>
+            <h3 class="text-2xl text-ink">รายการเตรียมส่ง</h3>
+        </div>
+        <div class="flex items-center gap-3">
+            <button id="srt-refresh" type="button"
+                class="px-4 py-2 bg-panel/40 hover:bg-panel/60 border border-line-strong text-ink font-medium rounded-xl transition-all flex items-center gap-2 w-fit cursor-pointer">
+                <i class="fa-solid fa-rotate"></i>
+                <p>รีเฟรช</p>
+            </button>
+        </div>
+    </div>
+
+    <div class="bg-panel/40 rounded-2xl shadow-lg overflow-hidden backdrop-blur-sm">
+        <div class="px-6 py-4">
+            <div id="srt-result-count" class="text-xs text-ink font-medium"></div>
+        </div>
+        <div class="overflow-x-auto" tabindex="0">
+            <table class="w-full text-left text-sm whitespace-nowrap border-collapse">
+                <thead class="bg-panel/40 text-ink">
+                    <tr>
+                        <th class="px-6 py-4 font-semibold text-[15px]">วันที่ / นัดส่ง</th>
+                        <th class="px-6 py-4 font-semibold text-[15px]">สาขา / ผู้ขอ</th>
+                        <th class="px-6 py-4 font-semibold text-[15px]">รายการที่ต้องเตรียม</th>
+                        <th class="px-6 py-4 font-semibold text-[15px]">สถานะ</th>
+                        <th class="px-6 py-4 font-semibold text-[15px] text-right">จัดการ</th>
+                    </tr>
+                </thead>
+                <tbody id="srt-table-body" class="divide-y divide-divider"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- โมดัลจัดส่ง -->
+    <div id="srt-modal" class="fixed inset-0 z-50 hidden items-center justify-center backdrop-blur-sm opacity-0 pointer-events-none transition-opacity duration-300 p-4"
+        role="dialog" aria-modal="true" aria-labelledby="srt-modal-title">
+        <div class="modal-content relative w-[95%] md:w-[650px] max-h-[90vh] overflow-y-auto p-8 bg-elevated rounded-2xl shadow-lg border border-line-strong" tabindex="0">
+            <div class="flex items-center justify-between mb-6 pb-2 border-b border-hairline">
+                <h3 id="srt-modal-title" class="text-lg text-ink flex items-center gap-2">
+                    <i class="fa-solid fa-paper-plane text-primary"></i> จัดส่งสินค้า
+                </h3>
+                <button id="srt-modal-close" type="button" aria-label="ปิด" class="text-state-danger hover:text-state-danger-soft transition-colors">
+                    <i class="fa-solid fa-xmark text-xl"></i>
+                </button>
+            </div>
+            <form id="srt-form" class="space-y-5 text-sm" novalidate>
+                <div class="space-y-2">
+                    <span class="text-ink font-medium text-xs">จำนวนที่ส่งจริง / IMEI (เฉพาะเครื่อง บรรทัดละ 1 IMEI)</span>
+                    <div id="srt-items" class="space-y-3"></div>
+                </div>
+                <div class="space-y-2">
+                    <div class="flex items-center justify-between">
+                        <span class="text-ink font-medium text-xs">เลขพัสดุ <span class="text-state-danger">*</span></span>
+                        <button id="srt-add-tracking" type="button" class="px-3 py-1.5 bg-field border border-line rounded-xl text-xs text-ink hover:border-primary transition-colors">
+                            <i class="fa-solid fa-plus"></i> เพิ่มเลข
+                        </button>
+                    </div>
+                    <div id="srt-tracking-list" class="space-y-2"></div>
+                </div>
+                <div class="space-y-2">
+                    <label for="srt-arrival" class="text-ink font-medium text-xs">วันนัดส่ง</label>
+                    <input id="srt-arrival" type="date"
+                        class="w-full px-4 py-2.5 rounded-xl bg-field border border-line text-ink focus:border-primary focus:outline-none text-sm">
+                </div>
+                <div class="flex items-center justify-center gap-4 pt-4 border-t border-hairline">
+                    <button id="srt-cancel" type="button" class="px-10 py-2.5 rounded-xl bg-chip text-ink text-[15px] font-bold hover:bg-skeleton transition-colors w-1/2">ยกเลิก</button>
+                    <button id="srt-submit" type="submit" class="px-12 py-2.5 rounded-xl bg-primary text-on-primary text-[15px] font-bold hover:bg-primary-pressed transition-colors w-1/2">ยืนยันการจัดส่ง</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
