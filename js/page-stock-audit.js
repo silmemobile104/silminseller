@@ -203,7 +203,7 @@
                         preview.src = _auditPhotoBase64;
                         preview.classList.remove('hidden');
                     }
-                    setAuditModalSubmitEnabled(true);
+                    updateAuditSubmitState();
                 };
                 reader.readAsDataURL(file);
             });
@@ -263,7 +263,7 @@
         if (btnCamera) btnCamera.innerHTML = '<i class="fa-solid fa-camera text-base"></i> <span>เปิดกล้อง / เลือกรูป</span>';
         if (notesInput) notesInput.value = '';
         if (photoInput) photoInput.value = '';
-        setAuditModalSubmitEnabled(false);
+        updateAuditSubmitState();
 
         // แสดง Modal
         if (modal) {
@@ -289,7 +289,7 @@
             if (btnCamera) btnCamera.innerHTML = '<i class="fa-solid fa-camera text-base"></i> <span>เปิดกล้อง / เลือกรูป</span>';
             if (notesInput) notesInput.value = '';
             if (photoInput) photoInput.value = '';
-            setAuditModalSubmitEnabled(false);
+            updateAuditSubmitState();
 
             const imeiInput = document.getElementById('audit-imei-input');
             if (imeiInput) {
@@ -336,15 +336,32 @@
         btn.classList.toggle('cursor-pointer', enabled);
     };
 
+    document.addEventListener('input', (e) => { if (e.target && e.target.id === 'audit-modal-notes') updateAuditSubmitState(); });
+
+    // กติกา: มีรูป → หมายเหตุไม่บังคับ / ไม่มีรูป → ต้องกรอกหมายเหตุ
+    function updateAuditSubmitState() {
+        const hasPhoto = !!_auditPhotoBase64;
+        const hasNotes = !!(document.getElementById('audit-modal-notes')?.value || '').trim();
+        setAuditModalSubmitEnabled(hasPhoto || hasNotes);
+        const hint = document.getElementById('audit-modal-submit-hint');
+        if (hint) hint.textContent = hasPhoto ? 'มีรูปหลักฐานแล้ว หมายเหตุไม่บังคับ' : 'ถ้าไม่มีรูป ต้องกรอกหมายเหตุแทนจึงจะยืนยันได้';
+        const star = document.getElementById('audit-modal-notes-required');
+        if (star) star.classList.toggle('hidden', hasPhoto);
+        const label = document.getElementById('audit-modal-notes-label');
+        if (label) label.textContent = hasPhoto ? 'หมายเหตุ (ถ้ามี)' : 'หมายเหตุ (จำเป็น เมื่อไม่มีรูป)';
+    }
+
     async function submitModalAuditItem() {
         if (!_auditSessionId) return;
         const imeiDisplay = document.getElementById('audit-modal-imei-display');
         const imei = imeiDisplay ? imeiDisplay.textContent.trim() : '';
         if (!imei) { showToast('ไม่พบข้อมูล IMEI', 'error'); closeAuditVerifyModal(); return; }
 
-        // บังคับแนบภาพถ่ายหลักฐานกล่องสินค้าก่อนบันทึก
-        if (!_auditPhotoBase64) {
-            showToast('⚠️ กรุณาถ่ายรูปกล่องสินค้าหรือเลือกรูปภาพหลักฐานก่อนบันทึก', 'error');
+        // มีรูปไม่ต้องบังคับหมายเหตุ / ไม่มีรูปต้องกรอกหมายเหตุ
+        const notesText = (document.getElementById('audit-modal-notes')?.value || '').trim();
+        if (!_auditPhotoBase64 && !notesText) {
+            showToast('ไม่มีรูปหลักฐาน กรุณากรอกหมายเหตุก่อนบันทึก', 'error');
+            document.getElementById('audit-modal-notes')?.focus();
             return;
         }
 
@@ -435,7 +452,7 @@
             _auditSessionId = session._id;
             _auditSessionData = d.data;
             _expectedImeiData = expectedImeis || [];
-            _scannedImeiSet = new Set((items || []).map(i => i.imei));
+            _scannedImeiSet = new Set((items || []).filter(i => i.scan_status !== 'ตรวจใหม่').map(i => i.imei));
 
             // ---------- หัวหน้า ----------
             if (badge) {
@@ -499,6 +516,7 @@
             // แท็บเริ่มต้นตั้งเฉพาะตอนสถานะ "เพิ่งเปลี่ยน" — ส่งผลแล้ว: เปิดแท็บที่ต้องตามต่อ (ยังไม่พบ > เกินมา)
             if (session.status !== _lastAuditStatus) {
                 if (!isCounting) _auditTab = n.missing ? 'missing' : (n.extra ? 'extra' : 'all');
+                else if (n.recheck) _auditTab = 'recheck';
                 else if (_lastAuditStatus !== null) _auditTab = 'all';
                 _lastAuditStatus = session.status;
             }
@@ -540,6 +558,7 @@
         missing: ['muted', 'ยังไม่พบ'],
         match: ['ok', 'ตรงกับระบบ'],
         extra: ['pending', 'เกินมา'],
+        recheck: ['pending', 'ตรวจสอบใหม่'],
         sold: ['muted', 'ขายระหว่างรอบ']
     };
 
@@ -551,13 +570,14 @@
             const item = itemByImei.get(e.imei) || null;
             return {
                 imei: e.imei, name: e.product_name, color: e.color || '', capacity: e.capacity || '', item,
-                state: item ? 'match' : (e.sold ? 'sold' : 'missing')
+                state: item ? (item.scan_status === 'ตรวจใหม่' ? 'recheck' : 'match') : (e.sold ? 'sold' : 'missing')
             };
         });
         items.filter(i => !expectedSet.has(i.imei)).forEach(i => rows.push({
-            imei: i.imei, name: i.product_name, color: '', capacity: '', item: i, state: 'extra'
+            imei: i.imei, name: i.product_name, color: '', capacity: '', item: i,
+            state: i.scan_status === 'ตรวจใหม่' ? 'recheck' : 'extra'
         }));
-        const order = { missing: 0, extra: 1, match: 2, sold: 3 };
+        const order = { recheck: 0, missing: 1, extra: 2, match: 3, sold: 4 };
         return rows.sort((a, b) => {
             if (order[a.state] !== order[b.state]) return order[a.state] - order[b.state];
             if (a.item && b.item) return new Date(b.item.scanned_at) - new Date(a.item.scanned_at);
@@ -566,7 +586,7 @@
     };
 
     const countAuditRows = (rows) => rows.reduce((c, r) => { c[r.state]++; return c; },
-        { missing: 0, match: 0, extra: 0, sold: 0 });
+        { missing: 0, match: 0, extra: 0, recheck: 0, sold: 0 });
 
     // จุดสี 16px หน้าชื่อสินค้า (DESIGN.md ข้อ 11.14) — วงแหวนบางกันสีดำกลืนพื้น
     //   รายการเกินไม่ทราบสี (ไม่อยู่ในคลังสาขา) จึงใช้วงกลมเส้นประแทน
@@ -581,6 +601,7 @@
 
     const auditSubLine = (row) => {
         if (row.state === 'extra') return 'ไม่อยู่ในคลังสาขานี้';
+        if (row.state === 'recheck') return [row.item && row.item.review_notes ? 'เหตุผล: ' + row.item.review_notes : 'ต้องสแกนซ้ำ', row.capacity, row.color].filter(Boolean).join(' · ');
         return [row.capacity, row.color].filter(Boolean).join(' · ');
     };
 
@@ -594,11 +615,11 @@
                 <img src="${auditEsc(row.item.box_photo_url)}" referrerpolicy="no-referrer" loading="lazy" width="32" height="32"
                     class="w-full h-full object-cover" alt="รูปกล่องสินค้าของ IMEI ${auditEsc(row.imei)}"></a>`);
         }
-        if (isCounting && row.item) {
+        if (isCounting && row.item && row.state !== 'recheck') {
             parts.push(`<button type="button" data-audit-action="delete" data-imei="${auditEsc(row.imei)}" title="ลบการสแกน"
                 class="text-ink hover:text-red-400 transition-colors p-2 cursor-pointer"
                 aria-label="ลบการสแกน IMEI ${auditEsc(row.imei)}"><i class="fa-regular fa-trash-can"></i></button>`);
-        } else if (isCounting && row.state === 'missing') {
+        } else if (isCounting && (row.state === 'missing' || row.state === 'recheck')) {
             parts.push(`<button type="button" data-audit-action="fill" data-imei="${auditEsc(row.imei)}" title="ใส่ในช่องสแกน"
                 class="text-ink hover:text-amber-400 transition-colors p-2 cursor-pointer"
                 aria-label="ใส่ IMEI ${auditEsc(row.imei)} ลงช่องสแกน"><i class="fa-solid fa-arrow-up-from-bracket"></i></button>`);
@@ -667,7 +688,7 @@
         if (!opts.keepPage) _auditShown = AUDIT_PAGE_SIZE;
 
         const n = countAuditRows(_auditRows);
-        const tabCount = { all: _auditRows.length, missing: n.missing, match: n.match, extra: n.extra };
+        const tabCount = { all: _auditRows.length, recheck: n.recheck, missing: n.missing, match: n.match, extra: n.extra };
         document.querySelectorAll('#audit-item-tabs .audit-item-tab').forEach(btn => {
             const on = btn.dataset.tab === _auditTab;
             btn.className = on ? AUDIT_TAB_ON : AUDIT_TAB_OFF;
@@ -1140,6 +1161,17 @@
                     closeArea.classList.add('hidden');
                 }
             }
+            // Reopen button (รอบรออนุมัติ + มีรายการไม่ผ่าน)
+            const reopenArea = document.getElementById('audit-review-reopen-area');
+            if (reopenArea) {
+                if ((session.status === 'รอการอนุมัติ' || session.status === 'กำลังตรวจนับ') && summary.failed > 0) {
+                    reopenArea.classList.remove('hidden');
+                    const btnReopen = document.getElementById('btn-audit-reopen-session');
+                    if (btnReopen) btnReopen.onclick = () => reopenAuditSession(sessionId);
+                } else {
+                    reopenArea.classList.add('hidden');
+                }
+            }
             return true;
 
         } catch (e) {
@@ -1160,6 +1192,7 @@
             { key: 'รอตรวจสอบ', label: 'รอตรวจสอบ', count: summary.pending, dot: STATUS_TONE.working.dot },
             { key: 'ผ่าน', label: 'ผ่าน', count: summary.passed, dot: STATUS_TONE.ok.dot },
             { key: 'ไม่ผ่าน', label: 'ไม่ผ่าน', count: summary.failed, dot: STATUS_TONE.fail.dot },
+            { key: 'ตรวจใหม่', label: 'ตรวจสอบใหม่', count: summary.recheck || 0, dot: STATUS_TONE.working.dot },
         ];
 
         bar.innerHTML = tiles.map(t => {
@@ -1283,12 +1316,47 @@
             total: _reviewCurrentSessionItems.length,
             passed: _reviewCurrentSessionItems.filter(i => i.scan_status === 'ผ่าน').length,
             failed: _reviewCurrentSessionItems.filter(i => i.scan_status === 'ไม่ผ่าน').length,
-            pending: _reviewCurrentSessionItems.filter(i => i.scan_status === 'รอตรวจสอบ').length
+            pending: _reviewCurrentSessionItems.filter(i => i.scan_status === 'รอตรวจสอบ').length,
+            recheck: _reviewCurrentSessionItems.filter(i => i.scan_status === 'ตรวจใหม่').length
         };
         renderReviewSummaryBar(summary);
         renderReviewItemsGrid();
     }
     window.filterReviewItemsByStatus = filterReviewItemsByStatus;
+
+    // ซูมรูปหลักฐานในหน้าต่างตรวจสอบ: ล้อเมาส์ขยาย/ย่อรอบตำแหน่งเมาส์ ลากเพื่อเลื่อน ดับเบิลคลิกรีเซ็ต
+    function setupAuditPhotoZoom() {
+        const box = document.getElementById('audit-review-zoom-box');
+        const img = document.getElementById('audit-review-zoom-img');
+        if (!box || !img) return;
+        const MIN = 1, MAX = 6;
+        let scale = 1, tx = 0, ty = 0, dragging = false, sx = 0, sy = 0;
+        const apply = () => {
+            // กันรูปหลุดออกนอกกรอบ
+            const w = box.clientWidth, h = box.clientHeight;
+            tx = Math.min(0, Math.max(w - w * scale, tx));
+            ty = Math.min(0, Math.max(h - h * scale, ty));
+            img.style.transform = `translate(${tx}px, ${ty}px) scale(${scale})`;
+            box.style.cursor = scale > 1 ? (dragging ? 'grabbing' : 'grab') : 'zoom-in';
+        };
+        box.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            const rect = box.getBoundingClientRect();
+            const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+            const next = Math.min(MAX, Math.max(MIN, scale * (e.deltaY < 0 ? 1.15 : 1 / 1.15)));
+            tx = mx - (mx - tx) * (next / scale);
+            ty = my - (my - ty) * (next / scale);
+            scale = next;
+            apply();
+        }, { passive: false });
+        box.addEventListener('mousedown', (e) => {
+            if (scale <= 1) return;
+            dragging = true; sx = e.clientX - tx; sy = e.clientY - ty; apply(); e.preventDefault();
+        });
+        window.addEventListener('mousemove', (e) => { if (dragging) { tx = e.clientX - sx; ty = e.clientY - sy; apply(); } });
+        window.addEventListener('mouseup', () => { if (dragging) { dragging = false; apply(); } });
+        box.addEventListener('dblclick', () => { scale = 1; tx = 0; ty = 0; apply(); });
+    }
 
     function openAuditReviewItemModal(itemId) {
         const item = _reviewCurrentSessionItems.find(i => i._id === itemId);
@@ -1314,13 +1382,15 @@
         const elPhotoContainer = document.getElementById('audit-review-modal-photo-container');
         if (elPhotoContainer) {
             elPhotoContainer.innerHTML = item.box_photo_url
-                ? `<a href="${item.box_photo_url}" target="_blank" rel="noreferrer" class="elev-chip block w-full h-56 rounded-xl overflow-hidden hover:ring-1 hover:ring-accent-ink transition-colors">
-                   <img src="${item.box_photo_url}" referrerpolicy="no-referrer" class="w-full h-full object-cover" alt="รูปกล่องสินค้าของ IMEI ${item.imei}" />
-               </a>`
-                : `<div class="elev-field w-full h-48 rounded-xl bg-field flex flex-col items-center justify-center gap-2">
+                ? `<div id="audit-review-zoom-box" class="elev-chip relative block w-full h-64 md:h-[30rem] rounded-xl overflow-hidden bg-black select-none" style="cursor:zoom-in;touch-action:none;">
+                   <img id="audit-review-zoom-img" src="${item.box_photo_url}" referrerpolicy="no-referrer" draggable="false" class="w-full h-full object-contain" style="transform-origin:0 0;" alt="รูปกล่องสินค้าของ IMEI ${item.imei}" />
+                   </div>
+                   <p class="text-xs text-body-muted mt-3 leading-relaxed">เลื่อนล้อเมาส์บนรูปเพื่อขยาย/ย่อ · ลากเพื่อเลื่อนดู · ดับเบิลคลิกเพื่อรีเซ็ต · <a href="${item.box_photo_url}" target="_blank" rel="noreferrer" class="text-accent-ink hover:underline">เปิดรูปเต็ม</a></p>`
+                : `<div class="elev-field w-full h-64 md:h-[30rem] rounded-xl bg-field flex flex-col items-center justify-center gap-2">
                    <i class="fa-solid fa-image text-ink/50 text-3xl"></i>
                    <p class="text-ink/50 text-xs">ไม่มีรูปกล่อง</p>
                </div>`;
+            if (item.box_photo_url) setupAuditPhotoZoom();
         }
 
         // Notes area
@@ -1450,6 +1520,24 @@
                 const d = await r.json();
                 if (d.success) {
                     showToast(`ปิดรอบสำเร็จ! ผ่าน ${d.summary?.passed || 0} / ไม่ผ่าน ${d.summary?.failed || 0} รายการ`);
+                    loadAuditReviewSessions();
+                } else showToast(d.message || 'เกิดข้อผิดพลาด', 'error');
+            } catch (e) { showToast('ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้', 'error'); }
+        });
+    }
+
+    async function reopenAuditSession(sessionId) {
+        showConfirm('ตีกลับให้นับใหม่', 'ล้างรายการที่ไม่ผ่านและส่งรอบนี้กลับให้พนักงานสาขาสแกนใหม่ใช่หรือไม่? รายการที่ผ่านแล้วจะยังอยู่', async () => {
+            try {
+                const token = localStorage.getItem('silmin_token');
+                const r = await fetch(`/api/stock-audit/sessions/${sessionId}/reopen`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({})
+                });
+                const d = await r.json();
+                if (d.success) {
+                    showToast(d.message);
                     loadAuditReviewSessions();
                 } else showToast(d.message || 'เกิดข้อผิดพลาด', 'error');
             } catch (e) { showToast('ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้', 'error'); }

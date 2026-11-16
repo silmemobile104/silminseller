@@ -26,7 +26,7 @@
     </script>
 
     <link rel="icon" type="image/png" href="logo.png?v=2">
-    <link rel="stylesheet" href="tailwind.css?v=125">
+    <link rel="stylesheet" href="tailwind.css?v=136">
     <!-- xlsx ถูกย้ายไปโหลดแบบ on-demand ตอนเปิด modal นำเข้า Excel แล้ว (ดู ensureXlsxLoaded ใน script.js)
          เดิมโหลดตรงนี้แบบ render-blocking ทุกครั้งที่เข้าเว็บ ทั้งที่ใช้แค่ฟีเจอร์เดียว -->
     <!-- ไอคอน: self-host + ตัดเหลือเฉพาะที่ใช้จริง (Font Awesome 144 + Bootstrap Icons 28)
@@ -5383,11 +5383,10 @@
                     <div id="audit-modal-product-name"></div>
                 </div>
 
-                <!-- รูปกล่องสินค้า (บังคับ) -->
+                <!-- รูปกล่องสินค้า (ถ้าไม่มีรูปต้องกรอกหมายเหตุ) -->
                 <div class="space-y-2">
                     <p class="text-ink font-medium flex items-center gap-2 text-xs">
                         <i class="fa-solid fa-camera text-ink"></i> ถ่ายภาพ / อัปโหลดภาพหลักฐาน
-                        <span class="text-red-500">*</span>
                     </p>
                     <input id="audit-modal-photo-input" type="file" accept="image/*" capture="environment"
                         class="hidden" aria-label="เลือกไฟล์รูปกล่องสินค้า" />
@@ -5399,13 +5398,13 @@
                     </button>
                     <img id="audit-modal-photo-preview" src="" alt="ตัวอย่างรูปกล่องสินค้าที่เลือกไว้"
                         class="elev-chip hidden w-full h-[160px] object-cover rounded-xl mt-1" />
-                    <p id="audit-modal-submit-hint" class="text-xs text-ink/50">ต้องมีรูปกล่องก่อนจึงจะยืนยันได้</p>
+                    <p id="audit-modal-submit-hint" class="text-xs text-ink/50">ถ้าไม่มีรูป ต้องกรอกหมายเหตุแทนจึงจะยืนยันได้</p>
                 </div>
 
                 <!-- หมายเหตุ -->
                 <div class="space-y-2">
                     <label for="audit-modal-notes" class="text-ink font-medium flex items-center gap-2 text-xs">
-                        <i class="fa-solid fa-pen text-ink"></i> หมายเหตุ (ถ้ามี)
+                        <i class="fa-solid fa-pen text-ink"></i> <span id="audit-modal-notes-label">หมายเหตุ (จำเป็น เมื่อไม่มีรูป)</span>
                     </label>
                     <textarea id="audit-modal-notes" rows="2" placeholder="บันทึกเพิ่มเติม..."
                         class="elev-field w-full px-4 py-2.5 rounded-xl bg-field text-ink focus:ring-2 focus:ring-accent-ink focus:outline-none transition-all placeholder-ink-muted-48 text-sm resize-none"></textarea>
@@ -5431,9 +5430,9 @@
     <div id="modal-audit-review-item"
         class="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-sm p-4 hidden">
         <div
-            class="elev-modal modal-content relative w-[95%] md:w-[650px] max-h-[90vh] overflow-y-auto p-8 bg-elevated rounded-2xl transform scale-95 transition-all duration-300">
+            class="elev-modal modal-content relative w-[95%] md:w-[1080px] max-h-[92vh] overflow-y-auto p-6 md:p-10 bg-elevated rounded-2xl transform scale-95 transition-all duration-300">
             <!-- หัวโมดัล — สูตรเดียวกับ drawer/โมดัลอื่นทั้งระบบ (ข้อ 11.8) -->
-            <div class="flex items-center justify-between mb-6 pb-2 border-b border-hairline">
+            <div class="flex items-center justify-between mb-6 pb-4 border-b border-hairline">
                 <h3 class="text-lg font-medium text-ink flex items-center gap-2">
                     <i class="fa-solid fa-magnifying-glass text-accent-ink"></i>
                     <span>ตรวจสอบรายการสแกน</span>
@@ -5444,30 +5443,9 @@
                 </button>
             </div>
 
-            <div class="space-y-5 text-sm">
-                <!-- ป้ายสถานะปัจจุบัน — เขียนจาก openAuditReviewItemModal() ด้วย statusBadge() -->
-                <div id="audit-review-modal-indicator" class="flex"></div>
-
-                <!-- รายละเอียดสินค้า -->
-                <div class="elev-field grid grid-cols-2 gap-4 bg-field rounded-xl p-4">
-                    <div>
-                        <p class="text-[10px] text-ink/70 uppercase font-bold">หมายเลข IMEI</p>
-                        <p id="audit-review-modal-imei"
-                            class="font-mono font-semibold text-accent-ink text-base mt-0.5">
-                            —</p>
-                    </div>
-                    <div>
-                        <p class="text-[10px] text-ink/70 uppercase font-bold">ชื่อสินค้า</p>
-                        <p id="audit-review-modal-product" class="text-ink text-sm font-medium mt-0.5 truncate">—</p>
-                    </div>
-                    <div class="col-span-2 border-t border-line pt-3">
-                        <p class="text-[10px] text-ink/70 uppercase font-bold">ผู้สแกน / บันทึกเพิ่มเติม</p>
-                        <p id="audit-review-modal-scanner" class="text-ink/70 text-xs font-medium mt-0.5">—</p>
-                    </div>
-                </div>
-
-                <!-- รูปกล่องสินค้า -->
-                <div class="space-y-2">
+            <div class="grid grid-cols-1 md:grid-cols-5 gap-6 md:gap-8 text-sm">
+                <!-- ซ้าย: รูปกล่องสินค้า -->
+                <div class="md:col-span-3 space-y-3">
                     <p class="text-ink font-medium flex items-center gap-2 text-xs">
                         <i class="fa-solid fa-camera text-ink"></i> ภาพหลักฐานกล่องสินค้า
                     </p>
@@ -5476,15 +5454,38 @@
                     </div>
                 </div>
 
-                <!-- หมายเหตุ (โผล่เฉพาะตอนยังตรวจสอบได้) -->
-                <div id="audit-review-modal-notes-area" class="space-y-2">
-                    <!-- ถูกเขียนจาก JS -->
+                <!-- ขวา: สถานะ + รายละเอียด + หมายเหตุ -->
+                <div class="md:col-span-2 flex flex-col gap-5">
+                    <!-- ป้ายสถานะปัจจุบัน — เขียนจาก openAuditReviewItemModal() ด้วย statusBadge() -->
+                    <div id="audit-review-modal-indicator" class="flex"></div>
+
+                    <div class="elev-field bg-field rounded-xl divide-y divide-line">
+                        <div class="px-4 py-3.5">
+                            <p class="text-[11px] text-ink/70 font-bold mb-1">หมายเลข IMEI</p>
+                            <p id="audit-review-modal-imei"
+                                class="font-mono font-semibold text-accent-ink text-base break-all">
+                                —</p>
+                        </div>
+                        <div class="px-4 py-3.5">
+                            <p class="text-[11px] text-ink/70 font-bold mb-1">ชื่อสินค้า</p>
+                            <p id="audit-review-modal-product" class="text-ink text-sm font-medium">—</p>
+                        </div>
+                        <div class="px-4 py-3.5">
+                            <p class="text-[11px] text-ink/70 font-bold mb-1">ผู้สแกน / บันทึกเพิ่มเติม</p>
+                            <p id="audit-review-modal-scanner" class="text-ink/70 text-xs font-medium">—</p>
+                        </div>
+                    </div>
+
+                    <!-- หมายเหตุ (โผล่เฉพาะตอนยังตรวจสอบได้) -->
+                    <div id="audit-review-modal-notes-area" class="space-y-2">
+                        <!-- ถูกเขียนจาก JS -->
+                    </div>
                 </div>
             </div>
 
             <!-- การกระทำ / สรุปผล — เขียนจาก JS -->
             <div id="audit-review-modal-actions-area"
-                class="flex flex-col sm:flex-row gap-2 pt-6 mt-6 border-t border-hairline"></div>
+                class="flex flex-col sm:flex-row gap-3 pt-6 mt-8 border-t border-hairline"></div>
         </div>
     </div>
     <!-- Mobile POS Cart Overlay -->
@@ -5575,7 +5576,7 @@
     <!-- defer: ปล่อยให้ parse HTML จบก่อนค่อย execute
          ปลอดภัยเพราะทั้งไฟล์ห่ออยู่ใน DOMContentLoaded listener อยู่แล้ว
          และสคริปต์ defer จะ execute ก่อน event DOMContentLoaded ยิงเสมอ -->
-    <script defer src="script.js?v=apple_active_v225"></script>
+    <script defer src="script.js?v=apple_active_v273"></script>
     <script>
         // ลงทะเบียน Service Worker เพื่อแคช asset คงที่ (css/js/font/icon/รูป) ไว้ฝั่งเครื่อง
         // เข้าเว็บครั้งถัดไปเร็วขึ้นมาก โดยเฉพาะตอนเน็ตช้าหรือหลุดชั่วคราว — ดูรายละเอียดที่ sw.js

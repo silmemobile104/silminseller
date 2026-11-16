@@ -7,12 +7,16 @@
         </div>
         <!-- ตัวสลับแบบ segmented: ใบที่เลือก = พื้นยก + ขอบ/ตัวอักษรเหลือง (ไม่ใช่เหลืองทึบ — ข้อ 11.9)
              className จริงเขียนจาก activateTab ใน js/page-branch-inventory.js -->
-        <div role="group" aria-label="เลือกมุมมองสต็อก" class="elev-field inline-flex items-center gap-1 p-1 rounded-xl bg-field w-full sm:w-auto">
-            <button id="tab-branch-mystock" type="button" aria-pressed="true" class="tab-toggle-btn">
-                <i class="fa-solid fa-box-open text-xs"></i> สินค้าในสาขาของฉัน
+        <!-- ปุ่มสไตล์เดียวกับหน้าจ่ายออกสินค้า: ที่เลือก = bg-primary, ที่ไม่ได้เลือก = bg-field -->
+        <div role="group" aria-label="เลือกมุมมองสต็อก" class="flex flex-wrap gap-2 w-full sm:w-auto">
+            <button id="tab-branch-mystock" type="button" aria-pressed="true" class="flex-1 sm:flex-none px-4 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 cursor-pointer bg-primary text-on-primary">
+                <i class="fa-solid fa-box-open"></i> สินค้าในสาขาของฉัน
             </button>
-            <button id="tab-branch-globalstock" type="button" aria-pressed="false" class="tab-toggle-btn">
-                <i class="fa-solid fa-globe text-xs"></i> สินค้าและราคาสาขาอื่น
+            <button id="tab-branch-globalstock" type="button" aria-pressed="false" class="flex-1 sm:flex-none px-4 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 cursor-pointer bg-field text-body-muted hover:text-ink">
+                <i class="fa-solid fa-globe"></i> สินค้าและราคาสาขาอื่น
+            </button>
+            <button id="tab-branch-dashboard" type="button" aria-pressed="false" class="flex-1 sm:flex-none px-4 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 cursor-pointer bg-field text-body-muted hover:text-ink">
+                <i class="fa-solid fa-chart-pie"></i> แดชบอร์ด
             </button>
         </div>
     </div>
@@ -22,22 +26,12 @@
     <!-- แถบควบคุม + ชิปตัวกรอง + ตาราง อยู่ในการ์ดใบเดียว (ข้อ 11.1) -->
     <!-- ============================================================ -->
     <div id="content-branch-mystock" class="bg-panel/40 rounded-2xl overflow-hidden">
-        <!-- 2a แถบควบคุม (ข้อ 11.4) -->
+        <!-- 2a แถบควบคุม -->
         <div class="p-6 pb-0 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-            <div class="min-w-0">
-                <h3 class="text-lg text-ink flex items-center gap-2">
-                    <i class="fa-solid fa-box-open text-body-muted" aria-hidden="true"></i> สต็อกในสาขาของฉัน
-                </h3>
-                <!-- มูลค่ารวมตามราคาขาย (จำนวน × ราคาขายต่อชิ้น) — คิดตามตัวกรองประเภท/สภาพ ไม่ขึ้นกับช่องค้นหา
-                     เขียนจาก loadBranchInventoryMyStock ใน js/page-branch-inventory.js -->
-                <p class="mt-2 flex flex-wrap items-baseline gap-x-2 gap-y-0.5" aria-live="polite">
-                    <span class="text-[13px] text-body-muted">มูลค่ารวม (ราคาขาย)</span>
-                    <span id="value-branch-mystock" class="text-2xl font-semibold text-ink tracking-tight">-</span>
-                    <span id="value-branch-mystock-sub" class="text-[13px] text-body-muted"></span>
-                </p>
-                <!-- สรุปแยกกลุ่ม เครื่อง / อุปกรณ์เสริม (จำนวนชิ้น · มูลค่า) เขียนจาก setMyStockValue -->
-                <div id="value-branch-mystock-groups" class="mt-2 flex flex-wrap gap-2"></div>
-            </div>
+            <h3 class="text-lg text-ink flex items-center gap-2">
+                <i class="fa-solid fa-box-open text-body-muted" aria-hidden="true"></i> สต็อกในสาขาของฉัน
+                <span id="summary-branch-mystock" class="text-sm font-normal text-body-muted"></span>
+            </h3>
             <div class="flex flex-col sm:flex-row sm:items-center gap-2.5 w-full lg:w-auto">
                 <div class="relative group w-full sm:w-72">
                     <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-body-muted group-focus-within:text-accent-ink transition-colors pointer-events-none"></i>
@@ -45,14 +39,14 @@
                         aria-label="ค้นหาสินค้าในสาขาของฉัน ด้วยชื่อ รหัสสินค้า หรือ IMEI"
                         class="w-full h-10 pl-10 pr-4 rounded-xl bg-field text-ink text-sm placeholder:text-ink-muted-48 focus:outline-none focus:ring-1 focus:ring-accent-ink transition-all">
                 </div>
-                <div class="relative w-full sm:w-auto">
+                <div class="hidden">
                     <select id="filter-branch-mystock-type" aria-label="กรองตามประเภทสินค้า"
                         class="w-full h-10 pl-3.5 pr-9 rounded-xl bg-field text-ink text-sm cursor-pointer appearance-none focus:outline-none focus:ring-1 focus:ring-accent-ink [&>option]:bg-canvas-elevated">
                         <option value="ALL">ประเภท: ทั้งหมด</option>
                     </select>
                     <i class="fa-solid fa-chevron-down absolute right-3.5 top-1/2 -translate-y-1/2 text-[10px] text-body-muted pointer-events-none"></i>
                 </div>
-                <div class="relative w-full sm:w-auto">
+                <div class="hidden">
                     <select id="filter-branch-mystock-condition" aria-label="กรองตามสภาพเครื่อง"
                         class="w-full h-10 pl-3.5 pr-9 rounded-xl bg-field text-ink text-sm cursor-pointer appearance-none focus:outline-none focus:ring-1 focus:ring-accent-ink [&>option]:bg-canvas-elevated">
                         <option value="ALL">สภาพ: ทั้งหมด</option>
@@ -61,7 +55,23 @@
                     </select>
                     <i class="fa-solid fa-chevron-down absolute right-3.5 top-1/2 -translate-y-1/2 text-[10px] text-body-muted pointer-events-none"></i>
                 </div>
-                <button id="btn-refresh-mystock" type="button" title="รีเฟรช" aria-label="รีเฟรชสต็อกในสาขาของฉัน"
+                <button id="btn-branch-adv-mystock" type="button" aria-label="กรอง" data-adv-open="mystock"
+                    class="shrink-0 h-10 px-3.5 w-full sm:w-auto flex items-center justify-center gap-2 rounded-xl bg-surface-chip hover:bg-field text-ink text-sm transition-colors cursor-pointer">
+                    <img src="icons_img/filter 3.png" alt="" width="16" height="16">
+                    <span id="btn-branch-adv-text-mystock">กรอง</span>
+                </button>
+                <div class="relative w-full sm:w-auto" data-export-wrap="mystock">
+                    <button id="btn-export-mystock" type="button" aria-haspopup="true" aria-expanded="false" aria-label="ส่งออกเป็นตาราง"
+                        class="shrink-0 h-10 px-4 w-full sm:w-auto flex items-center justify-center gap-2 rounded-xl bg-primary hover:bg-[#E2B93C] text-on-primary text-sm font-semibold transition-colors cursor-pointer">
+                        <img src="icons_img/icons8-export-100 2.png" alt="" width="16" height="16"> ส่งออก
+                        <i class="fa-solid fa-chevron-down text-[10px]" aria-hidden="true"></i>
+                    </button>
+                    <div id="menu-export-mystock" class="hidden absolute right-0 top-12 z-30 min-w-[11rem] p-1.5 rounded-xl bg-elevated border border-line-strong shadow-lg">
+                        <button type="button" data-export="mystock:xlsx" class="w-full text-left px-3 py-2 rounded-lg text-sm text-ink hover:bg-field cursor-pointer">ไฟล์ Excel (.xlsx)</button>
+                        <button type="button" data-export="mystock:pdf" class="w-full text-left px-3 py-2 rounded-lg text-sm text-ink hover:bg-field cursor-pointer">ไฟล์ PDF</button>
+                    </div>
+                </div>
+                <button id="btn-refresh-mystock" type="button" title="รีเฟรช" aria-label="รีเฟรช"
                     class="shrink-0 h-10 w-full sm:w-10 flex items-center justify-center gap-2 rounded-xl bg-surface-chip hover:bg-field text-body-muted hover:text-ink text-sm transition-colors cursor-pointer">
                     <i class="fa-solid fa-rotate"></i><span class="sm:hidden">รีเฟรช</span>
                 </button>
@@ -72,7 +82,6 @@
         <div class="px-6 py-4">
             <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                 <div id="chips-branch-mystock" class="flex flex-wrap gap-2"></div>
-                <div id="count-branch-mystock" class="text-xs text-ink font-medium whitespace-nowrap sm:ml-auto"></div>
             </div>
         </div>
 
@@ -81,11 +90,11 @@
             <table class="w-full text-left text-sm whitespace-nowrap border-collapse">
                 <thead class="bg-panel/40 text-ink">
                     <tr>
-                        <th class="px-4 py-4 font-semibold text-[15px] text-center w-16">ลำดับ</th>
-                        <th data-sort="code" class="px-4 py-4 font-semibold text-[15px] cursor-pointer select-none">รหัสสินค้า <span class="sort-arrow text-xs text-accent-ink"></span></th>
-                        <th data-sort="name" class="px-4 py-4 w-full font-semibold text-[15px] cursor-pointer select-none">ชื่อสินค้า <span class="sort-arrow text-xs text-accent-ink"></span></th>
-                        <th data-sort="price" class="px-4 py-4 font-semibold text-[15px] text-right cursor-pointer select-none">ราคาขาย <span class="sort-arrow text-xs text-accent-ink"></span></th>
-                        <th data-sort="qty" class="px-4 py-4 font-semibold text-[15px] text-center cursor-pointer select-none">คงเหลือ <span class="sort-arrow text-xs text-accent-ink"></span></th>
+                        <th class="px-6 py-4 font-semibold text-[15px] text-center w-16">ลำดับ</th>
+                        <th data-sort="code" class="px-6 py-4 font-semibold text-[15px] cursor-pointer select-none">รหัสสินค้า <span class="sort-arrow text-xs text-accent-ink"></span></th>
+                        <th data-sort="name" class="px-6 py-4 w-full font-semibold text-[15px] cursor-pointer select-none">ชื่อสินค้า <span class="sort-arrow text-xs text-accent-ink"></span></th>
+                        <th data-sort="price" class="px-6 py-4 font-semibold text-[15px] text-right cursor-pointer select-none">ราคาขาย <span class="sort-arrow text-xs text-accent-ink"></span></th>
+                        <th data-sort="qty" class="px-6 py-4 font-semibold text-[15px] text-center cursor-pointer select-none">คงเหลือ <span class="sort-arrow text-xs text-accent-ink"></span></th>
                     </tr>
                 </thead>
                 <tbody id="table-body-branch-mystock" class="divide-y divide-divider">
@@ -111,21 +120,21 @@
                         aria-label="ค้นหาสินค้าและราคาของสาขาอื่น ด้วยชื่อสินค้า ชื่อสาขา หรือรหัสสินค้า"
                         class="w-full h-10 pl-10 pr-4 rounded-xl bg-field text-ink text-sm placeholder:text-ink-muted-48 focus:outline-none focus:ring-1 focus:ring-accent-ink transition-all">
                 </div>
-                <div class="relative w-full sm:w-auto">
+                <div class="hidden">
                     <select id="filter-branch-globalstock-branch" aria-label="กรองตามที่จัดเก็บ (สาขา)"
                         class="w-full h-10 pl-3.5 pr-9 rounded-xl bg-field text-ink text-sm cursor-pointer appearance-none focus:outline-none focus:ring-1 focus:ring-accent-ink [&>option]:bg-canvas-elevated">
                         <option value="ALL">ที่จัดเก็บ: ทั้งหมด</option>
                     </select>
                     <i class="fa-solid fa-chevron-down absolute right-3.5 top-1/2 -translate-y-1/2 text-[10px] text-body-muted pointer-events-none"></i>
                 </div>
-                <div class="relative w-full sm:w-auto">
+                <div class="hidden">
                     <select id="filter-branch-globalstock-type" aria-label="กรองตามประเภทสินค้า"
                         class="w-full h-10 pl-3.5 pr-9 rounded-xl bg-field text-ink text-sm cursor-pointer appearance-none focus:outline-none focus:ring-1 focus:ring-accent-ink [&>option]:bg-canvas-elevated">
                         <option value="ALL">ประเภท: ทั้งหมด</option>
                     </select>
                     <i class="fa-solid fa-chevron-down absolute right-3.5 top-1/2 -translate-y-1/2 text-[10px] text-body-muted pointer-events-none"></i>
                 </div>
-                <div class="relative w-full sm:w-auto">
+                <div class="hidden">
                     <select id="filter-branch-globalstock-condition" aria-label="กรองตามสภาพเครื่อง"
                         class="w-full h-10 pl-3.5 pr-9 rounded-xl bg-field text-ink text-sm cursor-pointer appearance-none focus:outline-none focus:ring-1 focus:ring-accent-ink [&>option]:bg-canvas-elevated">
                         <option value="ALL">สภาพ: ทั้งหมด</option>
@@ -134,7 +143,23 @@
                     </select>
                     <i class="fa-solid fa-chevron-down absolute right-3.5 top-1/2 -translate-y-1/2 text-[10px] text-body-muted pointer-events-none"></i>
                 </div>
-                <button id="btn-refresh-globalstock" type="button" title="รีเฟรช" aria-label="รีเฟรชสต็อกทุกสาขา"
+                <button id="btn-branch-adv-globalstock" type="button" aria-label="กรอง" data-adv-open="globalstock"
+                    class="shrink-0 h-10 px-3.5 w-full sm:w-auto flex items-center justify-center gap-2 rounded-xl bg-surface-chip hover:bg-field text-ink text-sm transition-colors cursor-pointer">
+                    <img src="icons_img/filter 3.png" alt="" width="16" height="16">
+                    <span id="btn-branch-adv-text-globalstock">กรอง</span>
+                </button>
+                <div class="relative w-full sm:w-auto" data-export-wrap="globalstock">
+                    <button id="btn-export-globalstock" type="button" aria-haspopup="true" aria-expanded="false" aria-label="ส่งออกเป็นตาราง"
+                        class="shrink-0 h-10 px-4 w-full sm:w-auto flex items-center justify-center gap-2 rounded-xl bg-primary hover:bg-[#E2B93C] text-on-primary text-sm font-semibold transition-colors cursor-pointer">
+                        <img src="icons_img/icons8-export-100 2.png" alt="" width="16" height="16"> ส่งออก
+                        <i class="fa-solid fa-chevron-down text-[10px]" aria-hidden="true"></i>
+                    </button>
+                    <div id="menu-export-globalstock" class="hidden absolute right-0 top-12 z-30 min-w-[11rem] p-1.5 rounded-xl bg-elevated border border-line-strong shadow-lg">
+                        <button type="button" data-export="globalstock:xlsx" class="w-full text-left px-3 py-2 rounded-lg text-sm text-ink hover:bg-field cursor-pointer">ไฟล์ Excel (.xlsx)</button>
+                        <button type="button" data-export="globalstock:pdf" class="w-full text-left px-3 py-2 rounded-lg text-sm text-ink hover:bg-field cursor-pointer">ไฟล์ PDF</button>
+                    </div>
+                </div>
+                <button id="btn-refresh-globalstock" type="button" title="รีเฟรช" aria-label="รีเฟรช"
                     class="shrink-0 h-10 w-full sm:w-10 flex items-center justify-center gap-2 rounded-xl bg-surface-chip hover:bg-field text-body-muted hover:text-ink text-sm transition-colors cursor-pointer">
                     <i class="fa-solid fa-rotate"></i><span class="sm:hidden">รีเฟรช</span>
                 </button>
@@ -154,18 +179,243 @@
             <table class="w-full text-left text-sm whitespace-nowrap border-collapse">
                 <thead class="bg-panel/40 text-ink">
                     <tr>
-                        <th class="px-4 py-4 font-semibold text-[15px] text-center w-16">ลำดับ</th>
-                        <th data-sort="code" class="px-4 py-4 font-semibold text-[15px] cursor-pointer select-none">รหัสสินค้า <span class="sort-arrow text-xs text-accent-ink"></span></th>
-                        <th data-sort="name" class="px-4 py-4 w-full font-semibold text-[15px] cursor-pointer select-none">ชื่อสินค้า <span class="sort-arrow text-xs text-accent-ink"></span></th>
-                        <th class="px-4 py-4 font-semibold text-[15px]">ที่จัดเก็บ</th>
-                        <th data-sort="price" class="px-4 py-4 font-semibold text-[15px] text-right cursor-pointer select-none">ราคาขายอ้างอิง <span class="sort-arrow text-xs text-accent-ink"></span></th>
-                        <th data-sort="qty" class="px-4 py-4 font-semibold text-[15px] text-center cursor-pointer select-none">คงเหลือ <span class="sort-arrow text-xs text-accent-ink"></span></th>
+                        <th class="px-6 py-4 font-semibold text-[15px] text-center w-16">ลำดับ</th>
+                        <th data-sort="code" class="px-6 py-4 font-semibold text-[15px] cursor-pointer select-none">รหัสสินค้า <span class="sort-arrow text-xs text-accent-ink"></span></th>
+                        <th data-sort="name" class="px-6 py-4 w-full font-semibold text-[15px] cursor-pointer select-none">ชื่อสินค้า <span class="sort-arrow text-xs text-accent-ink"></span></th>
+                        <th class="px-6 py-4 font-semibold text-[15px]">ที่จัดเก็บ</th>
+                        <th data-sort="price" class="px-6 py-4 font-semibold text-[15px] text-right cursor-pointer select-none">ราคาขายอ้างอิง <span class="sort-arrow text-xs text-accent-ink"></span></th>
+                        <th data-sort="qty" class="px-6 py-4 font-semibold text-[15px] text-center cursor-pointer select-none">คงเหลือ <span class="sort-arrow text-xs text-accent-ink"></span></th>
                     </tr>
                 </thead>
                 <tbody id="table-body-branch-globalstock" class="divide-y divide-divider">
                     <!-- แถวถูกสร้างจาก js/page-branch-inventory.js -->
                 </tbody>
             </table>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- [2] แท็บ 3: แดชบอร์ดสต็อก — แยกส่วน "เครื่อง" (แท่งแนวนอน) และ "อุปกรณ์เสริม" (แท่งแนวตั้ง) -->
+    <!-- เนื้อหาใน #dash-body เขียนจาก renderDashboard ใน js/page-branch-inventory.js -->
+    <!-- ============================================================ -->
+    <div id="content-branch-dashboard" class="hidden bd">
+        <style>
+.bd{--panel:#14151A;--panel2:#1C1E25;--line:#262932;--text:#F2F3F5;--mute:#9EA3AE;--track:#1F2128;--y:#FFE169;--yd:#8A7A33;--t:#3CCFB4;--td:#1F7F72;--b:#7DB7FF;--bd:#3F6296;--v:#8B6CFF;--c:#FF7F6B;--g:#5B606B;--ink:#16140A;--warnbg:#1E1513;--pipoff:#2B2E37;color:var(--text);font-variant-numeric:tabular-nums;flex-direction:column;gap:20px}
+/* display:flex ต้องไม่ทับคลาส hidden ของแท็บ ไม่งั้นแดชบอร์ดจะโผล่ในแท็บอื่น */
+.bd:not(.hidden){display:flex}
+:root[data-theme="light"] .bd{--panel:#FFFFFF;--panel2:#F1F2F5;--line:#E3E5EA;--text:#16171B;--mute:#6B7280;--track:#ECEEF2;--yd:#C9AE3C;--bd:#9DBBE6;--td:#7CCFC2;--g:#9CA3AF;--warnbg:#FDECE9;--pipoff:#DDE0E6}
+.bd .disp{font-family:'Prompt',var(--font-family,sans-serif)}
+.bd h4,.bd h5,.bd p{margin:0}
+.bd .top{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:16px}
+.bd .top h4{font-size:26px;font-weight:600;letter-spacing:-.01em;line-height:1.2}
+.bd .top p{margin-top:6px;font-size:14px;color:var(--mute)}
+.bd .seg{display:flex;padding:4px;background:var(--panel);border:1px solid var(--line);border-radius:10px;gap:4px}
+.bd .seg button{min-height:40px;padding:0 18px;border-radius:7px;border:0;background:transparent;color:var(--mute);font-size:14px;font-weight:500;cursor:pointer}
+.bd .seg button.on{background:var(--y);color:var(--ink);font-weight:600}
+.bd .icbtn{width:44px;height:44px;border-radius:10px;border:1px solid var(--line);background:var(--panel);color:var(--text);display:grid;place-items:center;cursor:pointer}
+.bd .icbtn:hover{background:var(--panel2)}
+.bd .sec{display:flex;align-items:center;gap:12px;margin-top:20px}
+.bd .sec h4{font-family:'Prompt',var(--font-family,sans-serif);font-size:19px;font-weight:600}
+.bd .sec-s{font-size:13px;color:var(--mute)}
+.bd .sq{width:10px;height:10px;border-radius:2px;flex:none}
+.bd .rule{flex:1;height:1px;background:var(--line);min-width:20px}
+.bd .row{display:flex;flex-wrap:wrap;gap:16px}
+.bd .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:24px;display:flex;flex-direction:column;gap:22px;min-width:0}
+.bd .card-h{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.bd .card-top{display:flex;align-items:flex-start;gap:12px;min-width:0}
+.bd .ico{width:32px;height:32px;border-radius:9px;display:grid;place-items:center;font-size:14px;flex:none;background:var(--panel2);color:var(--text)}
+.bd .stat-l i{font-size:13px;width:16px;text-align:center}
+.bd .grp{display:flex;align-items:center;gap:8px}
+.bd .card-t{font-family:'Prompt',var(--font-family,sans-serif);font-size:15px;font-weight:600}
+.bd .card-s{font-size:12.5px;color:var(--mute);margin-top:4px;line-height:1.5}
+.bd .bar-row{display:grid;grid-template-columns:minmax(90px,140px) 1fr 80px;align-items:center;gap:14px;font-size:13.5px}
+.bd .bar-lbl{display:flex;align-items:center;gap:8px;min-width:0}
+.bd .bar-lbl span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bd .track{height:10px;background:var(--track);border-radius:3px;overflow:hidden}
+.bd .fill{height:100%;border-radius:3px;transform:scaleX(0);transform-origin:left center;transition:transform .7s ease-out}
+.bd .fill.in,.bd .col-b.in{transform:none}
+.bd .f-y{background:var(--y)}.bd .f-yd{background:var(--yd)}.bd .f-t{background:var(--t)}.bd .f-td{background:var(--td)}.bd .f-b{background:var(--b)}.bd .f-bd{background:var(--bd)}.bd .f-c{background:var(--c)}.bd .f-g{background:var(--g)}
+.bd .num{text-align:right;font-weight:600;white-space:nowrap}
+.bd .pct{color:var(--mute);font-weight:400;margin-left:6px;font-size:12px}
+.bd .dot{width:10px;height:10px;border-radius:2px;flex:none}
+.bd .stats{flex:2 1 560px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-auto-rows:1fr;gap:1px;background:var(--line);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.bd .stat{background:var(--panel);padding:24px 28px;display:flex;flex-direction:column;justify-content:center;gap:12px;min-width:0}
+.bd .stat-l{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--mute)}
+.bd .stat-v{font-family:'Prompt',var(--font-family,sans-serif);font-size:clamp(32px,3.4vw,44px);font-weight:600;line-height:1.1;letter-spacing:-.01em}
+.bd .stat-u{font-size:15px;font-weight:500;color:var(--mute);margin-left:6px;letter-spacing:0;font-family:var(--font-family,sans-serif)}
+.bd .stat-s{font-size:13.5px;color:var(--mute)}
+.bd .stat.warn{background:var(--warnbg)}
+.bd .stat.warn .stat-v{color:var(--c)}
+.bd .hero{flex:1 1 380px;background:#25220F;border:1px solid #3A3517;color:var(--text);border-radius:12px;padding:28px;display:flex;flex-direction:column;justify-content:space-between;gap:28px;min-width:0}
+.bd .cols{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;height:190px}
+.bd .col{flex:1 1 0;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:8px;height:100%;min-width:0}
+.bd .col-v{font-family:'Prompt',var(--font-family,sans-serif);font-size:13.5px;font-weight:500}
+.bd .col-b{width:100%;max-width:60px;border-radius:4px 4px 2px 2px;transform:scaleY(0);transform-origin:center bottom;transition:transform .7s ease-out}
+.bd .col-l{font-size:12.5px;color:var(--mute);white-space:nowrap}
+.bd .list-row{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:13px 0;border-top:1px solid var(--line);font-size:13.5px}
+.bd .list-sub{font-size:12.5px;color:var(--mute);margin-top:2px}
+.bd .grp{font-size:12.5px;font-weight:600;color:var(--mute);letter-spacing:.02em}
+.bd .chip{font-size:12.5px;color:var(--text);background:var(--panel2);border-radius:6px;padding:4px 10px}
+.bd .chip b{color:var(--v);font-weight:600;margin-left:6px}
+.bd .pips{display:flex;gap:3px;margin-left:auto}
+.bd .pip{width:7px;height:14px;border-radius:2px;background:var(--pipoff);display:block}
+.bd .pip.on{background:var(--c)}
+.bd .left{font-size:13px;font-weight:600;color:var(--c);white-space:nowrap;min-width:84px;text-align:right}
+.bd .left.zero{color:var(--mute)}
+.bd .mv{font-size:12.5px;font-weight:600;color:var(--b);white-space:nowrap}
+.bd .insight{font-size:13px;color:var(--mute);line-height:1.5}
+.bd .insight b{color:var(--text);font-weight:600}
+.bd .scroll{flex:1 1 auto;min-height:0;max-height:var(--mh,380px);overflow-y:auto;padding-right:8px;scrollbar-width:thin}
+.bd .spread>div{min-height:100%;justify-content:space-between}
+.bd .scroll:focus-visible{outline:2px solid var(--t);outline-offset:4px;border-radius:6px}
+.bd .empty{padding:18px 0;font-size:13px;color:var(--mute);font-style:italic}
+.bd .skel{border-radius:12px;background:var(--panel);border:1px solid var(--line);height:140px;animation:bdpulse 1.4s ease-in-out infinite}
+@keyframes bdpulse{50%{opacity:.5}}
+@media (prefers-reduced-motion:reduce){.bd .fill,.bd .col-b{transition:none;transform:none}.bd .skel{animation:none}}
+        </style>
+        <div class="top">
+            <div>
+                <h4 style="display:flex;align-items:center;gap:12px"><i class="fa-solid fa-chart-pie" aria-hidden="true" style="color:var(--y)"></i>แดชบอร์ดสต็อก</h4>
+                <p>จำนวน มูลค่า และการกระจายตัวของสินค้า <span id="dash-scope-note"></span></p>
+            </div>
+            <div style="display:flex;align-items:center;gap:12px">
+                <div class="seg" role="group" aria-label="ขอบเขตข้อมูล">
+                    <button id="dash-scope-mine" type="button" class="on" aria-pressed="true"><i class="fa-solid fa-store" aria-hidden="true" style="margin-right:8px;font-size:13px"></i>สาขาของฉัน</button>
+                    <button id="dash-scope-all" type="button" aria-pressed="false"><i class="fa-solid fa-globe" aria-hidden="true" style="margin-right:8px;font-size:13px"></i>ทุกสาขา</button>
+                </div>
+                <button id="btn-refresh-dashboard" type="button" class="icbtn" aria-label="รีเฟรชข้อมูล" title="รีเฟรช">
+                    <i class="fa-solid fa-rotate" aria-hidden="true"></i>
+                </button>
+            </div>
+        </div>
+        <div id="dash-body" class="bd" style="gap:20px" aria-live="polite"></div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- ลิ้นชักตัวกรองเพิ่มเติม — ใช้ร่วมกันสองแท็บ (เหมือน #stock-filter-panel) -->
+    <!-- ค่าที่กรอกเก็บแยกตามแท็บ เขียนจาก openAdvPanel ใน js/page-branch-inventory.js -->
+    <!-- ============================================================ -->
+    <div id="branch-adv-panel" class="fixed inset-0 z-50 flex justify-end opacity-0 pointer-events-none transition-opacity duration-300">
+        <div id="branch-adv-panel-content" role="dialog" aria-modal="true" aria-labelledby="branch-adv-title" tabindex="0"
+            class="modal-content relative w-[90%] md:w-[600px] h-full overflow-y-auto p-8 bg-elevated shadow-[-10px_0_40px_rgba(0,0,0,0.5)] border-l border-line-strong custom-scrollbar translate-x-full transition-transform duration-300">
+            <div class="flex items-center justify-between mb-6 pb-2 border-b border-hairline">
+                <h3 id="branch-adv-title" class="text-lg font-medium text-ink flex items-center gap-2">
+                    <i class="fa-solid fa-filter text-accent-ink" aria-hidden="true"></i> ตัวกรองสินค้าอย่างละเอียด
+                </h3>
+                <button aria-label="ปิด" id="btn-branch-adv-close" type="button" class="text-red-500 hover:text-red-400 transition-colors">
+                    <i class="fa-solid fa-xmark text-xl"></i>
+                </button>
+            </div>
+
+            <div class="space-y-5 text-sm">
+                <div class="space-y-2">
+                    <label for="branch-adv-name" class="text-ink font-medium flex items-center gap-2 text-xs">
+                        <i class="fa-solid fa-mobile-screen text-ink" aria-hidden="true"></i> ชื่อสินค้า
+                    </label>
+                    <input type="text" id="branch-adv-name" autocomplete="off" placeholder="ระบุชื่อ"
+                        class="elev-field w-full px-4 py-2.5 rounded-xl bg-field text-ink focus:ring-2 focus:ring-accent-ink focus:outline-none transition-all placeholder-ink-muted-48 text-sm">
+                </div>
+
+                <div class="space-y-2">
+                    <span class="text-ink font-medium flex items-center gap-2 text-xs"><i class="fa-solid fa-mobile-screen text-ink" aria-hidden="true"></i> ชนิดสินค้า</span>
+                    <div id="branch-adv-kind" class="flex items-center gap-2 overflow-x-auto hide-scrollbar pb-1" tabindex="0"></div>
+                </div>
+
+                <div class="space-y-2">
+                    <span class="text-ink font-medium flex items-center gap-2 text-xs"><i class="fa-solid fa-tag text-ink" aria-hidden="true"></i> กลุ่มสินค้า</span>
+                    <div id="branch-adv-type" class="flex items-center gap-2 overflow-x-auto hide-scrollbar pb-1" tabindex="0"></div>
+                </div>
+
+                <div class="space-y-2">
+                    <span class="text-ink font-medium flex items-center gap-2 text-xs"><i class="fa-solid fa-boxes-stacked text-ink" aria-hidden="true"></i> สภาพ</span>
+                    <div id="branch-adv-cond" class="flex items-center gap-2 overflow-x-auto hide-scrollbar pb-1" tabindex="0"></div>
+                </div>
+
+                <div class="space-y-2" id="branch-adv-branch-wrap">
+                    <label for="branch-adv-branch" class="text-ink font-medium flex items-center gap-2 text-xs"><i class="fa-solid fa-tag text-ink" aria-hidden="true"></i> ที่จัดเก็บ (สาขา)</label>
+                    <div class="relative">
+                        <select id="branch-adv-branch"
+                            class="elev-field w-full px-4 py-3 rounded-xl bg-field text-ink focus:ring-2 focus:ring-accent-ink focus:outline-none transition-all text-sm appearance-none [&>option]:bg-canvas-elevated">
+                            <option value="">ทุกที่จัดเก็บ</option>
+                        </select>
+                        <div class="absolute right-4 top-[14px] pointer-events-none text-body-muted"><i class="fa-solid fa-chevron-down text-xs"></i></div>
+                    </div>
+                </div>
+
+                <div class="space-y-2">
+                    <label for="branch-adv-model" class="text-ink font-medium flex items-center gap-2 text-xs">
+                        <i class="fa-solid fa-mobile-screen text-ink" aria-hidden="true"></i> รุ่น / ชื่อรุ่น
+                    </label>
+                    <div class="relative">
+                        <select id="branch-adv-model"
+                            class="elev-field w-full px-4 py-3 rounded-xl bg-field text-ink focus:ring-2 focus:ring-accent-ink focus:outline-none transition-all text-sm appearance-none [&>option]:bg-canvas-elevated">
+                            <option value="">ทุกรุ่น</option>
+                        </select>
+                        <div class="absolute right-4 top-[14px] pointer-events-none text-body-muted"><i class="fa-solid fa-chevron-down text-xs"></i></div>
+                    </div>
+                </div>
+
+                <div class="space-y-2">
+                    <span class="text-ink font-medium flex items-center gap-2 text-xs"><i class="fa-solid fa-palette text-ink" aria-hidden="true"></i> สี</span>
+                    <div id="branch-adv-color" class="flex items-center gap-3 overflow-x-auto hide-scrollbar py-2" tabindex="0"></div>
+                </div>
+
+                <div class="space-y-2">
+                    <span class="text-ink font-medium flex items-center gap-2 text-xs"><i class="fa-solid fa-microchip text-ink" aria-hidden="true"></i> ความจุ</span>
+                    <div id="branch-adv-capacity" class="flex items-center gap-2 overflow-x-auto hide-scrollbar pb-1" tabindex="0"></div>
+                </div>
+
+                <div class="space-y-2 pt-2">
+                    <span class="text-ink font-medium flex items-center gap-2 text-xs"><i class="fa-solid fa-tag text-ink" aria-hidden="true"></i> ช่วงราคาขาย (บาท)</span>
+                    <div class="grid grid-cols-2 gap-5">
+                        <input id="branch-adv-price-min" type="number" inputmode="numeric" min="0" placeholder="ต่ำสุด" aria-label="ราคาขายต่ำสุด"
+                            class="elev-field w-full px-4 py-2.5 rounded-xl bg-field text-ink focus:ring-2 focus:ring-accent-ink focus:outline-none transition-all placeholder-ink-muted-48 text-sm">
+                        <input id="branch-adv-price-max" type="number" inputmode="numeric" min="0" placeholder="สูงสุด" aria-label="ราคาขายสูงสุด"
+                            class="elev-field w-full px-4 py-2.5 rounded-xl bg-field text-ink focus:ring-2 focus:ring-accent-ink focus:outline-none transition-all placeholder-ink-muted-48 text-sm">
+                    </div>
+                </div>
+
+                <div class="space-y-2 pt-2">
+                    <span class="text-ink font-medium flex items-center gap-2 text-xs"><i class="fa-solid fa-boxes-stacked text-ink" aria-hidden="true"></i> จำนวนคงเหลือ</span>
+                    <div class="grid grid-cols-2 gap-5">
+                        <input id="branch-adv-qty-min" type="number" inputmode="numeric" min="0" placeholder="ต่ำสุด" aria-label="จำนวนคงเหลือต่ำสุด"
+                            class="elev-field w-full px-4 py-2.5 rounded-xl bg-field text-ink focus:ring-2 focus:ring-accent-ink focus:outline-none transition-all placeholder-ink-muted-48 text-sm">
+                        <input id="branch-adv-qty-max" type="number" inputmode="numeric" min="0" placeholder="สูงสุด" aria-label="จำนวนคงเหลือสูงสุด"
+                            class="elev-field w-full px-4 py-2.5 rounded-xl bg-field text-ink focus:ring-2 focus:ring-accent-ink focus:outline-none transition-all placeholder-ink-muted-48 text-sm">
+                    </div>
+                    <div class="flex gap-2 flex-wrap pt-1">
+                        <button type="button" data-qty-preset="1:3" class="px-3 py-1 bg-line rounded-lg text-xs text-body-muted hover:text-ink hover:bg-chip cursor-pointer">ใกล้หมด (1-3)</button>
+                        <button type="button" data-qty-preset="4:9" class="px-3 py-1 bg-line rounded-lg text-xs text-body-muted hover:text-ink hover:bg-chip cursor-pointer">ปานกลาง (4-9)</button>
+                        <button type="button" data-qty-preset="10:" class="px-3 py-1 bg-line rounded-lg text-xs text-body-muted hover:text-ink hover:bg-chip cursor-pointer">เยอะ (10+)</button>
+                    </div>
+                </div>
+
+                <div class="space-y-2 pt-2 pb-4">
+                    <label for="branch-adv-sort" class="text-ink font-medium flex items-center gap-2 text-xs">
+                        <i class="fa-solid fa-arrow-up-z-a text-ink" aria-hidden="true"></i> การเรียงลำดับ
+                    </label>
+                    <div class="relative">
+                        <select id="branch-adv-sort"
+                            class="elev-field w-full px-4 py-3 rounded-xl bg-field text-ink focus:ring-2 focus:ring-accent-ink focus:outline-none transition-all text-sm appearance-none [&>option]:bg-canvas-elevated">
+                            <option value="">ชื่อสินค้า (ก-ฮ)</option>
+                            <option value="price:1">ราคาขาย: ต่ำ -> สูง</option>
+                            <option value="price:-1">ราคาขาย: สูง -> ต่ำ</option>
+                            <option value="qty:1">จำนวนสินค้า: น้อย -> มาก</option>
+                            <option value="qty:-1">จำนวนสินค้า: มาก -> น้อย</option>
+                        </select>
+                        <div class="absolute right-4 top-[14px] pointer-events-none text-body-muted">
+                            <i class="fa-solid fa-chevron-down text-xs"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex items-center justify-center gap-4 pt-4 border-t border-hairline">
+                    <button type="button" id="btn-branch-adv-reset"
+                        class="px-10 py-2.5 rounded-xl bg-[#E4E4E7] text-[#18181B] text-[15px] font-bold hover:bg-white transition-colors w-1/2">ล้างทั้งหมด</button>
+                    <button type="button" id="btn-branch-adv-apply"
+                        class="px-12 py-2.5 rounded-xl bg-primary text-on-primary text-[15px] font-bold hover:bg-[#E2B93C] transition-colors flex items-center justify-center gap-2 w-1/2">ตกลง</button>
+                </div>
+            </div>
         </div>
     </div>
 </div>

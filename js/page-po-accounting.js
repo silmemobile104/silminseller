@@ -5712,18 +5712,20 @@
                 btn.disabled = true;
                 btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> กำลังบันทึก...';
 
-                // บันทึกผลตรวจรับ -> สถานะ 'กำลังตรวจรับ' รอผู้จัดการอนุมัตินำเข้าคลัง (หน้า approve-import)
+                // ยืนยันครั้งเดียว: บันทึกผลตรวจรับและนำเข้าสต็อกทันที (finalize: true)
                 const res = await authFetch(`${API_BASE_URL}/po/${rcCurrentPO._id}/scan-item`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ received_items })
+                    body: JSON.stringify({ received_items, finalize: true })
                 });
                 const json = await res.json();
 
                 if (json.success) {
-                    showToast('บันทึกผลการตรวจรับเรียบร้อยแล้ว (รอผู้จัดการอนุมัติเพื่อนำเข้าคลังสินค้า)', 'success');
+                    showToast('ตรวจรับและนำเข้าสต็อกเรียบร้อยแล้ว', 'success');
                     closeReceivePage(true);
                     if (typeof loadPOs === 'function') loadPOs();
+                    if (typeof fetchProducts === 'function') fetchProducts();
+                    if (typeof loadDashboardData === 'function') loadDashboardData();
                 } else {
                     showToast(json.message, 'error');
                 }
@@ -6032,11 +6034,13 @@
             const res = await authFetch(`${API_BASE_URL}/po/${_mobReceivePO._id}/scan-item`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ received_items })
+                body: JSON.stringify({ received_items, finalize: true })
             });
             const json = await res.json();
             if (json.success) {
-                showToast('บันทึกความคืบหน้าการตรวจรับเรียบร้อยแล้ว (รอผู้จัดการอนุมัติเพื่อนำเข้าคลังสินค้า)', 'success');
+                showToast('ตรวจรับและนำเข้าสต็อกเรียบร้อยแล้ว', 'success');
+                if (typeof fetchProducts === 'function') fetchProducts();
+                if (typeof loadDashboardData === 'function') loadDashboardData();
                 if (navigator.vibrate) navigator.vibrate([10, 40, 10]);
                 _mobClearDraft(_mobReceivePO._id);
                 _mobCloseConfirmSheet();
@@ -7251,6 +7255,9 @@
                 badgeCount.classList.toggle('hidden', _approvePoRows.length === 0);
             }
             aiSetCount('approve-po-result-count', _approvePoRows.length, _approvePoRows.length);
+            // ตารางรออนุมัติแบบเดิมโผล่เฉพาะเมื่อมีใบค้างจากระบบเก่า (ตรวจรับแล้วแต่ยังไม่ได้นำเข้า)
+            const legacyWrap = document.getElementById('approve-po-legacy-wrap');
+            if (legacyWrap) legacyWrap.classList.toggle('hidden', _approvePoRows.length === 0);
 
             renderApprovePoResults();
 

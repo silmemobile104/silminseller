@@ -23,9 +23,8 @@
 
         .sticker {
             width: 40mm;
-            height: 30mm;
+            height: 29.5mm;
             box-sizing: border-box;
-            page-break-after: always;
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -33,6 +32,23 @@
             padding: 1mm;
             text-align: center;
             overflow: hidden;
+        }
+
+        /* ตัดหน้าเฉพาะระหว่างสติ๊กเกอร์ ไม่ตัดหลังใบสุดท้าย (กันหน้าว่างเกิน) */
+        .sticker:not(:last-child) {
+            break-after: page;
+            page-break-after: always;
+        }
+
+        html, body {
+            height: auto;
+        }
+
+        .product-price {
+            font-size: 11px;
+            font-weight: bold;
+            margin-top: 1px;
+            white-space: nowrap;
         }
 
         .product-name {
@@ -81,11 +97,18 @@
                     svgElement.className = 'barcode-svg';
                     stickerDiv.appendChild(svgElement);
 
+                    if (item.price !== undefined && item.price !== null && item.price !== '') {
+                        const priceDiv = document.createElement('div');
+                        priceDiv.className = 'product-price';
+                        priceDiv.textContent = 'ราคา ' + Number(item.price);
+                        stickerDiv.appendChild(priceDiv);
+                    }
+
                     document.body.appendChild(stickerDiv);
 
                     JsBarcode(svgElement, item.barcode, {
                         width: 1.5,
-                        height: 30,
+                        height: 22,
                         fontSize: 10,
                         margin: 2,
                         displayValue: true

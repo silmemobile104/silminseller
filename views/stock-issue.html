@@ -9,6 +9,16 @@
             <h3 class="text-2xl text-ink">จ่ายออกสินค้า</h3>
         </div>
         <div class="flex items-center gap-3">
+            <button id="btn-export-claim-report" type="button" title="ส่งออกรายงานเทียบข้อมูลเก่ากับที่ได้รับ ตามตัวกรองที่เลือกอยู่"
+                class="px-4 py-2 bg-panel/40 hover:bg-panel/60 border border-line-strong text-ink font-medium rounded-xl transition-all flex items-center gap-2 w-fit cursor-pointer">
+                <i class="fa-solid fa-file-excel"></i>
+                <p>ส่งออก Excel</p>
+            </button>
+            <button id="btn-export-claim-report-pdf" type="button" title="ส่งออกรายงานเทียบข้อมูลเก่ากับที่ได้รับเป็น PDF ตามตัวกรองที่เลือกอยู่"
+                class="px-4 py-2 bg-panel/40 hover:bg-panel/60 border border-line-strong text-ink font-medium rounded-xl transition-all flex items-center gap-2 w-fit cursor-pointer">
+                <i class="fa-solid fa-file-pdf"></i>
+                <p>ส่งออก PDF</p>
+            </button>
             <button id="btn-open-stock-issue" type="button"
                 class="px-4 py-2 bg-primary hover:bg-primary-pressed text-on-primary font-medium rounded-xl transition-all flex items-center gap-2 w-fit cursor-pointer relative">
                 <i class="fa-solid fa-plus"></i>
@@ -35,22 +45,11 @@
                         placeholder="ค้นหาเลขที่ / IMEI / หมายเหตุ..."
                         class="page-filter-control elev-chip bg-transparent rounded-[10px] text-sm pl-10 pr-4 py-2 w-full text-ink focus:outline-none focus:ring-1 focus:ring-accent-ink transition-all placeholder-body-muted">
                 </div>
-                <select id="stock-issue-filter-supplier" aria-label="กรองตามซัพพลายเออร์"
-                    class="page-filter-control bg-panel/40 cursor-pointer text-sm rounded-[0.5rem] px-3 py-2 text-ink focus:outline-none focus:ring-1 focus:ring-accent-ink w-full sm:w-auto [&>option]:bg-panel [&>option:checked]:bg-primary [&>option:checked]:text-on-primary">
-                    <option value="">ทุกซัพพลายเออร์</option>
-                </select>
-                <select id="stock-issue-filter-claim" aria-label="กรองตามสถานะเคลม"
-                    class="page-filter-control bg-panel/40 cursor-pointer text-sm rounded-[0.5rem] px-3 py-2 text-ink focus:outline-none focus:ring-1 focus:ring-accent-ink w-full sm:w-auto [&>option]:bg-panel [&>option:checked]:bg-primary [&>option:checked]:text-on-primary">
-                    <option value="">ทุกสถานะเคลม</option>
-                    <option value="none">ไม่ใช่เคลม</option>
-                    <option value="ส่งเคลมแล้ว">ส่งเคลมแล้ว</option>
-                    <option value="ปิดเคลม">ปิดเคลม</option>
-                    <option value="ปฏิเสธ">ซัพปฏิเสธ</option>
-                </select>
-                <select id="stock-issue-filter-branch" aria-label="กรองตามสาขา"
-                    class="hidden md:block page-filter-control bg-panel/40 cursor-pointer text-sm rounded-[0.5rem] px-3 py-2 text-ink focus:outline-none focus:ring-1 focus:ring-accent-ink w-full sm:w-auto [&>option]:bg-panel [&>option:checked]:bg-primary [&>option:checked]:text-on-primary">
-                    <option value="">ทุกสาขา</option>
-                </select>
+                <button id="btn-stock-issue-more" type="button" aria-haspopup="dialog" aria-controls="stock-issue-filter-panel"
+                    class="page-filter-control px-3 py-2 bg-panel/40 cursor-pointer text-ink flex items-center rounded-[0.5rem] text-sm hover:bg-field transition-colors relative w-full sm:w-auto">
+                    <img src="icons_img/filter 3.png" alt="" class="mr-1" width="16" height="16">
+                    <span id="btn-stock-issue-more-text">เพิ่มเติม</span>
+                </button>
             </div>
         </div>
 
@@ -81,6 +80,149 @@
                 </thead>
                 <tbody id="stock-issue-table-body" class="divide-y divide-divider"></tbody>
             </table>
+        </div>
+    </div>
+
+    <!-- ลิ้นชัก "เพิ่มเติม" — ดีไซน์เดียวกับตัวกรองคลังสินค้า (#stock) ทุกอย่าง อยู่นอกการ์ดเพื่อให้ fixed ทำงานถูกต้อง -->
+    <div id="stock-issue-filter-panel" class="fixed inset-0 z-50 mt-0 flex justify-end opacity-0 pointer-events-none transition-opacity duration-300">
+        <div id="stock-issue-filter-panel-content" tabindex="0"
+            class="modal-content relative w-[90%] md:w-[600px] h-full overflow-y-auto p-8 bg-elevated shadow-[-10px_0_40px_rgba(0,0,0,0.5)] border-l border-line-strong translate-x-full transition-transform duration-300">
+            <!-- หัวลิ้นชัก -->
+            <div class="flex items-center justify-between mb-6 pb-2 border-b border-hairline">
+                <h3 class="text-lg font-medium text-ink flex items-center gap-2">
+                    <i class="fa-solid fa-filter text-accent-ink"></i> ตัวกรองประวัติการจ่ายออกอย่างละเอียด
+                </h3>
+                <button aria-label="ปิด" id="btn-stock-issue-filter-close" type="button" class="text-red-500 hover:text-red-400 transition-colors">
+                    <i class="fa-solid fa-xmark text-xl"></i>
+                </button>
+            </div>
+
+            <div class="space-y-5 text-sm">
+                <!-- ชื่อรุ่น -->
+                <div class="space-y-2">
+                    <label for="stock-issue-f-name" class="text-ink font-medium flex items-center gap-2 text-xs">
+                        <i class="fa-solid fa-mobile-screen text-ink"></i> ชื่อรุ่น
+                    </label>
+                    <input type="text" id="stock-issue-f-name" autocomplete="off" placeholder="ระบุชื่อ"
+                        class="elev-field w-full px-4 py-2.5 rounded-xl bg-field text-ink focus:ring-2 focus:ring-accent-ink focus:outline-none transition-all placeholder-ink-muted-48 text-sm">
+                </div>
+
+                <!-- ประเภทสินค้า -->
+                <div class="space-y-2">
+                    <span class="text-ink font-medium flex items-center gap-2 text-xs"><i class="fa-solid fa-tag text-ink"></i> ประเภทสินค้า</span>
+                    <div id="stock-issue-pills-kind" class="flex flex-wrap gap-2"></div>
+                </div>
+
+                <!-- ซัพพลายเออร์ -->
+                <div class="space-y-2">
+                    <span class="text-ink font-medium flex items-center gap-2 text-xs"><i class="fa-solid fa-truck text-ink"></i> ซัพพลายเออร์</span>
+                    <div id="stock-issue-pills-supplier" class="flex flex-wrap gap-2"></div>
+                </div>
+
+                <!-- สาขา -->
+                <div class="space-y-2">
+                    <span class="text-ink font-medium flex items-center gap-2 text-xs"><i class="fa-solid fa-store text-ink"></i> สาขา</span>
+                    <div id="stock-issue-pills-branch" class="flex flex-wrap gap-2"></div>
+                </div>
+
+                <!-- สถานะเคลม -->
+                <div class="space-y-2">
+                    <span class="text-ink font-medium flex items-center gap-2 text-xs"><i class="fa-solid fa-rotate-left text-ink"></i> สถานะเคลม</span>
+                    <div id="stock-issue-pills-claim" class="flex flex-wrap gap-2"></div>
+                </div>
+
+                <!-- สี -->
+                <div class="space-y-2 pt-2">
+                    <label class="text-ink font-medium flex items-center gap-2 text-xs"><i class="fa-solid fa-palette text-ink"></i> สี</label>
+                    <div class="relative">
+                        <div id="stock-issue-pills-color" class="flex items-center gap-3 overflow-x-auto hide-scrollbar py-2 px-8"></div>
+                        <button aria-label="ก่อนหน้า" type="button" data-scroll="stock-issue-pills-color" data-dir="-1"
+                            class="absolute left-0 top-6 bottom-2 w-10 flex items-center justify-start bg-gradient-to-r from-elevated via-elevated/90 to-transparent pointer-events-none">
+                            <div class="w-5 h-5 bg-line hover:bg-primary rounded-full flex items-center justify-center pointer-events-auto cursor-pointer shadow-md text-ink hover:text-on-primary transition-colors hover:scale-110 transition-transform">
+                                <i class="fa-solid fa-chevron-left text-[10px]"></i>
+                            </div>
+                        </button>
+                        <button aria-label="ถัดไป" type="button" data-scroll="stock-issue-pills-color" data-dir="1"
+                            class="absolute right-0 top-6 bottom-2 w-10 flex items-center justify-end bg-gradient-to-l from-elevated via-elevated/90 to-transparent pointer-events-none">
+                            <div class="w-5 h-5 bg-primary rounded-full flex items-center justify-center pointer-events-auto cursor-pointer shadow-md text-on-primary hover:scale-110 transition-transform">
+                                <i class="fa-solid fa-chevron-right text-[10px]"></i>
+                            </div>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- ความจุ -->
+                <div class="space-y-2 pt-2">
+                    <span class="text-ink font-medium flex items-center gap-2 text-xs"><i class="fa-solid fa-hard-drive text-ink"></i> ความจุ</span>
+                    <div id="stock-issue-pills-capacity" class="flex flex-wrap gap-2"></div>
+                </div>
+
+                <!-- วันที่จ่ายออก -->
+                <div class="space-y-2 pt-2">
+                    <span class="text-ink font-medium flex items-center gap-2 text-xs"><i class="fa-solid fa-calendar-days text-ink"></i> วันที่จ่ายออก</span>
+                    <div class="grid grid-cols-2 gap-5">
+                        <div class="space-y-1">
+                            <label for="stock-issue-date-from" class="text-xs text-body-muted">วันที่เริ่มต้น</label>
+                            <input type="date" id="stock-issue-date-from"
+                                class="elev-field w-full px-4 py-2.5 rounded-xl bg-field text-ink focus:ring-2 focus:ring-accent-ink focus:outline-none transition-all text-sm">
+                        </div>
+                        <div class="space-y-1">
+                            <label for="stock-issue-date-to" class="text-xs text-body-muted">วันที่สิ้นสุด</label>
+                            <input type="date" id="stock-issue-date-to"
+                                class="elev-field w-full px-4 py-2.5 rounded-xl bg-field text-ink focus:ring-2 focus:ring-accent-ink focus:outline-none transition-all text-sm">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- การเรียงลำดับ -->
+                <div class="space-y-2 pt-2 pb-4">
+                    <label for="stock-issue-f-sort" class="text-ink font-medium flex items-center gap-2 text-xs">
+                        <i class="fa-solid fa-arrow-up-z-a text-ink"></i> การเรียงลำดับ
+                    </label>
+                    <div class="relative">
+                        <select id="stock-issue-f-sort"
+                            class="elev-field w-full px-4 py-3 rounded-xl bg-field text-ink focus:ring-2 focus:ring-accent-ink focus:outline-none transition-all text-sm appearance-none cursor-pointer">
+                            <option value="newest">วันที่ล่าสุดก่อน</option>
+                            <option value="oldest">วันที่เก่าสุดก่อน</option>
+                            <option value="cost_desc">มูลค่าต้นทุน: สูง -> ต่ำ</option>
+                            <option value="cost_asc">มูลค่าต้นทุน: ต่ำ -> สูง</option>
+                        </select>
+                        <div class="absolute right-4 top-[14px] pointer-events-none text-body-muted">
+                            <i class="fa-solid fa-chevron-down text-xs"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ปุ่มล่าง (เหมือนหน้าสต็อก) -->
+                <div class="flex items-center justify-center gap-4 pt-4 border-t border-hairline">
+                    <button type="button" id="btn-stock-issue-filter-reset"
+                        class="px-10 py-2.5 rounded-xl bg-[#E4E4E7] text-[#18181B] text-[15px] font-bold hover:bg-white transition-colors w-1/2">
+                        ล้างทั้งหมด</button>
+                    <button type="button" id="btn-stock-issue-filter-apply"
+                        class="px-12 py-2.5 rounded-xl bg-primary text-on-primary text-[15px] font-bold hover:bg-[#E2B93C] transition-colors w-1/2">
+                        ตกลง</button>
+                </div>
+            </div>
+
+            <!-- ตัวเก็บค่าตัวกรอง (ซ่อน) — ปุ่มชิปในลิ้นชักเขียนค่าลงที่นี่ และ js/page-stock-issue.js อ่านค่าจากที่นี่ -->
+            <div class="hidden" aria-hidden="true">
+                <select id="stock-issue-filter-supplier"><option value="">ทุกซัพพลายเออร์</option></select>
+                <select id="stock-issue-filter-claim">
+                    <option value="">ทุกสถานะเคลม</option>
+                    <option value="none">ไม่ใช่เคลม</option>
+                    <option value="ส่งเคลมแล้ว">ส่งเคลมแล้ว</option>
+                    <option value="ปิดเคลม">ปิดเคลม</option>
+                    <option value="ปฏิเสธ">ซัพปฏิเสธ</option>
+                </select>
+                <select id="stock-issue-filter-branch"><option value="">ทุกสาขา</option></select>
+                <select id="stock-issue-f-color"><option value="">ทุกสี</option></select>
+                <select id="stock-issue-f-capacity"><option value="">ทุกความจุ</option></select>
+                <select id="stock-issue-f-kind">
+                    <option value="">ทั้งหมด</option>
+                    <option value="device">เครื่อง</option>
+                    <option value="accessory">อุปกรณ์เสริม</option>
+                </select>
+            </div>
         </div>
     </div>
 

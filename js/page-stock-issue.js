@@ -72,6 +72,16 @@
     const CLAIM_TYPE_LABEL = { goods: 'ได้รับสินค้า', cash: 'ได้รับเงินสด', discount: 'ได้รับส่วนลด', loss: 'จ่ายออกเปล่า (ขาดทุน)' };
     // ตัวเลือกที่เลือกได้ตอนจ่ายออก (ต่อชิ้น)
     const ISSUE_CLAIM_OPTIONS = ['goods', 'cash', 'discount', 'loss'];
+    // จำนวนในใบจ่ายออก: เครื่อง = นับเป็น "เครื่อง", อุปกรณ์เสริม = นับเป็น "ชิ้น" (ใบผสมแสดงทั้งสองแบบ)
+    const countText = (issue) => {
+        const items = issue.items || [];
+        const devices = items.filter(x => (x.item_kind || 'device') === 'device').length;
+        const accessories = items.filter(x => x.item_kind === 'accessory').reduce((t, x) => t + (Number(x.quantity) || 1), 0);
+        const parts = [];
+        if (devices) parts.push(`${devices} เครื่อง`);
+        if (accessories) parts.push(`${accessories} ชิ้น`);
+        return parts.join(' · ') || '0';
+    };
     const CLAIM_STATUS_STYLE = {
         'ส่งเคลมแล้ว': { dot: 'bg-state-pending', bg: 'bg-state-pending/[0.12]', text: 'text-state-pending' },
         'ปิดเคลม': { dot: 'bg-state-ok', bg: 'bg-state-ok-tint/[0.12]', text: 'text-state-ok' },
@@ -92,12 +102,29 @@
         return `<div class="flex flex-wrap gap-1">${claims.map(c => claimBadge(c.status, `${c.claim_no} · ${c.supplier_name}`)).join('')}${lossBadge}</div>`;
     };
 
+    // ตัวกรองทั้งหมดของหน้า: แถบควบคุม (ค้นหา/ซัพ/เคลม/สาขา/วันที่) + ลิ้นชัก "เพิ่มเติม" (ชื่อรุ่น/สี/ความจุ/ประเภท)
+    const DRAWER_FIELDS = { name: 'stock-issue-f-name', color: 'stock-issue-f-color', cap: 'stock-issue-f-capacity', kind: 'stock-issue-f-kind' };
     const getFilters = () => ({
         q: ($('stock-issue-search-input')?.value || '').trim().toLowerCase(),
         supplier: $('stock-issue-filter-supplier')?.value || '',
         claim: $('stock-issue-filter-claim')?.value || '',
-        branch: $('stock-issue-filter-branch')?.value || ''
+        branch: $('stock-issue-filter-branch')?.value || '',
+        dateFrom: $('stock-issue-date-from')?.value || '',
+        dateTo: $('stock-issue-date-to')?.value || '',
+        name: ($('stock-issue-f-name')?.value || '').trim().toLowerCase(),
+        color: $('stock-issue-f-color')?.value || '',
+        cap: $('stock-issue-f-capacity')?.value || '',
+        kind: $('stock-issue-f-kind')?.value || '',
+        sort: $('stock-issue-f-sort')?.value || 'newest'
     });
+
+    // ล้างตัวกรองตัวเดียวตาม key (ใช้กับปุ่มลบชิปและปุ่มล้างทั้งหมด)
+    const clearFilter = (key) => {
+        const el = { q: 'stock-issue-search-input', supplier: 'stock-issue-filter-supplier', claim: 'stock-issue-filter-claim',
+            branch: 'stock-issue-filter-branch', dateFrom: 'stock-issue-date-from', dateTo: 'stock-issue-date-to',
+            name: DRAWER_FIELDS.name, color: DRAWER_FIELDS.color, cap: DRAWER_FIELDS.cap, kind: DRAWER_FIELDS.kind }[key];
+        if (el && $(el)) $(el).value = '';
+    };
 
     const renderChips = (f) => {
         const box = $('stock-issue-active-filters');
@@ -111,16 +138,19 @@
             const name = $('stock-issue-filter-branch')?.selectedOptions[0]?.textContent || f.branch;
             chips.push({ key: 'branch', label: `สาขา: ${name}` });
         }
+        if (f.dateFrom || f.dateTo) chips.push({ key: 'date', label: `วันที่: ${f.dateFrom || '…'} ถึง ${f.dateTo || '…'}` });
+        if (f.name) chips.push({ key: 'name', label: `ชื่อรุ่น: ${f.name}` });
+        if (f.color) chips.push({ key: 'color', label: `สี: ${f.color}` });
+        if (f.cap) chips.push({ key: 'cap', label: `ความจุ: ${f.cap}` });
+        if (f.kind) chips.push({ key: 'kind', label: `ประเภท: ${f.kind === 'device' ? 'เครื่อง' : 'อุปกรณ์เสริม'}` });
         chips.forEach(c => {
             const chip = document.createElement('div');
             chip.className = 'px-4 py-2.5 rounded-xl bg-panel/40 border border-line-strong text-ink text-sm font-medium transition-colors flex items-center gap-2';
             chip.innerHTML = `<span>${esc(c.label)}</span><i class="fa-solid fa-xmark text-[10px] opacity-80 cursor-pointer" role="button" aria-label="ลบตัวกรอง"></i>`;
             chip.addEventListener('click', (e) => {
                 if (!e.target.closest('i.fa-xmark')) return;
-                if (c.key === 'q') $('stock-issue-search-input').value = '';
-                if (c.key === 'supplier') $('stock-issue-filter-supplier').value = '';
-                if (c.key === 'claim') $('stock-issue-filter-claim').value = '';
-                if (c.key === 'branch') $('stock-issue-filter-branch').value = '';
+                if (c.key === 'date') { clearFilter('dateFrom'); clearFilter('dateTo'); }
+                else clearFilter(c.key);
                 renderHistory();
             });
             box.appendChild(chip);
@@ -131,24 +161,44 @@
             clr.className = 'px-2.5 py-1 bg-state-danger/10 hover:bg-state-danger/15 text-state-danger-soft rounded-full text-xs font-medium border border-state-danger/30 transition-colors';
             clr.textContent = 'ล้างทั้งหมด';
             clr.addEventListener('click', () => {
-                $('stock-issue-search-input').value = '';
-                $('stock-issue-filter-supplier').value = '';
-                $('stock-issue-filter-claim').value = '';
-                $('stock-issue-filter-branch').value = '';
+                ['q', 'supplier', 'claim', 'branch', 'dateFrom', 'dateTo', 'name', 'color', 'cap', 'kind'].forEach(clearFilter);
                 renderHistory();
             });
             box.appendChild(clr);
         }
     };
 
-    const renderHistory = () => {
-        const body = $('stock-issue-table-body');
-        if (!body) return;
-        const f = getFilters();
-        renderChips(f);
+    // ตัวเลือกสีกับความจุในลิ้นชัก: เติมจากค่าที่มีในประวัติจริง
+    const syncDetailFilters = () => {
+        const colors = new Set(), caps = new Set();
+        _issues.forEach(i => (i.items || []).forEach(x => { if (x.color_name) colors.add(x.color_name); if (x.capacity_name) caps.add(x.capacity_name); }));
+        const fill = (id, label, set) => {
+            const sel = $(id);
+            if (!sel) return;
+            const keep = sel.value;
+            sel.innerHTML = `<option value="">${label}</option>` + [...set].sort().map(v => `<option value="${esc(v)}">${esc(v)}</option>`).join('');
+            sel.value = set.has(keep) ? keep : '';
+        };
+        fill(DRAWER_FIELDS.color, 'ทุกสี', colors);
+        fill(DRAWER_FIELDS.cap, 'ทุกความจุ', caps);
+    };
 
-        const rows = _issues.filter(i => {
+    // กรองประวัติตามตัวกรองบนจอ — ใช้ร่วมกับการส่งออกรายงาน เพื่อให้รายงานตรงกับที่เห็น
+    const filterIssues = (f) => _issues.filter(i => {
+            // วันที่จ่ายออก: เทียบตามวันท้องถิ่น รวมวันสิ้นสุดทั้งวัน
+            if (f.dateFrom || f.dateTo) {
+                const d = new Date(i.createdAt);
+                const ymd = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+                if (f.dateFrom && ymd < f.dateFrom) return false;
+                if (f.dateTo && ymd > f.dateTo) return false;
+            }
             if (f.supplier && !supplierNames(i).includes(f.supplier)) return false;
+            // ตัวกรองในลิ้นชัก: ต้องมีอย่างน้อยหนึ่งรายการในใบที่ตรง
+            const its = i.items || [];
+            if (f.name && !its.some(x => String(x.product_name || '').toLowerCase().includes(f.name))) return false;
+            if (f.color && !its.some(x => x.color_name === f.color)) return false;
+            if (f.cap && !its.some(x => x.capacity_name === f.cap)) return false;
+            if (f.kind && !its.some(x => (x.item_kind || 'device') === f.kind)) return false;
             if (f.claim === 'none' && i.is_claim) return false;
             if (f.claim && f.claim !== 'none' && !(i.claims || []).some(c => c.status === f.claim)) return false;
             if (f.branch && String(i.branch_id) !== f.branch) return false;
@@ -160,6 +210,101 @@
             }
             return true;
         });
+
+    // ---------- ลิ้นชัก "เพิ่มเติม" (สไตล์เดียวกับ #stock) ----------
+    // ปุ่มชิปแต่ละอันคือ option ของ select ที่ซ่อนอยู่ — กดแล้วเขียนค่าลง select แล้ววาดตารางใหม่
+    const PILL_BASE = 'elev-field custom-pill flex-shrink-0 px-4 py-2.5 bg-field rounded-xl text-sm transition-colors sid-pill';
+    const PILL_ON = 'ring-1 ring-accent-ink text-accent-ink';
+    const PILL_OFF = 'text-body-muted hover:ring-1 hover:ring-accent-ink hover:text-ink';
+    const buildPills = (containerId, selectId) => {
+        const box = $(containerId), sel = $(selectId);
+        if (!box || !sel) return;
+        box.innerHTML = '';
+        Array.from(sel.options).forEach(o => {
+            const on = o.value === sel.value;
+            const b = document.createElement('button');
+            b.type = 'button';
+            b.className = `${PILL_BASE} ${on ? PILL_ON : PILL_OFF}`;
+            b.setAttribute('aria-pressed', String(on));
+            b.textContent = o.value === '' ? 'ทั้งหมด' : o.textContent;
+            b.addEventListener('click', () => { sel.value = o.value; renderHistory(); });
+            box.appendChild(b);
+        });
+    };
+
+    // แถวสีแบบวงกลม (เหมือนหน้าสต็อก): กดสีเดิมซ้ำเพื่อยกเลิก
+    const buildSwatches = (containerId, selectId) => {
+        const box = $(containerId), sel = $(selectId);
+        if (!box || !sel) return;
+        box.innerHTML = '';
+        Array.from(sel.options).filter(o => o.value !== '').forEach(o => {
+            const on = o.value === sel.value;
+            const wrap = document.createElement('div');
+            wrap.className = 'flex flex-col items-center gap-1 cursor-pointer';
+            wrap.setAttribute('role', 'button');
+            wrap.setAttribute('aria-pressed', String(on));
+            wrap.tabIndex = 0;
+            const dot = document.createElement('div');
+            dot.className = `w-7 h-7 rounded-full border-2 transition-all ${on ? 'border-accent-ink ring-2 ring-accent-ink' : 'border-transparent'}`;
+            dot.style.backgroundColor = typeof window.productColorHex === 'function' ? window.productColorHex(o.value, null) : '#888888';
+            const label = document.createElement('span');
+            label.className = on ? 'text-[13px] text-accent-ink whitespace-nowrap font-medium' : 'text-[10px] text-body-muted whitespace-nowrap';
+            label.textContent = o.textContent;
+            wrap.append(dot, label);
+            const pick = () => { sel.value = on ? '' : o.value; renderHistory(); };
+            wrap.addEventListener('click', pick);
+            wrap.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pick(); } });
+            box.appendChild(wrap);
+        });
+    };
+
+    // วาดปุ่มชิปใหม่ทุกครั้งที่ตารางเปลี่ยน + อัปเดตตัวนับบนปุ่ม "เพิ่มเติม (n)"
+    const renderFilterUI = (f) => {
+        buildPills('stock-issue-pills-kind', 'stock-issue-f-kind');
+        buildPills('stock-issue-pills-supplier', 'stock-issue-filter-supplier');
+        buildPills('stock-issue-pills-branch', 'stock-issue-filter-branch');
+        buildPills('stock-issue-pills-claim', 'stock-issue-filter-claim');
+        buildSwatches('stock-issue-pills-color', 'stock-issue-f-color');
+        buildPills('stock-issue-pills-capacity', 'stock-issue-f-capacity');
+        const n = [f.supplier, f.claim, f.branch, f.dateFrom, f.dateTo, f.name, f.color, f.cap, f.kind]
+            .filter(Boolean).length + (f.sort !== 'newest' ? 1 : 0);
+        const t = $('btn-stock-issue-more-text');
+        if (t) t.textContent = n ? `เพิ่มเติม (${n})` : 'เพิ่มเติม';
+    };
+
+    const openFilterPanel = () => {
+        $('stock-issue-filter-panel')?.classList.remove('opacity-0', 'pointer-events-none');
+        $('stock-issue-filter-panel-content')?.classList.remove('translate-x-full');
+        $('btn-stock-issue-more')?.setAttribute('aria-expanded', 'true');
+        $('stock-issue-filter-panel-content')?.focus();
+    };
+    const closeFilterPanel = () => {
+        $('stock-issue-filter-panel')?.classList.add('opacity-0', 'pointer-events-none');
+        $('stock-issue-filter-panel-content')?.classList.add('translate-x-full');
+        $('btn-stock-issue-more')?.setAttribute('aria-expanded', 'false');
+        $('btn-stock-issue-more')?.focus();
+    };
+
+    // เรียงลำดับตามที่เลือกในลิ้นชัก (ค่าเริ่มต้น = วันที่ล่าสุดก่อน)
+    const sortIssues = (rows, key) => {
+        const arr = [...rows];
+        const t = (i) => new Date(i.createdAt).getTime() || 0;
+        const cost = (i) => Number(i.total_cost) || 0;
+        if (key === 'oldest') arr.sort((a, b) => t(a) - t(b));
+        else if (key === 'cost_desc') arr.sort((a, b) => cost(b) - cost(a));
+        else if (key === 'cost_asc') arr.sort((a, b) => cost(a) - cost(b));
+        else arr.sort((a, b) => t(b) - t(a));
+        return arr;
+    };
+
+    const renderHistory = () => {
+        const body = $('stock-issue-table-body');
+        if (!body) return;
+        const f = getFilters();
+        renderChips(f);
+        renderFilterUI(f);
+
+        const rows = sortIssues(filterIssues(f), f.sort);
 
         const count = $('stock-issue-result-count');
         if (count) count.textContent = `แสดง ${rows.length} จาก ${_issues.length} รายการ`;
@@ -175,7 +320,7 @@
                 <td class="px-6 py-4 text-ink text-sm">${fmtDateTime(i.createdAt)}</td>
                 <td class="px-6 py-4 text-ink text-sm">${esc(i.branch_name || '-')}</td>
                 <td class="px-6 py-4 text-ink text-sm max-w-[220px] truncate" title="${esc(supplierNames(i).join(', '))}">${esc(supplierNames(i).join(', ') || '-')}</td>
-                <td class="px-6 py-4 text-center text-ink font-medium">${i.total_qty || (i.items || []).length} <span class="text-xs font-normal">ชิ้น</span></td>
+                <td class="px-6 py-4 text-center text-ink font-medium">${esc(countText(i))}</td>
                 <td class="px-6 py-4 text-right text-ink font-mono">${baht(i.total_cost)}</td>
                 <td class="px-6 py-4 text-ink text-sm max-w-[260px] truncate" title="${esc(i.reason)}">${esc(i.reason || '-')}</td>
                 <td class="px-6 py-4 text-ink text-sm">${esc(i.created_by_name || '-')}</td>
@@ -221,7 +366,7 @@
             return `<div class="elev-field bg-field rounded-xl px-4 py-3">
                 <div class="flex items-center justify-between gap-2">
                     <p class="text-sm text-ink"><span class="font-mono text-accent-ink">${esc(c.claim_no)}</span> · ${esc(c.supplier_name || 'ไม่ระบุ')}</p>${claimBadge(c.status)}</div>
-                <p class="text-xs text-ink/70 mt-1">กรณี: ${esc(CLAIM_TYPE_LABEL[c.claim_type] || 'ยังไม่กำหนด (เลือกตอนปิดเคลม)')} · ${c.item_kind === 'accessory' ? 'อุปกรณ์เสริม' : 'เครื่อง'} ${c.total_qty} ชิ้น · ต้นทุน ${baht(c.total_cost)}</p>
+                <p class="text-xs text-ink/70 mt-1">กรณี: ${esc(CLAIM_TYPE_LABEL[c.claim_type] || 'ยังไม่กำหนด (เลือกตอนปิดเคลม)')} · ${c.item_kind === 'accessory' ? `อุปกรณ์เสริม ${c.total_qty} ชิ้น` : `เครื่อง ${c.total_qty} เครื่อง`} · ต้นทุน ${baht(c.total_cost)}</p>
                 <p class="text-xs text-ink/60 mt-1">${(c.items || []).map(x => x.imei ? `<span class="font-mono">${esc(x.imei)}</span>` : `${esc(x.product_name)} × ${Number(x.quantity) || 1}`).join(' · ')}</p>
                 ${outcomeHtml}${result}${actions}</div>`;
         }).join('');
@@ -303,22 +448,46 @@
                 callClaim(id, 'close', { received, claim_type: c.claim_type, result_note: d.note }, issueId);
             };
         } else if (c.claim_type === 'goods') {
-            fields = `<p class="text-xs text-ink/70">สแกนเลข IMEI ใหม่ของเครื่องที่ได้รับกลับมา เพื่อแทนที่ IMEI เดิม — ข้อมูลอื่นของสินค้ายังคงเดิมทั้งหมด (ซ่อมเสร็จแล้วใช้ IMEI เดิมได้) เว้นว่างถ้าเครื่องนั้นไม่ได้รับ</p>`
-                + c.items.map((it, n) => `<div class="flex items-center gap-2">
-                    <span class="font-mono text-xs text-ink w-36 shrink-0" title="${esc(it.product_name)}">${esc(it.imei)}</span>
-                    <label for="claim-new-${n}" class="sr-only">IMEI ที่ได้รับแทน ${esc(it.imei)}</label>
-                    <input id="claim-new-${n}" data-claim-new="${esc(it.imei)}" type="text" inputmode="numeric" autocomplete="off" placeholder="สแกน IMEI ใหม่"
-                        value="${esc((draft.map || {})[it.imei] || '')}" class="${inputCls} font-mono"></div>`).join('');
+            fields = `<p class="text-xs text-ink/70">สแกนเลข IMEI ใหม่ของเครื่องที่ได้รับกลับมา เพื่อแทนที่ IMEI เดิม (ซ่อมเสร็จแล้วใช้ IMEI เดิมได้) เว้นว่างถ้าเครื่องนั้นไม่ได้รับ — ชื่อรุ่น สี และความจุ ตั้งค่าเริ่มต้นตามตอนจ่ายออก แก้ได้ถ้าเครื่องที่ได้รับกลับมาต่างไป</p>`
+                + c.items.map((it, n) => {
+                    const a = (draft.attrs || {})[it.imei] || {};
+                    const pick = (k, orig) => esc(a[k] !== undefined ? a[k] : (orig || ''));
+                    return `<div class="space-y-2 p-3 rounded-xl border border-line-strong">
+                    <div class="flex items-center gap-2">
+                        <span class="font-mono text-xs text-ink w-36 shrink-0" title="${esc(it.product_name)}">${esc(it.imei)}</span>
+                        <label for="claim-new-${n}" class="sr-only">IMEI ที่ได้รับแทน ${esc(it.imei)}</label>
+                        <input id="claim-new-${n}" data-claim-new="${esc(it.imei)}" type="text" inputmode="numeric" autocomplete="off" placeholder="สแกน IMEI ใหม่"
+                            value="${esc((draft.map || {})[it.imei] || '')}" class="${inputCls} font-mono"></div>
+                    <div class="space-y-2">
+                        <div><label for="claim-name-${n}" class="text-ink/70 text-[11px]">ชื่อรุ่น</label>
+                            <input id="claim-name-${n}" data-claim-name="${esc(it.imei)}" type="text" autocomplete="off" value="${pick('name', it.product_name)}" class="${inputCls} mt-1"></div>
+                        <div><label for="claim-color-${n}" class="text-ink/70 text-[11px]">สี</label>
+                            <input id="claim-color-${n}" data-claim-color="${esc(it.imei)}" type="text" autocomplete="off" value="${pick('color', it.color_name)}" class="${inputCls} mt-1"></div>
+                        <div><label for="claim-cap-${n}" class="text-ink/70 text-[11px]">ความจุ</label>
+                            <input id="claim-cap-${n}" data-claim-cap="${esc(it.imei)}" type="text" autocomplete="off" value="${pick('cap', it.capacity_name)}" class="${inputCls} mt-1"></div>
+                    </div></div>`;
+                }).join('');
             onOk = () => {
                 const map = {};
+                const attrs = {};
                 const received = [];
+                let missingName = '';
                 document.querySelectorAll('[data-claim-new]').forEach(inp => {
+                    const imei = inp.dataset.claimNew;
                     const v = inp.value.trim();
-                    map[inp.dataset.claimNew] = v;
-                    if (v) received.push({ original_imei: inp.dataset.claimNew, new_imei: v });
+                    const name = (document.querySelector(`[data-claim-name="${CSS.escape(imei)}"]`) || {}).value || '';
+                    const color = (document.querySelector(`[data-claim-color="${CSS.escape(imei)}"]`) || {}).value || '';
+                    const cap = (document.querySelector(`[data-claim-cap="${CSS.escape(imei)}"]`) || {}).value || '';
+                    map[imei] = v;
+                    attrs[imei] = { name: name.trim(), color: color.trim(), cap: cap.trim() };
+                    if (v) {
+                        if (!name.trim()) missingName = missingName || imei;
+                        received.push({ original_imei: imei, new_imei: v, product_name: name.trim(), color_name: color.trim(), capacity_name: cap.trim() });
+                    }
                 });
-                const d = { map, note: note() };
+                const d = { map, attrs, note: note() };
                 if (received.length === 0) return reopen('กรุณาระบุ IMEI เครื่องที่ได้รับอย่างน้อย 1 เครื่อง', d);
+                if (missingName) return reopen(`กรุณาระบุชื่อรุ่นของเครื่อง ${missingName}`, d);
                 if (new Set(received.map(r => r.new_imei)).size !== received.length) return reopen('IMEI ที่ได้รับซ้ำกัน', d);
                 callClaim(id, 'close', { received, claim_type: c.claim_type, result_note: d.note }, issueId);
             };
@@ -368,7 +537,7 @@
             const t = $('claim-result-note');
             if (!t) return;
             const imeis = c.items.map(it => it.imei).join(', ');
-            t.value = `เคลม ${c.claim_no} · ${c.supplier_name || 'ไม่ระบุซัพ'} · ${c.total_qty} ชิ้น (IMEI: ${imeis})`;
+            t.value = `เคลม ${c.claim_no} · ${c.supplier_name || 'ไม่ระบุซัพ'} · ${c.total_qty} ${c.item_kind === 'accessory' ? 'ชิ้น' : 'เครื่อง'} (IMEI: ${imeis})`;
             t.focus();
         });
         const fillPo = async (silent) => {
@@ -425,12 +594,12 @@
             info('ใบสั่งซื้อ (PO)', (i.po_numbers || []).length ? i.po_numbers.map(n => `<span class="font-mono">${esc(n)}</span>`).join('<br>') : '-'),
             info('สถานะเคลม', claimCell(i)),
             info('ผู้ทำรายการ', esc(i.created_by_name || '-')),
-            info('จำนวน', `${i.total_qty || (i.items || []).length} ชิ้น`),
+            info('จำนวน', countText(i)),
             info('มูลค่าต้นทุนรวม', `<span class="font-mono">${baht(i.total_cost)}</span>`)
         ].join('');
         const groups = groupBySupplier(i.items || []).map(g => {
             const rowsHtml = g.entries.map(({ item: it }) => `<tr>
-                <td class="px-4 py-2 text-ink text-sm">${esc(it.product_name)}${it.color_name ? ` <span class="text-xs text-ink/70 ml-2">${colorTag(it.color_name)}</span>` : ''}${it.product_code ? ` <span class="text-xs text-ink/70 font-mono">${esc(it.product_code)}</span>` : ''}</td>
+                <td class="px-4 py-2 text-ink text-sm">${esc(it.product_name)}${it.color_name ? ` <span class="text-xs text-ink/70 ml-2">${colorTag(it.color_name)}</span>` : ''}${it.capacity_name ? ` <span class="text-xs text-ink/70 ml-2">${esc(it.capacity_name)}</span>` : ''}${it.product_code ? ` <span class="text-xs text-ink/70 font-mono">${esc(it.product_code)}</span>` : ''}</td>
                 <td class="px-4 py-2 font-mono text-sm text-ink">${it.imei ? esc(it.imei) : `× ${Number(it.quantity) || 1}`}</td>
                 <td class="px-4 py-2 font-mono text-xs text-ink/80">${esc(it.po_number || '-')}</td>
                 <td class="px-4 py-2 text-xs ${it.claim_type === 'loss' ? 'text-state-danger-soft' : 'text-ink/80'}">${esc(CLAIM_TYPE_LABEL[it.claim_type] || '-')}</td>
@@ -489,6 +658,7 @@
             _issues = json.data || [];
             syncBranchFilter();
             syncSupplierFilter();
+            syncDetailFilters();
             renderHistory();
         } catch (err) {
             console.error(err);
@@ -769,10 +939,130 @@
     // ==========================================
     // เริ่มหน้า — initStockIssue ถูกเรียกซ้ำทุกครั้งที่เข้าหน้า: ผูก listener ครั้งเดียว แต่โหลดประวัติใหม่ทุกครั้ง
     // ==========================================
+    // ---------- รายงานเทียบข้อมูลเก่า (ตอนจ่ายออก) กับข้อมูลที่ได้รับกลับมา ----------
+    // หัวคอลัมน์แยกชัดเจน: "ก่อนส่งเคลม" = ค่าตอนจ่ายออก / "หลังส่งเคลม" = ค่าที่ได้รับกลับมาตอนปิดเคลม
+    // ลำดับคอลัมน์: 8 คอลัมน์ข้อมูลใบ (รวมจำนวน/หน่วยนับ) | 4 ก่อนส่งเคลม | 4 หลังส่งเคลม | ผลการเทียบ
+    const CLAIM_REPORT_HEADER = ['เลขที่จ่ายออก', 'เลขที่ใบเคลม', 'วันที่ปิดเคลม', 'ซัพพลายเออร์', 'สถานะเคลม', 'กรณีเคลม',
+        'จำนวน', 'หน่วยนับ',
+        'ก่อนส่งเคลม: IMEI', 'ก่อนส่งเคลม: ชื่อรุ่น', 'ก่อนส่งเคลม: สี', 'ก่อนส่งเคลม: ความจุ',
+        'หลังส่งเคลม: IMEI ที่ได้รับ', 'หลังส่งเคลม: ชื่อรุ่น', 'หลังส่งเคลม: สี', 'หลังส่งเคลม: ความจุ',
+        'ผลการเทียบ'];
+    const REPORT_GROUPS = [['ข้อมูลใบเคลม', 0, 7], ['ก่อนส่งเคลม (ตอนจ่ายออก)', 8, 11], ['หลังส่งเคลม (ที่ได้รับกลับมา)', 12, 15], ['ผล', 16, 16]];
+
+    const claimReportRows = (issues) => {
+        const out = [];
+        issues.forEach(i => {
+            (i.claims || []).forEach(c => {
+                const recs = (c.resolution && c.resolution.received_items) || [];
+                const closed = c.status === 'ปิดเคลม';
+                const statusLabel = c.status === 'ปฏิเสธ' ? 'ซัพปฏิเสธ' : c.status;
+                const caseLabel = CLAIM_TYPE_LABEL[c.claim_type] || '-';
+                const head = [i.issue_no || '', c.claim_no || '', closed && c.closed_at ? fmtDateTime(c.closed_at) : '', c.supplier_name || '', statusLabel, caseLabel];
+                (c.items || []).forEach(it => {
+                    const isDevice = !!it.imei;
+                    const oldName = it.product_name || '', oldColor = it.color_name || '', oldCap = it.capacity_name || '';
+                    // ค่าเดิมของรายการ (ตอนจ่ายออก) — ใบ/เครื่องที่ยังไม่ปิดเคลมหรือซัพปฏิเสธ ยังไม่มีค่าที่ได้รับ
+                    const rec = closed && c.claim_type === 'goods'
+                        ? recs.find(r => isDevice ? r.original_imei === it.imei : String(r.product_id) === String(it.product_id))
+                        : null;
+                    let newImei = '-', newName = '-', newColor = '-', newCap = '-', result = '';
+                    if (!closed) result = 'ยังไม่ปิดเคลม';
+                    else if (c.claim_type === 'cash') result = `รับเงินสด ${c.resolution.cash_amount || 0} บาท`;
+                    else if (c.claim_type === 'discount') result = `รับส่วนลด ${c.resolution.discount_amount || 0} บาท`;
+                    else if (c.claim_type !== 'goods') result = 'ไม่ได้บันทึกผล';
+                    else if (!isDevice) {
+                        const got = rec ? (rec.quantity || 0) : 0;
+                        newName = oldName; // อุปกรณ์เสริมไม่มี IMEI — เทียบจำนวน
+                        result = got >= (it.quantity || 1) ? `ได้รับครบ ${got}/${it.quantity || 1} ชิ้น` : `ได้รับ ${got}/${it.quantity || 1} ชิ้น`;
+                    } else if (!rec) result = 'ไม่ได้รับ';
+                    else {
+                        newImei = rec.new_imei || '';
+                        const hasNames = rec.product_name !== undefined && rec.product_name !== null && rec.product_name !== '';
+                        if (!hasNames) {
+                            // ใบเก่าไม่ได้บันทึกค่าใหม่ไว้ — ใช้ข้อมูลเดิมแทน
+                            newName = oldName; newColor = oldColor; newCap = oldCap;
+                            result = (newImei === it.imei ? 'IMEI เหมือนเดิม' : `IMEI เปลี่ยนเป็น ${newImei}`) + ' · รุ่น/สี/ความจุใช้ข้อมูลเดิม (ใบเก่าไม่ได้บันทึกค่าใหม่)';
+                        } else {
+                            newName = rec.product_name || '';
+                            newColor = rec.color_name || '';
+                            newCap = rec.capacity_name || '';
+                            const diffs = [];
+                            if (newImei !== it.imei) diffs.push('IMEI');
+                            if (newName !== oldName) diffs.push('ชื่อรุ่น');
+                            if (newColor !== oldColor) diffs.push('สี');
+                            if (newCap !== oldCap) diffs.push('ความจุ');
+                            result = diffs.length ? `เปลี่ยน: ${diffs.join(', ')}` : 'เหมือนเดิมทุกอย่าง';
+                        }
+                    }
+                    out.push([...head,
+                        isDevice ? 1 : (it.quantity || 1), isDevice ? 'เครื่อง' : 'ชิ้น',
+                        isDevice ? it.imei : '-', oldName, oldColor, oldCap,
+                        isDevice ? newImei : '-', newName, newColor, newCap, result]);
+                });
+            });
+        });
+        return out;
+    };
+
+    const exportClaimReport = async (format = 'xlsx') => {
+        const rows = claimReportRows(filterIssues(getFilters()));
+        if (rows.length === 0) { showToast('ไม่มีใบเคลมให้ส่งออกตามตัวกรองนี้', 'error'); return; }
+        const stamp = new Date().toISOString().slice(0, 10);
+        if (format === 'pdf') {
+            // PDF: เปิดหน้าพิมพ์ให้เลือก "บันทึกเป็น PDF" — ใช้ฟอนต์ไทยของระบบ ไม่ต้องฝังฟอนต์เอง
+            const w = window.open('', '_blank');
+            if (!w) { showToast('เบราว์เซอร์บล็อกหน้าต่างพิมพ์ กรุณาอนุญาตป๊อปอัป', 'error'); return; }
+            // สี: ก่อนส่งเคลม = เหลือง, หลังส่งเคลม = เขียว, ค่าที่เปลี่ยนจากเดิม = ตัวหนาเข้ม
+            const BEFORE = new Set([8, 9, 10, 11]), AFTER = new Set([12, 13, 14, 15]);
+            const groupRow = `<tr>${REPORT_GROUPS.map(([label, from, to]) => {
+                const cls = from === 8 ? 'gb' : from === 12 ? 'ga' : 'g';
+                return `<th class="${cls}" colspan="${to - from + 1}">${esc(label)}</th>`;
+            }).join('')}</tr>`;
+            const th = `<tr>${CLAIM_REPORT_HEADER.map((h, i) => `<th class="${BEFORE.has(i) ? 'hb' : AFTER.has(i) ? 'ha' : 'h'}">${esc(h.replace(/^(ก่อนส่งเคลม|หลังส่งเคลม): /, ''))}</th>`).join('')}</tr>`;
+            const tr = rows.map(r => `<tr>${r.map((v, i) => {
+                const cls = BEFORE.has(i) ? 'b' : AFTER.has(i) ? (String(v) !== String(r[i - 4]) ? 'a chg' : 'a') : '';
+                return `<td class="${cls}">${esc(v)}</td>`;
+            }).join('')}</tr>`).join('');
+            w.document.write(`<!DOCTYPE html><html lang="th"><head><meta charset="utf-8"><title>รายงานเทียบเคลม_${stamp}</title>
+<link rel="stylesheet" href="${location.origin}/vendor/fonts/fonts.css?v=2">
+<style>@page{size:A4 landscape;margin:8mm}*{-webkit-print-color-adjust:exact;print-color-adjust:exact}body{font-family:'Sarabun','Prompt',sans-serif;color:#111;font-size:10px}
+h1{font-size:16px;margin:0 0 4px}p{margin:0 0 8px;color:#555}table{width:100%;border-collapse:collapse}
+th,td{border:1px solid #bbb;padding:4px 5px;text-align:left;vertical-align:top}
+th{font-weight:700}.g{background:#e5e7eb;text-align:center}.gb{background:#f59e0b;color:#111;text-align:center}.ga{background:#10b981;color:#fff;text-align:center}
+.h{background:#f3f4f6}.hb{background:#fde68a}.ha{background:#a7f3d0}
+td.b{background:#fffbeb}td.a{background:#ecfdf5}td.chg{font-weight:700;color:#065f46;background:#d1fae5}
+thead{display:table-header-group}tr{page-break-inside:avoid}</style></head>
+<body><h1>รายงานเทียบข้อมูลเก่ากับที่ได้รับ (เคลม)</h1><p>วันที่ ${esc(new Date().toLocaleDateString('th-TH'))} · ${rows.length} รายการ · ช่องสีเหลือง = ก่อนส่งเคลม · ช่องสีเขียว = หลังส่งเคลม · ตัวหนาเขียว = ค่าที่เปลี่ยน</p>
+<table><thead>${groupRow}${th}</thead><tbody>${tr}</tbody></table></body></html>`);
+            w.document.close();
+            const go = () => { w.focus(); w.print(); };
+            (w.document.fonts && w.document.fonts.ready ? w.document.fonts.ready : Promise.resolve()).then(() => setTimeout(go, 300));
+            return;
+        }
+        try {
+            await window.ensureXlsxLoaded();
+            // แถวกลุ่มหัวคอลัมน์ (รวมเซลล์) บอกว่าช่วงไหนคือก่อน/หลังส่งเคลม — Excel รุ่นนี้ระบายสีเซลล์ไม่ได้
+            const band = new Array(CLAIM_REPORT_HEADER.length).fill('');
+            REPORT_GROUPS.forEach(([label, from]) => { band[from] = label; });
+            const data = [band, CLAIM_REPORT_HEADER, ...rows];
+            const ws = XLSX.utils.aoa_to_sheet(data);
+            ws['!merges'] = REPORT_GROUPS.filter(([, from, to]) => to > from).map(([, from, to]) => ({ s: { r: 0, c: from }, e: { r: 0, c: to } }));
+            ws['!cols'] = CLAIM_REPORT_HEADER.map((h, col) => ({ wch: Math.min(40, Math.max(h.length + 2, ...rows.map(r => String(r[col] ?? '').length + 2))) }));            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, 'รายงานเทียบเคลม');
+            XLSX.writeFile(wb, `รายงานเทียบเคลม_${stamp}.xlsx`);
+            showToast(`ส่งออกรายงาน ${rows.length} รายการเรียบร้อย`, 'success');
+        } catch (err) {
+            console.error(err);
+            showToast('ส่งออกรายงานไม่สำเร็จ กรุณาลองใหม่', 'error');
+        }
+    };
+
     window.initStockIssue = () => {
         if (!_bound) {
             _bound = true;
             $('btn-open-stock-issue')?.addEventListener('click', openModal);
+            $('btn-export-claim-report')?.addEventListener('click', () => exportClaimReport('xlsx'));
+            $('btn-export-claim-report-pdf')?.addEventListener('click', () => exportClaimReport('pdf'));
             $('stock-issue-modal-close')?.addEventListener('click', closeModal);
             $('stock-issue-cancel-btn')?.addEventListener('click', closeModal);
             $('stock-issue-form')?.addEventListener('submit', submit);
@@ -862,6 +1152,29 @@
                 if (e.key === 'Escape' && m && !m.classList.contains('hidden')) closeDetail();
             });
             $('stock-issue-search-input')?.addEventListener('input', renderHistory);
+            // วันที่เริ่ม/สิ้นสุด และลิ้นชัก "เพิ่มเติม"
+            ['stock-issue-date-from', 'stock-issue-date-to', 'stock-issue-f-sort', DRAWER_FIELDS.color, DRAWER_FIELDS.cap, DRAWER_FIELDS.kind]
+                .forEach(id => $(id)?.addEventListener('change', renderHistory));
+            $(DRAWER_FIELDS.name)?.addEventListener('input', renderHistory);
+            // ลิ้นชัก "เพิ่มเติม": เปิด/ปิด (ปิดด้วยปุ่ม X, ตกลง, คลิกพื้นหลัง หรือ Esc)
+            $('btn-stock-issue-more')?.addEventListener('click', openFilterPanel);
+            $('btn-stock-issue-filter-close')?.addEventListener('click', closeFilterPanel);
+            $('btn-stock-issue-filter-apply')?.addEventListener('click', closeFilterPanel);
+            $('stock-issue-filter-panel')?.addEventListener('click', (e) => { if (e.target === e.currentTarget) closeFilterPanel(); });
+            document.addEventListener('keydown', (e) => {
+                const p = $('stock-issue-filter-panel');
+                if (e.key === 'Escape' && p && !p.classList.contains('pointer-events-none')) closeFilterPanel();
+            });
+            // ปุ่มเลื่อนซ้าย/ขวาของแถวสี
+            document.querySelectorAll('[data-scroll]').forEach(b => b.addEventListener('click', () => {
+                $(b.dataset.scroll)?.scrollBy({ left: 150 * Number(b.dataset.dir), behavior: 'smooth' });
+            }));
+            $('btn-stock-issue-filter-reset')?.addEventListener('click', () => {
+                ['supplier', 'claim', 'branch', 'dateFrom', 'dateTo', 'name', 'color', 'cap', 'kind'].forEach(clearFilter);
+                const sortSel = $('stock-issue-f-sort');
+                if (sortSel) sortSel.value = 'newest';
+                renderHistory();
+            });
             $('stock-issue-filter-supplier')?.addEventListener('change', renderHistory);
             $('stock-issue-filter-branch')?.addEventListener('change', renderHistory);
         }

@@ -1602,6 +1602,7 @@ router.post('/stock-issues', async (req, res) => {
                     product_code: p.product_code || '',
                     product_name: p.name,
                     color_name: p.color_id && mdMaps.productColors.get(String(p.color_id)) ? mdMaps.productColors.get(String(p.color_id)).name : '',
+                    capacity_name: p.capacity_id && mdMaps.productCapacities.get(String(p.capacity_id)) ? mdMaps.productCapacities.get(String(p.capacity_id)).name : '',
                     item_kind: r.kind,
                     imei: r.kind === 'device' ? r.imei : '',
                     quantity: r.quantity,
@@ -1665,7 +1666,7 @@ router.post('/stock-issues', async (req, res) => {
                             item_kind: first.item_kind,
                             items: its.map(it => ({
                                 product_id: it.product_id, product_code: it.product_code, product_name: it.product_name,
-                                color_name: it.color_name, imei: it.imei, quantity: it.quantity, cost_price: it.cost_price
+                                color_name: it.color_name, capacity_name: it.capacity_name || '', imei: it.imei, quantity: it.quantity, cost_price: it.cost_price
                             })),
                             total_qty: its.reduce((t, it) => t + it.quantity, 0),
                             total_cost: its.reduce((t, it) => t + (it.cost_price || 0) * it.quantity, 0),
@@ -1744,6 +1745,9 @@ router.get('/stock-issues', async (req, res) => {
         // ใบเคลมของทุกใบจ่ายออก ดึงรอบเดียว (ไม่วนยิงทีละใบ)
         const claimIssueIds = issues.filter(i => i.is_claim).map(i => i._id);
         const claims = claimIssueIds.length ? await Claim.find({ issue_id: { $in: claimIssueIds } }).sort({ createdAt: 1 }).lean() : [];
+        // ใบเคลมเก่าที่ยังไม่มีความจุเก็บไว้ ให้ดึงความจุจากสินค้าปัจจุบันมาแสดงเป็นค่าเดิม (ดึงรอบเดียว)
+        await fillClaimCapacity(claims.flatMap(c => c.items || []), md.maps.productCapacities);
+        await fillClaimCapacity(issues.flatMap(i => i.items || []), md.maps.productCapacities); // ใบจ่ายออกเก่าแสดงความจุด้วย
         const claimsByIssue = new Map();
         claims.forEach(c => {
             const k = String(c.issue_id);
@@ -1807,6 +1811,17 @@ const transitionClaim = async (req, res, toStatus, extra, preloaded) => {
     return updated;
 };
 
+// เติม capacity_name ให้รายการในใบเคลมที่ยังว่าง (ใบเก่าก่อนมีฟิลด์นี้) จากความจุของสินค้าปัจจุบัน — แก้ใน memory ของ claims ที่ส่งมา
+// ใช้ได้ทั้งรายการในใบเคลมและรายการในใบจ่ายออกเก่า (ที่ยังไม่มีฟิลด์ความจุ)
+const fillClaimCapacity = async (items, capacityMap) => {
+    const need = items.filter(it => !it.capacity_name);
+    if (need.length === 0) return;
+    const ids = [...new Set(need.map(it => String(it.product_id)))];
+    const prods = await Product.find({ _id: { $in: ids } }).select('capacity_id').lean();
+    const capOf = new Map(prods.map(p => [String(p._id), p.capacity_id ? (capacityMap.get(String(p.capacity_id)) || {}).name || '' : '']));
+    need.forEach(it => { it.capacity_name = capOf.get(String(it.product_id)) || ''; });
+};
+
 // PUT /api/claims/:id/close — ปิดเคลมพร้อมบันทึกผลตามกรณีของใบ
 //   goods    : received = [{ original_imei, new_imei }] เครื่องที่ได้รับกลับมา -> เข้าสต็อกสาขาเดิม (สินค้าเดิม ต้นทุนเดิม)
 //   cash     : cash_amount (> 0), received_date (ไม่ระบุ = วันนี้)
@@ -1848,7 +1863,10 @@ router.put('/claims/:id/close', async (req, res) => {
             resolution.received_items = rows;
         } else if (ctype === 'goods') {
             const rows = (Array.isArray(req.body.received) ? req.body.received : [])
-                .map(r => ({ original_imei: String(r && r.original_imei || '').trim(), new_imei: String(r && r.new_imei || '').trim() }))
+                .map(r => ({
+                    original_imei: String(r && r.original_imei || '').trim(), new_imei: String(r && r.new_imei || '').trim(),
+                    product_name: String(r && r.product_name || '').trim(), color_name: String(r && r.color_name || '').trim(), capacity_name: String(r && r.capacity_name || '').trim()
+                }))
                 .filter(r => r.new_imei);
             if (rows.length === 0) return res.status(400).json({ success: false, message: 'กรุณาระบุ IMEI เครื่องที่ได้รับอย่างน้อย 1 เครื่อง (ถ้าไม่ได้รับของ ให้เลือก "ซัพปฏิเสธ")' });
             const byOriginal = new Map(claim.items.map(it => [it.imei, it]));
@@ -1858,6 +1876,20 @@ router.put('/claims/:id/close', async (req, res) => {
                 if (seenOrig.has(r.original_imei)) return res.status(400).json({ success: false, message: `IMEI ${r.original_imei} ซ้ำในรายการ` });
                 if (seenNew.has(r.new_imei)) return res.status(400).json({ success: false, message: `IMEI ที่ได้รับ ${r.new_imei} ซ้ำกัน` });
                 seenOrig.add(r.original_imei); seenNew.add(r.new_imei);
+            }
+            // ชื่อรุ่น/สี/ความจุของเครื่องที่ได้รับ — ถ้าต่างจากตอนจ่ายออก ต้องย้าย IMEI ไปรายการสินค้าที่ตรงกับค่าใหม่
+            const md = await mdCache.get();
+            await fillClaimCapacity(claim.items || [], md.maps.productCapacities); // ใบเก่า: ความจุเดิม = ของสินค้าปัจจุบัน
+            const findMdByName = (map, name) => { if (!name) return null; for (const d of map.values()) if (d && d.name === name) return d; return null; };
+            for (const r of rows) {
+                const orig = byOriginal.get(r.original_imei);
+                if (!r.product_name) return res.status(400).json({ success: false, message: `กรุณาระบุชื่อรุ่นของเครื่อง ${r.new_imei}` });
+                const colorDoc = findMdByName(md.maps.productColors, r.color_name);
+                if (r.color_name && !colorDoc) return res.status(400).json({ success: false, message: `ไม่พบสี "${r.color_name}" ในระบบ (เพิ่มสีในข้อมูลหลักก่อน)` });
+                const capDoc = findMdByName(md.maps.productCapacities, r.capacity_name);
+                if (r.capacity_name && !capDoc) return res.status(400).json({ success: false, message: `ไม่พบความจุ "${r.capacity_name}" ในระบบ (เพิ่มความจุในข้อมูลหลักก่อน)` });
+                r.changed = r.product_name !== (orig.product_name || '') || r.color_name !== (orig.color_name || '') || r.capacity_name !== (orig.capacity_name || '');
+                r.target = { color_id: colorDoc ? colorDoc._id : null, capacity_id: capDoc ? capDoc._id : null };
             }
             // IMEI ที่ได้รับต้องไม่อยู่ในสต็อกสาขาใดอยู่แล้ว (เครื่องเดิมที่ซ่อมแล้วคืนใช้ IMEI เดิมได้ เพราะถูกตัดออกตอนส่งเคลม)
             const newImeis = rows.map(r => r.new_imei);
@@ -1917,9 +1949,41 @@ router.put('/claims/:id/close', async (req, res) => {
             }
         } else if (ctype === 'goods') {
             const byOriginal = new Map(claim.items.map(it => [it.imei, it]));
+            // ดึงสินค้าตั้งต้นของเครื่องที่ชื่อ/สี/ความจุเปลี่ยน ครั้งเดียว (ไม่ยิง query ในลูป)
+            const changedIds = [...new Set(receivedItems.filter(r => r.changed).map(r => String(byOriginal.get(r.original_imei).product_id)))];
+            const origProducts = changedIds.length
+                ? new Map((await Product.find({ _id: { $in: changedIds } }).lean()).map(p => [String(p._id), p]))
+                : new Map();
             for (const r of receivedItems) {
                 const it = byOriginal.get(r.original_imei);
                 try {
+                    if (r.changed) {
+                        // หาสินค้าที่ตรงกับชื่อ/สี/ความจุใหม่ (ประเภท/เงื่อนไข/ราคาเอาจากสินค้าเดิม) ถ้าไม่มีให้สร้างใหม่
+                        const orig = origProducts.get(String(it.product_id));
+                        if (!orig) { failed.push(r.new_imei); continue; }
+                        let target = await Product.findOne({
+                            name: r.product_name, type_id: orig.type_id, condition_id: orig.condition_id || null,
+                            color_id: r.target.color_id, capacity_id: r.target.capacity_id
+                        });
+                        if (!target) {
+                            target = new Product({
+                                product_code: r.new_imei, supplier_id: orig.supplier_id || null, name: r.product_name,
+                                cost_price: orig.cost_price, selling_price: orig.selling_price, type_id: orig.type_id,
+                                unit_id: orig.unit_id || null, color_id: r.target.color_id, capacity_id: r.target.capacity_id,
+                                condition_id: orig.condition_id || null, stock_balances: []
+                            });
+                        }
+                        const bal = ensureBranchBalance(target, claim.branch_id);
+                        if ((bal.imeis || []).includes(r.new_imei)) { failed.push(r.new_imei); continue; }
+                        bal.imeis.push(r.new_imei);
+                        bal.quantity = (bal.quantity || 0) + 1;
+                        await target.save();
+                        await createMovementsForItem({
+                            productId: target._id, action: 'รับเข้าสต็อก (เคลมได้รับสินค้า)', fromBranch: null, toBranch: claim.branch_id,
+                            referenceNo: claim.claim_no, createdBy: req.user.employee_id, imeis: [r.new_imei]
+                        });
+                        continue;
+                    }
                     const up = await Product.updateOne(
                         { _id: it.product_id, stock_balances: { $elemMatch: { branch_id: claim.branch_id, imeis: { $ne: r.new_imei } } } },
                         { $push: { 'stock_balances.$.imeis': r.new_imei }, $inc: { 'stock_balances.$.quantity': 1 } }
@@ -6448,7 +6512,7 @@ router.post('/po/:id/scan-item', async (req, res) => {
             return res.status(400).json({ success: false, message: 'ใบสั่งซื้อนี้ไม่สามารถสแกนตรวจรับได้แล้ว' });
         }
 
-        const { received_items } = req.body; // { item_id: { qty: X, imeis: [], selling_price?: N } }
+        const { received_items, finalize } = req.body; // { item_id: { qty: X, imeis: [], selling_price?: N } } · finalize=true → นำเข้าสต็อกทันที (ยืนยันครั้งเดียวจบ)
         if (!received_items) {
             return res.status(400).json({ success: false, message: 'ไม่พบข้อมูลตรวจรับสินค้า' });
         }
@@ -6518,6 +6582,17 @@ router.post('/po/:id/scan-item', async (req, res) => {
         }
 
         console.log(`[PO] อัพเดทข้อมูลสแกน: PO ${po.po_number}`);
+
+        // ยืนยันครั้งเดียวจบ: สแกนเสร็จแล้วนำเข้าสต็อกทันที ไม่ต้องรอผู้จัดการอนุมัติอีกขั้น
+        if (finalize === true) {
+            const finalizedPo = await executeFinalizeImport(po._id, req.user.employee_id);
+            return res.status(200).json({
+                success: true,
+                message: 'ตรวจรับและนำเข้าสต็อกสำเร็จเรียบร้อย',
+                data: finalizedPo
+            });
+        }
+
         res.status(200).json({
             success: true,
             message: 'บันทึกข้อมูลสแกนชั่วคราวสำเร็จ',
@@ -6525,7 +6600,7 @@ router.post('/po/:id/scan-item', async (req, res) => {
         });
     } catch (error) {
         console.error('API Error POST /api/po/:id/scan-item:', error);
-        res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการบันทึกข้อมูลสแกน' });
+        res.status(error.status || 500).json({ success: false, message: error.status ? error.message : 'เกิดข้อผิดพลาดในการบันทึกข้อมูลสแกน' });
     }
 });
 
@@ -7529,9 +7604,14 @@ router.post('/stock-audit/sessions/:id/scan', async (req, res) => {
         if (!session) return res.status(404).json({ success: false, message: 'ไม่พบรอบตรวจนับสต็อกที่ระบุ' });
         if (session.status !== 'กำลังตรวจนับ') return res.status(400).json({ success: false, message: `ไม่สามารถสแกนได้ รอบนี้มีสถานะ: ${session.status}` });
 
+        const hasPhotoInput = !!(box_photo_base64 && box_photo_base64.trim() !== '');
+        if (!hasPhotoInput && !(scan_notes && scan_notes.trim())) return res.status(400).json({ success: false, message: 'ไม่มีรูปหลักฐาน กรุณากรอกหมายเหตุ' });
+
         const imeiClean = imei.trim();
         const alreadyScanned = await StockAuditItem.findOne({ session_id: session._id, imei: imeiClean });
-        if (alreadyScanned) return res.status(400).json({ success: false, message: `หมายเลข IMEI ${imeiClean} ถูกสแกนไปแล้วในรอบนี้` });
+        // รายการที่พนักงานสต็อกสั่ง "ตรวจใหม่" ต้องสแกนทับได้ — ลบของเดิมทิ้งแล้วบันทึกใหม่ (ไม่นับซ้ำในยอดสแกน)
+        const isRecheck = !!alreadyScanned && alreadyScanned.scan_status === 'ตรวจใหม่';
+        if (alreadyScanned && !isRecheck) return res.status(400).json({ success: false, message: `หมายเลข IMEI ${imeiClean} ถูกสแกนไปแล้วในรอบนี้` });
 
         // ตรวจว่า IMEI อยู่ในสต็อกสาขา
         const branchId = session.branch_id;
@@ -7558,6 +7638,7 @@ router.post('/stock-audit/sessions/:id/scan', async (req, res) => {
             }
         }
 
+        if (isRecheck) await StockAuditItem.findByIdAndDelete(alreadyScanned._id);
         const newItem = await StockAuditItem.create({
             session_id: session._id,
             product_id: foundProduct ? foundProduct._id : null,
@@ -7566,7 +7647,7 @@ router.post('/stock-audit/sessions/:id/scan', async (req, res) => {
             scanned_by: req.user.employee_id, scanned_at: new Date(),
             scan_notes: scan_notes || '', scan_status: 'รอตรวจสอบ', is_expected: isExpected
         });
-        await StockAuditSession.findByIdAndUpdate(session._id, { $inc: { total_items_scanned: 1 } });
+        if (!isRecheck) await StockAuditSession.findByIdAndUpdate(session._id, { $inc: { total_items_scanned: 1 } });
 
         res.status(201).json({
             success: true,
@@ -7613,6 +7694,9 @@ router.post('/stock-audit/sessions/:id/submit', async (req, res) => {
         const itemCount = await StockAuditItem.countDocuments({ session_id: session._id });
         if (itemCount === 0) return res.status(400).json({ success: false, message: 'ยังไม่มีรายการสแกนใดๆ กรุณาสแกนสินค้าก่อนส่งตรวจ' });
 
+        const recheckLeft = await StockAuditItem.countDocuments({ session_id: session._id, scan_status: 'ตรวจใหม่' });
+        if (recheckLeft > 0) return res.status(400).json({ success: false, message: `ยังมีรายการที่ต้องสแกนตรวจใหม่อีก ${recheckLeft} รายการ กรุณาสแกนให้ครบก่อนส่งตรวจ` });
+
         session.status = 'รอการอนุมัติ';
         await session.save();
         await logActivity(req, 'UPDATE', 'STOCK_AUDIT', `ส่งผลการตรวจนับสต็อกให้ตรวจสอบ (${itemCount} รายการ)`, null, session._id);
@@ -7648,10 +7732,10 @@ router.post('/stock-audit/items/:id/review', async (req, res) => {
         await item.save();
 
         if (scan_status === 'ตรวจใหม่') {
+            // เก็บรายการไว้ในสถานะ "ตรวจใหม่" (ไม่ลบ) เพื่อให้หน้าสาขาเห็นว่าชิ้นไหนต้องสแกนซ้ำ
             await StockAuditSession.findByIdAndUpdate(session._id, { status: 'กำลังตรวจนับ' });
-            await StockAuditItem.findByIdAndDelete(item._id);
-            await StockAuditSession.findByIdAndUpdate(session._id, { $inc: { total_items_scanned: -1 } });
-            return res.json({ success: true, message: `ส่งกลับให้ตรวจใหม่: IMEI ${item.imei} — รอบนี้เปิดให้สแกนใหม่แล้ว` });
+            await logActivity(req, 'UPDATE', 'STOCK_AUDIT', `ส่งกลับให้ตรวจใหม่ IMEI ${item.imei}`, null, item._id);
+            return res.json({ success: true, message: `ส่งกลับให้ตรวจใหม่: IMEI ${item.imei} — รอบนี้เปิดให้สแกนใหม่แล้ว`, data: item });
         }
 
         await logActivity(req, 'UPDATE', 'STOCK_AUDIT', `ตรวจสอบ IMEI ${item.imei}: ${scan_status}`, null, item._id);
@@ -7659,6 +7743,36 @@ router.post('/stock-audit/items/:id/review', async (req, res) => {
     } catch (error) {
         console.error('API Error POST /api/stock-audit/items/:id/review:', error);
         res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการบันทึกผลการตรวจสอบ' });
+    }
+});
+
+// POST /api/stock-audit/sessions/:id/reopen — ตีกลับทั้งรอบให้พนักงานสาขานับใหม่
+// เก็บรายการที่ "ผ่าน" / "รอตรวจสอบ" ไว้ ลบเฉพาะรายการ "ไม่ผ่าน" เพื่อให้สแกนใหม่ได้
+router.post('/stock-audit/sessions/:id/reopen', async (req, res) => {
+    try {
+        if (!req.user.permissions || !req.user.permissions.manage_stock_audit) {
+            return res.status(403).json({ success: false, message: 'ไม่มีสิทธิ์ตีกลับรอบตรวจนับสต็อก' });
+        }
+        const { notes } = req.body || {};
+        const session = await StockAuditSession.findById(req.params.id);
+        if (!session) return res.status(404).json({ success: false, message: 'ไม่พบรอบตรวจนับสต็อกที่ระบุ' });
+        if (session.status !== 'รอการอนุมัติ' && session.status !== 'กำลังตรวจนับ') {
+            return res.status(400).json({ success: false, message: `ตีกลับได้เฉพาะรอบที่ยังไม่ปิด (สถานะปัจจุบัน: ${session.status})` });
+        }
+
+        const removed = await StockAuditItem.deleteMany({ session_id: session._id, scan_status: 'ไม่ผ่าน' });
+        const remaining = await StockAuditItem.countDocuments({ session_id: session._id });
+
+        session.status = 'กำลังตรวจนับ';
+        session.total_items_scanned = remaining;
+        if (notes) session.notes = notes;
+        await session.save();
+
+        await logActivity(req, 'UPDATE', 'STOCK_AUDIT', `ตีกลับรอบตรวจนับให้นับใหม่ (ล้างรายการไม่ผ่าน ${removed.deletedCount || 0} รายการ)`, null, session._id);
+        res.json({ success: true, message: `ตีกลับให้นับใหม่แล้ว (ล้างรายการไม่ผ่าน ${removed.deletedCount || 0} รายการ)`, data: session });
+    } catch (error) {
+        console.error('API Error POST /api/stock-audit/sessions/:id/reopen:', error);
+        res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการตีกลับรอบตรวจนับ' });
     }
 });
 
@@ -7675,6 +7789,8 @@ router.post('/stock-audit/sessions/:id/close', async (req, res) => {
             return res.status(400).json({ success: false, message: `สถานะปัจจุบัน: ${session.status}` });
         }
 
+        const recheckCount = await StockAuditItem.countDocuments({ session_id: session._id, scan_status: 'ตรวจใหม่' });
+        if (recheckCount > 0) return res.status(400).json({ success: false, message: `ยังมีสินค้ารอสแกนตรวจใหม่อีก ${recheckCount} รายการ` });
         const pendingCount = await StockAuditItem.countDocuments({ session_id: session._id, scan_status: 'รอตรวจสอบ' });
         if (pendingCount > 0) return res.status(400).json({ success: false, message: `ยังมีสินค้ารอตรวจสอบอีก ${pendingCount} รายการ` });
 

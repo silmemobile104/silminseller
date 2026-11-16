@@ -171,7 +171,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // โหลดสคริปต์เฉพาะหน้า (js/page-<name>.js) แบบ dynamic ครั้งเดียว แล้ว cache ไว้
     // PAGE_SCRIPT_VERSION: บัมพ์เลขนี้ทุกครั้งที่แก้ไฟล์ใน js/ เพื่อไม่ให้เบราว์เซอร์ใช้ของเก่าที่ cache ไว้
-    const PAGE_SCRIPT_VERSION = 'apple_active_v219';
+    const PAGE_SCRIPT_VERSION = 'apple_active_v273';
     const __loadedPageScripts = {};
     function loadPageScript(name) {
         if (__loadedPageScripts[name]) return __loadedPageScripts[name];
@@ -224,7 +224,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // ไม่ได้รอ init function ถ้า HTML ยังไม่ถูกแทรกเข้า DOM ก่อน ตัวแปรที่ query ไว้จะเป็น null ถาวร
     // ชื่อ name ต้องตรงกับชื่อที่ใช้ใน loadPageScript — ไฟล์เดียวอาจมีหลาย <div id="view-XXX"> รวมกัน
     // ถ้าหน้านั้นถูก share โดยสคริปต์เดียวกันหลาย view (ดูตาราง mapping ในแผน)
-    const VIEW_FRAGMENT_VERSION = 'v182'; // บัมพ์เลขนี้ทุกครั้งที่แก้ไฟล์ใน views/
+    const VIEW_FRAGMENT_VERSION = 'v217'; // บัมพ์เลขนี้ทุกครั้งที่แก้ไฟล์ใน views/
     const __loadedPageViews = {};
     function loadPageView(name) {
         if (__loadedPageViews[name]) return __loadedPageViews[name];
@@ -2364,10 +2364,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // เมนูใหม่
         setVisible(navReportArrival, permissions.report_arrival);
-        setVisible(navApproveImport, permissions.approve_import);
+        setVisible(navApproveImport, permissions.approve_import || permissions.receive_po); // ตรวจรับของเข้า (receive_po) ย้ายมารวมในหน้านี้แล้ว
         setVisible(navWarrantyCheck, permissions.do_pos);
         setVisible(navAccountingPO, permissions.manage_po);
-        setVisible(navBranchReceive, permissions.receive_po);
+        setVisible(navBranchReceive, false); // ซ่อนหน้าตรวจรับของเข้า — ใช้แท็บ "นำเข้าใบสั่งซื้อ (PO)" ในหน้าตรวจสอบนำเข้าแทน
         setVisible(navAccounting, permissions.manage_finance);
         setVisible(navAccountingSettings, permissions.manage_finance);
         setVisible(navDisbursement, permissions.manage_finance);
@@ -3036,7 +3036,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 imeiCbs.forEach(cb => {
                     printData.push({
                         barcode: cb.value,
-                        name: currentBarcodeProduct.name
+                        name: currentBarcodeProduct.name,
+                        price: currentBarcodeProduct.selling_price
                     });
                 });
             } else {
@@ -3051,7 +3052,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 for (let i = 0; i < qty; i++) {
                     printData.push({
                         barcode: currentBarcodeProduct.product_code,
-                        name: currentBarcodeProduct.name
+                        name: currentBarcodeProduct.name,
+                        price: currentBarcodeProduct.selling_price
                     });
                 }
             }
@@ -3534,6 +3536,8 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const switchView = async (viewName) => {
+        // หน้า #branch-receive ถูกรวมเข้ากับ #approve-import แล้ว — ลิงก์/แฮชเดิมพาไปหน้าใหม่
+        if (viewName === 'branch-receive') viewName = 'approve-import';
         // ตรวจสอบสิทธิ์การเข้าถึง View ก่อนเปลี่ยนหน้า
         const savedUserData = localStorage.getItem('silmin_user');
         let userPermissions = {};
@@ -3583,7 +3587,11 @@ document.addEventListener('DOMContentLoaded', () => {
         };
 
         const requiredPermission = viewPermissionMap[viewName];
-        if (requiredPermission && !userPermissions[requiredPermission]) {
+        // หน้าตรวจสอบนำเข้า: ผู้อนุมัตินำเข้า (approve_import) หรือผู้ตรวจรับ (receive_po) เข้าได้
+        const hasViewAccess = viewName === 'approve-import'
+            ? !!(userPermissions.approve_import || userPermissions.receive_po)
+            : (!requiredPermission || !!userPermissions[requiredPermission]);
+        if (!hasViewAccess) {
             // Silently redirect to default allowed view if not authorized
             const defaultView = getDefaultViewForUser(userPermissions);
             if (viewName !== defaultView) {
@@ -3798,12 +3806,22 @@ document.addEventListener('DOMContentLoaded', () => {
                 await loadPageView('po-accounting');
                 await loadPageScript('po-accounting');
                 if (typeof window.initImportWorkflowPage === 'function') window.initImportWorkflowPage();
-                if (typeof populateApproveImportBranchFilter === 'function') populateApproveImportBranchFilter();
-                if (typeof loadImportNotifications === 'function') {
-                    loadImportNotifications();
+                // ตรวจรับของเข้า (PO) อยู่ในแท็บ "นำเข้าใบสั่งซื้อ (PO)" — ใช้ได้ทั้ง receive_po และ approve_import
+                if (typeof initBranchReceive === 'function') initBranchReceive();
+                // แท็บนอกระบบ PO / ประวัติ และตารางรออนุมัติเดิม เป็นงานของผู้อนุมัตินำเข้าเท่านั้น
+                const canApproveImport = !!userPermissions.approve_import;
+                ['tab-btn-approve-nonpo', 'tab-btn-approve-history'].forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el) el.classList.toggle('hidden', !canApproveImport);
+                });
+                if (canApproveImport) {
+                    if (typeof populateApproveImportBranchFilter === 'function') populateApproveImportBranchFilter();
+                    if (typeof loadImportNotifications === 'function') {
+                        loadImportNotifications();
+                    }
+                    if (typeof loadApprovePOs === 'function') loadApprovePOs();
+                    if (typeof loadApproveHistory === 'function') loadApproveHistory();
                 }
-                if (typeof loadApprovePOs === 'function') loadApprovePOs();
-                if (typeof loadApproveHistory === 'function') loadApproveHistory();
             }
             else if (viewName === 'warranty-check') {
                 activateView(viewWarrantyCheck, navWarrantyCheck);

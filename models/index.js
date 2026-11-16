@@ -331,6 +331,7 @@ const stockIssueSchema = new mongoose.Schema({
         product_code: { type: String, default: '' },
         product_name: { type: String, default: '' },
         color_name: { type: String, default: '' },
+        capacity_name: { type: String, default: '' }, // ความจุ ณ วันจ่ายออก (ใช้เป็นค่าเริ่มต้นตอนปิดเคลม)
         // เครื่อง = มี IMEI จำนวน 1 / อุปกรณ์เสริม = ไม่มี IMEI ระบุเป็นจำนวน (ใบเก่าไม่มีฟิลด์นี้ = เครื่อง)
         item_kind: { type: String, enum: ['device', 'accessory'], default: 'device' },
         imei: { type: String, default: '' },
@@ -369,6 +370,7 @@ const claimSchema = new mongoose.Schema({
         product_code: { type: String, default: '' },
         product_name: { type: String, default: '' },
         color_name: { type: String, default: '' },
+        capacity_name: { type: String, default: '' },
         imei: { type: String, default: '' },   // อุปกรณ์เสริมไม่มี IMEI
         quantity: { type: Number, default: 1 },
         cost_price: { type: Number, default: 0 } // ต้นทุนต่อหน่วย
@@ -384,7 +386,7 @@ const claimSchema = new mongoose.Schema({
     // ผลเคลมตอนปิด — ใช้ฟิลด์ตามกรณี: goods = received_items, cash = cash_amount/received_date, discount = discount_amount/po_number
     resolution: {
         _id: false,
-        received_items: [{ _id: false, original_imei: String, new_imei: String, product_id: mongoose.Schema.Types.ObjectId, quantity: Number }], // เครื่องที่ได้รับ (ใช้ IMEI เดิมได้ถ้าซ่อมแล้วคืน)
+        received_items: [{ _id: false, original_imei: String, new_imei: String, product_id: mongoose.Schema.Types.ObjectId, quantity: Number, product_name: String, color_name: String, capacity_name: String }], // เครื่องที่ได้รับ (ใช้ IMEI เดิมได้ถ้าซ่อมแล้วคืน)
         cash_amount: { type: Number, default: 0 },
         received_date: { type: Date, default: null },
         discount_amount: { type: Number, default: 0 },  // เครดิตส่วนลดจากซัพ — หักลงใบสั่งซื้อตอนสร้างใบ (ดู applied_po_number)
