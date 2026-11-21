@@ -171,7 +171,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // โหลดสคริปต์เฉพาะหน้า (js/page-<name>.js) แบบ dynamic ครั้งเดียว แล้ว cache ไว้
     // PAGE_SCRIPT_VERSION: บัมพ์เลขนี้ทุกครั้งที่แก้ไฟล์ใน js/ เพื่อไม่ให้เบราว์เซอร์ใช้ของเก่าที่ cache ไว้
-    const PAGE_SCRIPT_VERSION = 'apple_active_v323';
+    const PAGE_SCRIPT_VERSION = 'apple_active_v324';
     const __loadedPageScripts = {};
     function loadPageScript(name) {
         if (__loadedPageScripts[name]) return __loadedPageScripts[name];
@@ -2388,10 +2388,10 @@ document.addEventListener('DOMContentLoaded', () => {
         setVisible(navFinanceCompanies, permissions.verify_orders);
         setVisible(navBranchInventory, permissions.view_branch_inventory);
         setVisible(navStockIssue, permissions.manage_stock);
-        // แจ้งเบิก = manage_stock · จัดการคำขอ = manage_po · รายการเตรียมส่ง = manage_transfers (สิทธิ์เดิมของระบบ)
-        setVisible(navStockRequest, permissions.manage_stock);
-        setVisible(navStockRequestManage, permissions.manage_po);
-        setVisible(navStockRequestTech, permissions.manage_transfers);
+        // ระบบเบิกสินค้าแยกสิทธิ์เป็น 3 ข้อ: แจ้งเบิก = request_stock · จัดการคำขอ = manage_stock_requests · รายการเตรียมส่ง = prepare_stock_requests
+        setVisible(navStockRequest, permissions.request_stock);
+        setVisible(navStockRequestManage, permissions.manage_stock_requests);
+        setVisible(navStockRequestTech, permissions.prepare_stock_requests);
 
         // Toggle Audit Logs Sidebar view
         setVisible(navAuditLogs, permissions.view_audit_logs);
@@ -3526,9 +3526,9 @@ document.addEventListener('DOMContentLoaded', () => {
             'stock-audit': 'do_stock_audit',
             'stock-audit-review': 'manage_stock_audit',
             'stock-issue': 'manage_stock',
-            'stock-request': 'manage_stock',
-            'stock-request-manage': 'manage_po',
-            'stock-request-tech': 'manage_transfers',
+            'stock-request': 'request_stock',
+            'stock-request-manage': 'manage_stock_requests',
+            'stock-request-tech': 'prepare_stock_requests',
             'accounting-settings': 'manage_finance',
             'disbursement': 'manage_finance',
             'other-entries': 'manage_finance',
@@ -3586,9 +3586,9 @@ document.addEventListener('DOMContentLoaded', () => {
             'stock-audit': 'do_stock_audit',
             'stock-audit-review': 'manage_stock_audit',
             'stock-issue': 'manage_stock',
-            'stock-request': 'manage_stock',
-            'stock-request-manage': 'manage_po',
-            'stock-request-tech': 'manage_transfers',
+            'stock-request': 'request_stock',
+            'stock-request-manage': 'manage_stock_requests',
+            'stock-request-tech': 'prepare_stock_requests',
             'accounting-settings': 'manage_finance',
             'disbursement': 'manage_finance',
             'other-entries': 'manage_finance',

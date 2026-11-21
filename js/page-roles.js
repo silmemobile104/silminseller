@@ -15,7 +15,7 @@
     const closeRoleModalBtn = document.getElementById('close-role-modal-btn');
     const cancelRoleModalBtn = document.getElementById('cancel-role-modal-btn');
 
-    const permKeys = ['view_dashboard', 'manage_stock', 'delete_stock', 'do_pos', 'view_sales_history', 'manage_personnel', 'manage_branches', 'manage_settings', 'manage_roles', 'view_audit_logs', 'filter_stock_branch', 'cancel_sale', 'report_arrival', 'approve_import', 'manage_po', 'view_po_dashboard', 'pay_po', 'receive_po', 'manage_transfers', 'manage_finance', 'view_branch_inventory', 'view_daily_summary', 'do_stock_audit', 'manage_stock_audit', 'manage_deposits', 'manage_database', 'verify_orders'];
+    const permKeys = ['view_dashboard', 'manage_stock', 'delete_stock', 'do_pos', 'view_sales_history', 'manage_personnel', 'manage_branches', 'manage_settings', 'manage_roles', 'view_audit_logs', 'filter_stock_branch', 'cancel_sale', 'report_arrival', 'approve_import', 'manage_po', 'view_po_dashboard', 'pay_po', 'receive_po', 'manage_transfers', 'request_stock', 'manage_stock_requests', 'prepare_stock_requests', 'manage_finance', 'view_branch_inventory', 'view_daily_summary', 'do_stock_audit', 'manage_stock_audit', 'manage_deposits', 'manage_database', 'verify_orders'];
     const permLabels = {
         view_dashboard: 'ดูแดชบอร์ด',
         manage_stock: 'จัดการสต็อก',
@@ -36,6 +36,9 @@
         view_po_dashboard: 'แดชบอร์ดระบบสั่งซื้อ',
         receive_po: 'ตรวจรับสินค้าเข้าสาขา',
         manage_transfers: 'โอนย้ายสินค้า',
+        request_stock: 'แจ้งเบิกสินค้า',
+        manage_stock_requests: 'จัดการคำขอเบิก',
+        prepare_stock_requests: 'รายการเตรียมส่ง',
         manage_finance: 'จัดการระบบบัญชีและการเงิน',
         view_branch_inventory: 'ดูสินค้าในสาขา',
         view_daily_summary: 'ดูสรุปยอดขายรายวัน',
@@ -65,6 +68,9 @@
         view_po_dashboard: 'fa-chart-pie',
         receive_po: 'fa-boxes-packing',
         manage_transfers: 'fa-right-left',
+        request_stock: 'fa-clipboard-list',
+        manage_stock_requests: 'fa-list-check',
+        prepare_stock_requests: 'fa-box',
         manage_finance: 'fa-chart-line',
         view_branch_inventory: 'fa-store',
         view_daily_summary: 'fa-chart-line',

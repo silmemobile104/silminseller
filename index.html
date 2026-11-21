@@ -3297,6 +3297,66 @@
                                 </div>
                             </label>
                         </div>
+                        <!-- Toggle: request_stock (#stock-request) -->
+                        <div
+                            class="flex items-center justify-between p-3 bg-surface-tile-3 rounded-md  hover:bg-surface-chip transition-colors">
+                            <div class="flex items-center gap-3">
+                                <div class="w-8 h-8 rounded-lg bg-cyan-500/10 flex items-center justify-center">
+                                    <i class="fa-solid fa-clipboard-list text-cyan-400 text-sm"></i>
+                                </div>
+                                <div>
+                                    <span class="text-sm font-medium text-ink">แจ้งเบิกสินค้า</span>
+                                    <p class="text-[10px] text-ink-muted-48 mt-0.5">สาขาแจ้งขอเบิกสินค้าจากส่วนกลาง</p>
+                                </div>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" id="perm-request_stock" class="sr-only peer"
+                                    aria-label="แจ้งเบิกสินค้า">
+                                <div
+                                    class="w-10 h-5 bg-surface-chip peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-ink-muted-48 after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary peer-checked:after:bg-on-primary">
+                                </div>
+                            </label>
+                        </div>
+                        <!-- Toggle: manage_stock_requests (#stock-request-manage) -->
+                        <div
+                            class="flex items-center justify-between p-3 bg-surface-tile-3 rounded-md  hover:bg-surface-chip transition-colors">
+                            <div class="flex items-center gap-3">
+                                <div class="w-8 h-8 rounded-lg bg-cyan-500/10 flex items-center justify-center">
+                                    <i class="fa-solid fa-list-check text-cyan-400 text-sm"></i>
+                                </div>
+                                <div>
+                                    <span class="text-sm font-medium text-ink">จัดการคำขอเบิก</span>
+                                    <p class="text-[10px] text-ink-muted-48 mt-0.5">ตรวจคำขอ เลือกเบิกจากส่วนกลางหรือสั่งซื้อ</p>
+                                </div>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" id="perm-manage_stock_requests" class="sr-only peer"
+                                    aria-label="จัดการคำขอเบิก">
+                                <div
+                                    class="w-10 h-5 bg-surface-chip peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-ink-muted-48 after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary peer-checked:after:bg-on-primary">
+                                </div>
+                            </label>
+                        </div>
+                        <!-- Toggle: prepare_stock_requests (#stock-request-tech) -->
+                        <div
+                            class="flex items-center justify-between p-3 bg-surface-tile-3 rounded-md  hover:bg-surface-chip transition-colors">
+                            <div class="flex items-center gap-3">
+                                <div class="w-8 h-8 rounded-lg bg-cyan-500/10 flex items-center justify-center">
+                                    <i class="fa-solid fa-box text-cyan-400 text-sm"></i>
+                                </div>
+                                <div>
+                                    <span class="text-sm font-medium text-ink">รายการเตรียมส่ง</span>
+                                    <p class="text-[10px] text-ink-muted-48 mt-0.5">ฝ่ายเทคนิคเตรียมของและกดจัดส่งให้สาขา</p>
+                                </div>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" id="perm-prepare_stock_requests" class="sr-only peer"
+                                    aria-label="รายการเตรียมส่ง">
+                                <div
+                                    class="w-10 h-5 bg-surface-chip peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-ink-muted-48 after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary peer-checked:after:bg-on-primary">
+                                </div>
+                            </label>
+                        </div>
                         <!-- Toggle: manage_deposits -->
                         <div
                             class="flex items-center justify-between p-3 bg-surface-tile-3 rounded-md  hover:bg-surface-chip transition-colors">
@@ -5687,7 +5747,7 @@
     <!-- defer: ปล่อยให้ parse HTML จบก่อนค่อย execute
          ปลอดภัยเพราะทั้งไฟล์ห่ออยู่ใน DOMContentLoaded listener อยู่แล้ว
          และสคริปต์ defer จะ execute ก่อน event DOMContentLoaded ยิงเสมอ -->
-    <script defer src="script.js?v=apple_active_v300"></script>
+    <script defer src="script.js?v=apple_active_v301"></script>
     <script>
         // ลงทะเบียน Service Worker เพื่อแคช asset คงที่ (css/js/font/icon/รูป) ไว้ฝั่งเครื่อง
         // เข้าเว็บครั้งถัดไปเร็วขึ้นมาก โดยเฉพาะตอนเน็ตช้าหรือหลุดชั่วคราว — ดูรายละเอียดที่ sw.js

@@ -157,6 +157,16 @@ const verifyToken = (req, res, next) => {
             if (decoded.permissions.view_po_dashboard === undefined) {
                 decoded.permissions.view_po_dashboard = !!decoded.permissions.manage_po;
             }
+            // token ที่ออกก่อนมีสิทธิ์ระบบเบิกสินค้าแยก — ยึดตามสิทธิ์ที่เมนูนั้นเคยผูกอยู่
+            if (decoded.permissions.request_stock === undefined) {
+                decoded.permissions.request_stock = !!decoded.permissions.manage_stock;
+            }
+            if (decoded.permissions.manage_stock_requests === undefined) {
+                decoded.permissions.manage_stock_requests = !!decoded.permissions.manage_po;
+            }
+            if (decoded.permissions.prepare_stock_requests === undefined) {
+                decoded.permissions.prepare_stock_requests = !!decoded.permissions.manage_transfers;
+            }
         }
         req.user = decoded; // { employee_id, role, branch_id }
         next();
@@ -2404,7 +2414,10 @@ router.post('/auth/login', async (req, res) => {
             verify_orders: dbPerms.verify_orders !== undefined ? dbPerms.verify_orders : (dbPerms.manage_finance || false),
             view_sales_history: dbPerms.view_sales_history !== undefined && dbPerms.view_sales_history !== null ? dbPerms.view_sales_history : (dbPerms.do_pos || false),
             pay_po: dbPerms.pay_po !== undefined && dbPerms.pay_po !== null ? dbPerms.pay_po : (dbPerms.manage_finance || false),
-            view_po_dashboard: dbPerms.view_po_dashboard !== undefined && dbPerms.view_po_dashboard !== null ? dbPerms.view_po_dashboard : (dbPerms.manage_po || false)
+            view_po_dashboard: dbPerms.view_po_dashboard !== undefined && dbPerms.view_po_dashboard !== null ? dbPerms.view_po_dashboard : (dbPerms.manage_po || false),
+            request_stock: dbPerms.request_stock !== undefined && dbPerms.request_stock !== null ? dbPerms.request_stock : (dbPerms.manage_stock || false),
+            manage_stock_requests: dbPerms.manage_stock_requests !== undefined && dbPerms.manage_stock_requests !== null ? dbPerms.manage_stock_requests : (dbPerms.manage_po || false),
+            prepare_stock_requests: dbPerms.prepare_stock_requests !== undefined && dbPerms.prepare_stock_requests !== null ? dbPerms.prepare_stock_requests : (dbPerms.manage_transfers || false)
         };
 
         // สร้าง JWT Token (รวม permissions)
@@ -2504,7 +2517,10 @@ router.get('/auth/me', async (req, res) => {
             verify_orders: dbPerms.verify_orders !== undefined ? dbPerms.verify_orders : (dbPerms.manage_finance || false),
             view_sales_history: dbPerms.view_sales_history !== undefined && dbPerms.view_sales_history !== null ? dbPerms.view_sales_history : (dbPerms.do_pos || false),
             pay_po: dbPerms.pay_po !== undefined && dbPerms.pay_po !== null ? dbPerms.pay_po : (dbPerms.manage_finance || false),
-            view_po_dashboard: dbPerms.view_po_dashboard !== undefined && dbPerms.view_po_dashboard !== null ? dbPerms.view_po_dashboard : (dbPerms.manage_po || false)
+            view_po_dashboard: dbPerms.view_po_dashboard !== undefined && dbPerms.view_po_dashboard !== null ? dbPerms.view_po_dashboard : (dbPerms.manage_po || false),
+            request_stock: dbPerms.request_stock !== undefined && dbPerms.request_stock !== null ? dbPerms.request_stock : (dbPerms.manage_stock || false),
+            manage_stock_requests: dbPerms.manage_stock_requests !== undefined && dbPerms.manage_stock_requests !== null ? dbPerms.manage_stock_requests : (dbPerms.manage_po || false),
+            prepare_stock_requests: dbPerms.prepare_stock_requests !== undefined && dbPerms.prepare_stock_requests !== null ? dbPerms.prepare_stock_requests : (dbPerms.manage_transfers || false)
         };
 
         // ออก token ใหม่ที่มีสิทธิ์ล่าสุดด้วย
@@ -8644,7 +8660,7 @@ const hasPerm = (req, key) => !!(req.user && req.user.permissions && req.user.pe
 // GET /api/stock-requests — ผู้แจ้งเบิก: เห็นเฉพาะคำขอของสาขาตัวเอง
 router.get('/stock-requests', async (req, res) => {
     try {
-        if (!hasPerm(req, 'manage_stock')) {
+        if (!hasPerm(req, 'request_stock')) {
             return res.status(403).json({ success: false, message: 'คุณไม่มีสิทธิ์แจ้งเบิกสินค้า' });
         }
         if (!req.user.branch_id) return res.status(400).json({ success: false, message: 'ไม่พบข้อมูลสาขาของผู้ใช้งาน' });
@@ -8663,7 +8679,7 @@ router.get('/stock-requests', async (req, res) => {
 // GET /api/stock-requests/product-options — รายชื่อสินค้าสำหรับ dropdown ค้นหาในฟอร์มแจ้งเบิก (ชื่อ + รหัสเท่านั้น)
 router.get('/stock-requests/product-options', async (req, res) => {
     try {
-        if (!hasPerm(req, 'manage_stock')) {
+        if (!hasPerm(req, 'request_stock')) {
             return res.status(403).json({ success: false, message: 'คุณไม่มีสิทธิ์แจ้งเบิกสินค้า' });
         }
         // แยกเครื่อง/อุปกรณ์เสริมตามประเภทสินค้า "อุปกรณ์เสริม" (ที่เหลือทั้งหมดนับเป็นเครื่อง)
@@ -8697,7 +8713,7 @@ router.get('/stock-requests/product-options', async (req, res) => {
 // POST /api/stock-requests — สร้างคำขอเบิกจากสาขาของผู้ใช้
 router.post('/stock-requests', async (req, res) => {
     try {
-        if (!hasPerm(req, 'manage_stock')) {
+        if (!hasPerm(req, 'request_stock')) {
             return res.status(403).json({ success: false, message: 'คุณไม่มีสิทธิ์แจ้งเบิกสินค้า' });
         }
         if (!req.user.branch_id) return res.status(400).json({ success: false, message: 'ไม่พบข้อมูลสาขาของผู้ใช้งาน' });
@@ -8908,7 +8924,7 @@ router.get('/stock-requests/pending-purchase', async (req, res) => {
 // GET /api/stock-requests/manage — ฝ่ายจัดซื้อ: เห็นคำขอของทุกสาขา (กรองสาขาได้)
 router.get('/stock-requests/manage', async (req, res) => {
     try {
-        if (!hasPerm(req, 'manage_po')) {
+        if (!hasPerm(req, 'manage_stock_requests')) {
             return res.status(403).json({ success: false, message: 'คุณไม่มีสิทธิ์จัดการคำขอเบิก' });
         }
         const filter = {};
@@ -8938,7 +8954,7 @@ router.get('/stock-requests/manage', async (req, res) => {
 // PUT /api/stock-requests/:id/manage — ฝ่ายจัดซื้อ: เลือกรูปแบบการจัดการ สถานะ เลขพัสดุ และสินค้าที่ให้เทคนิคเตรียม
 router.put('/stock-requests/:id/manage', async (req, res) => {
     try {
-        if (!hasPerm(req, 'manage_po')) {
+        if (!hasPerm(req, 'manage_stock_requests')) {
             return res.status(403).json({ success: false, message: 'คุณไม่มีสิทธิ์จัดการคำขอเบิก' });
         }
         if (!mongoose.Types.ObjectId.isValid(req.params.id)) return res.status(400).json({ success: false, message: 'รหัสคำขอไม่ถูกต้อง' });
@@ -8982,7 +8998,7 @@ router.put('/stock-requests/:id/manage', async (req, res) => {
 // GET /api/stock-requests/tech — ฝ่ายเทคนิค: คำขอที่ส่งงานให้เตรียม และมีสินค้าของฝ่ายเทคนิค
 router.get('/stock-requests/tech', async (req, res) => {
     try {
-        if (!hasPerm(req, 'manage_transfers')) {
+        if (!hasPerm(req, 'prepare_stock_requests')) {
             return res.status(403).json({ success: false, message: 'คุณไม่มีสิทธิ์เตรียมส่งสินค้า' });
         }
         const rows = await StockRequest.find({ status: 'sent_to_tech', items: { $elemMatch: { is_tech: true } } })
@@ -8999,7 +9015,7 @@ router.get('/stock-requests/tech', async (req, res) => {
 // GET /api/stock-requests/tech-history — ฝ่ายเทคนิค: ประวัติการเตรียมส่งที่จัดส่งเสร็จแล้ว (ใหม่สุดก่อน)
 router.get('/stock-requests/tech-history', async (req, res) => {
     try {
-        if (!hasPerm(req, 'manage_transfers')) {
+        if (!hasPerm(req, 'prepare_stock_requests')) {
             return res.status(403).json({ success: false, message: 'คุณไม่มีสิทธิ์ดูประวัติการเตรียมส่ง' });
         }
         const rows = await StockRequest.find({ status: 'shipped', items: { $elemMatch: { is_tech: true } } })
@@ -9041,7 +9057,7 @@ router.get('/stock-requests/tech-history', async (req, res) => {
 // สาขาปลายทางจะตรวจรับเองที่หน้ารับสินค้าโอนย้าย ของที่ส่งไม่ครบ สร้างคำขอค้างส่งให้อัตโนมัติ
 router.put('/stock-requests/:id/ship', async (req, res) => {
     try {
-        if (!hasPerm(req, 'manage_transfers')) {
+        if (!hasPerm(req, 'prepare_stock_requests')) {
             return res.status(403).json({ success: false, message: 'คุณไม่มีสิทธิ์เตรียมส่งสินค้า' });
         }
         if (!mongoose.Types.ObjectId.isValid(req.params.id)) return res.status(400).json({ success: false, message: 'รหัสคำขอไม่ถูกต้อง' });

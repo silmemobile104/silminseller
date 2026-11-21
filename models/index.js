@@ -39,6 +39,11 @@ const roleSchema = new mongoose.Schema({
         view_po_dashboard: { type: Boolean },
         receive_po: { type: Boolean, default: false },       // ตรวจรับ PO (ที่สาขา)
         manage_transfers: { type: Boolean, default: false }, // โอนย้ายสินค้า
+        // ระบบเบิกสินค้า 3 เมนู — เดิมผูกกับ manage_stock / manage_po / manage_transfers ตามลำดับ
+        // จงใจไม่ใส่ default เหตุผลเดียวกับ view_sales_history: บทบาทเก่ายกค่าจากสิทธิ์เดิมใน seedDefaultRoles และ fallback ตอน login อีกชั้น
+        request_stock: { type: Boolean },          // แจ้งเบิกสินค้า (#stock-request) — ยกจาก manage_stock
+        manage_stock_requests: { type: Boolean },  // จัดการคำขอเบิก (#stock-request-manage) — ยกจาก manage_po
+        prepare_stock_requests: { type: Boolean }, // รายการเตรียมส่ง (#stock-request-tech) — ยกจาก manage_transfers
         manage_finance: { type: Boolean, default: false },   // อนุญาตให้จัดการระบบบัญชีและการเงิน
         view_audit_logs: { type: Boolean, default: false },  // อนุญาตดูประวัติกิจกรรมระบบ
         view_branch_inventory: { type: Boolean, default: false }, // อนุญาตดูสินค้าในสาขา
@@ -64,7 +69,8 @@ const seedDefaultRoles = async () => {
                 report_arrival: true, approve_import: true, manage_po: true, pay_po: true, view_po_dashboard: true, receive_po: true,
                 manage_transfers: true, manage_finance: true, view_audit_logs: true, view_branch_inventory: true,
                 view_daily_summary: true, manage_stock_audit: true, do_stock_audit: true, manage_deposits: true,
-                manage_database: true, verify_orders: true
+                manage_database: true, verify_orders: true,
+                request_stock: true, manage_stock_requests: true, prepare_stock_requests: true
             }
         },
         {
@@ -126,6 +132,9 @@ const seedDefaultRoles = async () => {
                 existing.permissions.view_sales_history = true;
                 existing.permissions.pay_po = true;
                 existing.permissions.view_po_dashboard = true;
+                existing.permissions.request_stock = true;
+                existing.permissions.manage_stock_requests = true;
+                existing.permissions.prepare_stock_requests = true;
                 changed = true;
             }
             // Ensure ผู้จัดการ gets manage_stock_audit & do_stock_audit
@@ -200,6 +209,26 @@ const seedDefaultRoles = async () => {
     const poDashMigrated = poDashOn.modifiedCount + poDashOff.modifiedCount;
     if (poDashMigrated > 0) {
         console.log(`[SEED] เพิ่มสิทธิ์แดชบอร์ดระบบสั่งซื้อให้บทบาทเดิม ${poDashMigrated} บทบาท (ยกค่าจาก manage_po)`);
+    }
+
+    // บทบาทที่สร้างก่อนมีสิทธิ์ระบบเบิกสินค้าแยก 3 ข้อ — ยกค่าจากสิทธิ์ที่เมนูนั้นเคยผูกอยู่ ใครเคยเห็นเมนูไหนก็ยังเห็นเหมือนเดิม
+    // (บทบาทเริ่มต้น "ผู้จัดการ" / "พนักงานขาย" ไม่ได้ใส่ค่าไว้ใน defaults ข้างบนโดยตั้งใจ ให้ยกค่าจากสิทธิ์ที่แก้ไว้จริงในฐานข้อมูล)
+    const stockRequestPerms = [
+        ['request_stock', 'manage_stock', 'แจ้งเบิกสินค้า'],
+        ['manage_stock_requests', 'manage_po', 'จัดการคำขอเบิก'],
+        ['prepare_stock_requests', 'manage_transfers', 'รายการเตรียมส่ง']
+    ];
+    for (const [key, fromKey, label] of stockRequestPerms) {
+        const on = await Role.updateMany(
+            { [`permissions.${key}`]: { $exists: false }, [`permissions.${fromKey}`]: true },
+            { $set: { [`permissions.${key}`]: true } }
+        );
+        const off = await Role.updateMany(
+            { [`permissions.${key}`]: { $exists: false } },
+            { $set: { [`permissions.${key}`]: false } }
+        );
+        const migrated = on.modifiedCount + off.modifiedCount;
+        if (migrated > 0) console.log(`[SEED] เพิ่มสิทธิ์${label}ให้บทบาทเดิม ${migrated} บทบาท (ยกค่าจาก ${fromKey})`);
     }
 
     if (inserted > 0 || updated > 0) {
