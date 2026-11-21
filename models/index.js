@@ -352,6 +352,30 @@ stockIssueSchema.index({ branch_id: 1, createdAt: -1 });
 stockIssueSchema.index({ 'items.imei': 1 });
 const StockIssue = mongoose.model('StockIssue', stockIssueSchema, 'stockissue');
 
+// 11.2.1 StockAdjustment (บันทึกการปรับสต็อกตรงจากหน้าจัดการสต็อก) — เอกสารต้นทางให้ระบบบัญชี (utils/accountEntries.js)
+// เกิดจาก POST/PUT/DELETE /products ซึ่งเดิมเปลี่ยนสต็อก/ราคาทุนโดยไม่มีเอกสารให้ลงยอดได้
+// 1 ใบ = 1 ครั้งที่กดบันทึก ต่อสินค้า 1 ตัว · เก็บยอด "ทั้งบริษัท" ก่อน/หลัง (ย้ายสาขาในฟอร์มแก้ไขเป็นการโอน ไม่ใช่การปรับยอด)
+// มูลค่า: ปรับราคาทุน = จำนวนเดิม × (ทุนใหม่ − ทุนเดิม) · ปรับจำนวน = (จำนวนหลัง − จำนวนก่อน) × ทุนใหม่ → รวมกันเท่ากับมูลค่าสต็อกที่เปลี่ยนพอดี
+// เขียนครั้งเดียว ไม่แก้ไม่ลบ — สินค้าถูกลบไปแล้วใบนี้ยังต้องอยู่ (เก็บชื่อ/รหัส/ราคาทุนไว้ในตัว)
+const stockAdjustmentSchema = new mongoose.Schema({
+    adjustment_no: { type: String, required: true, unique: true }, // ADJ-YYYYMMDD-XXXXX
+    kind: { type: String, required: true, enum: ['receive', 'edit', 'delete'] }, // รับเข้าตรง | แก้ไขสินค้า | ลบสินค้า
+    import_source: { type: String, enum: ['MANUAL', 'EXCEL', ''], default: '' }, // เฉพาะ receive
+    product_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Product', required: true },
+    product_code: { type: String, default: '' },
+    product_name: { type: String, default: '' },
+    branch_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Branch', default: null }, // สาขาที่ทำรายการ (ลบสินค้าที่มีหลายสาขา = null)
+    qty_before: { type: Number, default: 0 }, // จำนวนรวมทุกสาขาก่อนบันทึก
+    qty_after: { type: Number, default: 0 },  // จำนวนรวมทุกสาขาหลังบันทึก
+    cost_before: { type: Number, default: 0 }, // ราคาทุนต่อชิ้นก่อนบันทึก
+    cost_after: { type: Number, default: 0 },  // ราคาทุนต่อชิ้นหลังบันทึก
+    imeis: [{ type: String }], // IMEI ที่เพิ่มเข้า (receive/edit) ไว้ตามรอย
+    created_by: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee', required: true }
+}, { timestamps: true });
+stockAdjustmentSchema.index({ createdAt: -1 });
+stockAdjustmentSchema.index({ product_id: 1 });
+const StockAdjustment = mongoose.model('StockAdjustment', stockAdjustmentSchema, 'stockadjustment');
+
 // 11.3 Claim (ใบเคลมสินค้ากับผู้จัดจำหน่าย) — เกิดจากใบจ่ายออกที่ติ๊ก "เคลม" 1 ใบจ่ายออก แตกเป็น 1 ใบเคลมต่อผู้จัดจำหน่าย
 // สถานะ: ส่งเคลมแล้ว -> ปิดเคลม (ได้ผลแล้ว) | ปฏิเสธ (ซัพไม่รับ คืนสต็อกหรือตัดทิ้ง)
 const claimSchema = new mongoose.Schema({
@@ -609,6 +633,8 @@ const purchaseOrderSchema = new mongoose.Schema({
     payment_status: { type: String, default: 'ยังไม่ได้ชำระ', enum: ['ยังไม่ได้ชำระ', 'ชำระเงินบางส่วน', 'ชำระเงินแล้ว'] },
     // กำหนดจ่าย — วันที่ต้องชำระเงินให้ซัพพลายเออร์ (ไม่บังคับ) เก็บเป็นเที่ยงคืน UTC ของวันนั้น
     payment_due_date: { type: Date, default: null },
+    // วันที่คาดว่าจะได้รับของ — แจ้งสาขาปลายทางที่ขอเบิกว่ากำลังสั่งซื้อและจะได้รับวันไหน (ไม่บังคับ)
+    expected_arrival: { type: Date, default: null },
     paid_at: { type: Date },
     paid_amount: { type: Number, default: 0 },
     discount: { type: Number, default: 0 },
@@ -971,9 +997,17 @@ const stockRequestSchema = new mongoose.Schema({
     items: [{
         product_code: { type: String, default: '' },
         product_name: { type: String, required: true },
+        capacity_name: { type: String, default: '' }, // ความจุที่สาขาเลือกตอนแจ้งเบิก ('' = ไม่กำหนดความจุ)
         quantity: { type: Number, default: 1, min: 1 },
         is_tech: { type: Boolean, default: false }, // ส่งให้ฝ่ายเทคนิคเตรียมของ
-        fulfilled_quantity: { type: Number, default: 0 } // จำนวนที่จัดส่งจริง
+        send_quantity: { type: Number, default: 0 }, // จำนวนที่ส่งให้ฝ่ายเทคนิคเตรียม (เท่าที่ส่วนกลางมี ณ ตอนบันทึก)
+        shortage_quantity: { type: Number, default: 0 }, // จำนวนที่ส่วนกลางไม่พอ ซึ่งกำลังสั่งเพิ่ม
+        fulfilled_quantity: { type: Number, default: 0 }, // จำนวนที่จัดส่งจริง
+        ordered: { type: Boolean, default: false }, // (เดิม) ฝ่ายจัดซื้อกดว่าสั่งของที่ขาดแล้ว — ปัจจุบันใช้ ordered_quantity แทน
+        ordered_at: { type: Date, default: null },
+        ordered_quantity: { type: Number, default: 0 }, // จำนวนที่ฝ่ายจัดซื้อสั่งซื้อแล้ว (หักจาก shortage_quantity ตอนสร้างใบสั่งซื้อ)
+        ordered_po_number: { type: String, default: '' }, // ใบสั่งซื้อล่าสุดที่สั่งของรายการนี้
+        ordered_expected_arrival: { type: Date, default: null } // วันที่คาดว่าจะได้รับ ตามใบสั่งซื้อนั้น
     }],
     status: {
         type: String,
@@ -982,11 +1016,13 @@ const stockRequestSchema = new mongoose.Schema({
     }, // รอตรวจสอบ | กำลังสั่งซื้อ | เทคนิคเตรียมของ | จัดส่งแล้ว | ยกเลิก
     fulfillment_method: { type: String, enum: ['purchase', 'stock', null], default: null }, // purchase = สั่งซื้อใหม่ | stock = เบิกจากส่วนกลาง
     tracking_numbers: [{ type: String }],
+    shipment_images: [{ type: String }], // ลิงก์รูปหลักฐานการจัดส่งบน Google Drive (แนบได้หลายรูป)
     expected_arrival: { type: Date, default: null },
     transfer_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Transfer', default: null }, // ใบโอนที่สร้างตอนจัดส่ง
     parent_request_id: { type: mongoose.Schema.Types.ObjectId, ref: 'StockRequest', default: null }, // คำขอแม่ (กรณีค้างส่ง)
     note: { type: String, default: '' },
-    shipped_at: { type: Date, default: null }
+    shipped_at: { type: Date, default: null },
+    shipped_by: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee', default: null } // ผู้กดจัดส่ง (ฝ่ายเทคนิค) ใช้แสดงในประวัติการเตรียมส่ง
 }, { timestamps: true });
 stockRequestSchema.index({ status: 1 });
 stockRequestSchema.index({ branch_id: 1, createdAt: -1 });
@@ -1007,6 +1043,7 @@ module.exports = {
     Product,
     Movement,
     StockIssue,
+    StockAdjustment,
     Claim,
     Transaction,
     Transfer,

@@ -280,7 +280,7 @@
     // การ์ดออเดอร์ — ข้อมูลชุดเดียวกับแถวตาราง เรียงใหม่ให้อ่านบนจอแคบได้
     const ovOrderCardMarkup = (row) => {
         const card = document.createElement('div');
-        card.className = 'elev-card bg-surface-tile-3 rounded-md p-4 transition-all hover:-translate-y-1';
+        card.className = 'bg-panel/40 rounded-2xl p-5 flex flex-col gap-4 transition-colors hover:bg-skeleton';
 
         const firstItem = (row.items || []).find(it => !it.is_gift) || (row.items || [])[0] || null;
         const extraCount = Math.max(0, (row.items || []).length - 1);
@@ -292,49 +292,56 @@
         const devicePrice = (row.finance && row.finance.full_price) || 0;
 
         card.innerHTML = `
-            <div class="flex items-start justify-between gap-2">
+            <div class="flex items-start justify-between gap-3">
                 <div class="min-w-0">
                     <p class="font-mono font-semibold text-accent-ink truncate">${ovEsc(row.receipt_number)}</p>
-                    <p class="text-xs text-ink/70 mt-0.5 font-mono">${t.date} ${t.time}</p>
+                    <p class="text-xs text-ink/70 mt-1 font-mono">${t.date} ${t.time}</p>
                 </div>
                 <div class="shrink-0">${ovVerifyBadge(row)}</div>
             </div>
 
-            <div class="mt-3 pt-3 border-t border-hairline">
-                <p class="font-medium text-ink flex items-center gap-2 min-w-0">
+            <p class="text-sm flex items-center gap-2 min-w-0 ${row.customer_name ? 'text-ink font-medium' : 'text-ink/50'}">
+                <i class="fa-solid fa-user text-xs text-accent-ink shrink-0" aria-hidden="true"></i>
+                <span class="truncate">${row.customer_name ? ovEsc(row.customer_name) : 'ไม่ระบุลูกค้า'}</span>
+            </p>
+
+            <div class="bg-field rounded-xl px-4 py-3 min-w-0">
+                <p class="font-semibold text-ink flex items-center gap-2 min-w-0">
                     ${dot}<span class="truncate">${ovEsc(firstItem ? firstItem.product_name : '-')}</span>
                 </p>
-                ${imeiText ? `<p class="text-xs text-ink/70 mt-0.5">${imeiText}</p>` : ''}
-                ${extraCount > 0 ? `<p class="text-xs text-ink/70 mt-0.5">และอีก ${extraCount} รายการ</p>` : ''}
+                ${imeiText ? `<p class="text-xs text-ink/70 mt-1 font-mono truncate">${imeiText}</p>` : ''}
+                ${extraCount > 0 ? `<p class="text-xs text-accent-ink mt-1">และอีก ${extraCount} รายการ</p>` : ''}
             </div>
 
-            <div class="mt-3">
-                <p class="text-[10px] text-ink/60 uppercase tracking-wide">รูปแบบการขาย / สาขา</p>
-                <p class="text-sm text-ink mt-1 truncate">${ovEsc(ovSaleTypeText(row))}</p>
-                <p class="text-xs text-ink/70">${ovEsc(row.branch_name || '-')}</p>
+            <div class="grid grid-cols-2 gap-3 text-sm">
+                <div class="min-w-0">
+                    <p class="text-xs text-ink/60">รูปแบบการขาย</p>
+                    <p class="text-ink font-medium mt-0.5 truncate">${ovEsc(ovSaleTypeText(row))}</p>
+                </div>
+                <div class="min-w-0">
+                    <p class="text-xs text-ink/60">สาขา</p>
+                    <p class="text-ink font-medium mt-0.5 truncate">${ovEsc(row.branch_name || '-')}</p>
+                </div>
             </div>
 
             ${row.verify_note ? `
-            <div class="mt-3">
-                <p class="text-[10px] text-ink/60 uppercase tracking-wide">หมายเหตุ</p>
-                <p class="text-sm text-ink mt-1 break-words" title="${ovEsc(row.verify_note)}">${ovEsc(ovShortNote(row.verify_note))}</p>
-            </div>` : ''}
+            <p class="text-xs text-ink/70 break-words" title="${ovEsc(row.verify_note)}"><span class="text-ink/60">หมายเหตุ:</span> ${ovEsc(ovShortNote(row.verify_note))}</p>` : ''}
 
-            <div class="flex items-center justify-between mt-3.5 pt-3 border-t border-hairline gap-2">
+            <div class="mt-auto pt-4 border-t border-hairline flex items-center justify-between gap-3">
                 ${ovStatusPill(row)}
-                <span class="text-base font-mono font-bold text-ink">${devicePrice > 0 ? ovBahtShort(devicePrice) : '-'}</span>
+                <span class="text-xl font-mono font-bold text-ink">${devicePrice > 0 ? ovBahtShort(devicePrice) : '-'}</span>
             </div>
 
-            <div class="flex items-center justify-end gap-1 mt-3 pt-3 border-t border-hairline">
-                <button type="button" data-print="${row._id}" title="พิมพ์ใบเสร็จ"
-                    aria-label="พิมพ์ใบเสร็จบิล ${ovEsc(row.receipt_number)}"
-                    class="text-ink hover:text-amber-400 transition-colors p-2">
-                    <i class="fa-solid fa-print"></i>
-                </button>
+            <div class="flex items-center gap-2">
                 <button type="button" data-detail="${row._id}" title="ดูรายละเอียด"
                     aria-label="ดูรายละเอียดบิล ${ovEsc(row.receipt_number)}"
-                    class="text-ink hover:text-indigo-400 transition-colors p-2">
-                    <i class="fa-solid fa-eye"></i>
+                    class="flex-1 h-10 rounded-xl bg-chip hover:bg-skeleton text-ink text-sm font-medium transition-colors inline-flex items-center justify-center gap-2 cursor-pointer">
+                    <i class="fa-solid fa-eye" aria-hidden="true"></i> ดูรายละเอียด
+                </button>
+                <button type="button" data-print="${row._id}" title="พิมพ์ใบเสร็จ"
+                    aria-label="พิมพ์ใบเสร็จบิล ${ovEsc(row.receipt_number)}"
+                    class="h-10 w-10 rounded-xl bg-chip hover:bg-skeleton text-ink hover:text-accent-ink transition-colors inline-flex items-center justify-center cursor-pointer">
+                    <i class="fa-solid fa-print" aria-hidden="true"></i>
                 </button>
             </div>
         `;

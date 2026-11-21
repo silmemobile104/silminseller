@@ -6,9 +6,17 @@
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div class="flex items-center gap-4">
             <i class="fa-solid fa-clipboard-list text-ink w-5 text-2xl text-center"></i>
-            <h3 class="text-2xl text-ink">แจ้งเบิกสินค้า</h3>
+            <div class="space-y-1">
+                <h3 class="text-2xl text-ink">แจ้งเบิกสินค้า</h3>
+                <span class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-field border border-line text-xs text-ink">
+                    <i class="fa-solid fa-store text-primary"></i> สาขาของคุณ <span id="sr-branch-name" class="font-semibold">-</span>
+                </span>
+            </div>
         </div>
         <div class="flex items-center gap-3">
+            <p id="sr-hq-note" class="hidden text-xs text-state-pending max-w-sm text-right">
+                สำนักงานใหญ่เป็นต้นทางของการจัดส่ง จึงแจ้งเบิกสินค้าเองไม่ได้
+            </p>
             <button id="btn-sr-open" type="button"
                 class="px-4 py-2 bg-primary hover:bg-primary-pressed text-on-primary font-medium rounded-xl transition-all flex items-center gap-2 w-fit cursor-pointer">
                 <i class="fa-solid fa-plus"></i>
@@ -36,7 +44,7 @@
                     <option value="pending">รอตรวจสอบ</option>
                     <option value="ordering">กำลังสั่งซื้อ</option>
                     <option value="sent_to_tech">ฝ่ายเทคนิคเตรียมของ</option>
-                    <option value="shipped">จัดส่งแล้ว</option>
+                    <option value="shipped">เสร็จสิ้น</option>
                     <option value="canceled">ยกเลิก</option>
                 </select>
             </div>
@@ -62,45 +70,86 @@
     <!-- โมดัลสร้างคำขอเบิก -->
     <div id="sr-modal" class="fixed inset-0 z-50 hidden items-center justify-center backdrop-blur-sm opacity-0 pointer-events-none transition-opacity duration-300 p-4"
         role="dialog" aria-modal="true" aria-labelledby="sr-modal-title">
-        <div class="modal-content relative w-[95%] md:w-[650px] max-h-[90vh] overflow-y-auto p-8 bg-elevated rounded-2xl shadow-lg border border-line-strong" tabindex="0">
-            <div class="flex items-center justify-between mb-6 pb-2 border-b border-hairline">
-                <h3 id="sr-modal-title" class="text-lg text-ink flex items-center gap-2">
-                    <i class="fa-solid fa-clipboard-list text-primary"></i> แจ้งเบิกสินค้าใหม่
-                </h3>
+        <div class="modal-content relative w-[95%] md:w-[720px] max-h-[90vh] flex flex-col overflow-hidden bg-elevated rounded-2xl shadow-lg border border-line-strong">
+            <div class="flex items-start justify-between gap-4 px-8 py-5 border-b border-hairline bg-panel/40">
+                <div class="space-y-2">
+                    <h3 id="sr-modal-title" class="text-lg text-ink flex items-center gap-2">
+                        <i class="fa-solid fa-clipboard-list text-primary"></i> แจ้งเบิกสินค้าใหม่
+                    </h3>
+                    <span class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-field border border-line text-xs text-ink">
+                        <i class="fa-solid fa-store text-primary"></i> ผู้ขอจากสาขา <span id="sr-modal-branch" class="font-semibold">-</span>
+                    </span>
+                </div>
                 <button id="sr-modal-close" type="button" aria-label="ปิด" class="text-state-danger hover:text-state-danger-soft transition-colors">
                     <i class="fa-solid fa-xmark text-xl"></i>
                 </button>
             </div>
-            <form id="sr-form" class="space-y-5 text-sm" novalidate>
-                <div class="space-y-2">
-                    <label for="sr-title" class="text-ink font-medium flex items-center gap-2 text-xs">ชื่อรายการ <span class="text-state-danger">*</span></label>
-                    <input id="sr-title" type="text" autocomplete="off" placeholder="เช่น เบิกอุปกรณ์เสริมสาขาหาดใหญ่"
-                        class="w-full px-4 py-2.5 rounded-xl bg-field border border-line text-ink focus:border-primary focus:outline-none transition-all text-sm">
-                </div>
-                <div class="space-y-2">
-                    <div class="flex items-center justify-between">
-                        <span class="text-ink font-medium text-xs">รายการสินค้า <span class="text-state-danger">*</span></span>
-                        <button id="sr-add-row" type="button" class="px-3 py-1.5 bg-field border border-line rounded-xl text-xs text-ink hover:border-primary transition-colors">
-                            <i class="fa-solid fa-plus"></i> เพิ่มแถว
+            <form id="sr-form" class="flex-1 overflow-y-auto px-8 py-6 space-y-7 text-sm custom-scrollbar" tabindex="0" novalidate>
+                <section class="space-y-3" aria-labelledby="sr-kind-label">
+                    <div class="flex items-center gap-3">
+                        <span class="w-6 h-6 rounded-full bg-primary text-on-primary text-xs font-bold flex items-center justify-center" aria-hidden="true">1</span>
+                        <h4 id="sr-kind-label" class="text-ink font-medium">เบิกอะไร <span class="text-state-danger">*</span></h4>
+                    </div>
+                    <div class="pl-9 flex gap-2" role="radiogroup" aria-labelledby="sr-kind-label">
+                        <label class="flex-1 cursor-pointer">
+                            <input type="radio" name="sr-kind" value="device" class="sr-only peer" checked>
+                            <span class="block text-center px-4 py-3 rounded-xl bg-field border border-line text-ink text-sm transition-all peer-checked:bg-primary peer-checked:text-on-primary peer-checked:border-primary peer-checked:font-bold peer-focus-visible:ring-2 peer-focus-visible:ring-primary"><i class="fa-solid fa-mobile-screen mr-1" aria-hidden="true"></i> เครื่อง</span>
+                        </label>
+                        <label class="flex-1 cursor-pointer">
+                            <input type="radio" name="sr-kind" value="accessory" class="sr-only peer">
+                            <span class="block text-center px-4 py-3 rounded-xl bg-field border border-line text-ink text-sm transition-all peer-checked:bg-primary peer-checked:text-on-primary peer-checked:border-primary peer-checked:font-bold peer-focus-visible:ring-2 peer-focus-visible:ring-primary"><i class="fa-solid fa-headphones mr-1" aria-hidden="true"></i> อุปกรณ์เสริม</span>
+                        </label>
+                    </div>
+                </section>
+
+                <section class="space-y-3" aria-labelledby="sr-title-label">
+                    <div class="flex items-center gap-3">
+                        <span class="w-6 h-6 rounded-full bg-primary text-on-primary text-xs font-bold flex items-center justify-center" aria-hidden="true">2</span>
+                        <label id="sr-title-label" for="sr-title" class="text-ink font-medium">ชื่อรายการ <span class="text-state-danger">*</span></label>
+                    </div>
+                    <div class="pl-9">
+                        <input id="sr-title" type="text" autocomplete="off" placeholder="เช่น เบิกอุปกรณ์เสริมสาขาหาดใหญ่"
+                            class="w-full px-4 py-3 rounded-xl bg-field border border-line text-ink focus:border-primary focus:outline-none transition-all text-sm">
+                    </div>
+                </section>
+
+                <section class="space-y-3" aria-labelledby="sr-items-heading">
+                    <div class="flex items-center gap-3">
+                        <span class="w-6 h-6 rounded-full bg-primary text-on-primary text-xs font-bold flex items-center justify-center" aria-hidden="true">3</span>
+                        <h4 id="sr-items-heading" class="text-ink font-medium">รายการสินค้า <span class="text-state-danger">*</span> <span class="font-normal text-body-muted text-xs ml-1">ต้องมีอย่างน้อย 1 รายการ</span></h4>
+                    </div>
+                    <div class="pl-9 space-y-3">
+                        <div id="sr-rows" class="space-y-3"></div>
+                        <button id="sr-add-row" type="button"
+                            class="w-full py-3 rounded-xl border border-dashed border-line text-sm text-body-muted hover:text-ink hover:border-primary transition-colors">
+                            <i class="fa-solid fa-plus"></i> เพิ่มสินค้า
                         </button>
                     </div>
-                    <div id="sr-rows" class="space-y-2"></div>
-                </div>
-                <div class="space-y-2">
-                    <label for="sr-note" class="text-ink font-medium text-xs">หมายเหตุ</label>
-                    <textarea id="sr-note" rows="2" maxlength="500"
-                        class="w-full px-4 py-2.5 rounded-xl bg-field border border-line text-ink focus:border-primary focus:outline-none transition-all text-sm"></textarea>
-                </div>
-                <div class="flex items-center justify-center gap-4 pt-4 border-t border-hairline">
-                    <button id="sr-cancel" type="button" class="px-10 py-2.5 rounded-xl bg-chip text-ink text-[15px] font-bold hover:bg-skeleton transition-colors w-1/2">ยกเลิก</button>
-                    <button id="sr-submit" type="submit" class="px-12 py-2.5 rounded-xl bg-primary text-on-primary text-[15px] font-bold hover:bg-primary-pressed transition-colors w-1/2">ส่งคำขอ</button>
-                </div>
+                </section>
+
+                <section class="space-y-3" aria-labelledby="sr-note-label">
+                    <div class="flex items-center gap-3">
+                        <span class="w-6 h-6 rounded-full bg-primary text-on-primary text-xs font-bold flex items-center justify-center" aria-hidden="true">4</span>
+                        <label id="sr-note-label" for="sr-note" class="text-ink font-medium">หมายเหตุ <span class="font-normal text-body-muted">(ไม่บังคับ)</span></label>
+                    </div>
+                    <div class="pl-9">
+                        <textarea id="sr-note" rows="3" maxlength="500" placeholder="เช่น ต้องการก่อนวันเสาร์"
+                            class="w-full px-4 py-3 rounded-xl bg-field border border-line text-ink focus:border-primary focus:outline-none transition-all text-sm resize-none"></textarea>
+                    </div>
+                </section>
             </form>
+            <div class="flex items-center justify-between gap-4 px-8 py-4 border-t border-hairline bg-panel/20">
+                <p id="sr-summary" class="text-sm text-body-muted" aria-live="polite"></p>
+                <div class="flex gap-3">
+                    <button id="sr-cancel" type="button" class="px-6 py-2.5 rounded-xl bg-chip text-ink font-medium hover:bg-skeleton transition-colors">ยกเลิก</button>
+                    <button id="sr-submit" type="submit" form="sr-form" class="px-8 py-2.5 rounded-xl bg-primary text-on-primary font-bold hover:bg-primary-pressed transition-colors">ส่งคำขอ</button>
+                </div>
+            </div>
         </div>
     </div>
 </div>
 
-<!-- ===================== [B] จัดการคำขอเบิก ===================== -->
+<!-- ===================== [B] จัดการคำขอเบิก (ฝ่ายจัดซื้อ) ===================== -->
 <div id="view-stock-request-manage" class="hidden space-y-8 animate-fade-in">
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div class="flex items-center gap-4">
@@ -111,7 +160,8 @@
 
     <div class="bg-panel/40 rounded-2xl shadow-lg overflow-hidden backdrop-blur-sm">
         <div class="p-6 pb-0 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-            <h3 class="text-lg text-ink">คำขอเบิกทุกสาขา</h3>
+            <!-- แท็บสถานะ: เปิดหน้าที่ "รอตรวจสอบ" และมีตัวนับทุกแท็บ -->
+            <div id="srm-status-tabs" role="tablist" aria-label="กรองตามสถานะ" class="flex flex-wrap gap-2"></div>
             <div class="flex flex-wrap items-center gap-2.5 w-full lg:w-auto">
                 <div class="relative group w-full sm:w-64 rounded-[0.5rem] overflow-hidden">
                     <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -125,16 +175,6 @@
                 <select id="srm-branch-filter"
                     class="bg-panel/40 cursor-pointer text-sm rounded-[0.5rem] px-3 py-2 text-ink focus:outline-none focus:ring-1 focus:ring-primary w-full sm:w-auto [&>option]:bg-panel">
                     <option value="ALL">ทุกสาขา</option>
-                </select>
-                <label for="srm-status-filter" class="sr-only">กรองตามสถานะ</label>
-                <select id="srm-status-filter"
-                    class="bg-panel/40 cursor-pointer text-sm rounded-[0.5rem] px-3 py-2 text-ink focus:outline-none focus:ring-1 focus:ring-primary w-full sm:w-auto [&>option]:bg-panel">
-                    <option value="">ทุกสถานะ</option>
-                    <option value="pending">รอตรวจสอบ</option>
-                    <option value="ordering">กำลังสั่งซื้อ</option>
-                    <option value="sent_to_tech">ฝ่ายเทคนิคเตรียมของ</option>
-                    <option value="shipped">จัดส่งแล้ว</option>
-                    <option value="canceled">ยกเลิก</option>
                 </select>
             </div>
         </div>
@@ -157,68 +197,54 @@
         </div>
     </div>
 
-    <!-- โมดัลจัดการคำขอ -->
+    <!-- โมดัลจัดการคำขอ — 3 ขั้น: 1 ดูรายการ+สต็อก / 2 อ่านผลที่จะเกิด / 3 กดบันทึก (แถบปุ่มชิดขอบล่าง นอกส่วนเลื่อน) -->
     <div id="srm-modal" class="fixed inset-0 z-50 hidden items-center justify-center backdrop-blur-sm opacity-0 pointer-events-none transition-opacity duration-300 p-4"
         role="dialog" aria-modal="true" aria-labelledby="srm-modal-title">
-        <div class="modal-content relative w-[95%] md:w-[650px] max-h-[90vh] overflow-y-auto p-8 bg-elevated rounded-2xl shadow-lg border border-line-strong" tabindex="0">
-            <div class="flex items-center justify-between mb-6 pb-2 border-b border-hairline">
-                <h3 id="srm-modal-title" class="text-lg text-ink flex items-center gap-2">
-                    <i class="fa-solid fa-list-check text-primary"></i> จัดการคำขอเบิก
-                </h3>
+        <div class="modal-content relative w-[95%] md:w-[720px] max-h-[90vh] flex flex-col overflow-hidden bg-elevated rounded-2xl shadow-lg border border-line-strong">
+            <div class="flex items-start justify-between gap-4 px-8 py-5 border-b border-hairline bg-panel/40 shrink-0">
+                <div class="space-y-1 min-w-0">
+                    <h3 id="srm-modal-title" class="text-lg text-ink flex items-center gap-2">
+                        <i class="fa-solid fa-list-check text-primary"></i> จัดการคำขอเบิก
+                    </h3>
+                    <p id="srm-meta" class="text-xs text-body-muted"></p>
+                </div>
                 <button id="srm-modal-close" type="button" aria-label="ปิด" class="text-state-danger hover:text-state-danger-soft transition-colors">
                     <i class="fa-solid fa-xmark text-xl"></i>
                 </button>
             </div>
-            <form id="srm-form" class="space-y-5 text-sm" novalidate>
-                <div class="space-y-2">
-                    <span class="text-ink font-medium text-xs">รายการที่ขอ</span>
-                    <div id="srm-items" class="rounded-xl bg-field border border-line divide-y divide-divider"></div>
-                </div>
-                <fieldset class="space-y-2">
-                    <legend class="text-ink font-medium text-xs">รูปแบบการจัดการ <span class="text-state-danger">*</span></legend>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        <label class="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-field border border-line cursor-pointer text-ink">
-                            <input type="radio" name="srm-method" value="purchase" class="accent-primary"> สั่งสินค้าใหม่
-                        </label>
-                        <label class="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-field border border-line cursor-pointer text-ink">
-                            <input type="radio" name="srm-method" value="stock" class="accent-primary"> เบิกจากส่วนกลาง
-                        </label>
+            <form id="srm-form" class="flex flex-col flex-1 min-h-0 text-sm" novalidate>
+                <div tabindex="0" class="flex-1 overflow-y-auto px-8 py-6 space-y-6 custom-scrollbar">
+                    <div class="space-y-3">
+                        <div class="flex items-center gap-3">
+                            <span class="w-6 h-6 rounded-full bg-primary text-on-primary text-xs font-bold flex items-center justify-center shrink-0" aria-hidden="true">1</span>
+                            <h4 class="text-ink font-medium">ดูรายการที่ขอ <span class="font-normal text-body-muted text-xs">เทียบกับสต็อกที่สำนักงานใหญ่มี</span></h4>
+                        </div>
+                        <div id="srm-items" class="rounded-xl bg-field border border-line divide-y divide-divider overflow-hidden"></div>
+                        <div id="srm-ship-info" class="hidden rounded-xl bg-field border border-line px-4 py-3 text-xs"></div>
                     </div>
-                </fieldset>
-                <div class="space-y-2">
-                    <label for="srm-status" class="text-ink font-medium text-xs">สถานะ</label>
-                    <select id="srm-status"
-                        class="w-full px-4 py-2.5 rounded-xl bg-field border border-line text-ink focus:border-primary focus:outline-none text-sm">
-                        <option value="pending">รอตรวจสอบ</option>
-                        <option value="ordering" data-method="purchase">กำลังสั่งซื้อ</option>
-                        <option value="sent_to_tech" data-method="stock">ส่งงานให้ฝ่ายเทคนิคเตรียมของ</option>
-                        <option value="canceled">ยกเลิกคำขอ</option>
-                    </select>
-                </div>
-                <div id="srm-arrival-wrap" class="space-y-2">
-                    <label for="srm-arrival" class="text-ink font-medium text-xs">วันที่คาดว่าจะถึง</label>
-                    <input id="srm-arrival" type="date"
-                        class="w-full px-4 py-2.5 rounded-xl bg-field border border-line text-ink focus:border-primary focus:outline-none text-sm">
-                </div>
-                <div id="srm-tracking-wrap" class="space-y-2">
-                    <div class="flex items-center justify-between">
-                        <span class="text-ink font-medium text-xs">เลขพัสดุ</span>
-                        <button id="srm-add-tracking" type="button" class="px-3 py-1.5 bg-field border border-line rounded-xl text-xs text-ink hover:border-primary transition-colors">
-                            <i class="fa-solid fa-plus"></i> เพิ่มเลข
-                        </button>
+
+                    <div class="space-y-3">
+                        <div class="flex items-center gap-3">
+                            <span class="w-6 h-6 rounded-full bg-primary text-on-primary text-xs font-bold flex items-center justify-center shrink-0" aria-hidden="true">2</span>
+                            <h4 class="text-ink font-medium">เมื่อกดบันทึก ระบบจะทำอะไร</h4>
+                        </div>
+                        <p id="srm-next-hint" class="text-sm text-ink rounded-xl bg-primary/[0.08] px-4 py-3.5 leading-relaxed">ระบบจะส่งให้ฝ่ายเทคนิคเท่าที่ส่วนกลางมี</p>
                     </div>
-                    <div id="srm-tracking-list" class="space-y-2"></div>
                 </div>
-                <div class="flex items-center justify-center gap-4 pt-4 border-t border-hairline">
-                    <button id="srm-cancel" type="button" class="px-10 py-2.5 rounded-xl bg-chip text-ink text-[15px] font-bold hover:bg-skeleton transition-colors w-1/2">ยกเลิก</button>
-                    <button id="srm-submit" type="submit" class="px-12 py-2.5 rounded-xl bg-primary text-on-primary text-[15px] font-bold hover:bg-primary-pressed transition-colors w-1/2">บันทึก</button>
+
+                <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-3 px-8 py-4 border-t border-hairline bg-panel/20 shrink-0">
+                    <div class="flex items-center justify-end gap-3">
+                        <button id="srm-cancel-request" type="button" class="px-4 py-2.5 rounded-xl text-state-danger hover:bg-state-danger/10 font-medium transition-colors">ยกเลิกคำขอนี้</button>
+                        <button id="srm-cancel" type="button" class="px-6 py-2.5 rounded-xl bg-chip text-ink font-medium hover:bg-skeleton transition-colors">ปิด</button>
+                        <button id="srm-submit" type="submit" class="px-6 py-2.5 rounded-xl bg-primary text-on-primary font-bold hover:bg-primary-pressed transition-colors">บันทึก</button>
+                    </div>
                 </div>
             </form>
         </div>
     </div>
 </div>
 
-<!-- ===================== [C] รายการเตรียมส่ง ===================== -->
+<!-- ===================== [C] รายการเตรียมส่ง (ฝ่ายเทคนิค) ===================== -->
 <div id="view-stock-request-tech" class="hidden space-y-8 animate-fade-in">
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div class="flex items-center gap-4">
@@ -234,7 +260,10 @@
         </div>
     </div>
 
-    <div class="bg-panel/40 rounded-2xl shadow-lg overflow-hidden backdrop-blur-sm">
+    <!-- แท็บ: รอเตรียมส่ง / ประวัติการเตรียมส่ง (ส่งแล้ว) -->
+    <div id="srt-tabs" role="tablist" aria-label="มุมมองรายการเตรียมส่ง" class="flex flex-wrap gap-2"></div>
+
+    <div id="srt-pending-panel" class="bg-panel/40 rounded-2xl shadow-lg overflow-hidden backdrop-blur-sm">
         <div class="px-6 py-4">
             <div id="srt-result-count" class="text-xs text-ink font-medium"></div>
         </div>
@@ -254,42 +283,110 @@
         </div>
     </div>
 
-    <!-- โมดัลจัดส่ง -->
+    <div id="srt-history-panel" class="hidden bg-panel/40 rounded-2xl shadow-lg overflow-hidden backdrop-blur-sm">
+        <div class="p-6 pb-0">
+            <div class="relative group w-full sm:w-64 rounded-[0.5rem] overflow-hidden">
+                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <i class="fa-solid fa-search text-ink group-focus-within:text-primary transition-colors"></i>
+                </div>
+                <label for="srt-history-search" class="sr-only">ค้นหาประวัติการเตรียมส่ง</label>
+                <input id="srt-history-search" type="text" placeholder="ค้นหาเลขที่ สาขา หรือสินค้า..."
+                    class="bg-transparent text-sm pl-10 pr-4 py-2 w-full text-ink focus:outline-none focus:ring-1 focus:ring-primary transition-all placeholder-body-muted">
+            </div>
+        </div>
+        <div class="px-6 py-4">
+            <div id="srt-history-count" class="text-xs text-ink font-medium"></div>
+        </div>
+        <div class="overflow-x-auto" tabindex="0">
+            <table class="w-full text-left text-sm whitespace-nowrap border-collapse">
+                <thead class="bg-panel/40 text-ink">
+                    <tr>
+                        <th class="px-6 py-4 font-semibold text-[15px]">วันที่ส่ง / เลขที่คำขอ</th>
+                        <th class="px-6 py-4 font-semibold text-[15px]">สาขา / ผู้ขอ</th>
+                        <th class="px-6 py-4 font-semibold text-[15px]">รายการที่ส่ง</th>
+                        <th class="px-6 py-4 font-semibold text-[15px]">เลขพัสดุ / ใบโอน / รูป</th>
+                        <th class="px-6 py-4 font-semibold text-[15px]">ผู้ส่ง</th>
+                    </tr>
+                </thead>
+                <tbody id="srt-history-body" class="divide-y divide-divider"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- โมดัลจัดส่ง: แบ่งเป็น 4 ขั้น (จำนวน → เลขพัสดุ → รูป → วันที่ถึง) ปุ่มยืนยันติดขอบล่างเห็นตลอด -->
     <div id="srt-modal" class="fixed inset-0 z-50 hidden items-center justify-center backdrop-blur-sm opacity-0 pointer-events-none transition-opacity duration-300 p-4"
         role="dialog" aria-modal="true" aria-labelledby="srt-modal-title">
-        <div class="modal-content relative w-[95%] md:w-[650px] max-h-[90vh] overflow-y-auto p-8 bg-elevated rounded-2xl shadow-lg border border-line-strong" tabindex="0">
-            <div class="flex items-center justify-between mb-6 pb-2 border-b border-hairline">
-                <h3 id="srt-modal-title" class="text-lg text-ink flex items-center gap-2">
-                    <i class="fa-solid fa-paper-plane text-primary"></i> จัดส่งสินค้า
-                </h3>
+        <div class="modal-content relative w-[95%] md:w-[680px] max-h-[90vh] flex flex-col bg-elevated rounded-2xl shadow-lg border border-line-strong overflow-hidden">
+            <div class="flex items-start justify-between gap-4 px-8 py-5 border-b border-hairline bg-panel/40">
+                <div class="space-y-2 min-w-0">
+                    <div class="flex items-center gap-2 text-lg text-ink">
+                        <i class="fa-solid fa-truck text-primary" aria-hidden="true"></i>
+                        <h3 id="srt-modal-title" class="truncate">จัดส่งสินค้า</h3>
+                    </div>
+                    <div id="srt-meta" class="flex flex-wrap gap-2 text-xs"></div>
+                </div>
                 <button id="srt-modal-close" type="button" aria-label="ปิด" class="text-state-danger hover:text-state-danger-soft transition-colors">
                     <i class="fa-solid fa-xmark text-xl"></i>
                 </button>
             </div>
-            <form id="srt-form" class="space-y-5 text-sm" novalidate>
-                <div class="space-y-2">
-                    <span class="text-ink font-medium text-xs">จำนวนที่ส่งจริง / IMEI (เฉพาะเครื่อง บรรทัดละ 1 IMEI)</span>
-                    <div id="srt-items" class="space-y-3"></div>
-                </div>
-                <div class="space-y-2">
-                    <div class="flex items-center justify-between">
-                        <span class="text-ink font-medium text-xs">เลขพัสดุ <span class="text-state-danger">*</span></span>
-                        <button id="srt-add-tracking" type="button" class="px-3 py-1.5 bg-field border border-line rounded-xl text-xs text-ink hover:border-primary transition-colors">
-                            <i class="fa-solid fa-plus"></i> เพิ่มเลข
+
+            <form id="srt-form" class="flex-1 overflow-y-auto px-8 py-6 space-y-7 text-sm custom-scrollbar" tabindex="0" novalidate>
+                <section class="space-y-3" aria-labelledby="srt-h-qty">
+                    <div class="flex items-center gap-3">
+                        <span class="w-6 h-6 rounded-full bg-primary text-on-primary text-xs font-bold flex items-center justify-center" aria-hidden="true">1</span>
+                        <h4 id="srt-h-qty" class="text-ink font-medium">จำนวนที่ส่งจริง</h4>
+                    </div>
+                    <p class="text-xs text-body-muted pl-9">ระบบเลือกเครื่องจากสำนักงานใหญ่ให้เอง ปรับจำนวนได้ด้วยปุ่ม − / +</p>
+                    <div id="srt-items" class="space-y-3 pl-9"></div>
+                </section>
+
+                <section class="space-y-3" aria-labelledby="srt-h-track">
+                    <div class="flex items-center gap-3">
+                        <span class="w-6 h-6 rounded-full bg-primary text-on-primary text-xs font-bold flex items-center justify-center" aria-hidden="true">2</span>
+                        <h4 id="srt-h-track" class="text-ink font-medium">เลขพัสดุ <span class="text-state-danger">*</span></h4>
+                    </div>
+                    <div class="pl-9 space-y-2">
+                        <div id="srt-tracking-list" class="space-y-2"></div>
+                        <button id="srt-add-tracking" type="button"
+                            class="w-full py-2.5 rounded-xl border border-dashed border-line text-sm text-body-muted hover:text-ink hover:border-primary transition-colors">
+                            <i class="fa-solid fa-plus"></i> เพิ่มเลขพัสดุ
                         </button>
                     </div>
-                    <div id="srt-tracking-list" class="space-y-2"></div>
-                </div>
-                <div class="space-y-2">
-                    <label for="srt-arrival" class="text-ink font-medium text-xs">วันนัดส่ง</label>
-                    <input id="srt-arrival" type="date"
-                        class="w-full px-4 py-2.5 rounded-xl bg-field border border-line text-ink focus:border-primary focus:outline-none text-sm">
-                </div>
-                <div class="flex items-center justify-center gap-4 pt-4 border-t border-hairline">
-                    <button id="srt-cancel" type="button" class="px-10 py-2.5 rounded-xl bg-chip text-ink text-[15px] font-bold hover:bg-skeleton transition-colors w-1/2">ยกเลิก</button>
-                    <button id="srt-submit" type="submit" class="px-12 py-2.5 rounded-xl bg-primary text-on-primary text-[15px] font-bold hover:bg-primary-pressed transition-colors w-1/2">ยืนยันการจัดส่ง</button>
-                </div>
+                </section>
+
+                <section class="space-y-3" aria-labelledby="srt-h-img">
+                    <div class="flex items-center gap-3">
+                        <span class="w-6 h-6 rounded-full bg-primary text-on-primary text-xs font-bold flex items-center justify-center" aria-hidden="true">3</span>
+                        <h4 id="srt-h-img" class="text-ink font-medium">รูปหลักฐานการจัดส่ง <span class="font-normal text-body-muted">(ไม่บังคับ แนบได้หลายรูป)</span></h4>
+                    </div>
+                    <div class="pl-9 flex flex-wrap gap-3">
+                        <div id="srt-image-list" class="contents"></div>
+                        <label for="srt-images" class="w-20 h-20 rounded-xl border border-dashed border-line text-body-muted hover:text-ink hover:border-primary transition-colors cursor-pointer flex flex-col items-center justify-center gap-1 text-xs">
+                            <i class="fa-solid fa-camera text-lg" aria-hidden="true"></i> เพิ่มรูป
+                        </label>
+                        <input id="srt-images" type="file" accept="image/*" multiple class="sr-only">
+                    </div>
+                </section>
+
+                <section class="space-y-3" aria-labelledby="srt-h-date">
+                    <div class="flex items-center gap-3">
+                        <span class="w-6 h-6 rounded-full bg-primary text-on-primary text-xs font-bold flex items-center justify-center" aria-hidden="true">4</span>
+                        <h4 id="srt-h-date" class="text-ink font-medium">วันที่คาดว่าของจะถึงสาขา <span class="font-normal text-body-muted">(ไม่บังคับ)</span></h4>
+                    </div>
+                    <div class="pl-9">
+                        <input id="srt-arrival" type="date" aria-labelledby="srt-h-date"
+                            class="w-full sm:w-64 px-4 py-2.5 rounded-xl bg-field border border-line text-ink focus:border-primary focus:outline-none text-sm">
+                    </div>
+                </section>
             </form>
+
+            <div class="flex items-center justify-between gap-4 px-8 py-4 border-t border-hairline bg-panel/20">
+                <p id="srt-summary" class="text-sm text-body-muted" aria-live="polite"></p>
+                <div class="flex gap-3">
+                    <button id="srt-cancel" type="button" class="px-6 py-2.5 rounded-xl bg-chip text-ink font-medium hover:bg-skeleton transition-colors">ยกเลิก</button>
+                    <button id="srt-submit" type="submit" form="srt-form" class="px-8 py-2.5 rounded-xl bg-primary text-on-primary font-bold hover:bg-primary-pressed transition-colors">ยืนยันการจัดส่ง</button>
+                </div>
+            </div>
         </div>
     </div>
 </div>

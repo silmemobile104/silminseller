@@ -33,24 +33,28 @@
                 <div class="min-w-0">
                     <!-- สแกน — แสดงเฉพาะรอบที่ "กำลังตรวจนับ" (JS สลับ hidden ที่ id นี้) -->
                     <div id="audit-scan-area" class="space-y-4">
-                        <div>
+                        <!-- ขั้นตอนอยู่ตรงจุดที่ทำงาน: ขั้น 1 ตรงนี้ / ขั้น 2-3 อยู่ในหน้าต่างยืนยันที่เด้งขึ้นหลังสแกน (index.html #modal-audit-verify) -->
+                        <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
+                            <span class="w-7 h-7 rounded-full bg-primary text-on-primary text-sm font-bold flex items-center justify-center shrink-0" aria-hidden="true">1</span>
                             <label for="audit-imei-input" class="text-lg text-ink">สแกน IMEI</label>
+                            <span class="text-xs text-body-muted">ยิงบาร์โค้ดที่กล่องหรือตัวเครื่อง แล้วกด Enter</span>
                         </div>
                         <div class="flex flex-col sm:flex-row gap-2.5">
                             <div class="relative group flex-1 min-w-0">
                                 <i class="fa-solid fa-barcode absolute left-4 top-1/2 -translate-y-1/2 text-body-muted group-focus-within:text-accent-ink transition-colors pointer-events-none"></i>
                                 <input id="audit-imei-input" type="text" inputmode="numeric" autocomplete="off"
                                     placeholder="สแกนหรือพิมพ์ IMEI แล้วกด Enter"
-                                    class="elev-field w-full h-12 pl-11 pr-20 rounded-xl bg-field text-ink font-mono text-base placeholder:font-sans placeholder:text-ink-muted-48 focus:outline-none focus:ring-1 focus:ring-accent-ink transition-all">
+                                    class="elev-field w-full h-14 pl-11 pr-20 rounded-xl bg-field text-ink font-mono text-lg placeholder:font-sans placeholder:text-base placeholder:text-ink-muted-48 focus:outline-none focus:ring-1 focus:ring-accent-ink transition-all">
                                 <kbd class="absolute right-3 top-1/2 -translate-y-1/2 px-2 py-0.5 rounded-xs bg-surface-chip text-[11px] text-body-muted font-sans pointer-events-none">Enter</kbd>
                             </div>
                             <button id="btn-audit-imei-verify" type="button"
-                                class="elev-field h-12 px-4 py-2 bg-field text-ink hover:bg-surface-chip font-medium rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2">
+                                class="elev-field h-14 px-6 py-2 bg-field text-ink hover:bg-surface-chip font-medium rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2">
                                 <i class="fa-solid fa-check text-accent-ink"></i>
                                 <p>ตรวจนับ</p>
                             </button>
                         </div>
-                        <!-- ผลการสแกนล่าสุด 3 รายการ / ขั้นตอนตอนยังไม่มีการสแกน — เขียนจาก renderRecentScans() -->
+                        <p class="text-xs text-body-muted">หลังสแกน ระบบจะเปิดหน้าต่างให้ทำต่ออีก 2 ขั้น คือ <span class="text-ink font-medium">2 ถ่ายรูปกล่อง</span> และ <span class="text-ink font-medium">3 กดยืนยัน</span></p>
+                        <!-- ผลการสแกนล่าสุด 3 รายการ — เขียนจาก renderRecentScans() -->
                         <div id="audit-recent-scans"></div>
                     </div>
 

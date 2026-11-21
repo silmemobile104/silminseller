@@ -9,7 +9,7 @@
 //  - สูตรไฟแนนซ์ใช้ฟังก์ชันของ routes/api.js ตัวเดียวกับหน้าตรวจสอบออเดอร์ (ฝ่ายบัญชียืนยันสูตรแล้ว ห้ามเขียนซ้ำ) — require แบบ lazy กัน circular
 const mongoose = require('mongoose');
 const {
-    Transaction, FinanceReceivable, Product, Deposit, Claim, StockIssue, PurchaseOrder, ImportNotification,
+    Transaction, FinanceReceivable, Product, Deposit, Claim, StockIssue, StockAdjustment, PurchaseOrder, ImportNotification,
     Expense, CashMovement, DisbursementVoucher, OtherEntry, Movement, AuditLog, Employee,
     AccountItemEvent, AccountItemLink, AccountChart
 } = require('../models');
@@ -241,6 +241,24 @@ function buildStockIssueEvents(s, ctx) {
     return { events: finish(ev, date, s.issue_no), branch_id: s.branch_id || null, ref: s.issue_no || '' };
 }
 
+// ใบปรับสต็อกจากหน้าจัดการสต็อก (POST/PUT/DELETE /products)
+// มูลค่าที่เปลี่ยน = จำนวนหลัง × ทุนหลัง − จำนวนก่อน × ทุนก่อน แยกเป็นสองส่วนที่รวมกันได้พอดี:
+//   ปรับราคาทุน = จำนวนก่อน × (ทุนหลัง − ทุนก่อน) · ปรับจำนวน = (จำนวนหลัง − จำนวนก่อน) × ทุนหลัง
+function buildStockAdjustmentEvents(a) {
+    const date = a.createdAt || new Date();
+    const qtyBefore = num(a.qty_before);
+    const qtyDelta = num(a.qty_after) - qtyBefore;
+    const costAfter = num(a.cost_after);
+    const revalue = round2(qtyBefore * (costAfter - num(a.cost_before)));
+    const qtyValue = round2(qtyDelta * costAfter);
+    const ev = [];
+    if (revalue > 0) ev.push({ item_key: 'stock_revalue_up', amount: revalue, date });
+    if (revalue < 0) ev.push({ item_key: 'stock_revalue_down', amount: -revalue, date });
+    if (qtyValue > 0) ev.push({ item_key: a.kind === 'receive' ? 'stock_direct_receive' : 'stock_adjust_in', amount: qtyValue, date });
+    if (qtyValue < 0) ev.push({ item_key: 'stock_adjust_out', amount: -qtyValue, date });
+    return { events: finish(ev, date, a.adjustment_no), branch_id: a.branch_id || null, ref: a.adjustment_no || '' };
+}
+
 // ใบสั่งซื้อ — ต้นทุนรับเข้าคิดจากจำนวนที่นำเข้าสต็อกแล้ว · ค้างจ่ายใช้นิยามเดียวกับ GET /accounting/ap-summary (ต้นทุนตามจำนวนสั่ง − จ่ายแล้ว − ส่วนลด)
 function buildPurchaseOrderEvents(po, ctx) {
     const date = po.createdAt || new Date();
@@ -380,6 +398,7 @@ const SOURCES = {
     deposit: { model: Deposit, build: buildDepositEvents },
     claim: { model: Claim, build: buildClaimEvents },
     stock_issue: { model: StockIssue, ctx: loadStockIssueContext, build: buildStockIssueEvents },
+    stock_adjustment: { model: StockAdjustment, build: buildStockAdjustmentEvents },
     purchase_order: { model: PurchaseOrder, ctx: loadPurchaseOrderContext, build: buildPurchaseOrderEvents },
     import_notification: { model: ImportNotification, ctx: loadImportNotificationContext, build: buildImportNotificationEvents },
     expense: { model: Expense, build: buildExpenseEvents },
@@ -736,6 +755,11 @@ async function loadProductNames(events) {
         const deps = await Deposit.find({ _id: { $in: depositIds } }).select('product_name').lean();
         deps.forEach(d => names.set(String(d._id), d.product_name || ''));
     }
+    const adjustmentIds = idsOf('stock_adjustment');
+    if (adjustmentIds.length) {
+        const adjs = await StockAdjustment.find({ _id: { $in: adjustmentIds } }).select('product_name').lean();
+        adjs.forEach(a => names.set(String(a._id), a.product_name || ''));
+    }
     return names;
 }
 
@@ -916,7 +940,7 @@ module.exports = {
     // ใช้ในหน้าประวัติการมัดจำ (routes/api.js GET /deposits/history) ให้ตัวเลขตรงกับที่ลงบัญชี
     analyzeBill, loadTransactionContext,
     // ส่งออกตัวสร้างยอดไว้ทดสอบ (ฟังก์ชันล้วน)
-    buildTransactionEvents, buildDepositEvents, buildClaimEvents, buildStockIssueEvents, buildPurchaseOrderEvents,
+    buildTransactionEvents, buildDepositEvents, buildClaimEvents, buildStockIssueEvents, buildStockAdjustmentEvents, buildPurchaseOrderEvents,
     buildImportNotificationEvents, buildExpenseEvents, buildCashMovementEvents, buildVoucherEvents, buildOtherEntryEvents,
     SOURCE_TYPES: Object.keys(SOURCES)
 };

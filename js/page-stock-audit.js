@@ -729,18 +729,9 @@
     function renderRecentScans(items) {
         const box = document.getElementById('audit-recent-scans');
         if (!box) return;
-        // ยังไม่มีการสแกน — ใช้พื้นที่อธิบายขั้นตอนแทน (ขั้นถ่ายรูปกล่องเป็นขั้นที่คนใหม่มักไม่รู้ว่าต้องทำ)
+        // ยังไม่มีการสแกน — ไม่ต้องแสดงอะไร (ขั้นตอนการใช้งาน 3 ขั้นย้ายไปอยู่ในหน้า views/stock-audit.html แสดงตลอดแล้ว)
         if (!items.length) {
-            const step = (n, title, desc) => `
-                <li class="flex items-start gap-3">
-                    <span class="w-6 h-6 rounded-full bg-surface-chip text-body-muted text-xs font-semibold flex items-center justify-center shrink-0">${n}</span>
-                    <div><p class="text-[13px] text-ink">${title}</p><p class="text-xs text-body-muted mt-0.5">${desc}</p></div>
-                </li>`;
-            box.innerHTML = '<ol class="grid grid-cols-1 md:grid-cols-3 gap-4 pt-1">'
-                + step(1, 'ยิงบาร์โค้ด IMEI', 'ที่กล่องหรือตัวเครื่อง แล้วกด Enter')
-                + step(2, 'ถ่ายรูปกล่อง', 'บังคับทุกเครื่อง ใช้เป็นหลักฐานตอนตรวจสอบ')
-                + step(3, 'กดยืนยัน', 'เครื่องจะย้ายไปอยู่ "ตรงกับระบบ" หรือ "เกินมา"')
-                + '</ol>';
+            box.innerHTML = '';
             return;
         }
         const expectedByImei = new Map(_expectedImeiData.map(e => [e.imei, e]));

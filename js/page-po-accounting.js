@@ -738,7 +738,10 @@
             shown = q ? all.filter(o => o.textContent.toLowerCase().includes(q)) : all;
             list.innerHTML = shown.length
                 ? shown.map((o, i) => `<li role="option" id="${uid}-o${i}" aria-selected="false" data-i="${i}"
-                        class="px-3 py-2 rounded-lg text-sm text-ink hover:bg-field transition-colors cursor-pointer${o.value === select.value ? ' text-accent-ink' : ''}">${poEsc(o.textContent)}</li>`).join('')
+                        class="px-3 py-2 rounded-lg text-sm text-ink hover:bg-field transition-colors cursor-pointer flex items-center justify-between gap-2${o.value === select.value ? ' text-accent-ink' : ''}"><span class="truncate">${poEsc(o.textContent)}</span>${
+                            // ตัวเลขข้างชื่อ (เช่น จำนวนคำขอเบิกที่ยังต้องสั่งซื้อของสาขา) — กดตัวเลขเพื่อดูรายละเอียด ไม่ใช่แค่เลือกสาขา
+                            o.dataset.badge ? `<button type="button" data-badge-open tabindex="-1" aria-label="ดูคำขอเบิกที่ต้องสั่งซื้อ ${poEsc(o.textContent)} ${poEsc(o.dataset.badge)} คำขอ"
+                                class="shrink-0 min-w-[1.5rem] px-2 h-6 rounded-full bg-primary text-on-primary text-xs font-bold hover:bg-primary-pressed transition-colors">${poEsc(o.dataset.badge)}</button>` : ''}</li>`).join('')
                 : '<li class="px-3 py-2 text-xs text-body-muted">ไม่พบรายการที่ตรงกับที่ค้นหา</li>';
             list.classList.remove('hidden');
             input.setAttribute('aria-expanded', 'true');
@@ -758,7 +761,10 @@
             if (!li) return;
             e.preventDefault();
             const opt = shown[Number(li.dataset.i)];
-            if (opt) pick(opt);
+            if (!opt) return;
+            const openedBadge = !!e.target.closest('[data-badge-open]');
+            pick(opt);
+            if (openedBadge) select.dispatchEvent(new CustomEvent('po-badge-open', { detail: { value: opt.value } }));
         });
 
         input.addEventListener('focus', () => { input.select(); open(''); });
@@ -808,6 +814,91 @@
 
     // ฟอร์มสร้าง/แก้ไขใบสั่งซื้อ: ผู้จัดจำหน่าย + สาขาปลายทาง (ชื่อสินค้าในแต่ละแถวเรียกตอนสร้างแถว)
     ['po-supplier', 'po-branch'].forEach(id => enhancePoSelect(document.getElementById(id)));
+
+    // ==========================================
+    // คำขอเบิกของสาขาที่ฝ่ายจัดซื้อยังต้องสั่งซื้อ (แสดงเป็นตัวเลขข้างชื่อสาขา + ป๊อปอัปตาราง)
+    // ==========================================
+    // ตัวเลข = จำนวนคำขอ ไม่ใช่จำนวนเครื่อง — ข้อมูลมาจาก GET /stock-requests/pending-purchase
+    // สร้างใบสั่งซื้อสำเร็จแล้วเซิร์ฟเวอร์หักยอดให้เอง ฝั่งนี้แค่โหลดใหม่
+    let poPendingByBranch = new Map(); // branchId -> { count, requests[] }
+
+    const poBranchName = (id) => {
+        const opt = [...(document.getElementById('po-branch')?.options || [])].find(o => o.value === String(id));
+        return opt ? opt.textContent : '';
+    };
+
+    const renderPoBranchPending = () => {
+        const sel = document.getElementById('po-branch');
+        const box = document.getElementById('po-branch-pending');
+        if (!sel) return;
+        [...sel.options].forEach(o => {
+            const n = poPendingByBranch.get(o.value)?.count || 0;
+            if (n > 0) o.dataset.badge = String(n); else delete o.dataset.badge;
+        });
+        if (!box) return;
+        const n = poPendingByBranch.get(sel.value)?.count || 0;
+        if (!sel.value || n === 0) {
+            box.classList.add('hidden');
+            box.innerHTML = '';
+            return;
+        }
+        box.classList.remove('hidden');
+        box.innerHTML = `<button type="button" id="po-branch-pending-btn"
+                class="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-field border border-line text-xs text-ink hover:border-primary transition-colors">
+                <span class="min-w-[1.5rem] px-2 h-6 inline-flex items-center justify-center rounded-full bg-primary text-on-primary font-bold">${n}</span>
+                คำขอเบิกที่ยังต้องสั่งซื้อ — กดดูรายละเอียด
+            </button>`;
+    };
+
+    const loadPoPending = async () => {
+        try {
+            const res = await authFetch(`${API_BASE_URL}/stock-requests/pending-purchase`);
+            const json = await res.json();
+            if (!json.success) return;
+            poPendingByBranch = new Map((json.data || []).map(g => [String(g.branch_id), g]));
+            renderPoBranchPending();
+        } catch (e) {
+            console.error('[PO] โหลดคำขอเบิกที่ต้องสั่งซื้อไม่สำเร็จ:', e);
+        }
+    };
+
+    const openPoPending = (branchId) => {
+        const g = poPendingByBranch.get(String(branchId));
+        const modal = document.getElementById('po-pending-modal');
+        if (!g || !modal) return;
+        document.getElementById('po-pending-sub').textContent = `สาขา ${poBranchName(branchId) || '-'} · ${g.count} คำขอ`;
+        const kindLabel = (k) => k === 'accessory' ? 'อุปกรณ์เสริม' : 'เครื่อง';
+        document.getElementById('po-pending-body').innerHTML = g.requests.map(r => r.items.map((it, idx) => `
+            <tr>
+                <td class="px-3 py-3 align-top">${idx === 0
+                    ? `<span class="font-mono font-semibold text-accent-ink">${poEsc(r.request_no)}</span><p class="text-xs text-body-muted mt-1">${poEsc(new Date(r.createdAt).toLocaleDateString('th-TH', { day: '2-digit', month: 'short', year: 'numeric' }))}</p>`
+                    : ''}</td>
+                <td class="px-3 py-3 text-ink">${poEsc(it.product_name)}${(it.capacities || []).length ? ` ${poEsc(it.capacities.join(' / '))}` : ''}</td>
+                <td class="px-3 py-3 text-ink">${kindLabel(it.kind)}</td>
+                <td class="px-3 py-3 text-right font-semibold text-state-pending">${poEsc(it.remaining)}</td>
+            </tr>`).join('')).join('');
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        modal.querySelector('.modal-content')?.focus();
+    };
+    const closePoPending = () => {
+        const modal = document.getElementById('po-pending-modal');
+        if (!modal) return;
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+    };
+
+    (() => {
+        const sel = document.getElementById('po-branch');
+        if (!sel) return;
+        sel.addEventListener('change', renderPoBranchPending);
+        sel.addEventListener('po-badge-open', (e) => openPoPending(e.detail.value));
+        document.getElementById('po-branch-pending')?.addEventListener('click', (e) => {
+            if (e.target.closest('#po-branch-pending-btn')) openPoPending(sel.value);
+        });
+        ['po-pending-close', 'po-pending-close-2'].forEach(id => document.getElementById(id)?.addEventListener('click', closePoPending));
+        document.getElementById('po-pending-modal')?.addEventListener('click', (e) => { if (e.target.id === 'po-pending-modal') closePoPending(); });
+    })();
 
     // หมวดที่เป็นของฟอร์มอุปกรณ์เสริม — เซิร์ฟเวอร์ใช้ชื่อนี้หา ProductType ตอนนำเข้าสต็อก (routes/api.js) จึงห้ามเปลี่ยนชื่อ/ลบ
     const PO_ACCESSORY_TYPE_NAME = 'อุปกรณ์เสริม';
@@ -1312,7 +1403,9 @@
                     body: JSON.stringify({
                         supplier_name, branch_id, items, claim_ids,
                         // ว่าง = ไม่กำหนดวันจ่าย — ส่งไปเสมอ เพื่อให้ตอนแก้ไขลบวันที่ทิ้งได้ด้วย
-                        payment_due_date: document.getElementById('po-payment-due-date')?.value || ''
+                        payment_due_date: document.getElementById('po-payment-due-date')?.value || '',
+                        // วันที่คาดว่าจะได้รับ — สาขาที่ขอเบิกจะเห็นว่ากำลังสั่งซื้อและคาดว่าจะได้รับวันไหน
+                        expected_arrival: document.getElementById('po-expected-arrival')?.value || ''
                     })
                 });
                 const json = await res.json();
@@ -1332,6 +1425,7 @@
                     }
 
                     stopEditingPO();
+                    loadPoPending(); // เซิร์ฟเวอร์หักยอดคำขอเบิกแล้ว — ตัวเลขข้างชื่อสาขาต้องลดตาม
                     const historyLoaded = loadPOHistory(); // Refresh history cache
                     switchPoTab('history');
                     showPoPage('history'); // สร้างจากหน้าแดชบอร์ดก็ต้องเห็นใบที่เพิ่งบันทึกในประวัติ
@@ -1417,6 +1511,8 @@
         // เซิร์ฟเวอร์เก็บกำหนดจ่ายเป็นเที่ยงคืน UTC จึงตัด 10 ตัวแรกของ ISO ได้วันที่ตรงตามที่กรอกไว้
         const dueEl = document.getElementById('po-payment-due-date');
         if (dueEl) dueEl.value = po.payment_due_date ? String(po.payment_due_date).slice(0, 10) : '';
+        const arrivalEl = document.getElementById('po-expected-arrival');
+        if (arrivalEl) arrivalEl.value = po.expected_arrival ? String(po.expected_arrival).slice(0, 10) : '';
 
         // Clear items container
         const container = document.getElementById('po-items-container');
@@ -1495,6 +1591,7 @@
         if (cancelEditBtn) cancelEditBtn.classList.add('hidden');
 
         document.getElementById('form-create-po').reset();
+        renderPoBranchPending(); // reset() ไม่ยิง change — เก็บป้ายคำขอของสาขาเดิมออก
         document.getElementById('po-items-container').innerHTML = '';
         refreshPoClaimDiscounts(''); // form.reset() ไม่ยิง change — ล้างส่วนลดเคลมที่กดใช้ค้างไว้เอง
         syncPoItemsEmptyState();
@@ -1525,6 +1622,7 @@
 
             contentCreate.classList.remove('opacity-0', 'pointer-events-none');
             contentHistory.classList.add('hidden');
+            loadPoPending(); // เปิดฟอร์มทุกครั้งโหลดตัวเลขใหม่ ให้ตรงกับคำขอล่าสุด
 
             btnCreate.className = 'px-5 py-2.5 rounded-lg text-sm font-semibold transition-all duration-200 bg-primary text-on-primary';
             btnHistory.className = 'px-5 py-2.5 rounded-lg text-sm font-semibold transition-all duration-200 text-body-muted hover:text-ink hover:bg-surface-chip/50';
@@ -2439,6 +2537,7 @@
                     setSelectOptions(poBranchEl, json.data.map(b => ({ value: String(b._id), label: b.name })), '-- เลือกสาขา --');
                     poAllBranchNames = json.data.map(b => b.name).filter(Boolean);
                     populatePoDashFilters();
+                    renderPoBranchPending(); // option ถูกสร้างใหม่ ป้ายจำนวนคำขอหายไป — ใส่คืน
                 }
             } catch (e) {
                 console.error('Error loading branches in PO initialization:', e);
@@ -2496,7 +2595,11 @@
     };
 
     // State variables for tabbed PO receiving view
-    let currentReceiveTab = 'ของถึงสาขาแล้ว'; // ค่าเริ่มต้น: แสดงเฉพาะใบที่ของถึงสาขาแล้ว (รอตรวจรับ)
+    // ค่าเริ่มต้น = ขั้น 1 "เลือกใบที่ของถึงสาขาแล้ว" (กด เริ่มตรวจรับ เพื่อสแกน IMEI และกำหนดราคาขาย)
+    // ใบที่สแกนครบแต่ค้างยังไม่นำเข้า (ระบบเดิม) อยู่ที่ชิป "ค้างนำเข้า" พร้อมปุ่มนำเข้าสต็อก
+    // 'รอดำเนินการ' = รวมสองสถานะนี้ ใช้นับป้ายบนแท็บเท่านั้น
+    let currentReceiveTab = 'ของถึงสาขาแล้ว';
+    const RC_PENDING_STATUSES = ['ของถึงสาขาแล้ว', 'กำลังตรวจรับ'];
     let receiveSearchQuery = '';
     let cachedPOsData = [];
 
@@ -2568,6 +2671,66 @@
 
         loadPOs();
     };
+
+    // ===== ชิปสถานะบนการ์ดรายการ "ตรวจสอบนำเข้าสินค้า" =====
+    // สร้างจาก <select id="receive-filter-status"> ที่ซ่อนไว้: กดชิป = ตั้งค่า select แล้วยิง change
+    // (ใช้ตรรกะกรองเดิมทั้งหมด) ตัวเลขอ่านจากป้ายของ option ที่ loadPOs เขียนไว้ ไม่ยิง API เพิ่ม
+    (() => {
+        const box = document.getElementById('receive-status-chips');
+        const statusSel = document.getElementById('receive-filter-status');
+        if (!box || !statusSel) return;
+
+        // ลำดับชิป: งานที่ต้องทำก่อน (ของถึงสาขา -> ค้างนำเข้า) แล้วค่อยเป็นสถานะอื่น
+        const CHIPS = [
+            { value: 'ของถึงสาขาแล้ว', label: 'ของถึงสาขาแล้ว' },
+            { value: 'นำเข้าสำเร็จ', label: 'นำเข้าสำเร็จ' },
+            { value: 'ยกเลิก', label: 'ยกเลิก' },
+            { value: 'all', label: 'ทั้งหมด' },
+        ];
+        const TITLES = {
+            'ของถึงสาขาแล้ว': 'เลือกใบที่ของถึงสาขาแล้ว',
+            'กำลังตรวจรับ': 'ใบที่ค้างรอนำเข้าสต็อก',
+        };
+        const CHIP_ON = 'bg-field text-accent-ink ring-1 ring-accent-ink';
+        const CHIP_OFF = 'text-body-muted hover:text-ink hover:bg-surface-chip';
+
+        const countOf = (value) => {
+            const opt = [...statusSel.options].find(o => o.value === value);
+            const m = opt && opt.textContent.match(/\((\d+)\)\s*$/);
+            return m ? m[1] : '0';
+        };
+
+        const sync = () => {
+            const title = document.getElementById('approve-list-title');
+            if (title) title.textContent = TITLES[statusSel.value] || 'ใบสั่งซื้อทั้งหมด';
+            const pill = document.getElementById('approve-list-step-pill');
+            if (pill) {
+                const isStep1 = statusSel.value === 'ของถึงสาขาแล้ว';
+                pill.style.display = isStep1 ? 'flex' : 'none';
+                pill.textContent = isStep1 ? '1' : '';
+            }
+            box.innerHTML = CHIPS.map(c => {
+                const on = statusSel.value === c.value;
+                return `<button type="button" data-chip="${c.value}" aria-pressed="${on}"
+                    class="h-9 pl-3.5 pr-2.5 rounded-xl text-sm font-medium transition-colors inline-flex items-center gap-2 cursor-pointer ${on ? CHIP_ON : CHIP_OFF}">
+                    ${c.label}
+                    <span class="min-w-6 px-1.5 py-0.5 rounded-full bg-surface-chip text-[11px] leading-none text-center font-semibold ${on ? 'text-accent-ink' : 'text-body-muted'}">${countOf(c.value)}</span>
+                </button>`;
+            }).join('');
+
+        };
+
+        box.addEventListener('click', (e) => {
+            const btn = e.target.closest('[data-chip]');
+            if (!btn) return;
+            statusSel.value = btn.dataset.chip;
+            statusSel.dispatchEvent(new Event('change'));
+        });
+
+        new MutationObserver(sync).observe(statusSel, { childList: true, subtree: true, characterData: true });
+        statusSel.addEventListener('change', sync);
+        sync();
+    })();
 
     if (document.getElementById('btn-refresh-po-receive')) {
         document.getElementById('btn-refresh-po-receive').addEventListener('click', () => loadPOs());
@@ -3993,9 +4156,9 @@
                 const hex = window.resolveProductColorHex ? window.resolveProductColorHex(name, { name }) : '#6b7280';
                 return `<span class="inline-block w-5 h-5 rounded-full border border-line" style="background-color:${hex}" title="${vEsc(name)}"></span><span class="sr-only">${vEsc(name)}</span>`;
             };
-            const thCls = 'px-5 py-3 font-semibold text-white text-[15px]';
+            const thCls = 'px-5 py-3 font-semibold text-white text-sm';
             const tdCls = 'px-5 py-4 align-top text-sm text-white';
-            const sectionTitle = (t, n) => `<h4 class="text-white font-semibold text-base mb-3">${t} <span class="text-white/70 font-normal text-xs">(${n})</span></h4>`;
+            const sectionTitle = (t, n) => `<h4 class="text-white font-semibold text-base mb-3 flex items-center gap-2"><i class="fa-solid fa-box text-accent-ink text-sm"></i> ${t} <span class="px-2 py-0.5 rounded-full bg-chip text-white/70 font-normal text-xs">${n}</span></h4>`;
 
             let html = '';
             if (devices.length) {
@@ -4037,6 +4200,11 @@
                             <th class="${thCls} text-center">ตรวจรับ</th><th class="${thCls} text-right">ต้นทุนสุทธิ/ชิ้น</th><th class="${thCls} text-right rounded-r-lg">ต้นทุนรวม</th>
                         </tr></thead><tbody>${rows}</tbody></table></div></section>`;
             }
+            // สรุปต้นทุนรวมทั้งใบ ท้ายรายการ
+            html += `<div class="flex items-baseline justify-end gap-3 px-5 pt-1">
+                <span class="text-sm text-white/70">ต้นทุนรวมทั้งใบ</span>
+                <span class="text-xl font-bold font-mono text-white">${fmtCost(totalCost)}</span>
+            </div>`;
             itemsContainer.innerHTML = html;
         }
 
@@ -4302,7 +4470,7 @@
         const numCls = po.status === 'กำลังตรวจรับ' ? 'text-accent-ink' : (d.pct >= 100 ? 'text-ink' : 'text-body-muted');
         return `<p><span class="font-semibold ${numCls}">${d.totalReceived}</span>
                     <span class="text-xs text-body-muted">/ ${d.totalOrdered} ${d.unit}</span></p>
-                <div class="mt-2 h-1 ${barW} rounded-full bg-surface-chip overflow-hidden">
+                <div class="mt-2 h-1.5 ${barW} rounded-full bg-surface-chip overflow-hidden">
                     <div class="h-full ${d.barColor} rounded-full" style="width:${d.pct}%"></div>
                 </div>`;
     };
@@ -4312,16 +4480,29 @@
     //   รอจัดส่ง -> "แจ้งของถึงสาขา" / ที่เหลือ -> "ดูรายละเอียด"
     //   ปุ่มหลักเป็น button-secondary-pill (ขอบเหลือง 40% ตัวอักษรเหลือง — DESIGN.md ข้อ 6) ไม่ใช่เหลืองทึบ
     //   ตารางหลายแถวที่มีปุ่มเหลืองทึบเรียงกันจะดังเกินไป — "หนึ่งไทล์ ปุ่มทึบได้ปุ่มเดียว"
-    const RC_BTN_PRIMARY = 'px-4 py-1.5 border border-primary-muted hover:border-accent-ink hover:bg-primary/10 active:scale-95 text-accent-ink font-medium rounded-pill text-[13px] transition-all inline-flex items-center gap-1.5 cursor-pointer';
-    const RC_BTN_GHOST = 'px-4 py-1.5 text-body-muted hover:text-ink hover:bg-surface-chip font-medium rounded-pill text-[13px] transition-colors inline-flex items-center gap-1.5 cursor-pointer';
+    const RC_BTN_PRIMARY = 'px-5 py-2 bg-primary hover:bg-primary-pressed active:scale-95 text-on-primary font-bold rounded-pill text-sm transition-all inline-flex items-center gap-2 cursor-pointer';
+    const RC_BTN_GHOST = 'px-5 py-2 bg-chip hover:bg-skeleton text-ink font-medium rounded-pill text-sm transition-colors inline-flex items-center gap-2 cursor-pointer';
+    // ตรวจรับ (สแกน) ครบทุกรายการแล้ว = จำนวนที่รับของทุกรายการถึงยอดสั่ง — ใช้ตัดสินว่ายังให้ "ตรวจรับต่อ" ได้ไหม
+    // ใบที่ครบแล้วงานที่เหลือคืออนุมัตินำเข้าคลัง (ขั้น 3) ไม่ใช่การสแกนเพิ่ม
+    const rcIsFullyScanned = (po) => {
+        const items = po.items || [];
+        return items.length > 0
+            && items.reduce((s, i) => s + (i.ordered_qty || 0), 0) > 0
+            && items.every(i => (i.received_qty || 0) >= (i.ordered_qty || 0));
+    };
     const rcActionHtml = (po) => {
         const id = rcEsc(po._id);
         if (po.status === 'รอจัดส่ง')
             return `<button type="button" class="btn-action-arrival ${RC_BTN_GHOST}" data-id="${id}">แจ้งของถึงสาขา</button>`;
         if (po.status === 'ของถึงสาขาแล้ว')
-            return `<button type="button" class="btn-open-receive ${RC_BTN_PRIMARY}" data-id="${id}">เริ่มตรวจรับ</button>`;
-        if (po.status === 'กำลังตรวจรับ')
-            return `<button type="button" class="btn-open-receive ${RC_BTN_PRIMARY}" data-id="${id}">ตรวจรับต่อ</button>`;
+            return `<button type="button" class="btn-open-receive ${RC_BTN_PRIMARY}" data-id="${id}"><i class="fa-solid fa-barcode" aria-hidden="true"></i> เริ่มตรวจรับ</button>`;
+        if (po.status === 'กำลังตรวจรับ') {
+            // ใบค้างที่สแกนครบแล้วแต่ยังไม่นำเข้าสต็อก (ค้างจากระบบเดิม): กดนำเข้าได้จากแถวนี้เลย
+            if (rcIsFullyScanned(po))
+                return `<button type="button" class="btn-finalize-import ${RC_BTN_PRIMARY}" data-id="${id}"
+                    aria-label="นำเข้าสต็อกใบสั่งซื้อ ${rcEsc(po.po_number)}"><i class="fa-solid fa-clipboard-check" aria-hidden="true"></i> นำเข้าสต็อก</button>`;
+            return `<button type="button" class="btn-open-receive ${RC_BTN_PRIMARY}" data-id="${id}"><i class="fa-solid fa-barcode" aria-hidden="true"></i> ตรวจรับต่อ</button>`;
+        }
         return `<button type="button" class="btn-view-po ${RC_BTN_GHOST}" data-id="${id}"
                 aria-label="ดูรายละเอียดใบสั่งซื้อ ${rcEsc(po.po_number)}">ดูรายละเอียด</button>`;
     };
@@ -4331,24 +4512,25 @@
         const cancelled = po.status === 'ยกเลิก';
         const strong = cancelled ? 'text-ink-muted-48' : 'text-ink';
         // สูตรเซลล์ตาม DESIGN.md ข้อ 11.6 — รหัสเอกสารเป็นสีเหลืองเสมอ (จุดยึดสายตาของแถว)
+        const actionable = po.status === 'ของถึงสาขาแล้ว' || po.status === 'กำลังตรวจรับ';
         return `
         <tr class="hover:bg-divider transition-colors">
-            <td class="px-6 py-4 align-top">
+            <td class="px-6 py-5 align-middle ${actionable ? 'border-l-[3px] border-primary' : 'border-l-[3px] border-transparent'}">
                 <p class="font-mono font-semibold ${cancelled ? 'text-ink-muted-48 line-through' : 'text-accent-ink'}">${rcEsc(po.po_number)}</p>
                 <p class="text-xs text-body-muted mt-1">สร้าง ${rcEsc(rcDate(po.createdAt))}</p>
             </td>
-            <td class="px-6 py-4 align-top">
+            <td class="px-6 py-5 align-middle">
                 <p class="font-medium ${strong}">${rcEsc(po.supplier_name || '-')}</p>
                 <p class="text-xs text-body-muted mt-1">${rcEsc(d.branchName)}</p>
             </td>
-            <td class="px-6 py-4 align-top">
+            <td class="px-6 py-5 align-middle">
                 <p class="${po.arrival_reported_at ? 'text-ink' : 'text-ink-muted-48'}">${rcEsc(d.arrivalDate === '—' ? '-' : d.arrivalDate)}</p>
                 ${d.arrivalSub ? `<p class="text-xs text-body-muted mt-1">${rcEsc(d.arrivalSub)}</p>` : ''}
             </td>
-            <td class="px-6 py-4 align-top">${rcQtyHtml(d)}</td>
-            <td class="px-6 py-4 align-top">${rcProgressHtml(po, d)}</td>
-            <td class="px-6 py-4 align-top">${rcStatusBadge(po.status)}</td>
-            <td class="px-6 py-3 align-top text-right">${rcActionHtml(po)}</td>
+            <td class="px-6 py-5 align-middle">${rcQtyHtml(d)}</td>
+            <td class="px-6 py-5 align-middle">${rcProgressHtml(po, d)}</td>
+            <td class="px-6 py-5 align-middle">${rcStatusBadge(po.status)}</td>
+            <td class="px-6 py-3 align-middle text-right">${rcActionHtml(po)}</td>
         </tr>`;
     };
 
@@ -4396,6 +4578,7 @@
             }));
         container.querySelectorAll('.btn-view-po').forEach(b =>
             b.addEventListener('click', () => { const po = byId(b.dataset.id); if (po) openViewPOModal(po); }));
+        container.querySelectorAll('.btn-finalize-import').forEach(bindFinalizeImportBtn);
     };
 
     // เวลาที่ใช้เรียง — "วันที่ของถึง": ใบที่ยังไม่แจ้งของถึงใช้วันที่สร้างแทน จะได้ไม่ตกไปท้ายสุดหมด
@@ -4417,6 +4600,7 @@
         const byTab = cachedPOsData.filter(po => {
             if (currentReceiveTab === 'all') return true;
             if (currentReceiveTab === 'นำเข้าสำเร็จ') return rcIsImported(po.status);
+            if (currentReceiveTab === 'รอดำเนินการ') return RC_PENDING_STATUSES.includes(po.status);
             return po.status === currentReceiveTab;
         });
 
@@ -4467,7 +4651,13 @@
         }
 
         if (!filtered.length) {
-            const emptyMsg = byTab.length ? 'ไม่พบใบสั่งซื้อที่ตรงกับตัวกรอง' : 'ไม่มีใบสั่งซื้อในสถานะนี้';
+            const emptyMsg = byTab.length
+                ? 'ไม่พบใบสั่งซื้อที่ตรงกับตัวกรอง ลองล้างตัวกรองหรือเปลี่ยนคำค้นหา'
+                : (currentReceiveTab === 'ของถึงสาขาแล้ว'
+                    ? 'ยังไม่มีใบที่ของถึงสาขา เมื่อของมาถึงให้แจ้งที่เมนู "แจ้งของถึงสาขา" ใบนั้นจะขึ้นที่นี่'
+                    : (currentReceiveTab === 'กำลังตรวจรับ'
+                        ? 'ไม่มีใบค้างรอนำเข้าสต็อก'
+                        : 'ไม่มีใบสั่งซื้อในสถานะนี้'));
             tbody.innerHTML = rcStateRow(emptyMsg);
             if (cardsWrap) cardsWrap.innerHTML = rcStateCard(emptyMsg);
             return;
@@ -4517,6 +4707,7 @@
                 // ตัวเลขบนการ์ดสถานะ นับจากข้อมูลทั้งชุด ไม่ขึ้นกับช่องค้นหา/ตัวกรอง
                 const counts = {
                     'all': cachedPOsData.length,
+                    'รอดำเนินการ': cachedPOsData.filter(po => RC_PENDING_STATUSES.includes(po.status)).length,
                     'รอจัดส่ง': cachedPOsData.filter(po => po.status === 'รอจัดส่ง').length,
                     'ของถึงสาขาแล้ว': cachedPOsData.filter(po => po.status === 'ของถึงสาขาแล้ว').length,
                     'กำลังตรวจรับ': cachedPOsData.filter(po => po.status === 'กำลังตรวจรับ').length,
@@ -4529,6 +4720,13 @@
                     const n = counts[opt.value] || 0;
                     opt.textContent = `สถานะ: ${opt.value === 'all' ? 'ทั้งหมด' : opt.value} (${n.toLocaleString('th-TH')})`;
                 });
+
+                // ป้ายตัวเลขบนแท็บ "นำเข้าใบสั่งซื้อ (PO)" = จำนวนใบที่รอดำเนินการ
+                const tabBadge = document.getElementById('po-approve-pending-count');
+                if (tabBadge) {
+                    tabBadge.textContent = counts['รอดำเนินการ'];
+                    tabBadge.classList.toggle('hidden', counts['รอดำเนินการ'] === 0);
+                }
 
                 const upd = document.getElementById('receive-last-updated');
                 if (upd) upd.textContent = `อัปเดตล่าสุด ${rcTime(new Date())}`;
@@ -5458,13 +5656,18 @@
         const meta = document.getElementById('receive-po-meta');
         if (meta) {
             const branchName = po.branch_id && po.branch_id.name ? po.branch_id.name : '-';
+            const tile = (label, value, mono) => `
+                <div class="bg-panel/40 rounded-xl px-4 py-3 min-w-0">
+                    <p class="text-xs text-body-muted">${label}</p>
+                    <p class="mt-0.5 truncate ${mono ? 'font-mono font-semibold text-accent-ink' : 'text-ink font-medium'}">${value}</p>
+                </div>`;
             const parts = [
-                `<span class="font-mono font-semibold text-accent-ink">${rcEsc(po.po_number)}</span>`,
-                `ผู้จำหน่าย ${rcEsc(po.supplier_name || '-')}`,
-                `ปลายทาง ${rcEsc(branchName)}`
+                tile('เลขที่ PO', rcEsc(po.po_number), true),
+                tile('ผู้จำหน่าย', rcEsc(po.supplier_name || '-')),
+                tile('สาขาปลายทาง', rcEsc(branchName))
             ];
-            if (po.arrival_reported_at) parts.push(`แจ้งของถึงสาขา ${rcEsc(rcDate(po.arrival_reported_at))} ${rcEsc(rcTime(po.arrival_reported_at))}`);
-            meta.innerHTML = parts.join('<span class="mx-2 text-ink-muted-48">·</span>');
+            if (po.arrival_reported_at) parts.push(tile('แจ้งของถึงสาขา', `${rcEsc(rcDate(po.arrival_reported_at))} ${rcEsc(rcTime(po.arrival_reported_at))}`));
+            meta.innerHTML = parts.join('');
         }
 
         const pendingItems = (po.items || []).filter(item => (item.ordered_qty - (item.imported_qty || 0)) > 0);
@@ -5621,6 +5824,13 @@
         }
         const back = document.getElementById('btn-receive-page-back');
         if (back) back.addEventListener('click', () => closeReceivePage());
+        // ปุ่มกลับอยู่แถวแท็บด้านบน — แสดงเฉพาะตอนหน้ารับสินค้าเปิดอยู่
+        const receivePage = document.getElementById('receive-po-page');
+        if (back && receivePage) {
+            const syncBack = () => { back.style.display = receivePage.classList.contains('hidden') ? 'none' : 'inline-flex'; };
+            new MutationObserver(syncBack).observe(receivePage, { attributes: true, attributeFilter: ['class'] });
+            syncBack();
+        }
         const cancel = document.getElementById('btn-receive-cancel');
         if (cancel) cancel.addEventListener('click', () => closeReceivePage());
         const viewPo = document.getElementById('btn-receive-view-po');
@@ -5708,6 +5918,48 @@
                 return showToast('กรุณาระบุจำนวนหรือ IMEI อย่างน้อย 1 รายการ', 'error');
             }
 
+            // ---------- สรุปรายการให้ตรวจทานก่อนนำเข้าสต็อกจริง ----------
+            let sumCount = 0, sumTotal = 0, sumRemaining = 0;
+            const sumRows = [];
+            rows.forEach(row => {
+                const count = rcRowCount(row);
+                const pending = Number(row.dataset.pendingQty || 0);
+                if (count < pending) sumRemaining += pending - count;
+                if (count <= 0) return;
+                const price = Number(row.dataset.price || 0);
+                const detail = [row.dataset.productName, row.dataset.capacity, row.dataset.color].filter(Boolean).map(rcEsc).join(' · ');
+                const imeis = row.dataset.trackImei === 'true'
+                    ? Array.from(row.querySelectorAll('.imei-tag-text')).map(t => rcEsc(t.textContent.trim())).join(', ')
+                    : '';
+                sumCount += count;
+                sumTotal += count * price;
+                sumRows.push(`
+                    <div class="py-3 border-b border-divider last:border-b-0">
+                        <div class="flex items-start justify-between gap-3">
+                            <span class="text-ink text-sm font-semibold">${detail}</span>
+                            <span class="text-ink text-sm font-semibold font-mono whitespace-nowrap">${rcBaht(count * price)}</span>
+                        </div>
+                        <div class="mt-1 text-xs text-body-muted">${count.toLocaleString('th-TH')} ${row.dataset.trackImei === 'true' ? 'เครื่อง' : 'ชิ้น'} × ${rcBaht(price)}</div>
+                        ${imeis ? `<div class="mt-1 text-xs text-body-muted font-mono break-all">IMEI: ${imeis}</div>` : ''}
+                    </div>`);
+            });
+            const branchName = rcCurrentPO.branch_id && rcCurrentPO.branch_id.name ? rcCurrentPO.branch_id.name : '-';
+            const summaryHtml = `
+                <div class="text-left">
+                    <div class="text-sm text-body-muted mb-3">
+                        <span class="font-mono font-semibold text-accent-ink">${rcEsc(rcCurrentPO.po_number)}</span>
+                        · ผู้จำหน่าย ${rcEsc(rcCurrentPO.supplier_name || '-')} · เข้าสต็อกที่ ${rcEsc(branchName)}
+                    </div>
+                    <div class="max-h-64 overflow-y-auto rounded-sm bg-field px-4" tabindex="0">${sumRows.join('')}</div>
+                    <div class="mt-3 flex items-baseline justify-between">
+                        <span class="text-sm text-body-muted">รวม ${sumCount.toLocaleString('th-TH')} รายการ · ราคาขายรวม</span>
+                        <span class="text-lg font-semibold text-ink font-mono">${rcBaht(sumTotal)}</span>
+                    </div>
+                    ${sumRemaining > 0 ? `<div class="mt-2 text-xs text-accent-ink">ยังเหลือค้างรับอีก ${sumRemaining.toLocaleString('th-TH')} รายการ — รับรอบถัดไปได้</div>` : ''}
+                    <div class="mt-3 text-xs text-body-muted">เมื่อยืนยัน ระบบจะนำเข้าสต็อกทันทีและส่งข้อมูลไปบัญชี ย้อนกลับไม่ได้</div>
+                </div>`;
+
+            const doSubmit = async () => {
             try {
                 btn.disabled = true;
                 btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> กำลังบันทึก...';
@@ -5736,6 +5988,9 @@
                 btn.disabled = false;
                 btn.innerHTML = originalText;
             }
+            };
+
+            showConfirm('ตรวจสอบก่อนนำเข้าสต็อก', summaryHtml, doSubmit, 'ยืนยันนำเข้าสต็อก', 'success', 'max-w-xl');
         });
     }
 
@@ -6092,6 +6347,7 @@
     const ARRIVAL_COLS = 6;
     const ARRIVAL_PER_PAGE = 10;
     let _arrivalCache = [];
+    let _arrivalDefaultApplied = false;
     let _arrivalPage = 1;
     let _arrivalBound = false;
     // สลับมุมมอง List/Card — จำโหมดไว้ข้ามการเข้าหน้า
@@ -6573,6 +6829,12 @@
             }
             _arrivalCache = json.data || [];
             arFillFilters();
+            // ค่าเริ่มต้น = "รอจัดส่ง" (ใบที่รอแจ้งของถึงสาขา) — ตั้งครั้งแรกครั้งเดียว เลือก "สถานะทั้งหมด" เองได้ภายหลัง
+            if (!_arrivalDefaultApplied) {
+                _arrivalDefaultApplied = true;
+                const stSel = document.getElementById('arrival-filter-status');
+                if (stSel && [...stSel.options].some(o => o.value === 'รอจัดส่ง')) stSel.value = 'รอจัดส่ง';
+            }
             renderArrivalTable();
         } catch (e) {
             console.error(e);
@@ -7016,10 +7278,6 @@
 
     // สลับมุมมอง List/Card ของตารางในหน้าตรวจสอบนำเข้าสินค้า (#approve-import) — จำโหมดไว้ข้ามการเข้าหน้า
     // ประกาศไว้ก่อนจุดใช้งานทั้งหมดเสมอ (ดูบทเรียนเรื่อง TDZ ของ let ในหน้า #stock-audit-review)
-    let approvePoViewMode = localStorage.getItem('approve_po_view_mode') === 'card' ? 'card' : 'list';
-    let historyPoViewMode = localStorage.getItem('history_po_view_mode') === 'card' ? 'card' : 'list';
-    let historyNonPoViewMode = localStorage.getItem('history_nonpo_view_mode') === 'card' ? 'card' : 'list';
-    let historyDirectViewMode = localStorage.getItem('history_direct_view_mode') === 'card' ? 'card' : 'list';
 
     const aiEsc = (s) => String(s == null ? '' : s)
         .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -7126,7 +7384,7 @@
                     const finalJson = await finalRes.json();
                     if (finalJson.success) {
                         showToast('อนุมัตินำเข้าสต็อกสำเร็จ! เพิ่มยอดสินค้าสั่งซื้อเข้าคลังสาขาเรียบร้อยแล้ว', 'success');
-                        loadApprovePOs();
+                        loadPOs();
                         if (typeof fetchProducts === 'function') fetchProducts();
                         if (typeof loadDashboardData === 'function') loadDashboardData();
                     } else {
@@ -7144,412 +7402,21 @@
         });
     };
 
-    const approvePoRowMarkup = (po) => {
-        const t = aiPoTotals(po);
-        const branchName = po.branch_id ? po.branch_id.name : '-';
-        return `
-        <tr class="hover:bg-divider transition-colors">
-            <td class="px-6 py-4">
-                <p class="font-mono font-semibold text-accent-ink">${aiEsc(po.po_number)}</p>
-                <p class="text-xs text-ink/70 mt-0.5">สร้างเมื่อ ${aiDate(po.createdAt)}</p>
-            </td>
-            <td class="px-6 py-4 text-sm">${aiPoItemsList(po)}</td>
-            <td class="px-6 py-4">${aiTwoLine(aiEsc(po.supplier_name), aiEsc(branchName))}</td>
-            <td class="px-6 py-4 text-center">${aiScanCell(t.scanned, t.ordered)}</td>
-            <td class="px-6 py-4 text-right text-ink font-mono">${aiBaht(t.total)}</td>
-            <td class="px-6 py-4 text-right">
-                <button type="button" class="btn-finalize-import px-3 py-1.5 bg-primary hover:bg-[#E2B93C] text-on-primary font-semibold rounded-[0.375rem] text-xs transition-colors inline-flex items-center gap-1.5 cursor-pointer"
-                    data-id="${aiEsc(po._id)}">
-                    <i class="fa-solid fa-clipboard-check"></i> อนุมัตินำเข้าสต็อก
-                </button>
-            </td>
-        </tr>`;
-    };
-
-    // การ์ด — โครง: หัว (เลขที่ PO / สแกนแล้ว) · Supplier · สาขา+ยอดรวม 2 คอลัมน์ · footer (วันที่สร้าง + ปุ่มอนุมัติเต็มความกว้าง)
-    const approvePoCardMarkup = (po) => {
-        const t = aiPoTotals(po);
-        const branchName = po.branch_id ? po.branch_id.name : '-';
-        return `
-        <div class="elev-card bg-surface-tile-3 rounded-md p-3.5">
-            <div class="flex items-start justify-between gap-2">
-                <span class="font-mono font-semibold text-accent-ink truncate">${aiEsc(po.po_number)}</span>
-                <span class="shrink-0 text-xs">${aiScanCell(t.scanned, t.ordered)}</span>
-            </div>
-            <p class="text-ink font-medium mt-2.5 truncate">${aiEsc(po.supplier_name)}</p>
-            <div class="mt-2 text-xs space-y-0.5">${aiPoItemsList(po, 'truncate')}</div>
-            <div class="grid grid-cols-2 gap-2 mt-3.5 pt-3 border-t border-hairline text-xs">
-                <div class="min-w-0">
-                    <p class="text-ink/60">สาขาปลายทาง</p>
-                    <p class="text-ink mt-0.5 truncate">${aiEsc(branchName)}</p>
-                </div>
-                <div class="min-w-0">
-                    <p class="text-ink/60">ยอดรวม</p>
-                    <p class="font-mono text-ink mt-0.5 truncate">${aiBaht(t.total)}</p>
-                </div>
-            </div>
-            <div class="mt-3.5 pt-3 border-t border-hairline space-y-2.5">
-                <p class="text-xs text-ink/70">สร้างเมื่อ ${aiDate(po.createdAt)}</p>
-                <button type="button" class="btn-finalize-import w-full py-2 bg-primary hover:bg-[#E2B93C] text-on-primary font-semibold rounded-[0.375rem] text-xs transition-colors inline-flex items-center justify-center gap-1.5 cursor-pointer"
-                    data-id="${aiEsc(po._id)}">
-                    <i class="fa-solid fa-clipboard-check"></i> อนุมัตินำเข้าสต็อก
-                </button>
-            </div>
-        </div>`;
-    };
-
-    let _approvePoRows = []; // แคชผลลัพธ์ล่าสุด — สลับมุมมองแล้ว re-render ได้โดยไม่ยิง API ซ้ำ
-
-    // จุดเดียวที่ตัดสินว่าจะ render ตารางหรือการ์ด — ใช้ทั้งตอน fetch เสร็จและตอนแค่สลับมุมมอง
-    const renderApprovePoResults = () => {
-        const tbody = document.getElementById('table-body-approve-po');
-        const cardsWrap = document.getElementById('approve-po-view-cards');
-        if (!tbody) return;
-
-        const listWrap = document.getElementById('approve-po-view-list-wrap');
-        if (listWrap) listWrap.classList.toggle('hidden', approvePoViewMode !== 'list');
-        if (cardsWrap) cardsWrap.classList.toggle('hidden', approvePoViewMode !== 'card');
-
-        if (!_approvePoRows.length) {
-            const msg = 'ไม่มีใบสั่งซื้อที่รออนุมัตินำเข้าคลังในขณะนี้';
-            tbody.innerHTML = aiStateRow(AI_COLS.po, msg);
-            if (cardsWrap) cardsWrap.innerHTML = `<div class="col-span-full py-12 text-center text-ink/50 italic">${msg}</div>`;
-            return;
-        }
-
-        if (approvePoViewMode === 'card') {
-            cardsWrap.innerHTML = _approvePoRows.map(approvePoCardMarkup).join('');
-            tbody.innerHTML = '';
-            cardsWrap.querySelectorAll('.btn-finalize-import').forEach(bindFinalizeImportBtn);
-        } else {
-            tbody.innerHTML = _approvePoRows.map(approvePoRowMarkup).join('');
-            if (cardsWrap) cardsWrap.innerHTML = '';
-            tbody.querySelectorAll('.btn-finalize-import').forEach(bindFinalizeImportBtn);
-        }
-    };
-
-    const loadApprovePOs = async () => {
-        const tbody = document.getElementById('table-body-approve-po');
-        const cardsWrap = document.getElementById('approve-po-view-cards');
-        const badgeCount = document.getElementById('po-approve-pending-count');
-        if (!tbody) return;
-
-        syncViewWrapVisibility('approve-po', approvePoViewMode);
-        if (approvePoViewMode === 'card') aiCardSkeleton(cardsWrap); else aiSkeleton(tbody, AI_COLS.po);
-
-        try {
-            const res = await authFetch(`${API_BASE_URL}/purchase-orders`);
-            const json = await res.json();
-            if (!json.success) {
-                tbody.innerHTML = aiStateRow(AI_COLS.po, json.message || 'ดึงข้อมูลใบสั่งซื้อไม่สำเร็จ', 'text-red-400');
-                if (cardsWrap) cardsWrap.innerHTML = `<div class="col-span-full py-12 text-center text-red-400">${aiEsc(json.message || 'ดึงข้อมูลใบสั่งซื้อไม่สำเร็จ')}</div>`;
-                aiSetCount('approve-po-result-count', 0, 0);
-                return;
-            }
-
-            // เฉพาะใบที่สแกนรับของครบแล้วและรออนุมัตินำเข้าคลัง
-            _approvePoRows = json.data.filter(po => po.status === 'กำลังตรวจรับ');
-
-            if (badgeCount) {
-                badgeCount.textContent = _approvePoRows.length;
-                badgeCount.classList.toggle('hidden', _approvePoRows.length === 0);
-            }
-            aiSetCount('approve-po-result-count', _approvePoRows.length, _approvePoRows.length);
-            // ตารางรออนุมัติแบบเดิมโผล่เฉพาะเมื่อมีใบค้างจากระบบเก่า (ตรวจรับแล้วแต่ยังไม่ได้นำเข้า)
-            const legacyWrap = document.getElementById('approve-po-legacy-wrap');
-            if (legacyWrap) legacyWrap.classList.toggle('hidden', _approvePoRows.length === 0);
-
-            renderApprovePoResults();
-
-        } catch (e) {
-            console.error(e);
-            tbody.innerHTML = aiStateRow(AI_COLS.po, 'เกิดข้อผิดพลาดในการโหลดข้อมูล', 'text-red-400');
-            if (cardsWrap) cardsWrap.innerHTML = '<div class="col-span-full py-12 text-center text-red-400">เกิดข้อผิดพลาดในการโหลดข้อมูล</div>';
-            aiSetCount('approve-po-result-count', 0, 0);
-        }
-    };
+    // โหลดรายการ "ตรวจสอบนำเข้า" ใหม่ — ตารางเดียวกับขั้น 1 (ไม่มีตารางรออนุมัติแยกแล้ว)
+    // ชื่อเดิมคงไว้เพราะ script.js และปุ่มรีโหลดหลายจุดเรียกผ่าน window.loadApprovePOs
+    const loadApprovePOs = () => loadPOs();
     window.loadApprovePOs = loadApprovePOs;
 
-    // ---------- ประวัติอนุมัติ PO — แถว/การ์ด ----------
-    const historyPoRowMarkup = (po) => {
-        const t = aiPoTotals(po);
-        return `
-        <tr class="hover:bg-divider transition-colors">
-            <td class="px-6 py-4">
-                <p class="font-mono font-semibold text-accent-ink">${aiEsc(po.po_number)}</p>
-                <p class="text-xs text-ink/70 mt-0.5">${aiDateTime(po.updatedAt)}</p>
-            </td>
-            <td class="px-6 py-4">${aiTwoLine(aiEsc(po.supplier_name), aiEsc(po.branch_id ? po.branch_id.name : '-'))}</td>
-            <td class="px-6 py-4 text-center">${aiScanCell(t.scanned, t.ordered)}</td>
-            <td class="px-6 py-4 text-right text-ink font-mono">${aiBaht(t.total)}</td>
-            <td class="px-6 py-4 text-ink">${aiEsc(po.received_by ? po.received_by.name : '-')}</td>
-        </tr>`;
-    };
-    const historyPoCardMarkup = (po) => {
-        const t = aiPoTotals(po);
-        return `
-        <div class="elev-card pos-card bg-surface-tile-3 rounded-md p-3.5 transition-all hover:-translate-y-1 border-none cursor-pointer" data-po-id="${aiEsc(po._id)}">
-            <div class="flex items-start justify-between gap-2">
-                <span class="font-mono font-semibold text-accent-ink truncate">${aiEsc(po.po_number)}</span>
-                <span class="shrink-0 text-xs">${aiScanCell(t.scanned, t.ordered)}</span>
-            </div>
-            <p class="text-ink font-medium mt-2.5 truncate">${aiEsc(po.supplier_name)}</p>
-            <div class="grid grid-cols-2 gap-2 mt-3.5 pt-3 border-t border-hairline text-xs">
-                <div class="min-w-0"><p class="text-ink/60">สาขา</p><p class="text-ink mt-0.5 truncate">${aiEsc(po.branch_id ? po.branch_id.name : '-')}</p></div>
-                <div class="min-w-0"><p class="text-ink/60">ยอดรวม</p><p class="font-mono text-ink mt-0.5 truncate">${aiBaht(t.total)}</p></div>
-            </div>
-            <div class="flex items-center justify-between mt-3.5 pt-3 border-t border-hairline text-xs">
-                <span class="text-ink/70">${aiDateTime(po.updatedAt)}</span>
-                <span class="text-ink/70 truncate">${aiEsc(po.received_by ? po.received_by.name : '-')}</span>
-            </div>
-        </div>`;
-    };
-
-    // ---------- ประวัติอนุมัติสินค้านอกระบบ PO — แถว/การ์ด ----------
-    const historyNonPoRowMarkup = (item) => `
-        <tr class="hover:bg-divider transition-colors">
-            <td class="px-6 py-4 text-ink font-medium">${aiEsc(item.product_name)}</td>
-            <td class="px-6 py-4">${aiTwoLine(
-        aiEsc(item.branch_id ? item.branch_id.name : '-'),
-        aiEsc(item.reported_by ? item.reported_by.name : '-'))}</td>
-            <td class="px-6 py-4 text-ink">${aiDateTime(item.approved_at)}</td>
-            <td class="px-6 py-4 text-center text-ink font-mono">${item.imeis ? item.imeis.length : 0}</td>
-            <td class="px-6 py-4 text-ink">${aiEsc(item.approved_by ? item.approved_by.name : '-')}</td>
-            <td class="px-6 py-4 text-ink/70">${item.notes ? aiEsc(item.notes) : '<span class="text-ink/50">-</span>'}</td>
-        </tr>`;
-    const historyNonPoCardMarkup = (item) => `
-        <div class="elev-card bg-surface-tile-3 rounded-md p-3.5">
-            <div class="flex items-start justify-between gap-2">
-                <span class="text-ink font-medium truncate">${aiEsc(item.product_name)}</span>
-                <span class="shrink-0 text-xs font-mono text-ink/70">IMEI ${item.imeis ? item.imeis.length : 0}</span>
-            </div>
-            <div class="grid grid-cols-2 gap-2 mt-3.5 pt-3 border-t border-hairline text-xs">
-                <div class="min-w-0"><p class="text-ink/60">สาขา / ผู้แจ้ง</p><p class="text-ink mt-0.5 truncate">${aiEsc(item.branch_id ? item.branch_id.name : '-')} · ${aiEsc(item.reported_by ? item.reported_by.name : '-')}</p></div>
-                <div class="min-w-0"><p class="text-ink/60">ผู้อนุมัติ</p><p class="text-ink mt-0.5 truncate">${aiEsc(item.approved_by ? item.approved_by.name : '-')}</p></div>
-            </div>
-            <div class="mt-3.5 pt-3 border-t border-hairline text-xs">
-                <p class="text-ink/70">${aiDateTime(item.approved_at)}</p>
-                ${item.notes ? `<p class="text-ink/70 mt-1 truncate">"${aiEsc(item.notes)}"</p>` : ''}
-            </div>
-        </div>`;
-
-    // ---------- ประวัตินำเข้าคลังโดยตรง — แถว/การ์ด ----------
-    const historyDirectTypeBadge = (isExcel) => isExcel
-        ? `<div class="inline-flex items-center gap-2 px-2.5 py-1 rounded-[0.375rem] bg-state-ok-tint/[0.12]">
-               <div class="w-2 h-2 rounded-full bg-state-ok"></div>
-               <span class="text-state-ok font-medium text-xs">Excel</span></div>`
-        : `<div class="inline-flex items-center gap-2 px-2.5 py-1 rounded-[0.375rem] bg-panel/40">
-               <div class="w-2 h-2 rounded-full bg-ink/40"></div>
-               <span class="text-ink/70 font-medium text-xs">คลังปกติ</span></div>`;
-    const historyDirectRowMarkup = (log) => {
-        const d = log.details || {};
-        const isExcel = d.import_source === 'EXCEL';
-        const imeis = Array.isArray(d.imeis) ? d.imeis : [];
-        const imeiCell = imeis.length
-            ? `<span class="font-mono text-xs text-ink/70 block max-w-[220px] truncate"
-                     title="${aiEsc(imeis.join(', '))}">${aiEsc(imeis.join(', '))}</span>`
-            : '<span class="text-ink/50">-</span>';
-        return `
-        <tr class="hover:bg-divider transition-colors">
-            <td class="px-6 py-4">${aiTwoLine(
-            aiEsc(d.product_name || '-'),
-            `<span class="font-mono">${aiEsc(d.product_code || '-')}</span>`)}</td>
-            <td class="px-6 py-4">${historyDirectTypeBadge(isExcel)}</td>
-            <td class="px-6 py-4 text-ink">${aiEsc(d.branch_name || '-')}</td>
-            <td class="px-6 py-4 text-ink">${aiDateTime(log.createdAt)}</td>
-            <td class="px-6 py-4 text-center text-ink font-mono">${d.quantity || 0}</td>
-            <td class="px-6 py-4 text-ink">${aiEsc(log.user_name || '-')}</td>
-            <td class="px-6 py-4">${imeiCell}</td>
-        </tr>`;
-    };
-    const historyDirectCardMarkup = (log) => {
-        const d = log.details || {};
-        const isExcel = d.import_source === 'EXCEL';
-        const imeis = Array.isArray(d.imeis) ? d.imeis : [];
-        const imeiText = imeis.length ? imeis.join(', ') : '-';
-        return `
-        <div class="elev-card bg-surface-tile-3 rounded-md p-3.5">
-            <div class="flex items-start justify-between gap-2">
-                <div class="min-w-0">
-                    <p class="text-ink font-medium truncate">${aiEsc(d.product_name || '-')}</p>
-                    <p class="text-xs font-mono text-ink/70 mt-0.5 truncate">${aiEsc(d.product_code || '-')}</p>
-                </div>
-                <div class="shrink-0">${historyDirectTypeBadge(isExcel)}</div>
-            </div>
-            <div class="grid grid-cols-2 gap-2 mt-3.5 pt-3 border-t border-hairline text-xs">
-                <div class="min-w-0"><p class="text-ink/60">สาขา</p><p class="text-ink mt-0.5 truncate">${aiEsc(d.branch_name || '-')}</p></div>
-                <div class="min-w-0"><p class="text-ink/60">จำนวน</p><p class="font-mono text-ink mt-0.5">${d.quantity || 0}</p></div>
-            </div>
-            <div class="mt-3.5 pt-3 border-t border-hairline text-xs space-y-1">
-                <p class="text-ink/70">${aiDateTime(log.createdAt)} · ${aiEsc(log.user_name || '-')}</p>
-                <p class="font-mono text-ink/70 truncate" title="${aiEsc(imeiText)}">${aiEsc(imeiText)}</p>
-            </div>
-        </div>`;
-    };
-
-    // แคชผลลัพธ์ล่าสุดของ 3 ตารางประวัติ — สลับมุมมองแล้ว re-render ได้โดยไม่ยิง API ซ้ำ
-    let _historyPoRows = []; let _historyPoAllCount = 0;
-    let _historyNonPoRows = [];
-    let _historyDirectRows = []; let _historyDirectAllCount = 0;
-
-    const renderHistoryPoResults = () => {
-        const tbodyPo = document.getElementById('table-body-history-po');
-        const cardsPo = document.getElementById('history-po-view-cards');
-        if (!tbodyPo) return;
-        const listWrapPo = document.getElementById('history-po-view-list-wrap');
-        if (listWrapPo) listWrapPo.classList.toggle('hidden', historyPoViewMode !== 'list');
-        if (cardsPo) cardsPo.classList.toggle('hidden', historyPoViewMode !== 'card');
-
-        if (!_historyPoRows.length) {
-            const msg = _historyPoAllCount ? 'ไม่มีประวัติของสาขาที่เลือก' : 'ยังไม่มีประวัติการอนุมัติ PO';
-            tbodyPo.innerHTML = aiStateRow(AI_COLS.histPo, msg);
-            if (cardsPo) cardsPo.innerHTML = `<div class="col-span-full py-12 text-center text-ink/50 italic">${msg}</div>`;
-        } else if (historyPoViewMode === 'card') {
-            cardsPo.innerHTML = _historyPoRows.map(historyPoCardMarkup).join('');
-            tbodyPo.innerHTML = '';
-            const byId = {}; _historyPoRows.forEach(po => { byId[po._id] = po; });
-            cardsPo.querySelectorAll('[data-po-id]').forEach(card => {
-                card.addEventListener('click', () => {
-                    const po = byId[card.getAttribute('data-po-id')];
-                    if (po && typeof openViewPOModal === 'function') openViewPOModal(po);
-                });
-            });
-        } else {
-            tbodyPo.innerHTML = _historyPoRows.map(historyPoRowMarkup).join('');
-            if (cardsPo) cardsPo.innerHTML = '';
-        }
-    };
-
-    const renderHistoryNonPoResults = () => {
-        const tbodyNonPo = document.getElementById('table-body-history-nonpo');
-        const cardsNonPo = document.getElementById('history-nonpo-view-cards');
-        if (!tbodyNonPo) return;
-        const listWrapNonPo = document.getElementById('history-nonpo-view-list-wrap');
-        if (listWrapNonPo) listWrapNonPo.classList.toggle('hidden', historyNonPoViewMode !== 'list');
-        if (cardsNonPo) cardsNonPo.classList.toggle('hidden', historyNonPoViewMode !== 'card');
-
-        if (!_historyNonPoRows.length) {
-            const msg = 'ยังไม่มีประวัติการอนุมัติสินค้านอกระบบ PO';
-            tbodyNonPo.innerHTML = aiStateRow(AI_COLS.histNonPo, msg);
-            if (cardsNonPo) cardsNonPo.innerHTML = `<div class="col-span-full py-12 text-center text-ink/50 italic">${msg}</div>`;
-        } else if (historyNonPoViewMode === 'card') {
-            cardsNonPo.innerHTML = _historyNonPoRows.map(historyNonPoCardMarkup).join('');
-            tbodyNonPo.innerHTML = '';
-        } else {
-            tbodyNonPo.innerHTML = _historyNonPoRows.map(historyNonPoRowMarkup).join('');
-            if (cardsNonPo) cardsNonPo.innerHTML = '';
-        }
-    };
-
-    const renderHistoryDirectResults = () => {
-        const tbodyDirect = document.getElementById('table-body-history-direct-imports');
-        const cardsDirect = document.getElementById('history-direct-view-cards');
-        if (!tbodyDirect) return;
-        const listWrapDirect = document.getElementById('history-direct-view-list-wrap');
-        if (listWrapDirect) listWrapDirect.classList.toggle('hidden', historyDirectViewMode !== 'list');
-        if (cardsDirect) cardsDirect.classList.toggle('hidden', historyDirectViewMode !== 'card');
-
-        if (!_historyDirectRows.length) {
-            const msg = _historyDirectAllCount ? 'ไม่มีประวัติของสาขาที่เลือก' : 'ยังไม่มีประวัติการนำเข้าคลังโดยตรง';
-            tbodyDirect.innerHTML = aiStateRow(AI_COLS.histDirect, msg);
-            if (cardsDirect) cardsDirect.innerHTML = `<div class="col-span-full py-12 text-center text-ink/50 italic">${msg}</div>`;
-        } else if (historyDirectViewMode === 'card') {
-            cardsDirect.innerHTML = _historyDirectRows.map(historyDirectCardMarkup).join('');
-            tbodyDirect.innerHTML = '';
-        } else {
-            tbodyDirect.innerHTML = _historyDirectRows.map(historyDirectRowMarkup).join('');
-            if (cardsDirect) cardsDirect.innerHTML = '';
-        }
-    };
-
-    const loadApproveHistory = async () => {
-        const tbodyPo = document.getElementById('table-body-history-po');
-        const tbodyNonPo = document.getElementById('table-body-history-nonpo');
-        const tbodyDirect = document.getElementById('table-body-history-direct-imports');
-        const cardsPo = document.getElementById('history-po-view-cards');
-        const cardsNonPo = document.getElementById('history-nonpo-view-cards');
-        const cardsDirect = document.getElementById('history-direct-view-cards');
-        const filterBranch = document.getElementById('approve-import-filter-branch');
-        const selectedBranchId = filterBranch ? filterBranch.value : '';
-
-        syncViewWrapVisibility('history-po', historyPoViewMode);
-        syncViewWrapVisibility('history-nonpo', historyNonPoViewMode);
-        syncViewWrapVisibility('history-direct', historyDirectViewMode);
-        if (historyPoViewMode === 'card') aiCardSkeleton(cardsPo); else aiSkeleton(tbodyPo, AI_COLS.histPo);
-        if (historyNonPoViewMode === 'card') aiCardSkeleton(cardsNonPo); else aiSkeleton(tbodyNonPo, AI_COLS.histNonPo);
-        if (historyDirectViewMode === 'card') aiCardSkeleton(cardsDirect); else aiSkeleton(tbodyDirect, AI_COLS.histDirect);
-
-        // ---------- ประวัติอนุมัติ PO ----------
-        try {
-            const res = await authFetch(`${API_BASE_URL}/purchase-orders`);
-            const json = await res.json();
-            if (json.success && tbodyPo) {
-                const all = json.data.filter(po => po.status === 'นำเข้าสำเร็จ');
-                _historyPoRows = selectedBranchId
-                    ? all.filter(po => po.branch_id && (po.branch_id._id === selectedBranchId || po.branch_id === selectedBranchId))
-                    : all;
-                _historyPoAllCount = all.length;
-                aiSetCount('history-po-result-count', _historyPoRows.length, all.length);
-                renderHistoryPoResults();
-            }
-        } catch (err) {
-            console.error('Error loading PO history:', err);
-            if (tbodyPo) tbodyPo.innerHTML = aiStateRow(AI_COLS.histPo, 'เกิดข้อผิดพลาดในการโหลดประวัติ PO', 'text-red-400');
-            if (cardsPo) cardsPo.innerHTML = '<div class="col-span-full py-12 text-center text-red-400">เกิดข้อผิดพลาดในการโหลดประวัติ PO</div>';
-            aiSetCount('history-po-result-count', 0, 0);
-        }
-
-        // ---------- ประวัติอนุมัติสินค้านอกระบบ PO ----------
-        try {
-            let url = `${API_BASE_URL}/import-notifications?status=อนุมัติแล้ว`;
-            if (selectedBranchId) url += `&branch_id=${selectedBranchId}`;
-            const res = await authFetch(url);
-            const json = await res.json();
-            if (json.success && tbodyNonPo) {
-                _historyNonPoRows = json.data || [];
-                aiSetCount('history-nonpo-result-count', _historyNonPoRows.length, _historyNonPoRows.length);
-                renderHistoryNonPoResults();
-            }
-        } catch (err) {
-            console.error('Error loading Non-PO history:', err);
-            if (tbodyNonPo) tbodyNonPo.innerHTML = aiStateRow(AI_COLS.histNonPo, 'เกิดข้อผิดพลาดในการโหลดประวัติสินค้านอกระบบ PO', 'text-red-400');
-            if (cardsNonPo) cardsNonPo.innerHTML = '<div class="col-span-full py-12 text-center text-red-400">เกิดข้อผิดพลาดในการโหลดประวัติสินค้านอกระบบ PO</div>';
-            aiSetCount('history-nonpo-result-count', 0, 0);
-        }
-
-        // ---------- ประวัตินำเข้าคลังโดยตรง ----------
-        try {
-            const res = await authFetch(`${API_BASE_URL}/products/direct-imports-history`);
-            const json = await res.json();
-            if (json.success && tbodyDirect) {
-                const all = json.data || [];
-                _historyDirectRows = selectedBranchId
-                    ? all.filter(log => log.details && log.details.branch_id === selectedBranchId)
-                    : all;
-                _historyDirectAllCount = all.length;
-                aiSetCount('history-direct-result-count', _historyDirectRows.length, all.length);
-                renderHistoryDirectResults();
-            }
-        } catch (err) {
-            console.error('Error loading Direct Imports history:', err);
-            if (tbodyDirect) tbodyDirect.innerHTML = aiStateRow(AI_COLS.histDirect, 'เกิดข้อผิดพลาดในการโหลดประวัติการนำเข้าโดยตรง', 'text-red-400');
-            if (cardsDirect) cardsDirect.innerHTML = '<div class="col-span-full py-12 text-center text-red-400">เกิดข้อผิดพลาดในการโหลดประวัติการนำเข้าโดยตรง</div>';
-            aiSetCount('history-direct-result-count', 0, 0);
-        }
-    };
-    window.loadApproveHistory = loadApproveHistory;
 
     // Tab toggle logic inside ตรวจสอบนำเข้าสินค้า (Approve Import)
     // แท็บที่เลือกอยู่คือปุ่มทึบเหลืองปุ่มเดียวของหน้านี้ (DESIGN.md ข้อ 6) ที่เหลือเป็นปุ่มขอบ
     const tabBtnApprovePO = document.getElementById('tab-btn-approve-po');
     const tabBtnApproveNonPO = document.getElementById('tab-btn-approve-nonpo');
-    const tabBtnApproveHistory = document.getElementById('tab-btn-approve-history');
     const tabContentApprovePO = document.getElementById('tab-content-approve-po');
     const tabContentApproveNonPO = document.getElementById('tab-content-approve-nonpo');
-    const tabContentApproveHistory = document.getElementById('tab-content-approve-history');
 
-    if (tabBtnApprovePO && tabBtnApproveNonPO && tabBtnApproveHistory
-        && tabContentApprovePO && tabContentApproveNonPO && tabContentApproveHistory) {
+    if (tabBtnApprovePO && tabBtnApproveNonPO
+        && tabContentApprovePO && tabContentApproveNonPO) {
 
         const TAB_BASE = 'elev-chip px-4 py-2.5 rounded-xl text-sm font-bold transition-colors flex items-center gap-2 cursor-pointer';
         const TAB_ON = 'bg-primary text-on-primary ring-1 ring-accent-ink apple-active-accent';
@@ -7568,7 +7435,7 @@
 
         const activate = (which) => {
             const map = {
-                po: tabBtnApprovePO, nonpo: tabBtnApproveNonPO, history: tabBtnApproveHistory
+                po: tabBtnApprovePO, nonpo: tabBtnApproveNonPO
             };
             Object.entries(map).forEach(([key, btn]) => {
                 const on = key === which;
@@ -7582,7 +7449,6 @@
 
             tabContentApprovePO.classList.toggle('hidden', which !== 'po');
             tabContentApproveNonPO.classList.toggle('hidden', which !== 'nonpo');
-            tabContentApproveHistory.classList.toggle('hidden', which !== 'history');
         };
 
         // มาร์กอัปตั้งต้นของแท็บ "นำเข้าใบสั่งซื้อ (PO)" ยังไม่มีคลาส apple-active-accent
@@ -7595,36 +7461,7 @@
             activate('nonpo');
             if (typeof window.loadImportNotifications === 'function') window.loadImportNotifications();
         });
-        tabBtnApproveHistory.addEventListener('click', () => { activate('history'); loadApproveHistory(); });
     }
-
-    // สลับมุมมอง List/Card ของทั้ง 4 ตารางในหน้าตรวจสอบนำเข้าสินค้า — ผูกครั้งเดียวตอนไฟล์นี้ถูกโหลด
-    // (window.initAccountingPO ถูกเรียกซ้ำทุกครั้งที่เข้าหน้านี้ ผูก listener ในนั้นจะซ้อนกันเพิ่มเรื่อยๆ
-    // เหตุผลเดียวกับที่ผูกปุ่มสลับมุมมองของตารางอื่นในไฟล์นี้ไว้ที่ top-level)
-    const wireApproveImportViewToggle = (prefix, getMode, setMode, storageKey, renderFn) => {
-        const listBtn = document.getElementById(`${prefix}-view-list`);
-        const cardBtn = document.getElementById(`${prefix}-view-card`);
-        if (!listBtn || !cardBtn) return;
-        const sync = (mode) => window.syncViewToggleButtons(listBtn, cardBtn, mode);
-        const apply = (mode) => {
-            setMode(mode);
-            localStorage.setItem(storageKey, mode);
-            sync(mode);
-            renderFn();
-        };
-        listBtn.addEventListener('click', () => apply('list'));
-        cardBtn.addEventListener('click', () => apply('card'));
-        sync(getMode());
-    };
-
-    wireApproveImportViewToggle('approve-po', () => approvePoViewMode, (m) => { approvePoViewMode = m; },
-        'approve_po_view_mode', renderApprovePoResults);
-    wireApproveImportViewToggle('history-po', () => historyPoViewMode, (m) => { historyPoViewMode = m; },
-        'history_po_view_mode', renderHistoryPoResults);
-    wireApproveImportViewToggle('history-nonpo', () => historyNonPoViewMode, (m) => { historyNonPoViewMode = m; },
-        'history_nonpo_view_mode', renderHistoryNonPoResults);
-    wireApproveImportViewToggle('history-direct', () => historyDirectViewMode, (m) => { historyDirectViewMode = m; },
-        'history_direct_view_mode', renderHistoryDirectResults);
 
     // Refresh triggers & Navigation linkages
     const btnReloadImportList = document.getElementById('btn-reload-import-list');
@@ -7632,7 +7469,6 @@
         btnReloadImportList.addEventListener('click', () => {
             loadApprovePOs();
             if (typeof window.loadImportNotifications === 'function') window.loadImportNotifications();
-            loadApproveHistory();
         });
     }
 
@@ -7650,7 +7486,6 @@
             populateApproveImportBranchFilter();
             loadApprovePOs();
             if (typeof window.loadImportNotifications === 'function') window.loadImportNotifications();
-            loadApproveHistory();
         });
     }
 

@@ -12,6 +12,7 @@ const {
     Product,
     Movement,
     StockIssue,
+    StockAdjustment,
     StockRequest,
     Claim,
     Branch,
@@ -425,6 +426,46 @@ const ensureBranchBalance = (productDoc, branchId) => {
     return bal;
 };
 
+// จำนวนคงเหลือรวมทุกสาขาของสินค้าหนึ่งตัว
+const totalStockQty = (productDoc) =>
+    ((productDoc && productDoc.stock_balances) || []).reduce((s, b) => s + (Number(b.quantity) || 0), 0);
+
+// บันทึกใบปรับสต็อก (StockAdjustment) จากหน้าจัดการสต็อก แล้วสั่งลงยอดบัญชี — ดูสูตรที่ buildStockAdjustmentEvents (utils/accountEntries.js)
+// เรียกหลังบันทึกสินค้าสำเร็จแล้วเท่านั้น · ไม่ throw: สต็อกเปลี่ยนไปแล้ว ใบนี้ล้มต้องไม่ทำให้ผู้ใช้เห็นว่าบันทึกสินค้าไม่สำเร็จ
+// (ล้มแล้วยอดบัญชีจะขาด — log ไว้ให้ตามเก็บจาก AuditLog ได้)
+const recordStockAdjustment = async (req, { kind, product, branchId, qtyBefore, qtyAfter, costBefore, costAfter, imeis, importSource }) => {
+    const qb = Number(qtyBefore) || 0;
+    const qa = Number(qtyAfter) || 0;
+    const cb = Number(costBefore) || 0;
+    const ca = Number(costAfter) || 0;
+    // ไม่มีมูลค่าเปลี่ยน (จำนวนเท่าเดิม และราคาทุนเท่าเดิมหรือไม่มีของเหลือให้ปรับราคา) = ไม่ต้องมีใบ
+    if (qb === qa && (cb === ca || qb === 0)) return null;
+    try {
+        const now = new Date();
+        const ymd = now.getFullYear() + String(now.getMonth() + 1).padStart(2, '0') + String(now.getDate()).padStart(2, '0');
+        const doc = await StockAdjustment.create({
+            adjustment_no: `ADJ-${ymd}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`,
+            kind,
+            import_source: kind === 'receive' ? (importSource || 'MANUAL') : '',
+            product_id: product._id,
+            product_code: product.product_code || '',
+            product_name: product.name || '',
+            branch_id: branchId || null,
+            qty_before: qb,
+            qty_after: qa,
+            cost_before: cb,
+            cost_after: ca,
+            imeis: Array.isArray(imeis) ? imeis : [],
+            created_by: req.user.employee_id
+        });
+        queueAcctRefresh('stock_adjustment', doc._id);
+        return doc;
+    } catch (err) {
+        console.error(`[StockAdjustment] บันทึกใบปรับสต็อกไม่สำเร็จ (${kind} ${product && product._id}):`, err.message);
+        return null;
+    }
+};
+
 // ฟังก์ชันกลางในการประมวลผลอนุมัตินำเข้าสต็อกสำเร็จ (Finalize PO Import)
 const executeFinalizeImport = async (poId, employeeId) => {
     const po = await PurchaseOrder.findById(poId);
@@ -772,6 +813,10 @@ router.get('/master-data', async (req, res) => {
 // หน้าที่: บันทึกข้อมูลสินค้าใหม่ลงใน collection product
 router.post('/products', async (req, res) => {
     try {
+        // รับสินค้าเข้าสต็อกตรง = เปลี่ยนมูลค่าสต็อก ต้องมีสิทธิ์จัดการสต็อก (ปุ่มเพิ่มสินค้า/นำเข้า Excel ก็ซ่อนด้วยสิทธิ์นี้)
+        if (!req.user.permissions || !req.user.permissions.manage_stock) {
+            return res.status(403).json({ success: false, message: 'ไม่มีสิทธิ์เพิ่มสินค้าเข้าสต็อก' });
+        }
         const productData = req.body;
 
         // ตรวจสอบข้อมูลเบื้องต้น
@@ -826,6 +871,7 @@ router.post('/products', async (req, res) => {
             });
         }
 
+        const qtyBefore = totalStockQty(product); // สินค้าเดิมที่ตรงทุกช่อง = เพิ่มเข้าตัวเดิม · สินค้าใหม่ = 0
         const bal = ensureBranchBalance(product, branchId);
         const incomingImeis = Array.isArray(productData.imeis) ? productData.imeis.map(x => x.toString().trim()).filter(Boolean) : [];
         const incomingQty = Number(productData.quantity || 0) || incomingImeis.length || 1;
@@ -844,6 +890,19 @@ router.post('/products', async (req, res) => {
         }
 
         const savedProduct = await product.save();
+
+        // ลงบัญชี: รับเข้าตรง (ราคาทุนเท่าเดิมเสมอ — สินค้าที่ราคาทุนต่างกันถูกสร้างเป็นตัวใหม่ข้างบน)
+        await recordStockAdjustment(req, {
+            kind: 'receive',
+            product: savedProduct,
+            branchId,
+            qtyBefore,
+            qtyAfter: totalStockQty(savedProduct),
+            costBefore: savedProduct.cost_price,
+            costAfter: savedProduct.cost_price,
+            imeis: incomingImeis,
+            importSource: productData.import_source === 'EXCEL' ? 'EXCEL' : 'MANUAL'
+        });
 
         // Fetch branch name for logging
         let branchName = 'ไม่ระบุสาขา';
@@ -1220,12 +1279,19 @@ async function freezeSoldCost(productId, cost) {
 
 router.put('/products/:id', async (req, res) => {
     try {
+        // แก้จำนวน/ราคาทุน = เปลี่ยนมูลค่าสต็อก ต้องมีสิทธิ์จัดการสต็อก
+        if (!req.user.permissions || !req.user.permissions.manage_stock) {
+            return res.status(403).json({ success: false, message: 'ไม่มีสิทธิ์แก้ไขสินค้า' });
+        }
         const productData = req.body;
 
         const product = await Product.findById(req.params.id);
         if (!product) {
             return res.status(404).json({ success: false, message: 'ไม่พบสินค้าที่ระบุ' });
         }
+        // ภาพก่อนแก้ สำหรับใบปรับสต็อก (ยอดรวมทุกสาขา — ย้ายสาขาในฟอร์มนี้ไม่ใช่การปรับยอด)
+        const qtyBefore = totalStockQty(product);
+        const costBefore = Number(product.cost_price) || 0;
 
         if ((Number(productData.cost_price) || 0) !== (Number(product.cost_price) || 0)) {
             await freezeSoldCost(product._id, product.cost_price);
@@ -1300,6 +1366,18 @@ router.put('/products/:id', async (req, res) => {
 
         const updatedProduct = await product.save();
 
+        // ลงบัญชี: จำนวนรวมเปลี่ยน และ/หรือ ราคาทุนเปลี่ยน (ไม่มีอะไรเปลี่ยน = ไม่สร้างใบ)
+        await recordStockAdjustment(req, {
+            kind: 'edit',
+            product: updatedProduct,
+            branchId,
+            qtyBefore,
+            qtyAfter: totalStockQty(updatedProduct),
+            costBefore,
+            costAfter: updatedProduct.cost_price,
+            imeis: stockDeltaQty > 0 ? incomingImeis : []
+        });
+
         // Log stock/product adjustment
         await logActivity(req, 'UPDATE', 'STOCK', `แก้ไขข้อมูล/ปรับสต็อกสินค้า: ${product.name} (รหัสสินค้า: ${product.product_code || '-'})`, product.product_code, updatedProduct._id);
 
@@ -1336,6 +1414,10 @@ router.put('/products/:id', async (req, res) => {
 // หน้าที่: ลบข้อมูลสินค้า
 router.delete('/products/:id', async (req, res) => {
     try {
+        // ลบสินค้า = สต็อกที่เหลือหายทั้งหมด ต้องมีสิทธิ์ลบสินค้า (ปุ่มถังขยะก็ซ่อนด้วยสิทธิ์นี้)
+        if (!req.user.permissions || !req.user.permissions.delete_stock) {
+            return res.status(403).json({ success: false, message: 'ไม่มีสิทธิ์ลบสินค้า' });
+        }
         // บิลเก่าที่ยังอ้างสินค้านี้ต้องเก็บราคาทุนไว้ก่อนลบ ไม่งั้นต้นทุนขายย้อนหลังกลายเป็น 0
         const toDelete = await Product.findById(req.params.id).select('cost_price').lean();
         if (toDelete) await freezeSoldCost(toDelete._id, toDelete.cost_price);
@@ -1344,6 +1426,18 @@ router.delete('/products/:id', async (req, res) => {
         if (!deletedProduct) {
             return res.status(404).json({ success: false, message: 'ไม่พบสินค้าที่ระบุ' });
         }
+
+        // ลงบัญชี: สต็อกที่เหลือหายไปพร้อมสินค้า = ปรับสต็อกลดตามราคาทุน · สาขาเดียวที่มีของ = ใส่สาขานั้น หลายสาขา = ไม่ระบุสาขา
+        const branchesWithStock = (deletedProduct.stock_balances || []).filter(b => (Number(b.quantity) || 0) > 0);
+        await recordStockAdjustment(req, {
+            kind: 'delete',
+            product: deletedProduct,
+            branchId: branchesWithStock.length === 1 ? branchesWithStock[0].branch_id : null,
+            qtyBefore: totalStockQty(deletedProduct),
+            qtyAfter: 0,
+            costBefore: deletedProduct.cost_price,
+            costAfter: deletedProduct.cost_price
+        });
 
         // Log product deletion
         await logActivity(req, 'DELETE', 'STOCK', `ลบสินค้าออกจากระบบ: ${deletedProduct.name} (รหัสสินค้า: ${deletedProduct.product_code || '-'})`, deletedProduct.product_code, deletedProduct._id);
@@ -4084,8 +4178,10 @@ router.get('/order-verifications', async (req, res) => {
         const productIds = [];
         const txnIds = [];
         const updaterIds = new Set(); // คนที่บันทึกสถานะการชำระเงิน/สถานะดำเนินการ
+        const depositIds = []; // ใบมัดจำที่นำมาหักในบิล — ใช้ดึงชื่อลูกค้าเมื่อบิลไม่ได้ผูกสมาชิก
         transactions.forEach(t => {
             txnIds.push(t._id);
+            if (t.applied_deposit_id) depositIds.push(t.applied_deposit_id);
             (t.items || []).forEach(it => { if (it.product_id) productIds.push(it.product_id); });
             if (t.payment_status_updated_by) updaterIds.add(String(t.payment_status_updated_by));
             // บิลซื้อสดเก่า (ก่อนมีการบันทึกผู้ขายเป็นผู้บันทึก) ต้องใช้ข้อมูลพนักงานขายแทน
@@ -4093,7 +4189,7 @@ router.get('/order-verifications', async (req, res) => {
             if (t.verify_status_updated_by) updaterIds.add(String(t.verify_status_updated_by));
         });
 
-        const [md, products, receivables, updaters] = await Promise.all([
+        const [md, products, receivables, updaters, appliedDeposits] = await Promise.all([
             mdCache.get(),
             productIds.length
                 ? Product.find({ _id: { $in: productIds } }).select('product_code type_id color_id unit_id cost_price').lean()
@@ -4103,8 +4199,12 @@ router.get('/order-verifications', async (req, res) => {
                 : Promise.resolve([]),
             updaterIds.size
                 ? Employee.find({ _id: { $in: [...updaterIds] } }).select('name role branch_id').lean()
+                : Promise.resolve([]),
+            depositIds.length
+                ? Deposit.find({ _id: { $in: depositIds } }).select('customer_name customer_phone').lean()
                 : Promise.resolve([])
         ]);
+        const depositMap = new Map(appliedDeposits.map(d => [String(d._id), d]));
 
         const { maps, lists } = md;
         const updaterMap = new Map(updaters.map(e => [String(e._id), e]));
@@ -4184,10 +4284,13 @@ router.get('/order-verifications', async (req, res) => {
                 created_at: t.created_at,
                 branch_name: branchDoc ? branchDoc.name : '-',
                 employee_name: t.employee_id ? t.employee_id.name : '-',
+                // ชื่อลูกค้า: สมาชิกที่ผูกกับบิลก่อน ถ้าไม่มี (ขายหน้าร้านไม่ได้เลือกสมาชิก) ใช้ชื่อในใบมัดจำที่นำมาหัก
                 customer_name: t.member_id
                     ? `${t.member_id.prefix || ''}${t.member_id.first_name || ''} ${t.member_id.last_name || ''}`.trim()
-                    : '',
-                customer_phone: t.member_id ? (t.member_id.phone || '') : '',
+                    : ((depositMap.get(String(t.applied_deposit_id)) || {}).customer_name || ''),
+                customer_phone: t.member_id
+                    ? (t.member_id.phone || '')
+                    : ((depositMap.get(String(t.applied_deposit_id)) || {}).customer_phone || ''),
                 status: t.status,
                 payment_status: resolvePaymentStatus(t, receivable),
                 verify_status: t.verify_status || 'รอตรวจสอบ',
@@ -6167,6 +6270,10 @@ router.post('/purchase-orders', async (req, res) => {
         if (payment_due_date === undefined) {
             return res.status(400).json({ success: false, message: 'รูปแบบวันที่กำหนดจ่ายไม่ถูกต้อง' });
         }
+        const expected_arrival = parsePoDueDate(req.body.expected_arrival);
+        if (expected_arrival === undefined) {
+            return res.status(400).json({ success: false, message: 'รูปแบบวันที่คาดว่าจะได้รับไม่ถูกต้อง' });
+        }
 
         // Auto-generate po_number: PO-YYYYMMDD-XXXX
         const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
@@ -6181,6 +6288,7 @@ router.post('/purchase-orders', async (req, res) => {
             branch_id,
             items: poItems,
             payment_due_date,
+            expected_arrival,
             created_by: req.user.employee_id,
             status: 'รอจัดส่ง'
         });
@@ -6197,6 +6305,7 @@ router.post('/purchase-orders', async (req, res) => {
         queueAcctRefresh('purchase_order', newPO._id); // PO ใหม่: ยอดค้างจ่ายนับตั้งแต่สั่งซื้อ (นิยามเดียวกับ ap-summary)
         await registerAccessoryProductNames(poItems);
         await linkDeviceNameTypes(poItems);
+        await allocatePoToStockRequests(newPO); // หักยอดคำขอเบิกของสาขาปลายทาง + แจ้งสาขาว่ากำลังสั่งซื้อ
 
         await logActivity(req, 'CREATE', 'PO', `สร้างใบสั่งซื้อใหม่ เลขที่ ${po_number} สำหรับซัพพลายเออร์ ${supplier_name}`, po_number, newPO._id);
 
@@ -6227,6 +6336,10 @@ router.post('/po/create', async (req, res) => {
         if (payment_due_date === undefined) {
             return res.status(400).json({ success: false, message: 'รูปแบบวันที่กำหนดจ่ายไม่ถูกต้อง' });
         }
+        const expected_arrival = parsePoDueDate(req.body.expected_arrival);
+        if (expected_arrival === undefined) {
+            return res.status(400).json({ success: false, message: 'รูปแบบวันที่คาดว่าจะได้รับไม่ถูกต้อง' });
+        }
 
         // Auto-generate po_number: PO-YYYYMMDD-XXXX
         const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
@@ -6241,6 +6354,7 @@ router.post('/po/create', async (req, res) => {
             branch_id,
             items: poItems,
             payment_due_date,
+            expected_arrival,
             created_by: req.user.employee_id,
             status: 'รอจัดส่ง'
         });
@@ -6257,6 +6371,7 @@ router.post('/po/create', async (req, res) => {
         queueAcctRefresh('purchase_order', newPO._id);
         await registerAccessoryProductNames(poItems);
         await linkDeviceNameTypes(poItems);
+        await allocatePoToStockRequests(newPO); // หักยอดคำขอเบิกของสาขาปลายทาง + แจ้งสาขาว่ากำลังสั่งซื้อ
 
         await logActivity(req, 'CREATE', 'PO', `สร้างใบสั่งซื้อใหม่ เลขที่ ${po_number} สำหรับซัพพลายเออร์ ${supplier_name}`, po_number, newPO._id);
 
@@ -6340,6 +6455,10 @@ router.post('/purchase-orders/:id/update', async (req, res) => {
         if (payment_due_date === undefined) {
             return res.status(400).json({ success: false, message: 'รูปแบบวันที่กำหนดจ่ายไม่ถูกต้อง' });
         }
+        const expected_arrival = parsePoDueDate(req.body.expected_arrival);
+        if (expected_arrival === undefined) {
+            return res.status(400).json({ success: false, message: 'รูปแบบวันที่คาดว่าจะได้รับไม่ถูกต้อง' });
+        }
 
         const poItems = items.map(item => normalizePoItem(item));
 
@@ -6347,8 +6466,15 @@ router.post('/purchase-orders/:id/update', async (req, res) => {
         po.branch_id = branch_id;
         po.items = poItems;
         po.payment_due_date = payment_due_date;
+        po.expected_arrival = expected_arrival;
 
         await po.save();
+        // แก้วันที่คาดว่าจะได้รับ → ให้หน้าสาขาที่ขอเบิกเห็นวันใหม่
+        await StockRequest.updateMany(
+            { 'items.ordered_po_number': po.po_number },
+            { $set: { 'items.$[i].ordered_expected_arrival': expected_arrival } },
+            { arrayFilters: [{ 'i.ordered_po_number': po.po_number }] }
+        ).catch(err => console.error('[PO] อัปเดตวันที่คาดว่าจะได้รับในคำขอเบิกไม่สำเร็จ:', err.message));
         queueAcctRefresh('purchase_order', po._id); // แก้รายการ/ราคา PO = ยอดค้างจ่ายเปลี่ยน
         await registerAccessoryProductNames(poItems);
         await linkDeviceNameTypes(poItems);
@@ -6391,6 +6517,7 @@ router.post('/purchase-orders/:id/cancel', async (req, res) => {
         await po.save();
         queueAcctRefresh('purchase_order', po._id); // ยกเลิก PO = ยอดของ PO นี้หายทั้งหมด
         await releaseClaimDiscounts(po.po_number); // ส่วนลดเคลมที่ใช้กับใบนี้กลับมาใช้กับใบอื่นได้
+        await releasePoFromStockRequests(po.po_number); // คืนยอดคำขอเบิกให้กลับไปค้างสั่ง และเอาข้อความ "กำลังสั่งซื้อ" ออกจากหน้าสาขา
 
         await logActivity(req, 'CANCEL', 'PO', `ยกเลิกใบสั่งซื้อ เลขที่ ${po.po_number}`, po.po_number, po._id);
 
@@ -8533,6 +8660,40 @@ router.get('/stock-requests', async (req, res) => {
     }
 });
 
+// GET /api/stock-requests/product-options — รายชื่อสินค้าสำหรับ dropdown ค้นหาในฟอร์มแจ้งเบิก (ชื่อ + รหัสเท่านั้น)
+router.get('/stock-requests/product-options', async (req, res) => {
+    try {
+        if (!hasPerm(req, 'manage_stock')) {
+            return res.status(403).json({ success: false, message: 'คุณไม่มีสิทธิ์แจ้งเบิกสินค้า' });
+        }
+        // แยกเครื่อง/อุปกรณ์เสริมตามประเภทสินค้า "อุปกรณ์เสริม" (ที่เหลือทั้งหมดนับเป็นเครื่อง)
+        const accType = await ProductType.findOne({ name: 'อุปกรณ์เสริม' }).select('_id').lean();
+        const accId = accType ? accType._id : null;
+        const rows = await Product.aggregate([
+            { $match: { name: { $nin: [null, ''] } } },
+            { $group: {
+                _id: '$name',
+                code: { $first: '$product_code' },
+                acc: { $max: { $cond: [{ $eq: ['$type_id', accId] }, 1, 0] } }
+            } },
+            { $sort: { _id: 1 } },
+            { $limit: 5000 }
+        ]);
+        // ตัวเลือกความจุสำหรับฟอร์มแจ้งเบิก เรียงจากน้อยไปมาก (GB ก่อน TB)
+        const capRows = await ProductCapacity.find({}).select('name').lean();
+        const capGb = (n) => {
+            const m = String(n).match(/([\d.]+)\s*(TB|T|GB|G)?/i);
+            if (!m) return Infinity;
+            return parseFloat(m[1]) * (/^t/i.test(m[2] || '') ? 1024 : 1);
+        };
+        const capacities = capRows.map(c => c.name).filter(Boolean).sort((a, b) => capGb(a) - capGb(b));
+        res.status(200).json({ success: true, data: rows.map(r => ({ name: r._id, code: r.code || '', is_accessory: r.acc === 1 })), capacities });
+    } catch (error) {
+        console.error('API Error GET /api/stock-requests/product-options:', error);
+        res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการดึงรายชื่อสินค้า' });
+    }
+});
+
 // POST /api/stock-requests — สร้างคำขอเบิกจากสาขาของผู้ใช้
 router.post('/stock-requests', async (req, res) => {
     try {
@@ -8540,6 +8701,12 @@ router.post('/stock-requests', async (req, res) => {
             return res.status(403).json({ success: false, message: 'คุณไม่มีสิทธิ์แจ้งเบิกสินค้า' });
         }
         if (!req.user.branch_id) return res.status(400).json({ success: false, message: 'ไม่พบข้อมูลสาขาของผู้ใช้งาน' });
+
+        // สำนักงานใหญ่เป็นต้นทางของการจัดส่ง จึงแจ้งเบิกเองไม่ได้
+        const userBranch = await Branch.findById(req.user.branch_id).select('name').lean();
+        if (userBranch && String(userBranch.name || '').trim() === 'สำนักงานใหญ่') {
+            return res.status(403).json({ success: false, message: 'สำนักงานใหญ่ไม่สามารถแจ้งเบิกสินค้าได้ เพราะเป็นต้นทางของการจัดส่ง' });
+        }
 
         const title = cleanText(req.body.title, 200);
         const note = cleanText(req.body.note, 500);
@@ -8549,6 +8716,7 @@ router.post('/stock-requests', async (req, res) => {
         const items = rawItems.map(it => ({
             product_code: cleanText(it && it.product_code, 100),
             product_name: cleanText(it && it.product_name, 200),
+            capacity_name: cleanText(it && it.capacity_name, 50),
             quantity: Number(it && it.quantity)
         }));
         if (items.length === 0) return res.status(400).json({ success: false, message: 'กรุณาเพิ่มสินค้าอย่างน้อย 1 รายการ' });
@@ -8575,6 +8743,168 @@ router.post('/stock-requests', async (req, res) => {
     }
 });
 
+// จำนวนที่สำนักงานใหญ่มี นับตาม "ชื่อสินค้า" (สินค้าเก็บเป็นรายเครื่องแยกตาม IMEI คนละ record จึงต้องรวมตามชื่อรุ่น)
+async function getCentralStockMap(names) {
+    const centralStock = new Map();
+    const hq = await Branch.findOne({ name: 'สำนักงานใหญ่' }).select('_id').lean();
+    if (names.length && hq) {
+        const agg = await Product.aggregate([
+            { $match: { name: { $in: names } } },
+            { $unwind: '$stock_balances' },
+            { $match: { 'stock_balances.branch_id': hq._id } },
+            { $group: { _id: '$name', qty: { $sum: '$stock_balances.quantity' } } }
+        ]);
+        agg.forEach(a => centralStock.set(a._id, Number(a.qty || 0)));
+    }
+    return centralStock;
+}
+
+// ส่วนที่ฝ่ายจัดซื้อยังต้องสั่งของแต่ละรายการ = ที่ส่วนกลางไม่พอ - ที่สั่งซื้อไปแล้ว
+const SR_OPEN_STATUSES = ['pending', 'sent_to_tech', 'ordering'];
+const srRemainingToOrder = (it) => Math.max(0, Number(it.shortage_quantity || 0) - Number(it.ordered_quantity || 0));
+
+// คำขอที่ฝ่ายจัดซื้อยังไม่ได้กดบันทึกในหน้าจัดการคำขอ ยังไม่มี shortage_quantity — คำนวณจากสต็อกส่วนกลางตอนนี้ให้
+// (คำขอเก่าก่อน ใช้สต็อกร่วมกัน) เพื่อให้ตัวเลขในหน้าสร้างใบสั่งซื้อขึ้นทันทีโดยไม่ต้องรอกดบันทึกก่อน
+// รับ docs เรียงจากเก่าไปใหม่ ทั้ง lean และ mongoose document
+const fillShortageForUnmanaged = async (docs) => {
+    const targets = docs.filter(r => r.fulfillment_method !== 'stock');
+    if (!targets.length) return;
+    const names = [...new Set(targets.flatMap(r => r.items.map(i => i.product_name)).filter(Boolean))];
+    const remaining = await getCentralStockMap(names);
+    targets.forEach(r => r.items.forEach(it => {
+        const have = remaining.get(it.product_name) || 0;
+        const send = Math.max(0, Math.min(it.quantity, have));
+        remaining.set(it.product_name, have - send);
+        it.shortage_quantity = it.quantity - send;
+    }));
+};
+
+// หักยอดคำขอเบิกของสาขาปลายทางตามใบสั่งซื้อที่เพิ่งสร้าง (จับคู่ตามชื่อสินค้า คำขอเก่าก่อน)
+// และบันทึกใบสั่งซื้อ/วันที่คาดว่าจะได้รับลงรายการ เพื่อให้หน้าสาขาเห็นว่ากำลังสั่งซื้อ
+// ไม่ throw: ใบสั่งซื้อสำคัญกว่า ถ้าหักยอดไม่สำเร็จให้แค่ log
+const allocatePoToStockRequests = async (po) => {
+    try {
+        const need = new Map();
+        (po.items || []).forEach(i => need.set(i.product_name, (need.get(i.product_name) || 0) + Number(i.ordered_qty || 0)));
+        if (!need.size) return;
+        const reqs = await StockRequest.find({
+            branch_id: po.branch_id,
+            status: { $in: SR_OPEN_STATUSES },
+            'items.product_name': { $in: [...need.keys()] }
+        }).sort({ createdAt: 1 });
+        await fillShortageForUnmanaged(reqs);
+        const changed = [];
+        reqs.forEach(r => {
+            let touched = false;
+            r.items.forEach(it => {
+                const left = need.get(it.product_name) || 0;
+                const take = Math.min(left, srRemainingToOrder(it));
+                if (take <= 0) return;
+                need.set(it.product_name, left - take);
+                it.ordered_quantity = Number(it.ordered_quantity || 0) + take;
+                it.ordered_po_number = po.po_number;
+                it.ordered_expected_arrival = po.expected_arrival || null;
+                touched = true;
+            });
+            if (!touched) return;
+            if (r.status === 'pending' && !r.items.some(i => i.is_tech) && r.items.every(i => srRemainingToOrder(i) === 0)) {
+                r.status = 'ordering';
+            }
+            changed.push(r.save());
+        });
+        await Promise.all(changed);
+    } catch (err) {
+        console.error('[PO] หักยอดคำขอเบิกไม่สำเร็จ:', err.message);
+    }
+};
+
+// ยกเลิกใบสั่งซื้อ: คืนยอดที่เคยหักจากคำขอเบิก ให้กลับไปค้างสั่งตามเดิม
+const releasePoFromStockRequests = async (poNumber) => {
+    try {
+        const reqs = await StockRequest.find({ 'items.ordered_po_number': poNumber });
+        await Promise.all(reqs.map(r => {
+            r.items.forEach(it => {
+                if (it.ordered_po_number !== poNumber) return;
+                it.ordered_quantity = 0;
+                it.ordered_po_number = '';
+                it.ordered_expected_arrival = null;
+            });
+            if (r.status === 'ordering') r.status = 'pending';
+            return r.save();
+        }));
+    } catch (err) {
+        console.error('[PO] คืนยอดคำขอเบิกไม่สำเร็จ:', err.message);
+    }
+};
+
+// GET /api/stock-requests/pending-purchase — ฝ่ายจัดซื้อ: คำขอที่ยังต้องสั่งซื้อ จัดกลุ่มตามสาขาปลายทาง
+// ตัวเลขต่อสาขา = จำนวนคำขอ (ไม่ใช่จำนวนเครื่อง) ส่วนรายละเอียดแยกเครื่อง/อุปกรณ์เสริมให้ดูในตาราง
+router.get('/stock-requests/pending-purchase', async (req, res) => {
+    try {
+        if (!hasPerm(req, 'manage_po')) {
+            return res.status(403).json({ success: false, message: 'คุณไม่มีสิทธิ์จัดการคำขอเบิก' });
+        }
+        const rows = await StockRequest.find({ status: { $in: SR_OPEN_STATUSES } })
+            .sort({ createdAt: 1 }).limit(1000).lean();
+        await fillShortageForUnmanaged(rows);
+
+        const open = rows.filter(r => (r.items || []).some(i => srRemainingToOrder(i) > 0));
+
+        // แยกเครื่อง/อุปกรณ์เสริม จากหมวดหมู่ของสินค้า (หมวด "อุปกรณ์เสริม")
+        const names = [...new Set(open.flatMap(r => r.items.map(i => i.product_name)).filter(Boolean))];
+        const kindByName = new Map();
+        // ความจุ: คำขอเบิกไม่ได้เก็บความจุ จึงดึงจากสินค้าในระบบที่ชื่อตรงกัน (ชื่อเดียวมีหลายความจุ = แสดงทุกค่า)
+        const capsByName = new Map();
+        if (names.length) {
+            const [prods, types, caps] = await Promise.all([
+                Product.find({ name: { $in: names } }).select('name type_id capacity_id').lean(),
+                ProductType.find({}).select('name').lean(),
+                ProductCapacity.find({}).select('name').lean()
+            ]);
+            const typeName = new Map(types.map(t => [String(t._id), t.name]));
+            const capName = new Map(caps.map(c => [String(c._id), c.name]));
+            prods.forEach(p => {
+                if (!kindByName.has(p.name)) {
+                    kindByName.set(p.name, typeName.get(String(p.type_id)) === 'อุปกรณ์เสริม' ? 'accessory' : 'device');
+                }
+                const cn = p.capacity_id ? capName.get(String(p.capacity_id)) : '';
+                if (cn) {
+                    if (!capsByName.has(p.name)) capsByName.set(p.name, new Set());
+                    capsByName.get(p.name).add(cn);
+                }
+            });
+        }
+
+        const byBranch = new Map();
+        open.forEach(r => {
+            const key = String(r.branch_id);
+            if (!byBranch.has(key)) byBranch.set(key, { branch_id: key, count: 0, requests: [] });
+            const g = byBranch.get(key);
+            g.count += 1;
+            g.requests.push({
+                _id: r._id,
+                request_no: r.request_no,
+                createdAt: r.createdAt,
+                items: r.items.filter(i => srRemainingToOrder(i) > 0).map(i => ({
+                    product_name: i.product_name,
+                    product_code: i.product_code || '',
+                    kind: kindByName.get(i.product_name) || 'device',
+                    // ความจุที่สาขาเลือกไว้ในคำขอ ถ้าไม่ได้เลือก (หรือคำขอเก่า) ใช้ความจุของสินค้าชื่อเดียวกันในระบบแทน
+                    capacities: i.capacity_name
+                        ? [i.capacity_name]
+                        : [...(capsByName.get(i.product_name) || [])].sort((a, b) => a.localeCompare(b, 'en', { numeric: true })),
+                    requested: i.quantity,
+                    remaining: srRemainingToOrder(i)
+                }))
+            });
+        });
+        res.status(200).json({ success: true, data: [...byBranch.values()] });
+    } catch (error) {
+        console.error('API Error GET /api/stock-requests/pending-purchase:', error);
+        res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการดึงคำขอที่ต้องสั่งซื้อ' });
+    }
+});
+
 // GET /api/stock-requests/manage — ฝ่ายจัดซื้อ: เห็นคำขอของทุกสาขา (กรองสาขาได้)
 router.get('/stock-requests/manage', async (req, res) => {
     try {
@@ -8593,6 +8923,11 @@ router.get('/stock-requests/manage', async (req, res) => {
             .sort({ createdAt: -1 }).limit(500)
             .populate('branch_id', 'name')
             .populate('created_by', 'name').lean();
+
+        const names = [...new Set(rows.flatMap(r => (r.items || []).map(i => i.product_name)).filter(Boolean))];
+        const centralStock = await getCentralStockMap(names);
+        rows.forEach(r => (r.items || []).forEach(i => { i.central_stock = centralStock.get(i.product_name) || 0; }));
+
         res.status(200).json({ success: true, data: rows });
     } catch (error) {
         console.error('API Error GET /api/stock-requests/manage:', error);
@@ -8613,47 +8948,26 @@ router.put('/stock-requests/:id/manage', async (req, res) => {
             return res.status(400).json({ success: false, message: 'คำขอนี้ปิดแล้ว แก้ไขไม่ได้' });
         }
 
-        const { status, fulfillment_method, tracking_numbers, expected_arrival, tech_item_ids } = req.body;
-        const STATUSES = ['pending', 'ordering', 'sent_to_tech', 'canceled'];
-        if (status !== undefined && !STATUSES.includes(status)) {
-            return res.status(400).json({ success: false, message: 'สถานะที่เลือกไม่ถูกต้อง' });
-        }
-        if (fulfillment_method !== undefined && fulfillment_method !== null && !['purchase', 'stock'].includes(fulfillment_method)) {
-            return res.status(400).json({ success: false, message: 'รูปแบบการจัดการไม่ถูกต้อง' });
-        }
-        const arrival = parseOptionalDate(expected_arrival);
-        if (!arrival.ok) return res.status(400).json({ success: false, message: 'วันที่คาดว่าจะถึงไม่ถูกต้อง' });
-
-        if (fulfillment_method !== undefined) doc.fulfillment_method = fulfillment_method || null;
-        if (Array.isArray(tracking_numbers)) {
-            doc.tracking_numbers = tracking_numbers.map(x => cleanText(x, 100)).filter(Boolean);
-        }
-        if (expected_arrival !== undefined) doc.expected_arrival = arrival.value;
-
-        const method = doc.fulfillment_method;
-        if (method === 'stock' && Array.isArray(tech_item_ids)) {
-            const techSet = new Set(tech_item_ids.map(String));
-            doc.items.forEach(it => { it.is_tech = techSet.has(String(it._id)); });
-        } else if (method === 'purchase') {
-            doc.items.forEach(it => { it.is_tech = false; });
-        }
-
-        if (status !== undefined) {
-            if (status === 'ordering' && method !== 'purchase') {
-                return res.status(400).json({ success: false, message: 'สถานะกำลังสั่งซื้อใช้ได้เมื่อเลือก "สั่งสินค้าใหม่" เท่านั้น' });
-            }
-            if (status === 'sent_to_tech') {
-                if (method !== 'stock') {
-                    return res.status(400).json({ success: false, message: 'ต้องเลือก "เบิกจากส่วนกลาง" ก่อนส่งงานให้ฝ่ายเทคนิค' });
-                }
-                if (!doc.items.some(it => it.is_tech)) {
-                    return res.status(400).json({ success: false, message: 'กรุณาเลือกสินค้าที่ให้ฝ่ายเทคนิคเตรียมอย่างน้อย 1 รายการ' });
-                }
-            }
-            if (status === 'canceled' && doc.status === 'sent_to_tech') {
+        // หน้าจัดการคำขอล็อกที่ "เบิกจากส่วนกลาง" เสมอ: ส่งให้ฝ่ายเทคนิคเท่าที่ส่วนกลางมี ส่วนที่ขาดบันทึกไว้ว่ากำลังสั่งเพิ่ม
+        if (req.body.status === 'canceled') {
+            if (doc.status === 'sent_to_tech') {
                 return res.status(400).json({ success: false, message: 'ยกเลิกไม่ได้ เพราะฝ่ายเทคนิคกำลังเตรียมของแล้ว' });
             }
-            doc.status = status;
+            doc.status = 'canceled';
+        } else {
+            const centralStock = await getCentralStockMap([...new Set(doc.items.map(i => i.product_name).filter(Boolean))]);
+            const remainingStock = new Map(centralStock); // รายการชื่อซ้ำกันใช้สต็อกร่วมกัน ไม่นับซ้ำ
+            doc.items.forEach(it => {
+                const have = remainingStock.get(it.product_name) || 0;
+                const send = Math.max(0, Math.min(it.quantity, have));
+                remainingStock.set(it.product_name, have - send);
+                it.send_quantity = send;
+                it.shortage_quantity = it.quantity - send;
+                it.is_tech = send > 0;
+            });
+            doc.fulfillment_method = 'stock';
+            const allOrdered = doc.items.every(it => srRemainingToOrder(it) === 0);
+            doc.status = doc.items.some(it => it.is_tech) ? 'sent_to_tech' : (allOrdered ? 'ordering' : 'pending');
         }
 
         await doc.save();
@@ -8682,117 +8996,158 @@ router.get('/stock-requests/tech', async (req, res) => {
     }
 });
 
-// PUT /api/stock-requests/:id/ship — ฝ่ายเทคนิคกดจัดส่ง
-// หน้าที่: ตัดสต็อกจากสาขาของผู้ใช้ (ต้นทาง) แบบเดียวกับการโอนย้าย แล้วสร้างใบโอนไปยังสาขาผู้ขอ
-// ของที่ส่งไม่ครบ สร้างคำขอค้างส่งใหม่ให้อัตโนมัติ
+// GET /api/stock-requests/tech-history — ฝ่ายเทคนิค: ประวัติการเตรียมส่งที่จัดส่งเสร็จแล้ว (ใหม่สุดก่อน)
+router.get('/stock-requests/tech-history', async (req, res) => {
+    try {
+        if (!hasPerm(req, 'manage_transfers')) {
+            return res.status(403).json({ success: false, message: 'คุณไม่มีสิทธิ์ดูประวัติการเตรียมส่ง' });
+        }
+        const rows = await StockRequest.find({ status: 'shipped', items: { $elemMatch: { is_tech: true } } })
+            .sort({ shipped_at: -1, updatedAt: -1 }).limit(300)
+            .populate('branch_id', 'name')
+            .populate('created_by', 'name')
+            .populate('shipped_by', 'name')
+            .populate('transfer_id', 'transfer_number status').lean();
+
+        // รายการที่จัดส่งก่อนมีการผูก transfer_id: หาใบโอนจากหมายเหตุ "จัดส่งตามคำขอเบิก <เลขที่คำขอ>" ด้วยคำสั่งเดียว
+        const unlinked = rows.filter(r => !r.transfer_id);
+        if (unlinked.length > 0) {
+            const notes = unlinked.map(r => `จัดส่งตามคำขอเบิก ${r.request_no}`);
+            const transfers = await Transfer.find({ note: { $in: notes } }).select('transfer_number status note').lean();
+            const byNote = new Map(transfers.map(t => [t.note, t]));
+            unlinked.forEach(r => { r.transfer_id = byNote.get(`จัดส่งตามคำขอเบิก ${r.request_no}`) || null; });
+        }
+
+        // รายการที่จัดส่งก่อนเก็บ shipped_by: หาชื่อผู้ส่งจากบันทึกกิจกรรม (AuditLog) ของการจัดส่งนั้น ด้วยคำสั่งเดียว
+        const noSender = rows.filter(r => !r.shipped_by);
+        if (noSender.length > 0) {
+            const logs = await AuditLog.find({
+                module: 'StockRequest',
+                reference_no: { $in: noSender.map(r => r.request_no) },
+                description: /^จัดส่งตามคำขอ/
+            }).sort({ createdAt: 1 }).select('reference_no user_name user_id').lean();
+            const senderByNo = new Map(logs.map(l => [l.reference_no, { _id: l.user_id, name: l.user_name }])); // เรียงเก่า→ใหม่ ตัวหลังสุดทับ
+            noSender.forEach(r => { r.shipped_by = senderByNo.get(r.request_no) || null; });
+        }
+        res.status(200).json({ success: true, data: rows });
+    } catch (error) {
+        console.error('API Error GET /api/stock-requests/tech-history:', error);
+        res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการดึงประวัติการเตรียมส่ง' });
+    }
+});
+
+// PUT /api/stock-requests/:id/ship — ฝ่ายเทคนิคกดจัดส่ง (ต้นทาง = สำนักงานใหญ่เสมอ)
+// ไม่ต้องกรอก IMEI: ระบบเลือกเครื่องจากสต็อกสำนักงานใหญ่ให้เองตามลำดับ แล้วตัดสต็อก และสร้างใบโอนไปสาขาผู้ขอ
+// สาขาปลายทางจะตรวจรับเองที่หน้ารับสินค้าโอนย้าย ของที่ส่งไม่ครบ สร้างคำขอค้างส่งให้อัตโนมัติ
 router.put('/stock-requests/:id/ship', async (req, res) => {
     try {
         if (!hasPerm(req, 'manage_transfers')) {
             return res.status(403).json({ success: false, message: 'คุณไม่มีสิทธิ์เตรียมส่งสินค้า' });
         }
-        const fromBranch = req.user.branch_id;
-        if (!fromBranch) return res.status(400).json({ success: false, message: 'ไม่พบข้อมูลสาขาต้นทางของผู้ใช้งาน' });
         if (!mongoose.Types.ObjectId.isValid(req.params.id)) return res.status(400).json({ success: false, message: 'รหัสคำขอไม่ถูกต้อง' });
+
+        const hq = await Branch.findOne({ name: 'สำนักงานใหญ่' }).select('_id').lean();
+        if (!hq) return res.status(400).json({ success: false, message: 'ไม่พบสาขาสำนักงานใหญ่ในระบบ' });
+        const fromBranch = hq._id;
 
         const doc = await StockRequest.findById(req.params.id);
         if (!doc) return res.status(404).json({ success: false, message: 'ไม่พบคำขอเบิกที่ระบุ' });
         if (doc.status !== 'sent_to_tech') return res.status(400).json({ success: false, message: 'คำขอนี้ไม่อยู่ในสถานะเตรียมส่ง' });
         if (String(doc.branch_id) === String(fromBranch)) {
-            return res.status(400).json({ success: false, message: 'สาขาผู้ขอและสาขาต้นทางเป็นสาขาเดียวกัน' });
+            return res.status(400).json({ success: false, message: 'สำนักงานใหญ่ไม่สามารถเป็นผู้ขอและต้นทางพร้อมกันได้' });
         }
 
         const tracking = Array.isArray(req.body.tracking_numbers)
             ? req.body.tracking_numbers.map(x => cleanText(x, 100)).filter(Boolean) : [];
         if (tracking.length === 0) return res.status(400).json({ success: false, message: 'กรุณาระบุเลขพัสดุอย่างน้อย 1 รายการ' });
+        // วันที่คาดว่าของจะถึงสาขา (ฝ่ายเทคนิคระบุ ไม่บังคับ) — ถ้าไม่ส่งมาจะคงค่าเดิมไว้
         const arrival = parseOptionalDate(req.body.expected_arrival);
-        if (!arrival.ok) return res.status(400).json({ success: false, message: 'วันที่นัดส่งไม่ถูกต้อง' });
+        if (!arrival.ok) return res.status(400).json({ success: false, message: 'วันที่คาดว่าจะถึงไม่ถูกต้อง' });
 
-        // 1) ตรวจทั้งหมดก่อน (ยังไม่แก้ข้อมูล) เพื่อไม่ให้สต็อกถูกตัดค้างกลางทาง
+        // 1) จำนวนที่ส่งของแต่ละรายการ (ของฝ่ายเทคนิคเท่านั้น)
         const inputs = new Map((Array.isArray(req.body.items) ? req.body.items : []).map(x => [String(x._id), x]));
         const lines = [];
         for (const it of doc.items) {
             if (!it.is_tech) continue;
             const inp = inputs.get(String(it._id)) || {};
             const qty = Number(inp.fulfilled_quantity || 0);
-            if (!Number.isInteger(qty) || qty < 0 || qty > it.quantity) {
-                return res.status(400).json({ success: false, message: `จำนวนที่ส่งของ ${it.product_name} ต้องอยู่ระหว่าง 0 ถึง ${it.quantity}` });
+            const cap = it.send_quantity > 0 ? it.send_quantity : it.quantity; // ส่งได้ไม่เกินที่ส่วนกลางมีตอนบันทึก
+            if (!Number.isInteger(qty) || qty < 0 || qty > cap) {
+                return res.status(400).json({ success: false, message: `จำนวนที่ส่งของ ${it.product_name} ต้องอยู่ระหว่าง 0 ถึง ${cap}` });
             }
             if (qty === 0) continue;
-            if (!it.product_code) {
-                return res.status(400).json({ success: false, message: `สินค้า ${it.product_name} ไม่มีรหัสสินค้า จัดส่งจากสต็อกไม่ได้` });
-            }
-            const imeis = Array.isArray(inp.imeis) ? [...new Set(inp.imeis.map(x => String(x).trim()).filter(Boolean))] : [];
-            lines.push({ item: it, qty, imeis });
+            lines.push({ item: it, qty });
         }
         if (lines.length === 0) return res.status(400).json({ success: false, message: 'กรุณาระบุจำนวนที่จัดส่งอย่างน้อย 1 รายการ' });
 
-        const products = new Map();
-        const usedImeis = new Set();
-        const usedQty = new Map();
+        // 2) วางแผนการตัดสต็อกจากสำนักงานใหญ่ (ยังไม่บันทึก ถ้าไม่พอจะตอบกลับโดยไม่แก้ข้อมูลใด ๆ)
+        const docCache = new Map(); // ชื่อสินค้า -> record สินค้าที่มีของที่ สำนักงานใหญ่ เรียงตามลำดับเข้าระบบ
+        const plan = [];
         for (const line of lines) {
             const name = line.item.product_name;
-            let product = products.get(line.item.product_code);
-            if (!product) {
-                product = await Product.findOne({ product_code: line.item.product_code });
-                if (!product) return res.status(404).json({ success: false, message: `ไม่พบสินค้าในระบบ: ${name}` });
-                products.set(line.item.product_code, product);
+            if (!docCache.has(name)) {
+                const found = await Product.find({
+                    name,
+                    stock_balances: { $elemMatch: { branch_id: fromBranch, quantity: { $gt: 0 } } }
+                }).sort({ _id: 1 });
+                docCache.set(name, found);
             }
-            const bal = (product.stock_balances || []).find(b => b.branch_id && String(b.branch_id) === String(fromBranch));
-            if (!bal) return res.status(400).json({ success: false, message: `สินค้า ${name} ไม่มีในสต็อกสาขาต้นทาง` });
-
-            const hasImeis = Array.isArray(bal.imeis) && bal.imeis.length > 0;
-            if (hasImeis) {
-                if (line.imeis.length !== line.qty) {
-                    return res.status(400).json({ success: false, message: `กรุณาระบุ IMEI ให้ครบ ${line.qty} เครื่องสำหรับ ${name}` });
-                }
-                const stockImeis = new Set((bal.imeis || []).map(x => String(x)));
-                for (const imei of line.imeis) {
-                    if (!stockImeis.has(imei) || usedImeis.has(imei)) {
-                        return res.status(400).json({ success: false, message: `ไม่พบ IMEI ${imei} ในสต็อกสาขาต้นทาง (${name})` });
-                    }
-                    usedImeis.add(imei);
-                }
-            } else {
-                if (line.imeis.length > 0) {
-                    return res.status(400).json({ success: false, message: `${name} เป็นอุปกรณ์เสริม ไม่ต้องระบุ IMEI` });
-                }
-                const key = line.item.product_code;
-                const total = (usedQty.get(key) || 0) + line.qty;
-                usedQty.set(key, total);
-                if (Number(bal.quantity || 0) < total) {
-                    return res.status(400).json({ success: false, message: `${name} มีในสต็อกไม่พอ (คงเหลือ ${Number(bal.quantity || 0)})` });
-                }
+            let remaining = line.qty;
+            for (const product of docCache.get(name)) {
+                if (remaining <= 0) break;
+                const bal = (product.stock_balances || []).find(b => String(b.branch_id) === String(fromBranch));
+                if (!bal || Number(bal.quantity || 0) <= 0) continue;
+                const hasImeis = Array.isArray(bal.imeis) && bal.imeis.length > 0;
+                const take = hasImeis ? Math.min(bal.imeis.length, remaining) : Math.min(Number(bal.quantity), remaining);
+                const imeis = hasImeis ? bal.imeis.splice(0, take).map(x => String(x)) : [];
+                bal.quantity = Math.max(0, Number(bal.quantity || 0) - take);
+                plan.push({ product, name, imeis, quantity: take });
+                remaining -= take;
+            }
+            if (remaining > 0) {
+                return res.status(400).json({
+                    success: false,
+                    message: `สำนักงานใหญ่มี ${name} ไม่พอ (ขอ ${line.qty} มีอยู่ ${line.qty - remaining})`
+                });
             }
         }
 
-        // 2) ตัดสต็อกต้นทาง
-        for (const line of lines) {
-            const product = products.get(line.item.product_code);
-            const bal = ensureBranchBalance(product, fromBranch);
-            if (Array.isArray(bal.imeis) && bal.imeis.length > 0) {
-                for (const imei of line.imeis) {
-                    const idx = bal.imeis.findIndex(x => String(x) === imei);
-                    if (idx !== -1) bal.imeis.splice(idx, 1);
+        // 2.5) อัปโหลดรูปหลักฐานการจัดส่ง (แนบได้หลายรูป ไม่บังคับ) ก่อนตัดสต็อก ถ้าอัปโหลดไม่สำเร็จจะไม่แก้ข้อมูลใด ๆ
+        const rawImages = Array.isArray(req.body.images) ? req.body.images.filter(x => typeof x === 'string' && x) : [];
+        if (rawImages.length > 10) return res.status(400).json({ success: false, message: 'แนบรูปได้ไม่เกิน 10 รูป' });
+        const shipmentImageUrls = [];
+        try {
+            for (const [idx, img] of rawImages.entries()) {
+                const m = img.match(/^data:([A-Za-z-+\/]+);base64,([\s\S]+)$/);
+                const mimeType = m ? m[1] : 'image/jpeg';
+                if (!mimeType.startsWith('image/')) {
+                    return res.status(400).json({ success: false, message: 'ไฟล์ที่แนบต้องเป็นรูปภาพเท่านั้น' });
                 }
-                bal.quantity = Math.max(0, Number(bal.quantity || 0) - line.qty);
-            } else {
-                bal.quantity = Math.max(0, Number(bal.quantity || 0) - line.qty);
+                const buffer = Buffer.from(m ? m[2] : img, 'base64');
+                const url = await uploadBufferToDriveInFolder(buffer, mimeType, `SR_SHIP_${doc.request_no}_${idx + 1}_${Date.now()}.jpg`, 'หลักฐานจัดส่งคำขอเบิก');
+                shipmentImageUrls.push(url);
             }
+        } catch (err) {
+            console.error('Drive upload error (stock request ship):', err.message || err);
+            return res.status(500).json({ success: false, message: `อัปโหลดรูปไปยัง Google Drive ไม่สำเร็จ: ${err.message || 'Unknown error'}` });
         }
-        for (const product of products.values()) await product.save();
 
-        // 3) สร้างใบโอนไปยังสาขาผู้ขอ + บันทึกการเคลื่อนไหวสต็อก
+        // 3) ตัดสต็อกจริง
+        const touched = new Set(plan.map(p => p.product));
+        for (const product of touched) await product.save();
+
+        // 4) สร้างใบโอนไปยังสาขาผู้ขอ + บันทึกการเคลื่อนไหวสต็อก
         const now = new Date();
         const transferNo = `TRF-${now.toISOString().slice(0, 10).replace(/-/g, '')}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
-        const transfer = await Transfer.create({
+        const transferDoc = await Transfer.create({
             transfer_number: transferNo,
             from_branch: fromBranch,
             to_branch: doc.branch_id,
-            items: lines.map(line => ({
-                product_name: line.item.product_name,
-                product_code: line.item.product_code,
-                imeis: line.imeis,
-                quantity: line.qty
+            items: plan.map(p => ({
+                product_name: p.name,
+                product_code: p.product.product_code || String(p.product._id),
+                imeis: p.imeis,
+                quantity: p.quantity
             })),
             status: 'รอดำเนินการ',
             note: `จัดส่งตามคำขอเบิก ${doc.request_no}`,
@@ -8800,27 +9155,36 @@ router.put('/stock-requests/:id/ship', async (req, res) => {
             received_by: null,
             created_at: now
         });
-        for (const line of lines) {
+        for (const p of plan) {
             await createMovementsForItem({
-                productId: products.get(line.item.product_code)._id,
+                productId: p.product._id,
                 action: 'ส่งโอนย้าย',
                 fromBranch,
                 toBranch: doc.branch_id,
                 referenceNo: transferNo,
                 createdBy: req.user.employee_id,
                 transitHours: 0,
-                imeis: line.imeis,
-                quantity: line.imeis.length > 0 ? line.imeis.length : line.qty
+                imeis: p.imeis,
+                quantity: p.imeis.length > 0 ? p.imeis.length : p.quantity
             });
         }
 
-        // 4) อัปเดตคำขอ + สร้างคำขอค้างส่งสำหรับส่วนที่ยังไม่ครบ
+        // 5) อัปเดตคำขอ + สร้างคำขอค้างส่งสำหรับส่วนที่ยังไม่ครบ
         const shippedMap = new Map(lines.map(line => [String(line.item._id), line.qty]));
         for (const it of doc.items) {
             it.fulfilled_quantity = shippedMap.get(String(it._id)) || 0;
         }
         const backorderItems = doc.items
-            .map(it => ({ product_code: it.product_code, product_name: it.product_name, quantity: it.quantity - it.fulfilled_quantity }))
+            .map(it => {
+                const rest = it.quantity - it.fulfilled_quantity;
+                const carried = Math.min(rest, Number(it.ordered_quantity || 0)); // ที่สั่งซื้อไปแล้ว ไม่ต้องให้สั่งซ้ำ
+                return {
+                    product_code: it.product_code, product_name: it.product_name, quantity: rest,
+                    shortage_quantity: carried, ordered_quantity: carried,
+                    ordered_po_number: carried ? it.ordered_po_number : '',
+                    ordered_expected_arrival: carried ? it.ordered_expected_arrival : null
+                };
+            })
             .filter(it => it.quantity > 0);
         let backorderNo = null;
         if (backorderItems.length > 0) {
@@ -8831,16 +9195,18 @@ router.put('/stock-requests/:id/ship', async (req, res) => {
                 branch_id: doc.branch_id,
                 created_by: doc.created_by,
                 items: backorderItems,
-                status: 'pending',
+                status: backorderItems.every(it => it.ordered_quantity >= it.quantity) ? 'ordering' : 'pending',
                 parent_request_id: doc._id,
                 note: `สร้างอัตโนมัติจากรายการค้างส่งของ ${doc.request_no}`
             });
         }
         doc.status = 'shipped';
         doc.tracking_numbers = tracking;
-        doc.expected_arrival = arrival.value;
-        doc.transfer_id = transfer._id;
+        doc.shipment_images = shipmentImageUrls;
+        if (arrival.value) doc.expected_arrival = arrival.value;
         doc.shipped_at = now;
+        doc.shipped_by = req.user.employee_id || null;
+        doc.transfer_id = transferDoc._id;
         await doc.save();
 
         await logActivity(req, 'UPDATE', 'StockRequest', `จัดส่งตามคำขอ ${doc.request_no} ใบโอน ${transferNo}`, doc.request_no, doc._id);

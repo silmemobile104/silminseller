@@ -950,7 +950,7 @@
     const _sumEntries = new Map();   // _id รหัสบัญชี -> รายการย่อยที่โหลดแล้ว
 
     const SUM_SOURCE_LABELS = {
-        transaction: 'บิลขาย', deposit: 'ใบมัดจำ', claim: 'ใบเคลม', stock_issue: 'ใบจ่ายออก', purchase_order: 'ใบสั่งซื้อ',
+        transaction: 'บิลขาย', deposit: 'ใบมัดจำ', claim: 'ใบเคลม', stock_issue: 'ใบจ่ายออก', stock_adjustment: 'ใบปรับสต็อก', purchase_order: 'ใบสั่งซื้อ',
         import_notification: 'แจ้งสินค้าเข้า', expense: 'ค่าใช้จ่าย (ตรวจสอบออเดอร์)', cash_movement: 'ค่าใช้จ่าย (ระบบบัญชีและการเงิน)',
         voucher: 'ใบสำคัญจ่าย', other_entry: 'รายได้/รายจ่ายอื่นๆ'
     };
