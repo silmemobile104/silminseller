@@ -44,6 +44,9 @@ const roleSchema = new mongoose.Schema({
         request_stock: { type: Boolean },          // แจ้งเบิกสินค้า (#stock-request) — ยกจาก manage_stock
         manage_stock_requests: { type: Boolean },  // จัดการคำขอเบิก (#stock-request-manage) — ยกจาก manage_po
         prepare_stock_requests: { type: Boolean }, // รายการเตรียมส่ง (#stock-request-tech) — ยกจาก manage_transfers
+        // นับ/ตรวจนับสต็อกอุปกรณ์เสริม — จงใจไม่ใส่ default เหตุผลเดียวกับข้างบน (ยกค่าจาก do_stock_audit / manage_stock_audit)
+        count_accessory_stock: { type: Boolean },  // นับสต็อกอุปกรณ์เสริม (#accessory-count) — ยกจาก do_stock_audit
+        audit_accessory_stock: { type: Boolean },  // ตรวจนับสต็อกอุปกรณ์เสริม (#accessory-count-review) — ยกจาก manage_stock_audit
         manage_finance: { type: Boolean, default: false },   // อนุญาตให้จัดการระบบบัญชีและการเงิน
         view_audit_logs: { type: Boolean, default: false },  // อนุญาตดูประวัติกิจกรรมระบบ
         view_branch_inventory: { type: Boolean, default: false }, // อนุญาตดูสินค้าในสาขา
@@ -70,7 +73,8 @@ const seedDefaultRoles = async () => {
                 manage_transfers: true, manage_finance: true, view_audit_logs: true, view_branch_inventory: true,
                 view_daily_summary: true, manage_stock_audit: true, do_stock_audit: true, manage_deposits: true,
                 manage_database: true, verify_orders: true,
-                request_stock: true, manage_stock_requests: true, prepare_stock_requests: true
+                request_stock: true, manage_stock_requests: true, prepare_stock_requests: true,
+                count_accessory_stock: true, audit_accessory_stock: true
             }
         },
         {
@@ -135,6 +139,8 @@ const seedDefaultRoles = async () => {
                 existing.permissions.request_stock = true;
                 existing.permissions.manage_stock_requests = true;
                 existing.permissions.prepare_stock_requests = true;
+                existing.permissions.count_accessory_stock = true;
+                existing.permissions.audit_accessory_stock = true;
                 changed = true;
             }
             // Ensure ผู้จัดการ gets manage_stock_audit & do_stock_audit
@@ -216,7 +222,9 @@ const seedDefaultRoles = async () => {
     const stockRequestPerms = [
         ['request_stock', 'manage_stock', 'แจ้งเบิกสินค้า'],
         ['manage_stock_requests', 'manage_po', 'จัดการคำขอเบิก'],
-        ['prepare_stock_requests', 'manage_transfers', 'รายการเตรียมส่ง']
+        ['prepare_stock_requests', 'manage_transfers', 'รายการเตรียมส่ง'],
+        ['count_accessory_stock', 'do_stock_audit', 'นับสต็อกอุปกรณ์เสริม'],
+        ['audit_accessory_stock', 'manage_stock_audit', 'ตรวจนับสต็อกอุปกรณ์เสริม']
     ];
     for (const [key, fromKey, label] of stockRequestPerms) {
         const on = await Role.updateMany(
@@ -504,6 +512,11 @@ const transactionSchema = new mongoose.Schema({
         price: { type: Number, default: 0 }, // ราคาต่อชิ้น
         // ราคาทุนต่อชิ้น ณ วันขาย (ต้นทุนขายในบัญชี) — ตั้งใจไม่ใส่ default: บิลเก่าไม่มีฟิลด์นี้ = ใช้ราคาทุนของสินค้า (ดู utils/accountEntries.js)
         cost_price: { type: Number },
+        // ราคาตั้งขายต่อชิ้น ณ วันขาย — เทียบกับ price เพื่อดูว่าแคชเชียร์แก้ราคาหรือไม่ · บิลเก่าไม่มีฟิลด์นี้ (ตั้งใจไม่ใส่ default)
+        list_price: { type: Number },
+        // ตอนขายตัดสต็อกแบบไหน: 'imei' = ดึง IMEI ออกจาก imeis, 'qty' = ลดจำนวนอย่างเดียว — ยกเลิกบิลคืนตามนี้
+        // บิลเก่าไม่มีฟิลด์นี้ (ตั้งใจไม่ใส่ default) ยกเลิกบิลจะใช้วิธีเดิมคือดูจาก imei_sold
+        stock_mode: { type: String, enum: ['imei', 'qty'] },
         warranty_period: { type: String }, // ระยะเวลาประกัน (เช่น "1 เดือน", "1 ปี")
         warranty_expiry: { type: Date }, // วันหมดอายุประกัน
         is_gift: { type: Boolean, default: false } // เป็นของแถม
@@ -1027,7 +1040,8 @@ const stockRequestSchema = new mongoose.Schema({
         product_code: { type: String, default: '' },
         product_name: { type: String, required: true },
         capacity_name: { type: String, default: '' }, // ความจุที่สาขาเลือกตอนแจ้งเบิก ('' = ไม่กำหนดความจุ)
-        quantity: { type: Number, default: 1, min: 1 },
+        quantity: { type: Number, default: 1, min: 0 }, // จำนวนที่จะดำเนินการ — ฝ่ายจัดซื้อปรับได้ในหน้าจัดการคำขอ (0 = ไม่ส่งรายการนี้)
+        requested_quantity: { type: Number, default: null }, // จำนวนเดิมที่สาขาขอ เก็บไว้เมื่อฝ่ายจัดซื้อปรับจำนวน (null = ยังไม่เคยปรับ)
         is_tech: { type: Boolean, default: false }, // ส่งให้ฝ่ายเทคนิคเตรียมของ
         send_quantity: { type: Number, default: 0 }, // จำนวนที่ส่งให้ฝ่ายเทคนิคเตรียม (เท่าที่ส่วนกลางมี ณ ตอนบันทึก)
         shortage_quantity: { type: Number, default: 0 }, // จำนวนที่ส่วนกลางไม่พอ ซึ่งกำลังสั่งเพิ่ม
@@ -1057,11 +1071,41 @@ stockRequestSchema.index({ status: 1 });
 stockRequestSchema.index({ branch_id: 1, createdAt: -1 });
 const StockRequest = mongoose.model('StockRequest', stockRequestSchema, 'stockrequest');
 
+// 35. AccessoryCount (นับสต็อกอุปกรณ์เสริม: สาขานับ → ผู้ตรวจเทียบกับสต็อกในระบบ → เสร็จสิ้น / ตรวจสอบใหม่)
+// บันทึกอย่างเดียว ไม่ปรับสต็อกและไม่เชื่อมบัญชี (รวมถึงช่อง "หักเงิน")
+const accessoryCountSchema = new mongoose.Schema({
+    count_no: { type: String, required: true, unique: true }, // เลขที่ใบนับ (ACC-วันที่-สุ่ม)
+    branch_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Branch', required: true }, // สาขาที่นับ
+    count_date: { type: String, required: true }, // วันที่นับ (YYYY-MM-DD เวลาไทย) — ใช้กรองในหน้าตรวจนับ
+    status: { type: String, enum: ['pending', 'recheck', 'done'], default: 'pending' }, // กำลังรอตรวจสอบ | ตรวจสอบใหม่ | เสร็จสิ้น
+    items: [{
+        product_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Product', required: true },
+        product_code: { type: String, default: '' },
+        product_name: { type: String, required: true },
+        color_name: { type: String, default: '' },
+        counted_qty: { type: Number, required: true, min: 0 }, // จำนวนที่สาขานับได้
+        note: { type: String, default: '' },                  // หมายเหตุของสาขา
+        system_qty: { type: Number, default: 0 },             // สต็อกในระบบของสาขา ณ ตอนส่งใบนับ (ใช้เทียบ)
+        moved_qty: { type: Number, default: 0, min: 0 },      // ผู้ตรวจ: จำนวนที่ย้ายออกไป (บันทึกเฉยๆ ไม่นำไปคิดสถานะ)
+        review_note: { type: String, default: '' },           // ผู้ตรวจ: หมายเหตุ
+        deduction_amount: { type: Number, default: 0, min: 0 } // ผู้ตรวจ: หักเงิน (เฉพาะรายการที่ขาด, บันทึกเฉยๆ)
+    }],
+    note: { type: String, default: '' }, // หมายเหตุรวมของใบนับ (ไม่บังคับ)
+    counted_by: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee', required: true },
+    submitted_at: { type: Date, default: Date.now }, // ส่งครั้งล่าสุด (ส่งใหม่หลัง "ตรวจสอบใหม่" จะอัปเดต)
+    reviewed_by: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee', default: null },
+    reviewed_at: { type: Date, default: null }
+}, { timestamps: true });
+accessoryCountSchema.index({ branch_id: 1, createdAt: -1 });
+accessoryCountSchema.index({ count_date: 1 });
+const AccessoryCount = mongoose.model('AccessoryCount', accessoryCountSchema, 'accessorycount');
+
 module.exports = {
     Branch,
     Role,
     Employee,
     StockRequest,
+    AccessoryCount,
     ProductType,
     ProductUnit,
     ProductColor,

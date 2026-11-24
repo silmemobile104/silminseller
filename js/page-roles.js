@@ -15,7 +15,7 @@
     const closeRoleModalBtn = document.getElementById('close-role-modal-btn');
     const cancelRoleModalBtn = document.getElementById('cancel-role-modal-btn');
 
-    const permKeys = ['view_dashboard', 'manage_stock', 'delete_stock', 'do_pos', 'view_sales_history', 'manage_personnel', 'manage_branches', 'manage_settings', 'manage_roles', 'view_audit_logs', 'filter_stock_branch', 'cancel_sale', 'report_arrival', 'approve_import', 'manage_po', 'view_po_dashboard', 'pay_po', 'receive_po', 'manage_transfers', 'request_stock', 'manage_stock_requests', 'prepare_stock_requests', 'manage_finance', 'view_branch_inventory', 'view_daily_summary', 'do_stock_audit', 'manage_stock_audit', 'manage_deposits', 'manage_database', 'verify_orders'];
+    const permKeys = ['view_dashboard', 'manage_stock', 'delete_stock', 'do_pos', 'view_sales_history', 'manage_personnel', 'manage_branches', 'manage_settings', 'manage_roles', 'view_audit_logs', 'filter_stock_branch', 'cancel_sale', 'report_arrival', 'approve_import', 'manage_po', 'view_po_dashboard', 'pay_po', 'receive_po', 'manage_transfers', 'request_stock', 'manage_stock_requests', 'prepare_stock_requests', 'count_accessory_stock', 'audit_accessory_stock', 'manage_finance', 'view_branch_inventory', 'view_daily_summary', 'do_stock_audit', 'manage_stock_audit', 'manage_deposits', 'manage_database', 'verify_orders'];
     const permLabels = {
         view_dashboard: 'ดูแดชบอร์ด',
         manage_stock: 'จัดการสต็อก',
@@ -39,6 +39,8 @@
         request_stock: 'แจ้งเบิกสินค้า',
         manage_stock_requests: 'จัดการคำขอเบิก',
         prepare_stock_requests: 'รายการเตรียมส่ง',
+        count_accessory_stock: 'นับสต็อกอุปกรณ์เสริม',
+        audit_accessory_stock: 'ตรวจนับสต็อกอุปกรณ์เสริม',
         manage_finance: 'จัดการระบบบัญชีและการเงิน',
         view_branch_inventory: 'ดูสินค้าในสาขา',
         view_daily_summary: 'ดูสรุปยอดขายรายวัน',
@@ -71,6 +73,8 @@
         request_stock: 'fa-clipboard-list',
         manage_stock_requests: 'fa-list-check',
         prepare_stock_requests: 'fa-box',
+        count_accessory_stock: 'fa-boxes-stacked',
+        audit_accessory_stock: 'fa-clipboard-check',
         manage_finance: 'fa-chart-line',
         view_branch_inventory: 'fa-store',
         view_daily_summary: 'fa-chart-line',

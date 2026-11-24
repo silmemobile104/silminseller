@@ -1148,14 +1148,21 @@
     }
 
     // Cancel transaction button
+    // กันกดซ้ำระหว่างรอผล: ยกเลิกบิล = คืนสต็อก ส่งซ้ำไม่ได้ (เซิร์ฟเวอร์จองสถานะแบบ atomic อีกชั้น ได้ 409 ถ้าซ้ำ)
+    let cancelInFlight = false;
     if (btnCancelTransaction) {
         btnCancelTransaction.addEventListener('click', () => {
-            if (currentTransaction) {
+            if (currentTransaction && !cancelInFlight) {
                 showPrompt('ระบุเหตุผลที่ต้องการยกเลิกบิลนี้:', '', async (reason) => {
                     if (!reason || reason.trim() === '') {
                         showToast('กรุณาระบุเหตุผล', 'warning');
                         return;
                     }
+                    if (cancelInFlight) return;
+                    cancelInFlight = true;
+                    const originalHtml = btnCancelTransaction.innerHTML;
+                    btnCancelTransaction.disabled = true;
+                    btnCancelTransaction.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> กำลังยกเลิก...';
                     try {
                         const response = await authFetch(`${API_BASE_URL}/transactions/${currentTransaction._id}/cancel`, {
                             method: 'POST',
@@ -1164,16 +1171,27 @@
                         });
                         const result = await response.json();
                         if (result.success) {
-                            showToast('ยกเลิกบิลขายสำเร็จ', 'success');
+                            // ยกเลิกสำเร็จแต่คืนสต็อกไม่ครบ: เซิร์ฟเวอร์ส่งรายการที่ต้องปรับเองมาในข้อความ ต้องให้ผู้ใช้เห็น
+                            const partial = result.message && result.message.includes('ไม่สำเร็จ');
+                            showToast(partial ? result.message : 'ยกเลิกบิลขายสำเร็จ', partial ? 'warning' : 'success');
                             closeTransactionDetailModal();
                             loadSalesHistory();
                             if (typeof fetchProducts === 'function') fetchProducts();
                         } else {
                             showToast(result.message || 'เกิดข้อผิดพลาดในการยกเลิก', 'error');
+                            // 409 = มีคนยกเลิกบิลนี้ไปก่อนแล้ว — โหลดรายการใหม่ให้สถานะบนจอตรงกับระบบ
+                            if (response.status === 409) {
+                                closeTransactionDetailModal();
+                                loadSalesHistory();
+                            }
                         }
                     } catch (err) {
                         console.error(err);
                         showToast('เกิดข้อผิดพลาดในการเชื่อมต่อ', 'error');
+                    } finally {
+                        cancelInFlight = false;
+                        btnCancelTransaction.disabled = false;
+                        btnCancelTransaction.innerHTML = originalHtml;
                     }
                 });
             }

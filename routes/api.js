@@ -14,6 +14,7 @@ const {
     StockIssue,
     StockAdjustment,
     StockRequest,
+    AccessoryCount,
     Claim,
     Branch,
     Supplier,
@@ -166,6 +167,13 @@ const verifyToken = (req, res, next) => {
             }
             if (decoded.permissions.prepare_stock_requests === undefined) {
                 decoded.permissions.prepare_stock_requests = !!decoded.permissions.manage_transfers;
+            }
+            // token ที่ออกก่อนมีสิทธิ์นับ/ตรวจนับสต็อกอุปกรณ์เสริม — ยึดตามสิทธิ์ตรวจนับสต็อกประจำวันเดิม
+            if (decoded.permissions.count_accessory_stock === undefined) {
+                decoded.permissions.count_accessory_stock = !!decoded.permissions.do_stock_audit;
+            }
+            if (decoded.permissions.audit_accessory_stock === undefined) {
+                decoded.permissions.audit_accessory_stock = !!decoded.permissions.manage_stock_audit;
             }
         }
         req.user = decoded; // { employee_id, role, branch_id }
@@ -2417,7 +2425,9 @@ router.post('/auth/login', async (req, res) => {
             view_po_dashboard: dbPerms.view_po_dashboard !== undefined && dbPerms.view_po_dashboard !== null ? dbPerms.view_po_dashboard : (dbPerms.manage_po || false),
             request_stock: dbPerms.request_stock !== undefined && dbPerms.request_stock !== null ? dbPerms.request_stock : (dbPerms.manage_stock || false),
             manage_stock_requests: dbPerms.manage_stock_requests !== undefined && dbPerms.manage_stock_requests !== null ? dbPerms.manage_stock_requests : (dbPerms.manage_po || false),
-            prepare_stock_requests: dbPerms.prepare_stock_requests !== undefined && dbPerms.prepare_stock_requests !== null ? dbPerms.prepare_stock_requests : (dbPerms.manage_transfers || false)
+            prepare_stock_requests: dbPerms.prepare_stock_requests !== undefined && dbPerms.prepare_stock_requests !== null ? dbPerms.prepare_stock_requests : (dbPerms.manage_transfers || false),
+            count_accessory_stock: dbPerms.count_accessory_stock !== undefined && dbPerms.count_accessory_stock !== null ? dbPerms.count_accessory_stock : (dbPerms.do_stock_audit !== undefined ? !!dbPerms.do_stock_audit : (employee.role === 'แอดมิน' || employee.role === 'ผู้จัดการ' || dbPerms.do_pos || false)),
+            audit_accessory_stock: dbPerms.audit_accessory_stock !== undefined && dbPerms.audit_accessory_stock !== null ? dbPerms.audit_accessory_stock : (dbPerms.manage_stock_audit !== undefined ? !!dbPerms.manage_stock_audit : (employee.role === 'แอดมิน' || employee.role === 'ผู้จัดการ' || dbPerms.manage_settings || false))
         };
 
         // สร้าง JWT Token (รวม permissions)
@@ -2520,7 +2530,9 @@ router.get('/auth/me', async (req, res) => {
             view_po_dashboard: dbPerms.view_po_dashboard !== undefined && dbPerms.view_po_dashboard !== null ? dbPerms.view_po_dashboard : (dbPerms.manage_po || false),
             request_stock: dbPerms.request_stock !== undefined && dbPerms.request_stock !== null ? dbPerms.request_stock : (dbPerms.manage_stock || false),
             manage_stock_requests: dbPerms.manage_stock_requests !== undefined && dbPerms.manage_stock_requests !== null ? dbPerms.manage_stock_requests : (dbPerms.manage_po || false),
-            prepare_stock_requests: dbPerms.prepare_stock_requests !== undefined && dbPerms.prepare_stock_requests !== null ? dbPerms.prepare_stock_requests : (dbPerms.manage_transfers || false)
+            prepare_stock_requests: dbPerms.prepare_stock_requests !== undefined && dbPerms.prepare_stock_requests !== null ? dbPerms.prepare_stock_requests : (dbPerms.manage_transfers || false),
+            count_accessory_stock: dbPerms.count_accessory_stock !== undefined && dbPerms.count_accessory_stock !== null ? dbPerms.count_accessory_stock : (dbPerms.do_stock_audit !== undefined ? !!dbPerms.do_stock_audit : (employee.role === 'แอดมิน' || employee.role === 'ผู้จัดการ' || dbPerms.do_pos || false)),
+            audit_accessory_stock: dbPerms.audit_accessory_stock !== undefined && dbPerms.audit_accessory_stock !== null ? dbPerms.audit_accessory_stock : (dbPerms.manage_stock_audit !== undefined ? !!dbPerms.manage_stock_audit : (employee.role === 'แอดมิน' || employee.role === 'ผู้จัดการ' || dbPerms.manage_settings || false))
         };
 
         // ออก token ใหม่ที่มีสิทธิ์ล่าสุดด้วย
@@ -3531,7 +3543,11 @@ router.put('/transfers/:id/cancel', async (req, res) => {
 
 // ตัด/คืนสต็อกสาขาแบบ atomic (เงื่อนไขอยู่ใน filter เดียวกับการเขียน) — ห้ามแก้ stock_balances บนเอกสารที่โหลดค้างไว้แล้ว save()
 // เพราะจะเขียนทับการขาย/โอนที่แทรกเข้ามาระหว่างอ่านกับบันทึก · คืน true เมื่อตัดได้จริง
+// จำนวนต้องเป็นจำนวนเต็มบวกเสมอ — ถ้าหลุดค่าติดลบมา $inc: -(-5) จะกลายเป็น "เพิ่ม" สต็อกแทน
+const isPositiveIntQty = (q) => Number.isInteger(q) && q >= 1;
+
 async function deductBranchStock(productId, branchId, { imei = '', quantity = 1 } = {}) {
+    if (!imei && !isPositiveIntQty(quantity)) return false; // ป้องกันชั้นสุดท้าย: ผู้เรียกต้องตรวจมาก่อนแล้ว
     const result = imei
         ? await Product.updateOne(
             { _id: productId, stock_balances: { $elemMatch: { branch_id: branchId, imeis: imei } } },
@@ -3545,10 +3561,38 @@ async function deductBranchStock(productId, branchId, { imei = '', quantity = 1 
 }
 
 async function restoreBranchStock(productId, branchId, { imei = '', quantity = 1 } = {}) {
-    const filter = { _id: productId, stock_balances: { $elemMatch: { branch_id: branchId } } };
-    return imei
-        ? Product.updateOne(filter, { $addToSet: { 'stock_balances.$.imeis': imei }, $inc: { 'stock_balances.$.quantity': 1 } })
-        : Product.updateOne(filter, { $inc: { 'stock_balances.$.quantity': quantity } });
+    if (!imei && !isPositiveIntQty(quantity)) {
+        throw new Error(`restoreBranchStock: จำนวนไม่ถูกต้อง (${quantity})`);
+    }
+    // ทุกขั้นเป็น updateOne ที่มีเงื่อนไขอยู่ใน filter — ไม่โหลดเอกสารมาแก้แล้ว save() ทับ
+    // คืนค่า: 'restored' = คืนแล้ว · 'already' = IMEI อยู่ในสาขานี้อยู่แล้ว (ไม่นับซ้ำ) · 'no-product' = ไม่พบสินค้า
+    const qty = imei ? 1 : quantity;
+    for (let attempt = 0; attempt < 2; attempt++) {
+        // 1) สาขามีรายการอยู่แล้ว: เติม IMEI (เฉพาะเมื่อยังไม่มี IMEI นี้ จึงไม่บวกจำนวนซ้ำ) หรือเติมจำนวน
+        const r = imei
+            ? await Product.updateOne(
+                { _id: productId, stock_balances: { $elemMatch: { branch_id: branchId, imeis: { $ne: imei } } } },
+                { $push: { 'stock_balances.$.imeis': imei }, $inc: { 'stock_balances.$.quantity': 1 } })
+            : await Product.updateOne(
+                { _id: productId, stock_balances: { $elemMatch: { branch_id: branchId } } },
+                { $inc: { 'stock_balances.$.quantity': qty } });
+        if (r.modifiedCount === 1) return 'restored';
+
+        // 2) สาขายังไม่มีรายการของสินค้านี้: สร้างรายการใหม่ (เงื่อนไข $ne กันสร้างซ้ำถ้ามีคนสร้างแทรกเข้ามา)
+        const created = await Product.updateOne(
+            { _id: productId, 'stock_balances.branch_id': { $ne: branchId } },
+            { $push: { stock_balances: { branch_id: branchId, quantity: qty, imeis: imei ? [imei] : [] } } });
+        if (created.modifiedCount === 1) return 'restored';
+
+        // 3) ไม่ได้ทั้งสองแบบ: ไม่พบสินค้า, IMEI อยู่ในสาขานี้แล้ว หรือมีคนสร้างรายการสาขาแทรกเข้ามา (วนลองข้อ 1 อีกรอบ)
+        const doc = await Product.findOne(
+            { _id: productId },
+            { stock_balances: { $elemMatch: { branch_id: branchId } } }).lean();
+        if (!doc) return 'no-product';
+        const bal = (doc.stock_balances || [])[0];
+        if (imei && bal && (bal.imeis || []).includes(imei)) return 'already';
+    }
+    throw new Error(`restoreBranchStock: คืนสต็อกไม่สำเร็จ (product ${productId}, branch ${branchId})`);
 }
 
 // POST /api/transactions
@@ -3569,6 +3613,12 @@ router.post('/transactions', async (req, res) => {
         await releaseDeposit();
     };
     try {
+        // ขายสินค้า = ตัดสต็อกและสร้างบิล ต้องมีสิทธิ์ do_pos (เกณฑ์เดียวกับที่หน้าเว็บใช้เปิดหน้าขาย)
+        // ตรวจก่อนอย่างอื่นทั้งหมด จึงไม่มีรูปถูกอัปโหลดหรือใบมัดจำถูกจองไว้ค้าง
+        if (!req.user.permissions || !req.user.permissions.do_pos) {
+            return res.status(403).json({ success: false, message: 'คุณไม่มีสิทธิ์ทำรายการขาย (POS)' });
+        }
+
         const {
             items, total_amount, payment_method, down_payment, branch_id, member_id,
             payment_type, cash_amount, transfer_amount, finance_company,
@@ -3579,11 +3629,80 @@ router.post('/transactions', async (req, res) => {
         } = req.body;
 
         // ตรวจสอบข้อมูลเบื้องต้น
-        if (!items || items.length === 0) {
+        if (!Array.isArray(items) || items.length === 0) {
             return res.status(400).json({ success: false, message: 'กรุณาเพิ่มสินค้าลงในตะกร้าก่อนทำรายการ' });
         }
         if (!payment_method) {
             return res.status(400).json({ success: false, message: 'กรุณาเลือกช่องทางการชำระเงิน' });
+        }
+
+        // สาขาที่ตัดสต็อกต้องเป็นสาขาของผู้ขายตาม token เสมอ — ห้ามเชื่อ branch_id จากหน้าเว็บ
+        // (หน้าเว็บอ่านจาก localStorage ซึ่งผู้ใช้แก้เองได้ จะกลายเป็นตัดสต็อกสาขาอื่นแล้วลงบิลเป็นของสาขานั้น)
+        // หน้าเว็บยังส่ง branch_id มาได้ ใช้แค่จับกรณีหน้าจอแสดงคนละสาขากับบัญชี แล้วปฏิเสธก่อนอัปโหลดรูป/จองมัดจำ
+        const userBranchId = req.user && req.user.branch_id ? req.user.branch_id.toString() : '';
+        if (!userBranchId) {
+            return res.status(400).json({ success: false, message: 'บัญชีนี้ยังไม่ได้ผูกกับสาขา จึงทำรายการขายไม่ได้ กรุณาติดต่อผู้ดูแลระบบ' });
+        }
+        if (branch_id && branch_id.toString() !== userBranchId) {
+            return res.status(403).json({ success: false, message: 'สาขาบนหน้าจอไม่ตรงกับสาขาของบัญชีที่เข้าสู่ระบบ กรุณารีเฟรชหน้าแล้วลองใหม่ (ยังไม่ได้บันทึกการขาย)' });
+        }
+
+        // ตรวจจำนวน/ราคาของทุกรายการก่อนอัปโหลดรูปหรือจองมัดจำ
+        // จำนวนติดลบจะทำให้ตัดสต็อกกลายเป็นเพิ่มสต็อก, ทศนิยมทำให้ยอดคงเหลือเพี้ยน, ราคาติดลบทำให้ยอดบิลลดลง
+        // ไม่ส่งจำนวนมา = 1 และไม่ส่งราคามา = 0 (ของแถม) เหมือนพฤติกรรมเดิม
+        for (const it of items) {
+            const name = (it && it.product_name) || 'ไม่ทราบชื่อ';
+            const rawQty = it ? it.quantity : undefined;
+            const qty = (rawQty === undefined || rawQty === null || rawQty === '') ? 1 : Number(rawQty);
+            if (!isPositiveIntQty(qty)) {
+                return res.status(400).json({ success: false, message: `จำนวนของ ${name} ไม่ถูกต้อง (ต้องเป็นจำนวนเต็มตั้งแต่ 1 ขึ้นไป)` });
+            }
+            const rawPrice = it ? it.price : undefined;
+            const price = (rawPrice === undefined || rawPrice === null || rawPrice === '') ? 0 : Number(rawPrice);
+            if (!Number.isFinite(price) || price < 0) {
+                return res.status(400).json({ success: false, message: `ราคาของ ${name} ไม่ถูกต้อง (ต้องไม่ติดลบ)` });
+            }
+            // รายการที่ระบุ IMEI ตัดสต็อกได้ครั้งละ 1 เครื่อง — จำนวนมากกว่า 1 จะทำให้บิลกับสต็อกไม่ตรงกัน
+            const imei = ((it && (it.imei_sold || it.imei || it.imeiSold || it.serial || it.serial_number)) || '').toString().trim();
+            if (imei && qty !== 1) {
+                return res.status(400).json({ success: false, message: `${name} ระบุ IMEI ไว้ จำนวนต้องเป็น 1 (แยก 1 IMEI ต่อ 1 รายการ)` });
+            }
+        }
+
+        // ยอดเงินส่วนอื่นของบิลต้องไม่ติดลบ — ค่าธรรมเนียมหรือยอดหักมัดจำติดลบจะทำให้ยอดบิลเพี้ยน
+        const moneyFields = { contract_fee: 'ค่าใบสัญญา', icloud_fee: 'ค่าบริการ iCloud', applied_deposit_amount: 'ยอดหักมัดจำ', discount_amount: 'ส่วนลด' };
+        for (const [field, label] of Object.entries(moneyFields)) {
+            const raw = req.body[field];
+            if (raw === undefined || raw === null || raw === '') continue;
+            const n = Number(raw);
+            if (!Number.isFinite(n) || n < 0) {
+                return res.status(400).json({ success: false, message: `${label}ไม่ถูกต้อง (ต้องเป็นตัวเลขไม่ติดลบ)` });
+            }
+        }
+
+        // ยอดสุทธิคำนวณใหม่ที่เซิร์ฟเวอร์ด้วยสูตรเดียวกับหน้าขาย (script.js ตอนกดยืนยันชำระเงิน):
+        // ยอดสินค้า − ส่วนลด − มัดจำที่หัก + ค่าใบสัญญา + ค่า iCloud (ไม่ต่ำกว่า 0)
+        // ไม่ตรงกับที่หน้าเว็บส่งมาเกิน 1 สตางค์ = ปฏิเสธ ไม่ให้บันทึกยอดบิลที่ไม่สัมพันธ์กับรายการสินค้า
+        // (ไม่ส่งส่วนลดมา = 0 · หน้าเว็บปัจจุบันส่งมาทุกครั้ง)
+        {
+            const itemsGross = items.reduce((s, it) => {
+                const q = (it.quantity === undefined || it.quantity === null || it.quantity === '') ? 1 : Number(it.quantity);
+                const pr = (it.price === undefined || it.price === null || it.price === '') ? 0 : Number(it.price);
+                return s + pr * q;
+            }, 0);
+            const expectedTotal = Math.max(0,
+                itemsGross
+                - (Number(discount_amount) || 0)
+                - (Number(applied_deposit_amount) || 0)
+                + (Number(contract_fee) || 0)
+                + (Number(icloud_fee) || 0));
+            const sentTotal = Number(total_amount);
+            if (!Number.isFinite(sentTotal) || Math.abs(sentTotal - expectedTotal) > 0.01) {
+                return res.status(400).json({
+                    success: false,
+                    message: `ยอดสุทธิไม่ตรงกับรายการสินค้า (ระบบคำนวณได้ ฿${expectedTotal.toLocaleString('th-TH', { minimumFractionDigits: 2 })}) กรุณารีเฟรชหน้าแล้วทำรายการใหม่ (ยังไม่ได้บันทึกการขาย)`
+                });
+            }
         }
 
         // สร้างเลขที่ใบเสร็จอัตโนมัติ: INV-วันที่-สุ่ม
@@ -3713,7 +3832,7 @@ router.post('/transactions', async (req, res) => {
         // ==========================================
         // CRITICAL: Stock Deduction Logic (หักสต็อกแยกตามสาขา)
         // ==========================================
-        const targetBranchId = branch_id || (req.user && req.user.branch_id ? req.user.branch_id : '');
+        const targetBranchId = userBranchId; // ตรวจไว้แล้วตอนต้น: สาขาจาก token เท่านั้น
         for (const item of normalizedItems) {
             const product = await Product.findById(item.product_id).lean();
             if (!product) {
@@ -3771,9 +3890,14 @@ router.post('/transactions', async (req, res) => {
             deductedItems.push({ productId: product._id, branchId: bal.branch_id, opts: deductOpts });
             // ราคาทุน ณ วันขาย: ต้นทุนขายในบัญชีต้องไม่เปลี่ยนตามเมื่อมีคนแก้ราคาทุนสินค้าทีหลัง
             item.cost_price = Number(product.cost_price) || 0;
+            // ราคาตั้งขาย ณ วันขาย — แคชเชียร์แก้ราคาในหน้าชำระเงินได้ จึงเก็บไว้เทียบว่าแก้จากเท่าไรเป็นเท่าไร
+            item.list_price = Number(product.selling_price) || 0;
+            // จำว่าตอนขายตัดสต็อกแบบไหน — ยกเลิกบิลต้องคืนแบบเดียวกัน
+            // (หน้าขายใส่รหัสสินค้าไว้ใน imei_sold ให้เครื่องที่ไม่มี IMEI ด้วย ถ้าเดาจาก imei_sold จะคืนรหัสสินค้าเข้า imeis กลายเป็น IMEI ปลอม)
+            item.stock_mode = deductOpts.imei ? 'imei' : 'qty';
 
-            // Movement: ขายออก
-            const imeiList = (item.imei_sold && item.imei_sold.trim() !== '') ? [item.imei_sold.trim()] : [];
+            // Movement: ขายออก — บันทึก IMEI เฉพาะที่ตัดออกจาก imeis จริง
+            const imeiList = deductOpts.imei ? [deductOpts.imei] : [];
             await createMovementsForItem({
                 productId: product._id,
                 action: 'ขายออก',
@@ -3911,6 +4035,17 @@ router.post('/transactions', async (req, res) => {
 
         // Log successful transaction
         await logActivity(req, 'CREATE', 'POS', `ทำรายการขายสำเร็จ เลขที่ใบเสร็จ ${receipt_number} ยอดรวม ฿${total_amount}`, receipt_number, savedTransaction._id);
+
+        // ราคาที่ขายจริงไม่ตรงกับราคาตั้ง (แคชเชียร์แก้ราคา หรือกดเป็นของแถม = 0) — เก็บร่องรอยแยกไว้ให้ตรวจย้อนหลังได้
+        const priceOverrides = normalizedItems.filter(it => Math.abs((Number(it.price) || 0) - (Number(it.list_price) || 0)) > 0.005);
+        if (priceOverrides.length > 0) {
+            const desc = priceOverrides
+                .map(it => `${it.product_name || 'สินค้า'}${it.imei_sold ? ` (IMEI ${it.imei_sold})` : ''}: ราคาตั้ง ฿${(Number(it.list_price) || 0).toLocaleString()} → ขาย ฿${(Number(it.price) || 0).toLocaleString()}`)
+                .join(', ');
+            await logActivity(req, 'UPDATE', 'POS', `แก้ราคาขายในบิล ${receipt_number}: ${desc}`, receipt_number, savedTransaction._id, {
+                items: priceOverrides.map(it => ({ product_id: it.product_id, imei: it.imei_sold || '', list_price: it.list_price, sold_price: it.price, quantity: it.quantity }))
+            });
+        }
 
         console.log(`[POS] ทำรายการขายสำเร็จ - ใบเสร็จ: ${receipt_number} | ยอดรวม: ฿${total_amount}`);
 
@@ -4750,73 +4885,100 @@ router.post('/transactions/:id/cancel', async (req, res) => {
             return res.status(403).json({ success: false, message: 'คุณไม่มีสิทธิ์ยกเลิกบิลขาย' });
         }
 
-        const transaction = await Transaction.findById(req.params.id);
-        if (!transaction) {
+        if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
             return res.status(404).json({ success: false, message: 'ไม่พบรายการที่ต้องการ' });
         }
 
-        if (transaction.status === 'ยกเลิกแล้ว') {
-            return res.status(400).json({ success: false, message: 'บิลนี้ถูกยกเลิกไปแล้ว' });
-        }
-
-        const { reason } = req.body;
-        if (!reason || reason.trim() === '') {
+        const reason = typeof req.body.reason === 'string' ? req.body.reason.trim() : '';
+        if (!reason) {
             return res.status(400).json({ success: false, message: 'กรุณาระบุเหตุผลที่ยกเลิก' });
         }
 
-        // คืนสต็อก
-        for (const item of transaction.items) {
-            if (!item.product_id) continue;
-            const product = await Product.findById(item.product_id);
-            if (!product) continue;
-
-            const bId = transaction.branch_id ? transaction.branch_id.toString() : '';
-            if (!product.stock_balances) product.stock_balances = [];
-            let bal = product.stock_balances.find(x => x.branch_id && x.branch_id.toString() === bId);
-
-            if (!bal) {
-                bal = { branch_id: transaction.branch_id, quantity: 0, imeis: [] };
-                product.stock_balances.push(bal);
-            }
-
-            const imeiList = (item.imei_sold && item.imei_sold.trim() !== '') ? [item.imei_sold.trim()] : [];
-
-            if (imeiList.length > 0) {
-                if (!bal.imeis.includes(imeiList[0])) {
-                    bal.imeis.push(imeiList[0]);
-                }
-                bal.quantity += 1;
-            } else {
-                bal.quantity += item.quantity;
-            }
-
-            product.markModified('stock_balances');
-            await product.save();
-
-            // Movement: ยกเลิกการขาย
-            await createMovementsForItem({
-                productId: product._id,
-                action: 'ยกเลิกการขาย',
-                fromBranch: null,
-                toBranch: transaction.branch_id,
-                referenceNo: transaction.receipt_number,
-                createdBy: req.user.employee_id,
-                transitHours: 0,
-                imeis: imeiList,
-                quantity: imeiList.length > 0 ? imeiList.length : item.quantity
-            });
+        // ยกเลิกได้เฉพาะบิลของสาขาตัวเองเท่านั้น — ใช้กับทุก role รวมแอดมิน/ผู้จัดการ (ยึดสาขาของผู้ใช้ก่อนสิทธิ์ เหมือนกฎการโอน)
+        const userBranchId = req.user && req.user.branch_id ? req.user.branch_id.toString() : '';
+        if (!userBranchId) {
+            return res.status(403).json({ success: false, message: 'บัญชีนี้ยังไม่ได้ผูกกับสาขา จึงยกเลิกบิลขายไม่ได้' });
         }
 
-        transaction.status = 'ยกเลิกแล้ว';
-        transaction.cancel_reason = reason.trim();
-        transaction.cancelled_by = req.user.employee_id;
-        transaction.cancelled_at = new Date();
+        // จองการยกเลิกแบบ atomic ก่อนคืนสต็อก: เปลี่ยนสถานะได้เฉพาะบิลของสาขาผู้ใช้ที่ยังไม่ถูกยกเลิก
+        // กดซ้ำ/สองคนกดพร้อมกัน มีได้คำขอเดียวที่จองสำเร็จ อีกคำขอได้ 409 และไม่คืนสต็อกซ้ำ
+        const transaction = await Transaction.findOneAndUpdate(
+            { _id: req.params.id, branch_id: userBranchId, status: { $ne: 'ยกเลิกแล้ว' } },
+            { $set: { status: 'ยกเลิกแล้ว', cancel_reason: reason, cancelled_by: req.user.employee_id, cancelled_at: new Date() } },
+            { new: true }
+        ).lean();
+        if (!transaction) {
+            // จองไม่ได้ — แยกสาเหตุเพื่อตอบให้ถูกความหมาย (ไม่พบ / ต่างสาขา / ยกเลิกไปแล้ว)
+            const existing = await Transaction.findById(req.params.id, { branch_id: 1, status: 1 }).lean();
+            if (!existing) {
+                return res.status(404).json({ success: false, message: 'ไม่พบรายการที่ต้องการ' });
+            }
+            if (!existing.branch_id || existing.branch_id.toString() !== userBranchId) {
+                return res.status(403).json({ success: false, message: 'ยกเลิกได้เฉพาะบิลขายของสาขาตัวเองเท่านั้น' });
+            }
+            return res.status(409).json({ success: false, message: 'บิลนี้ถูกยกเลิกไปแล้ว (สต็อกถูกคืนไปแล้วในครั้งก่อน)' });
+        }
 
-        await transaction.save();
+        // คืนสต็อก
+        // คืนแบบ atomic ทีละรายการ (restoreBranchStock) — เดิมโหลด Product มาแก้แล้ว save() ทั้ง array
+        // ซึ่งเขียนทับการขาย/โอนที่แทรกเข้ามาระหว่างนั้น ทำให้ IMEI ที่เพิ่งขายไปกลับเข้าสต็อก
+        // บิลถูกจองสถานะ "ยกเลิกแล้ว" ไปแล้ว — รายการไหนคืนไม่สำเร็จให้ทำรายการถัดไปต่อ แล้วบันทึกไว้ให้แก้มือ
+        // (ห้ามย้อนสถานะบิลกลับ: รายการที่คืนไปแล้วจะถูกคืนซ้ำเมื่อกดยกเลิกอีกรอบ)
+        const restoreFailures = [];
+        for (const item of transaction.items) {
+            if (!item.product_id) continue;
+            try {
+                // คืนตามวิธีที่ตัดไปตอนขาย: stock_mode = 'qty' แปลว่าตัดแบบนับจำนวน ห้ามคืน imei_sold เข้า imeis
+                // (imei_sold อาจเป็นรหัสสินค้าที่หน้าขายใส่แทน IMEI) · บิลเก่าที่ไม่มี stock_mode ใช้วิธีเดิม
+                const soldImei = (item.imei_sold && item.imei_sold.trim() !== '') ? item.imei_sold.trim() : '';
+                const imeiList = (soldImei && item.stock_mode !== 'qty') ? [soldImei] : [];
+                const qty = Number(item.quantity);
+                if (imeiList.length === 0 && !isPositiveIntQty(qty)) {
+                    // บิลเก่าที่จำนวนผิดปกติ (เช่น ติดลบ) — คืนตามนั้นจะกลายเป็นตัดสต็อก จึงข้ามและบันทึกไว้ตรวจ
+                    console.error(`[POS] ข้ามการคืนสต็อก ${item.product_name} ในบิล ${transaction.receipt_number}: จำนวนไม่ถูกต้อง (${item.quantity})`);
+                    continue;
+                }
+
+                const outcome = await restoreBranchStock(item.product_id, transaction.branch_id,
+                    imeiList.length > 0 ? { imei: imeiList[0] } : { quantity: qty });
+                if (outcome !== 'restored') {
+                    // ไม่พบสินค้า (ถูกลบไปแล้ว) หรือ IMEI อยู่ในสต็อกสาขานี้อยู่แล้ว — ไม่มีอะไรเปลี่ยน จึงไม่สร้าง movement
+                    console.warn(`[POS] ยกเลิกบิล ${transaction.receipt_number}: ไม่ได้คืนสต็อก ${item.product_name} (${outcome})`);
+                    continue;
+                }
+
+                // Movement: ยกเลิกการขาย — สต็อกคืนแล้ว ถ้าบันทึก movement พลาดห้ามนับเป็น "คืนไม่สำเร็จ"
+                await createMovementsForItem({
+                    productId: item.product_id,
+                    action: 'ยกเลิกการขาย',
+                    fromBranch: null,
+                    toBranch: transaction.branch_id,
+                    referenceNo: transaction.receipt_number,
+                    createdBy: req.user.employee_id,
+                    transitHours: 0,
+                    imeis: imeiList,
+                    quantity: imeiList.length > 0 ? imeiList.length : item.quantity
+                }).catch(err => console.error(`[POS] บันทึก movement ยกเลิกบิล ${transaction.receipt_number} ไม่สำเร็จ:`, err));
+            } catch (err) {
+                console.error(`[POS] คืนสต็อก ${item.product_name} ในบิล ${transaction.receipt_number} ไม่สำเร็จ:`, err);
+                restoreFailures.push(`${item.product_name || 'สินค้า'}${item.imei_sold ? ` (IMEI ${item.imei_sold})` : ''} x${item.quantity}`);
+            }
+        }
+
         queueAcctRefresh('transaction', transaction._id); // บิลยกเลิก = ยอดของบิลนี้หายทั้งหมด
 
         // Log cancellation
         await logActivity(req, 'CANCEL', 'POS', `ยกเลิกบิลขาย เลขที่ใบเสร็จ ${transaction.receipt_number} เนื่องจาก: ${reason}`, transaction.receipt_number, transaction._id);
+
+        if (restoreFailures.length > 0) {
+            await logActivity(req, 'UPDATE', 'POS',
+                `ยกเลิกบิล ${transaction.receipt_number} แล้ว แต่คืนสต็อกไม่สำเร็จ ต้องปรับสต็อกเอง: ${restoreFailures.join(', ')}`,
+                transaction.receipt_number, transaction._id, { restore_failures: restoreFailures });
+            return res.status(200).json({
+                success: true,
+                message: `ยกเลิกบิลแล้ว แต่คืนสต็อกไม่สำเร็จบางรายการ: ${restoreFailures.join(', ')} — กรุณาแจ้งผู้ดูแลให้ปรับสต็อก (ห้ามกดยกเลิกซ้ำ)`
+            });
+        }
 
         res.status(200).json({ success: true, message: 'ยกเลิกบิลขายและคืนสต็อกสำเร็จ' });
     } catch (error) {
@@ -8467,6 +8629,7 @@ router.put('/deposits/:id/complete', async (req, res) => {
                 product_id: product._id,
                 product_name: deposit.product_name,
                 imei_sold: selectedImei,
+                stock_mode: soldImei ? 'imei' : 'qty', // ตัดแบบเดียวกับ stockOpts ด้านบน — ยกเลิกบิลจะคืนตามนี้
                 quantity: 1,
                 price: deposit.product_price,
                 cost_price: Number(product.cost_price) || 0, // ราคาทุน ณ วันขาย (ต้นทุนขายในบัญชี)
@@ -8892,9 +9055,10 @@ router.get('/stock-requests/pending-purchase', async (req, res) => {
         }
 
         const byBranch = new Map();
+        const branchMap = (await mdCache.get()).maps.branches;
         open.forEach(r => {
             const key = String(r.branch_id);
-            if (!byBranch.has(key)) byBranch.set(key, { branch_id: key, count: 0, requests: [] });
+            if (!byBranch.has(key)) byBranch.set(key, { branch_id: key, branch_name: branchMap.get(key)?.name || '', count: 0, requests: [] });
             const g = byBranch.get(key);
             g.count += 1;
             g.requests.push({
@@ -8971,6 +9135,24 @@ router.put('/stock-requests/:id/manage', async (req, res) => {
             }
             doc.status = 'canceled';
         } else {
+            // จำนวนที่ฝ่ายจัดซื้อปรับ (ไม่ส่งมา = ใช้จำนวนเดิม) ใส่ 0 ได้ = ไม่ส่งรายการนี้
+            if (Array.isArray(req.body.items)) {
+                const qtyById = new Map(req.body.items.map(x => [String(x && x._id), x && x.quantity]));
+                for (const it of doc.items) {
+                    if (!qtyById.has(String(it._id))) continue;
+                    const q = Number(qtyById.get(String(it._id)));
+                    if (!Number.isInteger(q) || q < 0 || q > 9999) {
+                        return res.status(400).json({ success: false, message: `จำนวนของ ${it.product_name} ต้องเป็นจำนวนเต็มตั้งแต่ 0 ถึง 9999` });
+                    }
+                    if (q !== it.quantity && (it.requested_quantity === null || it.requested_quantity === undefined)) {
+                        it.requested_quantity = it.quantity; // เก็บจำนวนที่สาขาขอไว้ครั้งแรกที่มีการปรับ
+                    }
+                    it.quantity = q;
+                }
+                if (doc.items.every(it => it.quantity === 0)) {
+                    return res.status(400).json({ success: false, message: 'ทุกรายการเป็น 0 ถ้าไม่ต้องการส่งเลย ให้กด "ยกเลิกคำขอนี้" แทน' });
+                }
+            }
             const centralStock = await getCentralStockMap([...new Set(doc.items.map(i => i.product_name).filter(Boolean))]);
             const remainingStock = new Map(centralStock); // รายการชื่อซ้ำกันใช้สต็อกร่วมกัน ไม่นับซ้ำ
             doc.items.forEach(it => {
@@ -8987,7 +9169,9 @@ router.put('/stock-requests/:id/manage', async (req, res) => {
         }
 
         await doc.save();
-        await logActivity(req, 'UPDATE', 'StockRequest', `จัดการคำขอเบิก ${doc.request_no} สถานะ: ${doc.status}`, doc.request_no, doc._id);
+        const adjusted = doc.items.filter(it => it.requested_quantity !== null && it.requested_quantity !== undefined && it.requested_quantity !== it.quantity)
+            .map(it => `${it.product_name} ${it.requested_quantity}→${it.quantity}`);
+        await logActivity(req, 'UPDATE', 'StockRequest', `จัดการคำขอเบิก ${doc.request_no} สถานะ: ${doc.status}${adjusted.length ? ` (ปรับจำนวน: ${adjusted.join(', ')})` : ''}`, doc.request_no, doc._id);
         res.status(200).json({ success: true, message: 'บันทึกการจัดการคำขอสำเร็จ', data: doc });
     } catch (error) {
         console.error('API Error PUT /api/stock-requests/:id/manage:', error);
@@ -9234,6 +9418,344 @@ router.put('/stock-requests/:id/ship', async (req, res) => {
     } catch (error) {
         console.error('API Error PUT /api/stock-requests/:id/ship:', error);
         res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการบันทึกการจัดส่ง' });
+    }
+});
+
+// ==========================================
+// นับสต็อกอุปกรณ์เสริม (#accessory-count) / ตรวจนับสต็อกอุปกรณ์เสริม (#accessory-count-review)
+// ==========================================
+// สาขานับของจริง → ผู้ตรวจเทียบกับสต็อกในระบบ → "เสร็จสิ้น" หรือส่งกลับ "ตรวจสอบใหม่" ให้สาขานับใหม่
+// เป็นการบันทึกผลอย่างเดียว ไม่ปรับสต็อก และช่อง "หักเงิน" ไม่เชื่อมกับบัญชี
+const ACC_COUNT_STATUS_LABEL = { pending: 'กำลังรอตรวจสอบ', recheck: 'ตรวจสอบใหม่', done: 'เสร็จสิ้น' };
+const genAccessoryCountNo = () => {
+    const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+    return `ACC-${dateStr}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
+};
+// วันที่ปัจจุบันตามเวลาไทย (YYYY-MM-DD) — ใช้เป็นวันที่ของใบนับ
+const bangkokDateStr = (d = new Date()) => new Date(d.getTime() + 7 * 3600 * 1000).toISOString().slice(0, 10);
+// ผลเทียบจำนวนที่นับได้กับสต็อกในระบบ: ok = ครบ, short = ขาด, over = เกิน (diff = นับได้ − ในระบบ)
+const accCountResult = (it) => {
+    const diff = Number(it.counted_qty || 0) - Number(it.system_qty || 0);
+    return { result: diff === 0 ? 'ok' : (diff < 0 ? 'short' : 'over'), diff };
+};
+
+// อุปกรณ์เสริมที่สาขามีของจริง (quantity > 0, ไม่ผูก IMEI)
+// ยึดประเภทสินค้า "อุปกรณ์เสริม" เป็นหลัก — ห้ามใช้หน่วยอย่างเดียว เพราะมีเครื่องจริงที่ตั้งหน่วยเป็น "ชิ้น"
+// (เจอตอนทดสอบ: IPhone 11 Pro Max / IPhone 13 สาขาพังงา ประเภท IPhone แต่หน่วยชิ้น)
+// ใช้เกณฑ์หน่วยเฉพาะสินค้าที่ไม่มีประเภทและไม่มีสภาพเครื่อง (มือ1/มือ2) เท่านั้น ไม่นับสินค้าที่ไม่มีหน่วยเลย เพราะอาจเป็นเครื่อง
+// คืน Map<productId, { product_id, product_code, product_name, color_name, system_qty }>
+const loadBranchAccessories = async (branchId, productIds = null) => {
+    const md = await mdCache.get();
+    const accTypeIds = [...md.maps.productTypes.values()].filter(t => t.name === 'อุปกรณ์เสริม').map(t => t._id);
+    const deviceUnitIds = [...md.maps.productUnits.values()].filter(u => u.name === 'เครื่อง').map(u => u._id);
+    const bId = new mongoose.Types.ObjectId(String(branchId));
+    const filter = {
+        stock_balances: { $elemMatch: { branch_id: bId, quantity: { $gt: 0 } } },
+        $or: [
+            { type_id: { $in: accTypeIds } },
+            { type_id: null, condition_id: null, unit_id: { $nin: [...deviceUnitIds, null] } }
+        ]
+    };
+    if (productIds) filter._id = { $in: productIds };
+    const products = await Product.find(filter)
+        .select('name product_code color_id stock_balances')
+        .sort({ name: 1 }).limit(2000).lean();
+    const out = new Map();
+    products.forEach(p => {
+        const bal = (p.stock_balances || []).find(b => String(b.branch_id) === String(bId));
+        if (!bal || (Array.isArray(bal.imeis) && bal.imeis.length > 0)) return;
+        const color = p.color_id ? md.maps.productColors.get(String(p.color_id)) : null;
+        out.set(String(p._id), {
+            product_id: p._id,
+            product_code: p.product_code || '',
+            product_name: p.name,
+            color_name: color ? color.name : '',
+            system_qty: Number(bal.quantity || 0)
+        });
+    });
+    return out;
+};
+
+// สต็อกในระบบปัจจุบันของสินค้าที่ระบุในสาขา — ใช้ตอนส่งผลนับใหม่หลัง "ตรวจสอบใหม่"
+// (สินค้าอาจขายหมดไปแล้วระหว่างรอ จึงใช้ loadBranchAccessories ที่กรอง > 0 ไม่ได้)
+const loadBranchQtyMap = async (branchId, productIds) => {
+    const bId = String(branchId);
+    const rows = await Product.find({ _id: { $in: productIds } }).select('stock_balances').lean();
+    const m = new Map();
+    rows.forEach(p => {
+        const bal = (p.stock_balances || []).find(b => String(b.branch_id) === bId);
+        m.set(String(p._id), bal ? Number(bal.quantity || 0) : 0);
+    });
+    return m;
+};
+
+// ตรวจข้อมูลที่สาขากรอก: จำนวนนับได้เป็นจำนวนเต็ม ≥ 0 และต้องกรอกทุกรายการ, หมายเหตุไม่เกิน 300 ตัวอักษร, ห้ามสินค้าซ้ำ
+const parseAccCountItems = (raw) => {
+    if (!Array.isArray(raw) || raw.length === 0) return { error: 'ไม่มีรายการอุปกรณ์เสริมให้บันทึก' };
+    const seen = new Set();
+    const items = [];
+    for (const it of raw) {
+        const pid = String((it && it.product_id) || '');
+        if (!mongoose.Types.ObjectId.isValid(pid)) return { error: 'ข้อมูลสินค้าไม่ถูกต้อง' };
+        if (seen.has(pid)) return { error: 'มีสินค้ารายการเดียวกันซ้ำในใบนับ' };
+        seen.add(pid);
+        const rawQty = it.counted_qty;
+        const qty = Number(rawQty);
+        if (rawQty === '' || rawQty === null || rawQty === undefined || !Number.isInteger(qty) || qty < 0) {
+            return { error: 'จำนวนที่นับได้ต้องเป็นจำนวนเต็มตั้งแต่ 0 ขึ้นไป และต้องกรอกทุกรายการ' };
+        }
+        items.push({ product_id: pid, counted_qty: qty, note: cleanText(it.note, 300) });
+    }
+    return { items };
+};
+
+// เติมชื่อสาขา/ชื่อพนักงาน และผลเทียบของแต่ละรายการให้หน้าเว็บ
+const decorateAccessoryCounts = async (rows) => {
+    const md = await mdCache.get();
+    const empIds = [...new Set(rows.flatMap(r => [r.counted_by, r.reviewed_by]).filter(Boolean).map(String))];
+    const emps = empIds.length ? await Employee.find({ _id: { $in: empIds } }).select('name').lean() : [];
+    const empMap = new Map(emps.map(e => [String(e._id), e.name]));
+    return rows.map(r => {
+        const branch = md.maps.branches.get(String(r.branch_id));
+        const items = (r.items || []).map(it => ({ ...it, ...accCountResult(it) }));
+        return {
+            ...r,
+            items,
+            branch_name: branch ? branch.name : '-',
+            counted_by_name: empMap.get(String(r.counted_by)) || '-',
+            reviewed_by_name: r.reviewed_by ? (empMap.get(String(r.reviewed_by)) || '-') : '',
+            status_label: ACC_COUNT_STATUS_LABEL[r.status] || r.status,
+            summary: {
+                total: items.length,
+                ok: items.filter(i => i.result === 'ok').length,
+                short: items.filter(i => i.result === 'short').length,
+                over: items.filter(i => i.result === 'over').length
+            }
+        };
+    });
+};
+
+// GET /api/accessory-counts/products — อุปกรณ์เสริมที่สาขาของผู้ใช้มีอยู่ (สำหรับฟอร์มนับ)
+// จงใจไม่ส่งจำนวนในระบบกลับไป ให้สาขานับของจริงโดยไม่เห็นตัวเลขของระบบ
+router.get('/accessory-counts/products', async (req, res) => {
+    try {
+        if (!hasPerm(req, 'count_accessory_stock')) {
+            return res.status(403).json({ success: false, message: 'คุณไม่มีสิทธิ์นับสต็อกอุปกรณ์เสริม' });
+        }
+        if (!req.user.branch_id) return res.status(400).json({ success: false, message: 'บัญชีนี้ยังไม่ได้ผูกกับสาขา' });
+        const map = await loadBranchAccessories(req.user.branch_id);
+        const data = [...map.values()].map(({ system_qty, ...rest }) => rest);
+        res.status(200).json({ success: true, data });
+    } catch (error) {
+        console.error('API Error GET /api/accessory-counts/products:', error);
+        res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการดึงรายการอุปกรณ์เสริม' });
+    }
+});
+
+// GET /api/accessory-counts/review?date=YYYY-MM-DD&status= — คำขอตรวจนับของทุกสาขา (ผู้ตรวจ) ไม่ส่ง date = ทุกวันที่
+// ต้องประกาศก่อน /accessory-counts/:id ไม่อย่างนั้น "review" จะถูกจับเป็น :id
+router.get('/accessory-counts/review', async (req, res) => {
+    try {
+        if (!hasPerm(req, 'audit_accessory_stock')) {
+            return res.status(403).json({ success: false, message: 'คุณไม่มีสิทธิ์ตรวจนับสต็อกอุปกรณ์เสริม' });
+        }
+        const filter = {};
+        const date = String(req.query.date || '');
+        if (date) {
+            if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return res.status(400).json({ success: false, message: 'รูปแบบวันที่ไม่ถูกต้อง' });
+            filter.count_date = date;
+        }
+        const status = String(req.query.status || '');
+        if (status) {
+            if (!ACC_COUNT_STATUS_LABEL[status]) return res.status(400).json({ success: false, message: 'สถานะไม่ถูกต้อง' });
+            filter.status = status;
+        }
+        const rows = await AccessoryCount.find(filter).sort({ submitted_at: -1 }).limit(500).lean();
+        res.status(200).json({ success: true, data: await decorateAccessoryCounts(rows) });
+    } catch (error) {
+        console.error('API Error GET /api/accessory-counts/review:', error);
+        res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการดึงคำขอตรวจนับ' });
+    }
+});
+
+// GET /api/accessory-counts — ประวัติใบนับของสาขาผู้ใช้
+// ไม่ส่งจำนวนในระบบ/ผลเทียบ/ยอดหักเงินให้สาขา (ถ้าเห็นตัวเลขระบบ ตอนนับใหม่จะกรอกตามระบบแทนการนับจริง)
+router.get('/accessory-counts', async (req, res) => {
+    try {
+        if (!hasPerm(req, 'count_accessory_stock')) {
+            return res.status(403).json({ success: false, message: 'คุณไม่มีสิทธิ์นับสต็อกอุปกรณ์เสริม' });
+        }
+        if (!req.user.branch_id) return res.status(400).json({ success: false, message: 'บัญชีนี้ยังไม่ได้ผูกกับสาขา' });
+        const rows = await AccessoryCount.find({ branch_id: req.user.branch_id })
+            .sort({ createdAt: -1 }).limit(300).lean();
+        const data = (await decorateAccessoryCounts(rows)).map(({ summary, ...r }) => ({
+            ...r,
+            items: r.items.map(({ result, diff, system_qty, moved_qty, deduction_amount, ...i }) => i)
+        }));
+        res.status(200).json({ success: true, data });
+    } catch (error) {
+        console.error('API Error GET /api/accessory-counts:', error);
+        res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการดึงประวัติการนับ' });
+    }
+});
+
+// POST /api/accessory-counts — ส่งใบนับใหม่ของสาขาผู้ใช้ (สถานะเริ่มต้น "กำลังรอตรวจสอบ")
+router.post('/accessory-counts', async (req, res) => {
+    try {
+        if (!hasPerm(req, 'count_accessory_stock')) {
+            return res.status(403).json({ success: false, message: 'คุณไม่มีสิทธิ์นับสต็อกอุปกรณ์เสริม' });
+        }
+        const branchId = req.user.branch_id;
+        if (!branchId) return res.status(400).json({ success: false, message: 'บัญชีนี้ยังไม่ได้ผูกกับสาขา' });
+
+        // ใบที่ยังไม่จบ (รอตรวจ/ตรวจสอบใหม่) ต้องปิดก่อน กันใบซ้อนกันจนผู้ตรวจสับสน
+        const open = await AccessoryCount.findOne({ branch_id: branchId, status: { $in: ['pending', 'recheck'] } }).select('count_no status').lean();
+        if (open) {
+            const msg = open.status === 'recheck'
+                ? `มีใบนับ ${open.count_no} ที่ต้องตรวจสอบใหม่อยู่ กรุณากด "จัดการ" ที่ใบนั้นแทนการสร้างใบใหม่`
+                : `ใบนับ ${open.count_no} ยังรอตรวจสอบอยู่ ส่งใบใหม่ได้หลังผู้ตรวจดำเนินการแล้ว`;
+            return res.status(409).json({ success: false, message: msg });
+        }
+
+        const parsed = parseAccCountItems(req.body.items);
+        if (parsed.error) return res.status(400).json({ success: false, message: parsed.error });
+
+        const accMap = await loadBranchAccessories(branchId, parsed.items.map(i => i.product_id));
+        const items = [];
+        for (const it of parsed.items) {
+            const acc = accMap.get(it.product_id);
+            if (!acc) return res.status(400).json({ success: false, message: 'รายการอุปกรณ์เสริมของสาขาเปลี่ยนไปแล้ว กรุณาเปิดฟอร์มใหม่' });
+            items.push({ ...acc, counted_qty: it.counted_qty, note: it.note });
+        }
+
+        const doc = await AccessoryCount.create({
+            count_no: genAccessoryCountNo(),
+            branch_id: branchId,
+            count_date: bangkokDateStr(),
+            status: 'pending',
+            items,
+            note: cleanText(req.body.note, 500),
+            counted_by: req.user.employee_id,
+            submitted_at: new Date()
+        });
+        await logActivity(req, 'CREATE', 'AccessoryCount', `ส่งใบนับสต็อกอุปกรณ์เสริม ${doc.count_no} (${items.length} รายการ)`, doc.count_no, doc._id);
+        res.status(201).json({ success: true, message: 'ส่งผลการนับสำเร็จ รอผู้ตรวจสอบ', data: { _id: doc._id, count_no: doc.count_no } });
+    } catch (error) {
+        console.error('API Error POST /api/accessory-counts:', error);
+        res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการบันทึกผลการนับ' });
+    }
+});
+
+// PUT /api/accessory-counts/:id — สาขานับใหม่ตามที่ผู้ตรวจส่งกลับ (เฉพาะสถานะ "ตรวจสอบใหม่" และใบของสาขาตัวเอง)
+router.put('/accessory-counts/:id', async (req, res) => {
+    try {
+        if (!hasPerm(req, 'count_accessory_stock')) {
+            return res.status(403).json({ success: false, message: 'คุณไม่มีสิทธิ์นับสต็อกอุปกรณ์เสริม' });
+        }
+        const branchId = req.user.branch_id;
+        if (!branchId) return res.status(400).json({ success: false, message: 'บัญชีนี้ยังไม่ได้ผูกกับสาขา' });
+        if (!mongoose.Types.ObjectId.isValid(req.params.id)) return res.status(404).json({ success: false, message: 'ไม่พบใบนับนี้' });
+
+        const doc = await AccessoryCount.findOne({ _id: req.params.id, branch_id: branchId }).lean();
+        if (!doc) return res.status(404).json({ success: false, message: 'ไม่พบใบนับนี้ในสาขาของคุณ' });
+        if (doc.status !== 'recheck') return res.status(409).json({ success: false, message: 'แก้ไขได้เฉพาะใบที่สถานะ "ตรวจสอบใหม่" เท่านั้น' });
+
+        const parsed = parseAccCountItems(req.body.items);
+        if (parsed.error) return res.status(400).json({ success: false, message: parsed.error });
+        // นับใหม่เฉพาะรายการเดิมในใบ และต้องครบทุกรายการ
+        const byId = new Map(parsed.items.map(i => [i.product_id, i]));
+        if (byId.size !== doc.items.length || doc.items.some(it => !byId.has(String(it.product_id)))) {
+            return res.status(400).json({ success: false, message: 'รายการในใบนับไม่ตรงกับใบเดิม กรุณาเปิดหน้าต่างใหม่' });
+        }
+        // สต็อกในระบบเปลี่ยนได้ระหว่างรอ (มีขาย/โอน) — ถ่ายค่าใหม่ ณ ตอนส่ง ให้เทียบกับของที่เพิ่งนับ
+        const qtyMap = await loadBranchQtyMap(branchId, doc.items.map(it => it.product_id));
+        const items = doc.items.map(it => {
+            const n = byId.get(String(it.product_id));
+            return { ...it, counted_qty: n.counted_qty, note: n.note, system_qty: qtyMap.get(String(it.product_id)) || 0 };
+        });
+
+        // จองสถานะแบบ atomic กันกดส่งซ้ำ
+        const updated = await AccessoryCount.findOneAndUpdate(
+            { _id: doc._id, branch_id: branchId, status: 'recheck' },
+            { $set: {
+                items, status: 'pending', count_date: bangkokDateStr(), submitted_at: new Date(),
+                note: cleanText(req.body.note !== undefined ? req.body.note : doc.note, 500)
+            } },
+            { new: true }
+        ).lean();
+        if (!updated) return res.status(409).json({ success: false, message: 'ใบนับนี้ถูกดำเนินการไปแล้ว กรุณารีเฟรช' });
+
+        await logActivity(req, 'UPDATE', 'AccessoryCount', `ส่งผลนับใหม่ใบนับอุปกรณ์เสริม ${doc.count_no}`, doc.count_no, doc._id);
+        res.status(200).json({ success: true, message: 'ส่งผลการนับใหม่สำเร็จ รอผู้ตรวจสอบ' });
+    } catch (error) {
+        console.error('API Error PUT /api/accessory-counts/:id:', error);
+        res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการบันทึกผลการนับ' });
+    }
+});
+
+// PUT /api/accessory-counts/:id/review — ผู้ตรวจบันทึกผล: action = 'done' (เสร็จสิ้น) | 'recheck' (ตรวจสอบใหม่)
+// body.items = [{ _id, moved_qty, review_note, deduction_amount }] — หักเงินกรอกได้เฉพาะรายการที่ขาด
+router.put('/accessory-counts/:id/review', async (req, res) => {
+    try {
+        if (!hasPerm(req, 'audit_accessory_stock')) {
+            return res.status(403).json({ success: false, message: 'คุณไม่มีสิทธิ์ตรวจนับสต็อกอุปกรณ์เสริม' });
+        }
+        if (!mongoose.Types.ObjectId.isValid(req.params.id)) return res.status(404).json({ success: false, message: 'ไม่พบใบนับนี้' });
+        const action = String(req.body.action || '');
+        if (action !== 'done' && action !== 'recheck') return res.status(400).json({ success: false, message: 'การดำเนินการไม่ถูกต้อง' });
+
+        const doc = await AccessoryCount.findById(req.params.id).lean();
+        if (!doc) return res.status(404).json({ success: false, message: 'ไม่พบใบนับนี้' });
+        if (doc.status !== 'pending') {
+            return res.status(409).json({ success: false, message: `ใบนับนี้สถานะ "${ACC_COUNT_STATUS_LABEL[doc.status]}" แล้ว ตรวจได้เฉพาะใบที่กำลังรอตรวจสอบ` });
+        }
+
+        const isBlank = (v) => v === '' || v === undefined || v === null;
+        const input = new Map((Array.isArray(req.body.items) ? req.body.items : []).map(i => [String(i && i._id), i || {}]));
+        const items = [];
+        for (const it of doc.items) {
+            const inp = input.get(String(it._id)) || {};
+            const label = it.product_name;
+            const moved = isBlank(inp.moved_qty) ? 0 : Number(inp.moved_qty);
+            if (!Number.isInteger(moved) || moved < 0) {
+                return res.status(400).json({ success: false, message: `จำนวนย้ายสินค้าของ ${label} ต้องเป็นจำนวนเต็มตั้งแต่ 0 ขึ้นไป` });
+            }
+            const deduction = isBlank(inp.deduction_amount) ? 0 : Number(inp.deduction_amount);
+            if (!Number.isFinite(deduction) || deduction < 0) {
+                return res.status(400).json({ success: false, message: `ยอดหักเงินของ ${label} ต้องเป็นตัวเลขตั้งแต่ 0 ขึ้นไป` });
+            }
+            if (accCountResult(it).result !== 'short' && deduction > 0) {
+                return res.status(400).json({ success: false, message: `${label} ไม่ได้ขาด จึงกรอกหักเงินไม่ได้` });
+            }
+            items.push({ ...it, moved_qty: moved, review_note: cleanText(inp.review_note, 300), deduction_amount: Math.round(deduction * 100) / 100 });
+        }
+
+        const updated = await AccessoryCount.findOneAndUpdate(
+            { _id: doc._id, status: 'pending' },
+            { $set: { items, status: action, reviewed_by: req.user.employee_id || null, reviewed_at: new Date() } },
+            { new: true }
+        ).lean();
+        if (!updated) return res.status(409).json({ success: false, message: 'ใบนับนี้ถูกดำเนินการไปแล้ว กรุณารีเฟรช' });
+
+        const short = items.filter(i => accCountResult(i).result === 'short').length;
+        const over = items.filter(i => accCountResult(i).result === 'over').length;
+        const totalDeduct = items.reduce((s, i) => s + (i.deduction_amount || 0), 0);
+        const md = await mdCache.get();
+        const branch = md.maps.branches.get(String(doc.branch_id));
+        await logActivity(
+            req, action === 'done' ? 'APPROVE' : 'UPDATE', 'AccessoryCount',
+            `${action === 'done' ? 'ตรวจนับเสร็จสิ้น' : 'ส่งกลับให้ตรวจสอบใหม่'} ใบนับอุปกรณ์เสริม ${doc.count_no} สาขา ${branch ? branch.name : '-'} (ขาด ${short} · เกิน ${over}${totalDeduct ? ` · หักเงิน ${totalDeduct.toLocaleString('th-TH')} บาท` : ''})`,
+            doc.count_no, doc._id,
+            {
+                items: items
+                    .filter(i => accCountResult(i).result !== 'ok' || i.moved_qty || i.deduction_amount)
+                    .map(i => ({ product_name: i.product_name, counted_qty: i.counted_qty, system_qty: i.system_qty, moved_qty: i.moved_qty, deduction_amount: i.deduction_amount }))
+            }
+        );
+        res.status(200).json({ success: true, message: action === 'done' ? 'บันทึกผลตรวจนับเสร็จสิ้น' : 'ส่งกลับให้สาขาตรวจสอบใหม่แล้ว' });
+    } catch (error) {
+        console.error('API Error PUT /api/accessory-counts/:id/review:', error);
+        res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการบันทึกผลตรวจนับ' });
     }
 });
 

@@ -1,0 +1,205 @@
+<!-- VIEW: นับสต็อกอุปกรณ์เสริม / ตรวจนับสต็อกอุปกรณ์เสริม — สคริปต์: js/page-accessory-count.js -->
+<!-- โครงหน้าตาม DESIGN.md ข้อ 11 (อ้างอิง #stock) ใช้โทเคนสีเดียวกับ views/stock-request.html -->
+
+<!-- ===================== [A] นับสต็อกอุปกรณ์เสริม (สาขา) ===================== -->
+<div id="view-accessory-count" class="hidden space-y-8 animate-fade-in">
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div class="flex items-center gap-4">
+            <i class="fa-solid fa-boxes-stacked text-ink w-5 text-2xl text-center"></i>
+            <div class="space-y-1">
+                <h3 class="text-2xl text-ink">นับสต็อกอุปกรณ์เสริม</h3>
+                <span class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-field border border-line text-xs text-ink">
+                    <i class="fa-solid fa-store text-primary"></i> สาขาของคุณ <span id="ac-branch-name" class="font-semibold">-</span>
+                </span>
+            </div>
+        </div>
+        <button id="btn-ac-open" type="button"
+            class="px-4 py-2 bg-primary hover:bg-primary-pressed text-on-primary font-medium rounded-xl transition-all flex items-center gap-2 w-fit cursor-pointer">
+            <i class="fa-solid fa-plus"></i>
+            <p>นับสต็อกใหม่</p>
+        </button>
+    </div>
+
+    <div class="bg-panel/40 rounded-2xl shadow-lg overflow-hidden backdrop-blur-sm">
+        <div class="p-6 pb-0 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+            <h3 class="text-lg text-ink">ประวัติการนับ</h3>
+            <label for="ac-status-filter" class="sr-only">กรองตามสถานะ</label>
+            <select id="ac-status-filter"
+                class="bg-panel/40 cursor-pointer text-sm rounded-[0.5rem] px-3 py-2 text-ink focus:outline-none focus:ring-1 focus:ring-primary w-full sm:w-auto [&>option]:bg-panel">
+                <option value="">ทุกสถานะ</option>
+                <option value="pending">กำลังรอตรวจสอบ</option>
+                <option value="recheck">ตรวจสอบใหม่</option>
+                <option value="done">เสร็จสิ้น</option>
+            </select>
+        </div>
+        <div class="px-6 py-4">
+            <div id="ac-result-count" class="text-xs text-ink font-medium"></div>
+        </div>
+        <div class="overflow-x-auto" tabindex="0">
+            <table class="w-full text-left text-sm whitespace-nowrap border-collapse">
+                <thead class="bg-panel/40 text-ink">
+                    <tr>
+                        <th class="px-6 py-4 font-semibold text-[15px] w-16">ลำดับ</th>
+                        <th class="px-6 py-4 font-semibold text-[15px]">วันที่</th>
+                        <th class="px-6 py-4 font-semibold text-[15px]">รายการ</th>
+                        <th class="px-6 py-4 font-semibold text-[15px]">สถานะ</th>
+                        <th class="px-6 py-4 font-semibold text-[15px] text-right">จัดการ</th>
+                    </tr>
+                </thead>
+                <tbody id="ac-table-body" class="divide-y divide-divider"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- โมดัลนับสต็อก (ใช้ทั้งนับใหม่ และนับใหม่ตามที่ผู้ตรวจส่งกลับ) -->
+    <div id="ac-modal" class="fixed inset-0 z-50 hidden items-center justify-center backdrop-blur-sm opacity-0 pointer-events-none transition-opacity duration-300 p-4"
+        role="dialog" aria-modal="true" aria-labelledby="ac-modal-title">
+        <div class="modal-content relative w-[95%] md:w-[860px] max-h-[90vh] flex flex-col overflow-hidden bg-elevated rounded-2xl shadow-lg border border-line-strong">
+            <div class="flex items-start justify-between gap-4 px-8 py-5 border-b border-hairline bg-panel/40">
+                <div class="space-y-2">
+                    <h3 id="ac-modal-title" class="text-lg text-ink flex items-center gap-2">
+                        <i class="fa-solid fa-boxes-stacked text-primary"></i> <span id="ac-modal-title-text">นับสต็อกอุปกรณ์เสริม</span>
+                    </h3>
+                    <span class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-field border border-line text-xs text-ink">
+                        <i class="fa-solid fa-store text-primary"></i> สาขา <span id="ac-modal-branch" class="font-semibold">-</span>
+                    </span>
+                </div>
+                <button id="ac-modal-close" type="button" aria-label="ปิด" class="text-state-danger hover:text-state-danger-soft transition-colors">
+                    <i class="fa-solid fa-xmark text-xl"></i>
+                </button>
+            </div>
+            <form id="ac-form" class="flex-1 overflow-y-auto px-8 py-6 space-y-4 text-sm custom-scrollbar" tabindex="0" novalidate>
+                <p id="ac-recheck-note" class="hidden px-4 py-3 rounded-xl bg-state-pending/[0.12] text-state-pending text-sm">
+                    ผู้ตรวจขอให้นับใหม่ กรุณานับของจริงอีกครั้งแล้วแก้จำนวนให้ถูกต้อง
+                </p>
+                <div class="relative group w-full sm:w-72 rounded-[0.5rem] overflow-hidden bg-field border border-line">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <i class="fa-solid fa-search text-ink group-focus-within:text-primary transition-colors"></i>
+                    </div>
+                    <label for="ac-item-search" class="sr-only">ค้นหาอุปกรณ์เสริม</label>
+                    <input id="ac-item-search" type="text" autocomplete="off" placeholder="ค้นหาชื่ออุปกรณ์..."
+                        class="bg-transparent text-sm pl-10 pr-4 py-2 w-full text-ink focus:outline-none transition-all placeholder-body-muted">
+                </div>
+                <div class="overflow-x-auto rounded-xl border border-line" tabindex="0">
+                    <table class="w-full text-left text-sm border-collapse">
+                        <thead class="bg-panel/40 text-ink">
+                            <tr>
+                                <th class="px-4 py-3 font-semibold">ชื่ออุปกรณ์</th>
+                                <th class="px-4 py-3 font-semibold w-36">จำนวนที่นับได้ <span class="text-state-danger">*</span></th>
+                                <th class="px-4 py-3 font-semibold w-64">หมายเหตุ</th>
+                            </tr>
+                        </thead>
+                        <tbody id="ac-items" class="divide-y divide-divider"></tbody>
+                    </table>
+                </div>
+            </form>
+            <div class="flex items-center justify-between gap-4 px-8 py-4 border-t border-hairline bg-panel/20">
+                <p id="ac-summary" class="text-sm text-body-muted" aria-live="polite"></p>
+                <div class="flex gap-3">
+                    <button id="ac-cancel" type="button" class="px-6 py-2.5 rounded-xl bg-chip text-ink font-medium hover:bg-skeleton transition-colors">ยกเลิก</button>
+                    <button id="ac-submit" type="submit" form="ac-form" class="px-8 py-2.5 rounded-xl bg-primary text-on-primary font-bold hover:bg-primary-pressed transition-colors">ส่งผลการนับ</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ===================== [B] ตรวจนับสต็อกอุปกรณ์เสริม (ผู้ตรวจ — ทุกสาขา) ===================== -->
+<div id="view-accessory-count-review" class="hidden space-y-8 animate-fade-in">
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div class="flex items-center gap-4">
+            <i class="fa-solid fa-clipboard-check text-ink w-5 text-2xl text-center"></i>
+            <h3 class="text-2xl text-ink">ตรวจนับสต็อกอุปกรณ์เสริม</h3>
+        </div>
+    </div>
+
+    <div class="bg-panel/40 rounded-2xl shadow-lg overflow-hidden backdrop-blur-sm">
+        <div class="p-6 pb-0 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+            <h3 class="text-lg text-ink">คำขอตรวจสอบของทุกสาขา</h3>
+            <div class="flex flex-wrap items-center gap-2.5 w-full lg:w-auto">
+                <label for="acr-date" class="text-sm text-body-muted">วันที่</label>
+                <input id="acr-date" type="date"
+                    class="page-filter-control bg-panel/40 text-sm rounded-[0.5rem] px-3 py-2 text-ink focus:outline-none focus:ring-1 focus:ring-primary">
+                <button id="acr-all-dates" type="button"
+                    class="px-3 py-2 rounded-[0.5rem] bg-panel/40 text-sm text-ink hover:text-primary transition-colors">ทุกวันที่</button>
+                <label for="acr-branch-filter" class="sr-only">กรองตามสาขา</label>
+                <select id="acr-branch-filter"
+                    class="bg-panel/40 cursor-pointer text-sm rounded-[0.5rem] px-3 py-2 text-ink focus:outline-none focus:ring-1 focus:ring-primary w-full sm:w-auto [&>option]:bg-panel">
+                    <option value="">ทุกสาขา</option>
+                </select>
+                <label for="acr-status-filter" class="sr-only">กรองตามสถานะ</label>
+                <select id="acr-status-filter"
+                    class="bg-panel/40 cursor-pointer text-sm rounded-[0.5rem] px-3 py-2 text-ink focus:outline-none focus:ring-1 focus:ring-primary w-full sm:w-auto [&>option]:bg-panel">
+                    <option value="">ทุกสถานะ</option>
+                    <option value="pending">กำลังรอตรวจสอบ</option>
+                    <option value="recheck">ตรวจสอบใหม่</option>
+                    <option value="done">เสร็จสิ้น</option>
+                </select>
+            </div>
+        </div>
+        <div class="px-6 py-4">
+            <div id="acr-result-count" class="text-xs text-ink font-medium"></div>
+        </div>
+        <div class="overflow-x-auto" tabindex="0">
+            <table class="w-full text-left text-sm whitespace-nowrap border-collapse">
+                <thead class="bg-panel/40 text-ink">
+                    <tr>
+                        <th class="px-6 py-4 font-semibold text-[15px] w-16">ลำดับ</th>
+                        <th class="px-6 py-4 font-semibold text-[15px]">วันที่</th>
+                        <th class="px-6 py-4 font-semibold text-[15px]">สาขา / ผู้นับ</th>
+                        <th class="px-6 py-4 font-semibold text-[15px]">ผลเทียบ</th>
+                        <th class="px-6 py-4 font-semibold text-[15px]">สถานะ</th>
+                        <th class="px-6 py-4 font-semibold text-[15px] text-right">จัดการ</th>
+                    </tr>
+                </thead>
+                <tbody id="acr-table-body" class="divide-y divide-divider"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- โมดัลตรวจสอบ: เทียบจำนวนที่นับได้กับสต็อกในระบบ -->
+    <div id="acr-modal" class="fixed inset-0 z-50 hidden items-center justify-center backdrop-blur-sm opacity-0 pointer-events-none transition-opacity duration-300 p-4"
+        role="dialog" aria-modal="true" aria-labelledby="acr-modal-title">
+        <div class="modal-content relative w-[95%] xl:w-[1180px] max-h-[90vh] flex flex-col overflow-hidden bg-elevated rounded-2xl shadow-lg border border-line-strong">
+            <div class="flex items-start justify-between gap-4 px-8 py-5 border-b border-hairline bg-panel/40">
+                <div class="space-y-2">
+                    <h3 id="acr-modal-title" class="text-lg text-ink flex items-center gap-2">
+                        <i class="fa-solid fa-clipboard-check text-primary"></i> ตรวจสอบสต็อกอุปกรณ์เสริม
+                    </h3>
+                    <p id="acr-modal-meta" class="text-xs text-body-muted">-</p>
+                </div>
+                <button id="acr-modal-close" type="button" aria-label="ปิด" class="text-state-danger hover:text-state-danger-soft transition-colors">
+                    <i class="fa-solid fa-xmark text-xl"></i>
+                </button>
+            </div>
+            <div class="flex-1 overflow-y-auto px-8 py-6 space-y-4 text-sm custom-scrollbar" tabindex="0">
+                <p id="acr-readonly-note" class="hidden px-4 py-3 rounded-xl bg-field text-body-muted text-sm"></p>
+                <div class="overflow-x-auto rounded-xl border border-line" tabindex="0">
+                    <table class="w-full text-left text-sm border-collapse">
+                        <thead class="bg-panel/40 text-ink">
+                            <tr>
+                                <th class="px-3 py-3 font-semibold">ชื่ออุปกรณ์</th>
+                                <th class="px-3 py-3 font-semibold text-right w-24">จำนวนที่นับได้</th>
+                                <th class="px-3 py-3 font-semibold text-right w-28">สต็อกในระบบ</th>
+                                <th class="px-3 py-3 font-semibold w-28">ย้ายสินค้า</th>
+                                <th class="px-3 py-3 font-semibold w-28">สถานะ</th>
+                                <th class="px-3 py-3 font-semibold w-56">หมายเหตุ</th>
+                                <th class="px-3 py-3 font-semibold w-32">หักเงิน (บาท)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="acr-items" class="divide-y divide-divider"></tbody>
+                    </table>
+                </div>
+                <p class="text-xs text-body-muted">สต็อกในระบบ = จำนวนของสาขา ณ ตอนที่สาขาส่งผลนับ · ย้ายสินค้าและหักเงินเป็นการบันทึกเท่านั้น ไม่ปรับสต็อกและไม่เชื่อมบัญชี</p>
+            </div>
+            <div class="flex items-center justify-between gap-4 px-8 py-4 border-t border-hairline bg-panel/20">
+                <p id="acr-summary" class="text-sm text-body-muted" aria-live="polite"></p>
+                <div class="flex gap-3">
+                    <button id="acr-cancel" type="button" class="px-6 py-2.5 rounded-xl bg-chip text-ink font-medium hover:bg-skeleton transition-colors">ยกเลิก</button>
+                    <button id="acr-recheck" type="button" class="px-6 py-2.5 rounded-xl bg-state-pending/[0.12] text-state-pending font-bold hover:bg-state-pending/20 transition-colors">ตรวจสอบใหม่</button>
+                    <button id="acr-done" type="button" class="px-8 py-2.5 rounded-xl bg-primary text-on-primary font-bold hover:bg-primary-pressed transition-colors">เสร็จสิ้น</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

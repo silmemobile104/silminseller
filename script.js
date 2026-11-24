@@ -171,7 +171,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // โหลดสคริปต์เฉพาะหน้า (js/page-<name>.js) แบบ dynamic ครั้งเดียว แล้ว cache ไว้
     // PAGE_SCRIPT_VERSION: บัมพ์เลขนี้ทุกครั้งที่แก้ไฟล์ใน js/ เพื่อไม่ให้เบราว์เซอร์ใช้ของเก่าที่ cache ไว้
-    const PAGE_SCRIPT_VERSION = 'apple_active_v324';
+    const PAGE_SCRIPT_VERSION = 'apple_active_v329';
     const __loadedPageScripts = {};
     function loadPageScript(name) {
         if (__loadedPageScripts[name]) return __loadedPageScripts[name];
@@ -224,7 +224,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // ไม่ได้รอ init function ถ้า HTML ยังไม่ถูกแทรกเข้า DOM ก่อน ตัวแปรที่ query ไว้จะเป็น null ถาวร
     // ชื่อ name ต้องตรงกับชื่อที่ใช้ใน loadPageScript — ไฟล์เดียวอาจมีหลาย <div id="view-XXX"> รวมกัน
     // ถ้าหน้านั้นถูก share โดยสคริปต์เดียวกันหลาย view (ดูตาราง mapping ในแผน)
-    const VIEW_FRAGMENT_VERSION = 'v258'; // บัมพ์เลขนี้ทุกครั้งที่แก้ไฟล์ใน views/
+    const VIEW_FRAGMENT_VERSION = 'v262'; // บัมพ์เลขนี้ทุกครั้งที่แก้ไฟล์ใน views/
     const __loadedPageViews = {};
     function loadPageView(name) {
         if (__loadedPageViews[name]) return __loadedPageViews[name];
@@ -430,6 +430,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const navStockRequest = document.getElementById('nav-stock-request');
     const navStockRequestManage = document.getElementById('nav-stock-request-manage');
     const navStockRequestTech = document.getElementById('nav-stock-request-tech');
+    const navAccessoryCount = document.getElementById('nav-accessory-count');
+    const navAccessoryCountReview = document.getElementById('nav-accessory-count-review');
     const navAccountingPO = document.getElementById('nav-accounting-po');
     const navBranchReceive = document.getElementById('nav-branch-receive');
     const navAuditLogs = document.getElementById('nav-audit-logs');
@@ -458,6 +460,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const viewStockRequest = document.getElementById('view-stock-request');
     const viewStockRequestManage = document.getElementById('view-stock-request-manage');
     const viewStockRequestTech = document.getElementById('view-stock-request-tech');
+    const viewAccessoryCount = document.getElementById('view-accessory-count');
+    const viewAccessoryCountReview = document.getElementById('view-accessory-count-review');
     const viewPersonnel = document.getElementById('view-personnel');
     const viewBranches = document.getElementById('view-branches');
     const viewSettings = document.getElementById('view-settings');
@@ -2392,6 +2396,9 @@ document.addEventListener('DOMContentLoaded', () => {
         setVisible(navStockRequest, permissions.request_stock);
         setVisible(navStockRequestManage, permissions.manage_stock_requests);
         setVisible(navStockRequestTech, permissions.prepare_stock_requests);
+        // นับสต็อกอุปกรณ์เสริม (สาขา) / ตรวจนับสต็อกอุปกรณ์เสริม (ผู้ตรวจ ทุกสาขา)
+        setVisible(navAccessoryCount, permissions.count_accessory_stock);
+        setVisible(navAccessoryCountReview, permissions.audit_accessory_stock);
 
         // Toggle Audit Logs Sidebar view
         setVisible(navAuditLogs, permissions.view_audit_logs);
@@ -3485,6 +3492,7 @@ document.addEventListener('DOMContentLoaded', () => {
         'report-arrival', 'approve-import', 'warranty-check', 'branch-inventory', 'accounting-po',
         'branch-receive', 'accounting', 'audit-logs', 'stock-audit', 'stock-audit-review', 'stock-issue',
         'stock-request', 'stock-request-manage', 'stock-request-tech',
+        'accessory-count', 'accessory-count-review',
         'accounting-settings', 'disbursement', 'pnl-config', 'balance-sheet-config', 'account-doc-links', 'account-tree', 'database',
         'order-verification', 'finance-companies', 'other-entries', 'account-books', 'account-summary'
     ]);
@@ -3529,6 +3537,8 @@ document.addEventListener('DOMContentLoaded', () => {
             'stock-request': 'request_stock',
             'stock-request-manage': 'manage_stock_requests',
             'stock-request-tech': 'prepare_stock_requests',
+            'accessory-count': 'count_accessory_stock',
+            'accessory-count-review': 'audit_accessory_stock',
             'accounting-settings': 'manage_finance',
             'disbursement': 'manage_finance',
             'other-entries': 'manage_finance',
@@ -3589,6 +3599,8 @@ document.addEventListener('DOMContentLoaded', () => {
             'stock-request': 'request_stock',
             'stock-request-manage': 'manage_stock_requests',
             'stock-request-tech': 'prepare_stock_requests',
+            'accessory-count': 'count_accessory_stock',
+            'accessory-count-review': 'audit_accessory_stock',
             'accounting-settings': 'manage_finance',
             'disbursement': 'manage_finance',
             'other-entries': 'manage_finance',
@@ -3674,7 +3686,7 @@ document.addEventListener('DOMContentLoaded', () => {
             viewBranches, viewSettings, viewRoles, viewSalesHistory,
             viewTransfers, viewMovements, viewMembers,
             viewReportArrival, viewApproveImport, viewWarrantyCheck,
-            viewBranchInventory, viewStockIssue, viewStockRequest, viewStockRequestManage, viewStockRequestTech, viewAccountingPO, viewBranchReceive,
+            viewBranchInventory, viewStockIssue, viewStockRequest, viewStockRequestManage, viewStockRequestTech, viewAccessoryCount, viewAccessoryCountReview, viewAccountingPO, viewBranchReceive,
             viewAuditLogs, viewAccounting, viewDailySummary,
             viewStockAudit, viewStockAuditReview, viewDeposits, viewDepositHistory,
             viewAccountingSettings, viewDisbursement, viewPnlConfig, viewBalanceSheetConfig, viewAccountDocLinks, viewAccountTree, viewDatabase,
@@ -3868,6 +3880,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 await loadPageScript('stock-request');
                 if (typeof window[initName] === 'function') window[initName]();
             }
+            else if (viewName === 'accessory-count' || viewName === 'accessory-count-review') {
+                const isReview = viewName === 'accessory-count-review';
+                activateView(isReview ? viewAccessoryCountReview : viewAccessoryCount, isReview ? navAccessoryCountReview : navAccessoryCount);
+                await loadPageView('accessory-count');
+                await loadPageScript('accessory-count');
+                const initName = isReview ? 'initAccessoryCountReview' : 'initAccessoryCount';
+                if (typeof window[initName] === 'function') window[initName]();
+            }
             else if (viewName === 'accounting-po') {
                 activateView(viewAccountingPO, navAccountingPO);
                 await loadPageView('po-accounting');
@@ -3990,6 +4010,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (navStockRequest) navStockRequest.addEventListener('click', (e) => { e.preventDefault(); switchView('stock-request'); });
     if (navStockRequestManage) navStockRequestManage.addEventListener('click', (e) => { e.preventDefault(); switchView('stock-request-manage'); });
     if (navStockRequestTech) navStockRequestTech.addEventListener('click', (e) => { e.preventDefault(); switchView('stock-request-tech'); });
+    if (navAccessoryCount) navAccessoryCount.addEventListener('click', (e) => { e.preventDefault(); switchView('accessory-count'); });
+    if (navAccessoryCountReview) navAccessoryCountReview.addEventListener('click', (e) => { e.preventDefault(); switchView('accessory-count-review'); });
     if (navStock) navStock.addEventListener('click', (e) => { e.preventDefault(); switchView('stock'); });
     if (navTransactions) navTransactions.addEventListener('click', (e) => { e.preventDefault(); switchView('transactions'); });
     if (navPersonnel) navPersonnel.addEventListener('click', (e) => { e.preventDefault(); switchView('personnel'); });
