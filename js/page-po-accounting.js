@@ -857,35 +857,81 @@
             if (!json.success) return;
             poPendingByBranch = new Map((json.data || []).map(g => [String(g.branch_id), g]));
             renderPoBranchPending();
+            renderPoPendingAllCount();
         } catch (e) {
             console.error('[PO] โหลดคำขอเบิกที่ต้องสั่งซื้อไม่สำเร็จ:', e);
         }
     };
 
-    const openPoPending = (branchId) => {
-        const g = poPendingByBranch.get(String(branchId));
-        const modal = document.getElementById('po-pending-modal');
-        if (!g || !modal) return;
-        document.getElementById('po-pending-sub').textContent = `สาขา ${poBranchName(branchId) || '-'} · ${g.count} คำขอ`;
-        const kindLabel = (k) => k === 'accessory' ? 'อุปกรณ์เสริม' : 'เครื่อง';
-        document.getElementById('po-pending-body').innerHTML = g.requests.map(r => r.items.map((it, idx) => `
+    // ตัวเลขบนปุ่ม "สาขาที่รอสินค้า" = จำนวนสาขาที่ยังมีคำขอต้องสั่งซื้อ
+    const renderPoPendingAllCount = () => {
+        const badge = document.getElementById('po-pending-all-count');
+        if (!badge) return;
+        const n = poPendingByBranch.size;
+        badge.textContent = String(n);
+        badge.classList.toggle('hidden', n === 0);
+    };
+
+    const poPendingKindLabel = (k) => k === 'accessory' ? 'อุปกรณ์เสริม' : 'เครื่อง';
+    const poPendingRows = (g) => g.requests.map(r => r.items.map((it, idx) => `
             <tr>
                 <td class="px-3 py-3 align-top">${idx === 0
                     ? `<span class="font-mono font-semibold text-accent-ink">${poEsc(r.request_no)}</span><p class="text-xs text-body-muted mt-1">${poEsc(new Date(r.createdAt).toLocaleDateString('th-TH', { day: '2-digit', month: 'short', year: 'numeric' }))}</p>`
                     : ''}</td>
                 <td class="px-3 py-3 text-ink">${poEsc(it.product_name)}${(it.capacities || []).length ? ` ${poEsc(it.capacities.join(' / '))}` : ''}</td>
-                <td class="px-3 py-3 text-ink">${kindLabel(it.kind)}</td>
+                <td class="px-3 py-3 text-ink">${poPendingKindLabel(it.kind)}</td>
                 <td class="px-3 py-3 text-right font-semibold text-state-pending">${poEsc(it.remaining)}</td>
             </tr>`).join('')).join('');
-        modal.classList.remove('hidden');
-        modal.classList.add('flex');
-        modal.querySelector('.modal-content')?.focus();
+
+    const showPoPendingModal = () => {
+        const modal = document.getElementById('po-pending-modal');
+        if (!modal) return;
+        const box = modal.querySelector('.modal-content');
+        modal.removeAttribute('inert');
+        modal.setAttribute('aria-hidden', 'false');
+        modal.classList.remove('opacity-0', 'pointer-events-none');
+        box?.classList.remove('scale-95', 'translate-y-2');
+        box?.focus();
     };
+
+    const openPoPending = (branchId) => {
+        const g = poPendingByBranch.get(String(branchId));
+        if (!g) return;
+        document.getElementById('po-pending-sub').textContent = `สาขา ${g.branch_name || poBranchName(branchId) || '-'} · ${g.count} คำขอ`;
+        document.getElementById('po-pending-note').textContent = 'เมื่อสร้างใบสั่งซื้อให้สาขานี้ ระบบจะหักจำนวนที่สั่งออกจากคำขอเหล่านี้ตามชื่อสินค้า และแจ้งสาขาว่ากำลังสั่งซื้อ';
+        document.getElementById('po-pending-body').innerHTML = poPendingRows(g);
+        showPoPendingModal();
+    };
+
+    // ทุกสาขาในหน้าต่างเดียว แบ่งหัวข้อตามสาขา — โหลดใหม่ทุกครั้งที่กด ให้ตรงกับคำขอล่าสุด
+    const openPoPendingAll = async () => {
+        await loadPoPending();
+        const groups = [...poPendingByBranch.values()]
+            .sort((a, b) => (a.branch_name || '').localeCompare(b.branch_name || '', 'th'));
+        const total = groups.reduce((s, g) => s + g.count, 0);
+        document.getElementById('po-pending-sub').textContent = groups.length
+            ? `${groups.length} สาขา · ${total} คำขอ`
+            : 'ตอนนี้ไม่มีสาขาไหนรอสินค้า';
+        document.getElementById('po-pending-note').textContent = 'เลือกสาขาปลายทางในฟอร์มสร้างใบสั่งซื้อ ระบบจะหักจำนวนที่สั่งออกจากคำขอของสาขานั้นตามชื่อสินค้า และแจ้งสาขาว่ากำลังสั่งซื้อ';
+        document.getElementById('po-pending-body').innerHTML = groups.length
+            ? groups.map(g => `
+                <tr class="bg-field">
+                    <td colspan="4" class="px-3 py-2.5 font-semibold text-ink">
+                        <i class="fa-solid fa-location-dot text-accent-ink mr-1"></i>${poEsc(g.branch_name || poBranchName(g.branch_id) || '-')}
+                        <span class="ml-2 text-xs font-normal text-body-muted">${g.count} คำขอ</span>
+                    </td>
+                </tr>${poPendingRows(g)}`).join('')
+            : '<tr><td colspan="4" class="px-3 py-8 text-center text-body-muted">ไม่มีคำขอเบิกที่ต้องสั่งซื้อ</td></tr>';
+        showPoPendingModal();
+    };
+
     const closePoPending = () => {
         const modal = document.getElementById('po-pending-modal');
         if (!modal) return;
-        modal.classList.add('hidden');
-        modal.classList.remove('flex');
+        modal.classList.add('opacity-0', 'pointer-events-none');
+        modal.querySelector('.modal-content')?.classList.add('scale-95', 'translate-y-2');
+        modal.setAttribute('aria-hidden', 'true');
+        modal.setAttribute('inert', '');
     };
 
     (() => {
@@ -897,6 +943,8 @@
             if (e.target.closest('#po-branch-pending-btn')) openPoPending(sel.value);
         });
         ['po-pending-close', 'po-pending-close-2'].forEach(id => document.getElementById(id)?.addEventListener('click', closePoPending));
+        document.getElementById('po-pending-all-btn')?.addEventListener('click', openPoPendingAll);
+        loadPoPending(); // ให้ตัวเลขบนปุ่ม "สาขาที่รอสินค้า" ขึ้นตั้งแต่เปิดหน้า
         document.getElementById('po-pending-modal')?.addEventListener('click', (e) => { if (e.target.id === 'po-pending-modal') closePoPending(); });
     })();
 

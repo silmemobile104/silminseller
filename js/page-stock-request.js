@@ -548,12 +548,34 @@
     };
 
     // ข้อความบอกว่ากดบันทึกแล้วเกิดอะไรต่อ คำนวณจากสต็อกส่วนกลางของแต่ละรายการ
+    // จำนวนที่ฝ่ายจัดซื้อกรอกในโมดัล (ค่าเริ่มต้น = จำนวนที่สาขาขอ)
+    const srmQtyOf = (it, idx) => {
+        const el = document.querySelector(`[data-srm-qty="${idx}"]`);
+        if (!el) return it.quantity;
+        const n = Number(el.value);
+        return Number.isInteger(n) && n >= 0 ? n : it.quantity;
+    };
+
+    // ป้ายสต็อก + ข้อความส่วนที่ขาด ของรายการเดียว คำนวณจากจำนวนที่กรอก
+    const srmItemStatus = (it, qty) => {
+        const have = it.central_stock || 0;
+        if (qty === 0) return `<span class="px-2.5 py-0.5 rounded-full text-xs font-medium bg-divider text-body-muted">ไม่ส่งรายการนี้ · สำนักงานใหญ่มี ${esc(have)} เครื่อง</span>`;
+        const short = have < qty;
+        return `<span class="px-2.5 py-0.5 rounded-full text-xs font-medium ${short ? 'bg-state-danger/10 text-state-danger' : 'bg-state-ok/10 text-state-ok'}">สำนักงานใหญ่มี ${esc(have)} เครื่อง${short ? ' · ไม่พอ' : ' · พอ'}</span>`
+            + (short ? `<p class="w-full text-xs text-state-danger leading-relaxed">ส่งให้ฝ่ายเทคนิค ${esc(Math.min(qty, have))} เครื่อง และกำลังรอการสั่งซื้ออีก ${esc(qty - have)} เครื่อง เพื่อส่งให้${esc(srmCurrent?.branch_id?.name || 'สาขาผู้ขอ')}</p>` : '');
+    };
+
     const srmApplyHint = () => {
-        const items = srmCurrent?.items || [];
+        const items = (srmCurrent?.items || []).map((it, idx) => ({ have: it.central_stock || 0, qty: srmQtyOf(it, idx) }));
         const submit = $('srm-submit');
         const hint = $('srm-next-hint');
-        const sendable = items.some(i => (i.central_stock || 0) > 0);
-        const lacking = items.some(i => (i.central_stock || 0) < i.quantity);
+        if (items.length && items.every(i => i.qty === 0)) {
+            hint.textContent = 'ทุกรายการเป็น 0 ถ้าไม่ต้องการส่งเลย ให้กด "ยกเลิกคำขอนี้" แทน';
+            submit.textContent = 'บันทึก';
+            return;
+        }
+        const sendable = items.some(i => i.qty > 0 && i.have > 0);
+        const lacking = items.some(i => i.have < i.qty);
         if (!sendable) {
             hint.textContent = 'ส่วนกลางยังไม่มีสินค้าตามที่ขอ กดบันทึกเพื่อแจ้งว่ากำลังรอการสั่งซื้อสินค้าทั้งหมด คำขอจะอยู่ในสถานะรอตรวจสอบ';
             submit.textContent = 'บันทึก';
@@ -577,24 +599,30 @@
         shipBox.classList.toggle('hidden', !shipBox.innerHTML);
 
         // ข้อมูลรายการ + สต็อกส่วนกลาง เพื่อให้ตัดสินใจได้ในที่เดียว
-        $('srm-items').innerHTML = (r.items || []).map(it => {
-            const have = it.central_stock || 0;
-            const short = have < it.quantity;
+        // คำขอที่ปิดแล้วให้ดูได้อย่างเดียว
+        const locked = ['shipped', 'canceled'].includes(r.status);
+        // ปรับจำนวนได้ (ใส่ 0 = ไม่ส่งรายการนี้) ค่าเริ่มต้นคือจำนวนที่สาขาขอ
+        $('srm-items').innerHTML = (r.items || []).map((it, idx) => {
+            const asked = it.requested_quantity ?? it.quantity;
+            const changed = asked !== it.quantity;
             return `
             <div class="px-4 py-3.5 space-y-2">
                 <div class="flex items-center justify-between gap-3">
-                    <p class="font-medium text-ink truncate">${esc(itemLabel(it))}</p>
-                    <p class="text-ink whitespace-nowrap">ขอ <span class="text-lg font-bold">${esc(it.quantity)}</span></p>
+                    <div class="min-w-0">
+                        <p class="font-medium text-ink truncate">${esc(itemLabel(it))}</p>
+                        <p class="text-xs text-body-muted">สาขาขอ ${esc(asked)} เครื่อง${changed ? ' · ปรับจำนวนแล้ว' : ''}</p>
+                    </div>
+                    <label class="flex items-center gap-2 text-ink whitespace-nowrap">
+                        <span class="text-sm">จำนวนที่ส่ง</span>
+                        <input type="number" data-srm-qty="${idx}" min="0" max="9999" step="1" inputmode="numeric"
+                            value="${esc(it.quantity)}" ${locked ? 'disabled' : ''}
+                            class="w-20 px-3 py-1.5 rounded-xl bg-field border border-line text-ink text-right font-bold focus:border-primary focus:outline-none disabled:opacity-60">
+                    </label>
                 </div>
-                <div class="flex flex-wrap items-center gap-2">
-                    <span class="px-2.5 py-0.5 rounded-full text-xs font-medium ${short ? 'bg-state-danger/10 text-state-danger' : 'bg-state-ok/10 text-state-ok'}">สำนักงานใหญ่มี ${esc(have)} เครื่อง${short ? ' · ไม่พอ' : ' · พอ'}</span>
-                </div>
-                ${short ? `<p class="text-xs text-state-danger leading-relaxed">ส่งให้ฝ่ายเทคนิค ${esc(Math.min(it.quantity, have))} เครื่อง และกำลังรอการสั่งซื้ออีก ${esc(it.quantity - have)} เครื่อง เพื่อส่งให้${esc(r.branch_id?.name || 'สาขาผู้ขอ')}</p>` : ''}
+                <div class="flex flex-wrap items-center gap-2" data-srm-status="${idx}">${srmItemStatus(it, it.quantity)}</div>
             </div>`;
         }).join('') || '<p class="px-4 py-6 text-center text-ink/50 italic">ไม่มีรายการสินค้า</p>';
 
-        // คำขอที่ปิดแล้วให้ดูได้อย่างเดียว
-        const locked = ['shipped', 'canceled'].includes(r.status);
         $('srm-submit').disabled = locked;
         $('srm-cancel-request').classList.toggle('hidden', locked || r.status === 'sent_to_tech');
         srmApplyHint();
@@ -607,9 +635,19 @@
         const btn = $('srm-submit');
         btn.disabled = true;
         try {
+            const items = (srmCurrent.items || []).map((it, idx) => {
+                const el = document.querySelector(`[data-srm-qty="${idx}"]`);
+                return { _id: it._id, quantity: el ? Number(el.value) : it.quantity };
+            });
+            if (items.some(i => !Number.isInteger(i.quantity) || i.quantity < 0 || i.quantity > 9999)) {
+                return showToast('จำนวนต้องเป็นจำนวนเต็มตั้งแต่ 0 ถึง 9999', 'warning');
+            }
+            if (items.length && items.every(i => i.quantity === 0)) {
+                return showToast('ทุกรายการเป็น 0 ถ้าไม่ต้องการส่งเลย ให้กด "ยกเลิกคำขอนี้" แทน', 'warning');
+            }
             await api(`/stock-requests/${encodeURIComponent(srmCurrent._id)}/manage`, {
                 method: 'PUT',
-                body: {}
+                body: { items }
             });
             showToast('บันทึกการจัดการคำขอสำเร็จ', 'success');
             closeModal('srm-modal');
@@ -661,6 +699,16 @@
             $('srm-branch-filter')?.addEventListener('change', srmLoad);
             $('srm-form')?.addEventListener('submit', srmSave);
             $('srm-cancel-request')?.addEventListener('click', srmCancelRequest);
+            // แก้จำนวนแล้วอัปเดตป้ายสต็อกและข้อความ "เมื่อกดบันทึก" ทันที
+            $('srm-items')?.addEventListener('input', (e) => {
+                const el = e.target.closest('[data-srm-qty]');
+                if (!el || !srmCurrent) return;
+                const idx = Number(el.dataset.srmQty);
+                const it = srmCurrent.items[idx];
+                const box = document.querySelector(`[data-srm-status="${idx}"]`);
+                if (it && box) box.innerHTML = srmItemStatus(it, srmQtyOf(it, idx));
+                srmApplyHint();
+            });
             bindModalClose('srm-modal', ['srm-modal-close', 'srm-cancel']);
         }
         srmLoadBranches();
